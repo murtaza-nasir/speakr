@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.0-alpha — JSON 401 for API auth, duplicate-upload fixes, and incognito hardening"
-    Unauthenticated API requests now return a JSON 401 instead of a redirect to the login page (#333). The 200 MB size warning no longer fires in server-streaming mode; recordings warn at 80% of the duration ceiling instead (#332). Double-clicking Upload can no longer create duplicate recordings, failed file uploads are no longer copied into Downloads, and incognito recordings stay entirely in the browser until explicitly processed.
+!!! success "Latest Release: v0.10.1-alpha — security hardening (recommended for all deployments)"
+    The app now refuses the insecure built-in secret key and auto-generates a strong one if `SECRET_KEY` is unset, so sessions and reset tokens cannot be forged. It sets security headers and a Content-Security-Policy itself, makes password-reset links single-use, sanitizes Markdown-rendered chat/Inquire/banner content, stops the admin user list leaking the full directory to group admins, and makes logout CSRF-protected.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha) for details. Backwards compatible; no database changes.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.1-alpha) for details. Backwards compatible; no database changes.
 
 ## Quick Navigation
 
@@ -127,6 +127,16 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.0-alpha - JSON 401 for API auth, duplicate-upload fixes, and incognito hardening"
+    Backwards compatible; no database changes.
+
+    - **JSON 401 for API auth (#333)** - Unauthenticated API requests return a JSON 401 with a WWW-Authenticate header instead of a 302 redirect to the login page, so integrations fail loudly instead of mistaking the login page for success.
+    - **Size warning fixed in streaming mode (#332)** - The 200 MB warning no longer fires when server-side chunk streaming is active; recordings warn at 80% of the duration ceiling before the automatic stop instead.
+    - **No duplicate recordings** - The upload button disables while a recording finalizes and the finalize endpoint is idempotent, so double-clicking cannot create duplicates. Failed drag-and-drop uploads are no longer copied into Downloads.
+    - **Incognito hardening** - Incognito recordings stay entirely in the browser until explicitly processed, keep filenames out of server logs, and survive crash recovery as incognito.
+
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha).
 
 !!! info "Version 0.9.7-alpha - MP3 playback, transcript clicking, and retention fixes"
     A bug fix release. Backwards compatible; no database changes.

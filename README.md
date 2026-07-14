@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.0--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.1--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -201,7 +201,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.0-alpha)
+## Latest Release (v0.10.1-alpha)
+
+**A security-hardening release. Upgrading is recommended for all deployments.** The application now refuses the insecure built-in secret key and, when `SECRET_KEY` is unset, generates and persists a strong per-deployment key automatically, so session cookies and password-reset tokens can no longer be forged on installs that never set one. Baseline security headers and a Content-Security-Policy are now set by the application itself rather than relying on a hardening reverse proxy. Password-reset links are single-use and are invalidated when the password changes. Chat, Inquire, and admin banner content rendered from Markdown is sanitized before display. The admin user list no longer exposes the full directory to group administrators, bulk tagging enforces group membership, and logout is a CSRF-protected action. Chart.js and DOMPurify are now bundled locally instead of loaded from a third-party CDN. No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.1-alpha).**
+
+### v0.10.0-alpha (previous release)
 
 **Fixes API auth responses and duplicate uploads, and hardens incognito mode.** Unauthenticated API requests now return a proper JSON 401 instead of a redirect to the login page, so integrations with a bad token fail loudly rather than mistaking the login page for success (#333). The 200 MB size warning no longer fires when server-side chunk streaming is active; recordings instead warn at 80% of the duration ceiling before the automatic stop (#332). The upload button disables immediately while a recording finalizes and the finalize endpoint is idempotent, so double-clicking can no longer create duplicate recordings, and failed drag-and-drop uploads are no longer copied into the Downloads folder. Incognito recordings now stay entirely in the browser until explicitly processed, even with chunk streaming enabled, keep filenames out of server logs, and survive crash recovery as incognito. No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha).**
 
