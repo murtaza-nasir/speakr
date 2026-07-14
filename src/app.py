@@ -371,8 +371,40 @@ if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
         'pool_pre_ping': True  # Verify connections before use
     }
 # MAX_CONTENT_LENGTH will be set dynamically after database initialization
-# Set a secret key for session management and CSRF protection
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-production')
+# Set a secret key for session management and CSRF protection.
+
+# The old code fell back to a hardcoded constant when SECRET_KEY was unset.
+# That key signs the session cookie AND itsdangerous password-reset tokens,
+# so a publicly-known value lets anyone forge a session cookie for any
+# user_id (instant admin takeover) and mint valid reset tokens. resolve_secret_key
+# refuses the known-bad default and, when nothing is configured, auto-generates
+# a strong per-deployment key and persists it — so a self-hoster who never sets
+# the env var is secure by default instead of silently exploitable. (The key
+# only signs sessions/tokens; it does not encrypt stored data, so a lost key
+# means a one-time re-login, never data loss.)
+from src.utils.security import resolve_secret_key as _resolve_secret_key
+
+try:
+    _secret_key, _secret_key_action = _resolve_secret_key(
+        os.environ.get('SECRET_KEY'),
+        app.config['SQLALCHEMY_DATABASE_URI'],
+        key_file=os.environ.get('SECRET_KEY_FILE') or None,
+    )
+except ValueError as _sk_exc:
+    raise RuntimeError(str(_sk_exc))
+app.config['SECRET_KEY'] = _secret_key
+if _secret_key_action == 'generated':
+    app.logger.warning(
+        "SECRET_KEY was not set; generated a strong random key and persisted "
+        "it under the instance directory. It is included in a normal data-volume "
+        "backup; set SECRET_KEY explicitly for multi-host or key-rotation setups."
+    )
+elif _secret_key_action == 'ephemeral':
+    app.logger.error(
+        "SECRET_KEY not set and an auto-generated key could not be persisted. "
+        "Using an ephemeral key: sessions will not survive a restart. Set "
+        "SECRET_KEY to fix this."
+    )
 
 # Apply ProxyFix to handle headers from a reverse proxy (like Nginx or Caddy)
 # This is crucial for request.is_secure to work correctly behind an SSL-terminating proxy.
