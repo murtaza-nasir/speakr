@@ -1019,6 +1019,7 @@
     "unsupportedBrowser": "Неподдерживаемый браузер",
     "untitled": "Запись без названия",
     "uploadRecordingNotes": "Загрузить запись и заметки",
+    "uploadingRecording": "Загрузка записи…",
     "whatWillHappen": "Что произойдёт?",
     "whyNotWorking": "Почему не работает?",
     "youHaveXSpeakers": "У вас {{count}} спикеров, но доступно только 16 уникальных цветов. Цвета будут повторяться после 16-го спикера."

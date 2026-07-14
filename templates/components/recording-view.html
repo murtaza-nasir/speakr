@@ -402,13 +402,19 @@
             <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">
                 <!-- Normal Upload Button (split: main uploads, caret opens options) -->
                 <div v-if="!incognitoMode || !enableIncognitoMode" class="flex-1 flex relative">
+                    <!-- Disabled + spinner while finalizing: draining the chunk
+                         backlog can take many seconds, and without immediate
+                         feedback users double-click (which used to create
+                         duplicate recordings). -->
                     <button @click="uploadRecordedAudio"
-                            class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-l-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
-                        <i class="fas fa-upload"></i>
-                        <span v-text="t('help.uploadRecordingNotes')"></span>
+                            :disabled="isFinalizingRecording"
+                            class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-l-lg hover:bg-[var(--bg-button-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                        <i :class="isFinalizingRecording ? 'fas fa-spinner fa-spin' : 'fas fa-upload'"></i>
+                        <span v-text="isFinalizingRecording ? t('help.uploadingRecording') : t('help.uploadRecordingNotes')"></span>
                     </button>
                     <button @click="showUploadSplitMenu = !showUploadSplitMenu"
-                            class="px-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-r-lg hover:bg-[var(--bg-button-hover)] transition-colors border-l border-white/25 flex items-center justify-center"
+                            :disabled="isFinalizingRecording"
+                            class="px-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-r-lg hover:bg-[var(--bg-button-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors border-l border-white/25 flex items-center justify-center"
                             :title="t('mergeRecordings.moreOptions')">
                         <i class="fas fa-chevron-down text-xs"></i>
                     </button>
@@ -435,7 +441,8 @@
                     <span v-else>Process in Incognito</span>
                 </button>
                 <button @click="discardRecording"
-                        class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
+                        :disabled="isFinalizingRecording"
+                        class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
                     <i class="fas fa-trash"></i>
                     <span v-text="t('help.discard')"></span>
                 </button>

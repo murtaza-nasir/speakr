@@ -253,6 +253,61 @@ def test_finalize_creates_recording_and_enqueues_stitch_job():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
+def test_finalize_is_idempotent_under_duplicate_calls():
+    """A double-clicked Upload button (or a network retry) replays finalize
+    on a session that is already finalizing. Every replay must return the
+    SAME recording_id, and exactly one Recording row may exist — before this
+    guard, each replay minted another placeholder Recording racing over the
+    same session's chunks, and all but the last were orphaned in PROCESSING
+    forever (observed live on 2026-07-14 with a triple-clicked upload)."""
+    upload_folder = _make_tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _setup_user("sess_dup")
+        client = app.test_client()
+        _login(client, user)
+        sid = client.post("/upload/session", json={"mime_type": "audio/webm"}).get_json()["session_id"]
+        client.post(f"/upload/session/{sid}/chunks/1", data=b"\x00" * 100, content_type="application/octet-stream")
+
+        enqueue_calls = []
+
+        def fake_enqueue(*args, **kwargs):
+            enqueue_calls.append(kwargs)
+            return 999
+
+        with patch("src.services.job_queue.job_queue.enqueue", side_effect=fake_enqueue):
+            first = client.post(f"/upload/session/{sid}/finalize", json={"title": "Dup test"})
+            second = client.post(f"/upload/session/{sid}/finalize", json={"title": "Dup test"})
+            third = client.post(f"/upload/session/{sid}/finalize", json={"title": "Dup test"})
+
+        assert first.status_code == 202, first.data
+        assert second.status_code == 202, second.data
+        assert third.status_code == 202, third.data
+        rid = first.get_json()["recording_id"]
+        assert second.get_json()["recording_id"] == rid
+        assert third.get_json()["recording_id"] == rid
+
+        # Exactly ONE Recording row was created for this session
+        session_row = db.session.get(RecordingSession, sid)
+        assert session_row.finalized_recording_id == rid
+        rows = Recording.query.filter_by(user_id=user.id).all()
+        assert len(rows) == 1 and rows[0].id == rid
+
+        # Replays may re-enqueue the stitch (enqueue dedupes an active job),
+        # but always for the SAME recording id.
+        assert {c.get("recording_id") for c in enqueue_calls} == {rid}
+        assert all(c.get("job_type") == "stitch" for c in enqueue_calls)
+
+        # Cleanup
+        session_row.status = 'aborted'
+        db.session.commit()
+        client.delete(f"/upload/session/{sid}")
+        db.session.delete(rows[0])
+        db.session.delete(user)
+        db.session.commit()
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
 def test_finalize_rejects_finalizing_into_other_users_personal_folder():
     """IDOR regression. Without folder-access validation in finalize,
     user A could submit a personal folder_id belonging to user B and the

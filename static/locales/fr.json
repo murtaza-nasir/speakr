@@ -1019,6 +1019,7 @@
     "unsupportedBrowser": "Navigateur Non Pris en Charge",
     "untitled": "Enregistrement Sans Titre",
     "uploadRecordingNotes": "Télécharger l'Enregistrement et les Notes",
+    "uploadingRecording": "Envoi de l'enregistrement…",
     "whatWillHappen": "Que va-t-il se passer?",
     "whyNotWorking": "Pourquoi ça ne marche pas?",
     "youHaveXSpeakers": "Vous avez {{count}} locuteurs, mais seulement 16 couleurs uniques sont disponibles. Les couleurs se répéteront après le 16ème locuteur."

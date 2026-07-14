@@ -536,6 +536,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // size-limit warning UI, which is meaningless when streaming
             // (#332: there is no size cap in that mode, only an hours cap).
             const isServerStreamedRecording = ref(false);
+            // True from the moment the user clicks Upload on a finished
+            // recording until the finalize (or legacy queue hand-off)
+            // resolves. Drives the button's disabled/spinner state and the
+            // re-entrancy guard in uploadRecordedAudio: draining the chunk
+            // backlog can take many seconds, and without immediate feedback
+            // users double-click — which used to create duplicate recordings.
+            const isFinalizingRecording = ref(false);
 
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
@@ -1647,7 +1654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,
                 wakeLock, recordingNotification, isPageVisible,
                 estimatedFileSize, fileSizeWarningShown, recordingQuality, actualBitrate,
-                maxRecordingMB, sizeCheckInterval, isServerStreamedRecording,
+                maxRecordingMB, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording,
 
                 // PWA Features
                 deferredInstallPrompt, showInstallButton, isPWAInstalled,

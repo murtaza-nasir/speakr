@@ -163,8 +163,25 @@ def _finalize_session_into_stitch(session, *, user_id, title, notes=None,
     endpoint and the abandoned-session auto-finalize in cleanup, so the two
     behave identically (same Recording shape, same job, same downstream
     transcription kickoff). Returns ``(recording, enqueue_error)`` where
-    ``enqueue_error`` is ``None`` on success.
+    ``enqueue_error`` is ``None`` on success, or ``(None, None)`` when the
+    session was not in ``recording`` status at claim time — i.e. a concurrent
+    finalize won the race and the caller should replay its result instead.
     """
+    # Atomically claim the session (recording -> finalizing). Concurrent
+    # finalize calls — a double-clicked Upload button whose requests all
+    # fire the moment the chunk drain completes — must not each mint a
+    # Recording: before this claim, three clicks created three rows racing
+    # to stitch the same session, and every row except the one the session
+    # ended up pointing at was orphaned in PROCESSING forever (no audio, no
+    # transcribe job, since both key off session.finalized_recording_id).
+    claimed = db.session.query(RecordingSession).filter(
+        RecordingSession.id == session.id,
+        RecordingSession.status == 'recording',
+    ).update({'status': 'finalizing'}, synchronize_session=False)
+    if not claimed:
+        db.session.rollback()
+        return None, None
+
     recording = Recording(
         user_id=user_id,
         title=(title or 'Recording')[:200],
@@ -200,6 +217,43 @@ def _finalize_session_into_stitch(session, *, user_id, title, notes=None,
     except Exception as e:
         current_app.logger.error(f"Could not enqueue stitch job for session {session.id}: {e}")
         return recording, e
+
+
+def _replay_finalize_response(session):
+    """Idempotent response for finalize on an already-finalizing session.
+
+    Duplicate finalize calls (a double-clicked Upload button, a network
+    retry) return the recording created by the first call instead of
+    minting another one. If the first call's stitch enqueue failed, this is
+    also the retry path: re-enqueue for the SAME recording — enqueue dedupes
+    an already-active (recording, job_type) pair, so replays are safe.
+    """
+    existing = (db.session.get(Recording, session.finalized_recording_id)
+                if session.finalized_recording_id else None)
+    if existing is None or existing.user_id != current_user.id:
+        return jsonify({'error': 'Session was already finalized and its recording no longer exists'}), 409
+
+    if existing.status == 'STITCHING':
+        try:
+            job_queue.enqueue(
+                user_id=current_user.id,
+                recording_id=existing.id,
+                job_type='stitch',
+                params={'session_id': session.id},
+                is_new_upload=True,
+            )
+        except Exception as e:
+            current_app.logger.error(f"Could not re-enqueue stitch job for session {session.id}: {e}")
+            return jsonify({
+                'recording_id': existing.id,
+                'status': session.status,
+                'queue_error': str(e),
+            }), 500
+
+    return jsonify({
+        'recording_id': existing.id,
+        'status': session.status,
+    }), 202
 
 
 # --- Endpoints --------------------------------------------------------------
@@ -389,6 +443,12 @@ def finalize_session(session_id):
             'error': f'Session is in status {session.status!r}; cannot finalize',
         }), 409
 
+    # Idempotent replay: the session is already finalizing, so a recording
+    # exists (or its enqueue needs retrying). Return that same recording
+    # instead of creating another — see _replay_finalize_response.
+    if session.status == 'finalizing':
+        return _replay_finalize_response(session)
+
     if session.chunk_count <= 0:
         return jsonify({'error': 'No chunks uploaded yet'}), 409
 
@@ -439,6 +499,15 @@ def finalize_session(session_id):
         resolved_folder_id=resolved_folder_id,
         metadata=metadata,
     )
+    if recording is None:
+        # Lost the atomic claim: a concurrent finalize committed first.
+        # Re-read the session and replay that call's recording.
+        db.session.expire_all()
+        session = db.session.get(RecordingSession, session_id)
+        err = _ensure_owned(session)
+        if err is not None:
+            return err
+        return _replay_finalize_response(session)
     if enqueue_error is not None:
         # Leave the session in `finalizing` so the client can retry; the
         # placeholder recording stays in STITCHING so the user can see it.
@@ -518,10 +587,14 @@ def cleanup_expired_sessions(app=None):
                 if s.status == 'recording' and (s.chunk_count or 0) > 0:
                     when = s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''
                     title = f"Recovered recording {when}".strip()
-                    _finalize_session_into_stitch(
+                    recovered_rec, _enq_err = _finalize_session_into_stitch(
                         s, user_id=s.user_id, title=title,
                         metadata={'recovered': True},
                     )
+                    if recovered_rec is None:
+                        # A concurrent finalize claimed this session between
+                        # the candidate query and now — nothing to do.
+                        continue
                     finalized += 1
                     app.logger.info(
                         f"Auto-finalized abandoned recording session {s.id} "
@@ -553,10 +626,35 @@ def cleanup_expired_sessions(app=None):
                 app.logger.error(f"Cleanup failed for session {s.id}: {e}", exc_info=True)
                 db.session.rollback()
 
-        total = finalized + rekicked + expired
+        # Orphaned directories: a session dir whose DB row no longer exists
+        # (wiped dev database, manual row deletion) is invisible to the
+        # row-driven sweep above and lingers forever. Remove any directory
+        # older than the TTL that has no matching RecordingSession row.
+        orphans = 0
+        try:
+            root = _session_root()
+            if os.path.isdir(root):
+                cutoff_ts = cutoff.timestamp()
+                for name in os.listdir(root):
+                    path = os.path.join(root, name)
+                    if not os.path.isdir(path):
+                        continue
+                    try:
+                        if os.path.getmtime(path) >= cutoff_ts:
+                            continue
+                    except OSError:
+                        continue
+                    if db.session.get(RecordingSession, name) is None:
+                        _remove_session_dir(name, app)
+                        orphans += 1
+        except Exception as e:
+            app.logger.warning(f"Orphaned session-dir sweep failed: {e}")
+
+        total = finalized + rekicked + expired + orphans
         if total:
             app.logger.info(
                 f"Recording-session cleanup: {finalized} auto-finalized, "
-                f"{rekicked} re-enqueued, {expired} expired"
+                f"{rekicked} re-enqueued, {expired} expired, "
+                f"{orphans} orphaned dir(s) removed"
             )
         return total

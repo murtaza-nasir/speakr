@@ -1019,6 +1019,7 @@
     "unsupportedBrowser": "Navegador No Soportado",
     "untitled": "Grabación Sin Título",
     "uploadRecordingNotes": "Subir Grabación y Notas",
+    "uploadingRecording": "Subiendo la grabación…",
     "whatWillHappen": "¿Qué pasará?",
     "whyNotWorking": "¿Por qué no funciona?",
     "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 16 colores únicos disponibles. Los colores se repetirán después del decimosexto orador."

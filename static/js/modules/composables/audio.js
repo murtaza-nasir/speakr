@@ -12,7 +12,7 @@ export function useAudio(state, utils) {
         isRecording, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
-        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, recordingDisclaimer,
+        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording, recordingDisclaimer,
         showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing,
         recordSystemVideo, recordingVideoActive, videoRetentionEnabled,
         selectedMicDeviceId, selectedSecondaryDeviceId,
@@ -957,8 +957,9 @@ export function useAudio(state, utils) {
         }
     };
 
-    // Upload recorded audio
-    const uploadRecordedAudio = async (opts = {}) => {
+    // Upload recorded audio (inner implementation — call uploadRecordedAudio,
+    // which adds the re-entrancy guard and button state around this).
+    const _uploadRecordedAudioInner = async (opts = {}) => {
         if (!audioBlobURL.value) {
             setGlobalError("No recorded audio to upload.");
             return;
@@ -1104,6 +1105,27 @@ export function useAudio(state, utils) {
 
         if (startUploadQueue) {
             startUploadQueue();
+        }
+    };
+
+    // Public entry point: re-entrancy guard + button state around the inner
+    // upload. Draining the chunk backlog before finalize can take many
+    // seconds with no other visible change, so users double-click — and
+    // every extra call used to send another finalize for the same session,
+    // minting duplicate recordings. The server is idempotent about replayed
+    // finalizes now, but the first line of defense is not sending them:
+    // ignore clicks while one upload is in flight and let the template
+    // disable the buttons via isFinalizingRecording.
+    const uploadRecordedAudio = async (opts = {}) => {
+        if (isFinalizingRecording && isFinalizingRecording.value) {
+            console.log('[Recording] Upload already in progress; ignoring duplicate request');
+            return;
+        }
+        if (isFinalizingRecording) isFinalizingRecording.value = true;
+        try {
+            return await _uploadRecordedAudioInner(opts);
+        } finally {
+            if (isFinalizingRecording) isFinalizingRecording.value = false;
         }
     };
 

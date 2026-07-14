@@ -1019,6 +1019,7 @@
     "unsupportedBrowser": "Unsupported Browser",
     "untitled": "Untitled Recording",
     "uploadRecordingNotes": "Upload Recording & Notes",
+    "uploadingRecording": "Uploading recording…",
     "whatWillHappen": "What will happen?",
     "whyNotWorking": "Why isn't it working?",
     "youHaveXSpeakers": "You have {{count}} speakers, but only 16 unique colors are available. Colors will repeat after the 16th speaker."
