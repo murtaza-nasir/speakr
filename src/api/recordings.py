@@ -48,7 +48,7 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
@@ -2514,6 +2514,15 @@ def upload_file():
         except FFProbeError as e:
             current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
             codec_info = None
+            # #340: a browser MediaRecorder can produce a .webm whose EBML header
+            # isn't at the front (chunk-order artifact, seen on crash-recovered
+            # recordings). If so, trim to the real header and re-probe before we
+            # fall through to a conversion that would just fail again.
+            if os.path.splitext(original_filename)[1].lower() in ('.webm', '.mkv', '.mka'):
+                repaired_info = try_repair_malformed_webm(filepath, timeout=probe_timeout)
+                if repaired_info is not None:
+                    codec_info = repaired_info
+                    current_app.logger.info(f"Recovered malformed WebM header for {original_filename}; probe succeeded after trim")
 
         # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False

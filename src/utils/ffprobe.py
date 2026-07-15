@@ -8,11 +8,17 @@ structured information about their codecs, streams, and formats.
 import json
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Every valid WebM/Matroska file begins with this 4-byte EBML magic. A browser
+# MediaRecorder can occasionally hand us a .webm whose header is not at the
+# front (chunk-assembly artifact — see try_repair_malformed_webm / issue #340).
+_EBML_MAGIC = b'\x1a\x45\xdf\xa3'
 
 
 class FFProbeError(Exception):
@@ -182,6 +188,86 @@ def get_codec_info(filename: str, timeout: Optional[int] = None) -> Dict[str, An
                     result['video_codec'] = codec_name
 
     return result
+
+
+def try_repair_malformed_webm(filename: str, timeout: Optional[int] = None,
+                              max_scan_bytes: int = 8 * 1024 * 1024) -> Optional[Dict[str, Any]]:
+    """Repair a WebM/Matroska file whose EBML header is not at the front.
+
+    A browser's MediaRecorder can assemble chunks such that the leading bytes of
+    the uploaded .webm are not the EBML magic (``1A 45 DF A3``) — the real header
+    appears further in. ffprobe/ffmpeg then reject the file ("EBML header parsing
+    failed"). This is most often seen on crash-recovered recordings whose chunk
+    order was scrambled in client storage (issue #340).
+
+    When the file does not start with the EBML magic but contains it within the
+    first ``max_scan_bytes``, this trims the leading bytes so the file starts at
+    the real header. The trimmed candidate is written to a temp file and probed;
+    the original is replaced ONLY if the trimmed file probes cleanly, so a false
+    positive (the magic appearing by chance inside media data) never destroys the
+    upload.
+
+    Args:
+        filename: Path to the file to repair in place.
+        timeout: Optional probe timeout in seconds.
+        max_scan_bytes: How far into the file to search for the header.
+
+    Returns:
+        The codec-info dict for the repaired file if the repair succeeded and the
+        file now probes cleanly, otherwise None (file left untouched).
+    """
+    try:
+        with open(filename, 'rb') as f:
+            head = f.read(max_scan_bytes)
+    except OSError as e:
+        logger.warning(f"WebM repair: could not read {filename}: {e}")
+        return None
+
+    if head[:4] == _EBML_MAGIC:
+        return None  # already well-formed at the front — nothing to repair
+
+    offset = head.find(_EBML_MAGIC)
+    if offset <= 0:
+        # Header not found ahead of the current start (or already at 0): either
+        # this isn't a recoverable WebM or the header is missing entirely.
+        return None
+
+    tmp_path = f"{filename}.repair.tmp"
+    try:
+        with open(filename, 'rb') as src, open(tmp_path, 'wb') as dst:
+            src.seek(offset)
+            shutil.copyfileobj(src, dst, length=1024 * 1024)
+    except OSError as e:
+        logger.warning(f"WebM repair: could not write trimmed candidate for {filename}: {e}")
+        _quiet_remove(tmp_path)
+        return None
+
+    # Only commit the repair if the trimmed file actually probes as valid media.
+    try:
+        codec_info = get_codec_info(tmp_path, timeout=timeout)
+    except FFProbeError as e:
+        logger.warning(f"WebM repair: trimmed candidate for {filename} still not probeable: {e}")
+        _quiet_remove(tmp_path)
+        return None
+
+    try:
+        os.replace(tmp_path, filename)
+    except OSError as e:
+        logger.warning(f"WebM repair: could not replace {filename} with trimmed file: {e}")
+        _quiet_remove(tmp_path)
+        return None
+
+    logger.info(f"WebM repair: trimmed {offset} leading bytes to reach EBML header in {filename}")
+    return codec_info
+
+
+def _quiet_remove(path: str) -> None:
+    """Best-effort removal of a temp file; never raises."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
 
 
 def is_video_file(filename: str, timeout: Optional[int] = None, codec_info: Optional[Dict[str, Any]] = None) -> bool:
