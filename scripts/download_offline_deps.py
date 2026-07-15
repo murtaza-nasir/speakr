@@ -15,6 +15,7 @@ DEPENDENCIES = {
     "css": {
         "fontawesome.min.css": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
         "easymde.min.css": "https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css",
+        "swagger-ui.css": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css",
     },
     "js": {
         "tailwind.min.js": "https://cdn.tailwindcss.com/3.4.0",
@@ -24,6 +25,7 @@ DEPENDENCIES = {
         "axios.min.js": "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js",
         "chart.umd.min.js": "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
         "purify.min.js": "https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js",
+        "swagger-ui-bundle.js": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js",
     }
 }
 

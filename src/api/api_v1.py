@@ -449,25 +449,32 @@ def get_openapi_spec():
 
 @api_v1_bp.route('/docs', methods=['GET'])
 def get_docs():
-    """Serve Swagger UI documentation."""
-    from flask import Response
-    html = '''<!DOCTYPE html>
+    """Serve Swagger UI documentation.
+
+    Assets are served from Speakr's own vendored copy (static/vendor) rather than
+    a public CDN so the page works under the default Content-Security-Policy
+    (script-src/style-src 'self') without any per-route CSP relaxation.
+    """
+    from flask import Response, url_for
+    css_url = url_for('static', filename='vendor/css/swagger-ui.css')
+    bundle_url = url_for('static', filename='vendor/js/swagger-ui-bundle.js')
+    html = f'''<!DOCTYPE html>
 <html>
 <head>
     <title>Speakr API v1 Documentation</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <link rel="stylesheet" href="{css_url}" />
 </head>
 <body>
     <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script src="{bundle_url}"></script>
     <script>
-        SwaggerUIBundle({
+        SwaggerUIBundle({{
             url: "/api/v1/openapi.json",
             dom_id: '#swagger-ui',
             presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
             layout: "BaseLayout",
             persistAuthorization: true
-        });
+        }});
     </script>
 </body>
 </html>'''
