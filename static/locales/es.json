@@ -107,7 +107,8 @@
     "username": "Nombre de Usuario",
     "signInSecurity": "Inicio de sesión y seguridad",
     "password": "Contraseña",
-    "savedSuccess": "Configuración guardada"
+    "savedSuccess": "Configuración guardada",
+    "contextualSpeakerLabellingHelp": "Los hablantes se identifican a partir del contexto de la conversación porque su motor de transcripción no proporciona huellas de voz. Esto puede ser bastante impreciso, según cuánto revele la conversación sobre quién habla y con qué precisión su modelo separa a los hablantes. Para la coincidencia de hablantes más precisa, basada en la voz, se recomienda el contenedor WhisperX ASR."
   },
   "accountTabs": {
     "about": "Acerca de",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Prompt inicial predeterminado",
     "defaultInitialPromptDesc": "Se envía al motor de transcripción para guiar el reconocimiento (por ejemplo, el tema o vocabulario esperado).",
     "defaultHotwordsLabel": "Palabras clave predeterminadas",
-    "defaultHotwordsDesc": "Palabras separadas por comas para favorecer el reconocimiento de términos específicos del dominio."
+    "defaultHotwordsDesc": "Palabras separadas por comas para favorecer el reconocimiento de términos específicos del dominio.",
+    "contextualSpeakerPromptTitle": "Indicación para el etiquetado contextual de hablantes",
+    "contextualSpeakerPromptDesc": "Guía que sigue el modelo al etiquetar hablantes a partir del contexto de la conversación, utilizada solo para motores de transcripción que separan hablantes sin devolver huellas de voz. La lista de nombres de hablantes guardados del usuario y el formato de salida JSON se añaden automáticamente después de este texto. Déjelo en blanco para usar el valor predeterminado integrado.",
+    "contextualSpeakerPromptPlaceholder": "Déjelo en blanco para usar la guía predeterminada integrada."
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
@@ -1328,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Solo audio de pestaña en esta plataforma — ver ayuda",
     "title": "Grabación de Audio",
     "videoPreviewLabel": "Vista previa en directo del vídeo capturado",
-    "virtualMonitor": "virtual / monitor"
+    "virtualMonitor": "virtual / monitor",
+    "recordingPaused": "En pausa",
+    "recordingFinished": "Grabación finalizada"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "El audio será re-transcrito desde cero. Esto también regenerará el título y resumen basado en la nueva transcripción.",

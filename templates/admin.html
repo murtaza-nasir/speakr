@@ -963,16 +963,16 @@
                          code. It is the trailing (variable) part of a transcript-first
                          prompt, so editing it does not disturb prefix caching. -->
                     <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
-                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1">Contextual Speaker Labelling Prompt</h4>
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.contextualSpeakerPromptTitle')}</h4>
                         <p class="text-sm text-[var(--text-muted)] mb-4">
-                            Guidance the model follows when it labels speakers from the conversation context, used only for transcription engines that diarize without returning voice fingerprints. The list of the user's saved speaker names and the JSON output format are added automatically after this text. Leave blank to use the built-in default.
+                            ${t('adminDashboard.contextualSpeakerPromptDesc')}
                         </p>
                         <div class="mb-4">
                             <textarea
                                 v-model="contextualSpeakerPrompt"
                                 rows="5"
                                 class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                placeholder="Leave blank to use the built-in default guidance.">
+                                :placeholder="t('adminDashboard.contextualSpeakerPromptPlaceholder')">
                             </textarea>
                         </div>
                         <div class="flex justify-end items-center">

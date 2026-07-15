@@ -107,7 +107,8 @@
     "username": "Username",
     "signInSecurity": "Sign-in & Security",
     "password": "Password",
-    "savedSuccess": "Settings saved"
+    "savedSuccess": "Settings saved",
+    "contextualSpeakerLabellingHelp": "Speakers are matched from the conversation context because your transcription engine does not provide voice fingerprints. This can be quite inaccurate, depending on how much the conversation reveals about who is speaking and how well your model separates speakers. For the most accurate, voice-based speaker matching, the WhisperX ASR container is recommended."
   },
   "accountTabs": {
     "about": "About",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Default Initial Prompt",
     "defaultInitialPromptDesc": "Sent to the transcription engine to steer recognition (for example, the expected topic or vocabulary).",
     "defaultHotwordsLabel": "Default Hotwords",
-    "defaultHotwordsDesc": "Comma-separated words to bias recognition of domain-specific terms."
+    "defaultHotwordsDesc": "Comma-separated words to bias recognition of domain-specific terms.",
+    "contextualSpeakerPromptTitle": "Contextual Speaker Labelling Prompt",
+    "contextualSpeakerPromptDesc": "Guidance the model follows when it labels speakers from the conversation context, used only for transcription engines that diarize without returning voice fingerprints. The list of the user's saved speaker names and the JSON output format are added automatically after this text. Leave blank to use the built-in default.",
+    "contextualSpeakerPromptPlaceholder": "Leave blank to use the built-in default guidance."
   },
   "apiTokens": {
     "activeTokens": "Active Tokens",
@@ -1337,7 +1341,9 @@
     "tabAudioOnlyTooltip": "Tab audio only on this platform — see help",
     "title": "Audio Recording",
     "videoPreviewLabel": "Live preview of the captured video",
-    "virtualMonitor": "virtual / monitor"
+    "virtualMonitor": "virtual / monitor",
+    "recordingPaused": "Paused",
+    "recordingFinished": "Recording finished"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.",

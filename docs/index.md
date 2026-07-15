@@ -6,10 +6,12 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.1-alpha — security hardening (recommended for all deployments)"
-    The app now refuses the insecure built-in secret key and auto-generates a strong one if `SECRET_KEY` is unset, so sessions and reset tokens cannot be forged. It sets security headers and a Content-Security-Policy itself, makes password-reset links single-use, sanitizes Markdown-rendered chat/Inquire/banner content, stops the admin user list leaking the full directory to group admins, and makes logout CSRF-protected.
+!!! success "Latest Release: v0.10.2-alpha — security fixes, Flask 3.1, and new features (recommended for all deployments)"
+    Resolves three coordinated security reports (stored XSS via tag color, webhook SSRF via DNS rebinding, and SSO account takeover via an unverified email claim) and moves to Flask 3.1 / Werkzeug 3.1, closing two Werkzeug denial-of-service issues. Adds contextual speaker labelling for engines without voice embeddings and pause/resume for in-app recording.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.1-alpha) for details. Backwards compatible; no database changes.
+    **Action required for some SSO setups:** verified-email enforcement is now on by default. If your identity provider does not send an `email_verified` claim, set `SSO_REQUIRE_VERIFIED_EMAIL=false` before upgrading. All other deployments need no configuration change.
+
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.2-alpha) for details.
 
 ## Quick Navigation
 

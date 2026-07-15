@@ -107,7 +107,8 @@
     "username": "Benutzername",
     "signInSecurity": "Anmeldung & Sicherheit",
     "password": "Passwort",
-    "savedSuccess": "Einstellungen gespeichert"
+    "savedSuccess": "Einstellungen gespeichert",
+    "contextualSpeakerLabellingHelp": "Sprecher werden anhand des Gesprächskontexts zugeordnet, da Ihre Transkriptions-Engine keine Stimmprofile liefert. Das kann recht ungenau sein, abhängig davon, wie viel das Gespräch darüber verrät, wer spricht, und wie gut Ihr Modell die Sprecher trennt. Für die genaueste, stimmbasierte Sprecherzuordnung wird der WhisperX-ASR-Container empfohlen."
   },
   "accountTabs": {
     "about": "Über",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Standard-Initial-Prompt",
     "defaultInitialPromptDesc": "Wird an die Transkriptions-Engine gesendet, um die Erkennung zu steuern (z. B. erwartetes Thema oder Vokabular).",
     "defaultHotwordsLabel": "Standard-Hotwords",
-    "defaultHotwordsDesc": "Durch Kommas getrennte Wörter, um die Erkennung domänenspezifischer Begriffe zu verbessern."
+    "defaultHotwordsDesc": "Durch Kommas getrennte Wörter, um die Erkennung domänenspezifischer Begriffe zu verbessern.",
+    "contextualSpeakerPromptTitle": "Prompt für kontextbasierte Sprecherzuordnung",
+    "contextualSpeakerPromptDesc": "Anleitung, der das Modell folgt, wenn es Sprecher anhand des Gesprächskontexts zuordnet; nur für Transkriptions-Engines verwendet, die Sprecher trennen, ohne Stimmprofile zurückzugeben. Die Liste der gespeicherten Sprechernamen des Benutzers und das JSON-Ausgabeformat werden automatisch nach diesem Text hinzugefügt. Leer lassen, um den integrierten Standard zu verwenden.",
+    "contextualSpeakerPromptPlaceholder": "Leer lassen, um die integrierte Standardanleitung zu verwenden."
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
@@ -1328,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Nur Tab-Audio auf dieser Plattform — siehe Hilfe",
     "title": "Audio-Aufnahme",
     "videoPreviewLabel": "Live-Vorschau des aufgenommenen Videos",
-    "virtualMonitor": "virtuell / Monitor"
+    "virtualMonitor": "virtuell / Monitor",
+    "recordingPaused": "Pausiert",
+    "recordingFinished": "Aufnahme beendet"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",

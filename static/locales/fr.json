@@ -107,7 +107,8 @@
     "username": "Nom d'Utilisateur",
     "signInSecurity": "Connexion et sécurité",
     "password": "Mot de passe",
-    "savedSuccess": "Paramètres enregistrés"
+    "savedSuccess": "Paramètres enregistrés",
+    "contextualSpeakerLabellingHelp": "Les locuteurs sont identifiés à partir du contexte de la conversation, car votre moteur de transcription ne fournit pas d'empreintes vocales. Cela peut être assez imprécis, selon ce que la conversation révèle sur l'identité des locuteurs et la capacité de votre modèle à les distinguer. Pour la correspondance de locuteurs la plus précise, basée sur la voix, le conteneur WhisperX ASR est recommandé."
   },
   "accountTabs": {
     "about": "À Propos",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Prompt initial par défaut",
     "defaultInitialPromptDesc": "Envoyé au moteur de transcription pour orienter la reconnaissance (par exemple le sujet ou le vocabulaire attendu).",
     "defaultHotwordsLabel": "Mots-clés par défaut",
-    "defaultHotwordsDesc": "Mots séparés par des virgules pour favoriser la reconnaissance de termes spécifiques au domaine."
+    "defaultHotwordsDesc": "Mots séparés par des virgules pour favoriser la reconnaissance de termes spécifiques au domaine.",
+    "contextualSpeakerPromptTitle": "Invite pour l'étiquetage contextuel des locuteurs",
+    "contextualSpeakerPromptDesc": "Instructions que le modèle suit lorsqu'il étiquette les locuteurs à partir du contexte de la conversation, utilisées uniquement pour les moteurs de transcription qui distinguent les locuteurs sans renvoyer d'empreintes vocales. La liste des noms de locuteurs enregistrés par l'utilisateur et le format de sortie JSON sont ajoutés automatiquement après ce texte. Laissez vide pour utiliser la valeur par défaut intégrée.",
+    "contextualSpeakerPromptPlaceholder": "Laissez vide pour utiliser les instructions par défaut intégrées."
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",
@@ -1328,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Audio d'onglet uniquement sur cette plateforme — voir l'aide",
     "title": "Enregistrement Audio",
     "videoPreviewLabel": "Aperçu en direct de la vidéo capturée",
-    "virtualMonitor": "virtuel / monitor"
+    "virtualMonitor": "virtuel / monitor",
+    "recordingPaused": "En pause",
+    "recordingFinished": "Enregistrement terminé"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "L'audio sera re-transcrit à partir de zéro. Cela régénérera également le titre et le résumé basés sur la nouvelle transcription.",

@@ -56,7 +56,7 @@
 
             <div>
                 <div class="text-xl md:text-2xl font-mono text-[var(--text-accent)]">${formatTime(recordingTime)}</div>
-                <p class="text-xs md:text-sm text-[var(--text-muted)]">${ isRecording ? (isPaused ? 'Paused' : 'Recording in progress...') : 'Recording finished' }</p>
+                <p class="text-xs md:text-sm text-[var(--text-muted)]">${ isRecording ? (isPaused ? t('recording.recordingPaused') : t('recording.recordingInProgress')) : t('recording.recordingFinished') }</p>
                 <!-- Real-time file size display -->
                 <div v-if="isRecording && estimatedFileSize > 0" class="mt-1.5">
                     <p class="text-xs text-[var(--text-muted)]">
@@ -399,15 +399,15 @@
                      recording without a silent gap. -->
                 <button v-if="!isPaused" @click="pauseRecording"
                         class="px-5 md:px-6 py-2.5 md:py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm md:text-base flex items-center">
-                    <i class="fas fa-pause mr-2"></i>Pause
+                    <i class="fas fa-pause mr-2"></i><span v-text="t('recording.pauseRecording')"></span>
                 </button>
                 <button v-else @click="resumeRecording"
                         class="px-5 md:px-6 py-2.5 md:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm md:text-base flex items-center">
-                    <i class="fas fa-play mr-2"></i>Resume
+                    <i class="fas fa-play mr-2"></i><span v-text="t('recording.resumeRecording')"></span>
                 </button>
                 <button @click="stopRecording"
                         :class="['px-6 md:px-8 py-2.5 md:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm md:text-base flex items-center', isPaused ? '' : 'animate-pulse']">
-                    <i class="fas fa-stop mr-2"></i>Stop Recording
+                    <i class="fas fa-stop mr-2"></i><span v-text="t('recording.stopRecording')"></span>
                 </button>
             </div>
             <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">

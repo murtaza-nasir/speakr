@@ -107,7 +107,8 @@
     "username": "Nome de Usuário",
     "signInSecurity": "Acesso e segurança",
     "password": "Senha",
-    "savedSuccess": "Configurações salvas"
+    "savedSuccess": "Configurações salvas",
+    "contextualSpeakerLabellingHelp": "Os falantes são identificados a partir do contexto da conversa porque o seu mecanismo de transcrição não fornece impressões de voz. Isso pode ser bastante impreciso, dependendo de quanto a conversa revela sobre quem está falando e de quão bem o seu modelo separa os falantes. Para a correspondência de falantes mais precisa, baseada em voz, recomenda-se o contêiner WhisperX ASR."
   },
   "accountTabs": {
     "about": "Sobre",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Prompt inicial padrão",
     "defaultInitialPromptDesc": "Enviado ao mecanismo de transcrição para orientar o reconhecimento (por exemplo, o tema ou vocabulário esperado).",
     "defaultHotwordsLabel": "Hotwords padrão",
-    "defaultHotwordsDesc": "Palavras separadas por vírgulas para favorecer o reconhecimento de termos específicos do domínio."
+    "defaultHotwordsDesc": "Palavras separadas por vírgulas para favorecer o reconhecimento de termos específicos do domínio.",
+    "contextualSpeakerPromptTitle": "Prompt para rotulagem contextual de falantes",
+    "contextualSpeakerPromptDesc": "Orientação que o modelo segue ao rotular falantes a partir do contexto da conversa, usada apenas para mecanismos de transcrição que separam falantes sem retornar impressões de voz. A lista de nomes de falantes salvos do usuário e o formato de saída JSON são adicionados automaticamente após este texto. Deixe em branco para usar o padrão integrado.",
+    "contextualSpeakerPromptPlaceholder": "Deixe em branco para usar a orientação padrão integrada."
   },
   "apiTokens": {
     "activeTokens": "Tokens Ativos",
@@ -1328,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Somente áudio da aba nesta plataforma — ver ajuda",
     "title": "Gravação de Áudio",
     "videoPreviewLabel": "Pré-visualização ao vivo do vídeo capturado",
-    "virtualMonitor": "virtual / monitor"
+    "virtualMonitor": "virtual / monitor",
+    "recordingPaused": "Pausado",
+    "recordingFinished": "Gravação concluída"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "O áudio será retranscrito do zero. Isso também regenerará o título e o resumo com base na nova transcrição.",
