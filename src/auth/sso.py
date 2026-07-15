@@ -45,10 +45,12 @@ def get_sso_config() -> Dict[str, Optional[str]]:
         "disable_password_login": _str_to_bool(os.environ.get("SSO_DISABLE_PASSWORD_LOGIN", "false")),
         # When true, an SSO login whose email claim is not marked verified is
         # refused before that email is used to link to (or provision) a local
-        # account. Default false to preserve existing behaviour; enable it when
-        # your IdP reliably sends email_verified, to prevent a malicious or
-        # misconfigured IdP from taking over an account by asserting its email.
-        "require_verified_email": _str_to_bool(os.environ.get("SSO_REQUIRE_VERIFIED_EMAIL", "false")),
+        # account. Secure by default (true): otherwise a malicious or
+        # misconfigured IdP — or a public IdP where a user can set an arbitrary
+        # email claim — could take over a local account by asserting its email
+        # (GHSA-w4q5-3526-j82j). Set SSO_REQUIRE_VERIFIED_EMAIL=false ONLY for a
+        # trusted IdP that does not send an email_verified claim.
+        "require_verified_email": _str_to_bool(os.environ.get("SSO_REQUIRE_VERIFIED_EMAIL", "true")),
     }
 
 
@@ -73,6 +75,13 @@ def init_sso_client(app) -> Optional[OAuth]:
         return _oauth
 
     cfg = get_sso_config()
+    if not cfg["require_verified_email"]:
+        app.logger.warning(
+            "SSO_REQUIRE_VERIFIED_EMAIL=false: SSO logins are accepted even when the "
+            "IdP does not mark the email claim as verified. Use this only with a "
+            "trusted IdP that omits email_verified; otherwise a malicious or "
+            "misconfigured IdP can take over local accounts by asserting their email."
+        )
     oauth = OAuth(app)
     oauth.register(
         name="sso",

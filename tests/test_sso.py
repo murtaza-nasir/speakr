@@ -312,7 +312,7 @@ def test_create_new_user_from_claims(cleanup_users):
              SSO_DEFAULT_USERNAME_CLAIM="preferred_username",
              SSO_DEFAULT_NAME_CLAIM="name", SSO_AUTO_REGISTER="true"):
         user = sso.create_or_update_sso_user({
-            "sub": sub, "email": email,
+            "sub": sub, "email": email, "email_verified": True,
             "preferred_username": preferred, "name": "Alice Example",
         })
         _track(cleanup_users, user)
@@ -330,11 +330,11 @@ def test_second_call_same_subject_updates_not_duplicates(cleanup_users):
     sub = "sub-" + uuid.uuid4().hex
     email = "dup" + uuid.uuid4().hex[:8] + "@example.com"
     with env(SSO_ALLOWED_DOMAINS=None, SSO_DEFAULT_NAME_CLAIM="name"):
-        u1 = sso.create_or_update_sso_user({"sub": sub, "email": email, "name": "First"})
+        u1 = sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True, "name": "First"})
         _track(cleanup_users, u1)
         first_id = u1.id
         # Second call, same subject, changed name → updates the same row.
-        u2 = sso.create_or_update_sso_user({"sub": sub, "email": email, "name": "Second"})
+        u2 = sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True, "name": "Second"})
         _track(cleanup_users, u2)
         assert u2.id == first_id
         assert u2.name == "Second"
@@ -350,7 +350,7 @@ def test_existing_email_user_gets_sso_linked(cleanup_users):
     sub = "sub-" + uuid.uuid4().hex
     cleanup_users["subjects"].add(sub)
     with env(SSO_ALLOWED_DOMAINS=None, SSO_PROVIDER_NAME="Keycloak"):
-        linked = sso.create_or_update_sso_user({"sub": sub, "email": email, "name": "Linked"})
+        linked = sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True, "name": "Linked"})
         assert linked.id == existing_id
         assert linked.sso_subject == sub
         assert linked.sso_provider == "Keycloak"
@@ -395,7 +395,7 @@ def test_username_claim_is_respected(cleanup_users):
     upn = "upn" + uuid.uuid4().hex[:6]
     with env(SSO_ALLOWED_DOMAINS=None, SSO_DEFAULT_USERNAME_CLAIM="upn"):
         user = sso.create_or_update_sso_user({
-            "sub": sub, "email": "claimuser@example.com",
+            "sub": sub, "email": "claimuser@example.com", "email_verified": True,
             "upn": upn, "preferred_username": "should-not-be-used",
         })
         _track(cleanup_users, user)
@@ -407,7 +407,7 @@ def test_username_falls_back_to_email_localpart(cleanup_users):
     local = "local" + uuid.uuid4().hex[:6]
     with env(SSO_ALLOWED_DOMAINS=None):
         # No username claim provided → use email local part.
-        user = sso.create_or_update_sso_user({"sub": sub, "email": f"{local}@example.com"})
+        user = sso.create_or_update_sso_user({"sub": sub, "email": f"{local}@example.com", "email_verified": True})
         _track(cleanup_users, user)
         assert user.username == local[:20]
 
@@ -422,7 +422,7 @@ def test_no_email_uses_placeholder(cleanup_users):
 
 
 # ---------------------------------------------------------------------------
-# SSO_REQUIRE_VERIFIED_EMAIL (opt-in; default off = backwards compatible)
+# SSO_REQUIRE_VERIFIED_EMAIL (secure by default; opt out for a trusted IdP)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("value,expected", [
@@ -434,18 +434,19 @@ def test_claim_is_truthy(value, expected):
     assert sso._claim_is_truthy(value) is expected
 
 
-def test_require_verified_email_defaults_off_and_links_unverified(cleanup_users):
-    """Default (flag unset): an unverified/absent email_verified still links to
-    an existing-by-email account — the original behaviour, preserved."""
+def test_require_verified_email_defaults_on_and_refuses_unverified(cleanup_users):
+    """Secure default (flag unset = on): an SSO login with an absent/unverified
+    email_verified claim is refused before it can link to an existing-by-email
+    account, preventing takeover (GHSA-w4q5-3526-j82j)."""
     with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL=None):
         existing = _mk_user(cleanup_users, email="legacy@example.com")
         assert existing.sso_subject is None
         sub = "sub-" + uuid.uuid4().hex[:10]
-        user = sso.create_or_update_sso_user({"sub": sub, "email": "legacy@example.com"})
-        _track(cleanup_users, user)
-        # Linked to the existing account despite no email_verified claim.
-        assert user.id == existing.id
-        assert user.sso_subject == sub
+        with pytest.raises(PermissionError):
+            sso.create_or_update_sso_user({"sub": sub, "email": "legacy@example.com"})
+        # The existing account was NOT linked to the unverified SSO identity.
+        db.session.refresh(existing)
+        assert existing.sso_subject is None
 
 
 def test_require_verified_email_on_rejects_unverified_link(cleanup_users):
