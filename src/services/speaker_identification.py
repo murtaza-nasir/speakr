@@ -11,13 +11,18 @@ import json
 from flask import current_app
 
 
-def identify_speakers_from_transcript(transcription_data, user_id):
+def identify_speakers_from_transcript(transcription_data, user_id, candidate_names=None):
     """
     Identify speakers in a transcription using an LLM.
 
     Args:
         transcription_data: List of transcript segments (already parsed JSON).
         user_id: Current user's ID (for token tracking).
+        candidate_names: Optional list of the user's saved speaker-profile names.
+            When provided (contextual auto-labelling for connectors that return
+            no voice embeddings), the model may only assign these exact names or
+            an empty string, and the prompt switches to a prefix-cache-friendly
+            transcript-first layout with an admin-editable guidance suffix.
 
     Returns:
         dict mapping original speaker labels to identified names.
@@ -69,7 +74,61 @@ def identify_speakers_from_transcript(transcription_data, user_id):
     else:
         transcript_text = formatted_transcription[:transcript_limit]
 
-    prompt = f"""Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.
+    # Optional candidate constraint: when the caller supplies the user's saved
+    # speaker profiles (contextual auto-labelling for connectors that return no
+    # voice embeddings), the model may only assign those exact names. The prompt
+    # is laid out transcript-first with the editable guidance + candidate list as
+    # the trailing suffix, so it stays prefix-cache friendly and only the suffix
+    # is admin-editable (see DEFAULT_CONTEXTUAL_SPEAKER_PROMPT).
+    candidates = [str(name).strip() for name in (candidate_names or []) if str(name).strip()]
+
+    if candidates:
+        from src.config.prompts import DEFAULT_CONTEXTUAL_SPEAKER_PROMPT
+        try:
+            from src.tasks.processing import (
+                PREFIX_CACHE_OPTIMIZED_PROMPTS, _SHARED_LLM_SYSTEM_MSG, _shared_user_prefix,
+            )
+        except Exception:
+            PREFIX_CACHE_OPTIMIZED_PROMPTS = False
+            _SHARED_LLM_SYSTEM_MSG = None
+            _shared_user_prefix = None
+
+        guidance = SystemSetting.get_setting(
+            'admin_default_contextual_speaker_prompt', DEFAULT_CONTEXTUAL_SPEAKER_PROMPT
+        ) or DEFAULT_CONTEXTUAL_SPEAKER_PROMPT
+
+        # Everything after the transcript. The concrete candidate list, the
+        # speaker labels, and the strict JSON contract are code-controlled so an
+        # admin edit to `guidance` cannot break the output format or the
+        # exact-name constraint.
+        suffix = (
+            f"{guidance}\n\n"
+            f"Known speaker profiles you may assign: {', '.join(candidates)}\n"
+            f"Speakers to identify: {', '.join(speaker_labels)}\n\n"
+            "Respond with a single JSON object whose keys are the speaker labels and whose "
+            "values are the assigned profile name (copied exactly from the list above) or an "
+            'empty string "" when no profile clearly matches.\n\n'
+            "Example format:\n"
+            "{\n"
+            '  "SPEAKER_01": "Jane Smith",\n'
+            '  "SPEAKER_03": ""\n'
+            "}\n\n"
+            "JSON Response:\n"
+        )
+        if PREFIX_CACHE_OPTIMIZED_PROMPTS and _shared_user_prefix:
+            # Reuse the shared transcript-first prefix so the layout matches the
+            # title/summary calls when prefix caching is enabled.
+            system_msg = _SHARED_LLM_SYSTEM_MSG
+            prompt = _shared_user_prefix(transcript_text) + suffix
+        else:
+            system_msg = (
+                "You assign speakers in a transcript to a fixed list of known people, "
+                "using only contextual clues in the dialogue. Your response must be a "
+                "single, valid JSON object and must only use names from the provided list."
+            )
+            prompt = f'Transcript:\n"""\n{transcript_text}\n"""\n\n' + suffix
+    else:
+        prompt = f"""Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.
 
 The speakers that need to be identified are: {', '.join(speaker_labels)}
 
@@ -96,17 +155,17 @@ Example format:
 
 JSON Response:
 """
+        system_msg = (
+            "You are an expert in analyzing conversation transcripts to identify speakers "
+            "based on contextual clues in the dialogue. Analyze the conversation carefully "
+            "to find names mentioned when speakers address each other or introduce themselves. "
+            "Your response must be a single, valid JSON object containing only the requested "
+            "speaker identifications."
+        )
 
     current_app.logger.info("[Auto-Identify] Calling LLM")
 
     use_schema = os.environ.get('AUTO_IDENTIFY_RESPONSE_SCHEMA', '').strip() in ('1', 'true', 'yes')
-    system_msg = (
-        "You are an expert in analyzing conversation transcripts to identify speakers "
-        "based on contextual clues in the dialogue. Analyze the conversation carefully "
-        "to find names mentioned when speakers address each other or introduce themselves. "
-        "Your response must be a single, valid JSON object containing only the requested "
-        "speaker identifications."
-    )
 
     response_content = None
     if use_schema:
@@ -162,7 +221,7 @@ JSON Response:
     current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
     # --- Sanitize identified_map ---
-    identified_map = _sanitize_identified_map(identified_map, speaker_labels)
+    identified_map = _sanitize_identified_map(identified_map, speaker_labels, candidate_names=candidates)
     current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
 
     # Map back to original speaker labels
@@ -175,10 +234,16 @@ JSON Response:
     return final_speaker_map
 
 
-def _sanitize_identified_map(identified_map, speaker_labels):
+def _sanitize_identified_map(identified_map, speaker_labels, candidate_names=None):
     """
     Clean up LLM output: handle inverted maps, strip commentary,
     clear placeholders, etc.
+
+    When candidate_names is given (contextual auto-labelling), the result is
+    constrained to those exact saved names (case-insensitive match) or an empty
+    string — the model cannot introduce a name that isn't a saved profile, and
+    the generic name-cleanup below is skipped so punctuated saved names like
+    "Smith, John" survive intact.
     """
     speaker_label_re = re.compile(r'^SPEAKER_\d{2}$')
 
@@ -188,6 +253,12 @@ def _sanitize_identified_map(identified_map, speaker_labels):
     ) and not any(speaker_label_re.match(str(k)) for k in identified_map.keys()):
         current_app.logger.warning("[Auto-Identify] Detected inverted map, flipping keys/values")
         identified_map = {v: k for k, v in identified_map.items() if v}
+
+    allowed = {
+        str(name).strip().casefold(): str(name).strip()
+        for name in (candidate_names or [])
+        if str(name).strip()
+    }
 
     sanitized = {}
     for speaker_label, identified_name in identified_map.items():
@@ -199,6 +270,12 @@ def _sanitize_identified_map(identified_map, speaker_labels):
             continue
 
         name = identified_name.strip()
+
+        # Contextual mode: accept only an exact saved-profile name (preserving
+        # its original casing/punctuation), otherwise leave the speaker blank.
+        if allowed:
+            sanitized[speaker_label] = allowed.get(name.casefold(), "")
+            continue
 
         # Clear generic placeholders
         if name.lower() in ["unknown", "n/a", "not available", "unclear", "unidentified", ""]:
@@ -227,3 +304,79 @@ def _sanitize_identified_map(identified_map, speaker_labels):
         sanitized[speaker_label] = name
 
     return sanitized
+
+
+def apply_contextual_auto_labels(recording, user):
+    """Opt-in contextual speaker labelling for recordings without embeddings.
+
+    Called from the transcription pipeline only when the recording has no voice
+    embeddings (so the embedding matcher cannot run) and the user has enabled
+    auto speaker labelling. Asks the LLM to map the diarized speaker labels to
+    the user's saved speaker profiles, constrained to those exact names, applies
+    the accepted matches to the transcription, and creates representative
+    snippets for the matched speakers. Returns the applied {SPEAKER_XX: name}
+    map (empty dict when nothing was applied). Never raises: any failure is
+    logged and swallowed so it cannot fail the transcription.
+    """
+    if not user.auto_speaker_labelling or not recording.transcription:
+        return {}
+
+    from src.models import Speaker
+    from src.services.speaker_embedding_matcher import apply_speaker_names_to_transcription
+    from src.services.speaker_snippets import create_speaker_snippets
+
+    candidates = [
+        speaker.name
+        for speaker in Speaker.query.filter_by(user_id=user.id).order_by(Speaker.name.asc()).all()
+        if speaker.name
+    ]
+    if not candidates:
+        current_app.logger.info(
+            "[Auto-Identify] User %s has no saved speaker profiles; skipping contextual labelling",
+            user.id,
+        )
+        return {}
+
+    try:
+        transcription_data = json.loads(recording.transcription)
+    except (json.JSONDecodeError, TypeError):
+        current_app.logger.warning(
+            "[Auto-Identify] Recording %s transcription is not parseable JSON; skipping", recording.id
+        )
+        return {}
+    if not isinstance(transcription_data, list):
+        return {}
+
+    try:
+        speaker_map = identify_speakers_from_transcript(
+            transcription_data, user.id, candidate_names=candidates
+        )
+    except Exception as error:
+        current_app.logger.warning(
+            "[Auto-Identify] Contextual identification failed for recording %s: %s", recording.id, error
+        )
+        return {}
+
+    speaker_map = {label: name for label, name in speaker_map.items() if name}
+    if not speaker_map:
+        current_app.logger.info(
+            "[Auto-Identify] No saved speaker matched recording %s contextually", recording.id
+        )
+        return {}
+
+    if not apply_speaker_names_to_transcription(recording, speaker_map):
+        return {}
+
+    try:
+        snippet_map = {label: {"name": name, "isMe": False} for label, name in speaker_map.items()}
+        create_speaker_snippets(recording.id, snippet_map)
+    except Exception as error:
+        # Snippets are a convenience; a failure here must not undo the labelling.
+        current_app.logger.warning(
+            "[Auto-Identify] Could not create snippets for recording %s: %s", recording.id, error
+        )
+
+    current_app.logger.info(
+        "[Auto-Identify] Applied contextual speaker matches to recording %s: %s", recording.id, speaker_map
+    )
+    return speaker_map

@@ -1085,21 +1085,31 @@
                             <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-1" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
                             <p class="text-sm text-[var(--text-secondary)] hidden sm:block" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
                         </div>
-                        {% if speaker_embeddings_enabled %}
-                        <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="Automatically label speakers in new recordings when voice profiles match">
+                        {% if speaker_embeddings_enabled or contextual_labelling_available %}
+                        <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="{% if speaker_embeddings_enabled %}Automatically label speakers in new recordings when saved voice profiles match{% else %}Automatically label speakers in new recordings from the conversation context{% endif %}">
                             <span class="text-sm text-[var(--text-secondary)] hidden sm:inline" data-i18n="account.autoLabel">Auto-label</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
                             </label>
+                            {# Confidence threshold only tunes embedding (voice) matching; the contextual LLM path has no similarity score, so it is hidden there. #}
+                            {% if speaker_embeddings_enabled %}
                             <select id="autoSpeakerLabellingThreshold" class="text-sm bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded-md px-2 py-1 text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--border-focus)] disabled:opacity-50 disabled:cursor-not-allowed" {% if not auto_speaker_labelling %}disabled{% endif %}>
                                 <option value="high" {% if auto_speaker_labelling_threshold == 'high' %}selected{% endif %}>High</option>
                                 <option value="medium" {% if auto_speaker_labelling_threshold == 'medium' %}selected{% endif %}>Medium</option>
                                 <option value="low" {% if auto_speaker_labelling_threshold == 'low' %}selected{% endif %}>Low</option>
                             </select>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
+                    {% if contextual_labelling_available and not speaker_embeddings_enabled %}
+                    <div class="flex-shrink-0 -mt-2 mb-4">
+                        <p class="text-xs text-[var(--text-muted)] leading-snug">
+                            Speakers are matched from the conversation context because your transcription engine does not provide voice fingerprints. This can be quite inaccurate, depending on how much the conversation reveals about who is speaking and how well your model separates speakers. For the most accurate, voice-based speaker matching, the WhisperX ASR container is recommended.
+                        </p>
+                    </div>
+                    {% endif %}
 
                     <!-- Top toolbar with bulk actions -->
                     <div class="flex-shrink-0 flex flex-wrap justify-between items-center gap-2 py-2 sm:py-3 px-3 sm:px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mb-3">

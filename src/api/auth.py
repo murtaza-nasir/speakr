@@ -698,17 +698,35 @@ def account():
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
     connector_supports_hotwords = USE_ASR_ENDPOINT
     connector_supports_initial_prompt = USE_ASR_ENDPOINT
+    connector_supports_speaker_embeddings = ASR_RETURN_SPEAKER_EMBEDDINGS
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
+            from src.services.transcription.base import TranscriptionCapability
             registry = get_registry()
             connector = registry.get_active_connector()
             if connector:
                 connector_supports_diarization = connector.supports_diarization
                 connector_supports_hotwords = connector.supports_hotwords
                 connector_supports_initial_prompt = connector.supports_initial_prompt
+                # Query the live instance: the asr_endpoint connector adds the
+                # SPEAKER_EMBEDDINGS capability conditionally (only when its env
+                # flag is on), so the class-level set would be wrong.
+                connector_supports_speaker_embeddings = connector.supports(
+                    TranscriptionCapability.SPEAKER_EMBEDDINGS
+                )
         except Exception as e:
             current_app.logger.warning(f"Could not get connector capabilities: {e}")
+
+    # Speaker auto-labelling comes in two flavours. When the connector returns
+    # voice embeddings, matching is biometric and tuned by a confidence
+    # threshold. When it diarizes but returns no embeddings, we fall back to a
+    # contextual LLM match; the toggle should still be offered in that case (the
+    # threshold does not apply). Surfacing both lets the account page show the
+    # toggle for embedding-less connectors, where it used to be hidden.
+    contextual_labelling_available = (
+        connector_supports_diarization and not connector_supports_speaker_embeddings
+    )
 
     # Check if user is a team admin and get their admin groups
     admin_memberships = GroupMembership.query.filter_by(
@@ -761,7 +779,8 @@ def account():
                            sso_subject=current_user.sso_subject,
                            has_password=bool(current_user.password),
                            password_login_disabled=password_login_disabled,
-                           speaker_embeddings_enabled=ASR_RETURN_SPEAKER_EMBEDDINGS,
+                           speaker_embeddings_enabled=connector_supports_speaker_embeddings,
+                           contextual_labelling_available=contextual_labelling_available,
                            auto_speaker_labelling=current_user.auto_speaker_labelling,
                            auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',
                            admin_disabled_auto_summarization=admin_disabled_auto_summarization,

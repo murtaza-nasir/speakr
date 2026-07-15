@@ -30,3 +30,15 @@ Example Format:
 ....
 
 //and so on and so forth. Make sure not to miss any nuance or details."""
+
+
+# The admin-editable instruction body for CONTEXTUAL speaker labelling — used
+# when a recording has no voice embeddings and the app falls back to naming
+# speakers from the transcript, constrained to the user's saved speaker
+# profiles. This is only the guidance paragraph; the code appends the concrete
+# candidate list, the speaker labels, and the strict JSON output contract after
+# it, so those cannot be broken by an edit here. It is deliberately the trailing
+# (variable) part of a transcript-first prompt so it stays prefix-cache friendly
+# (see PREFIX_CACHE_OPTIMIZED_PROMPTS): the transcript is the stable prefix, this
+# guidance is the editable suffix.
+DEFAULT_CONTEXTUAL_SPEAKER_PROMPT = """Work out which of the known speaker profiles each speaker label most likely corresponds to, using clues in the conversation such as the names people are addressed by, self-introductions, and references to roles or relationships. Only assign a known profile when the conversation clearly supports it; if you are not confident about a speaker, leave that speaker unassigned with an empty string. Never invent a name that is not in the known profiles list."""

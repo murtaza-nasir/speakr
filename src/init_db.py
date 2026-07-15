@@ -739,7 +739,17 @@ def initialize_database(app):
                 setting_type='string'
             )
             app.logger.info("Initialized admin_default_summary_prompt setting")
-        
+
+        if not SystemSetting.query.filter_by(key='admin_default_contextual_speaker_prompt').first():
+            from src.config.prompts import DEFAULT_CONTEXTUAL_SPEAKER_PROMPT
+            SystemSetting.set_setting(
+                key='admin_default_contextual_speaker_prompt',
+                value=DEFAULT_CONTEXTUAL_SPEAKER_PROMPT,
+                description='Guidance for contextual speaker labelling, used when a recording has no voice embeddings and speakers are named from the transcript, constrained to the user\'s saved profiles. Only the guidance is editable; the candidate list and JSON format are fixed in code.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized admin_default_contextual_speaker_prompt setting")
+
         if not SystemSetting.query.filter_by(key='recording_disclaimer').first():
             SystemSetting.set_setting(
                 key='recording_disclaimer',
