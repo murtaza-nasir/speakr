@@ -178,7 +178,40 @@ def initialize_database(app):
                             app.logger.info("Password column is already nullable, skipping migration")
         except Exception as e:
             app.logger.warning(f"Could not migrate password column to nullable (may cause issues with SSO): {e}")
-        
+
+        # One-time email normalization: lowercase (and trim) existing stored
+        # emails so they match the normalize-on-write behavior. Login and
+        # uniqueness are case-insensitive regardless, so this is cleanup, not a
+        # correctness requirement. Collision-aware: if two accounts differ only
+        # by case/whitespace, both are left untouched and logged, since merging
+        # them is a manual decision. DB-agnostic (operates through the ORM).
+        try:
+            from collections import defaultdict
+            from src.models import User
+            users = User.query.all()
+            by_norm = defaultdict(list)
+            for u in users:
+                by_norm[User.normalize_email(u.email)].append(u)
+            changed = 0
+            for u in users:
+                norm = User.normalize_email(u.email)
+                if norm == u.email:
+                    continue  # already normalized
+                if len(by_norm[norm]) > 1:
+                    app.logger.warning(
+                        f"Skipped email normalization for user {u.id}: multiple "
+                        f"accounts map to '{norm}' case-insensitively; resolve manually."
+                    )
+                    continue
+                u.email = norm
+                changed += 1
+            if changed:
+                db.session.commit()
+                app.logger.info(f"Normalized {changed} stored email address(es) to lowercase")
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Email normalization migration skipped: {e}")
+
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):

@@ -37,7 +37,7 @@ def create_admin_user_from_env():
     
     # Get values from environment variables
     username = os.environ.get('ADMIN_USERNAME')
-    email = os.environ.get('ADMIN_EMAIL')
+    email = User.normalize_email(os.environ.get('ADMIN_EMAIL'))
     password = os.environ.get('ADMIN_PASSWORD')
     
     # Validate required environment variables
@@ -71,8 +71,8 @@ def create_admin_user_from_env():
             print(f"User with username '{username}' already exists.")
             sys.exit(0)
         
-        # Check if email already exists
-        existing_email = db.session.query(User).filter_by(email=email).first()
+        # Check if email already exists (case-insensitive)
+        existing_email = User.find_by_email(email)
         if existing_email:
             print(f"User with email '{email}' already exists.")
             sys.exit(0)

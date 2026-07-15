@@ -50,14 +50,14 @@ def create_admin_user():
     # Get email
     skip_domain_check = os.environ.get('SKIP_EMAIL_DOMAIN_CHECK', 'false').lower() == 'true'
     while True:
-        email = input("Enter email address: ").strip()
+        email = User.normalize_email(input("Enter email address: "))
         try:
             # Validate email (skip DNS/MX check if SKIP_EMAIL_DOMAIN_CHECK=true)
             validate_email(email, check_deliverability=not skip_domain_check)
 
-            # Check if email already exists
+            # Check if email already exists (case-insensitive)
             with app.app_context():
-                existing_email = db.session.query(User).filter_by(email=email).first()
+                existing_email = User.find_by_email(email)
                 if existing_email:
                     print(f"Email '{email}' already exists. Please use another.")
                     continue

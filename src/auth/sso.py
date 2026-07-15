@@ -133,7 +133,7 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
     """Create or update a user from SSO (OIDC) claims."""
     cfg = get_sso_config()
     subject = userinfo.get("sub")
-    email = userinfo.get("email")
+    email = User.normalize_email(userinfo.get("email"))
     username_claim = cfg["username_claim"]
     name_claim = cfg["name_claim"]
 
@@ -164,7 +164,7 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
 
     # Existing by email: attach SSO
     if email:
-        existing_email_user = User.query.filter_by(email=email).first()
+        existing_email_user = User.find_by_email(email)
         if existing_email_user:
             existing_email_user.sso_provider = cfg["provider_name"]
             existing_email_user.sso_subject = subject
@@ -193,7 +193,7 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
 def _update_profile_fields(user: User, userinfo: Dict[str, str], name_claim: Optional[str]) -> None:
     """Update optional profile fields from SSO claims."""
     if not user.email and userinfo.get("email"):
-        user.email = userinfo["email"]
+        user.email = User.normalize_email(userinfo["email"])
     if name_claim and userinfo.get(name_claim):
         user.name = userinfo[name_claim]
 

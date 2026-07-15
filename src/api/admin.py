@@ -209,14 +209,15 @@ def admin_add_user():
     if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'Username already exists'}), 400
     
-    if User.query.filter_by(email=data['email']).first():
+    email = User.normalize_email(data['email'])
+    if User.find_by_email(email):
         return jsonify({'error': 'Email already exists'}), 400
-    
+
     # Create new user
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
     new_user = User(
         username=data['username'],
-        email=data['email'],
+        email=email,
         password=hashed_password,
         is_admin=data.get('is_admin', False),
         monthly_token_budget=data.get('monthly_token_budget'),
@@ -267,11 +268,14 @@ def admin_update_user(user_id):
             return jsonify({'error': 'Username already exists'}), 400
         user.username = data['username']
     
-    if 'email' in data and data['email'] != user.email:
-        # Check if email already exists
-        if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email already exists'}), 400
-        user.email = data['email']
+    if 'email' in data:
+        new_email = User.normalize_email(data['email'])
+        if new_email != user.email:
+            # Case-insensitive existence check against other accounts.
+            existing = User.find_by_email(new_email)
+            if existing and existing.id != user.id:
+                return jsonify({'error': 'Email already exists'}), 400
+            user.email = new_email
     
     if 'password' in data and data['password']:
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')

@@ -87,9 +87,15 @@ def rate_limit(limit_string):
 
 # --- Forms ---
 
+# Trim + lowercase an email field before validators run. Fixes the mobile
+# autofill case where a trailing space makes Email() reject an otherwise-valid
+# address, and normalizes what gets stored so accounts stay case-consistent.
+_normalize_email_filter = lambda x: x.strip().lower() if x else x
+
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), password_check])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
@@ -100,13 +106,14 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('That username is already taken. Please choose a different one.')
 
     def validate_email(self, email):
-        user = User.query.filter_by(email=email.data).first()
-        if user:
+        # Case-insensitive so a case-variant of an existing address can't be
+        # registered as a separate account.
+        if User.find_by_email(email.data):
             raise ValidationError('That email is already registered. Please use a different one.')
 
 
 class LoginForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
@@ -210,7 +217,7 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
+        user = User.find_by_email(form.email.data)
         if user and user.password:
             # Check if password login is disabled for non-admins
             if password_login_disabled and not user.is_admin:
@@ -422,13 +429,13 @@ def resend_verification():
         return redirect(url_for('auth.login'))
 
     # Get email from session (set during failed login) or form
-    email = session.get('unverified_email') or request.form.get('email')
+    email = User.normalize_email(session.get('unverified_email') or request.form.get('email'))
 
     if not email:
         flash('Email address is required.', 'danger')
         return redirect(url_for('auth.login'))
 
-    user = User.query.filter_by(email=email).first()
+    user = User.find_by_email(email)
 
     if not user:
         # Don't reveal if user exists
@@ -475,13 +482,13 @@ def forgot_password():
         return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = User.normalize_email(request.form.get('email'))
 
         if not email:
             flash('Email address is required.', 'danger')
             return render_template('auth/forgot_password.html', title='Forgot Password')
 
-        user = User.query.filter_by(email=email).first()
+        user = User.find_by_email(email)
 
         # Always show the same message to prevent email enumeration
         if user:
