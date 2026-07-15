@@ -28,6 +28,14 @@ import { detectPlatform, getAudioCapabilities, enumerateVirtualAudioDevices } fr
 const SPEAKER_COLOR_COUNT = 16;
 
 // Parse transcription text to detect if it's an error message
+// Remove ANSI terminal colour codes (real ESC or the literal  form that
+// survives JSON) that some ASR runtimes inject into error bodies. Cleans errors
+// already stored in the database at display time, complementing the backend
+// which strips them before storing new ones.
+const stripAnsi = (s) => typeof s === 'string'
+    ? s.replace(/(?:\x1b|\\x1b|\\u001b)\[[0-9;]*m/g, '')
+    : s;
+
 const parseTranscriptionError = (text) => {
     if (!text) return null;
 
@@ -39,12 +47,12 @@ const parseTranscriptionError = (text) => {
             const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
             return {
                 title: data.t || _t('errors.fallbackTitle', 'Error'),
-                message: data.m || _t('errors.fallbackMessage', 'An error occurred'),
+                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'An error occurred'),
                 guidance: data.g || '',
                 icon: data.i || 'fa-exclamation-circle',
                 type: data.y || 'unknown',
                 isKnown: data.k || false,
-                technical: data.d || ''
+                technical: stripAnsi(data.d || '')
             };
         } catch (e) {
             console.error('Failed to parse error JSON:', e);
@@ -71,6 +79,7 @@ const parseTranscriptionError = (text) => {
 // Parse unformatted error messages and make them user-friendly
 const parseUnformattedError = (text) => {
     const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
+    text = stripAnsi(String(text));
     const lowerText = text.toLowerCase();
 
     // Known error patterns

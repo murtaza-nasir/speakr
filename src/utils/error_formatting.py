@@ -201,6 +201,19 @@ def extract_error_details(error_text: str) -> Dict:
     return details
 
 
+# ANSI terminal colour codes some ASR runtimes (e.g. Ray/faster-whisper) inject
+# into error bodies. Matches both real ESC sequences and the literal ``[..m``
+# form that survives JSON encoding and would otherwise render as garbage in the UI.
+_ANSI_RE = re.compile(r'(?:\x1b|\\x1b|\\u001b)\[[0-9;]*m')
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI colour codes from an error string (see _ANSI_RE)."""
+    if not text:
+        return text
+    return _ANSI_RE.sub('', text)
+
+
 def format_error_for_user(error_text: str) -> Dict:
     """
     Transform a technical error message into a user-friendly format.
@@ -226,6 +239,9 @@ def format_error_for_user(error_text: str) -> Dict:
             'is_known': False
         }
 
+    # Strip terminal colour codes before anything else so pattern matching, the
+    # user-facing message, and the technical detail are all free of ANSI noise.
+    error_text = _strip_ansi(error_text)
     error_lower = error_text.lower()
 
     # Check against known patterns
@@ -257,21 +273,36 @@ def format_error_for_user(error_text: str) -> Dict:
     if len(clean_message) > 200:
         clean_message = clean_message[:200] + '...'
 
-    # Generate a reasonable title based on error code
+    # Generate a reasonable title/message based on error code
     title = 'Processing Error'
+    message = clean_message
+    guidance = 'If this error persists, try reprocessing the recording or contact support for assistance.'
+    icon = 'fa-exclamation-circle'
+    error_type = 'unknown'
     if details['code']:
         code = details['code']
         if code.startswith('4'):
             title = 'Request Error'
         elif code.startswith('5'):
-            title = 'Server Error'
+            # A 5xx from the transcription service usually carries an internal
+            # traceback that means nothing to a user. Replace it with a plain
+            # explanation; the raw text stays available under "technical".
+            title = 'Transcription Service Error'
+            message = 'The transcription service could not process this recording.'
+            guidance = (
+                'This is often temporary — try reprocessing. If it keeps failing, the '
+                'recording may contain little or no speech, or the transcription service '
+                'may need attention.'
+            )
+            icon = 'fa-server'
+            error_type = 'service_error'
 
     return {
         'title': title,
-        'message': clean_message,
-        'guidance': 'If this error persists, try reprocessing the recording or contact support for assistance.',
-        'icon': 'fa-exclamation-circle',
-        'type': 'unknown',
+        'message': message,
+        'guidance': guidance,
+        'icon': icon,
+        'type': error_type,
         'technical': error_text,
         'is_known': False
     }
