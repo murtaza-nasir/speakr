@@ -1774,6 +1774,8 @@
     "processingCompleted": "Обработка завершена!",
     "processingFailed": "Обработка не удалась",
     "recordingFinalized": "Запись отправлена на обработку",
+    "recordingPaused": "Запись приостановлена",
+    "recordingResumed": "Запись возобновлена",
     "recordingMaxDurationApproaching": "Запись будет автоматически остановлена примерно через {{minutes}} минут (максимальная длительность).",
     "resumedRecordingNotIncognito": "Режим инкогнито отключён: возобновлённая запись уже передавалась на сервер.",
     "recordingMaxDurationReached": "Запись достигла максимальной длительности и была остановлена автоматически.",

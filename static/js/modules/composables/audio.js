@@ -9,7 +9,7 @@ import * as ServerSessions from '../db/server-recording-sessions.js';
 
 export function useAudio(state, utils) {
     const {
-        isRecording, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
+        isRecording, isPaused, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording, recordingDisclaimer,
@@ -391,6 +391,7 @@ export function useAudio(state, utils) {
         try {
             recordingMode.value = mode;
             recordingVideoActive.value = false;
+            if (isPaused) isPaused.value = false;
             audioChunks.value = [];
             // On resume, continue the on-screen timer and size estimate from
             // where the prior segment left off so both reflect the WHOLE
@@ -849,6 +850,10 @@ export function useAudio(state, utils) {
             // then gets the warning on its first tick.
             let durationWarningShown = false;
             recordingInterval.value = setInterval(() => {
+                // Freeze the elapsed-time counter while paused (#338). The
+                // interval keeps running so the max-duration closure survives a
+                // pause/resume; it just skips ticking.
+                if (isPaused && isPaused.value) return;
                 recordingTime.value++;
                 if (!durationWarningShown && recordingTime.value >= recordingMaxSeconds * 0.8) {
                     durationWarningShown = true;
@@ -912,10 +917,62 @@ export function useAudio(state, utils) {
     };
 
     // Stop recording
+    // Pause an in-progress recording. MediaRecorder.pause() freezes the media
+    // timeline, so the audio resumes contiguously with no silent gap — meeting
+    // breaks are simply excluded from the recording (#338). Works on every
+    // capture path (mic/system/both, legacy in-RAM and server-streamed) since
+    // it operates purely at the MediaRecorder level.
+    const pauseRecording = () => {
+        const recorder = mediaRecorder.value;
+        if (!recorder || !isRecording.value || (isPaused && isPaused.value)) return;
+        if (recorder.state !== 'recording') return;
+        try {
+            recorder.pause();
+        } catch (e) {
+            console.warn('[Recording] pause() failed:', e);
+            return;
+        }
+        if (isPaused) isPaused.value = true;
+        // The capture tracks stay live while paused, so freeze the level meter —
+        // otherwise it would keep animating to incoming (unrecorded) audio.
+        if (animationFrameId.value) {
+            cancelAnimationFrame(animationFrameId.value);
+            animationFrameId.value = null;
+        }
+        showToast(
+            (utils.t && utils.t('toasts.recordingPaused')) || 'Recording paused',
+            'fa-circle-pause',
+            3000
+        );
+    };
+
+    // Resume a paused recording: MediaRecorder continues the same stream, so the
+    // assembled file stays a single valid container (no new header).
+    const resumeRecording = () => {
+        const recorder = mediaRecorder.value;
+        if (!recorder || !isRecording.value || !(isPaused && isPaused.value)) return;
+        if (recorder.state !== 'paused') return;
+        try {
+            recorder.resume();
+        } catch (e) {
+            console.warn('[Recording] resume() failed:', e);
+            return;
+        }
+        if (isPaused) isPaused.value = false;
+        drawVisualizers();  // restart the level meter
+        showToast(
+            (utils.t && utils.t('toasts.recordingResumed')) || 'Recording resumed',
+            'fa-circle-play',
+            3000
+        );
+    };
+
+    // Stop recording
     const stopRecording = async () => {
         if (mediaRecorder.value && isRecording.value) {
             mediaRecorder.value.stop();
             isRecording.value = false;
+            if (isPaused) isPaused.value = false;
             _detachVideoPreview();
 
             // Clear the recording timer
@@ -1353,6 +1410,7 @@ export function useAudio(state, utils) {
         audioBlobURL.value = null;
         audioChunks.value = [];
         isRecording.value = false;
+        if (isPaused) isPaused.value = false;
         recordingTime.value = 0;
         if (recordingInterval.value) clearInterval(recordingInterval.value);
         recordingNotes.value = '';
@@ -1451,6 +1509,8 @@ export function useAudio(state, utils) {
     // Update file size estimate
     const updateFileSizeEstimate = () => {
         if (!isRecording.value || !audioChunks.value.length) return;
+        // No new chunks arrive while paused (#338); leave the estimate frozen.
+        if (isPaused && isPaused.value) return;
 
         // Include bytes already uploaded before a resume so the estimate (and
         // the derived bitrate) reflect the whole recording, not just the new
@@ -1586,6 +1646,8 @@ export function useAudio(state, utils) {
 
     return {
         startRecording,
+        pauseRecording,
+        resumeRecording,
         stopRecording,
         discardRecording,
         normalizeLiveMediaDuration,

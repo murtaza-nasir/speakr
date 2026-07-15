@@ -1774,6 +1774,8 @@
     "processingCompleted": "Verarbeitung abgeschlossen!",
     "processingFailed": "Verarbeitung fehlgeschlagen",
     "recordingFinalized": "Aufnahme zur Verarbeitung hochgeladen",
+    "recordingPaused": "Aufnahme pausiert",
+    "recordingResumed": "Aufnahme fortgesetzt",
     "recordingMaxDurationApproaching": "Die Aufnahme wird in etwa {{minutes}} Minuten automatisch gestoppt (Höchstdauer).",
     "resumedRecordingNotIncognito": "Inkognito wurde deaktiviert: Diese fortgesetzte Aufnahme wurde bereits zum Server übertragen.",
     "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",

@@ -360,6 +360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Audio Recording State ---
             const isRecording = ref(false);
+            const isPaused = ref(false);
             const mediaRecorder = ref(null);
             const audioChunks = ref([]);
             const audioBlobURL = ref(null);
@@ -1643,7 +1644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
                 // Audio Recording
-                isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
+                isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
                 canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError,
                 recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal, disableAudioProcessing,
                 recordSystemVideo, recordingVideoActive,

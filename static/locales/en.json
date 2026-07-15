@@ -1774,6 +1774,8 @@
     "processingCompleted": "Processing completed!",
     "processingFailed": "Processing failed",
     "recordingFinalized": "Recording uploaded for processing",
+    "recordingPaused": "Recording paused",
+    "recordingResumed": "Recording resumed",
     "recordingMaxDurationApproaching": "Recording will stop automatically in about {{minutes}} minutes (maximum duration).",
     "resumedRecordingNotIncognito": "Incognito was turned off: this resumed recording was already streaming to the server.",
     "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
