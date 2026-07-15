@@ -508,9 +508,6 @@ from src.services.retention import (
     is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 )
 from src.services.calendar import generate_ics_content, escape_ical_text
-from src.services.speaker import (
-    update_speaker_usage, identify_speakers_from_text, identify_unidentified_speakers_from_text
-)
 
 # Import background task functions
 from src.tasks.processing import (

@@ -38,7 +38,7 @@ from src.tasks.processing import format_transcription_for_llm, _resolve_timestam
 from src.utils.dates import to_utc_naive
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.titles import resolve_upload_title
-from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
+from src.services.speaker import update_speaker_usage
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
 
