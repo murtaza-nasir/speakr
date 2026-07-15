@@ -936,6 +936,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     chatPanelY.value = r ? (r.bottom - chatPanelH.value - 24) : (window.innerHeight - chatPanelH.value - 80);
                 }
                 saveChatPanelPosition();
+                // Focus the input so the user can type immediately, instead of
+                // having to click into it first. nextTick waits for the panel
+                // (v-else of the FAB) to mount. A disabled input (recording not
+                // yet transcribed) just ignores focus, which is fine.
+                nextTick(() => {
+                    try { chatInputRef.value?.focus(); } catch (_) { /* element not mounted */ }
+                });
             };
 
             // South-east corner resize handle drag — only active in
