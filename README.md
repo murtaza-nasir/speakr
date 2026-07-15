@@ -149,6 +149,7 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 | **WhisperX ASR** | GPU container | Yes (best quality) | Yes |
 | **Mistral Voxtral** | Just API key | Yes (built-in) | No |
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
+| **MOSI/Mossland MOSS** | Hosted API key | Yes (built-in) | No |
 | **AssemblyAI** | Just API key | Yes (built-in) | No |
 | **Legacy Whisper** | Just API key | No | No |
 
@@ -178,6 +179,15 @@ TRANSCRIPTION_CONNECTOR=vibevoice
 TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
 TRANSCRIPTION_MODEL=vibevoice
 ```
+Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
+
+**MOSI/Mossland MOSS (hosted multi-speaker transcription):**
+```bash
+TRANSCRIPTION_CONNECTOR=mossland
+TRANSCRIPTION_API_KEY=your-mosi-api-key
+TRANSCRIPTION_MODEL=moss-transcribe-diarize
+```
+Create a key in the [MOSI API Key console](https://studio.mosi.cn/app/api-keys). The connector keeps long recordings in one provider task so speaker labels remain consistent, and it resumes stalled SSE jobs through task polling without submitting a duplicate. This connector uploads recordings to the third-party MOSI/Mossland service at `api.mosi.cn`; audio is not processed entirely on your self-hosted Speakr instance.
 
 **AssemblyAI (cloud diarization, long multi-speaker meetings):**
 ```bash
@@ -185,7 +195,6 @@ TRANSCRIPTION_CONNECTOR=assemblyai
 TRANSCRIPTION_API_KEY=your-assemblyai-key
 ```
 Handles multi-hour, multi-speaker files in a single job. New accounts get free credits with no card required.
-Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
 
 > **PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 

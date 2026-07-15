@@ -47,6 +47,7 @@ class ConnectorRegistry:
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
         from .connectors.mistral import MistralTranscriptionConnector
         from .connectors.vibevoice import VibeVoiceTranscriptionConnector
+        from .connectors.mossland import MosslandTranscriptionConnector
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
@@ -55,6 +56,7 @@ class ConnectorRegistry:
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
         self.register('mistral', MistralTranscriptionConnector)
         self.register('vibevoice', VibeVoiceTranscriptionConnector)
+        self.register('mossland', MosslandTranscriptionConnector)
         self.register('assemblyai', AssemblyAITranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
@@ -289,6 +291,17 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'microsoft/VibeVoice-ASR'),
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+            }
+
+        elif connector_name == 'mossland':
+            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', '')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+
+            return {
+                'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+                'base_url': base_url or 'https://api.mosi.cn',
+                'model': os.environ.get('TRANSCRIPTION_MODEL', 'moss-transcribe-diarize'),
             }
 
         elif connector_name == 'assemblyai':
