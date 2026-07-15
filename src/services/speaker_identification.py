@@ -11,13 +11,15 @@ import json
 from flask import current_app
 
 
-def identify_speakers_from_transcript(transcription_data, user_id):
+def identify_speakers_from_transcript(transcription_data, user_id, candidate_names=None):
     """
     Identify speakers in a transcription using an LLM.
 
     Args:
         transcription_data: List of transcript segments (already parsed JSON).
         user_id: Current user's ID (for token tracking).
+        candidate_names: Optional saved speaker names. When provided, the LLM
+            may only return these exact names or an empty string.
 
     Returns:
         dict mapping original speaker labels to identified names.
@@ -69,9 +71,19 @@ def identify_speakers_from_transcript(transcription_data, user_id):
     else:
         transcript_text = formatted_transcription[:transcript_limit]
 
+    candidates = [str(name).strip() for name in (candidate_names or []) if str(name).strip()]
+    candidate_instruction = ""
+    if candidates:
+        candidate_instruction = (
+            "\nKnown speaker profiles: " + ", ".join(candidates) +
+            "\nUse only these exact names. If the transcript does not clearly support "
+            "a match, return an empty string for that speaker.\n"
+        )
+
     prompt = f"""Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.
 
 The speakers that need to be identified are: {', '.join(speaker_labels)}
+{candidate_instruction}
 
 Look for clues in the conversation such as:
 - Names mentioned by other speakers when addressing someone
@@ -162,7 +174,9 @@ JSON Response:
     current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
     # --- Sanitize identified_map ---
-    identified_map = _sanitize_identified_map(identified_map, speaker_labels)
+    identified_map = _sanitize_identified_map(
+        identified_map, speaker_labels, candidate_names=candidates
+    )
     current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
 
     # Map back to original speaker labels
@@ -171,11 +185,86 @@ JSON Response:
         if temp_label in identified_map:
             final_speaker_map[original_speaker] = identified_map[temp_label]
 
+    if candidates:
+        allowed = {name.casefold(): name for name in candidates}
+        final_speaker_map = {
+            label: allowed.get(str(name).casefold(), "")
+            for label, name in final_speaker_map.items()
+        }
+
     current_app.logger.info(f"[Auto-Identify] Final speaker_map: {final_speaker_map}")
     return final_speaker_map
 
 
-def _sanitize_identified_map(identified_map, speaker_labels):
+def apply_contextual_auto_labels(recording, user):
+    """Apply opt-in LLM matches constrained to the user's saved speakers."""
+    if not user.auto_speaker_labelling or not recording.transcription:
+        return {}
+
+    from src.models import Speaker
+    from src.services.speaker_embedding_matcher import apply_speaker_names_to_transcription
+    from src.services.speaker_snippets import create_speaker_snippets
+
+    candidates = [
+        speaker.name
+        for speaker in Speaker.query.filter_by(user_id=user.id)
+        .order_by(Speaker.name.asc())
+        .all()
+        if speaker.name
+    ]
+    if not candidates:
+        current_app.logger.info(
+            "[Auto-Identify] User %s has no saved speaker profiles", user.id
+        )
+        return {}
+
+    try:
+        transcription_data = json.loads(recording.transcription)
+    except (json.JSONDecodeError, TypeError):
+        current_app.logger.warning(
+            "[Auto-Identify] Recording %s has unsupported transcription data",
+            recording.id,
+        )
+        return {}
+    if not isinstance(transcription_data, list):
+        return {}
+
+    try:
+        speaker_map = identify_speakers_from_transcript(
+            transcription_data,
+            user.id,
+            candidate_names=candidates,
+        )
+    except Exception as error:
+        current_app.logger.warning(
+            "[Auto-Identify] Contextual identification failed for recording %s: %s",
+            recording.id,
+            error,
+        )
+        return {}
+    speaker_map = {label: name for label, name in speaker_map.items() if name}
+    if not speaker_map:
+        current_app.logger.info(
+            "[Auto-Identify] No saved speaker matched recording %s", recording.id
+        )
+        return {}
+    if not apply_speaker_names_to_transcription(recording, speaker_map):
+        return {}
+
+    snippet_map = {
+        label: {"name": name, "isMe": False}
+        for label, name in speaker_map.items()
+    }
+    create_speaker_snippets(recording.id, snippet_map)
+    current_app.logger.info(
+        "[Auto-Identify] Applied saved-speaker matches to recording %s: %s",
+        recording.id,
+        speaker_map,
+    )
+    return speaker_map
+
+
+def _sanitize_identified_map(identified_map, speaker_labels, candidate_names=None):
     """
     Clean up LLM output: handle inverted maps, strip commentary,
     clear placeholders, etc.
@@ -189,6 +278,11 @@ def _sanitize_identified_map(identified_map, speaker_labels):
         current_app.logger.warning("[Auto-Identify] Detected inverted map, flipping keys/values")
         identified_map = {v: k for k, v in identified_map.items() if v}
 
+    allowed = {
+        str(name).strip().casefold(): str(name).strip()
+        for name in (candidate_names or [])
+        if str(name).strip()
+    }
     sanitized = {}
     for speaker_label, identified_name in identified_map.items():
         # Skip entries whose key isn't a valid SPEAKER_XX label
@@ -199,6 +293,9 @@ def _sanitize_identified_map(identified_map, speaker_labels):
             continue
 
         name = identified_name.strip()
+        if allowed:
+            sanitized[speaker_label] = allowed.get(name.casefold(), "")
+            continue
 
         # Clear generic placeholders
         if name.lower() in ["unknown", "n/a", "not available", "unclear", "unidentified", ""]:

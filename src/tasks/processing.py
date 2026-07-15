@@ -100,6 +100,12 @@ def resolve_hotwords(hotwords, admin_default):
     return admin_default or hotwords
 
 
+def _replace_speaker_embeddings(recording, response):
+    """Replace, rather than retain, embeddings from a previous transcription."""
+    recording.speaker_embeddings = response.speaker_embeddings or None
+    return recording.speaker_embeddings
+
+
 def _sanitize_error_message(text):
     """Trim and redact a raw exception string before persisting on a
     Recording so it stays useful but doesn't leak deployment paths or
@@ -2066,9 +2072,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             recording.transcription = transcription_text
                             current_app.logger.info(f"Transcription completed: {len(transcription_text)} characters")
 
-                        # Store speaker embeddings if available
-                        if response.speaker_embeddings:
-                            recording.speaker_embeddings = response.speaker_embeddings
+                        # Replace old embeddings on every successful transcription.
+                        # Otherwise reprocessing with a connector that has no embedding
+                        # output can incorrectly apply stale voice matches.
+                        if _replace_speaker_embeddings(recording, response):
                             current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
 
                     # If we reach here, transcription succeeded
@@ -2214,36 +2221,39 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 # Don't fail transcription if usage tracking fails
                 current_app.logger.warning(f"Failed to record transcription usage: {usage_err}")
 
-            # Apply auto speaker labelling if enabled and embeddings available
-            if recording.speaker_embeddings:
-                try:
-                    from src.services.speaker_embedding_matcher import (
-                        apply_auto_speaker_labels,
-                        apply_speaker_names_to_transcription,
-                        update_speaker_profiles_from_recording
-                    )
+            # Apply opt-in speaker labelling. Voice embeddings remain the most
+            # reliable path; connectors without embeddings fall back to contextual
+            # matches constrained to the user's saved speaker names.
+            user = db.session.get(User, recording.user_id)
+            if user and user.auto_speaker_labelling:
+                if recording.speaker_embeddings:
+                    try:
+                        from src.services.speaker_embedding_matcher import (
+                            apply_auto_speaker_labels,
+                            apply_speaker_names_to_transcription,
+                            update_speaker_profiles_from_recording,
+                        )
 
-                    user = db.session.get(User, recording.user_id)
-                    if user and user.auto_speaker_labelling:
                         current_app.logger.info(f"Applying auto speaker labelling for recording {recording.id}")
                         speaker_map = apply_auto_speaker_labels(recording, user)
+                        if speaker_map and apply_speaker_names_to_transcription(recording, speaker_map):
+                            updated_count = update_speaker_profiles_from_recording(recording, speaker_map, user)
+                            current_app.logger.info(
+                                f"Applied embedding speaker matches; updated {updated_count} profiles"
+                            )
+                        elif not speaker_map:
+                            current_app.logger.info("No speakers matched for auto-labelling")
+                    except Exception as auto_label_err:
+                        current_app.logger.warning(f"Failed to apply auto speaker labelling: {auto_label_err}")
+                else:
+                    try:
+                        from src.services.speaker_identification import apply_contextual_auto_labels
 
-                        if speaker_map:
-                            current_app.logger.info(f"Auto-matched speakers: {speaker_map}")
-                            # Apply names to transcription
-                            if apply_speaker_names_to_transcription(recording, speaker_map):
-                                current_app.logger.info(f"Applied speaker names to transcription")
-                                # Update speaker profiles with new embeddings
-                                updated_count = update_speaker_profiles_from_recording(recording, speaker_map, user)
-                                if updated_count > 0:
-                                    current_app.logger.info(f"Updated {updated_count} speaker profiles with new embeddings")
-                            else:
-                                current_app.logger.warning(f"Failed to apply speaker names to transcription for recording {recording.id}")
-                        else:
-                            current_app.logger.info(f"No speakers matched for auto-labelling")
-                except Exception as auto_label_err:
-                    # Don't fail transcription if auto-labelling fails
-                    current_app.logger.warning(f"Failed to apply auto speaker labelling: {auto_label_err}")
+                        apply_contextual_auto_labels(recording, user)
+                    except Exception as auto_label_err:
+                        current_app.logger.warning(
+                            f"Failed to apply contextual speaker labelling: {auto_label_err}"
+                        )
 
             # Check if auto-summarization is disabled (admin setting or user preference)
             admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
