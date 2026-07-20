@@ -66,6 +66,29 @@ For simple integrations (less secure - token visible in logs):
 curl "https://your-speakr-instance.com/api/v1/recordings?token=YOUR_TOKEN_HERE"
 ```
 
+## ASR Voice Recorder Integration
+
+The Android **ASR Voice Recorder** app can automatically send each completed recording to Speakr through its webhook cloud service.
+
+1. Create a token named something descriptive, such as **ASR Voice Recorder**.
+2. Give it an expiration appropriate for the phone's expected use rather than choosing no expiration.
+3. In ASR Voice Recorder, add a webhook destination with this URL:
+
+   ```text
+   https://speakr.example.com/api/v1/integrations/asr-voice-recorder/upload
+   ```
+
+4. Paste the Speakr token into ASR's **Secret** field.
+5. Save the destination. Speakr accepts ASR's authenticated connection test without creating a recording.
+6. Record a short test and confirm the recording appears in the token owner's Speakr library.
+
+The integration stores ASR's note as Speakr notes, preserves the supplied recording date, measures the media duration itself, and returns HTTP 200 so ASR marks the connection test or completed delivery successful. Safe retries of the same completed file reuse the existing Speakr recording.
+
+!!! warning "Dedicated token strongly recommended"
+    ASR stores the token on the Android device, and Speakr API tokens currently provide full access to the owner's account. Use a separate expiring token for this integration. Revoke it immediately if the phone is lost, the recorder is uninstalled, or the integration is no longer used. Never place the real token in screenshots, support posts, configuration examples, or source control.
+
+This endpoint is intentionally different from normal API authentication: ASR sends the token in its multipart `secret` field because it cannot add a Bearer or API-token header. Session cookies and normal API headers do not substitute for the Secret field.
+
 ## Available API Endpoints
 
 Speakr provides a comprehensive REST API with endpoints for recordings, tags, speakers, processing operations, and more.
@@ -84,6 +107,7 @@ Speakr provides a comprehensive REST API with endpoints for recordings, tags, sp
 | `/api/v1/recordings/<id>/summary` | GET | Get AI-generated summary |
 | `/api/v1/recordings/<id>/transcribe` | POST | Queue transcription |
 | `/api/v1/recordings/<id>/summarize` | POST | Queue summarization |
+| `/api/v1/integrations/asr-voice-recorder/upload` | POST | Receive a completed ASR Voice Recorder file |
 | `/api/v1/tags` | GET | List your tags |
 | `/api/v1/speakers` | GET | List your speakers |
 | `/api/v1/users/me` | GET | Get the current user's profile and group memberships |

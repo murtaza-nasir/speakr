@@ -23,6 +23,8 @@ import uuid
 from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
@@ -552,6 +554,27 @@ def test_upload_too_large_returns_413():
         assert "max_size_mb" in body
         # No recording row created for the rejected upload
         assert Recording.query.filter_by(user_id=user.id).count() == 0
+        _cleanup(user)
+
+
+def test_upload_global_request_limit_returns_json_413_before_csrf():
+    with app.app_context():
+        user = _mk_user("up_global_big")
+        client = app.test_client()
+        _login(client, user)
+        original_limit = app.config["MAX_CONTENT_LENGTH"]
+        original_csrf = app.config["WTF_CSRF_ENABLED"]
+        try:
+            app.config["MAX_CONTENT_LENGTH"] = 1024
+            app.config["WTF_CSRF_ENABLED"] = True
+            resp = _do_upload(client, payload=b"x" * 8192)
+        finally:
+            app.config["MAX_CONTENT_LENGTH"] = original_limit
+            app.config["WTF_CSRF_ENABLED"] = original_csrf
+        assert resp.status_code == 413
+        body = resp.get_json()
+        assert body["max_size_mb"] == pytest.approx(1024 / (1024 * 1024))
+        assert body["audio_only_mode"] is False
         _cleanup(user)
 
 

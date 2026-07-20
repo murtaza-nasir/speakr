@@ -229,6 +229,63 @@ curl -X POST \
   https://speakr.example.com/api/v1/recordings/upload
 ```
 
+### ASR Voice Recorder Upload
+
+```http
+POST /api/v1/integrations/asr-voice-recorder/upload
+```
+
+This adapter accepts the multipart webhook format sent by the Android **ASR Voice Recorder** app and queues the completed recording through Speakr's normal upload and transcription pipeline. Unlike other API endpoints, authentication comes from the required multipart `secret` field because the recorder cannot set a custom Authorization header.
+
+**Form Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | for uploads | Completed audio recording; omitted by ASR's connection test |
+| `secret` | string | yes | A personal Speakr API token |
+| `file_name` | string | no | Original filename override; sanitized by Speakr |
+| `date` | integer | no | Recording time as Unix epoch seconds or milliseconds |
+| `duration` | number | no | Accepted for compatibility but ignored; Speakr measures duration from the media |
+| `note` | string | no | Stored as the recording's notes |
+
+A session cookie or normal API Authorization header does not replace `secret` on this endpoint. Create a dedicated, expiring token for the recorder because Speakr API tokens currently provide full access to their owner's account. The endpoint limits each source IP by both request count and total declared upload size; HTTP 429 means ASR should retry later. Multi-worker deployments using Flask-Limiter's in-memory storage should also enforce an aggregate upload rate at the reverse proxy.
+
+When saving the webhook destination, ASR first sends an authenticated connection test without a file or recording metadata. Speakr returns HTTP 200 with `{"status":"ok","connection_test":true}` and does not create a recording. Completed deliveries still require the `file` field.
+
+**Response:**
+
+```json
+// 200 OK
+{
+  "id": 123,
+  "title": "Recording - interview.m4a",
+  "status": "PENDING",
+  "original_filename": "interview.m4a",
+  "notes": "Interview recorded with an external microphone",
+  "idempotent_replay": false
+}
+```
+
+If ASR retries the same completed file with matching filename, note, and recording date for the same user, Speakr returns the existing recording with `idempotent_replay: true` instead of queueing another transcription. Identical audio submitted with different metadata remains a distinct recording. Simultaneous first deliveries are not a strict exactly-once guarantee.
+
+**ASR Voice Recorder configuration:**
+
+- Webhook URL: `https://speakr.example.com/api/v1/integrations/asr-voice-recorder/upload`
+- Secret: the dedicated Speakr API token
+- Method/body: ASR supplies the multipart POST automatically
+- Expected success status: HTTP 200
+
+A manual protocol check can be made with placeholder credentials:
+
+```bash
+curl -X POST \
+  -F "secret=YOUR_DEDICATED_TOKEN" \
+  -F "file=@recording.m4a" \
+  -F "file_name=recording.m4a" \
+  -F "note=Mobile recorder upload" \
+  https://speakr.example.com/api/v1/integrations/asr-voice-recorder/upload
+```
+
 ### List Recordings
 
 ```http

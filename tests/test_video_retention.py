@@ -129,11 +129,10 @@ class TestUploadHandlerVideoRetention(unittest.TestCase):
             cls.content = f.read()
 
     def test_upload_handler_parses_keep_audio_only_form_field(self):
-        """The new per-upload `keep_audio_only` form field is parsed at
-        the top of the upload handler. Without this parse, the override
-        is silently ignored."""
+        """The shared upload core parses the `keep_audio_only` form field.
+        Without this parse, the per-upload override is silently ignored."""
         self.assertIn(
-            "request.form.get('keep_audio_only', 'false').lower() == 'true'",
+            "form.get('keep_audio_only', 'false').lower() == 'true'",
             self.content,
         )
         self.assertIn('keep_audio_only_flag', self.content)

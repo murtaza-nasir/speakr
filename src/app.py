@@ -626,6 +626,18 @@ def csrf_token_aware_check():
     csrf.protect()
 
 
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(_error):
+    """Keep oversized requests JSON-shaped even when parsing fails early."""
+    limit_mb = float(app.config['MAX_CONTENT_LENGTH']) / (1024 * 1024)
+    return jsonify({
+        'error': f'File too large. Maximum size is {limit_mb:.0f} MB.',
+        'max_size_mb': limit_mb,
+        'effective_limit_mb': limit_mb,
+        'audio_only_mode': False,
+    }), 413
+
+
 # Add context processor to make 'now' available to all templates
 @app.context_processor
 def inject_now():
