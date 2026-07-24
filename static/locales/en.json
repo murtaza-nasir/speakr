@@ -1614,6 +1614,8 @@
     "reprocessWithAsr": "Reprocess with ASR",
     "restoreChat": "Restore chat",
     "revokePublicSharing": "Revoke public sharing permission",
+    "hideDetails": "Hide details",
+    "showDetails": "Show details",
     "shareWithUsers": "Share with users",
     "showVideo": "Show video",
     "switchToDarkMode": "Switch to Dark Mode",
