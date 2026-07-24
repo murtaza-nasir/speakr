@@ -67,6 +67,9 @@ class Recording(db.Model):
     # Substituted into {{name}} placeholders in the resolved summary prompt at summarisation time.
     prompt_variables = db.Column(db.JSON, nullable=True)
 
+    # Bucket storage URLs (JSON list of URLs when file is stored in S3-compatible bucket)
+    bucket_urls = db.Column(db.JSON, nullable=True)
+
     # Effective transcription hints actually sent to the ASR for this recording,
     # captured at transcription time after tag/folder/user and admin-default
     # resolution. Persisted so the UI can show which hotwords/initial prompt were
@@ -452,6 +455,7 @@ class Recording(db.Model):
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
             'keep_audio_only': self.keep_audio_only,
+            'bucket_urls': self.bucket_urls
         }
 
         # Only compute expensive HTML conversions when explicitly requested

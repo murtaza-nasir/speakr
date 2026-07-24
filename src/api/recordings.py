@@ -23,7 +23,15 @@ from email.utils import encode_rfc2231
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
+from src.config.app_config import ASR_BASE_URL, ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
+from src.services.transcription import get_registry
+
+def get_funasr_active():
+    """Check if FunASR is the currently active connector."""
+    try:
+        return get_registry().get_active_connector_name() == 'funasr'
+    except Exception:
+        return False
 
 
 # Model validation + the full default-resolution chain now live in one shared
@@ -167,6 +175,8 @@ def reindex_recording_chunks_async(recording_id):
 
     threading.Thread(target=_run, name=f"reindex-chunks-{recording_id}", daemon=True).start()
 
+# Bucket URL expiration time in hours
+BUCKET_URL_EXPIRY_HOURS = 24
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -2792,6 +2802,9 @@ def upload_file():
             meeting_date = now
             current_app.logger.debug("No file date available, using current time")
 
+        # Initialize bucket_urls for FunASR (populated below if active)
+        bucket_urls = []
+
         recording = Recording(
             audio_path=None,
             original_filename=original_filename,
@@ -2812,6 +2825,7 @@ def upload_file():
             # regardless of the server's VIDEO_RETENTION setting. True when
             # the user explicitly toggled it or when VIDEO_RETENTION is off.
             keep_audio_only=effective_audio_only,
+            bucket_urls=bucket_urls if bucket_urls else None
         )
         db.session.add(recording)
         db.session.flush()  # Assign recording.id without committing transaction yet
@@ -2827,6 +2841,15 @@ def upload_file():
         # the staging file may already be gone (notably on S3 backend). Workers should
         # always read from recording.audio_path via the storage facade.
         recording.audio_path = stored_object.locator
+
+        # FunASR S3 URL preparation
+        if get_funasr_active():
+            from src.services.transcription.connectors.alibaba_funasr import prepare_funasr_file_url
+            success, funasr_urls = prepare_funasr_file_url(recording)
+            if success and funasr_urls:
+                recording.bucket_urls = funasr_urls
+            elif get_funasr_active():
+                return jsonify({'error': 'FunASR requires S3 upload but it failed'}), 500
 
         # Add tags to recording if selected (preserve order)
         for order, tag in enumerate(selected_tags, 1):

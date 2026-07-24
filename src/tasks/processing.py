@@ -33,7 +33,7 @@ from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BIT
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.config.app_config import (
     ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS,
-    transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING
+    transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING,
 )
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
@@ -2038,7 +2038,20 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
                     else:
                         # Build the transcription request for single file
-                        with open(actual_filepath, 'rb') as audio_file:
+                        audio_file = open(actual_filepath, 'rb')
+                        try:
+                            # FunASR S3 URL preparation.
+                            # Injected via extra_options so the base
+                            # TranscriptionRequest stays upstream-clean.
+                            extra_options = {}
+                            if recording:
+                                from src.services.transcription import get_registry
+                                if get_registry().get_active_connector_name() == 'funasr':
+                                    from src.services.transcription.connectors.alibaba_funasr import prepare_funasr_file_url
+                                    success, urls = prepare_funasr_file_url(recording)
+                                    if success and urls:
+                                        extra_options['funasr_file_urls'] = urls
+
                             request = TranscriptionRequest(
                                 audio_file=audio_file,
                                 filename=actual_filename,
@@ -2050,10 +2063,17 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 prompt=initial_prompt,
                                 hotwords=hotwords,
                                 model=transcription_model,
+                                extra_options=extra_options,
                             )
 
-                            current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
-                            response = connector.transcribe(request)
+                            current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}, funasr_urls={bool(extra_options.get('funasr_file_urls'))}")
+                            try:
+                                response = connector.transcribe(request)
+                            finally:
+                                # 确保文件在transcribe调用后关闭
+                                audio_file.close()
+                        except Exception as e:
+                            raise
 
                         # Store the result
                         if response.segments and response.has_diarization():

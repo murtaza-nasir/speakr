@@ -62,6 +62,7 @@ from .connectors import (
     OpenAIWhisperConnector,
     OpenAITranscribeConnector,
     ASREndpointConnector,
+    AlibabaFunASRConnector,
 )
 
 __all__ = [
@@ -95,4 +96,5 @@ __all__ = [
     'OpenAIWhisperConnector',
     'OpenAITranscribeConnector',
     'ASREndpointConnector',
+    'AlibabaFunASRConnector',
 ]

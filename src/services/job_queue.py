@@ -483,6 +483,13 @@ class FairJobQueue:
         if not audio_path:
             logger.error(f"Cannot run reprocess transcription job for recording {recording.id}: missing audio_path")
             raise ValueError(f"Missing audio_path for recording {recording.id}")
+
+        # FunASR S3 URL preparation
+        from src.services.transcription import get_registry
+        if get_registry().get_active_connector_name() == 'funasr':
+            from src.services.transcription.connectors.alibaba_funasr import prepare_funasr_file_url
+            prepare_funasr_file_url(recording)
+
         with storage.materialize(audio_path) as materialized:
             filepath = materialized.local_path
             filename_for_asr = recording.original_filename or os.path.basename(filepath)

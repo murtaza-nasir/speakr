@@ -8,6 +8,8 @@ from .asr_endpoint import ASREndpointConnector
 from .azure_openai_transcribe import AzureOpenAITranscribeConnector
 from .mistral import MistralTranscriptionConnector
 from .vibevoice import VibeVoiceTranscriptionConnector
+from .alibaba_funasr import AlibabaFunASRConnector
+from .mossland import MosslandTranscriptionConnector
 
 __all__ = [
     'OpenAIWhisperConnector',
@@ -16,4 +18,6 @@ __all__ = [
     'AzureOpenAITranscribeConnector',
     'MistralTranscriptionConnector',
     'VibeVoiceTranscriptionConnector',
+    'AlibabaFunASRConnector',
+    'MosslandTranscriptionConnector',
 ]
