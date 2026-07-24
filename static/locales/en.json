@@ -1872,6 +1872,28 @@
     "add": "Add",
     "notSharedYet": "Not shared with anyone yet"
   },
+  "bulkReprocessModal": {
+    "title": "Bulk Reprocess",
+    "recordingsSelectedSingular": "recording selected",
+    "recordingsSelectedPlural": "recordings selected",
+    "whatToReprocess": "What do you want to reprocess?",
+    "summaryOnly": "Summary Only",
+    "summaryOnlyDesc": "Regenerate title and summary from existing transcription. Faster option.",
+    "fullTranscription": "Full Transcription",
+    "fullTranscriptionDesc": "Re-transcribe audio and regenerate everything. Takes longer.",
+    "note": "Note",
+    "warningSummary": "This will overwrite any manual edits to titles and summaries.",
+    "warningTranscription": "This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.",
+    "queuedSummary": "recording will be queued for summary regeneration.",
+    "queuedSummaryPlural": "recordings will be queued for summary regeneration.",
+    "queuedTranscription": "recording will be queued for full reprocessing.",
+    "queuedTranscriptionPlural": "recordings will be queued for full reprocessing.",
+    "startReprocessing": "Start Reprocessing",
+    "queuedSummaryToast": "recording queued for summary regeneration.",
+    "queuedSummaryToastPlural": "recordings queued for summary regeneration.",
+    "queuedTranscriptionToast": "recording queued for full reprocessing.",
+    "queuedTranscriptionToastPlural": "recordings queued for full reprocessing."
+  },
   "mergeRecordings": {
     "title": "Merge Recordings",
     "action": "Merge",

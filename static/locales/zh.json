@@ -1872,6 +1872,28 @@
     "add": "添加",
     "notSharedYet": "尚未与任何人分享"
   },
+  "bulkReprocessModal": {
+    "title": "批量重新处理",
+    "recordingsSelectedSingular": "个录音已选择",
+    "recordingsSelectedPlural": "个录音已选择",
+    "whatToReprocess": "您要重新处理什么？",
+    "summaryOnly": "仅摘要",
+    "summaryOnlyDesc": "从现有转录重新生成标题和摘要。速度更快。",
+    "fullTranscription": "完整转录",
+    "fullTranscriptionDesc": "重新转录音频并重新生成所有内容。耗时较长。",
+    "note": "注意",
+    "warningSummary": "这将覆盖对标题和摘要的任何手动编辑。",
+    "warningTranscription": "这将覆盖所有转录、标题和摘要。手动编辑将丢失。",
+    "queuedSummary": "个录音将排队等待摘要重新生成。",
+    "queuedSummaryPlural": "个录音将排队等待摘要重新生成。",
+    "queuedTranscription": "个录音将排队等待完整重新处理。",
+    "queuedTranscriptionPlural": "个录音将排队等待完整重新处理。",
+    "startReprocessing": "开始重新处理",
+    "queuedSummaryToast": "个录音已排队等待摘要重新生成。",
+    "queuedSummaryToastPlural": "个录音已排队等待摘要重新生成。",
+    "queuedTranscriptionToast": "个录音已排队等待完整重新处理。",
+    "queuedTranscriptionToastPlural": "个录音已排队等待完整重新处理。"
+  },
   "mergeRecordings": {
     "title": "合并录音",
     "action": "合并",
