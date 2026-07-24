@@ -48,6 +48,9 @@ try:
 except (TypeError, ValueError):
     EMBEDDING_DIMENSIONS = None
 
+_DIMENSIONS_SUPPORTED_KEYWORDS = ('text-embedding-3', 'qwen3-embedding')
+_USE_DIMENSIONS = any(kw in EMBEDDING_MODEL.lower() for kw in _DIMENSIONS_SUPPORTED_KEYWORDS)
+
 # When EMBEDDING_BASE_URL is set, embeddings are produced via an OpenAI-
 # compatible /v1/embeddings call rather than locally.
 USE_API_EMBEDDINGS = bool(EMBEDDING_BASE_URL)
@@ -158,8 +161,10 @@ def _api_embed(texts, user_id=None):
     if client is None or not texts:
         return []
 
-    kwargs = {'input': texts, 'model': EMBEDDING_MODEL}
-    if EMBEDDING_DIMENSIONS is not None:
+    # OpenAI SDK v2.x auto-injects encoding_format='base64'; override to 'float'.
+    # Only pass dimensions when the model is known to support it.
+    kwargs = {'input': texts, 'model': EMBEDDING_MODEL, 'encoding_format': 'float'}
+    if EMBEDDING_DIMENSIONS is not None and _USE_DIMENSIONS:
         kwargs['dimensions'] = EMBEDDING_DIMENSIONS
 
     last_exc = None
