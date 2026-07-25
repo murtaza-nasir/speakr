@@ -107,7 +107,8 @@
     "username": "用户名",
     "signInSecurity": "登录与安全",
     "password": "密码",
-    "savedSuccess": "设置已保存"
+    "savedSuccess": "设置已保存",
+    "contextualSpeakerLabellingHelp": "由于您的转录引擎不提供声纹，说话人是根据对话上下文进行匹配的。这可能相当不准确，取决于对话在多大程度上透露了谁在说话，以及您的模型区分说话人的效果。若需最准确的基于语音的说话人匹配，建议使用 WhisperX ASR 容器。"
   },
   "accountTabs": {
     "about": "关于",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "默认初始提示",
     "defaultInitialPromptDesc": "发送给转录引擎以引导识别（例如预期的主题或词汇）。",
     "defaultHotwordsLabel": "默认热词",
-    "defaultHotwordsDesc": "用逗号分隔的词语，用于提高对特定领域术语的识别。"
+    "defaultHotwordsDesc": "用逗号分隔的词语，用于提高对特定领域术语的识别。",
+    "contextualSpeakerPromptTitle": "上下文说话人标注提示词",
+    "contextualSpeakerPromptDesc": "模型根据对话上下文标注说话人时所遵循的指导，仅用于在不返回声纹的情况下区分说话人的转录引擎。用户已保存的说话人姓名列表和 JSON 输出格式会自动附加在此文本之后。留空以使用内置默认值。",
+    "contextualSpeakerPromptPlaceholder": "留空以使用内置的默认指导。"
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",
@@ -1019,6 +1023,7 @@
     "unsupportedBrowser": "不支持的浏览器",
     "untitled": "无标题录音",
     "uploadRecordingNotes": "上传录音和笔记",
+    "uploadingRecording": "正在上传录音…",
     "whatWillHappen": "会发生什么？",
     "whyNotWorking": "为什么不工作？",
     "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有16种独特的颜色可用。颜色将在第16位发言人之后重复。"
@@ -1327,7 +1332,9 @@
     "tabAudioOnlyTooltip": "此平台仅支持标签页音频 — 查看帮助",
     "title": "音频录制",
     "videoPreviewLabel": "捕获视频的实时预览",
-    "virtualMonitor": "虚拟 / monitor"
+    "virtualMonitor": "虚拟 / monitor",
+    "recordingPaused": "已暂停",
+    "recordingFinished": "录音已完成"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "音频将从头重新转录。这也将基于新转录重新生成标题和摘要。",
@@ -1773,6 +1780,10 @@
     "processingCompleted": "处理完成！",
     "processingFailed": "处理失败",
     "recordingFinalized": "录音已上传等待处理",
+    "recordingPaused": "录音已暂停",
+    "recordingResumed": "录音已恢复",
+    "recordingMaxDurationApproaching": "录音将在约 {{minutes}} 分钟后自动停止（已接近最长时长）。",
+    "resumedRecordingNotIncognito": "隐身模式已关闭：此恢复的录音已在向服务器传输。",
     "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
     "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?",
     "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
@@ -1781,6 +1792,7 @@
     "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
     "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
     "uploadFailedWillRetry": "上传失败——已保存，将在重新联网后自动重试。",
+    "uploadRetriesExhaustedDownloaded": "自动重试上传已达上限。音频已保存到您的下载文件夹。",
     "videoRecordingUnsupported": "此浏览器无法录制视频，将仅录制音频。"
   },
   "webhooks": {

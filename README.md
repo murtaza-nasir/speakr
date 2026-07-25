@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.9.6--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.2--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -149,6 +149,7 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 | **WhisperX ASR** | GPU container | Yes (best quality) | Yes |
 | **Mistral Voxtral** | Just API key | Yes (built-in) | No |
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
+| **MOSI/Mossland MOSS** | Hosted API key | Yes (built-in) | No |
 | **AssemblyAI** | Just API key | Yes (built-in) | No |
 | **Legacy Whisper** | Just API key | No | No |
 
@@ -178,6 +179,15 @@ TRANSCRIPTION_CONNECTOR=vibevoice
 TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
 TRANSCRIPTION_MODEL=vibevoice
 ```
+Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
+
+**MOSI/Mossland MOSS (hosted multi-speaker transcription):**
+```bash
+TRANSCRIPTION_CONNECTOR=mossland
+TRANSCRIPTION_API_KEY=your-mosi-api-key
+TRANSCRIPTION_MODEL=moss-transcribe-diarize
+```
+Create a key in the [MOSI API Key console](https://studio.mosi.cn/app/api-keys). The connector keeps long recordings in one provider task so speaker labels remain consistent, and it resumes stalled SSE jobs through task polling without submitting a duplicate. This connector uploads recordings to the third-party MOSI/Mossland service at `api.mosi.cn`; audio is not processed entirely on your self-hosted Speakr instance.
 
 **AssemblyAI (cloud diarization, long multi-speaker meetings):**
 ```bash
@@ -185,7 +195,6 @@ TRANSCRIPTION_CONNECTOR=assemblyai
 TRANSCRIPTION_API_KEY=your-assemblyai-key
 ```
 Handles multi-hour, multi-speaker files in a single job. New accounts get free credits with no card required.
-Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
 
 > **PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 
@@ -201,7 +210,23 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.9.6-alpha)
+## Latest Release (v0.10.2-alpha)
+
+**A security and dependency release. Upgrading is recommended for all deployments.** This release resolves three coordinated security reports: a stored cross-site scripting issue reachable by a group administrator through a tag color or name, a webhook server-side request forgery via DNS rebinding, and an SSO account-takeover path through an unverified email claim. Verified-email enforcement for SSO is now on by default; deployments whose identity provider does not send an `email_verified` claim must set `SSO_REQUIRE_VERIFIED_EMAIL=false`. The web framework moves to the Flask 3.1 and Werkzeug 3.1 line, which also closes two Werkzeug multipart denial-of-service issues. New features include contextual speaker labelling for transcription engines that diarize without voice embeddings, and pause/resume for in-app recording. This release also fixes malformed browser recording uploads, restores the API documentation page under the default Content-Security-Policy, and improves transcription-failure error messages. A one-time migration lowercases existing stored email addresses. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.2-alpha).**
+
+### v0.10.1-alpha (previous release)
+
+A security-hardening release. The application refuses the insecure built-in secret key and, when `SECRET_KEY` is unset, generates and persists a strong per-deployment key automatically, so session cookies and password-reset tokens can no longer be forged on installs that never set one. Baseline security headers and a Content-Security-Policy are set by the application itself rather than relying on a hardening reverse proxy. Password-reset links are single-use and are invalidated when the password changes. Markdown-rendered content is sanitized before display, the admin user list no longer exposes the full directory to group administrators, bulk tagging enforces group membership, and logout is a CSRF-protected action.
+
+### v0.10.0-alpha (previous release)
+
+**Fixes API auth responses and duplicate uploads, and hardens incognito mode.** Unauthenticated API requests now return a proper JSON 401 instead of a redirect to the login page, so integrations with a bad token fail loudly rather than mistaking the login page for success (#333). The 200 MB size warning no longer fires when server-side chunk streaming is active; recordings instead warn at 80% of the duration ceiling before the automatic stop (#332). The upload button disables immediately while a recording finalizes and the finalize endpoint is idempotent, so double-clicking can no longer create duplicate recordings, and failed drag-and-drop uploads are no longer copied into the Downloads folder. Incognito recordings now stay entirely in the browser until explicitly processed, even with chunk streaming enabled, keep filenames out of server logs, and survive crash recovery as incognito. No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha).**
+
+### v0.9.7-alpha (previous release)
+
+**A bug fix release for MP3 playback, transcript interaction, and retention.** MP3 uploads missing a Xing/VBR header, which cause stuttering playback in Chromium-based browsers, are now detected and repaired with a lossless in-place remux, so the audio stays bit-identical while gaining a proper header (#325). A transcript segment starting at exactly 0 seconds can be clicked again for seeking and is included in playback highlighting, in the main app and on the public share page (#326). The auto-deletion retention sweep now includes failed recordings rather than keeping them forever, while recordings that are still queued or processing remain protected (#328). No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.7-alpha).**
+
+### v0.9.6-alpha (previous release)
 
 **Adds recording merge, Markdown transcript export, and a one-click backfill export, plus a large internal consolidation of how every ingestion path resolves its transcription settings.** Several recordings can now be combined into one that is re-processed from scratch through the full pipeline (transcription, diarization, summary, and automatic speaker labelling) — useful when a dropped call or an interrupted recording leaves two partial transcripts. You can merge from the sidebar by selecting recordings, reordering them, and choosing which notes and prompt variables to keep (participants and tags are combined), or from the recording view, where a new split button lets you append a just-finished recording onto an existing one directly. The transcript download menu gains a TXT / MD toggle, and when automatic export is enabled, Settings gains an "Export all to disk" button that backfills every processed recording. Under the hood, uploads, reprocessing, merges, recording-session finalization, the share target, and the auto-process folder now resolve language, speaker hints, hotwords, prompt, and model through one shared precedence chain, so a recording created by any path transcribes identically to a standard upload. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.6-alpha).**
 

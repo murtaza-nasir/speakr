@@ -107,7 +107,8 @@
     "username": "Benutzername",
     "signInSecurity": "Anmeldung & Sicherheit",
     "password": "Passwort",
-    "savedSuccess": "Einstellungen gespeichert"
+    "savedSuccess": "Einstellungen gespeichert",
+    "contextualSpeakerLabellingHelp": "Sprecher werden anhand des Gesprächskontexts zugeordnet, da Ihre Transkriptions-Engine keine Stimmprofile liefert. Das kann recht ungenau sein, abhängig davon, wie viel das Gespräch darüber verrät, wer spricht, und wie gut Ihr Modell die Sprecher trennt. Für die genaueste, stimmbasierte Sprecherzuordnung wird der WhisperX-ASR-Container empfohlen."
   },
   "accountTabs": {
     "about": "Über",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Standard-Initial-Prompt",
     "defaultInitialPromptDesc": "Wird an die Transkriptions-Engine gesendet, um die Erkennung zu steuern (z. B. erwartetes Thema oder Vokabular).",
     "defaultHotwordsLabel": "Standard-Hotwords",
-    "defaultHotwordsDesc": "Durch Kommas getrennte Wörter, um die Erkennung domänenspezifischer Begriffe zu verbessern."
+    "defaultHotwordsDesc": "Durch Kommas getrennte Wörter, um die Erkennung domänenspezifischer Begriffe zu verbessern.",
+    "contextualSpeakerPromptTitle": "Prompt für kontextbasierte Sprecherzuordnung",
+    "contextualSpeakerPromptDesc": "Anleitung, der das Modell folgt, wenn es Sprecher anhand des Gesprächskontexts zuordnet; nur für Transkriptions-Engines verwendet, die Sprecher trennen, ohne Stimmprofile zurückzugeben. Die Liste der gespeicherten Sprechernamen des Benutzers und das JSON-Ausgabeformat werden automatisch nach diesem Text hinzugefügt. Leer lassen, um den integrierten Standard zu verwenden.",
+    "contextualSpeakerPromptPlaceholder": "Leer lassen, um die integrierte Standardanleitung zu verwenden."
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
@@ -1019,6 +1023,7 @@
     "unsupportedBrowser": "Nicht unterstützter Browser",
     "untitled": "Unbenannte Aufnahme",
     "uploadRecordingNotes": "Aufnahme und Notizen hochladen",
+    "uploadingRecording": "Aufnahme wird hochgeladen…",
     "whatWillHappen": "Was wird passieren?",
     "whyNotWorking": "Warum funktioniert es nicht?",
     "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 16 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 16. Sprecher."
@@ -1327,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Nur Tab-Audio auf dieser Plattform — siehe Hilfe",
     "title": "Audio-Aufnahme",
     "videoPreviewLabel": "Live-Vorschau des aufgenommenen Videos",
-    "virtualMonitor": "virtuell / Monitor"
+    "virtualMonitor": "virtuell / Monitor",
+    "recordingPaused": "Pausiert",
+    "recordingFinished": "Aufnahme beendet"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",
@@ -1773,6 +1780,10 @@
     "processingCompleted": "Verarbeitung abgeschlossen!",
     "processingFailed": "Verarbeitung fehlgeschlagen",
     "recordingFinalized": "Aufnahme zur Verarbeitung hochgeladen",
+    "recordingPaused": "Aufnahme pausiert",
+    "recordingResumed": "Aufnahme fortgesetzt",
+    "recordingMaxDurationApproaching": "Die Aufnahme wird in etwa {{minutes}} Minuten automatisch gestoppt (Höchstdauer).",
+    "resumedRecordingNotIncognito": "Inkognito wurde deaktiviert: Diese fortgesetzte Aufnahme wurde bereits zum Server übertragen.",
     "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",
     "recordingResumeFound": "Eine laufende Aufnahme aus diesem Browser wurde auf dem Server gefunden. Fortsetzen?",
     "recordingSizeSoftWarning": "Aufnahme ist {{size}}. Erwägen Sie, sie bei Gelegenheit zu stoppen.",
@@ -1781,6 +1792,7 @@
     "uploadFailedDownloadedLocally": "Upload fehlgeschlagen. Audio wurde im Downloads-Ordner für einen späteren Versuch gespeichert.",
     "uploadFailedNoRecovery": "Upload fehlgeschlagen und Audio konnte nicht lokal gespeichert werden. Bitte erneut aufnehmen.",
     "uploadFailedWillRetry": "Upload fehlgeschlagen – gespeichert und wird bei erneuter Verbindung automatisch wiederholt.",
+    "uploadRetriesExhaustedDownloaded": "Automatische Upload-Wiederholungen erschöpft. Die Audiodatei wurde in Ihrem Downloads-Ordner gespeichert.",
     "videoRecordingUnsupported": "Dieser Browser kann kein Video aufnehmen — es wird nur Audio aufgezeichnet."
   },
   "webhooks": {

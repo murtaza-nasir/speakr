@@ -2066,9 +2066,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             recording.transcription = transcription_text
                             current_app.logger.info(f"Transcription completed: {len(transcription_text)} characters")
 
-                        # Store speaker embeddings if available
-                        if response.speaker_embeddings:
-                            recording.speaker_embeddings = response.speaker_embeddings
+                        # Replace speaker embeddings on every successful
+                        # transcription. Embeddings are keyed to THIS run's
+                        # speaker labels, so an earlier run's embeddings go stale
+                        # when the transcript is re-derived; clearing them when
+                        # the new response has none prevents a prior connector's
+                        # embeddings from driving voice matches after reprocessing
+                        # with an embedding-less connector.
+                        recording.speaker_embeddings = response.speaker_embeddings or None
+                        if recording.speaker_embeddings:
                             current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
 
                     # If we reach here, transcription succeeded
@@ -2214,36 +2220,50 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 # Don't fail transcription if usage tracking fails
                 current_app.logger.warning(f"Failed to record transcription usage: {usage_err}")
 
-            # Apply auto speaker labelling if enabled and embeddings available
-            if recording.speaker_embeddings:
-                try:
-                    from src.services.speaker_embedding_matcher import (
-                        apply_auto_speaker_labels,
-                        apply_speaker_names_to_transcription,
-                        update_speaker_profiles_from_recording
-                    )
-
-                    user = db.session.get(User, recording.user_id)
-                    if user and user.auto_speaker_labelling:
-                        current_app.logger.info(f"Applying auto speaker labelling for recording {recording.id}")
-                        speaker_map = apply_auto_speaker_labels(recording, user)
+            # Apply opt-in speaker labelling. Voice embeddings are the preferred
+            # path; when the recording has none (an embedding-less connector, or
+            # a chunked file whose embeddings were dropped) we fall back to a
+            # contextual LLM match constrained to the user's saved speaker names.
+            # The branch is per recording, not per connector, so it also covers
+            # embedding-capable connectors that happened to return none.
+            label_user = db.session.get(User, recording.user_id)
+            if label_user and label_user.auto_speaker_labelling:
+                if recording.speaker_embeddings:
+                    try:
+                        from src.services.speaker_embedding_matcher import (
+                            apply_auto_speaker_labels,
+                            apply_speaker_names_to_transcription,
+                            update_speaker_profiles_from_recording
+                        )
+                        current_app.logger.info(f"Applying embedding auto speaker labelling for recording {recording.id}")
+                        speaker_map = apply_auto_speaker_labels(recording, label_user)
 
                         if speaker_map:
                             current_app.logger.info(f"Auto-matched speakers: {speaker_map}")
-                            # Apply names to transcription
                             if apply_speaker_names_to_transcription(recording, speaker_map):
                                 current_app.logger.info(f"Applied speaker names to transcription")
-                                # Update speaker profiles with new embeddings
-                                updated_count = update_speaker_profiles_from_recording(recording, speaker_map, user)
+                                updated_count = update_speaker_profiles_from_recording(recording, speaker_map, label_user)
                                 if updated_count > 0:
                                     current_app.logger.info(f"Updated {updated_count} speaker profiles with new embeddings")
                             else:
                                 current_app.logger.warning(f"Failed to apply speaker names to transcription for recording {recording.id}")
                         else:
-                            current_app.logger.info(f"No speakers matched for auto-labelling")
-                except Exception as auto_label_err:
-                    # Don't fail transcription if auto-labelling fails
-                    current_app.logger.warning(f"Failed to apply auto speaker labelling: {auto_label_err}")
+                            current_app.logger.info(f"No speakers matched for embedding auto-labelling")
+                    except Exception as auto_label_err:
+                        # Don't fail transcription if auto-labelling fails
+                        current_app.logger.warning(f"Failed to apply embedding speaker labelling: {auto_label_err}")
+                else:
+                    try:
+                        from src.services.speaker_identification import apply_contextual_auto_labels
+                        current_app.logger.info(f"Applying contextual auto speaker labelling for recording {recording.id}")
+                        contextual_map = apply_contextual_auto_labels(recording, label_user)
+                        if not contextual_map:
+                            current_app.logger.info(f"No saved speaker matched recording {recording.id} contextually")
+                    except Exception as auto_label_err:
+                        # apply_contextual_auto_labels is already failure-isolated;
+                        # this guard is belt-and-suspenders so labelling never
+                        # fails the transcription.
+                        current_app.logger.warning(f"Failed to apply contextual speaker labelling: {auto_label_err}")
 
             # Check if auto-summarization is disabled (admin setting or user preference)
             admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
@@ -2428,12 +2448,18 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         connector_name = type(connector).__name__
         current_app.logger.info(f"[Incognito] Using transcription connector: {connector_name}")
 
-        # Determine mime type
+        # Determine mime type from the real filename, but use an anonymized
+        # name (extension only) everywhere downstream: the shared conversion
+        # utilities and connectors log the filename they are given, and user
+        # filenames can themselves be sensitive (HIPAA guidance: no PHI in
+        # logs — "jane-doe-session-3.mp3" is PHI even if the audio never is).
         mime_type = mimetypes.guess_type(original_filename)[0] or 'audio/mpeg'
+        _anon_ext = os.path.splitext(original_filename)[1].lower() or '.audio'
+        anon_filename = f"incognito{_anon_ext}"
 
         # Handle video extraction if needed
         actual_filepath = filepath
-        actual_filename = original_filename
+        actual_filename = anon_filename
         actual_content_type = mime_type
 
         # Check if file is video and needs audio extraction
@@ -2454,7 +2480,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             else:
                 current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
                 try:
-                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                    # allow_debug_copy=False: the PRESERVE_TEMP_AUDIO debug copy
+                    # is untracked by incognito cleanup and would retain audio.
+                    audio_filepath, audio_mime_type = extract_audio_from_video(
+                        filepath, cleanup_original=False, allow_debug_copy=False)
                     actual_filepath = audio_filepath
                     actual_content_type = audio_mime_type
                     actual_filename = os.path.basename(audio_filepath)

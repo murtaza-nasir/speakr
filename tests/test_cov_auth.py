@@ -176,10 +176,21 @@ def test_login_when_already_authenticated_redirects(cleanup_users):
 def test_logout_clears_session(cleanup_users):
     user = _mk_user(cleanup_users)
     with _client_logged_in_as(user) as client:
-        resp = client.get('/logout')
+        # Logout is POST-only (CSRF-protected) so a cross-site GET can't force it.
+        resp = client.post('/logout')
         assert resp.status_code == 302
         with client.session_transaction() as s:
             assert '_user_id' not in s
+
+
+def test_logout_rejects_get(cleanup_users):
+    # A cross-site <img src="/logout"> style GET must not log the user out.
+    user = _mk_user(cleanup_users)
+    with _client_logged_in_as(user) as client:
+        resp = client.get('/logout')
+        assert resp.status_code == 405
+        with client.session_transaction() as s:
+            assert s.get('_user_id') == str(user.id)  # still logged in
 
 
 def test_login_blocked_when_email_unverified(cleanup_users):

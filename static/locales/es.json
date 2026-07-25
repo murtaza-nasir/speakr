@@ -107,7 +107,8 @@
     "username": "Nombre de Usuario",
     "signInSecurity": "Inicio de sesión y seguridad",
     "password": "Contraseña",
-    "savedSuccess": "Configuración guardada"
+    "savedSuccess": "Configuración guardada",
+    "contextualSpeakerLabellingHelp": "Los hablantes se identifican a partir del contexto de la conversación porque su motor de transcripción no proporciona huellas de voz. Esto puede ser bastante impreciso, según cuánto revele la conversación sobre quién habla y con qué precisión su modelo separa a los hablantes. Para la coincidencia de hablantes más precisa, basada en la voz, se recomienda el contenedor WhisperX ASR."
   },
   "accountTabs": {
     "about": "Acerca de",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Prompt inicial predeterminado",
     "defaultInitialPromptDesc": "Se envía al motor de transcripción para guiar el reconocimiento (por ejemplo, el tema o vocabulario esperado).",
     "defaultHotwordsLabel": "Palabras clave predeterminadas",
-    "defaultHotwordsDesc": "Palabras separadas por comas para favorecer el reconocimiento de términos específicos del dominio."
+    "defaultHotwordsDesc": "Palabras separadas por comas para favorecer el reconocimiento de términos específicos del dominio.",
+    "contextualSpeakerPromptTitle": "Indicación para el etiquetado contextual de hablantes",
+    "contextualSpeakerPromptDesc": "Guía que sigue el modelo al etiquetar hablantes a partir del contexto de la conversación, utilizada solo para motores de transcripción que separan hablantes sin devolver huellas de voz. La lista de nombres de hablantes guardados del usuario y el formato de salida JSON se añaden automáticamente después de este texto. Déjelo en blanco para usar el valor predeterminado integrado.",
+    "contextualSpeakerPromptPlaceholder": "Déjelo en blanco para usar la guía predeterminada integrada."
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
@@ -1019,6 +1023,7 @@
     "unsupportedBrowser": "Navegador No Soportado",
     "untitled": "Grabación Sin Título",
     "uploadRecordingNotes": "Subir Grabación y Notas",
+    "uploadingRecording": "Subiendo la grabación…",
     "whatWillHappen": "¿Qué pasará?",
     "whyNotWorking": "¿Por qué no funciona?",
     "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 16 colores únicos disponibles. Los colores se repetirán después del decimosexto orador."
@@ -1327,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Solo audio de pestaña en esta plataforma — ver ayuda",
     "title": "Grabación de Audio",
     "videoPreviewLabel": "Vista previa en directo del vídeo capturado",
-    "virtualMonitor": "virtual / monitor"
+    "virtualMonitor": "virtual / monitor",
+    "recordingPaused": "En pausa",
+    "recordingFinished": "Grabación finalizada"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "El audio será re-transcrito desde cero. Esto también regenerará el título y resumen basado en la nueva transcripción.",
@@ -1773,6 +1780,10 @@
     "processingCompleted": "¡Procesamiento completado!",
     "processingFailed": "Error en el procesamiento",
     "recordingFinalized": "Grabación subida para procesamiento",
+    "recordingPaused": "Grabación en pausa",
+    "recordingResumed": "Grabación reanudada",
+    "recordingMaxDurationApproaching": "La grabación se detendrá automáticamente en unos {{minutes}} minutos (duración máxima).",
+    "resumedRecordingNotIncognito": "El modo incógnito se desactivó: esta grabación reanudada ya se estaba transmitiendo al servidor.",
     "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
     "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?",
     "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
@@ -1781,6 +1792,7 @@
     "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
     "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
     "uploadFailedWillRetry": "Error en la subida — guardada y se reintentará automáticamente al reconectar.",
+    "uploadRetriesExhaustedDownloaded": "Se agotaron los reintentos automáticos de subida. El audio se guardó en tu carpeta de descargas.",
     "videoRecordingUnsupported": "Este navegador no puede grabar vídeo; se capturará solo el audio."
   },
   "webhooks": {

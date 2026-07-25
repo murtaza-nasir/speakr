@@ -38,7 +38,7 @@ from src.tasks.processing import format_transcription_for_llm, _resolve_timestam
 from src.utils.dates import to_utc_naive
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.titles import resolve_upload_title
-from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
+from src.services.speaker import update_speaker_usage
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
 
@@ -48,7 +48,7 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
@@ -2514,6 +2514,15 @@ def upload_file():
         except FFProbeError as e:
             current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
             codec_info = None
+            # #340: a browser MediaRecorder can produce a .webm whose EBML header
+            # isn't at the front (chunk-order artifact, seen on crash-recovered
+            # recordings). If so, trim to the real header and re-probe before we
+            # fall through to a conversion that would just fail again.
+            if os.path.splitext(original_filename)[1].lower() in ('.webm', '.mkv', '.mka'):
+                repaired_info = try_repair_malformed_webm(filepath, timeout=probe_timeout)
+                if repaired_info is not None:
+                    codec_info = repaired_info
+                    current_app.logger.info(f"Recovered malformed WebM header for {original_filename}; probe succeeded after trim")
 
         # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False
@@ -2957,8 +2966,11 @@ def upload_incognito():
                 'max_size_mb': float(effective_limit_mb),
             }), 413
 
-        # Save to temp file - use secure temp directory
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f'_{safe_filename}') as tmp:
+        # Save to temp file - use secure temp directory. Suffix carries only
+        # the extension, not the user's filename: the temp path is logged and
+        # filenames can themselves be sensitive (no PHI in logs or paths).
+        _ext = os.path.splitext(safe_filename)[1].lower() or '.audio'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext) as tmp:
             temp_filepath = tmp.name
             file.save(temp_filepath)
             current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
@@ -2982,9 +2994,11 @@ def upload_incognito():
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Log only metadata - NEVER log content for HIPAA compliance
+        # Log only metadata - NEVER log content for HIPAA compliance. The
+        # user's filename is deliberately excluded too (extension only):
+        # filenames routinely contain names/dates and count as PHI.
         current_app.logger.info(f"[Incognito] Processing request from user {current_user.id}: "
-                               f"filename={original_filename}, size={file_size/1024/1024:.2f}MB, "
+                               f"ext={_ext}, size={file_size/1024/1024:.2f}MB, "
                                f"language={language}, auto_summarize={auto_summarize}")
 
         # Perform transcription synchronously (no database operations)
@@ -4313,7 +4327,16 @@ def bulk_update_tags():
         if not tag:
             return jsonify({'error': 'Tag not found'}), 404
 
-        if tag.user_id != current_user.id and not tag.group_id:
+        # Access check matching the single-tag endpoints: a group tag requires
+        # membership in that group (previously group tags skipped this check
+        # entirely, letting a non-member attach another group's tag); a
+        # personal tag requires ownership.
+        if tag.group_id:
+            membership = GroupMembership.query.filter_by(
+                group_id=tag.group_id, user_id=current_user.id).first()
+            if not membership:
+                return jsonify({'error': 'You do not have access to this tag'}), 403
+        elif tag.user_id != current_user.id:
             return jsonify({'error': 'No permission to use this tag'}), 403
 
         affected_ids = []

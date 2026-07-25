@@ -28,6 +28,14 @@ import { detectPlatform, getAudioCapabilities, enumerateVirtualAudioDevices } fr
 const SPEAKER_COLOR_COUNT = 16;
 
 // Parse transcription text to detect if it's an error message
+// Remove ANSI terminal colour codes (real ESC or the literal  form that
+// survives JSON) that some ASR runtimes inject into error bodies. Cleans errors
+// already stored in the database at display time, complementing the backend
+// which strips them before storing new ones.
+const stripAnsi = (s) => typeof s === 'string'
+    ? s.replace(/(?:\x1b|\\x1b|\\u001b)\[[0-9;]*m/g, '')
+    : s;
+
 const parseTranscriptionError = (text) => {
     if (!text) return null;
 
@@ -39,12 +47,12 @@ const parseTranscriptionError = (text) => {
             const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
             return {
                 title: data.t || _t('errors.fallbackTitle', 'Error'),
-                message: data.m || _t('errors.fallbackMessage', 'An error occurred'),
+                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'An error occurred'),
                 guidance: data.g || '',
                 icon: data.i || 'fa-exclamation-circle',
                 type: data.y || 'unknown',
                 isKnown: data.k || false,
-                technical: data.d || ''
+                technical: stripAnsi(data.d || '')
             };
         } catch (e) {
             console.error('Failed to parse error JSON:', e);
@@ -71,6 +79,7 @@ const parseTranscriptionError = (text) => {
 // Parse unformatted error messages and make them user-friendly
 const parseUnformattedError = (text) => {
     const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
+    text = stripAnsi(String(text));
     const lowerText = text.toLowerCase();
 
     // Known error patterns
@@ -360,6 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Audio Recording State ---
             const isRecording = ref(false);
+            const isPaused = ref(false);
             const mediaRecorder = ref(null);
             const audioChunks = ref([]);
             const audioBlobURL = ref(null);
@@ -528,6 +538,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const actualBitrate = ref(0);
             const maxRecordingMB = ref(200);
             const sizeCheckInterval = ref(null);
+            // True while the CURRENT recording streams its chunks to the
+            // server (#287 Phase B/C). Set by the audio composable when the
+            // upload session actually opens — not from the feature flag —
+            // because session creation can fail and fall back to local-only
+            // RAM recording, where the size limit still applies. Gates the
+            // size-limit warning UI, which is meaningless when streaming
+            // (#332: there is no size cap in that mode, only an hours cap).
+            const isServerStreamedRecording = ref(false);
+            // True from the moment the user clicks Upload on a finished
+            // recording until the finalize (or legacy queue hand-off)
+            // resolves. Drives the button's disabled/spinner state and the
+            // re-entrancy guard in uploadRecordedAudio: draining the chunk
+            // backlog can take many seconds, and without immediate feedback
+            // users double-click — which used to create duplicate recordings.
+            const isFinalizingRecording = ref(false);
 
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
@@ -920,6 +945,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     chatPanelY.value = r ? (r.bottom - chatPanelH.value - 24) : (window.innerHeight - chatPanelH.value - 80);
                 }
                 saveChatPanelPosition();
+                // Focus the input so the user can type immediately, instead of
+                // having to click into it first. nextTick waits for the panel
+                // (v-else of the FAB) to mount. A disabled input (recording not
+                // yet transcribed) just ignores focus, which is fine.
+                nextTick(() => {
+                    try { chatInputRef.value?.focus(); } catch (_) { /* element not mounted */ }
+                });
             };
 
             // South-east corner resize handle drag — only active in
@@ -1628,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
                 // Audio Recording
-                isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
+                isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
                 canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError,
                 recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal, disableAudioProcessing,
                 recordSystemVideo, recordingVideoActive,
@@ -1639,7 +1671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,
                 wakeLock, recordingNotification, isPageVisible,
                 estimatedFileSize, fileSizeWarningShown, recordingQuality, actualBitrate,
-                maxRecordingMB, sizeCheckInterval,
+                maxRecordingMB, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording,
 
                 // PWA Features
                 deferredInstallPrompt, showInstallButton, isPWAInstalled,
@@ -2121,7 +2153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 speaker: segment.speaker,
                                 color: segment.color,
                                 speakerId: segment.speakerId,
-                                startTime: segment.startTime || segment.start_time,
+                                startTime: segment.startTime ?? segment.start_time,
                                 runOffset: idx,
                                 segments: []
                             });
@@ -2148,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                         bubbleRows[bubbleRows.length - 1].bubbles.push({
                             sentence: segment.sentence,
-                            startTime: segment.startTime || segment.start_time,
+                            startTime: segment.startTime ?? segment.start_time,
                             color: segment.color
                         });
                     });
@@ -3270,7 +3302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!recordingDisclaimer.value || recordingDisclaimer.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(recordingDisclaimer.value);
+                return window.renderMarkdownSafe(recordingDisclaimer.value);
             });
 
             // Upload disclaimer parsed as markdown
@@ -3278,7 +3310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!uploadDisclaimer.value || uploadDisclaimer.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(uploadDisclaimer.value);
+                return window.renderMarkdownSafe(uploadDisclaimer.value);
             });
 
             // Custom banner parsed as markdown
@@ -3286,7 +3318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!customBanner.value || customBanner.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(customBanner.value);
+                return window.renderMarkdownSafe(customBanner.value);
             });
 
             // Get tag prompt preview

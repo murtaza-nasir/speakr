@@ -85,11 +85,12 @@ def extract_audio_from_video(
     output_format: str = 'mp3',
     bitrate: str = DEFAULT_MP3_BITRATE,
     cleanup_original: bool = True,
-    copy_stream: bool = False
+    copy_stream: bool = False,
+    allow_debug_copy: bool = True
 ) -> Tuple[str, str]:
     """
     Extract audio track from video file.
-    
+
     Args:
         video_path: Path to video file
         output_format: Audio format ('mp3', 'wav', 'flac', 'copy')
@@ -97,10 +98,14 @@ def extract_audio_from_video(
         cleanup_original: Whether to delete the original video file
         copy_stream: If True, copy audio stream without re-encoding (fast, preserves quality)
                     If False, re-encode to specified format
-    
+        allow_debug_copy: Whether the PRESERVE_TEMP_AUDIO debug copy is permitted.
+                    Incognito processing passes False — that debug copy is not
+                    tracked by any cleanup and would silently retain audio from
+                    a flow that promises zero retention.
+
     Returns:
         Tuple of (audio_filepath, mime_type)
-        
+
     Raises:
         FFmpegNotFoundError: If FFmpeg is not installed
         FFmpegError: If extraction fails
@@ -230,7 +235,7 @@ def extract_audio_from_video(
         _run_ffmpeg_command(cmd, f"Audio extraction from {os.path.basename(video_path)}")
         
         # Optionally preserve temp file for debugging
-        if os.getenv('PRESERVE_TEMP_AUDIO', 'false').lower() == 'true':
+        if allow_debug_copy and os.getenv('PRESERVE_TEMP_AUDIO', 'false').lower() == 'true':
             import shutil
             debug_path = temp_audio_path.replace('_temp', '_debug')
             shutil.copy2(temp_audio_path, debug_path)
@@ -383,6 +388,53 @@ def extract_audio_segment(
     ]
     
     _run_ffmpeg_command(cmd, f"Segment extraction from {os.path.basename(input_path)}")
+
+
+def remux_mp3_in_place(filepath: str) -> None:
+    """
+    Losslessly remux an MP3 file in place so ffmpeg writes a fresh
+    Xing/Info header (issue #325). No re-encoding: the audio stream is
+    stream-copied, so this is fast and bit-identical, and ID3 metadata
+    carries over. The original file is only replaced after the remux
+    succeeds and produced non-empty output.
+
+    Args:
+        filepath: Path to the MP3 file to repair
+
+    Raises:
+        FFmpegNotFoundError: If FFmpeg is not installed
+        FFmpegError: If the remux fails or produces empty output
+    """
+    # Temp file in the same directory so os.replace() stays atomic
+    # (same filesystem) and inherits the directory's permissions.
+    fd, temp_path = tempfile.mkstemp(
+        suffix='.mp3', dir=os.path.dirname(filepath) or None
+    )
+    os.close(fd)
+    try:
+        cmd = [
+            'ffmpeg',
+            '-y',
+            '-i', filepath,
+            '-map', '0:a:0',
+            '-c:a', 'copy',
+            '-map_metadata', '0',
+            '-f', 'mp3',
+            temp_path,
+        ]
+        _run_ffmpeg_command(cmd, f"Xing header remux of {os.path.basename(filepath)}")
+
+        if os.path.getsize(temp_path) == 0:
+            raise FFmpegError("MP3 remux produced empty output")
+
+        os.replace(temp_path, filepath)
+    finally:
+        # Only present if the remux failed before os.replace() consumed it
+        if os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
 
 
 @contextmanager

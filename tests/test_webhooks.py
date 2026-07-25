@@ -549,7 +549,7 @@ def test_end_to_end_signature_verifies_against_wire_bytes():
             captured['headers'] = kwargs.get('headers')
             return MagicMock(status_code=204, text='')
 
-        with patch('src.services.webhook_dispatch.requests.post', side_effect=fake_post):
+        with patch('src.services.webhook_dispatch._http_post', side_effect=fake_post):
             run_dispatcher_pass()
 
         body = captured['body']
@@ -675,7 +675,7 @@ def test_autopaused_webhook_resumes_on_successful_trial_delivery():
         d_id = d.id
 
         # Mock the outbound POST to succeed.
-        with patch('src.services.webhook_dispatch.requests.post') as mock_post:
+        with patch('src.services.webhook_dispatch._http_post') as mock_post:
             mock_post.return_value = MagicMock(status_code=204, text='')
             run_dispatcher_pass()
 
@@ -745,7 +745,7 @@ def test_dispatcher_post_does_not_follow_redirects():
         user = _make_user('wh_noredir')
         wh, d = _seed_pending(user.id)
         mock_resp = MagicMock(status_code=204, text='')
-        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp) as post:
+        with patch('src.services.webhook_dispatch._http_post', return_value=mock_resp) as post:
             run_dispatcher_pass()
             post.assert_called_once()
             assert post.call_args.kwargs.get('allow_redirects') is False
@@ -878,7 +878,7 @@ def test_dispatcher_success_path_marks_delivered():
         wh, d = _seed_pending(user.id)
 
         mock_resp = MagicMock(status_code=204, text='')
-        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp) as post:
+        with patch('src.services.webhook_dispatch._http_post', return_value=mock_resp) as post:
             counters = run_dispatcher_pass()
             assert counters['attempted'] == 1
             assert counters['success'] == 1
@@ -907,7 +907,7 @@ def test_dispatcher_retryable_failure_marks_failed_with_backoff():
         wh, d = _seed_pending(user.id)
 
         mock_resp = MagicMock(status_code=502, text='bad gateway')
-        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+        with patch('src.services.webhook_dispatch._http_post', return_value=mock_resp):
             counters = run_dispatcher_pass()
             assert counters['attempted'] == 1
             assert counters['failed'] == 1
@@ -930,7 +930,7 @@ def test_dispatcher_permanent_failure_on_4xx():
         wh, d = _seed_pending(user.id)
 
         mock_resp = MagicMock(status_code=400, text='bad request')
-        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+        with patch('src.services.webhook_dispatch._http_post', return_value=mock_resp):
             counters = run_dispatcher_pass()
             assert counters['permanent_failure'] == 1
 
@@ -957,7 +957,7 @@ def test_dispatcher_autopauses_after_threshold():
         # should auto-pause.
         mock_resp = MagicMock(status_code=410, text='gone')  # 4xx permanent
         with patch.dict(os.environ, {'WEBHOOK_AUTOPAUSE_FAILURES': '10'}):
-            with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+            with patch('src.services.webhook_dispatch._http_post', return_value=mock_resp):
                 run_dispatcher_pass()
 
         wh_refreshed = db.session.get(Webhook, wh.id)

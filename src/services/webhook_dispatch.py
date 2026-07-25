@@ -43,6 +43,10 @@ from typing import Iterable
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 from src.database import db
 from src.models import Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES
@@ -140,6 +144,128 @@ def _delay_for_attempt(attempt_count: int) -> int:
 
 # ---- URL safety / SSRF guard ----------------------------------------------
 
+def _is_blocked_ip(ip_str) -> bool:
+    """True if ``ip_str`` is a private/loopback/link-local/reserved/etc. address.
+
+    Fails closed: an unparseable value is treated as blocked. Shared by the
+    URL validation (below) and the connect-time peer check (SSRFGuardAdapter)
+    so the two can never disagree.
+    """
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True
+    return (
+        ip.is_loopback or ip.is_private or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+        or (ip.version == 6 and ip.is_site_local)
+    )
+
+
+class _WebhookSSRFError(Exception):
+    """Raised at connect time when a webhook's real peer IP is a blocked address."""
+
+
+def _guard_peer(conn) -> None:
+    """Abort the connection if its actual peer IP is blocked.
+
+    Runs after ``connect()`` (TCP + TLS) but before any HTTP request bytes are
+    sent, so a rebound host is dropped before it can receive the payload or leak
+    a response. This closes the DNS-rebinding TOCTOU window that a separate
+    validate-then-``requests.post`` (two independent DNS lookups) leaves open
+    (GHSA-2m89-mxcv-gv93).
+    """
+    try:
+        peer_ip = conn.sock.getpeername()[0]
+    except Exception as e:  # pragma: no cover - defensive
+        _quiet_close(conn)
+        raise _WebhookSSRFError(f'could not determine peer address: {e}')
+    if _is_blocked_ip(peer_ip):
+        _quiet_close(conn)
+        raise _WebhookSSRFError(f'connection resolved to a blocked address ({peer_ip})')
+
+
+def _quiet_close(conn) -> None:
+    try:
+        conn.close()
+    except Exception:  # pragma: no cover
+        pass
+
+
+class _GuardedHTTPConnection(HTTPConnection):
+    def connect(self):
+        super().connect()
+        _guard_peer(self)
+
+
+class _GuardedHTTPSConnection(HTTPSConnection):
+    def connect(self):
+        super().connect()
+        _guard_peer(self)
+
+
+class _GuardedHTTPConnectionPool(HTTPConnectionPool):
+    ConnectionCls = _GuardedHTTPConnection
+
+
+class _GuardedHTTPSConnectionPool(HTTPSConnectionPool):
+    ConnectionCls = _GuardedHTTPSConnection
+
+
+class _SSRFGuardPoolManager(PoolManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pool_classes_by_scheme = {
+            'http': _GuardedHTTPConnectionPool,
+            'https': _GuardedHTTPSConnectionPool,
+        }
+
+
+class SSRFGuardAdapter(HTTPAdapter):
+    """requests adapter that verifies the socket's real peer IP after connect
+    and aborts on a private/loopback/etc. address (see _guard_peer)."""
+
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+        self.poolmanager = _SSRFGuardPoolManager(
+            num_pools=connections, maxsize=maxsize, block=block, **pool_kwargs
+        )
+
+
+def ssrf_guarded_session() -> requests.Session:
+    """A requests Session whose connections are peer-IP-verified. Retries are
+    disabled so a blocked connection fails fast rather than re-resolving."""
+    session = requests.Session()
+    adapter = SSRFGuardAdapter(max_retries=0)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+
+def _host_is_allowlisted(url: str) -> bool:
+    """True if the URL's host matches WEBHOOK_INTRANET_HOST_ALLOWLIST — an
+    operator opt-in that intentionally permits an internal host, so the
+    connect-time peer guard is relaxed for it (matching is_url_safe_for_webhook)."""
+    try:
+        host = (urlparse(url).hostname or '').lower()
+    except Exception:
+        return False
+    allowlist = _intranet_host_allowlist()
+    return bool(host and allowlist and allowlist.search(host))
+
+
+def _http_post(url, **kwargs):
+    """The single outbound-POST seam for webhook delivery.
+
+    Public hosts go through the SSRF-guard session, which verifies the real
+    connected peer IP and aborts on a private/loopback address (closing the
+    DNS-rebinding TOCTOU window). Explicitly allowlisted intranet hosts use the
+    plain client by operator choice. Tests patch this function.
+    """
+    if _host_is_allowlisted(url):
+        return requests.post(url, **kwargs)
+    return ssrf_guarded_session().post(url, **kwargs)
+
+
 def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
     """Validate a webhook URL.
 
@@ -185,15 +311,10 @@ def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
     for _af, _stype, _proto, _name, sockaddr in addrinfos:
         ip_str = sockaddr[0]
         try:
-            ip = ipaddress.ip_address(ip_str)
+            ipaddress.ip_address(ip_str)
         except ValueError:
             continue
-        is_private_ip = (
-            ip.is_loopback or ip.is_private or ip.is_link_local
-            or ip.is_reserved or ip.is_multicast
-            or (ip.version == 6 and ip.is_site_local)
-        )
-        if is_private_ip and not allowlist_matches:
+        if _is_blocked_ip(ip_str) and not allowlist_matches:
             return False, (
                 f'URL resolves to a private/loopback address ({ip_str}); '
                 'set WEBHOOK_INTRANET_HOST_ALLOWLIST to permit this host '
@@ -322,8 +443,12 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
         'Speakr-Event': delivery.event_type,
         'Speakr-Timestamp': datetime.utcnow().isoformat() + 'Z',
     }
+    # Delivery goes through _http_post, which verifies the ACTUAL connected peer
+    # IP (not a fresh, separate DNS lookup) and aborts on a private/loopback
+    # address — closing the rebinding window left by the resolve-and-block check
+    # above. Allowlisted intranet hosts are exempt by operator choice.
     try:
-        resp = requests.post(
+        resp = _http_post(
             webhook.url,
             data=body_bytes,
             headers=headers,
@@ -332,8 +457,14 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
         )
         preview = (resp.text or '')[:2000]
         return resp.status_code, preview, None
+    except _WebhookSSRFError as e:
+        return None, None, f'blocked at delivery: {e}'[:500]
     except requests.RequestException as e:
-        return None, None, str(e)[:500]
+        # urllib3 may surface the connect-time abort wrapped as a ConnectionError.
+        msg = str(e)
+        if 'blocked address' in msg or 'peer address' in msg:
+            return None, None, f'blocked at delivery: {msg}'[:500]
+        return None, None, msg[:500]
 
 
 def _is_retryable_status(status_code) -> bool:

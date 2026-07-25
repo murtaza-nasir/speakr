@@ -34,19 +34,20 @@ RUN pip install --no-cache-dir requests && \
 # decoder flaw CVE-2026-8461 ("PixelSmash", heap out-of-bounds write, RCE via
 # crafted media), fixed upstream in 8.1.2.
 #
-# Supply-chain hardening: we pin an IMMUTABLE dated release (not BtbN's rolling
-# `latest` tag) and verify each arch tarball's SHA-256, so a rebuild is
-# reproducible and a swapped or tampered binary fails the build. To move to a
-# newer 8.1.x patch, bump BTBN_TAG, FFMPEG_VER and BOTH checksums together
+# Supply-chain hardening: we pin a dated release (not BtbN's rolling `latest`
+# tag) and verify each arch tarball's SHA-256, so a swapped or tampered binary
+# fails the build. NOTE: BtbN deletes autobuild assets after roughly two weeks,
+# so any rebuild after that window fails with a wget 404 until the pin is
+# refreshed. To refresh, bump BTBN_TAG, FFMPEG_VER and BOTH checksums together
 # (read the new values from the release's checksums.sha256). BtbN binaries nest
 # under bin/, hence the adjusted move paths.
 ###############################################################################
 FROM python:3.11-slim AS ffmpeg-stage
 
-ARG BTBN_TAG=autobuild-2026-06-23-13-52
-ARG FFMPEG_VER=n8.1.2
-ARG FFMPEG_SHA256_amd64=0c6772b77fdbf127cc1498eca39a40e20b88817f36b66d553cebcfcca32b6d78
-ARG FFMPEG_SHA256_arm64=cd7ec4b2235189caa49d6cbe8e02b7546ba28c2a58248e099344bbfd35c5e70b
+ARG BTBN_TAG=autobuild-2026-07-12-13-16
+ARG FFMPEG_VER=n8.1.2-22-g94138f6973
+ARG FFMPEG_SHA256_amd64=516b60bad3df2dedea23594c60e7afaecf3e6a440ca9091ef95ee1f62deba71e
+ARG FFMPEG_SHA256_arm64=0a34477fb47a9c108b869fccc9919e00d0c7ebf886e8d45301c74d2d46640d64
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
     && rm -rf /var/lib/apt/lists/* \

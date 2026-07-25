@@ -20,6 +20,28 @@ const promisifyRequest = (request) => {
 };
 
 /**
+ * Serialize read-modify-write mutations of the single 'current' session record.
+ *
+ * saveChunk/updateRecordingMetadata/pruneOldChunks each do get -> mutate -> put
+ * with awaits in between. Without serialization, two that overlap (common at
+ * startup, where the first chunk's write is still opening the DB when the next
+ * chunk arrives) clobber each other's writes — dropping or REORDERING chunks in
+ * IndexedDB. On crash recovery the scrambled order yields a WebM whose EBML
+ * header isn't first, which ffmpeg then rejects (issue #340). Chaining every
+ * mutation through one promise guarantees they apply in call order, one at a
+ * time. Order is fixed at call time because the .then() is attached
+ * synchronously, so callers enqueue in the order MediaRecorder emits chunks.
+ */
+let _sessionWriteChain = Promise.resolve();
+const serializeSessionWrite = (task) => {
+    const result = _sessionWriteChain.then(task, task);
+    // Keep the chain alive after a rejection so one failed write doesn't wedge
+    // every later write; callers still see their own rejection via `result`.
+    _sessionWriteChain = result.catch(() => {});
+    return result;
+};
+
+/**
  * Initialize IndexedDB
  */
 export const initDB = () => {
@@ -58,7 +80,7 @@ export const initDB = () => {
 /**
  * Save recording metadata and initialize session
  */
-export const startRecordingSession = async (recordingData) => {
+export const startRecordingSession = (recordingData) => serializeSessionWrite(async () => {
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -74,7 +96,11 @@ export const startRecordingSession = async (recordingData) => {
             asrOptions: recordingData.asrOptions || {},
             chunks: [],
             mimeType: recordingData.mimeType || 'audio/webm',
-            duration: 0
+            duration: 0,
+            // Incognito state travels with the crash-recovery copy so a
+            // recovered recording reopens in the same mode instead of
+            // silently becoming a normal (permanently stored) one.
+            incognito: !!recordingData.incognito
         };
 
         await promisifyRequest(objectStore.put(session));
@@ -84,12 +110,12 @@ export const startRecordingSession = async (recordingData) => {
         console.error('[RecordingDB] Failed to start session:', error);
         throw error;
     }
-};
+});
 
 /**
  * Save a recording chunk to IndexedDB
  */
-export const saveChunk = async (chunkBlob, chunkIndex) => {
+export const saveChunk = (chunkBlob, chunkIndex) => serializeSessionWrite(async () => {
     try {
         // Do async prep work BEFORE creating transaction to avoid auto-close
         const db = await initDB();
@@ -122,12 +148,12 @@ export const saveChunk = async (chunkBlob, chunkIndex) => {
         console.error('[RecordingDB] Failed to save chunk:', error);
         // Don't throw - recording should continue even if persistence fails
     }
-};
+});
 
 /**
  * Update recording metadata (notes, duration, etc.)
  */
-export const updateRecordingMetadata = async (updates) => {
+export const updateRecordingMetadata = (updates) => serializeSessionWrite(async () => {
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -147,7 +173,7 @@ export const updateRecordingMetadata = async (updates) => {
     } catch (error) {
         console.error('[RecordingDB] Failed to update metadata:', error);
     }
-};
+});
 
 /**
  * Prune the IndexedDB buffer to the last `keepLast` chunks.
@@ -160,7 +186,7 @@ export const updateRecordingMetadata = async (updates) => {
  * than keepLast, so a not-yet-uploaded chunk is never dropped from the local
  * fallback. Non-fatal on error — pruning is an optimization, not correctness.
  */
-export const pruneOldChunks = async (keepLast = 5) => {
+export const pruneOldChunks = (keepLast = 5) => serializeSessionWrite(async () => {
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -174,7 +200,7 @@ export const pruneOldChunks = async (keepLast = 5) => {
     } catch (error) {
         // Pruning is best-effort; recording continues regardless.
     }
-};
+});
 
 /**
  * Check if there's a recoverable recording
@@ -250,7 +276,8 @@ export const recoverRecording = async () => {
                 asrOptions: session.asrOptions,
                 mimeType: session.mimeType,
                 duration: session.duration || (session.chunks.length * 5),
-                startTime: session.startTime
+                startTime: session.startTime,
+                incognito: !!session.incognito
             }
         };
     } catch (error) {
@@ -262,7 +289,7 @@ export const recoverRecording = async () => {
 /**
  * Clear recording session (after successful upload or discard)
  */
-export const clearRecordingSession = async () => {
+export const clearRecordingSession = () => serializeSessionWrite(async () => {
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -273,7 +300,7 @@ export const clearRecordingSession = async () => {
     } catch (error) {
         console.error('[RecordingDB] Failed to clear session:', error);
     }
-};
+});
 
 /**
  * Get database size information

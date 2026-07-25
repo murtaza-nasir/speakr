@@ -340,7 +340,7 @@
                             <!-- Simple View -->
                             <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
                                 <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                                     :key="segment.startTime || Math.random()"
+                                     :key="segment.startTime ?? Math.random()"
                                      :class="['speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                                      :data-start-time="segment.startTime"
                                      :data-end-time="segment.endTime"
@@ -361,7 +361,7 @@
                                      :key="rowIndex"
                                      :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
                                     <div v-for="(bubble, bubbleIndex) in row.bubbles"
-                                         :key="bubble.startTime || Math.random()"
+                                         :key="bubble.startTime ?? Math.random()"
                                          :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', 'cursor-pointer', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]"
                                          :data-start-time="bubble.startTime"
                                          :data-end-time="bubble.endTime"
@@ -678,8 +678,8 @@
                             speakerId: segment.speaker,
                             speaker: segment.speaker,
                             sentence: segment.sentence,
-                            startTime: segment.start_time || segment.startTime,
-                            endTime: segment.end_time || segment.endTime,
+                            startTime: segment.start_time ?? segment.startTime,
+                            endTime: segment.end_time ?? segment.endTime,
                             color: speakerColors[segment.speaker] || 'speaker-color-1'
                         }));
 
@@ -707,8 +707,8 @@
                             }
                             bubbleRows[bubbleRows.length - 1].bubbles.push({
                                 sentence: segment.sentence,
-                                startTime: segment.startTime || segment.start_time,
-                                endTime: segment.endTime || segment.end_time,
+                                startTime: segment.startTime ?? segment.start_time,
+                                endTime: segment.endTime ?? segment.end_time,
                                 color: segment.color
                             });
                         });

@@ -301,6 +301,44 @@ class TestProcessAutoDeletion(RetentionTestBase):
         self.assertEqual(stats['deleted_full'], 1)
         self.assertIsNone(db.session.get(Recording, rec_id))
 
+    def test_failed_recording_full_deleted_past_retention(self):
+        # Issue #328: FAILED recordings must be swept by retention too.
+        rec = self.make_recording(age_days=100, status='FAILED', audio_path='user/failed.mp3')
+        rec_id = rec.id
+        stats, storage = self._run(mode='full_recording', global_days=30)
+        self.assertEqual(stats['deleted_full'], 1)
+        self.assertIsNone(db.session.get(Recording, rec_id))
+        storage.delete.assert_called_with('user/failed.mp3', missing_ok=True)
+
+    def test_failed_recording_audio_only_deletes_audio(self):
+        rec = self.make_recording(age_days=100, status='FAILED', audio_path='user/failed2.mp3')
+        rec_id = rec.id
+        stats, storage = self._run(mode='audio_only', global_days=30)
+        self.assertEqual(stats['deleted_audio_only'], 1)
+        row = db.session.get(Recording, rec_id)
+        self.assertIsNotNone(row)  # row kept in audio_only mode
+        self.assertIsNotNone(row.audio_deleted_at)
+        storage.delete.assert_called_with('user/failed2.mp3', missing_ok=True)
+
+    def test_in_flight_statuses_never_swept(self):
+        # QUEUED/PROCESSING recordings must never be touched, however old.
+        q = self.make_recording(age_days=100, status='QUEUED', audio_path='user/q.mp3')
+        p = self.make_recording(age_days=100, status='PROCESSING', audio_path='user/p.mp3')
+        stats, storage = self._run(mode='full_recording', global_days=30)
+        self.assertEqual(stats['checked'], 0)
+        self.assertEqual(stats['deleted_full'], 0)
+        self.assertIsNotNone(db.session.get(Recording, q.id))
+        self.assertIsNotNone(db.session.get(Recording, p.id))
+        storage.delete.assert_not_called()
+
+    def test_failed_recording_within_retention_kept(self):
+        rec = self.make_recording(age_days=5, status='FAILED', audio_path='user/fresh.mp3')
+        rec_id = rec.id
+        stats, storage = self._run(mode='full_recording', global_days=30)
+        self.assertEqual(stats['deleted_full'], 0)
+        self.assertIsNotNone(db.session.get(Recording, rec_id))
+        storage.delete.assert_not_called()
+
     def test_error_during_deletion_increments_errors_and_rolls_back(self):
         rec = self.make_recording(age_days=100, audio_path='user/boom.mp3')
         rec_id = rec.id

@@ -182,7 +182,7 @@ export function useChat(state, utils) {
                                         }
 
                                         assistantMessage.content += textContent;
-                                        assistantMessage.html = marked.parse(assistantMessage.content);
+                                        assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
 
                                         if (shouldScroll) {
                                             await Vue.nextTick();
@@ -221,7 +221,7 @@ export function useChat(state, utils) {
                 const errSuffix = `\n\n_⚠️ Connection ended before the response completed: ${error.message}_`;
                 if (partial) {
                     assistantMessage.content = partial + errSuffix;
-                    assistantMessage.html = marked.parse(assistantMessage.content);
+                    assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
                 } else {
                     assistantMessage.content = `Error: ${error.message}`;
                     assistantMessage.html = `<span class="text-red-500">Error: ${error.message}</span>`;

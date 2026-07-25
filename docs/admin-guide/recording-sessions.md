@@ -13,10 +13,17 @@ Off by default; opt in with `ENABLE_SERVER_RECORDING_CHUNKS=true`. It is planned
 | Aspect | Off (legacy) | On (server sessions) |
 |---|---|---|
 | Where audio lives during recording | Browser RAM + IndexedDB | Server disk (`UPLOAD_FOLDER/_sessions/<id>/`) |
-| Max recording size | `MAX_RECORDING_MB` hard auto-stop (default 200 MB) | Soft warning at the same threshold; hours-based ceiling instead (`RECORDING_MAX_HOURS`, default 8h) |
+| Max recording size | Hard auto-stop at 200 MB (fixed; protects browser RAM), with a warning at 80% | No size limit or size warning; hours-based ceiling instead (`RECORDING_MAX_HOURS`, default 8h, with a warning at 80%) |
 | Crash recovery | IndexedDB chunks survive tab refresh | Server-side chunks survive tab/browser/device crash |
 | Finalize | Single-shot `POST /upload` | `POST /upload/session/{id}/finalize`; backend ffmpeg concat demux stitches chunks |
 | Reverse-proxy chunk POSTs | One big upload (subject to body-size + read-timeout) | Many small POSTs per recording, plus a longer finalize call |
+
+Incognito recordings are the exception: they never open a server session,
+regardless of this flag. Audio from an incognito recording stays in the
+browser (RAM + IndexedDB) until the explicit process-without-saving upload,
+so the legacy 200 MB cap and its warning still apply to them. If a recording
+did stream to the server and the user switches it to incognito in the review
+pane afterwards, the server-side chunks are deleted before processing.
 
 ## Configuration
 
@@ -30,7 +37,7 @@ Environment variables, all optional:
 | `RECORDING_SESSION_MAX_CHUNK_BYTES` | `16777216` (16 MB) | Per-chunk upload cap. Generous; MediaRecorder chunks are typically <1 MB. |
 | `RECORDING_SESSION_ALLOWED_MIME_TYPES` | `audio/webm,audio/ogg,audio/mp4,audio/mpeg,audio/wav,audio/x-m4a,video/webm,video/mp4` | Comma-separated whitelist. The video types carry the optional tab/window/screen video capture. |
 | `RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS` | `3600` | How often the background thread sweeps expired sessions. Set to `0` to disable. |
-| `RECORDING_MAX_HOURS` | `8` | Absolute ceiling on a single recording. Stops the recorder automatically at this duration regardless of size. |
+| `RECORDING_MAX_HOURS` | `8` | Absolute ceiling on a single recording. Stops the recorder automatically at this duration regardless of size; a toast warns the user at 80% of the ceiling. |
 | `RECORDING_VIDEO_KBPS` | `2500` | Video bitrate cap (kbps) for the opt-in tab/window/screen video capture. At the default, an hour of capture is roughly 1 GB. |
 
 ## Reverse-proxy requirements
@@ -110,7 +117,8 @@ UPLOAD_FOLDER/_sessions/
 - Aborted sessions are torn down synchronously when the user clicks
   Discard. Sessions that go quiet for longer than
   `RECORDING_SESSION_TTL_HOURS` are reaped by the background cleanup
-  thread.
+  thread, which also removes orphaned session directories that no longer
+  have a database row (for example after a database reset).
 
 ## Crash recovery
 

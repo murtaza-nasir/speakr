@@ -7,6 +7,7 @@ and the Speaker model for tracking speaker profiles used in diarization.
 
 from datetime import datetime
 from flask_login import UserMixin
+from sqlalchemy import func
 from src.database import db
 
 
@@ -81,6 +82,32 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
+
+    @staticmethod
+    def normalize_email(value):
+        """Canonical email form for storage and lookup: trimmed + lowercased.
+
+        Email addresses are case-insensitive in practice (the domain always,
+        the local part at every real provider), so normalizing on write keeps
+        stored data clean and normalizing input before a lookup keeps matching
+        consistent. Also strips the stray whitespace mobile autofill appends.
+        """
+        return value.strip().lower() if value else value
+
+    @classmethod
+    def find_by_email(cls, email):
+        """Case-insensitive lookup by email.
+
+        Uses ``func.lower`` on the column so it matches regardless of the
+        stored case — a user whose address was stored mixed-case (before
+        normalization existed, or via an SSO provider) still resolves, with
+        no migration required.
+        """
+        if not email:
+            return None
+        return cls.query.filter(
+            func.lower(cls.email) == cls.normalize_email(email)
+        ).first()
 
 
 class Speaker(db.Model):

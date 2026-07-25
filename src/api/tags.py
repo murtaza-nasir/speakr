@@ -32,6 +32,27 @@ ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').low
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_AUTO_PROCESSING = os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true'
 
+# Tag colors are stored verbatim and interpolated into HTML style attributes on
+# the account page. Restrict them to strict hex values so a value cannot break
+# out of the attribute and inject an event handler (GHSA-pp32-69wg-97h3). The
+# UI color picker only ever sends hex; a direct JSON request could otherwise
+# supply arbitrary text.
+_HEX_COLOR_RE = re.compile(r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$')
+_DEFAULT_TAG_COLOR = '#3B82F6'
+
+
+def _validate_tag_color(color):
+    """Validate an incoming tag color.
+
+    Returns (ok, value). When ok is False, value is an error string. A missing
+    (None) color is allowed and normalized to the default by the caller.
+    """
+    if color is None:
+        return True, None
+    if isinstance(color, str) and _HEX_COLOR_RE.match(color.strip()):
+        return True, color.strip()
+    return False, 'Color must be a hex value like #3B82F6'
+
 
 def _sanitize_folder_name(name):
     """Convert a tag name to a filesystem-safe folder name."""
@@ -160,6 +181,10 @@ def create_tag():
     if not data or not data.get('name'):
         return jsonify({'error': 'Tag name is required'}), 400
 
+    color_ok, color_val = _validate_tag_color(data.get('color'))
+    if not color_ok:
+        return jsonify({'error': color_val}), 400
+
     group_id = data.get('group_id')
 
     # If creating a group tag, verify user is admin of that group
@@ -220,7 +245,7 @@ def create_tag():
         name=data['name'],
         user_id=current_user.id,
         group_id=group_id,
-        color=data.get('color', '#3B82F6'),
+        color=color_val or _DEFAULT_TAG_COLOR,
         custom_prompt=data.get('custom_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
@@ -316,7 +341,10 @@ def update_tag(tag_id):
         tag.group_id = new_group_id
 
     if 'color' in data:
-        tag.color = data['color']
+        color_ok, color_val = _validate_tag_color(data['color'])
+        if not color_ok:
+            return jsonify({'error': color_val}), 400
+        tag.color = color_val or _DEFAULT_TAG_COLOR
     if 'custom_prompt' in data:
         tag.custom_prompt = data['custom_prompt']
     if 'default_language' in data:
@@ -474,6 +502,10 @@ def create_group_tag(group_id):
     if not name:
         return jsonify({'error': 'Tag name is required'}), 400
 
+    color_ok, color_val = _validate_tag_color(data.get('color'))
+    if not color_ok:
+        return jsonify({'error': color_val}), 400
+
     # Check if a group tag with this name already exists for this team
     existing_tag = Tag.query.filter_by(
         name=name,
@@ -504,7 +536,7 @@ def create_group_tag(group_id):
         name=name,
         user_id=current_user.id,  # Creator
         group_id=group_id,
-        color=data.get('color', '#3B82F6'),
+        color=color_val or _DEFAULT_TAG_COLOR,
         custom_prompt=data.get('custom_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),

@@ -377,14 +377,37 @@ def convert_if_needed(
             logger.warning(f"Failed to compress lossless audio: {e}. Continuing with original.")
             # Fall through to return original file
 
-    # No processing needed - return original file
+    # No processing needed - the file is stored as-is. Before returning,
+    # repair MP3s that lack a Xing/Info (VBR) header: ffmpeg has to estimate
+    # their duration from bitrate and Chromium-based browsers stutter during
+    # playback/seeking (issue #325). A lossless in-place remux writes a
+    # proper header without re-encoding. Best-effort: any failure keeps the
+    # original file.
+    final_size = original_size
+    if audio_codec == 'mp3':
+        try:
+            from src.utils.ffprobe import mp3_duration_is_estimated
+            from src.utils.ffmpeg_utils import remux_mp3_in_place
+            if mp3_duration_is_estimated(filepath):
+                logger.info(
+                    f"MP3 {original_filename} is missing a Xing/VBR header "
+                    f"(duration estimated from bitrate) — remuxing losslessly"
+                )
+                remux_mp3_in_place(filepath)
+                final_size = os.path.getsize(filepath)
+        except Exception as e:
+            logger.warning(
+                f"Xing header repair failed for {original_filename}: {e}. "
+                f"Continuing with original file."
+            )
+
     return ConversionResult(
         output_path=filepath,
         mime_type=_guess_mime_type(filepath),
         was_converted=False,
         was_compressed=False,
         original_size=original_size,
-        final_size=original_size,
+        final_size=final_size,
         original_codec=original_codec,
         final_codec=audio_codec
     )

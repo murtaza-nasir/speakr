@@ -729,16 +729,23 @@ export function useUpload(state, utils) {
             // If this failure is itself a resurfaced retry, just bump the retry
             // count on the EXISTING IndexedDB record — don't store a duplicate or
             // re-download. resurfaceFailedUploads() will pick it up again on the
-            // next online/load (until it hits the retry cap).
+            // next online/load. Once the retry cap is reached, hand the audio
+            // back as a browser download instead of leaving the record trapped
+            // in IndexedDB (capped records are never resurfaced again).
             if (fileItem._failedUploadId) {
+                const newRetryCount = (fileItem._retryCount || 0) + 1;
                 try {
                     await FailedUploads.updateRetryCount(
-                        fileItem._failedUploadId, (fileItem._retryCount || 0) + 1, error.message);
+                        fileItem._failedUploadId, newRetryCount, error.message);
                 } catch (e) {
                     console.warn('[Upload] Could not bump retry count:', e);
                 }
-            } else {
-                // Defense-in-depth recovery (issue #297, #287, #313):
+                if (newRetryCount >= MAX_AUTO_RETRIES) {
+                    await handOffExhaustedUpload(fileItem._failedUploadId, fileItem.file);
+                }
+            } else if (fileItem.fromInProgressRecording) {
+                // Defense-in-depth recovery (issue #297, #287, #313) for in-app
+                // recordings, whose ONLY copy lives in browser memory:
                 //   1. Persist the file to IndexedDB so it can be auto-retried
                 //      in-app on the next online/page-load (resurfaceFailedUploads).
                 //   2. If IndexedDB persistence fails (quota exceeded, private
@@ -796,6 +803,13 @@ export function useUpload(state, utils) {
                     }
                 }
             }
+            // else: the file came from the user's filesystem (picker or
+            // drag-drop), so the original still exists on disk and nothing is
+            // lost by the failure. Persisting a copy to IndexedDB — or worse,
+            // re-downloading a multi-GB file into Downloads — would only
+            // duplicate it. The queue item stays 'failed' with the error
+            // surfaced above; the user can re-add the file once the cause
+            // (e.g. a proxy size limit) is addressed.
         } finally {
             fileItem._xhr = null;
             releaseUploadSlot();
@@ -1088,6 +1102,29 @@ export function useUpload(state, utils) {
     const MAX_AUTO_RETRIES = 3;
     let _isResurfacing = false;
 
+    // When auto-retry gives up on a persisted recording, hand the audio back
+    // to the user as a browser download and drop the IndexedDB record —
+    // otherwise capped records sit invisibly in IndexedDB forever (the
+    // resurfacing loop skips them) and the recording is effectively lost.
+    // Keeps the record when the download could not be triggered so a later
+    // pass can try again.
+    const handOffExhaustedUpload = async (failedUploadId, file) => {
+        const downloaded = FailedUploads.triggerLocalDownload(
+            file, file?.name || `speakr-recording-${Date.now()}.webm`);
+        if (!downloaded) return false;
+        try {
+            await FailedUploads.deleteFailedUpload(failedUploadId);
+        } catch (e) {
+            console.warn('[Upload] Could not delete exhausted upload record:', e);
+        }
+        showToast?.(
+            (t && t('toasts.uploadRetriesExhaustedDownloaded'))
+                || 'Automatic upload retries exhausted. The audio was saved to your Downloads folder.',
+            'fa-file-download'
+        );
+        return true;
+    };
+
     // Auto-retry path for #313: read the failed uploads persisted in IndexedDB,
     // rebuild a File for each, and resubmit them through the normal upload queue
     // (correct CSRF, visible in the Processing Queue, works in every browser —
@@ -1103,7 +1140,16 @@ export function useUpload(state, utils) {
             let queued = 0;
             for (const rec of failed) {
                 if (!rec || !rec.fileData) continue;
-                if ((rec.retryCount || 0) >= MAX_AUTO_RETRIES) continue;
+                if ((rec.retryCount || 0) >= MAX_AUTO_RETRIES) {
+                    // Records that hit the cap before this hand-off existed (or
+                    // whose earlier hand-off download failed): give the audio
+                    // back now instead of skipping it forever.
+                    const file = new File([rec.fileData],
+                        rec.fileName || `speakr-recording-${Date.now()}.webm`,
+                        { type: rec.mimeType || 'audio/webm' });
+                    await handOffExhaustedUpload(rec.id, file);
+                    continue;
+                }
 
                 // Skip if this upload is already represented in the queue and
                 // actively in flight; otherwise drop a stale failed item so we

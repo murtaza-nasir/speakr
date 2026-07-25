@@ -9,10 +9,10 @@ import * as ServerSessions from '../db/server-recording-sessions.js';
 
 export function useAudio(state, utils) {
     const {
-        isRecording, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
+        isRecording, isPaused, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
-        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
+        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording, recordingDisclaimer,
         showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing,
         recordSystemVideo, recordingVideoActive, videoRetentionEnabled,
         selectedMicDeviceId, selectedSecondaryDeviceId,
@@ -78,6 +78,7 @@ export function useAudio(state, utils) {
         serverSessionId = null;
         serverSessionUploader = null;
         serverSessionLastError = null;
+        if (isServerStreamedRecording) isServerStreamedRecording.value = false;
     }
 
     // Pick the best MediaRecorder container for the capture. Video captures
@@ -390,6 +391,7 @@ export function useAudio(state, utils) {
         try {
             recordingMode.value = mode;
             recordingVideoActive.value = false;
+            if (isPaused) isPaused.value = false;
             audioChunks.value = [];
             // On resume, continue the on-screen timer and size estimate from
             // where the prior segment left off so both reflect the WHOLE
@@ -398,6 +400,21 @@ export function useAudio(state, utils) {
             serverResumePriorBytes = (resumeContext && resumeContext.priorBytes) || 0;
             estimatedFileSize.value = serverResumePriorBytes;
             fileSizeWarningShown.value = false;
+
+            // A resumed recording already has chunks on the server, so it
+            // cannot become incognito: processing it in incognito would send
+            // only the locally-held new segment (silent partial audio) and
+            // discard the prior one. Force the toggle off — relevant when
+            // INCOGNITO_MODE_DEFAULT is on or the user flipped it earlier.
+            if (resumeContext && resumeContext.sessionId && incognitoMode && incognitoMode.value) {
+                incognitoMode.value = false;
+                showToast(
+                    (utils.t && utils.t('toasts.resumedRecordingNotIncognito'))
+                        || 'Incognito was turned off: this resumed recording was already streaming to the server.',
+                    'fa-user-secret',
+                    7000
+                );
+            }
 
             // Initialize IndexedDB session
             currentChunkIndex = 0;
@@ -701,7 +718,8 @@ export function useAudio(state, utils) {
                         min_speakers: asrMinSpeakers.value || '',
                         max_speakers: asrMaxSpeakers.value || ''
                     },
-                    mimeType
+                    mimeType,
+                    incognito: !!(incognitoMode && incognitoMode.value)
                 });
             } catch (dbError) {
                 console.warn('[Recording] IndexedDB persistence failed, continuing without persistence:', dbError);
@@ -712,7 +730,15 @@ export function useAudio(state, utils) {
             // straight to the server. A failure here logs and falls back to
             // local-only recording — the user's audio is never blocked on
             // a network round-trip.
-            if (_serverRecordingChunksEnabled()) {
+            //
+            // Incognito recordings never open a session: the whole point of
+            // incognito is that audio does not touch server storage until the
+            // explicit process-without-saving upload, so they stay on the
+            // in-browser path (RAM + IndexedDB, 200 MB cap) regardless of the
+            // streaming flag. The resume guard above already cleared the
+            // toggle for resumed server sessions, so this cannot strand a
+            // half-uploaded session.
+            if (_serverRecordingChunksEnabled() && !(incognitoMode && incognitoMode.value)) {
                 try {
                     let startIndex = 1;
                     if (resumeContext && resumeContext.sessionId) {
@@ -739,6 +765,10 @@ export function useAudio(state, utils) {
                             }
                         },
                     });
+                    // Mirror the streaming state into a ref so the recording
+                    // view can hide the size-limit warning UI (#332), which
+                    // only applies to the in-RAM legacy path.
+                    if (isServerStreamedRecording) isServerStreamedRecording.value = true;
                 } catch (e) {
                     serverSessionLastError = e;
                     console.warn('[Recording] Could not open server session; falling back to local-only:', e);
@@ -813,8 +843,28 @@ export function useAudio(state, utils) {
             const appEl = document.getElementById('app');
             const maxHoursAttr = appEl?.dataset?.recordingMaxHours;
             const recordingMaxSeconds = Math.max(60, parseFloat(maxHoursAttr || '8') * 3600);
+            // Warn once at 80% of the ceiling (matching the size warning's
+            // threshold convention) so a long recording never just cuts off
+            // by surprise. `>=` plus a flag, not `===`: a recovered/resumed
+            // recording restores recordingTime past the mark in one jump and
+            // then gets the warning on its first tick.
+            let durationWarningShown = false;
             recordingInterval.value = setInterval(() => {
+                // Freeze the elapsed-time counter while paused (#338). The
+                // interval keeps running so the max-duration closure survives a
+                // pause/resume; it just skips ticking.
+                if (isPaused && isPaused.value) return;
                 recordingTime.value++;
+                if (!durationWarningShown && recordingTime.value >= recordingMaxSeconds * 0.8) {
+                    durationWarningShown = true;
+                    const minutesLeft = Math.max(1, Math.round((recordingMaxSeconds - recordingTime.value) / 60));
+                    showToast(
+                        (utils.t && utils.t('toasts.recordingMaxDurationApproaching', { minutes: minutesLeft }))
+                            || `Recording will stop automatically in about ${minutesLeft} minutes (maximum duration reached).`,
+                        'fa-exclamation-triangle',
+                        7000
+                    );
+                }
                 if (recordingTime.value >= recordingMaxSeconds) {
                     stopRecording();
                     showToast(
@@ -867,10 +917,62 @@ export function useAudio(state, utils) {
     };
 
     // Stop recording
+    // Pause an in-progress recording. MediaRecorder.pause() freezes the media
+    // timeline, so the audio resumes contiguously with no silent gap — meeting
+    // breaks are simply excluded from the recording (#338). Works on every
+    // capture path (mic/system/both, legacy in-RAM and server-streamed) since
+    // it operates purely at the MediaRecorder level.
+    const pauseRecording = () => {
+        const recorder = mediaRecorder.value;
+        if (!recorder || !isRecording.value || (isPaused && isPaused.value)) return;
+        if (recorder.state !== 'recording') return;
+        try {
+            recorder.pause();
+        } catch (e) {
+            console.warn('[Recording] pause() failed:', e);
+            return;
+        }
+        if (isPaused) isPaused.value = true;
+        // The capture tracks stay live while paused, so freeze the level meter —
+        // otherwise it would keep animating to incoming (unrecorded) audio.
+        if (animationFrameId.value) {
+            cancelAnimationFrame(animationFrameId.value);
+            animationFrameId.value = null;
+        }
+        showToast(
+            (utils.t && utils.t('toasts.recordingPaused')) || 'Recording paused',
+            'fa-circle-pause',
+            3000
+        );
+    };
+
+    // Resume a paused recording: MediaRecorder continues the same stream, so the
+    // assembled file stays a single valid container (no new header).
+    const resumeRecording = () => {
+        const recorder = mediaRecorder.value;
+        if (!recorder || !isRecording.value || !(isPaused && isPaused.value)) return;
+        if (recorder.state !== 'paused') return;
+        try {
+            recorder.resume();
+        } catch (e) {
+            console.warn('[Recording] resume() failed:', e);
+            return;
+        }
+        if (isPaused) isPaused.value = false;
+        drawVisualizers();  // restart the level meter
+        showToast(
+            (utils.t && utils.t('toasts.recordingResumed')) || 'Recording resumed',
+            'fa-circle-play',
+            3000
+        );
+    };
+
+    // Stop recording
     const stopRecording = async () => {
         if (mediaRecorder.value && isRecording.value) {
             mediaRecorder.value.stop();
             isRecording.value = false;
+            if (isPaused) isPaused.value = false;
             _detachVideoPreview();
 
             // Clear the recording timer
@@ -912,8 +1014,9 @@ export function useAudio(state, utils) {
         }
     };
 
-    // Upload recorded audio
-    const uploadRecordedAudio = async (opts = {}) => {
+    // Upload recorded audio (inner implementation — call uploadRecordedAudio,
+    // which adds the re-entrancy guard and button state around this).
+    const _uploadRecordedAudioInner = async (opts = {}) => {
         if (!audioBlobURL.value) {
             setGlobalError("No recorded audio to upload.");
             return;
@@ -1062,6 +1165,27 @@ export function useAudio(state, utils) {
         }
     };
 
+    // Public entry point: re-entrancy guard + button state around the inner
+    // upload. Draining the chunk backlog before finalize can take many
+    // seconds with no other visible change, so users double-click — and
+    // every extra call used to send another finalize for the same session,
+    // minting duplicate recordings. The server is idempotent about replayed
+    // finalizes now, but the first line of defense is not sending them:
+    // ignore clicks while one upload is in flight and let the template
+    // disable the buttons via isFinalizingRecording.
+    const uploadRecordedAudio = async (opts = {}) => {
+        if (isFinalizingRecording && isFinalizingRecording.value) {
+            console.log('[Recording] Upload already in progress; ignoring duplicate request');
+            return;
+        }
+        if (isFinalizingRecording) isFinalizingRecording.value = true;
+        try {
+            return await _uploadRecordedAudioInner(opts);
+        } finally {
+            if (isFinalizingRecording) isFinalizingRecording.value = false;
+        }
+    };
+
     // Split-button action: open the merge modal in "recording" mode BEFORE
     // finalizing, so the user picks which existing recording(s) to merge this
     // clip into and in what order. On confirm the modal calls
@@ -1116,6 +1240,29 @@ export function useAudio(state, utils) {
             console.warn('[Incognito] Incognito state not available, falling back to normal upload');
             uploadRecordedAudio();
             return;
+        }
+
+        // The recording may have streamed to a server session before the user
+        // chose incognito in the review pane (incognito recordings never OPEN
+        // a session, but the toggle can be flipped after a normal recording
+        // finishes). Honor the choice: delete the server-side chunks up front,
+        // before processing, rather than only after success via
+        // discardRecording. Refuse outright if part of the audio exists ONLY
+        // on the server (resumed session) — incognito-processing just the
+        // local segment would silently truncate the recording. That state
+        // should be unreachable (the resume path clears the toggle), so this
+        // is defense-in-depth.
+        if (serverSessionId) {
+            if (serverResumePriorBytes > 0) {
+                setGlobalError('This resumed recording cannot be processed in incognito because its earlier audio exists only on the server. Use the normal upload instead.');
+                return;
+            }
+            try {
+                await ServerSessions.abortSession(serverSessionId);
+            } catch (e) {
+                console.warn('[Incognito] Could not abort server session before incognito processing:', e);
+            }
+            _resetServerSessionState();
         }
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1263,6 +1410,7 @@ export function useAudio(state, utils) {
         audioBlobURL.value = null;
         audioChunks.value = [];
         isRecording.value = false;
+        if (isPaused) isPaused.value = false;
         recordingTime.value = 0;
         if (recordingInterval.value) clearInterval(recordingInterval.value);
         recordingNotes.value = '';
@@ -1361,6 +1509,8 @@ export function useAudio(state, utils) {
     // Update file size estimate
     const updateFileSizeEstimate = () => {
         if (!isRecording.value || !audioChunks.value.length) return;
+        // No new chunks arrive while paused (#338); leave the estimate frozen.
+        if (isPaused && isPaused.value) return;
 
         // Include bytes already uploaded before a resume so the estimate (and
         // the derived bitrate) reflect the whole recording, not just the new
@@ -1373,15 +1523,22 @@ export function useAudio(state, utils) {
             actualBitrate.value = (totalSize * 8) / recordingTime.value;
         }
 
-        // Phase C of #287 (c)(d): the 200 MB cap used to be a hard auto-stop
-        // because the entire blob was held in browser RAM and would crash
-        // the tab past a certain size. When server-side chunk streaming is
-        // active that constraint goes away — chunks flush to the server as
-        // they are produced. We still surface a soft warning at the same
-        // threshold so users know they are recording a large file, but the
-        // hard auto-stop is replaced by an absolute hours-based ceiling
-        // (`RECORDING_MAX_HOURS`, default 8) so a runaway recording from a
-        // misclick still has a backstop.
+        // Phase C of #287 (c)(d): the 200 MB cap exists because on the legacy
+        // path the entire blob is held in browser RAM and would crash the tab
+        // past a certain size. When server-side chunk streaming is active that
+        // constraint goes away — chunks flush to the server as they are
+        // produced, so NO size-based warning or stop applies (#332: warning
+        // users about a limit that does not exist was alarming them). The
+        // ceiling in streaming mode is hours-based (`RECORDING_MAX_HOURS`,
+        // default 8, warned about and enforced in the recording-time tick) so
+        // a runaway recording from a misclick still has a backstop.
+        if (serverSessionUploader) {
+            return;
+        }
+
+        // Legacy single-shot path: soft-warn at 80% of the cap, then hard
+        // auto-stop at the cap so the in-memory blob does not run the tab
+        // out of RAM.
         const sizeMB = totalSize / (1024 * 1024);
         const warningThresholdMB = maxRecordingMB.value * 0.8;
 
@@ -1395,14 +1552,6 @@ export function useAudio(state, utils) {
             );
         }
 
-        // Server-streaming path: no client-side hard size cap. The absolute
-        // ceiling is hours-based and lives in the recording-time tick below.
-        if (serverSessionUploader) {
-            return;
-        }
-
-        // Legacy single-shot path: keep the hard auto-stop at the configured
-        // size so the in-memory blob does not run the tab out of RAM.
         if (sizeMB > maxRecordingMB.value) {
             stopRecording();
             showToast(
@@ -1464,6 +1613,13 @@ export function useAudio(state, utils) {
                 asrMaxSpeakers.value = recovered.metadata.asrOptions.max_speakers || '';
             }
 
+            // Restore the incognito state the recording was left in, so a
+            // crashed incognito recording is offered back as incognito instead
+            // of silently becoming a normal (permanently stored) one.
+            if (incognitoMode && enableIncognitoMode && enableIncognitoMode.value) {
+                incognitoMode.value = !!recovered.metadata.incognito;
+            }
+
             console.log('[Recording] Successfully recovered recording from IndexedDB');
             return recovered.metadata;
         } catch (error) {
@@ -1477,8 +1633,21 @@ export function useAudio(state, utils) {
         // Placeholder for future initialization if needed
     };
 
+    // Keep the crash-recovery session's incognito flag in sync with the
+    // toggle. It can be flipped in the review pane after recording stops
+    // (and the modal toggle can flip it with no session — then this is a
+    // harmless no-op), so a crash after the flip still recovers into the
+    // mode the user last chose.
+    if (typeof Vue !== 'undefined' && Vue.watch && incognitoMode) {
+        Vue.watch(incognitoMode, (v) => {
+            RecordingDB.updateRecordingMetadata({ incognito: !!v });
+        });
+    }
+
     return {
         startRecording,
+        pauseRecording,
+        resumeRecording,
         stopRecording,
         discardRecording,
         normalizeLiveMediaDuration,

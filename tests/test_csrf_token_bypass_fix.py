@@ -335,8 +335,12 @@ def test_sso_only_user_can_add_password_via_password_reset_flow():
 
             # Step 5: reset_password sets the first password.
             # Patch the token verifier so we do not need the real
-            # serializer round-trip for the test.
+            # serializer round-trip for the test. The real send step stores
+            # the token on the user; reset_password now binds to that stored
+            # value (single-use enforcement), so mirror that here.
             new_password = 'A_Strong_New_Password!1'
+            user.password_reset_token = 'fake-token-value'
+            db.session.commit()
             with patch('src.api.auth.verify_reset_token', return_value=user.id):
                 resp = client.post(
                     '/reset-password/fake-token-value',

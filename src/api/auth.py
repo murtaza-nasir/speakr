@@ -5,6 +5,7 @@ This blueprint handles user registration, login, logout, account management,
 and password changes.
 """
 
+import hmac
 import os
 import re
 import mimetypes
@@ -86,9 +87,15 @@ def rate_limit(limit_string):
 
 # --- Forms ---
 
+# Trim + lowercase an email field before validators run. Fixes the mobile
+# autofill case where a trailing space makes Email() reject an otherwise-valid
+# address, and normalizes what gets stored so accounts stay case-consistent.
+_normalize_email_filter = lambda x: x.strip().lower() if x else x
+
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), password_check])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
@@ -99,13 +106,14 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('That username is already taken. Please choose a different one.')
 
     def validate_email(self, email):
-        user = User.query.filter_by(email=email.data).first()
-        if user:
+        # Case-insensitive so a case-variant of an existing address can't be
+        # registered as a separate account.
+        if User.find_by_email(email.data):
             raise ValidationError('That email is already registered. Please use a different one.')
 
 
 class LoginForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
@@ -209,7 +217,7 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
+        user = User.find_by_email(form.email.data)
         if user and user.password:
             # Check if password login is disabled for non-admins
             if password_login_disabled and not user.is_admin:
@@ -371,13 +379,11 @@ def sso_unlink():
     return redirect(url_for('auth.account'))
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 def logout():
-    # /logout is GET-only, so Flask-WTF's CSRF check (which runs only on
-    # state-changing methods) does not apply. No explicit exemption is
-    # needed. A future hardening pass should move logout to POST so a
-    # CSRF-redirected GET can't log a victim out, but that is a behaviour
-    # change deferred from this security release.
+    # POST-only so the global CSRF check applies: a cross-site GET (e.g.
+    # <img src="/logout">) can no longer force-log-out a victim. The menu
+    # "Sign out" controls are CSRF-token-carrying POST forms.
     logout_user()
     return redirect(url_for('auth.login'))
 
@@ -423,13 +429,13 @@ def resend_verification():
         return redirect(url_for('auth.login'))
 
     # Get email from session (set during failed login) or form
-    email = session.get('unverified_email') or request.form.get('email')
+    email = User.normalize_email(session.get('unverified_email') or request.form.get('email'))
 
     if not email:
         flash('Email address is required.', 'danger')
         return redirect(url_for('auth.login'))
 
-    user = User.query.filter_by(email=email).first()
+    user = User.find_by_email(email)
 
     if not user:
         # Don't reveal if user exists
@@ -476,13 +482,13 @@ def forgot_password():
         return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = User.normalize_email(request.form.get('email'))
 
         if not email:
             flash('Email address is required.', 'danger')
             return render_template('auth/forgot_password.html', title='Forgot Password')
 
-        user = User.query.filter_by(email=email).first()
+        user = User.find_by_email(email)
 
         # Always show the same message to prevent email enumeration
         if user:
@@ -493,10 +499,13 @@ def forgot_password():
             # case by setting user.password from the form input; if the
             # SSO link is also present, the user ends up with both, which
             # is the prerequisite for sso_unlink later.
-            can_resend, remaining = can_resend_password_reset(user)
-            if not can_resend:
-                flash(f'Please wait {remaining} seconds before requesting another reset email.', 'warning')
-            else:
+            # Only send if outside the resend cooldown, but never surface the
+            # cooldown to the caller: a "please wait N seconds" message would
+            # only ever appear for a real account, confirming the address
+            # exists. Silently skip within the window; the generic message
+            # below is returned identically whether or not the account exists.
+            can_resend, _ = can_resend_password_reset(user)
+            if can_resend:
                 send_password_reset_email(user)
 
         flash('If an account exists with this email, a password reset link has been sent.', 'info')
@@ -524,6 +533,16 @@ def reset_password(token):
     user = db.session.get(User, user_id)
     if not user:
         flash('User not found.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    # Single-use enforcement: the itsdangerous token is only signature+expiry
+    # checked, so on its own it stays replayable for the whole TTL even after
+    # it has been used or superseded. Bind it to the token currently stored on
+    # the user: a used token (cleared on reset) or one superseded by a newer
+    # reset request no longer matches and is rejected immediately.
+    stored_token = user.password_reset_token or ''
+    if not stored_token or not hmac.compare_digest(stored_token, token):
+        flash('The password reset link is invalid or has expired.', 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
@@ -679,17 +698,35 @@ def account():
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
     connector_supports_hotwords = USE_ASR_ENDPOINT
     connector_supports_initial_prompt = USE_ASR_ENDPOINT
+    connector_supports_speaker_embeddings = ASR_RETURN_SPEAKER_EMBEDDINGS
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
+            from src.services.transcription.base import TranscriptionCapability
             registry = get_registry()
             connector = registry.get_active_connector()
             if connector:
                 connector_supports_diarization = connector.supports_diarization
                 connector_supports_hotwords = connector.supports_hotwords
                 connector_supports_initial_prompt = connector.supports_initial_prompt
+                # Query the live instance: the asr_endpoint connector adds the
+                # SPEAKER_EMBEDDINGS capability conditionally (only when its env
+                # flag is on), so the class-level set would be wrong.
+                connector_supports_speaker_embeddings = connector.supports(
+                    TranscriptionCapability.SPEAKER_EMBEDDINGS
+                )
         except Exception as e:
             current_app.logger.warning(f"Could not get connector capabilities: {e}")
+
+    # Speaker auto-labelling comes in two flavours. When the connector returns
+    # voice embeddings, matching is biometric and tuned by a confidence
+    # threshold. When it diarizes but returns no embeddings, we fall back to a
+    # contextual LLM match; the toggle should still be offered in that case (the
+    # threshold does not apply). Surfacing both lets the account page show the
+    # toggle for embedding-less connectors, where it used to be hidden.
+    contextual_labelling_available = (
+        connector_supports_diarization and not connector_supports_speaker_embeddings
+    )
 
     # Check if user is a team admin and get their admin groups
     admin_memberships = GroupMembership.query.filter_by(
@@ -742,7 +779,8 @@ def account():
                            sso_subject=current_user.sso_subject,
                            has_password=bool(current_user.password),
                            password_login_disabled=password_login_disabled,
-                           speaker_embeddings_enabled=ASR_RETURN_SPEAKER_EMBEDDINGS,
+                           speaker_embeddings_enabled=connector_supports_speaker_embeddings,
+                           contextual_labelling_available=contextual_labelling_available,
                            auto_speaker_labelling=current_user.auto_speaker_labelling,
                            auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',
                            admin_disabled_auto_summarization=admin_disabled_auto_summarization,
@@ -870,6 +908,10 @@ def change_password():
     # Update password
     hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
     current_user.password = hashed_password
+    # Invalidate any outstanding password-reset link: a deliberate change must
+    # not leave an emailed reset token able to overwrite the new password.
+    current_user.password_reset_token = None
+    current_user.password_reset_sent_at = None
     db.session.commit()
 
     flash('Your password has been updated!', 'success')

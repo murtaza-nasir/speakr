@@ -275,8 +275,11 @@ class TestIncognitoPassthrough(unittest.TestCase):
         self.assertNotIn('VIDEO_RETENTION', PROCESSING_INCOGNITO)
 
     def test_incognito_still_extracts_without_passthrough(self):
-        """Without passthrough, incognito still extracts audio from video."""
-        self.assertIn('extract_audio_from_video(filepath, cleanup_original=False)',
+        """Without passthrough, incognito still extracts audio from video.
+        allow_debug_copy=False keeps the PRESERVE_TEMP_AUDIO debug copy out
+        of the zero-retention incognito path."""
+        self.assertIn('extract_audio_from_video(', PROCESSING_INCOGNITO)
+        self.assertIn('filepath, cleanup_original=False, allow_debug_copy=False)',
                        PROCESSING_INCOGNITO)
 
     def test_incognito_still_converts_without_passthrough(self):

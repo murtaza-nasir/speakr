@@ -185,7 +185,7 @@ def test_webhook_delivery_blocks_private_ip_at_send_time():
     delivery.event_type = "recording.completed"
 
     with app.app_context():
-        with patch("src.services.webhook_dispatch.requests.post") as mock_post:
+        with patch("src.services.webhook_dispatch._http_post") as mock_post:
             status, preview, error = webhook_dispatch._post_delivery(delivery, wh)
             assert mock_post.call_count == 0, "POST was sent to a private-IP target"
             assert status is None and preview is None
@@ -206,7 +206,7 @@ def test_webhook_delivery_allows_public_host():
     delivery.event_type = "recording.completed"
 
     with app.app_context():
-        with patch("src.services.webhook_dispatch.requests.post",
+        with patch("src.services.webhook_dispatch._http_post",
                    return_value=MagicMock(status_code=204, text="")) as mock_post:
             status, preview, error = webhook_dispatch._post_delivery(delivery, wh)
             # example.com resolves publicly; if DNS is unavailable the guard

@@ -25,6 +25,8 @@
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -227,9 +229,12 @@
                             <span v-text="t('modal.colorScheme')"></span>
                         </button>
                         <div class="border-t border-[var(--border-primary)] my-1"></div>
-                        <a href="/logout" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
-                        </a>
+                        <form method="POST" action="/logout" class="m-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="w-full text-left block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                                <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
+                            </button>
+                        </form>
                     </div>
                 </div>
                 {% endif %}
@@ -833,7 +838,7 @@
                                                     showProcessingStatus.value = false;
                                                 }
                                                 assistantMessage.content += data.delta;
-                                                assistantMessage.html = marked.parse(assistantMessage.content);
+                                                assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
                                                 // Smart scroll during streaming
                                                 await nextTick();
                                                 scrollToBottom();

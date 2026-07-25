@@ -108,17 +108,19 @@ def process_auto_deletion():
     }
 
     try:
-        # Get completed recordings to check
+        # Get settled recordings to check (COMPLETED and FAILED — never QUEUED
+        # or PROCESSING, so an in-flight backlog can't be swept mid-work)
         # In audio_only mode: Skip recordings where audio was already deleted
         # In full_recording mode: Include all (to catch audio-only deletions for full cleanup)
+        settled_statuses = ['COMPLETED', 'FAILED']
         if DELETION_MODE == 'audio_only':
             all_recordings = Recording.query.filter(
-                Recording.status == 'COMPLETED',
+                Recording.status.in_(settled_statuses),
                 Recording.audio_deleted_at.is_(None)  # Skip already-deleted audio
             ).all()
         else:  # full_recording mode
             all_recordings = Recording.query.filter(
-                Recording.status == 'COMPLETED'
+                Recording.status.in_(settled_statuses)
             ).all()
 
         stats['checked'] = len(all_recordings)

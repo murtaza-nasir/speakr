@@ -107,7 +107,8 @@
     "username": "Nome de Usuário",
     "signInSecurity": "Acesso e segurança",
     "password": "Senha",
-    "savedSuccess": "Configurações salvas"
+    "savedSuccess": "Configurações salvas",
+    "contextualSpeakerLabellingHelp": "Os falantes são identificados a partir do contexto da conversa porque o seu mecanismo de transcrição não fornece impressões de voz. Isso pode ser bastante impreciso, dependendo de quanto a conversa revela sobre quem está falando e de quão bem o seu modelo separa os falantes. Para a correspondência de falantes mais precisa, baseada em voz, recomenda-se o contêiner WhisperX ASR."
   },
   "accountTabs": {
     "about": "Sobre",
@@ -314,7 +315,10 @@
     "defaultInitialPromptLabel": "Prompt inicial padrão",
     "defaultInitialPromptDesc": "Enviado ao mecanismo de transcrição para orientar o reconhecimento (por exemplo, o tema ou vocabulário esperado).",
     "defaultHotwordsLabel": "Hotwords padrão",
-    "defaultHotwordsDesc": "Palavras separadas por vírgulas para favorecer o reconhecimento de termos específicos do domínio."
+    "defaultHotwordsDesc": "Palavras separadas por vírgulas para favorecer o reconhecimento de termos específicos do domínio.",
+    "contextualSpeakerPromptTitle": "Prompt para rotulagem contextual de falantes",
+    "contextualSpeakerPromptDesc": "Orientação que o modelo segue ao rotular falantes a partir do contexto da conversa, usada apenas para mecanismos de transcrição que separam falantes sem retornar impressões de voz. A lista de nomes de falantes salvos do usuário e o formato de saída JSON são adicionados automaticamente após este texto. Deixe em branco para usar o padrão integrado.",
+    "contextualSpeakerPromptPlaceholder": "Deixe em branco para usar a orientação padrão integrada."
   },
   "apiTokens": {
     "activeTokens": "Tokens Ativos",
@@ -1019,6 +1023,7 @@
     "unsupportedBrowser": "Navegador Não Suportado",
     "untitled": "Gravação Sem Título",
     "uploadRecordingNotes": "Enviar Gravação e Notas",
+    "uploadingRecording": "Enviando a gravação…",
     "whatWillHappen": "O que acontecerá?",
     "whyNotWorking": "Por que não está funcionando?",
     "youHaveXSpeakers": "Você tem {{count}} oradores, mas apenas 16 cores únicas estão disponíveis. As cores se repetirão após o 16º orador."
@@ -1327,7 +1332,9 @@
     "tabAudioOnlyTooltip": "Somente áudio da aba nesta plataforma — ver ajuda",
     "title": "Gravação de Áudio",
     "videoPreviewLabel": "Pré-visualização ao vivo do vídeo capturado",
-    "virtualMonitor": "virtual / monitor"
+    "virtualMonitor": "virtual / monitor",
+    "recordingPaused": "Pausado",
+    "recordingFinished": "Gravação concluída"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "O áudio será retranscrito do zero. Isso também regenerará o título e o resumo com base na nova transcrição.",
@@ -1773,6 +1780,10 @@
     "processingCompleted": "Processamento concluído!",
     "processingFailed": "Falha no processamento",
     "recordingFinalized": "Gravação enviada para processamento",
+    "recordingPaused": "Gravação pausada",
+    "recordingResumed": "Gravação retomada",
+    "recordingMaxDurationApproaching": "A gravação será interrompida automaticamente em cerca de {{minutes}} minutos (duração máxima).",
+    "resumedRecordingNotIncognito": "O modo anônimo foi desativado: esta gravação retomada já estava sendo transmitida ao servidor.",
     "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",
     "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?",
     "recordingSizeSoftWarning": "A gravação tem {{size}}. Considere parar quando for conveniente.",
@@ -1781,6 +1792,7 @@
     "uploadFailedDownloadedLocally": "Upload falhou. Áudio salvo na pasta Downloads para tentar novamente mais tarde.",
     "uploadFailedNoRecovery": "Upload falhou e o áudio não pôde ser salvo localmente. Por favor, grave novamente.",
     "uploadFailedWillRetry": "Falha no envio — salvo e será reenviado automaticamente quando você reconectar.",
+    "uploadRetriesExhaustedDownloaded": "As tentativas automáticas de envio se esgotaram. O áudio foi salvo na sua pasta de Downloads.",
     "videoRecordingUnsupported": "Este navegador não consegue gravar vídeo — capturando apenas o áudio."
   },
   "webhooks": {

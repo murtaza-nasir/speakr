@@ -1330,9 +1330,11 @@ export function useUI(state, utils, processedTranscription) {
 
         while (low <= high) {
             const mid = Math.floor((low + high) / 2);
-            const startTime = segments[mid].startTime || segments[mid].start_time;
+            // Nullish coalescing (??) so a real 0 (the first segment's
+            // startTime) is preserved rather than falling through.
+            const startTime = segments[mid].startTime ?? segments[mid].start_time;
 
-            if (startTime === undefined) {
+            if (startTime === undefined || startTime === null) {
                 // Skip segments without timing info
                 high = mid - 1;
                 continue;
