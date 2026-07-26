@@ -529,6 +529,7 @@ def prepare_funasr_file_url(recording) -> tuple:
         tuple: (bool, list) - (success, file URLs)
     """
     from flask import current_app
+    from src.config.app_config import S3_INTRANET_ENDPOINT_URL
     from src.services.storage import get_storage_service
     from src.services.storage.locator import parse_locator
 
@@ -590,5 +591,10 @@ def prepare_funasr_file_url(recording) -> tuple:
                 )
 
     url = storage.s3.presign_get_url(s3_locator, expires_seconds=86400)
+
+    if S3_INTRANET_ENDPOINT_URL:
+        from src.config.app_config import S3_ENDPOINT_URL
+        url = url.replace(S3_ENDPOINT_URL, S3_INTRANET_ENDPOINT_URL)
+
     current_app.logger.info(f"FunASR URL ready for recording {recording.id}")
     return True, [url]

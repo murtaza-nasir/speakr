@@ -92,10 +92,10 @@ class S3StorageBackend:
             extra['ContentType'] = content_type
         if metadata:
             extra['Metadata'] = metadata
-        if extra:
-            client.upload_file(local_path, self.bucket, key, ExtraArgs=extra)
-        else:
-            client.upload_file(local_path, self.bucket, key)
+        # Use put_object (single PUT) instead of upload_file (multipart with chunked encoding)
+        # Aliyun OSS rejects aws-chunked encoding used by boto3's multipart upload
+        with open(local_path, 'rb') as body:
+            client.put_object(Bucket=self.bucket, Key=key, Body=body, **extra)
         if delete_source:
             try:
                 os.remove(local_path)
