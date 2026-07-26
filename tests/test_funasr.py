@@ -273,6 +273,31 @@ def test_prepare_existing_s3_audio_without_duplicate_upload():
     assert signed_locator.raw == original_locator
 
 
+def test_prepare_audio_signs_directly_for_configured_intranet_endpoint():
+    original_locator = 's3://bucket/recordings/source.wav'
+    storage = _fake_storage(audio_locator=original_locator)
+    recording = SimpleNamespace(
+        id=1,
+        audio_path=original_locator,
+        original_filename='source.wav',
+        mime_type='audio/wav',
+    )
+
+    with Flask(__name__).app_context(), patch(
+        'src.services.storage.get_storage_service', return_value=storage
+    ), patch(
+        'src.config.app_config.S3_INTRANET_ENDPOINT_URL',
+        'https://oss-cn-shanghai-internal.aliyuncs.com',
+    ):
+        success, urls = prepare_funasr_file_url(recording)
+
+    assert success is True
+    assert urls == [storage.s3.presign_get_url.return_value]
+    assert storage.s3.presign_get_url.call_args.kwargs['endpoint_url'] == (
+        'https://oss-cn-shanghai-internal.aliyuncs.com'
+    )
+
+
 if __name__ == '__main__':
     test_transcription_request_has_no_file_urls_field()
     test_transcription_request_extra_options_pass_through()
