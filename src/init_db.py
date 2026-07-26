@@ -669,10 +669,6 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not create composite index on webhook_delivery: {e}")
 
-        # Add bucket_urls column for S3-compatible bucket storage
-        if add_column_if_not_exists(engine, 'recording', 'bucket_urls', 'JSON'):
-            app.logger.info("Added bucket_urls column to recording table")
-
         # Add folder_id column to recording table for folders feature
         if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
             app.logger.info("Added folder_id column to recording table")

@@ -5,13 +5,14 @@ Supports Alibaba Cloud FunASR (DAMO Academy speech recognition) service.
 Docs: https://help.aliyun.com/zh/model-studio/fun-asr-recorded-speech-recognition-restful-api
 """
 
+import json
 import logging
 import os
-import httpx
-import json
 import time
-from typing import Dict, Any, Set, Optional
-from urllib.parse import urlparse, urlunparse
+from typing import Any, Dict, Optional, Set
+from urllib.parse import urlsplit, urlunsplit
+
+import httpx
 
 from ..base import (
     BaseTranscriptionConnector,
@@ -24,6 +25,12 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 
 logger = logging.getLogger(__name__)
+
+
+def _redact_url(url: str) -> str:
+    """Remove query credentials before a URL is written to logs."""
+    parsed = urlsplit(url)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
 
 
 class AlibabaFunASRConnector(BaseTranscriptionConnector):
@@ -121,7 +128,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
         """
         task_url = f"{self.base_url}/tasks/{task_id}"
 
-        max_attempts = int(self.timeout / self.poll_interval)
+        max_attempts = max(1, int(self.timeout / self.poll_interval))
 
         logger.info(f"Polling task result, task_id: {task_id}")
 
@@ -143,7 +150,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                     if task_status == 'SUCCEEDED':
                         logger.info("Task completed successfully")
                         return data
-                    elif task_status == 'FAILED':
+                    if task_status == 'FAILED':
                         output = data.get('output', {})
                         error_code = output.get('code', 'UNKNOWN_ERROR')
                         error_msg = output.get('message', 'Task failed')
@@ -175,19 +182,13 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                             provider=self.PROVIDER_NAME,
                             status_code=response.status_code
                         )
-                    elif task_status in ('PENDING', 'RUNNING'):
+                    if task_status in ('PENDING', 'RUNNING'):
                         time.sleep(self.poll_interval)
                     else:
                         logger.warning(f"Unknown task status: {task_status}")
                         time.sleep(self.poll_interval)
 
-                except httpx.HTTPStatusError as e:
-                    logger.error(f"Task query failed, status: {e.response.status_code}")
-                    if attempt < max_attempts - 1:
-                        time.sleep(self.poll_interval)
-                    else:
-                        raise
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Task query error: {e}")
                     if attempt < max_attempts - 1:
                         time.sleep(self.poll_interval)
@@ -258,7 +259,12 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 pool=None
             )
 
-            logger.info(f"Sending FunASR request to {url}, payload: {json.dumps(payload, indent=2)[:200]}...")
+            logger.info(
+                "Sending FunASR request to %s (model=%s, files=%d)",
+                url,
+                self.model,
+                len(funasr_file_urls),
+            )
 
             with httpx.Client() as client:
                 response = client.post(url, json=payload, headers=headers, timeout=timeout)
@@ -312,7 +318,10 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 if not transcription_url:
                     raise TranscriptionError("FunASR response missing transcription_url")
 
-                logger.info(f"Downloading transcription result: {transcription_url[:100]}...")
+                logger.info(
+                    "Downloading transcription result: %s",
+                    _redact_url(transcription_url),
+                )
                 transcription_data = self._download_transcription_result(transcription_url)
 
                 return self._parse_transcription_data(transcription_data)
@@ -336,6 +345,8 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
             logger.error(f"FunASR request timed out ({self.timeout}s)")
             raise TranscriptionError(f"FunASR request timed out ({self.timeout}s)") from e
 
+        except TranscriptionError:
+            raise
         except Exception as e:
             error_msg = str(e)
             logger.error(f"FunASR transcription failed: {error_msg}")
@@ -352,7 +363,10 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
             Transcription result data
         """
         try:
-            logger.info(f"Downloading transcription result: {transcription_url[:100]}...")
+            logger.info(
+                "Downloading transcription result: %s",
+                _redact_url(transcription_url),
+            )
 
             with httpx.Client(timeout=30.0) as client:
                 response = client.get(transcription_url)
@@ -369,6 +383,8 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 provider=self.PROVIDER_NAME,
                 status_code=e.response.status_code
             ) from e
+        except TranscriptionError:
+            raise
         except Exception as e:
             logger.error(f"Transcription result download error: {e}")
             raise TranscriptionError(f"Transcription result download failed: {e}") from e
@@ -505,15 +521,14 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
 def prepare_funasr_file_url(recording) -> tuple:
     """Prepare S3 file URL for FunASR transcription.
 
-    Uploads the recording to S3-compatible storage and returns a pre-signed
-    URL suitable for passing to the FunASR API.
+    Return a short-lived URL suitable for passing to the FunASR API. Existing
+    S3 objects are signed directly; local recordings are copied to a staging
+    object only when needed. Signed URLs are never persisted.
 
     Returns:
         tuple: (bool, list) - (success, file URLs)
     """
     from flask import current_app
-    from src.config.app_config import S3_INTRANET_ENDPOINT_URL
-
     from src.services.storage import get_storage_service
     from src.services.storage.locator import parse_locator
 
@@ -524,37 +539,6 @@ def prepare_funasr_file_url(recording) -> tuple:
             "Please set S3_BUCKET_NAME, S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, "
             "and S3_SECRET_ACCESS_KEY."
         )
-
-    from urllib.parse import urlparse, parse_qs
-    import re
-    import datetime
-
-    if recording.bucket_urls:
-        # Check if the pre-signed URL is still valid (not expired)
-        _now = datetime.datetime.utcnow()
-        _any_valid = False
-        for _url in recording.bucket_urls:
-            _parsed = urlparse(_url)
-            _params = parse_qs(_parsed.query)
-            _date_str = _params.get('X-Amz-Date', [None])[0]
-            _expires = _params.get('X-Amz-Expires', [None])[0]
-            if _date_str and _expires:
-                try:
-                    _sig_time = datetime.datetime.strptime(_date_str, '%Y%m%dT%H%M%SZ')
-                    if (_now - _sig_time).total_seconds() < int(_expires):
-                        _any_valid = True
-                        break
-                except (ValueError, TypeError):
-                    _any_valid = True
-                    break
-            else:
-                _any_valid = True
-                break
-        if _any_valid:
-            current_app.logger.info(f"Recording {recording.id} bucket_urls still valid, reusing")
-            return True, recording.bucket_urls
-        else:
-            current_app.logger.info(f"Recording {recording.id} bucket_urls expired, regenerating")
 
     locator_str = storage.maybe_normalize_local_legacy_locator(recording.audio_path)
     if not locator_str:
@@ -572,34 +556,39 @@ def prepare_funasr_file_url(recording) -> tuple:
         current_app.logger.warning(f"Audio not found for recording {recording.id}")
         return False, []
 
-    from os.path import splitext
-    from werkzeug.utils import secure_filename
+    if locator_parsed.scheme == 's3':
+        s3_locator = locator_parsed
+    else:
+        from os.path import splitext
 
-    _orig_name = recording.original_filename or f"recording_{recording.id}"
-    _stem, _orig_ext = splitext(_orig_name)
-    _mime_ext_map = {'audio/mpeg': '.mp3', 'audio/flac': '.flac', 'audio/opus': '.opus', 'audio/wav': '.wav'}
-    _ext = _mime_ext_map.get(recording.mime_type, _orig_ext)
-    safe_filename = secure_filename(_stem + _ext)
-    object_key = f"funasr/{recording.id}/{safe_filename}"
-    s3_locator = parse_locator(storage.s3.build_locator(object_key))
+        from werkzeug.utils import secure_filename
 
-    if not storage.s3.exists(s3_locator):
-        current_app.logger.info(f"Uploading recording {recording.id} to S3: {object_key}")
-        with storage.materialize(locator_str) as materialized:
-            storage.s3.upload_local_file(
-                materialized.local_path,
+        original_name = recording.original_filename or f"recording_{recording.id}"
+        stem, original_ext = splitext(original_name)
+        mime_extensions = {
+            'audio/mpeg': '.mp3',
+            'audio/flac': '.flac',
+            'audio/opus': '.opus',
+            'audio/wav': '.wav',
+        }
+        extension = mime_extensions.get(recording.mime_type, original_ext)
+        safe_filename = secure_filename(stem + extension)
+        object_key = f"funasr/{recording.id}/{safe_filename}"
+        s3_locator = parse_locator(storage.s3.build_locator(object_key))
+
+        if not storage.s3.exists(s3_locator):
+            current_app.logger.info(
+                "Uploading recording %s to FunASR staging object %s",
+                recording.id,
                 object_key,
-                content_type=recording.mime_type or 'application/octet-stream',
             )
+            with storage.materialize(locator_str) as materialized:
+                storage.s3.upload_local_file(
+                    materialized.local_path,
+                    object_key,
+                    content_type=recording.mime_type or 'application/octet-stream',
+                )
 
     url = storage.s3.presign_get_url(s3_locator, expires_seconds=86400)
-
-    if S3_INTRANET_ENDPOINT_URL:
-        from src.config.app_config import S3_ENDPOINT_URL
-        url = url.replace(S3_ENDPOINT_URL, S3_INTRANET_ENDPOINT_URL)
-
-    from src.database import db
-    recording.bucket_urls = [url]
-    db.session.flush()
     current_app.logger.info(f"FunASR URL ready for recording {recording.id}")
     return True, [url]

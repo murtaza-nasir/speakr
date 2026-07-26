@@ -53,12 +53,8 @@ class S3StorageBackend:
         if self.session_token:
             client_kwargs['aws_session_token'] = self.session_token
 
-        addressing_style = 'path' if self.use_path_style else 'virtual'
-        client_kwargs['config'] = Config(
-            signature_version='s3v4',
-            s3={'addressing_style': addressing_style},
-            request_checksum_calculation="when_required",
-        )
+        addressing_style = 'path' if self.use_path_style else 'auto'
+        client_kwargs['config'] = Config(signature_version='s3v4', s3={'addressing_style': addressing_style})
 
         self._client = boto3.client(**client_kwargs)
         return self._client
@@ -96,10 +92,10 @@ class S3StorageBackend:
             extra['ContentType'] = content_type
         if metadata:
             extra['Metadata'] = metadata
-        # Use put_object (single PUT) instead of upload_file (multipart with chunked encoding)
-        # Aliyun OSS rejects aws-chunked encoding used by boto3's multipart upload
-        with open(local_path, 'rb') as body:
-            client.put_object(Bucket=self.bucket, Key=key, Body=body, **extra)
+        if extra:
+            client.upload_file(local_path, self.bucket, key, ExtraArgs=extra)
+        else:
+            client.upload_file(local_path, self.bucket, key)
         if delete_source:
             try:
                 os.remove(local_path)

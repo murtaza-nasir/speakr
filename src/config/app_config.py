@@ -56,10 +56,6 @@ USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
 if ASR_BASE_URL:
     ASR_BASE_URL = ASR_BASE_URL.split('#')[0].strip()
-ASR_API_KEY = os.environ.get('ASR_API_KEY', '')
-if ASR_API_KEY:
-    ASR_API_KEY = ASR_API_KEY.split('#')[0].strip()
-ASR_MODEL = os.environ.get('ASR_MODEL', '')
 
 if USE_ASR_ENDPOINT:
     ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
@@ -102,19 +98,10 @@ S3_ENDPOINT_URL = os.environ.get('S3_ENDPOINT_URL', '').strip() or None
 S3_ACCESS_KEY_ID = os.environ.get('S3_ACCESS_KEY_ID', '').strip() or None
 S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY', '').strip() or None
 S3_SESSION_TOKEN = os.environ.get('S3_SESSION_TOKEN', '').strip() or None
-S3_PRESIGN_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_TTL_SECONDS', '900'))
-S3_PRESIGN_PUBLIC_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_PUBLIC_TTL_SECONDS', '300'))
-
-# Normalize S3 endpoint URLs: add https:// if protocol is missing
-if S3_ENDPOINT_URL and not S3_ENDPOINT_URL.startswith(('http://', 'https://')):
-    S3_ENDPOINT_URL = f'https://{S3_ENDPOINT_URL}'
-
-# Aliyun OSS internal endpoint (optional, eliminates egress bandwidth charges)
-S3_INTRANET_ENDPOINT_URL = os.environ.get('S3_INTRANET_ENDPOINT_URL', '').strip() or None
-if S3_INTRANET_ENDPOINT_URL and not S3_INTRANET_ENDPOINT_URL.startswith(('http://', 'https://')):
-    S3_INTRANET_ENDPOINT_URL = f'https://{S3_INTRANET_ENDPOINT_URL}'
 S3_USE_PATH_STYLE = os.environ.get('S3_USE_PATH_STYLE', 'false').lower() == 'true'
 S3_VERIFY_SSL = os.environ.get('S3_VERIFY_SSL', 'true').lower() == 'true'
+S3_PRESIGN_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_TTL_SECONDS', '900'))
+S3_PRESIGN_PUBLIC_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_PUBLIC_TTL_SECONDS', '300'))
 
 # Unsupported codecs - comma-separated list of codecs to exclude from the default supported list
 # Useful when your transcription service doesn't support certain codecs (e.g., vllm doesn't support opus)

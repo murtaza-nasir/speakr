@@ -2038,11 +2038,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
                     else:
                         # Build the transcription request for single file
-                        audio_file = open(actual_filepath, 'rb')
-                        try:
-                            # FunASR S3 URL preparation.
-                            # Injected via extra_options so the base
-                            # TranscriptionRequest stays upstream-clean.
+                        with open(actual_filepath, 'rb') as audio_file:
+                            # FunASR requires an externally reachable object URL.
                             extra_options = {}
                             if recording:
                                 from src.services.transcription import get_registry
@@ -2066,14 +2063,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 extra_options=extra_options,
                             )
 
-                            current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}, funasr_urls={bool(extra_options.get('funasr_file_urls'))}")
-                            try:
-                                response = connector.transcribe(request)
-                            finally:
-                                # 确保文件在transcribe调用后关闭
-                                audio_file.close()
-                        except Exception as e:
-                            raise
+                            current_app.logger.info(
+                                "Transcribing with connector: diarize=%s, language=%s",
+                                should_diarize,
+                                language,
+                            )
+                            response = connector.transcribe(request)
 
                         # Store the result
                         if response.segments and response.has_diarization():
