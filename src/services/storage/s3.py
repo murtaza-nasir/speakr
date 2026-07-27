@@ -19,6 +19,21 @@ def _is_aliyun_oss_endpoint(endpoint_url: Optional[str]) -> bool:
     return hostname.endswith('.aliyuncs.com')
 
 
+def _botocore_supports_request_checksum() -> bool:
+    """True if the installed botocore accepts request_checksum_calculation.
+
+    The option was added in botocore 1.36.0. Passing it on older installs
+    makes every S3 client fail with a TypeError, including AWS/MinIO users
+    that never touch Aliyun OSS, so it must be applied conditionally.
+    """
+    try:
+        import botocore
+        version = tuple(int(x) for x in botocore.__version__.split('.')[:2])
+    except Exception:
+        return False
+    return version >= (1, 36)
+
+
 class S3StorageBackend:
     """S3 storage backend with lazy boto3 initialization."""
 
@@ -59,11 +74,22 @@ class S3StorageBackend:
         if self.session_token:
             client_kwargs['aws_session_token'] = self.session_token
 
-        if _is_aliyun_oss_endpoint(resolved_endpoint):
-            addressing_style = 'virtual'
-        else:
-            addressing_style = 'path' if self.use_path_style else 'auto'
-        client_kwargs['config'] = Config(signature_version='s3v4', s3={'addressing_style': addressing_style})
+        config_kwargs = {
+            'signature_version': 's3v4',
+            's3': {
+                'addressing_style': (
+                    'virtual' if _is_aliyun_oss_endpoint(resolved_endpoint)
+                    else 'path' if self.use_path_style else 'auto'
+                ),
+            },
+        }
+        # Aliyun OSS rejects the aws-chunked transfer encoding triggered by
+        # request checksums, so opt out for OSS endpoints. AWS/MinIO keep the
+        # botocore default. Guarded by the version that introduced the option.
+        if (_is_aliyun_oss_endpoint(resolved_endpoint)
+                and _botocore_supports_request_checksum()):
+            config_kwargs['request_checksum_calculation'] = 'when_required'
+        client_kwargs['config'] = Config(**config_kwargs)
 
         return boto3.client(**client_kwargs)
 

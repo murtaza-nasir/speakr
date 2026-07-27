@@ -483,6 +483,45 @@ def test_get_client_uses_virtual_addressing_for_aliyun_oss():
     assert mock_config.call_args.kwargs['s3'] == {'addressing_style': 'virtual'}
 
 
+def test_get_client_checksum_option_only_for_aliyun_oss():
+    """request_checksum_calculation must NOT be set for generic AWS/MinIO."""
+    backend = make_backend(endpoint_url='http://minio:9000')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config:
+        backend._get_client()
+
+    assert 'request_checksum_calculation' not in mock_config.call_args.kwargs
+
+
+def test_get_client_checksum_option_set_for_aliyun_oss_new_botocore():
+    """Aliyun OSS + botocore >= 1.36 opts out of request checksums."""
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config, patch(
+        'src.services.storage.s3._botocore_supports_request_checksum',
+        return_value=True,
+    ):
+        backend._get_client()
+
+    assert mock_config.call_args.kwargs['request_checksum_calculation'] == 'when_required'
+
+
+def test_get_client_checksum_option_skipped_for_old_botocore():
+    """botocore < 1.36 must not receive the unsupported option at all."""
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config, patch(
+        'src.services.storage.s3._botocore_supports_request_checksum',
+        return_value=False,
+    ):
+        backend._get_client()
+
+    assert 'request_checksum_calculation' not in mock_config.call_args.kwargs
+
+
 def test_get_client_is_cached():
     backend = make_backend()
     fake_boto_client = MagicMock()
