@@ -81,7 +81,7 @@
         <!-- Header -->
         <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
             <div class="flex items-center gap-3">
-                <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr" class="app-logo w-8 h-8">
+                <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="{{ app_name }}" class="app-logo w-8 h-8">
                 <div>
                     <h1 class="text-xl font-bold text-[var(--text-primary)]">${ recording.title }</h1>
                     <p class="text-sm text-[var(--text-muted)]">Shared Recording</p>
@@ -416,7 +416,7 @@
         <footer class="bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] py-4 px-4 flex-shrink-0">
             <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[var(--text-muted)]">
                 <div class="flex items-center gap-2">
-                    <span>&copy; {{ now.year }} Speakr</span>
+                    <span>&copy; {{ now.year }} {{ app_name }}</span>
                     <span class="hidden sm:inline">•</span>
                     <span class="text-xs">Powered by advanced AI transcription</span>
                 </div>
@@ -427,7 +427,7 @@
                        rel="noopener noreferrer"
                        class="inline-flex items-center gap-1 text-[var(--text-accent)] hover:text-[var(--text-primary)] transition-colors font-medium">
                         <i class="fab fa-github text-sm"></i>
-                        <span>Speakr</span>
+                        <span>{{ app_name }}</span>
                         <i class="fas fa-external-link-alt text-xs opacity-70"></i>
                     </a>
                 </div>

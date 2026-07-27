@@ -60,7 +60,7 @@
             document.body.classList.add('app-loading');
             var overlay = document.createElement('div');
             overlay.className = 'app-loading-overlay';
-            overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading Speakr...</div></div>';
+            overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading {{ app_name }}...</div></div>';
             document.body.appendChild(overlay);
         }
         initLoadingOverlay();

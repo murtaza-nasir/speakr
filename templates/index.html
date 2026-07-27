@@ -57,7 +57,7 @@
     </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Speakr - Audio Transcription & Summarization</title>
+    <title>{{ app_name }} - Audio Transcription & Summarization</title>
     {% include 'includes/loading_overlay.html' %}
     <!-- All dependencies bundled locally for offline support -->
     <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>

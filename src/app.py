@@ -631,6 +631,13 @@ def csrf_token_aware_check():
 def inject_now():
     return {'now': datetime.now()}
 
+
+@app.context_processor
+def inject_app_name():
+    from src.config.app_config import APP_NAME
+    return {'app_name': APP_NAME}
+
+
 @app.context_processor
 def inject_group_admin_status():
     """Inject is_group_admin flag into all templates."""

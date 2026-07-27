@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>{{ title }} - Speakr</title>
+    <title>{{ title }} - {{ app_name }}</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
@@ -1936,9 +1936,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <div class="max-w-4xl mx-auto space-y-6">
                             <!-- Identity strip -->
                             <div class="flex items-center gap-4">
-                                <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="app-logo h-12 w-12 flex-shrink-0">
+                                <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="{{ app_name }} Logo" class="app-logo h-12 w-12 flex-shrink-0">
                                 <div class="flex-1">
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]">Speakr</h2>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]">{{ app_name }}</h2>
                                     <p class="text-sm text-[var(--text-muted)]" data-i18n="aboutPage.tagline">AI-Powered Audio Transcription &amp; Note-Taking</p>
                                 </div>
                                 <span class="inline-flex items-center px-2.5 py-1 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md text-xs font-mono border border-[var(--border-primary)]">
@@ -4371,7 +4371,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         const data = await response.json();
                         const footerText = document.getElementById('footer-text');
                         if (footerText && data.version) {
-                            const value = `Speakr ${data.version} © {{ now.year }}`;
+                            const value = `{{ app_name }} ${data.version} © {{ now.year }}`;
                             footerText.textContent = value;
                             document.documentElement.style.setProperty(
                                 '--footer-version-text',

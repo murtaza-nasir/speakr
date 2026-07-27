@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>{{ title }} - Speakr</title>
+    <title>{{ title }} - {{ app_name }}</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
     <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
@@ -42,7 +42,7 @@
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
                 <a href="{{ url_for('recordings.index') }}" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr Logo" class="app-logo h-9 w-9 mr-2">
+                    <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="{{ app_name }} Logo" class="app-logo h-9 w-9 mr-2">
                     Speakr
                 </a>
             </h1>
@@ -112,7 +112,7 @@
         </main>
 
         <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
-            Speakr &copy; {{ now.year }}
+            {{ app_name }} &copy; {{ now.year }}
         </footer>
     </div>
 

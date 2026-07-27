@@ -11,8 +11,8 @@
     <!-- Left: Speakr logo + name + optional page label -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <a href="{{ url_for('recordings.index') }}" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
-            <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
-            <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
+            <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="{{ app_name }}" class="app-logo w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
+            <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">{{ app_name }}</h1>
         </a>
         {% if page_label %}
         <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>

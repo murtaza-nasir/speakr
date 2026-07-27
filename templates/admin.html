@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>{% if is_group_admin_only %}Group Management{% else %}Admin Dashboard{% endif %} - Speakr</title>
+    <title>{% if is_group_admin_only %}Group Management{% else %}Admin Dashboard{% endif %} - {{ app_name }}</title>
 
     <!-- Loading overlay to prevent FOUC - MUST be first -->
     {% include 'includes/loading_overlay.html' %}
@@ -161,7 +161,7 @@
                     if (!r.ok) return;
                     const data = await r.json();
                     if (!data.version) return;
-                    const value = `Speakr ${data.version} © {{ now.year }}`;
+                    const value = `{{ app_name }} ${data.version} © {{ now.year }}`;
                     const ft = document.getElementById('footer-text');
                     if (ft) ft.textContent = value;
                     document.documentElement.style.setProperty(

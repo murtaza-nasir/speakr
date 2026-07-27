@@ -18,7 +18,7 @@
     </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Inquire Mode - Speakr</title>
+    <title>Inquire Mode - {{ app_name }}</title>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
@@ -160,8 +160,8 @@
                 
                 <!-- Logo and Title (clickable to go back) -->
                 <a href="/" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
-                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
-                    <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
+                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="{{ app_name }}" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+                    <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">{{ app_name }}</h1>
                     <span class="text-xs sm:text-sm text-[var(--text-muted)] hidden sm:inline">• Inquire Mode</span>
                 </a>
             </div>
