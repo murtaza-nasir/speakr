@@ -590,11 +590,11 @@ def prepare_funasr_file_url(recording) -> tuple:
                     content_type=recording.mime_type or 'application/octet-stream',
                 )
 
-    url = storage.s3.presign_get_url(s3_locator, expires_seconds=86400)
-
-    if S3_INTRANET_ENDPOINT_URL:
-        from src.config.app_config import S3_ENDPOINT_URL
-        url = url.replace(S3_ENDPOINT_URL, S3_INTRANET_ENDPOINT_URL)
+    url = storage.s3.presign_get_url(
+        s3_locator,
+        expires_seconds=86400,
+        endpoint_url=S3_INTRANET_ENDPOINT_URL,
+    )
 
     current_app.logger.info(f"FunASR URL ready for recording {recording.id}")
     return True, [url]
