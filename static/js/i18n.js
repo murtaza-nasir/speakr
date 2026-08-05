@@ -41,7 +41,11 @@ class I18n {
         }
 
         try {
-            const response = await fetch(`/static/locales/${locale}.json`);
+            // 'no-cache' forces a conditional revalidation so a browser (or
+            // proxy) heuristic cache can never serve a previous release's
+            // locale file against newer templates — the "Translation not
+            // found" spam after upgrades (issue #357).
+            const response = await fetch(`/static/locales/${locale}.json`, { cache: 'no-cache' });
             if (!response.ok) {
                 throw new Error(`Failed to load locale: ${locale}`);
             }

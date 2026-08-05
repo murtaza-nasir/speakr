@@ -219,9 +219,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Register Service Worker (non-blocking)
     if ('serviceWorker' in navigator) {
+        // Version the registration URL so every release installs a fresh
+        // worker with its own cache namespace; otherwise a byte-identical
+        // sw.js keeps serving the previous release's cached app shell
+        // forever (issue #357).
+        const appVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || '';
+        const swUrl = appVersion ? `/static/sw.js?v=${encodeURIComponent(appVersion)}` : '/static/sw.js';
         // Delay registration to not block page load
         setTimeout(() => {
-            navigator.serviceWorker.register('/static/sw.js')
+            navigator.serviceWorker.register(swUrl)
                 .then(registration => {
                     console.log('ServiceWorker registration successful with scope:', registration.scope);
                 })
