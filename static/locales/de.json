@@ -411,6 +411,7 @@
     "noMessagesToDownload": "Keine Chat-Nachrichten zum Herunterladen.",
     "placeholder": "Eine Frage zu dieser Aufnahme stellen...",
     "placeholderWithHint": "Eine Frage zu dieser Aufnahme stellen... (Enter zum Senden, Strg+Enter für neue Zeile)",
+    "responseTruncated": "Antwort wurde vorzeitig beendet, da das Ausgabe-Token-Limit erreicht wurde. Bitten Sie das Modell fortzufahren oder erhöhen Sie CHAT_MAX_TOKENS.",
     "send": "Senden",
     "suggestedQuestions": "Vorgeschlagene Fragen",
     "thinking": "Denke nach...",

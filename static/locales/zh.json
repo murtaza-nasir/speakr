@@ -411,6 +411,7 @@
     "noMessagesToDownload": "没有可下载的聊天消息。",
     "placeholder": "询问有关此录音的问题...",
     "placeholderWithHint": "询问有关此录音的问题...（按回车发送，Ctrl+回车换行）",
+    "responseTruncated": "回复因达到输出 token 上限而提前中止。可让模型继续回答，或增大 CHAT_MAX_TOKENS。",
     "send": "发送",
     "suggestedQuestions": "建议问题",
     "thinking": "思考中...",

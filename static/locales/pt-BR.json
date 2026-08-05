@@ -411,6 +411,7 @@
     "noMessagesToDownload": "Nenhuma mensagem de chat para baixar.",
     "placeholder": "Faça uma pergunta sobre esta gravação...",
     "placeholderWithHint": "Faça uma pergunta sobre esta gravação... (Enter para enviar, Ctrl+Enter para nova linha)",
+    "responseTruncated": "A resposta foi interrompida porque o limite de tokens de saída foi atingido. Peça ao modelo para continuar ou aumente CHAT_MAX_TOKENS.",
     "send": "Enviar",
     "suggestedQuestions": "Perguntas Sugeridas",
     "thinking": "Pensando...",

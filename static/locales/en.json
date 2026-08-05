@@ -411,6 +411,7 @@
     "noMessagesToDownload": "No chat messages to download.",
     "placeholder": "Ask a question about this recording...",
     "placeholderWithHint": "Ask a question about this recording... (Enter to send, Ctrl+Enter for new line)",
+    "responseTruncated": "Response stopped early because the output token limit was reached. Ask the model to continue, or increase CHAT_MAX_TOKENS.",
     "send": "Send",
     "suggestedQuestions": "Suggested Questions",
     "thinking": "Thinking...",

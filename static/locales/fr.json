@@ -411,6 +411,7 @@
     "noMessagesToDownload": "Aucun message à télécharger.",
     "placeholder": "Posez une question sur cet enregistrement...",
     "placeholderWithHint": "Posez une question sur cet enregistrement... (Entrée pour envoyer, Ctrl+Entrée pour nouvelle ligne)",
+    "responseTruncated": "La réponse s'est arrêtée prématurément car la limite de jetons de sortie a été atteinte. Demandez au modèle de continuer ou augmentez CHAT_MAX_TOKENS.",
     "send": "Envoyer",
     "suggestedQuestions": "Questions Suggérées",
     "thinking": "Réflexion...",

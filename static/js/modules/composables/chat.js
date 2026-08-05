@@ -190,6 +190,13 @@ export function useChat(state, utils) {
                                         }
                                     }
                                     if (data.end_of_stream) {
+                                        // Provider hit its output-token limit: keep the
+                                        // partial answer but tell the user it was cut off
+                                        // instead of presenting it as complete (issue #349).
+                                        if (data.truncated && assistantMessage && assistantMessage.content) {
+                                            assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
+                                            assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
+                                        }
                                         return;
                                     }
                                     if (data.error) {

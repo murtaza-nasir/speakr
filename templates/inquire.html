@@ -843,6 +843,12 @@
                                                 await nextTick();
                                                 scrollToBottom();
                                             } else if (data.end_of_stream) {
+                                                // Flag output-token-limit truncation instead of
+                                                // presenting the partial answer as complete (issue #349).
+                                                if (data.truncated && messageAdded && assistantMessage.content) {
+                                                    assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
+                                                    assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
+                                                }
                                                 return;
                                             } else if (data.error) {
                                                 if (data.budget_exceeded) {

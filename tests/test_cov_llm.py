@@ -71,10 +71,10 @@ def make_completion(content="hello", usage=None, finish_reason="stop", **msg_ext
     )
 
 
-def make_chunk(content=None, usage=None):
+def make_chunk(content=None, usage=None, finish_reason=None):
     """A streaming chunk with one choice delta."""
     delta = SimpleNamespace(content=content)
-    choice = SimpleNamespace(delta=delta)
+    choice = SimpleNamespace(delta=delta, finish_reason=finish_reason)
     chunk = SimpleNamespace(choices=[choice], usage=usage)
     return chunk
 
@@ -686,6 +686,35 @@ def test_streaming_unclosed_thinking_tag():
     events = _collect(process_streaming_with_thinking(stream))
     thinking = [e["thinking"] for e in events if "thinking" in e]
     assert thinking == ["still thinking"]
+    assert events[-1] == {"end_of_stream": True}
+
+
+def test_streaming_finish_reason_length_marks_truncated():
+    # Provider hit its output-token cap: the terminal event must carry the
+    # truncation signal instead of a bare end_of_stream (issue #349).
+    stream = [make_chunk("partial answer", finish_reason="length")]
+    events = _collect(process_streaming_with_thinking(stream))
+    assert events[-1] == {
+        "end_of_stream": True,
+        "finish_reason": "length",
+        "truncated": True,
+    }
+
+
+def test_streaming_finish_reason_stop_not_truncated():
+    stream = [make_chunk("done", finish_reason="stop")]
+    events = _collect(process_streaming_with_thinking(stream))
+    assert events[-1] == {"end_of_stream": True, "finish_reason": "stop"}
+    assert "truncated" not in events[-1]
+
+
+def test_streaming_chunks_without_finish_reason_attr():
+    # Chunks lacking a finish_reason attribute entirely (older/odd providers)
+    # must still produce a plain end_of_stream event.
+    delta = SimpleNamespace(content="hi")
+    choice = SimpleNamespace(delta=delta)
+    stream = [SimpleNamespace(choices=[choice], usage=None)]
+    events = _collect(process_streaming_with_thinking(stream))
     assert events[-1] == {"end_of_stream": True}
 
 
