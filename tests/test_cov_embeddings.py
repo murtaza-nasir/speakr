@@ -377,6 +377,73 @@ def test_api_embed_forwards_dimensions(api_emb):
         _restore_env(saved)
 
 
+def test_api_embed_sends_float_encoding_format(api_emb):
+    # OpenAI SDK v2 defaults to base64, which some OpenAI-compatible
+    # providers cannot produce; float must be requested explicitly (PR #352).
+    client = _client_returning([[0.1, 0.2]])
+    with app.app_context():
+        with patch.object(api_emb, "get_embedding_api_client", return_value=client):
+            api_emb._api_embed(["x"])
+    assert client.embeddings.create.call_args.kwargs["encoding_format"] == "float"
+
+
+def test_api_embed_drops_dimensions_on_provider_rejection(api_emb):
+    # Models without Matryoshka support (e.g. BAAI/bge-m3) 400 on the
+    # 'dimensions' parameter. The call must retry without it and remember
+    # the rejection for later calls instead of failing the pipeline (PR #352).
+    emb, saved = _reload_embeddings(
+        EMBEDDING_BASE_URL="http://localhost:9999/v1",
+        EMBEDDING_MODEL="bge-m3",
+        EMBEDDING_DIMENSIONS="8",
+        EMBEDDING_API_BACKOFF_SECONDS="0",
+    )
+    try:
+        resp = MagicMock()
+        resp.data = [MagicMock(embedding=[0.0] * 8)]
+        resp.usage = None
+        client = MagicMock()
+        client.embeddings.create.side_effect = [
+            Exception("400: extra_forbidden - dimensions is not supported"),
+            resp,
+        ]
+        with app.app_context():
+            with patch.object(emb, "get_embedding_api_client", return_value=client):
+                out = emb._api_embed(["x"])
+        assert len(out) == 1
+        first, second = client.embeddings.create.call_args_list
+        assert "dimensions" in first.kwargs
+        assert "dimensions" not in second.kwargs
+
+        # A later call must skip dimensions from the start.
+        client2 = _client_returning([[0.0] * 8])
+        with app.app_context():
+            with patch.object(emb, "get_embedding_api_client", return_value=client2):
+                emb._api_embed(["y"])
+        assert "dimensions" not in client2.embeddings.create.call_args.kwargs
+    finally:
+        _restore_env(saved)
+
+
+def test_api_embed_dimensions_kept_when_supported(api_emb):
+    # A provider that accepts dimensions keeps receiving it on every call.
+    emb, saved = _reload_embeddings(
+        EMBEDDING_BASE_URL="http://localhost:9999/v1",
+        EMBEDDING_MODEL="text-embedding-3-large",
+        EMBEDDING_DIMENSIONS="8",
+        EMBEDDING_API_BACKOFF_SECONDS="0",
+    )
+    try:
+        client = _client_returning([[0.0] * 8])
+        with app.app_context():
+            with patch.object(emb, "get_embedding_api_client", return_value=client):
+                emb._api_embed(["x"])
+                emb._api_embed(["y"])
+        for call in client.embeddings.create.call_args_list:
+            assert call.kwargs["dimensions"] == 8
+    finally:
+        _restore_env(saved)
+
+
 def test_api_embed_retries_then_succeeds(api_emb):
     resp = MagicMock()
     resp.data = [MagicMock(embedding=[1.0, 2.0])]

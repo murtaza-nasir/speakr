@@ -137,6 +137,19 @@ def _is_transient_embedding_error(exc):
     return any(hint in msg for hint in _TRANSIENT_ERROR_HINTS)
 
 
+# Set to True the first time the provider rejects the 'dimensions' parameter
+# (models without Matryoshka support, e.g. BAAI/bge-m3, return a 400). Later
+# calls then omit the parameter instead of failing the whole pipeline. Probing
+# the provider beats a hardcoded list of dimension-capable model names, which
+# would silently disable a setting that newer models do support.
+_dimensions_rejected = False
+
+
+def _is_dimensions_rejection(exc):
+    """True when the error looks like the model rejecting the 'dimensions' kwarg."""
+    return 'dimension' in str(exc).lower()
+
+
 def _api_embed(texts, user_id=None):
     """Call the OpenAI-compatible embeddings endpoint and return numpy vectors.
 
@@ -154,12 +167,17 @@ def _api_embed(texts, user_id=None):
     When ``user_id`` is provided and the response includes a ``usage``
     block, record the call against the daily token-usage aggregate.
     """
+    global _dimensions_rejected
+
     client = get_embedding_api_client()
     if client is None or not texts:
         return []
 
-    kwargs = {'input': texts, 'model': EMBEDDING_MODEL}
-    if EMBEDDING_DIMENSIONS is not None:
+    # encoding_format='float' explicitly: OpenAI SDK v2 defaults to base64,
+    # which some OpenAI-compatible providers cannot produce; float is the
+    # format every compatible provider accepts.
+    kwargs = {'input': texts, 'model': EMBEDDING_MODEL, 'encoding_format': 'float'}
+    if EMBEDDING_DIMENSIONS is not None and not _dimensions_rejected:
         kwargs['dimensions'] = EMBEDDING_DIMENSIONS
 
     last_exc = None
@@ -194,6 +212,16 @@ def _api_embed(texts, user_id=None):
 
         except Exception as e:
             last_exc = e
+            if 'dimensions' in kwargs and _is_dimensions_rejection(e):
+                _dimensions_rejected = True
+                kwargs.pop('dimensions')
+                current_app.logger.warning(
+                    f"Embedding model '{EMBEDDING_MODEL}' rejected the 'dimensions' "
+                    f"parameter (EMBEDDING_DIMENSIONS={EMBEDDING_DIMENSIONS}): {e}. "
+                    "Retrying without it; the setting will be ignored for the rest "
+                    "of this process."
+                )
+                continue
             transient = _is_transient_embedding_error(e)
             if not transient or attempt == _API_EMBED_MAX_ATTEMPTS:
                 current_app.logger.error(
