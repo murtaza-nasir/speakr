@@ -2020,17 +2020,27 @@ def get_recording_speakers(recording_id):
             'segment_count': count
         })
 
-    # Get voice-based suggestions
+    # Get voice-based suggestions. speaker_embeddings maps each SPEAKER_XX
+    # label to one 256-dim embedding; find_matching_speakers takes a single
+    # embedding (plus user_id) and returns a sorted match list with
+    # similarity already expressed as a percentage.
     suggestions = {}
     if recording.speaker_embeddings:
         try:
-            matches = find_matching_speakers(current_user.id, recording.speaker_embeddings)
-            for label, speaker_matches in matches.items():
+            embeddings_data = (
+                json.loads(recording.speaker_embeddings)
+                if isinstance(recording.speaker_embeddings, str)
+                else recording.speaker_embeddings
+            )
+            for label, embedding in embeddings_data.items():
+                if not embedding or len(embedding) != 256:
+                    continue
+                matches = find_matching_speakers(embedding, current_user.id)
                 suggestions[label] = [{
                     'speaker_id': m['speaker_id'],
                     'name': m['name'],
-                    'similarity': round(m['similarity'] * 100, 1)
-                } for m in speaker_matches[:3]]
+                    'similarity': m['similarity']
+                } for m in matches[:3]]
         except Exception as e:
             current_app.logger.error(f"Error getting speaker suggestions: {e}")
 

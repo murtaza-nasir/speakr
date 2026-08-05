@@ -855,6 +855,48 @@ def test_regression_get_recording_speakers():
                 _cleanup(user)
 
 
+def test_regression_get_recording_speakers_voice_suggestions():
+    """GET /recordings/<id>/speakers returns voice suggestions per label.
+
+    Regression: this endpoint used to call find_matching_speakers with its
+    arguments reversed (user_id first) and treat the returned list as a
+    dict, so the suggestions block always errored out and returned {}.
+    """
+    with app.app_context():
+        user, cu = _get_or_create_test_user()
+        token_rec, token = _create_api_token(user)
+        rec = _create_test_recording(
+            user,
+            transcription=SAMPLE_TRANSCRIPTION_JSON,
+            speaker_embeddings=SAMPLE_EMBEDDINGS,
+        )
+        client = app.test_client()
+        try:
+            fake_matches = [
+                {"speaker_id": 7, "name": "Alice", "similarity": 91.2, "confidence": 0.9},
+                {"speaker_id": 8, "name": "Bob", "similarity": 75.0, "confidence": 0.6},
+            ]
+            with patch("src.services.speaker_embedding_matcher.find_matching_speakers",
+                       return_value=fake_matches) as mock_find:
+                resp = client.get(f"/api/v1/recordings/{rec.id}/speakers",
+                                  headers={"X-API-Token": token})
+            assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+            body = resp.get_json()
+            suggestions = body.get("suggestions", {})
+            assert set(suggestions.keys()) == {"SPEAKER_00", "SPEAKER_01"}, suggestions
+            assert suggestions["SPEAKER_00"][0]["name"] == "Alice"
+            assert suggestions["SPEAKER_00"][0]["similarity"] == 91.2
+            # The embedding must be the first positional argument and the
+            # user id the second (the historical bug had them reversed).
+            first_call_args = mock_find.call_args_list[0].args
+            assert isinstance(first_call_args[0], list) and len(first_call_args[0]) == 256
+            assert first_call_args[1] == user.id
+        finally:
+            _cleanup(rec, token_rec)
+            if cu:
+                _cleanup(user)
+
+
 # =========================================================================
 # Runner
 # =========================================================================
@@ -898,6 +940,7 @@ ALL_TESTS = [
     # Group 4: regression
     test_regression_get_speakers_list,
     test_regression_get_recording_speakers,
+    test_regression_get_recording_speakers_voice_suggestions,
 ]
 
 
