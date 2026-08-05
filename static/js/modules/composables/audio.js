@@ -621,7 +621,12 @@ export function useAudio(state, utils) {
                 // mobile, when no explicit selection is active and the browser
                 // exposes a confidently separate physical input. Desktop keeps
                 // its native chooser without a second automatic selection step.
-                if (!primaryDeviceId && shouldAutoOfferExternalAudioInput()) {
+                // Never offer during a resume: a continued session must keep
+                // its original input, and the prompt UI lives inside the
+                // upload modal, which a crash-recovery resume may not have
+                // open — awaiting the selection there would hang forever
+                // with the record buttons stuck disabled.
+                if (!primaryDeviceId && !resumeContext && shouldAutoOfferExternalAudioInput()) {
                     const candidates = findExternalAudioInputCandidates(refreshedInputs, activeDeviceId);
                     const candidateSignature = getAudioInputCandidateSignature(candidates);
                     if (candidates.length > 0

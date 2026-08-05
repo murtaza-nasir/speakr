@@ -456,19 +456,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const devs = await navigator.mediaDevices.enumerateDevices();
                     const inputs = normalizeAudioInputDevices(devs);
                     inputAudioDevices.value = inputs;
-
-                    // Before permission, browsers often expose only opaque or
-                    // blank entries. Reconcile persisted IDs only once labels
-                    // prove that the full device list is available.
-                    if (inputs.some(device => device.label)) {
-                        const availableIds = new Set(inputs.map(device => device.deviceId));
-                        if (selectedMicDeviceId.value && !availableIds.has(selectedMicDeviceId.value)) {
-                            selectedMicDeviceId.value = '';
-                        }
-                        if (selectedSecondaryDeviceId.value && !availableIds.has(selectedSecondaryDeviceId.value)) {
-                            selectedSecondaryDeviceId.value = '';
-                        }
-                    }
+                    // Deliberately no reconciliation of the persisted device
+                    // IDs here: a device can be momentarily absent from an
+                    // enumeration (undock/redock, USB re-plug, devicechange
+                    // races), and clearing the saved selection on that signal
+                    // silently switches later recordings to the default mic.
+                    // A genuinely stale selection is handled loudly at
+                    // acquisition time instead: acquireMicrophoneStream falls
+                    // back to the default, clears the saved ID, and shows the
+                    // "selected microphone unavailable" toast.
                     return inputs;
                 } catch (_) {
                     inputAudioDevices.value = [];

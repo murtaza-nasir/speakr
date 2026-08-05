@@ -65,13 +65,16 @@ describe('audio input device helpers', () => {
             .toMatchObject([{ deviceId: 'external-mic', label }]);
     });
 
-    it('uses a distinct group as a conservative fallback for a named device', () => {
+    it('does not offer a distinct-group device without an external label hint', () => {
+        // The internal/generic exclusion regexes are English-only, so a bare
+        // "different groupId" fallback would promote untranslated internal
+        // routes (earpiece, speakerphone) to candidates on non-English
+        // devices. Only explicit external hints may trigger the prompt.
         const devices = [
             input('phone-mic', 'Primary microphone', 'phone'),
             input('interface', 'Scarlett 2i2', 'interface')
         ];
-        expect(findExternalAudioInputCandidates(devices, 'phone-mic'))
-            .toMatchObject([{ deviceId: 'interface' }]);
+        expect(findExternalAudioInputCandidates(devices, 'phone-mic')).toEqual([]);
     });
 
     it('does not infer an external input from group data without an active group', () => {

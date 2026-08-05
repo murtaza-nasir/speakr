@@ -70,13 +70,14 @@ export function findExternalAudioInputCandidates(devices = [], activeDeviceId = 
         if (device.deviceId === activeDeviceId) return false;
         if (device.deviceId === 'default' || device.deviceId === 'communications') return false;
         if (GENERIC_INPUT_LABEL.test(device.label) || INTERNAL_INPUT_LABEL_HINT.test(device.label)) return false;
-        if (EXTERNAL_INPUT_LABEL_HINT.test(device.label)) return true;
-
-        return !!(
-            active?.groupId
-            && device.groupId
-            && device.groupId !== active.groupId
-        );
+        // Positive label-hint matches only. A bare "different groupId"
+        // fallback was tried here and over-triggered badly: the
+        // internal/generic exclusion regexes are English-only, so on
+        // non-English devices internal routes (earpiece, speakerphone)
+        // escape them and every phone would prompt about its own built-in
+        // inputs. Requiring an explicit external hint keeps the prompt
+        // conservative; users can always open the device panel manually.
+        return EXTERNAL_INPUT_LABEL_HINT.test(device.label);
     });
 }
 
