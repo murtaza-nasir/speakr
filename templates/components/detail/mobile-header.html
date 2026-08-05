@@ -107,14 +107,14 @@
                 </button>
             </template>
             <template v-else-if="mobileTab === 'chat' && chatMessages && chatMessages.length > 0">
-                <button @click.stop="clearChat" class="btn btn--icon btn--sm" title="Clear chat">
+                <button @click.stop="clearChat" class="btn btn--icon btn--sm" :title="t('tooltips.clearChat')">
                     <i class="fas fa-times"></i>
                 </button>
             </template>
 
             <button @click.stop="isMetadataExpanded = !isMetadataExpanded"
                     class="btn btn--icon btn--sm"
-                    :title="isMetadataExpanded ? 'Hide details' : 'Show details'">
+                    :title="isMetadataExpanded ? t('tooltips.hideDetails') : t('tooltips.showDetails')">
                 <i :class="['fas fa-chevron-down text-xs transition-transform', { 'rotate-180': isMetadataExpanded }]"></i>
             </button>
         </div>
@@ -190,7 +190,7 @@
                     <label v-if="foldersEnabled && selectedRecording.can_edit !== false"
                            class="btn btn--icon btn--sm flex-shrink-0 cursor-pointer"
                            style="position: relative;"
-                           :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
+                           :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
                         <select @change.stop="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
                                 :value="selectedRecording.folder_id || ''"
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; background: transparent;">
@@ -213,14 +213,14 @@
                     <button @click.stop="toggleInbox(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
-                            title="Inbox"><i class="fas fa-inbox"></i></button>
+                            :title="t('sidebar.inbox')"><i class="fas fa-inbox"></i></button>
                     <button @click.stop="toggleHighlight(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
-                            title="Highlight"><i class="fas fa-star"></i></button>
+                            :title="t('tooltips.highlight')"><i class="fas fa-star"></i></button>
                     <button @click.stop="editRecordingTags(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            title="Edit tags"><i class="fas fa-tags"></i></button>
+                            :title="t('buttons.editTags')"><i class="fas fa-tags"></i></button>
                     <!-- Subtle inline divider so the destructive / reset
                          actions read as a distinct group from the
                          everyday actions. -->
@@ -228,24 +228,24 @@
                     <button @click.stop="confirmReprocess('transcription', selectedRecording)"
                             v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            title="Reprocess transcription"><i class="fas fa-redo-alt"></i></button>
+                            :title="t('tooltips.reprocessTranscription')"><i class="fas fa-redo-alt"></i></button>
                     <button @click.stop="confirmReprocess('summary', selectedRecording)"
                             v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            title="Regenerate summary"><i class="fas fa-sync-alt"></i></button>
+                            :title="t('summary.regenerateSummary')"><i class="fas fa-sync-alt"></i></button>
                     <button @click.stop="confirmReset(selectedRecording)"
                             v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             style="color: var(--text-warn, #d97706);"
-                            title="Reset"><i class="fas fa-undo"></i></button>
+                            :title="t('buttons.resetStuckProcessing')"><i class="fas fa-undo"></i></button>
                     <button @click.stop="openSpeakerModal"
                             v-if="processedTranscription.hasDialogue"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            title="Identify speakers"><i class="fas fa-user-tag"></i></button>
+                            :title="t('buttons.identifySpeakers')"><i class="fas fa-user-tag"></i></button>
                     <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
                             @click.stop="openUnifiedShareModal(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            title="Share"><i class="fas fa-share-alt"></i></button>
+                            :title="t('buttons.shareRecording')"><i class="fas fa-share-alt"></i></button>
                     <!-- Pushes delete to the right edge so it's
                          visually separate from the everyday actions
                          and harder to mis-tap. -->
@@ -254,7 +254,7 @@
                             @click.stop="confirmDelete(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             style="color: var(--text-danger);"
-                            title="Delete"><i class="fas fa-trash"></i></button>
+                            :title="t('buttons.delete')"><i class="fas fa-trash"></i></button>
                 </template>
 
                 <template v-else>
@@ -266,7 +266,7 @@
                     <button @click.stop="clearIncognitoRecordingWithConfirm"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             style="color: var(--text-danger);"
-                            title="Discard incognito recording"><i class="fas fa-trash"></i></button>
+                            :title="t('tooltips.discardIncognito')"><i class="fas fa-trash"></i></button>
                 </template>
             </div>
         </div>

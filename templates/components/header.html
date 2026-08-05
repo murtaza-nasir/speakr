@@ -136,7 +136,7 @@
             <button @click="confirmReprocess('transcription', selectedRecording)"
                     v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                     class="btn btn--icon hidden lg:inline-flex"
-                    :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                    :title="useAsrEndpoint ? t('tooltips.reprocessWithAsr') : t('tooltips.reprocessTranscription')">
                 <i class="fas fa-redo-alt"></i>
             </button>
             <button @click="confirmReprocess('summary', selectedRecording)"

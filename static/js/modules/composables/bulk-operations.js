@@ -352,8 +352,11 @@ export function useBulkOperations({
             }
 
             const count = queuedIds.size;
-            const typeText = bulkReprocessType.value === 'transcription' ? 'Transcription' : 'Summary';
-            showToast(`${typeText} reprocessing queued for ${count} recording${count !== 1 ? 's' : ''}`, 'fa-sync-alt', 3000, 'success');
+            const baseKey = bulkReprocessType.value === 'summary'
+                ? 'bulkReprocessModal.queuedSummaryToast'
+                : 'bulkReprocessModal.queuedTranscriptionToast';
+            const toastKey = count === 1 ? baseKey : `${baseKey}Plural`;
+            showToast(t(toastKey, { count }), 'fa-sync-alt', 3000, 'success');
         } catch (error) {
             console.error('Bulk reprocess error:', error);
             setGlobalError(`Failed to queue reprocessing: ${error.message}`);
