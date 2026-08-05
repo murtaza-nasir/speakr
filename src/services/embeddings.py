@@ -360,26 +360,26 @@ def process_recording_chunks(recording_id):
 
     Returns True on full success, False on any failure including the case
     where embedding generation returned fewer vectors than there were
-    chunks. On failure the transaction is rolled back so the recording's
-    existing chunks are preserved; this prevents the "old chunks deleted,
-    new chunks not inserted" silent-failure mode that occurs when the
-    embedding API blips mid-run.
+    chunks. Embeddings are generated before the old chunks are deleted, so
+    a failure leaves the recording's existing chunks intact and never holds
+    a database write lock across the (potentially slow) embedding API call.
     """
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.transcription:
             return False
 
-        # Delete existing chunks for this recording. The deletion is staged
-        # in this transaction; if anything below fails we rollback and the
-        # old chunks survive. Only the final commit makes the swap
-        # permanent.
-        TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
-
-        # Create chunks
+        # Create chunks and generate their embeddings BEFORE touching the
+        # transcript_chunk table. The embeddings call is a network round-trip
+        # that can take 30+ seconds against a cold local model; running it
+        # inside an open write transaction held SQLite's single writer lock
+        # for the whole duration and starved concurrent writers such as the
+        # summarize-job enqueue (issue #355). Doing the slow work first keeps
+        # the delete + insert + commit window down to milliseconds.
         chunks = chunk_transcription(recording.transcription)
 
         if not chunks:
+            TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
             db.session.commit()
             return True
 
@@ -388,19 +388,21 @@ def process_recording_chunks(recording_id):
 
         # Verify we got one embedding per chunk. _api_embed returns [] on
         # exhausted retries, and a partial provider response could return
-        # fewer than expected. Either case is a failure: rolling back keeps
-        # the recording's old chunks intact so the admin retry pass (or a
-        # later Re-embed all) can try again.
+        # fewer than expected. Either case is a failure; the recording's
+        # existing chunks are untouched so the admin retry pass (or a later
+        # Re-embed all) can try again.
         if len(embeddings) != len(chunks):
-            db.session.rollback()
             current_app.logger.error(
                 f"Embedding generation returned {len(embeddings)} vectors for "
-                f"{len(chunks)} chunks on recording {recording_id}; rolling "
-                f"back to preserve existing chunks."
+                f"{len(chunks)} chunks on recording {recording_id}; keeping "
+                f"existing chunks."
             )
             return False
 
-        # Store chunks in database
+        # Swap the chunks in one short transaction: the delete is staged and
+        # only the final commit makes it permanent, so a failure here still
+        # rolls back to the old chunks.
+        TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
         for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
             chunk = TranscriptChunk(
                 recording_id=recording_id,

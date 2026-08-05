@@ -628,6 +628,30 @@ def test_process_partial_embedding_count_rolls_back(api_emb):
         assert TranscriptChunk.query.filter_by(recording_id=rec.id).count() == 0
 
 
+def test_process_embeds_before_deleting_old_chunks(api_emb):
+    # Regression for issue #355: the embeddings call is a slow network
+    # round-trip and must run BEFORE the old chunks are deleted, so no
+    # write transaction (and SQLite writer lock) is held across it. The
+    # old chunks must therefore still be visible at embedding time.
+    with app.app_context():
+        user = _make_user()
+        rec = _make_recording(user, transcription="original text to index")
+        with patch.object(api_emb, "generate_embeddings",
+                          side_effect=lambda texts, user_id=None: _fixed_vectors(texts)):
+            assert api_emb.process_recording_chunks(rec.id) is True
+
+        seen = {}
+
+        def spy(texts, user_id=None):
+            seen["chunks_at_embed_time"] = TranscriptChunk.query.filter_by(
+                recording_id=rec.id).count()
+            return _fixed_vectors(texts)
+
+        with patch.object(api_emb, "generate_embeddings", side_effect=spy):
+            assert api_emb.process_recording_chunks(rec.id) is True
+        assert seen["chunks_at_embed_time"] == 1
+
+
 def test_process_exception_path_returns_false(api_emb):
     with app.app_context():
         user = _make_user()
