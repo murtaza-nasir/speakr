@@ -753,7 +753,17 @@
     "bulkExportButton": "Export all to disk",
     "bulkExportRunning": "Exporting…",
     "bulkExportResult": "Exported {{exported}} of {{total}} recordings.",
-    "bulkExportFailed": "Failed to export recordings."
+    "bulkExportFailed": "Failed to export recordings.",
+    "filenameTemplateTitle": "Export filename template",
+    "filenameTemplateDescription": "Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{{id}}).",
+    "filenameTemplateHelp": "Available variables:",
+    "filenameTemplateSaved": "Export filename template saved.",
+    "filenameTemplateInvalid": "The filename template cannot contain path separators (/ or \\).",
+    "filenameSavedRenameNote": "Saved. Previously exported files keep their names until you use \"Rename existing exports\".",
+    "renameExisting": "Rename existing exports",
+    "renameConfirm": "Rename all previously exported files to match the current template?",
+    "renameResult": "Renamed {{renamed}} files, skipped {{skipped}}, errors: {{errors}}.",
+    "renameFailed": "Failed to rename existing exports."
   },
   "fileSize": {
     "bytes": "{{count}} B",

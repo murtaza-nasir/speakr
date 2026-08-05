@@ -426,6 +426,12 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'folder', 'export_template_id', 'INTEGER'):
             app.logger.info("Added export_template_id column to folder table")
 
+        # Configurable auto-export filenames (#348)
+        if add_column_if_not_exists(engine, 'user', 'export_filename_template', 'VARCHAR(500)'):
+            app.logger.info("Added export_filename_template column to user table")
+        if add_column_if_not_exists(engine, 'recording', 'export_filename', 'VARCHAR(500)'):
+            app.logger.info("Added export_filename column to recording table")
+
         # Add source tracking columns to internal_share table
         if add_column_if_not_exists(engine, 'internal_share', 'source_type', "VARCHAR(20) DEFAULT 'manual'"):
             app.logger.info("Added source_type column to internal_share table")

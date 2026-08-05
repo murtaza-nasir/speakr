@@ -1433,6 +1433,31 @@
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Export filename template (#348) -->
+                            <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6">
+                                <h3 class="text-lg font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.filenameTemplateTitle">Export filename template</h3>
+                                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="exportTemplates.filenameTemplateDescription">Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{% raw %}{{id}}{% endraw %}).</p>
+                                <form id="exportFilenameForm" method="POST" action="{{ url_for('auth.account') }}" class="mt-4 space-y-3">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="text" id="exportFilenameTemplateInput" name="export_filename_template" value="{{ current_user.export_filename_template or '' }}" maxlength="500" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" placeholder="{% raw %}{{date}} {{title}}{% endraw %}">
+                                    <p class="text-xs text-[var(--text-light)]">
+                                        <span data-i18n="exportTemplates.filenameTemplateHelp">Available variables:</span>
+                                        {% raw %}<code>{{id}}</code>, <code>{{title}}</code>, <code>{{filename}}</code>, <code>{{date}}</code>, <code>{{datetime}}</code>, <code>{{time}}</code>, <code>{{year}}</code>, <code>{{month}}</code>, <code>{{day}}</code>{% endraw %}
+                                    </p>
+                                    <p id="exportFilenameStatus" class="text-sm hidden"></p>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button type="submit" class="btn btn--primary">
+                                            <i class="fas fa-save mr-2"></i>
+                                            <span data-i18n="exportTemplates.save">Save</span>
+                                        </button>
+                                        <button type="button" id="renameExportsBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <i class="fas fa-pen mr-2"></i>
+                                            <span data-i18n="exportTemplates.renameExisting">Rename existing exports</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                             {% endif %}
 
                             <!-- Export Templates Grid -->
@@ -7772,6 +7797,93 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 btn.innerHTML = original;
             }
         });
+
+        // Export filename template (#348): saves via the /account settings
+        // form branch (field presence selects the branch server-side). When
+        // the template changed, surface a note that previously exported
+        // files keep their names until "Rename existing exports" is used.
+        (function () {
+            const form = document.getElementById('exportFilenameForm');
+            if (!form) return;
+            const input = document.getElementById('exportFilenameTemplateInput');
+            const statusEl = document.getElementById('exportFilenameStatus');
+            let savedValue = input.value.trim();
+
+            const showFilenameStatus = (msg, isError) => {
+                if (!statusEl) return;
+                statusEl.textContent = msg;
+                statusEl.classList.remove('hidden');
+                statusEl.style.color = isError ? 'var(--color-danger, #ef4444)' : 'var(--text-secondary)';
+            };
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitBtn = form.querySelector('[type=submit]');
+                if (submitBtn) submitBtn.disabled = true;
+                try {
+                    const fd = new FormData(form);
+                    const csrfToken = form.querySelector('[name=csrf_token]')?.value;
+                    const response = await fetch(form.action || window.location.href, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {})
+                        },
+                        body: fd,
+                        credentials: 'same-origin'
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(result.error || t('exportTemplates.filenameTemplateInvalid'));
+                    }
+                    const changed = input.value.trim() !== savedValue;
+                    savedValue = input.value.trim();
+                    if (changed) {
+                        showFilenameStatus(t('exportTemplates.filenameSavedRenameNote'), false);
+                    } else if (statusEl) {
+                        statusEl.classList.add('hidden');
+                    }
+                    showToast(t('exportTemplates.filenameTemplateSaved'), 'success');
+                } catch (err) {
+                    console.error('[export filename template]', err);
+                    const msg = (err && err.message) || t('exportTemplates.filenameTemplateInvalid');
+                    showFilenameStatus(msg, true);
+                    showToast(msg, 'error');
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            });
+
+            document.getElementById('renameExportsBtn')?.addEventListener('click', async (e) => {
+                if (!confirm(t('exportTemplates.renameConfirm'))) return;
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const response = await fetch('/api/export/apply-filename-template', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || t('exportTemplates.renameFailed'));
+                    }
+                    const msg = t('exportTemplates.renameResult', {
+                        renamed: result.renamed,
+                        skipped: result.skipped,
+                        errors: result.errors
+                    });
+                    showFilenameStatus(msg, false);
+                    showToast(msg, 'success');
+                } catch (error) {
+                    console.error('Rename exports error:', error);
+                    showFilenameStatus((error && error.message) || t('exportTemplates.renameFailed'), true);
+                    showToast(t('exportTemplates.renameFailed'), 'error');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        })();
 
         // ============================================
         // Naming Templates Management

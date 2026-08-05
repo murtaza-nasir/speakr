@@ -63,6 +63,12 @@ class User(db.Model, UserMixin):
     transcription_hotwords = db.Column(db.Text, nullable=True)
     transcription_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # Filename template for auto-exported markdown files (#348). Supports
+    # {{id}}, {{title}}, {{filename}}, {{date}}, {{datetime}}, {{time}},
+    # {{year}}, {{month}}, {{day}}. Null = default "recording_{{id}}"
+    # (exact legacy behavior).
+    export_filename_template = db.Column(db.String(500), nullable=True)
+
     # Include timestamps in the transcript sent to the summarizer / chat (#304).
     # Independent per feature; the *_template_id selects a transcript template to
     # format the timestamps (null = a built-in default timestamp format).

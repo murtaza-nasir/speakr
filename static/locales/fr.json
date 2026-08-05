@@ -753,7 +753,17 @@
     "bulkExportButton": "Tout exporter sur le disque",
     "bulkExportRunning": "Exportation…",
     "bulkExportResult": "{{exported}} enregistrement(s) sur {{total}} exporté(s).",
-    "bulkExportFailed": "Échec de l'exportation des enregistrements."
+    "bulkExportFailed": "Échec de l'exportation des enregistrements.",
+    "filenameTemplateTitle": "Modèle de nom de fichier d'exportation",
+    "filenameTemplateDescription": "Personnalisez les noms des fichiers markdown exportés automatiquement. Laissez vide pour utiliser la valeur par défaut (recording_{{id}}).",
+    "filenameTemplateHelp": "Variables disponibles :",
+    "filenameTemplateSaved": "Modèle de nom de fichier enregistré.",
+    "filenameTemplateInvalid": "Le modèle de nom de fichier ne peut pas contenir de séparateurs de chemin (/ ou \\).",
+    "filenameSavedRenameNote": "Enregistré. Les fichiers déjà exportés conservent leurs noms jusqu'à ce que vous utilisiez « Renommer les exportations existantes ».",
+    "renameExisting": "Renommer les exportations existantes",
+    "renameConfirm": "Renommer tous les fichiers déjà exportés pour correspondre au modèle actuel ?",
+    "renameResult": "{{renamed}} fichier(s) renommé(s), {{skipped}} ignoré(s), erreurs : {{errors}}.",
+    "renameFailed": "Échec du renommage des exportations existantes."
   },
   "fileSize": {
     "bytes": "{{count}} B",
