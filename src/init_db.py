@@ -400,6 +400,14 @@ def initialize_database(app):
             app.logger.info("Added editor_autosave column to user table")
         if add_column_if_not_exists(engine, 'user', 'audio_player_position', "VARCHAR(10) DEFAULT 'bottom'"):
             app.logger.info("Added audio_player_position column to user table")
+
+        # Filename date parsing (#342)
+        if add_column_if_not_exists(engine, 'user', 'parse_filename_dates', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added parse_filename_dates column to user table")
+        if add_column_if_not_exists(engine, 'user', 'filename_date_pattern', "VARCHAR(50) DEFAULT 'auto'"):
+            app.logger.info("Added filename_date_pattern column to user table")
+        if add_column_if_not_exists(engine, 'user', 'filename_date_regex', 'VARCHAR(500)'):
+            app.logger.info("Added filename_date_regex column to user table")
         if add_column_if_not_exists(engine, 'tag', 'default_hotwords', 'TEXT'):
             app.logger.info("Added default_hotwords column to tag table")
         if add_column_if_not_exists(engine, 'tag', 'default_initial_prompt', 'TEXT'):

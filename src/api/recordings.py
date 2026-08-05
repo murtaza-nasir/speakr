@@ -2656,6 +2656,10 @@ def upload_file():
 
         # Get file's lastModified timestamp from client (milliseconds since epoch)
         file_last_modified = request.form.get('file_last_modified')
+        # Client timezone offset (JS getTimezoneOffset(): minutes to add to
+        # local time to reach UTC). Used to convert filename wall-clock dates
+        # to the naive-UTC storage convention.
+        client_tz_offset = request.form.get('client_tz_offset')
 
         # Get selected tags if provided (multiple tags support)
         selected_tags = []
@@ -2767,6 +2771,26 @@ def upload_file():
                 current_app.logger.info(f"Using user-provided meeting_date: {meeting_date}")
             except (ValueError, TypeError) as e:
                 current_app.logger.warning(f"Could not parse user meeting_date '{user_meeting_date}': {e}")
+
+        # Then try parsing a date from the filename when the user opted in
+        # (#342). The pattern is explicit user intent, so it outranks the
+        # automatic sources (lastModified / embedded metadata) below.
+        if not meeting_date and current_user.parse_filename_dates and original_filename:
+            from src.utils.filename_dates import parse_filename_date
+            tz_offset = None
+            if client_tz_offset is not None:
+                try:
+                    tz_offset = int(client_tz_offset)
+                except (TypeError, ValueError):
+                    tz_offset = None
+            meeting_date = parse_filename_date(
+                original_filename,
+                pattern_key=current_user.filename_date_pattern or 'auto',
+                custom_regex=current_user.filename_date_regex,
+                tz_offset_minutes=tz_offset,
+            )
+            if meeting_date:
+                current_app.logger.info(f"Using filename-parsed meeting_date: {meeting_date}")
 
         # Then try client-provided file lastModified (most reliable for uploads)
         if not meeting_date and file_last_modified:

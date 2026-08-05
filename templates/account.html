@@ -1005,6 +1005,39 @@
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
                                     </div>
                                 </div>
+
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.filenameDatesSection">Meeting date from filename</h3>
+                                <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
+                                    <label class="flex items-start gap-3 cursor-pointer">
+                                        <input type="checkbox" id="prefParseFilenameDates" name="parse_filename_dates" {% if current_user.parse_filename_dates %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.parseFilenameDates">Parse meeting date from filename</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.parseFilenameDatesHelp">When an uploaded filename contains a date (for example 20260716_meeting.mp3), use it as the meeting date instead of the file's timestamps. Files without a matching date keep the current behaviour.</span>
+                                        </span>
+                                    </label>
+                                    <div>
+                                        <label for="filename_date_pattern" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="preferences.filenameDatePattern">Filename date format</label>
+                                        {% set fdp = current_user.filename_date_pattern or 'auto' %}
+                                        <select name="filename_date_pattern" id="filename_date_pattern"
+                                                onchange="document.getElementById('filenameDateRegexRow').style.display = this.value === 'custom' ? '' : 'none';"
+                                                class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="auto" data-i18n="preferences.filenameDatePatternAuto" {% if fdp == 'auto' %}selected{% endif %}>Auto (common formats)</option>
+                                            <option value="yyyymmdd" {% if fdp == 'yyyymmdd' %}selected{% endif %}>YYYYMMDD &mdash; 20260716_meeting.mp3</option>
+                                            <option value="yyyymmdd_hhmm" {% if fdp == 'yyyymmdd_hhmm' %}selected{% endif %}>YYYYMMDD_HHMM &mdash; 20260716_1102.mp3</option>
+                                            <option value="yyyy-mm-dd" {% if fdp == 'yyyy-mm-dd' %}selected{% endif %}>YYYY-MM-DD &mdash; 2026-07-16 meeting.mp3</option>
+                                            <option value="yymmdd_hhmm" {% if fdp == 'yymmdd_hhmm' %}selected{% endif %}>YYMMDD_HHMM &mdash; 260716_1102.mp3</option>
+                                            <option value="yymmdd" {% if fdp == 'yymmdd' %}selected{% endif %}>YYMMDD &mdash; 260716.mp3</option>
+                                            <option value="custom" data-i18n="preferences.filenameDatePatternCustom" {% if fdp == 'custom' %}selected{% endif %}>Custom pattern</option>
+                                        </select>
+                                    </div>
+                                    <div id="filenameDateRegexRow" {% if fdp != 'custom' %}style="display: none;"{% endif %}>
+                                        <label for="filename_date_regex" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="preferences.filenameDateRegex">Custom pattern (regular expression)</label>
+                                        <input type="text" name="filename_date_regex" id="filename_date_regex" value="{{ current_user.filename_date_regex or '' }}"
+                                               placeholder="(?P&lt;year&gt;\d{4})(?P&lt;month&gt;\d{2})(?P&lt;day&gt;\d{2})" spellcheck="false"
+                                               class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] font-mono">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="preferences.filenameDateRegexHelp">Must contain named groups year, month and day; hour and minute are optional. Example: (?P&lt;year&gt;\d{4})-(?P&lt;month&gt;\d{2})-(?P&lt;day&gt;\d{2})</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Right column: Display + Editor toggles -->
