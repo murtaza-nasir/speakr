@@ -2952,6 +2952,10 @@ def upload_from_asr_voice_recorder():
         # headers and metadata around a file at the configured limit.
         from src.models import SystemSetting
         regular_limit_mb = max(1, int(SystemSetting.get_setting('max_file_size_mb', 250)))
+        # Assigning request.max_content_length requires Flask >= 3.1 /
+        # Werkzeug >= 3.1 (older versions expose it as a read-only property
+        # and this line raises AttributeError, 500ing every upload).
+        # requirements.txt pins flask==3.1.0 / werkzeug==3.1.3.
         request.max_content_length = regular_limit_mb * 1024 * 1024 + 64 * 1024
 
         secret = request.form.get('secret', '')

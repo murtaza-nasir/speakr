@@ -2543,7 +2543,10 @@ def ingest_uploaded_recording(
                 job_type='transcribe',
             ).first()
             if existing.status in ('PENDING', 'QUEUED') and existing_job is None:
-                recovery_params = resolve_transcription_params(owner=owner)
+                # Resolve from the existing recording (tags/folder aware), not
+                # just the owner: equivalent for ASR-sourced recordings today,
+                # but robust if another caller ever reuses this recovery path.
+                recovery_params = resolve_transcription_params(existing)
                 job_queue.enqueue(
                     user_id=owner.id,
                     recording_id=existing.id,
