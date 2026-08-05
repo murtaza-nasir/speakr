@@ -110,6 +110,14 @@ Three language settings shape your Speakr experience. The interface language dro
 
 These settings used to live on the Account Information tab. They moved here so all preferences that affect your day-to-day Speakr experience live in one place.
 
+### Meeting Date from Filename
+
+Voice recorders and phone apps commonly encode the recording date in the filename (`20260716_meeting.mp3`, `260716_1102.m4a`). When **Parse meeting date from filename** is enabled, Speakr extracts that date at upload time and uses it as the recording's meeting date, taking precedence over the file's timestamps and embedded metadata. This is especially useful for batch uploads of older recordings, where the meeting date would otherwise default to the upload time.
+
+The **Filename date format** dropdown offers preset patterns — `YYYYMMDD`, `YYYYMMDD_HHMM`, `YYYY-MM-DD`, `YYMMDD_HHMM`, `YYMMDD` — plus an **Auto** mode that tries the common formats, and a **Custom pattern** option that accepts a regular expression with named groups (`(?P<year>...)`, `(?P<month>...)`, `(?P<day>...)`; `hour` and `minute` are optional). Auto mode deliberately skips the bare six-digit `YYMMDD` form, since any six digits in a filename would qualify; select that preset explicitly if your recorder uses it.
+
+The setting is off by default. A file whose name contains no matching date keeps the existing behaviour (file timestamps, then upload time) without failing the upload, and the parsed date remains editable afterwards from the recording's details. Dates parsed from filenames are wall-clock times: browser uploads send your timezone so the stored date displays correctly everywhere, and date-only matches are anchored so the calendar date never shifts between viewers. The setting also applies to files dropped into the automated processing folder.
+
 ### Transcript Display
 
 **Show timestamps in simple view.** When enabled, a compact `mm:ss` (or `h:mm:ss` for long recordings) timestamp appears next to each speaker label in the simple transcript view, making it easier to navigate long meetings. The bubble view is unaffected. Off by default to keep the existing aesthetic for users who prefer a clean read.

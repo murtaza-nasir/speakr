@@ -266,6 +266,14 @@ Create a default transcript template in your Speakr settings that formats the wa
 
 Files are organized into subdirectories by username, so multiple users can export to the same vault without conflicts. Obsidian picks up these markdown files automatically, and you can reference them in daily notes, link them to related content, and search across all your transcripts.
 
+#### Export Filenames
+
+By default, exported files are named `recording_<id>.md`. You can change this with the **export filename template** in your account settings (visible when auto-export is enabled). The template uses the same variable syntax as naming templates: `{{id}}`, `{{title}}`, `{{filename}}` (the original upload's name without extension), and date variables from the meeting date — `{{date}}`, `{{datetime}}`, `{{time}}`, `{{year}}`, `{{month}}`, `{{day}}`. For example, `{{date}} {{title}}` produces `2026-07-16 Team Standup.md`, and `{{filename}}` names the export after the uploaded audio file.
+
+Rendered names are sanitized for filesystem safety (unicode titles are preserved; characters illegal on common filesystems are stripped), and if two recordings would render to the same name, the recording's id is appended to keep them unique. Each recording remembers the filename it was exported under, so re-exports overwrite the same file and deleting a recording renames its export with the `[deleted]_` prefix regardless of which template was active at the time.
+
+Changing the template affects new exports only — files already exported keep their names. A **Rename existing exports** button next to the setting re-renders every existing export under the current template and renames the files on disk in one pass, so your whole vault can be migrated to a new scheme at once. Leaving the template empty returns to the default `recording_<id>` naming.
+
 ### Automated Processing Workflows
 
 Mount Speakr's upload directory as a Docker volume pointing to a location your automation tools can access. Create a template that exports in a structured format (like JSON or CSV), then use scripts to process the files automatically.
