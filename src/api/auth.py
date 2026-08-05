@@ -678,6 +678,20 @@ def account():
             current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
             current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
 
+        # Check if this is the export filename template form (#348)
+        elif 'export_filename_template' in request.form:
+            template_value = (request.form.get('export_filename_template') or '').strip()
+            # Path separators would let a template escape the per-user export
+            # directory; reject them outright.
+            if '/' in template_value or '\\' in template_value:
+                error_msg = 'The filename template cannot contain path separators (/ or \\).'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('auth.account'))
+            # Empty string = use the default template (recording_{{id}})
+            current_user.export_filename_template = template_value if template_value else None
+
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:
             current_user.diarize = 'diarize' in request.form

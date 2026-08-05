@@ -74,6 +74,12 @@ class Recording(db.Model):
     resolved_hotwords = db.Column(db.Text, nullable=True)
     resolved_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # Rendered auto-export filename WITHOUT the .md extension (#348). Set on
+    # first export and authoritative from then on: re-exports overwrite this
+    # file and deletion renames it. Null = legacy "recording_{id}" naming, so
+    # existing deployments keep working with their existing files.
+    export_filename = db.Column(db.String(500), nullable=True)
+
     # Folder relationship (one-to-many: a recording belongs to at most one folder)
     folder_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
 

@@ -70,6 +70,12 @@ class User(db.Model, UserMixin):
     filename_date_pattern = db.Column(db.String(50), nullable=True, default='auto')  # preset key or 'custom'
     filename_date_regex = db.Column(db.String(500), nullable=True)  # named-group regex for 'custom'
 
+    # Filename template for auto-exported markdown files (#348). Supports
+    # {{id}}, {{title}}, {{filename}}, {{date}}, {{datetime}}, {{time}},
+    # {{year}}, {{month}}, {{day}}. Null = default "recording_{{id}}"
+    # (exact legacy behavior).
+    export_filename_template = db.Column(db.String(500), nullable=True)
+
     # Include timestamps in the transcript sent to the summarizer / chat (#304).
     # Independent per feature; the *_template_id selects a transcript template to
     # format the timestamps (null = a built-in default timestamp format).

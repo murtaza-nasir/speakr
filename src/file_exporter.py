@@ -130,16 +130,152 @@ def generate_safe_filename(recording):
     return f"recording_{recording.id}"
 
 
+# Default filename template — reproduces the legacy "recording_{id}" naming
+# exactly, so users who never touch the setting see no behavior change (#348).
+DEFAULT_EXPORT_FILENAME_TEMPLATE = 'recording_{{id}}'
+
+# Maximum length of a rendered export filename (without the .md extension).
+MAX_EXPORT_FILENAME_LENGTH = 150
+
+# Characters illegal on common filesystems (plus path separators).
+_UNSAFE_FILENAME_CHARS = re.compile(r'[/\\:*?"<>|\x00-\x1f]')
+
+
+def sanitize_export_filename(name):
+    """
+    Make a rendered filename safe for common filesystems.
+
+    Strips path separators and characters illegal on Windows/macOS/Linux,
+    collapses whitespace runs to single spaces, trims dots/spaces at the ends
+    and caps the length. Unicode letters are preserved (deliberately NOT
+    secure_filename(), which would mangle non-ASCII titles). Returns '' if
+    nothing safe remains — callers must fall back to the legacy name.
+    """
+    if not name:
+        return ''
+    result = _UNSAFE_FILENAME_CHARS.sub('', name)
+    result = re.sub(r'\s+', ' ', result)
+    result = result.strip(' .')
+    if len(result) > MAX_EXPORT_FILENAME_LENGTH:
+        result = result[:MAX_EXPORT_FILENAME_LENGTH].strip(' .')
+    return result
+
+
+def render_export_filename(recording, user):
+    """
+    Render the export filename (WITHOUT the .md extension) for a recording
+    using the user's filename template.
+
+    Supported variables: {{id}}, {{title}}, {{filename}} (original filename
+    stem), and {{date}}/{{datetime}}/{{time}}/{{year}}/{{month}}/{{day}} from
+    recording.meeting_date (falling back to created_at). The result is
+    sanitized for filesystem safety; an empty result falls back to the legacy
+    "recording_{id}". If the rendered name collides (case-insensitively) with
+    a DIFFERENT recording's stored export filename for the same user, "_{id}"
+    is appended to keep names unique.
+    """
+    from src.models import Recording
+    from sqlalchemy import func
+
+    template = (getattr(user, 'export_filename_template', None) or '').strip()
+    if not template:
+        template = DEFAULT_EXPORT_FILENAME_TEMPLATE
+
+    dt = recording.meeting_date or recording.created_at
+    filename_stem = os.path.splitext(recording.original_filename)[0] if recording.original_filename else ''
+
+    variables = {
+        'id': str(recording.id),
+        'title': recording.title or '',
+        'filename': filename_stem,
+        'date': dt.strftime('%Y-%m-%d') if dt else '',
+        'datetime': dt.strftime('%Y-%m-%d %H-%M') if dt else '',
+        'time': dt.strftime('%H-%M') if dt else '',
+        'year': dt.strftime('%Y') if dt else '',
+        'month': dt.strftime('%m') if dt else '',
+        'day': dt.strftime('%d') if dt else '',
+    }
+
+    result = template
+    for var_name, value in variables.items():
+        result = result.replace('{{' + var_name + '}}', value)
+
+    result = sanitize_export_filename(result)
+    if not result:
+        result = f"recording_{recording.id}"
+
+    # Uniqueness: a different recording of the same user already owns this
+    # name (case-insensitive) -> append the id to disambiguate.
+    try:
+        collision = Recording.query.filter(
+            Recording.user_id == recording.user_id,
+            Recording.id != recording.id,
+            func.lower(Recording.export_filename) == result.lower()
+        ).first()
+    except Exception:
+        collision = None
+    if collision is not None:
+        suffix = f"_{recording.id}"
+        if len(result) + len(suffix) > MAX_EXPORT_FILENAME_LENGTH:
+            result = result[:MAX_EXPORT_FILENAME_LENGTH - len(suffix)].strip(' .')
+        result = f"{result}{suffix}"
+
+    return result
+
+
+def get_stored_export_filename(recording):
+    """The authoritative on-disk name (no extension) for a recording's export.
+
+    Recordings exported before this feature have no stored name and keep
+    using the legacy "recording_{id}" so existing files remain addressable.
+    """
+    return recording.export_filename or f"recording_{recording.id}"
+
+
 def get_export_filepath(user, recording):
     """Get the full export filepath for a recording."""
     export_dir = get_export_directory(user)
-    filename = generate_safe_filename(recording)
-    return export_dir / f"{filename}.md"
+    return export_dir / f"{get_stored_export_filename(recording)}.md"
+
+
+# The delete endpoint removes the Recording row BEFORE calling
+# mark_export_as_deleted(), so with custom filenames the stored name can no
+# longer be read from the database at that point. This ORM listener captures
+# (user_id, export_filename) at delete time so the rename still finds the
+# right file. Best-effort, in-process only; the legacy "recording_{id}" scan
+# remains as fallback.
+_deleted_export_names = {}
+
+
+def _remember_deleted_export_name(mapper, connection, target):
+    try:
+        if len(_deleted_export_names) > 1000:
+            _deleted_export_names.clear()
+        _deleted_export_names[target.id] = (target.user_id, target.export_filename)
+    except Exception:
+        pass
+
+
+def _register_delete_listener():
+    try:
+        from sqlalchemy import event
+        from src.models import Recording
+        if not event.contains(Recording, 'after_delete', _remember_deleted_export_name):
+            event.listen(Recording, 'after_delete', _remember_deleted_export_name)
+    except Exception:
+        logger.debug("Could not register export-filename delete listener", exc_info=True)
+
+
+_register_delete_listener()
 
 
 def mark_export_as_deleted(recording_id):
     """
     Rename the export file to indicate the recording was deleted.
+
+    Uses the recording's stored export filename when available (from the DB
+    row if it still exists, or captured at ORM delete time otherwise) and
+    falls back to the legacy "recording_{id}" name.
 
     Args:
         recording_id: ID of the deleted recording
@@ -156,17 +292,47 @@ def mark_export_as_deleted(recording_id):
 
     with app.app_context():
         try:
-            # We need to find the file - check all user directories
             base_dir = Path(AUTO_EXPORT_DIR)
             if not base_dir.exists():
                 return None
 
-            # Look for the file in all user subdirectories
-            for user_dir in base_dir.iterdir():
-                if user_dir.is_dir():
-                    old_filepath = user_dir / f"recording_{recording_id}.md"
+            stored_name = None
+            user_dirs = None
+
+            def _dir_for(user_id):
+                user = db.session.get(User, user_id) if user_id else None
+                if user:
+                    d = base_dir / secure_filename(user.username)
+                    return [d] if d.is_dir() else []
+                return None
+
+            captured = _deleted_export_names.pop(recording_id, None)
+            if captured is not None:
+                user_id, stored_name = captured
+                user_dirs = _dir_for(user_id)
+            else:
+                recording = db.session.get(Recording, recording_id)
+                if recording:
+                    stored_name = recording.export_filename
+                    user_dirs = _dir_for(recording.user_id)
+
+            if user_dirs is None:
+                # Owner unknown — check all user directories.
+                user_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+
+            # Stored name first (authoritative), then the legacy id-based name.
+            candidates = []
+            if stored_name and '/' not in stored_name and '\\' not in stored_name:
+                candidates.append(stored_name)
+            legacy = f"recording_{recording_id}"
+            if legacy not in candidates:
+                candidates.append(legacy)
+
+            for user_dir in user_dirs:
+                for name in candidates:
+                    old_filepath = user_dir / f"{name}.md"
                     if old_filepath.exists():
-                        new_filepath = user_dir / f"[deleted]_recording_{recording_id}.md"
+                        new_filepath = user_dir / f"[deleted]_{name}.md"
                         old_filepath.rename(new_filepath)
                         logger.info(f"Marked export as deleted: {new_filepath}")
                         return str(new_filepath)
@@ -176,6 +342,79 @@ def mark_export_as_deleted(recording_id):
         except Exception as e:
             logger.error(f"Failed to mark export as deleted for recording {recording_id}: {e}")
             return None
+
+
+def apply_filename_template_for_user(user_id):
+    """
+    Re-render every exported recording's filename for a user under their
+    current template and rename the files on disk (the "[deleted]_"-prefixed
+    files of removed exports keep their prefix). Stored export_filename
+    values are updated to match. Missing files on disk are skipped.
+
+    Returns:
+        dict with counts: {'renamed': n, 'skipped': n, 'errors': n}
+    """
+    # Import here to avoid circular imports
+    from src.app import app, db
+    from src.models import Recording, User
+
+    with app.app_context():
+        renamed = 0
+        skipped = 0
+        errors = 0
+
+        user = db.session.get(User, user_id)
+        if not user:
+            return {'renamed': 0, 'skipped': 0, 'errors': 0}
+
+        user_dir = Path(AUTO_EXPORT_DIR) / secure_filename(user.username)
+
+        recordings = Recording.query.filter(Recording.user_id == user_id).all()
+        for recording in recordings:
+            try:
+                old_name = get_stored_export_filename(recording)
+                old_file = user_dir / f"{old_name}.md"
+                old_deleted = user_dir / f"[deleted]_{old_name}.md"
+
+                if not user_dir.is_dir() or not (old_file.exists() or old_deleted.exists()):
+                    # Never exported (or file gone) — nothing to rename.
+                    skipped += 1
+                    continue
+
+                new_name = render_export_filename(recording, user)
+                if new_name == old_name:
+                    # Persist the (unchanged) name so it becomes authoritative.
+                    if recording.export_filename != new_name:
+                        recording.export_filename = new_name
+                    skipped += 1
+                    continue
+
+                # Disk-level guard: if the target already exists (e.g. stale
+                # file, case-insensitive filesystem), disambiguate with the id.
+                if (user_dir / f"{new_name}.md").exists() or (user_dir / f"[deleted]_{new_name}.md").exists():
+                    suffix = f"_{recording.id}"
+                    if not new_name.endswith(suffix):
+                        new_name = f"{new_name}{suffix}"
+
+                moved = False
+                if old_file.exists():
+                    old_file.rename(user_dir / f"{new_name}.md")
+                    moved = True
+                if old_deleted.exists():
+                    old_deleted.rename(user_dir / f"[deleted]_{new_name}.md")
+                    moved = True
+
+                recording.export_filename = new_name
+                if moved:
+                    renamed += 1
+                else:
+                    skipped += 1
+            except Exception as e:
+                logger.error(f"Failed to apply filename template to recording {recording.id}: {e}")
+                errors += 1
+
+        db.session.commit()
+        return {'renamed': renamed, 'skipped': skipped, 'errors': errors}
 
 
 def format_duration(seconds):
@@ -510,9 +749,23 @@ def export_recording(recording_id):
             # Get export directory for user
             export_dir = get_export_directory(user)
 
-            # Generate filename and path
-            filename = generate_safe_filename(recording)
-            filepath = export_dir / f"{filename}.md"
+            # Render and store the filename on first export (or when NULL from
+            # a legacy row that predates stored names). Once stored, the name
+            # is authoritative: re-exports overwrite that same file.
+            if not recording.export_filename:
+                new_name = render_export_filename(recording, user)
+                # A legacy export may already exist under "recording_{id}.md";
+                # migrate it to the new name so no orphan file is left behind.
+                legacy_file = export_dir / f"recording_{recording.id}.md"
+                if new_name != f"recording_{recording.id}" and legacy_file.exists():
+                    try:
+                        legacy_file.rename(export_dir / f"{new_name}.md")
+                    except OSError:
+                        pass
+                recording.export_filename = new_name
+                db.session.commit()
+
+            filepath = export_dir / f"{recording.export_filename}.md"
 
             # Generate content
             content = generate_markdown_content(

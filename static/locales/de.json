@@ -753,7 +753,17 @@
     "bulkExportButton": "Alle auf Datenträger exportieren",
     "bulkExportRunning": "Exportiere…",
     "bulkExportResult": "{{exported}} von {{total}} Aufnahmen exportiert.",
-    "bulkExportFailed": "Export der Aufnahmen fehlgeschlagen."
+    "bulkExportFailed": "Export der Aufnahmen fehlgeschlagen.",
+    "filenameTemplateTitle": "Dateinamensvorlage für Exporte",
+    "filenameTemplateDescription": "Passen Sie die Dateinamen der automatisch exportierten Markdown-Dateien an. Leer lassen für den Standard (recording_{{id}}).",
+    "filenameTemplateHelp": "Verfügbare Variablen:",
+    "filenameTemplateSaved": "Dateinamensvorlage gespeichert.",
+    "filenameTemplateInvalid": "Die Dateinamensvorlage darf keine Pfadtrennzeichen (/ oder \\) enthalten.",
+    "filenameSavedRenameNote": "Gespeichert. Bereits exportierte Dateien behalten ihre Namen, bis Sie \"Vorhandene Exporte umbenennen\" verwenden.",
+    "renameExisting": "Vorhandene Exporte umbenennen",
+    "renameConfirm": "Alle bereits exportierten Dateien an die aktuelle Vorlage anpassen?",
+    "renameResult": "{{renamed}} Dateien umbenannt, {{skipped}} übersprungen, Fehler: {{errors}}.",
+    "renameFailed": "Umbenennen der vorhandenen Exporte fehlgeschlagen."
   },
   "fileSize": {
     "bytes": "{{count}} B",
