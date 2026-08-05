@@ -9,7 +9,7 @@
         <!-- Menu Toggle Button -->
         <button @click="toggleSidebar"
                 class="btn btn--icon flex-shrink-0"
-                :title="isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'">
+                :title="isSidebarCollapsed ? t('tooltips.showSidebar') : t('tooltips.hideSidebar')">
             <i class="fas fa-bars text-lg"></i>
         </button>
 
@@ -32,7 +32,7 @@
                  content, which made the input collapse to a few dozen
                  pixels in edit mode. -->
             <div class="flex items-center gap-2 min-w-0 flex-1">
-                <a href="/" class="flex-shrink-0 hidden sm:block" :title="'Back to Speakr'">
+                <a href="/" class="flex-shrink-0 hidden sm:block" :title="t('tooltips.backToHome')">
                     <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-7 h-7">
                 </a>
                 <h1 v-if="!editingTitle"
@@ -121,12 +121,12 @@
             </div>
             <button @click="toggleInbox(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
                     :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
-                    :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                    :title="selectedRecording.is_inbox ? t('tooltips.markAsRead') : t('tooltips.moveToInbox')">
                 <i class="fas fa-inbox"></i>
             </button>
             <button @click="toggleHighlight(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
                     :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
-                    :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                    :title="selectedRecording.is_highlighted ? t('tooltips.removeHighlight') : t('tooltips.highlight')">
                 <i class="fas fa-star"></i>
             </button>
             <button @click="editRecordingTags(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
@@ -162,7 +162,7 @@
                 <i class="fas fa-share-alt"></i>
             </button>
             <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
-                    class="btn btn--icon hidden md:inline-flex" style="color: var(--text-danger);">
+                    class="btn btn--icon hidden md:inline-flex" style="color: var(--text-danger);" :title="t('buttons.delete')">
                 <i class="fas fa-trash"></i>
             </button>
             <!-- Vertical divider between action icons and global controls -->

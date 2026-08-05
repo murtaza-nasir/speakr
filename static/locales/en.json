@@ -504,10 +504,12 @@
     "back": "Back",
     "cancel": "Cancel",
     "changesSaved": "Changes saved",
+    "clearAll": "Clear all",
     "close": "Close",
     "confirm": "Confirm",
     "delete": "Delete",
     "deselectAll": "Deselect All",
+    "done": "Done",
     "download": "Download",
     "edit": "Edit",
     "error": "Error",
@@ -1590,6 +1592,7 @@
   },
   "tooltips": {
     "assignFolder": "Assign Folder",
+    "backToHome": "Back to Speakr",
     "bubbleView": "Bubble view",
     "changeSpeaker": "Change speaker",
     "clearChat": "Clear chat",
@@ -1615,6 +1618,7 @@
     "fullscreenVideo": "Fullscreen video",
     "grantPublicSharing": "Grant public sharing permission",
     "hideDetails": "Hide details",
+    "hideSidebar": "Hide sidebar",
     "hideVideo": "Hide video",
     "highlight": "Highlight",
     "makeAdmin": "Make Admin",
@@ -1639,6 +1643,7 @@
     "revokePublicSharing": "Revoke public sharing permission",
     "shareWithUsers": "Share with users",
     "showDetails": "Show details",
+    "showSidebar": "Show sidebar",
     "showVideo": "Show video",
     "simpleView": "Simple view",
     "switchToDarkMode": "Switch to Dark Mode",
@@ -1889,8 +1894,12 @@
     "dockFull": "Dock full"
   },
   "bulkActions": {
-    "star": "Star",
-    "reprocess": "Reprocess"
+    "addOrRemoveTags": "Add or remove tags",
+    "deleteSelected": "Delete selected",
+    "exitSelection": "Exit selection mode",
+    "reprocess": "Reprocess",
+    "selectedCount": "{{count}} selected",
+    "star": "Star"
   },
   "unifiedShareModal": {
     "noPublicLinks": "No public share links yet",

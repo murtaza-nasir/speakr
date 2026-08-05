@@ -4400,6 +4400,24 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             body: fd,
                             credentials: 'same-origin'
                         });
+                        if (response.status >= 400 && response.status < 500) {
+                            // Validation rejection (e.g. a bad custom regex):
+                            // surface the server's message inline instead of
+                            // re-POSTing via the native-submit fallback, which
+                            // reloaded the page, dropped the active tab, and
+                            // double-submitted the invalid form.
+                            let message = `Could not save settings (HTTP ${response.status}).`;
+                            try {
+                                const data = await response.json();
+                                if (data && data.error) message = data.error;
+                            } catch (_) { /* non-JSON body — keep generic message */ }
+                            if (typeof showToast === 'function') {
+                                showToast(message, 'error');
+                            } else {
+                                alert(message);
+                            }
+                            return;
+                        }
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}`);
                         }

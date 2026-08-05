@@ -504,10 +504,12 @@
     "back": "Zurück",
     "cancel": "Abbrechen",
     "changesSaved": "Änderungen gespeichert",
+    "clearAll": "Alle abwählen",
     "close": "Schließen",
     "confirm": "Bestätigen",
     "delete": "Löschen",
     "deselectAll": "Alle abwählen",
+    "done": "Fertig",
     "download": "Herunterladen",
     "edit": "Bearbeiten",
     "error": "Fehler",
@@ -1573,6 +1575,7 @@
   },
   "tooltips": {
     "assignFolder": "Ordner zuweisen",
+    "backToHome": "Zurück zu Speakr",
     "bubbleView": "Sprechblasenansicht",
     "changeSpeaker": "Sprecher ändern",
     "clearChat": "Chat leeren",
@@ -1598,6 +1601,7 @@
     "fullscreenVideo": "Video im Vollbild",
     "grantPublicSharing": "Öffentliche Freigabeberechtigung erteilen",
     "hideDetails": "Details ausblenden",
+    "hideSidebar": "Seitenleiste ausblenden",
     "hideVideo": "Video ausblenden",
     "highlight": "Hervorheben",
     "makeAdmin": "Zum Admin Machen",
@@ -1622,6 +1626,7 @@
     "revokePublicSharing": "Öffentliche Freigabeberechtigung widerrufen",
     "shareWithUsers": "Mit Benutzern teilen",
     "showDetails": "Details anzeigen",
+    "showSidebar": "Seitenleiste einblenden",
     "showVideo": "Video einblenden",
     "simpleView": "Einfache Ansicht",
     "switchToDarkMode": "Zum Dunkelmodus Wechseln",
@@ -1889,8 +1894,12 @@
     "dockFull": "Vollbild"
   },
   "bulkActions": {
-    "star": "Markieren",
-    "reprocess": "Neu verarbeiten"
+    "addOrRemoveTags": "Tags hinzufügen oder entfernen",
+    "deleteSelected": "Auswahl löschen",
+    "exitSelection": "Auswahlmodus beenden",
+    "reprocess": "Neu verarbeiten",
+    "selectedCount": "{{count}} ausgewählt",
+    "star": "Markieren"
   },
   "unifiedShareModal": {
     "noPublicLinks": "Noch keine öffentlichen Freigabe-Links",

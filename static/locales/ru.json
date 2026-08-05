@@ -504,10 +504,12 @@
     "back": "Назад",
     "cancel": "Отмена",
     "changesSaved": "Изменения сохранены",
+    "clearAll": "Снять выделение",
     "close": "Закрыть",
     "confirm": "Подтвердить",
     "delete": "Удалить",
     "deselectAll": "Снять выделение со всех",
+    "done": "Готово",
     "download": "Скачать",
     "edit": "Редактировать",
     "error": "Ошибка",
@@ -1573,6 +1575,7 @@
   },
   "tooltips": {
     "assignFolder": "Назначить папку",
+    "backToHome": "Вернуться в Speakr",
     "bubbleView": "Вид пузырьков",
     "changeSpeaker": "Изменить спикера",
     "clearChat": "Очистить чат",
@@ -1598,6 +1601,7 @@
     "fullscreenVideo": "Видео в полноэкранном режиме",
     "grantPublicSharing": "Предоставить разрешение на публичный доступ",
     "hideDetails": "Скрыть детали",
+    "hideSidebar": "Скрыть боковую панель",
     "hideVideo": "Скрыть видео",
     "highlight": "Добавить в избранное",
     "makeAdmin": "Сделать администратором",
@@ -1622,6 +1626,7 @@
     "revokePublicSharing": "Отозвать разрешение на публичный доступ",
     "shareWithUsers": "Поделиться с пользователями",
     "showDetails": "Показать детали",
+    "showSidebar": "Показать боковую панель",
     "showVideo": "Показать видео",
     "simpleView": "Простой вид",
     "switchToDarkMode": "Переключить на тёмную тему",
@@ -1889,8 +1894,12 @@
     "dockFull": "Во весь экран"
   },
   "bulkActions": {
-    "star": "Избранное",
-    "reprocess": "Повторить"
+    "addOrRemoveTags": "Добавить или убрать теги",
+    "deleteSelected": "Удалить выбранные",
+    "exitSelection": "Выйти из режима выбора",
+    "reprocess": "Повторить",
+    "selectedCount": "Выбрано: {{count}}",
+    "star": "Избранное"
   },
   "unifiedShareModal": {
     "noPublicLinks": "Публичных ссылок пока нет",

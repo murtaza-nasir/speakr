@@ -504,10 +504,12 @@
     "back": "Voltar",
     "cancel": "Cancelar",
     "changesSaved": "Alterações salvas",
+    "clearAll": "Desmarcar tudo",
     "close": "Fechar",
     "confirm": "Confirmar",
     "delete": "Deletar",
     "deselectAll": "Desselecionar Tudo",
+    "done": "Concluído",
     "download": "Baixar",
     "edit": "Editar",
     "error": "Erro",
@@ -1573,6 +1575,7 @@
   },
   "tooltips": {
     "assignFolder": "Atribuir Pasta",
+    "backToHome": "Voltar ao Speakr",
     "bubbleView": "Visualização em bolhas",
     "changeSpeaker": "Alterar orador",
     "clearChat": "Limpar chat",
@@ -1598,6 +1601,7 @@
     "fullscreenVideo": "Vídeo em tela cheia",
     "grantPublicSharing": "Conceder permissão de compartilhamento público",
     "hideDetails": "Ocultar detalhes",
+    "hideSidebar": "Ocultar barra lateral",
     "hideVideo": "Ocultar vídeo",
     "highlight": "Destacar",
     "makeAdmin": "Tornar Admin",
@@ -1622,6 +1626,7 @@
     "revokePublicSharing": "Revogar permissão de compartilhamento público",
     "shareWithUsers": "Compartilhar com usuários",
     "showDetails": "Mostrar detalhes",
+    "showSidebar": "Mostrar barra lateral",
     "showVideo": "Mostrar vídeo",
     "simpleView": "Visualização simples",
     "switchToDarkMode": "Mudar para Modo Escuro",
@@ -1889,8 +1894,12 @@
     "dockFull": "Tela cheia"
   },
   "bulkActions": {
-    "star": "Favoritar",
-    "reprocess": "Reprocessar"
+    "addOrRemoveTags": "Adicionar ou remover tags",
+    "deleteSelected": "Excluir selecionados",
+    "exitSelection": "Sair do modo de seleção",
+    "reprocess": "Reprocessar",
+    "selectedCount": "{{count}} selecionados",
+    "star": "Favoritar"
   },
   "unifiedShareModal": {
     "noPublicLinks": "Ainda não há links públicos",

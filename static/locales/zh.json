@@ -504,10 +504,12 @@
     "back": "返回",
     "cancel": "取消",
     "changesSaved": "更改已保存",
+    "clearAll": "取消全选",
     "close": "关闭",
     "confirm": "确认",
     "delete": "删除",
     "deselectAll": "取消全选",
+    "done": "完成",
     "download": "下载",
     "edit": "编辑",
     "error": "错误",
@@ -1573,6 +1575,7 @@
   },
   "tooltips": {
     "assignFolder": "分配文件夹",
+    "backToHome": "返回 Speakr",
     "bubbleView": "气泡视图",
     "changeSpeaker": "更改发言人",
     "clearChat": "清空聊天",
@@ -1598,6 +1601,7 @@
     "fullscreenVideo": "视频全屏",
     "grantPublicSharing": "授予公开分享权限",
     "hideDetails": "隐藏详情",
+    "hideSidebar": "隐藏侧边栏",
     "hideVideo": "隐藏视频",
     "highlight": "高亮",
     "makeAdmin": "设为管理员",
@@ -1622,6 +1626,7 @@
     "revokePublicSharing": "撤销公开分享权限",
     "shareWithUsers": "与用户分享",
     "showDetails": "显示详情",
+    "showSidebar": "显示侧边栏",
     "showVideo": "显示视频",
     "simpleView": "简单视图",
     "switchToDarkMode": "切换到深色模式",
@@ -1889,8 +1894,12 @@
     "dockFull": "全屏"
   },
   "bulkActions": {
-    "star": "加星标",
-    "reprocess": "重新处理"
+    "addOrRemoveTags": "添加或移除标签",
+    "deleteSelected": "删除所选",
+    "exitSelection": "退出选择模式",
+    "reprocess": "重新处理",
+    "selectedCount": "已选择 {{count}} 项",
+    "star": "加星标"
   },
   "unifiedShareModal": {
     "noPublicLinks": "尚无公开分享链接",

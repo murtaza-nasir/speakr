@@ -2751,6 +2751,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const WHISPER_LANGUAGE_FALLBACK_NAMES = {
                 haw: 'Hawaiian',
                 yue: 'Cantonese',
+                ba: 'Bashkir',   // some ICU builds return the bare code
+                bo: 'Tibetan',
             };
             const languageOptions = computed(() => {
                 const uiLocale = (window.i18n && window.i18n.currentLocale) || 'en';

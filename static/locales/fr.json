@@ -504,10 +504,12 @@
     "back": "Retour",
     "cancel": "Annuler",
     "changesSaved": "Modifications enregistrées",
+    "clearAll": "Tout désélectionner",
     "close": "Fermer",
     "confirm": "Confirmer",
     "delete": "Supprimer",
     "deselectAll": "Tout Désélectionner",
+    "done": "Terminé",
     "download": "Télécharger",
     "edit": "Modifier",
     "error": "Erreur",
@@ -1573,6 +1575,7 @@
   },
   "tooltips": {
     "assignFolder": "Attribuer un dossier",
+    "backToHome": "Retour à Speakr",
     "bubbleView": "Vue bulles",
     "changeSpeaker": "Changer le locuteur",
     "clearChat": "Effacer le chat",
@@ -1598,6 +1601,7 @@
     "fullscreenVideo": "Vidéo en plein écran",
     "grantPublicSharing": "Accorder la permission de partage public",
     "hideDetails": "Masquer les détails",
+    "hideSidebar": "Masquer la barre latérale",
     "hideVideo": "Masquer la vidéo",
     "highlight": "Surligner",
     "makeAdmin": "Nommer Administrateur",
@@ -1622,6 +1626,7 @@
     "revokePublicSharing": "Révoquer la permission de partage public",
     "shareWithUsers": "Partager avec des utilisateurs",
     "showDetails": "Afficher les détails",
+    "showSidebar": "Afficher la barre latérale",
     "showVideo": "Afficher la vidéo",
     "simpleView": "Vue simple",
     "switchToDarkMode": "Passer en Mode Sombre",
@@ -1889,8 +1894,12 @@
     "dockFull": "Plein écran"
   },
   "bulkActions": {
-    "star": "Favoris",
-    "reprocess": "Retraiter"
+    "addOrRemoveTags": "Ajouter ou retirer des étiquettes",
+    "deleteSelected": "Supprimer la sélection",
+    "exitSelection": "Quitter le mode sélection",
+    "reprocess": "Retraiter",
+    "selectedCount": "{{count}} sélectionnés",
+    "star": "Favoris"
   },
   "unifiedShareModal": {
     "noPublicLinks": "Aucun lien public pour le moment",
