@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
+const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
 
 // Import composables
 import { useRecordings } from './modules/composables/recordings.js';
@@ -22,7 +22,12 @@ import { useFolders } from './modules/composables/folders.js';
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
-import { detectPlatform, getAudioCapabilities, enumerateVirtualAudioDevices } from './modules/utils/platform.js';
+import {
+    detectPlatform,
+    getAudioCapabilities,
+    enumerateVirtualAudioDevices,
+    normalizeAudioInputDevices
+} from './modules/utils/platform.js';
 
 // Number of speaker colors available in CSS (must match styles.css)
 const SPEAKER_COLOR_COUNT = 16;
@@ -442,19 +447,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try { localStorage.setItem('selectedSecondaryDeviceId', v || ''); } catch (_) {}
             });
             const refreshInputAudioDevices = async () => {
-                if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+                if (typeof navigator === 'undefined'
+                    || !navigator.mediaDevices
+                    || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+                    return [];
+                }
                 try {
                     const devs = await navigator.mediaDevices.enumerateDevices();
-                    inputAudioDevices.value = devs
-                        .filter(d => d.kind === 'audioinput')
-                        .map(d => ({
-                            deviceId: d.deviceId,
-                            label: d.label || '',
-                            // Tag virtual/monitor devices so the UI can badge them
-                            isVirtual: /\bmonitor of |blackhole|loopback|soundflower|vb[- ]?(audio|cable)|voicemeeter|stereo mix|what u hear|pulse.*monitor|pipewire.*monitor|monitor source/i.test(d.label || '')
-                        }));
+                    const inputs = normalizeAudioInputDevices(devs);
+                    inputAudioDevices.value = inputs;
+
+                    // Before permission, browsers often expose only opaque or
+                    // blank entries. Reconcile persisted IDs only once labels
+                    // prove that the full device list is available.
+                    if (inputs.some(device => device.label)) {
+                        const availableIds = new Set(inputs.map(device => device.deviceId));
+                        if (selectedMicDeviceId.value && !availableIds.has(selectedMicDeviceId.value)) {
+                            selectedMicDeviceId.value = '';
+                        }
+                        if (selectedSecondaryDeviceId.value && !availableIds.has(selectedSecondaryDeviceId.value)) {
+                            selectedSecondaryDeviceId.value = '';
+                        }
+                    }
+                    return inputs;
                 } catch (_) {
                     inputAudioDevices.value = [];
+                    return [];
                 }
             };
             refreshInputAudioDevices();
@@ -481,6 +499,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             // so the result is often []; refreshed again after the
             // first getUserMedia / getDisplayMedia grant.
             refreshVirtualAudioDevices();
+
+            const handleAudioDeviceChange = () => {
+                refreshInputAudioDevices();
+                refreshVirtualAudioDevices();
+            };
+            onMounted(() => {
+                if (typeof navigator !== 'undefined'
+                    && navigator.mediaDevices
+                    && typeof navigator.mediaDevices.addEventListener === 'function') {
+                    navigator.mediaDevices.addEventListener('devicechange', handleAudioDeviceChange);
+                }
+            });
+            onUnmounted(() => {
+                if (typeof navigator !== 'undefined'
+                    && navigator.mediaDevices
+                    && typeof navigator.mediaDevices.removeEventListener === 'function') {
+                    navigator.mediaDevices.removeEventListener('devicechange', handleAudioDeviceChange);
+                }
+            });
+
             const showRecoveryModal = ref(false);
             const recoverableRecording = ref(null);
             const asrLanguage = ref('');

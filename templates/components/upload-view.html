@@ -234,7 +234,9 @@
                      dot left of the label so the function is still
                      obvious without being loud. -->
                 <button @click="startRecording('microphone')"
-                        class="w-full px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+                        :disabled="isPreparingRecording"
+                        :class="{ 'opacity-60 cursor-wait': isPreparingRecording }"
+                        class="w-full px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors disabled:pointer-events-none"
                         style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-secondary);"
                         onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
                     <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
@@ -249,7 +251,9 @@
                      "tab-audio-only" indicator dot is preserved. -->
                 <div v-if="canRecordSystemAudio" class="grid grid-cols-2 gap-2">
                     <button @click="startRecording('system')"
-                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                            :disabled="isPreparingRecording"
+                            :class="{ 'opacity-60 cursor-wait': isPreparingRecording }"
+                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium transition-colors disabled:pointer-events-none"
                             style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-secondary);"
                             onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
                         <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
@@ -260,7 +264,9 @@
                     </button>
 
                     <button @click="startRecording('both')"
-                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-colors"
+                            :disabled="isPreparingRecording"
+                            :class="{ 'opacity-60 cursor-wait': isPreparingRecording }"
+                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-colors disabled:pointer-events-none"
                             style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-secondary);"
                             onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
                         <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
@@ -320,7 +326,9 @@
                      getUserMedia briefly to populate them. The
                      audio-processing opt-out lives inside this group
                      too since it's a device-level capture setting. -->
-                <details class="disclosure-card text-[11px] mt-1 group">
+                <details :open="!!pendingMicrophoneSelection"
+                         @toggle="pendingMicrophoneSelection && !$event.target.open && ($event.target.open = true)"
+                         class="disclosure-card text-[11px] mt-1 group">
                     <summary class="cursor-pointer flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors" style="color: var(--text-muted); list-style: none;">
                         <i class="fas fa-sliders-h"></i>
                         <span>${ t('recording.inputDevices') }</span>
@@ -328,11 +336,23 @@
                         <i class="fas fa-chevron-down ml-auto text-[10px] transition-transform group-open:rotate-180"></i>
                     </summary>
                     <div class="disclosure-card-body space-y-2">
-                        <div v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !(inputAudioDevices[0] && inputAudioDevices[0].label)"
+                        <div v-if="pendingMicrophoneSelection"
+                             class="rounded-md border border-blue-300/60 bg-blue-50/70 dark:border-blue-700/60 dark:bg-blue-950/30 px-2.5 py-2">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-microphone text-blue-500 mt-0.5"></i>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">${ t('recording.anotherMicAvailable') }</p>
+                                    <p class="text-[10px] mt-0.5" style="color: var(--text-secondary);">${ t('recording.chooseMicBeforeRecording') }</p>
+                                    <p class="text-[10px] mt-1 font-medium" style="color: var(--text-accent);"
+                                       v-text="pendingMicrophoneSelection.candidates.map(d => d.label).join(', ')"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !inputAudioDevices.some(d => d.label)"
                              class="text-[11px]" style="color: var(--text-muted);">
                             <i class="fas fa-info-circle mr-1"></i>
                             ${ t('recording.grantMicPermissionHint') }
-                            <button @click.prevent="navigator.mediaDevices.getUserMedia({audio:true}).then(s => { s.getTracks().forEach(t => t.stop()); refreshInputAudioDevices(); })"
+                            <button @click.prevent="requestMicrophonePermission"
                                     class="underline mt-1 block" style="color: var(--text-accent);">
                                 ${ t('recording.requestMicPermission') }
                             </button>
@@ -347,6 +367,17 @@
                                         ${ d.label }${ d.isVirtual ? ' · ' + t('recording.virtualMonitor') : '' }
                                     </option>
                                 </select>
+                            </div>
+                            <div v-if="pendingMicrophoneSelection" class="flex items-center justify-end gap-2 pb-1">
+                                <button @click="cancelPendingMicrophoneSelection"
+                                        class="px-2.5 py-1 rounded border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                        style="color: var(--text-secondary);">
+                                    ${ t('buttons.cancel') }
+                                </button>
+                                <button @click="confirmPendingMicrophoneSelection"
+                                        class="px-2.5 py-1 rounded text-white bg-blue-600 hover:bg-blue-700">
+                                    ${ t('buttons.startRecording') }
+                                </button>
                             </div>
                             <div>
                                 <label class="block text-[11px] mb-1" style="color: var(--text-muted);">
