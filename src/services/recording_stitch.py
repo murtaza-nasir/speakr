@@ -51,6 +51,7 @@ from typing import Tuple
 
 from src.database import db
 from src.models import RecordingSession, Recording
+from src.utils.ffmpeg_utils import decode_ffmpeg_output
 
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,7 @@ def _remux_copy(src_path: str, output_path: str) -> None:
     except subprocess.TimeoutExpired:
         raise StitchError('ffmpeg remux timed out after 10 minutes')
     if result.returncode != 0:
-        stderr = (result.stderr.decode('utf-8', errors='replace') or '').strip()
+        stderr = decode_ffmpeg_output(result.stderr).strip()
         logger.warning(
             f"Remux failed (exit {result.returncode}): {stderr[:300]}; "
             "falling back to raw byte-joined stream"
@@ -184,7 +185,7 @@ def _concat_demux(segment_files: list, output_path: str, work_dir: str) -> None:
     except subprocess.TimeoutExpired:
         raise StitchError('ffmpeg segment concat timed out after 10 minutes')
     if result.returncode != 0:
-        stderr = (result.stderr.decode('utf-8', errors='replace') or '').strip()
+        stderr = decode_ffmpeg_output(result.stderr).strip()
         raise StitchError(f'ffmpeg segment concat failed (exit {result.returncode}): {stderr[:500]}')
 
 

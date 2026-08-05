@@ -1,5 +1,6 @@
 """Centralized FFmpeg utilities for consistent audio/video processing."""
 
+import locale
 import os
 import subprocess
 import tempfile
@@ -476,25 +477,55 @@ def temp_audio_conversion(input_path: str, target_format: str = 'mp3'):
                 current_app.logger.warning(f"Failed to cleanup temp file {temp_path}: {e}")
 
 
+def decode_ffmpeg_output(data) -> str:
+    """
+    Decode ffmpeg/ffprobe byte output defensively.
+
+    ffmpeg echoes container metadata (e.g. ID3 tags) into its output as raw
+    bytes without transcoding, so the stream is not guaranteed to be valid
+    UTF-8 — a GBK-tagged MP3 crashes a strict decode even inside the Linux
+    container. Try UTF-8, then the system's preferred encoding (covers
+    Windows code pages such as GBK/cp1252 for local runs), and finally
+    replace undecodable bytes. Never raises.
+    """
+    if data is None:
+        return ''
+    if isinstance(data, str):
+        return data
+    try:
+        return data.decode('utf-8')
+    except UnicodeDecodeError:
+        pass
+    preferred = locale.getpreferredencoding(False)
+    if preferred and preferred.lower().replace('-', '') != 'utf8':
+        try:
+            return data.decode(preferred)
+        except (UnicodeDecodeError, LookupError):
+            pass
+    return data.decode('utf-8', errors='replace')
+
+
 def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
     """
     Execute FFmpeg command with consistent error handling.
-    
+
     Args:
         cmd: FFmpeg command as list of strings
         operation_description: Human-readable description for error messages
-        
+
     Raises:
         FFmpegNotFoundError: If FFmpeg is not installed
         FFmpegError: If FFmpeg command fails
     """
     try:
         current_app.logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+        # No text=True: that would strict-decode ffmpeg's output inside
+        # communicate() and raise UnicodeDecodeError on non-UTF-8 metadata
+        # bytes before any error handling below could run.
         result = subprocess.run(
             cmd,
             check=True,
             capture_output=True,
-            text=True,
             timeout=FFMPEG_TIMEOUT_SECONDS,
         )
         current_app.logger.debug(f"FFmpeg {operation_description} completed successfully")
@@ -513,6 +544,6 @@ def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
         raise FFmpegError(error_msg)
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"{operation_description} failed: {e.stderr}"
+        error_msg = f"{operation_description} failed: {decode_ffmpeg_output(e.stderr)}"
         current_app.logger.error(f"FFmpeg error: {error_msg}")
         raise FFmpegError(error_msg)
