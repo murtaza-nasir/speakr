@@ -5,7 +5,7 @@
             <i class="fas fa-sync-alt text-2xl text-[var(--text-accent)]"></i>
             <div class="flex-1">
                 <h3 class="modal-title" v-text="t('bulkReprocessModal.title')"></h3>
-                <div class="modal-subtitle">${ selectedCount !== 1 ? t('bulkReprocessModal.recordingsSelectedPlural', {count: selectedCount}) : t('bulkReprocessModal.recordingsSelected', {count: selectedCount}) }</div>
+                <div class="modal-subtitle" v-text="selectedCount !== 1 ? t('bulkReprocessModal.recordingsSelectedPlural', {count: selectedCount}) : t('bulkReprocessModal.recordingsSelected', {count: selectedCount})"></div>
             </div>
             <button @click="closeBulkReprocessModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
@@ -43,8 +43,8 @@
 
             <div class="t-meta">
                 <i class="fas fa-info-circle mr-1"></i>
-                <span v-if="bulkReprocessType === 'summary'">${ selectedCount !== 1 ? t('bulkReprocessModal.queuedSummaryPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedSummary', {count: selectedCount}) }</span>
-                <span v-else>${ selectedCount !== 1 ? t('bulkReprocessModal.queuedTranscriptionPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedTranscription', {count: selectedCount}) }</span>
+                <span v-if="bulkReprocessType === 'summary'" v-text="selectedCount !== 1 ? t('bulkReprocessModal.queuedSummaryPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedSummary', {count: selectedCount})"></span>
+                <span v-else v-text="selectedCount !== 1 ? t('bulkReprocessModal.queuedTranscriptionPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedTranscription', {count: selectedCount})"></span>
             </div>
         </div>
         <div class="modal-footer">
