@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from sqlalchemy import select
 from email.utils import encode_rfc2231
+from urllib.parse import quote
 
 from src.database import db
 from src.models import *
@@ -327,9 +328,21 @@ def download_transcript_with_template(recording_id):
         else:
             # Plain text transcription
             filename = f"{recording.title or 'transcript'}.{ext}"
-        filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
+        # Strip only what is illegal in a filename; keep non-ASCII titles intact
+        # and advertise them through RFC 5987 filename* (same approach as the
+        # summary/chat/notes downloads below).
+        filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', filename)
+        filename = re.sub(r'\s+', ' ', filename).strip() or f'transcript-{recording_id}.{ext}'
         response.headers['Content-Type'] = content_type
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        try:
+            filename.encode('ascii')
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            ascii_fallback = f'transcript-{recording_id}.{ext}'
+            response.headers['Content-Disposition'] = (
+                f'attachment; filename="{ascii_fallback}"; '
+                + "filename*=UTF-8''" + quote(filename, safe='')
+            )
 
         return response
 
