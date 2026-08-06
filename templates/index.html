@@ -123,13 +123,7 @@
         {% include 'components/header.html' %}
 
         <div class="flex-1 flex overflow-hidden relative">
-            <!-- Mobile Sidebar Backdrop -->
-            <div v-if="!isSidebarCollapsed && isMobileScreen"
-                 @click="toggleSidebar"
-                 class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
-            </div>
-
-            <!-- Sidebar -->
+            <!-- Sidebar (renders its own mobile backdrop as its first element) -->
             {% include 'components/sidebar.html' %}
 
             <!-- Main Content Area -->
