@@ -38,16 +38,18 @@ DELETION_MODE=full_recording  # Options: 'audio_only' or 'full_recording'
 ### Deletion Modes
 
 #### Audio-Only Mode (`DELETION_MODE=audio_only`)
-- **Deletes**: Audio file only
+- **Deletes**: The media file only
 - **Keeps**: Transcription, summary, notes, metadata
 - **Use case**: Long-term record keeping with storage optimization
 - **Result**: Recordings appear in "Archived" view, transcription remains searchable
 
 #### Full Recording Mode (`DELETION_MODE=full_recording`)
-- **Deletes**: Complete recording including audio, transcription, summary, notes
+- **Deletes**: Complete recording including the media file, transcription, summary, notes
 - **Keeps**: Nothing - recording is permanently removed
 - **Use case**: Complete data removal for compliance
 - **Result**: Recording is completely removed from the system
+
+Both modes delete whatever media file the recording stores. With [video retention](../user-guide/recording.md) enabled, that file is the retained video, so video recordings are removed the same way audio-only recordings are — `audio_only` mode deletes the video file while keeping the transcript, and `full_recording` removes everything.
 
 ## Multi-Tier Retention System
 
