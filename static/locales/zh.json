@@ -757,7 +757,7 @@
     "bulkExportResult": "已导出 {{total}} 条录音中的 {{exported}} 条。",
     "bulkExportFailed": "导出录音失败。",
     "filenameTemplateTitle": "导出文件名模板",
-    "filenameTemplateDescription": "自定义自动导出的 markdown 文件的文件名。留空则使用默认值（recording_{{id}}）。",
+    "filenameTemplateDescription": "自定义自动导出的 markdown 文件的文件名。留空则使用默认值（recording_{{id}}）。 此设置仅控制文件名；下方的导出模板控制文件内容。",
     "filenameTemplateHelp": "可用变量：",
     "filenameTemplateSaved": "导出文件名模板已保存。",
     "filenameTemplateInvalid": "文件名模板不能包含路径分隔符（/ 或 \\）。",

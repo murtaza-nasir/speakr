@@ -757,7 +757,7 @@
     "bulkExportResult": "Exported {{exported}} of {{total}} recordings.",
     "bulkExportFailed": "Failed to export recordings.",
     "filenameTemplateTitle": "Export filename template",
-    "filenameTemplateDescription": "Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{{id}}).",
+    "filenameTemplateDescription": "Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{{id}}). This setting controls only the file's name; the export templates below control the file's contents.",
     "filenameTemplateHelp": "Available variables:",
     "filenameTemplateSaved": "Export filename template saved.",
     "filenameTemplateInvalid": "The filename template cannot contain path separators (/ or \\).",

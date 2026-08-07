@@ -757,7 +757,7 @@
     "bulkExportResult": "{{exported}} von {{total}} Aufnahmen exportiert.",
     "bulkExportFailed": "Export der Aufnahmen fehlgeschlagen.",
     "filenameTemplateTitle": "Dateinamensvorlage für Exporte",
-    "filenameTemplateDescription": "Passen Sie die Dateinamen der automatisch exportierten Markdown-Dateien an. Leer lassen für den Standard (recording_{{id}}).",
+    "filenameTemplateDescription": "Passen Sie die Dateinamen der automatisch exportierten Markdown-Dateien an. Leer lassen für den Standard (recording_{{id}}). Diese Einstellung steuert nur den Dateinamen; die Export-Vorlagen darunter steuern den Inhalt der Datei.",
     "filenameTemplateHelp": "Verfügbare Variablen:",
     "filenameTemplateSaved": "Dateinamensvorlage gespeichert.",
     "filenameTemplateInvalid": "Die Dateinamensvorlage darf keine Pfadtrennzeichen (/ oder \\) enthalten.",

@@ -1470,7 +1470,7 @@
                             <!-- Export filename template (#348) -->
                             <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6">
                                 <h3 class="text-lg font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.filenameTemplateTitle">Export filename template</h3>
-                                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="exportTemplates.filenameTemplateDescription">Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{% raw %}{{id}}{% endraw %}).</p>
+                                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="exportTemplates.filenameTemplateDescription">Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{% raw %}{{id}}{% endraw %}). This setting controls only the file's name; the export templates below control the file's contents.</p>
                                 <form id="exportFilenameForm" method="POST" action="{{ url_for('auth.account') }}" class="mt-4 space-y-3">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <input type="text" id="exportFilenameTemplateInput" name="export_filename_template" value="{{ current_user.export_filename_template or '' }}" maxlength="500" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" placeholder="{% raw %}{{date}} {{title}}{% endraw %}">

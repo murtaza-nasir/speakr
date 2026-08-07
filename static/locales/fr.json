@@ -757,7 +757,7 @@
     "bulkExportResult": "{{exported}} enregistrement(s) sur {{total}} exporté(s).",
     "bulkExportFailed": "Échec de l'exportation des enregistrements.",
     "filenameTemplateTitle": "Modèle de nom de fichier d'exportation",
-    "filenameTemplateDescription": "Personnalisez les noms des fichiers markdown exportés automatiquement. Laissez vide pour utiliser la valeur par défaut (recording_{{id}}).",
+    "filenameTemplateDescription": "Personnalisez les noms des fichiers markdown exportés automatiquement. Laissez vide pour utiliser la valeur par défaut (recording_{{id}}). Ce paramètre ne contrôle que le nom du fichier ; les modèles d'exportation ci-dessous contrôlent son contenu.",
     "filenameTemplateHelp": "Variables disponibles :",
     "filenameTemplateSaved": "Modèle de nom de fichier enregistré.",
     "filenameTemplateInvalid": "Le modèle de nom de fichier ne peut pas contenir de séparateurs de chemin (/ ou \\).",

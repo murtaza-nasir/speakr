@@ -757,7 +757,7 @@
     "bulkExportResult": "{{exported}} de {{total}} gravações exportadas.",
     "bulkExportFailed": "Falha ao exportar as gravações.",
     "filenameTemplateTitle": "Modelo de nome de arquivo de exportação",
-    "filenameTemplateDescription": "Personalize os nomes dos arquivos markdown exportados automaticamente. Deixe vazio para usar o padrão (recording_{{id}}).",
+    "filenameTemplateDescription": "Personalize os nomes dos arquivos markdown exportados automaticamente. Deixe vazio para usar o padrão (recording_{{id}}). Esta configuração controla apenas o nome do arquivo; os modelos de exportação abaixo controlam o conteúdo do arquivo.",
     "filenameTemplateHelp": "Variáveis disponíveis:",
     "filenameTemplateSaved": "Modelo de nome de arquivo salvo.",
     "filenameTemplateInvalid": "O modelo de nome de arquivo não pode conter separadores de caminho (/ ou \\).",
