@@ -79,6 +79,18 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
             if request.language:
                 files['language'] = (None, request.language)
 
+            # Combine initial prompt and hotwords into the OpenAI-compatible
+            # 'prompt' field, the same way the openai_whisper connector does —
+            # the declared HOTWORDS / INITIAL_PROMPT capabilities are honored
+            # through this single parameter.
+            prompt_parts = []
+            if request.prompt:
+                prompt_parts.append(request.prompt)
+            if request.hotwords:
+                prompt_parts.append(request.hotwords)
+            if prompt_parts:
+                files['prompt'] = (None, '. '.join(prompt_parts))
+
             headers = {}
             if self.api_key:
                 headers['Authorization'] = f'Bearer {self.api_key}'
@@ -135,10 +147,15 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
                 end_time=seg.get('end'),
             ))
 
+        # Natural sort so SPEAKER_2 orders before SPEAKER_10.
+        def _speaker_key(name):
+            head, _, tail = name.rpartition('_')
+            return (head, int(tail)) if tail.isdigit() else (name, -1)
+
         return TranscriptionResponse(
             text=full_text,
             segments=segments or None,
-            speakers=sorted(speakers) if speakers else None,
+            speakers=sorted(speakers, key=_speaker_key) if speakers else None,
             language=data.get('language'),
             provider=self.PROVIDER_NAME,
             model=model,
