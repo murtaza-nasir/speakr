@@ -1480,6 +1480,65 @@ def test_download_transcript_explicit_template_id(owner):
     assert "DEF " not in body
 
 
+# --- /download/transcript : filename encoding ----------------------------- #
+
+def test_download_transcript_ascii_title_plain_filename(owner):
+    """An ASCII title is sent as a plain `filename=` parameter, unchanged."""
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="body", title="Weekly sync").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    cd = resp.headers["Content-Disposition"]
+    assert 'filename="Weekly sync.txt"' in cd
+    assert "filename*" not in cd
+
+
+def test_download_transcript_unicode_title_uses_rfc5987(owner):
+    """A non-ASCII title survives in `filename*` next to an ASCII fallback.
+
+    Regression test: the filename used to be run through
+    `re.sub(r'[^a-zA-Z0-9_\\-\\.]', '_', filename)`, which turned a Cyrillic (or
+    Chinese, Greek, accented Latin) title into a row of underscores.
+    """
+    from urllib.parse import unquote
+
+    title = "Внутренний созвон"
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="body", title=title).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    cd = resp.headers["Content-Disposition"]
+    # ASCII fallback for clients that ignore filename*.
+    assert f'filename="transcript-{rid}.txt"' in cd
+    # The real name rides along percent-encoded, and decodes back verbatim.
+    marker = "filename*=UTF-8''"
+    assert marker in cd
+    assert unquote(cd.split(marker, 1)[1]) == f"{title}.txt"
+    assert "___" not in cd
+
+
+def test_download_transcript_strips_path_illegal_characters(owner):
+    """Characters illegal in a filename are dropped, the rest is kept."""
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="body", title='a/b:c"d|e?f*g').id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    cd = resp.headers["Content-Disposition"]
+    assert 'filename="abcdefg.txt"' in cd
+
+
 # --- /download/summary : content-presence guard (line 303) ---------------- #
 
 def test_download_summary_empty_400(owner):
