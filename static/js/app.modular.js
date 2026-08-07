@@ -620,6 +620,55 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Detail-view popover showing which hotwords/initial-prompt a
             // recording actually used (#309).
             const showHintsPopover = ref(false);
+            // Inline position overrides for the hints popover. The popover is
+            // anchored `absolute left-0 top-full` to its chip, so when the chip
+            // sits near the right viewport edge (or the prompt text is long)
+            // the panel would clip off-screen. On open we measure and clamp:
+            // shift left to stay inside the right edge, flip above the chip
+            // when there is clearly more room there, and cap height with
+            // internal scrolling otherwise.
+            const hintsPopoverStyle = ref({});
+            const toggleHintsPopover = (event) => {
+                if (showHintsPopover.value) {
+                    showHintsPopover.value = false;
+                    return;
+                }
+                const btn = event.currentTarget;
+                hintsPopoverStyle.value = {};
+                showHintsPopover.value = true;
+                nextTick(() => {
+                    const pop = btn.closest('.relative')?.querySelector('.hints-popover');
+                    if (!pop) return;
+                    const margin = 8;
+                    const rect = pop.getBoundingClientRect();
+                    const btnRect = btn.getBoundingClientRect();
+                    const style = {};
+
+                    const overflowRight = rect.right - (window.innerWidth - margin);
+                    if (overflowRight > 0) {
+                        // Never shift so far that the left edge leaves the viewport.
+                        const shift = Math.min(overflowRight, Math.max(rect.left - margin, 0));
+                        style.transform = `translateX(-${Math.round(shift)}px)`;
+                    }
+
+                    const spaceBelow = window.innerHeight - margin - rect.top;
+                    const spaceAbove = btnRect.top - margin;
+                    if (rect.height > spaceBelow) {
+                        if (spaceBelow < 120 && spaceAbove > spaceBelow) {
+                            style.top = 'auto';
+                            style.bottom = '100%';
+                            style.marginTop = '0';
+                            style.marginBottom = '0.25rem';
+                            style.maxHeight = `${Math.floor(spaceAbove)}px`;
+                        } else {
+                            style.maxHeight = `${Math.floor(spaceBelow)}px`;
+                        }
+                        style.overflowY = 'auto';
+                    }
+
+                    hintsPopoverStyle.value = style;
+                });
+            };
             const uploadTranscriptionModel = ref('');
             const uploadPromptVariables = reactive({});  // {variableName: value}
             const showPromptVariablesPanel = ref(true);  // expander state
@@ -1695,7 +1744,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, hintsPopoverStyle, toggleHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
