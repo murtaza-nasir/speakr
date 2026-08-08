@@ -358,6 +358,8 @@ curl http://ASR_BASE_URL/health
 - Accept model agreements again
 - Check logs for specific errors
 
+If diarization breaks specifically after enabling `HF_HUB_OFFLINE=1`, the container is missing `HF_HOME=/.cache` and the diarization model was never stored in the cache volume. See [Diarization Fails After Enabling Offline Mode](../troubleshooting.md#diarization-fails-after-enabling-offline-mode-whisperx-asr-service).
+
 ## Upgrading
 
 ### Update WhisperX Service

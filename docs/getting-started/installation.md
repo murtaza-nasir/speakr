@@ -609,6 +609,8 @@ docker compose up -d
 curl http://localhost:9000/health
 ```
 
+Prebuilt images are also published per release, so you can pull instead of building: `learnedmachine/whisperx-asr-service:latest` covers Pascal through Hopper GPUs as well as CPU, and `learnedmachine/whisperx-asr-service:blackwell` covers RTX 50xx cards (the plain `:blackwell` tag is available as of v0.4.0). To use one, replace the `build:` section in the compose snippet below with the corresponding `image:` line.
+
 See the [WhisperX ASR Service README](https://github.com/murtaza-nasir/whisperx-asr-service#readme) for detailed configuration options, troubleshooting, and performance tuning.
 
 !!! warning "PyTorch 2.6 Compatibility"
@@ -657,7 +659,18 @@ services:
       - COMPUTE_TYPE=float16
       - BATCH_SIZE=16
       - HF_TOKEN=your_huggingface_token_here
+      # Store all Hugging Face downloads (including the pyannote diarization
+      # model) in the cache volume below. Without this, the diarization model
+      # is cached inside the container filesystem and is lost whenever the
+      # container is recreated.
+      - HF_HOME=/.cache
       - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true  # Required for PyTorch 2.6+
+      # Uncomment after one successful online run with diarization to run
+      # fully offline (models must already be in the cache volume):
+      # - HF_HUB_OFFLINE=1
+      # Unload idle models from VRAM after this many seconds
+      # (0 = keep resident, the default):
+      # - MODEL_KEEP_ALIVE_SECONDS=3600
     deploy:
       resources:
         reservations:

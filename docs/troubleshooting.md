@@ -175,6 +175,7 @@ whisper-asr:
   image: learnedmachine/whisperx-asr-service:latest
   environment:
     - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true
+    - HF_HOME=/.cache  # keep model downloads in the cache volume
     # ... your other environment variables
 ```
 
@@ -188,6 +189,21 @@ docker compose up -d whisper-asr
 ```
 
 For more details, see the [WhisperX issue discussion](https://github.com/m-bain/whisperX/issues/1304).
+
+### Diarization Fails After Enabling Offline Mode (WhisperX ASR Service)
+
+If speaker diarization worked while online but fails with an error like this after setting `HF_HUB_OFFLINE=1`:
+
+```
+Speaker diarization failed: An error happened while trying to locate the file
+on the Hub and we cannot find the requested files in the local cache.
+```
+
+the pyannote diarization model was never stored in the cache volume. Unless `HF_HOME` is set, Hugging Face downloads go to `/root/.cache/huggingface` inside the container filesystem, so the model silently disappears whenever the container is recreated. Recreating the container is exactly what enabling offline mode requires, which is when the missing model surfaces.
+
+**Solution**: Add `HF_HOME=/.cache` to the ASR container's environment so it points at the mounted cache volume, remove `HF_HUB_OFFLINE=1` for now, and recreate the container. Run one transcription with diarization while online so the model downloads into the volume, then re-enable `HF_HUB_OFFLINE=1`. You can confirm the model is in the volume by checking for `/.cache/hub/models--pyannote--speaker-diarization-community-1` inside the container.
+
+Images newer than v0.4.0 of the WhisperX ASR service set `HF_HOME=/.cache` by default, so this only affects v0.4.0 and earlier deployments configured without it.
 
 ### WhisperX Shows UNKNOWN_SPEAKER
 
