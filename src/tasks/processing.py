@@ -1737,7 +1737,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
         initial_prompt: Optional initial prompt to steer transcription
     """
     from src.services.transcription import (
-        get_connector, TranscriptionRequest, TranscriptionCapability
+        get_connector, get_registry, TranscriptionRequest, TranscriptionCapability
     )
     from src.utils.language import normalize_language_code
 
@@ -2038,16 +2038,22 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
                     else:
                         # Build the transcription request for single file
+                        funasr_active = bool(
+                            recording
+                            and get_registry().get_active_connector_name() == 'funasr'
+                        )
+                        if funasr_active:
+                            from src.services.transcription.connectors.alibaba_funasr import (
+                                cleanup_funasr_staging,
+                                prepare_funasr_file_url,
+                            )
                         with open(actual_filepath, 'rb') as audio_file:
                             # FunASR requires an externally reachable object URL.
                             extra_options = {}
-                            if recording:
-                                from src.services.transcription import get_registry
-                                if get_registry().get_active_connector_name() == 'funasr':
-                                    from src.services.transcription.connectors.alibaba_funasr import prepare_funasr_file_url
-                                    success, urls = prepare_funasr_file_url(recording)
-                                    if success and urls:
-                                        extra_options['funasr_file_urls'] = urls
+                            if funasr_active:
+                                success, urls = prepare_funasr_file_url(recording)
+                                if success and urls:
+                                    extra_options['funasr_file_urls'] = urls
 
                             request = TranscriptionRequest(
                                 audio_file=audio_file,
@@ -2068,7 +2074,14 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 should_diarize,
                                 language,
                             )
-                            response = connector.transcribe(request)
+                            try:
+                                response = connector.transcribe(request)
+                            finally:
+                                # FunASR staging objects are only needed while
+                                # the async task can reach them; delete them as
+                                # soon as the run finishes, success or failure.
+                                if funasr_active:
+                                    cleanup_funasr_staging(recording)
 
                         # Store the result
                         if response.segments and response.has_diarization():

@@ -188,6 +188,24 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                         logger.warning(f"Unknown task status: {task_status}")
                         time.sleep(self.poll_interval)
 
+                except httpx.HTTPStatusError as e:
+                    status = e.response.status_code
+                    # 4xx is terminal: a revoked key or bad request will never
+                    # succeed on retry, so fail fast instead of burning the
+                    # whole timeout window. 429 is transient, so it still
+                    # retries (with a doubled backoff).
+                    if 400 <= status < 500 and status != 429:
+                        logger.error(f"FunASR task query rejected, status {status}")
+                        raise ProviderError(
+                            f"FunASR task query rejected, status {status}",
+                            provider=self.PROVIDER_NAME,
+                            status_code=status,
+                        ) from e
+                    logger.error(f"Task query error: {e}")
+                    if attempt < max_attempts - 1:
+                        time.sleep(self.poll_interval * (2 if status == 429 else 1))
+                    else:
+                        raise
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Task query error: {e}")
                     if attempt < max_attempts - 1:
@@ -232,16 +250,28 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                     "FunASR requires file URL. Please upload file to S3 first."
                 )
 
-            # Build parameters dict
+            # Build parameters dict. Per-request settings win over the
+            # env-derived defaults so the UI toggle is honored (the request
+            # always carries the resolved value, see processing.py).
             parameters = {}
-            if self.default_diarize:
+            diarize = bool(getattr(request, 'diarize', False)) or bool(self.default_diarize)
+            if diarize:
                 parameters['diarization_enabled'] = True
             if self.disfluency_removal_enabled:
                 parameters['disfluency_removal_enabled'] = True
             if self.timestamp_alignment_enabled:
                 parameters['timestamp_alignment_enabled'] = True
-            if self.speaker_count:
-                parameters['speaker_count'] = self.speaker_count
+
+            # Speaker count hint: prefer the request's speaker bounds, falling
+            # back to the configured default. FunASR takes a single count, so
+            # use max_speakers when given, else min_speakers.
+            speaker_count = self.speaker_count
+            if getattr(request, 'max_speakers', None) is not None:
+                speaker_count = request.max_speakers
+            elif getattr(request, 'min_speakers', None) is not None:
+                speaker_count = request.min_speakers
+            if speaker_count:
+                parameters['speaker_count'] = speaker_count
             if self.vocabulary_id:
                 parameters['vocabulary_id'] = self.vocabulary_id
             if self.language_hints:
@@ -577,18 +607,27 @@ def prepare_funasr_file_url(recording) -> tuple:
         object_key = f"funasr/{recording.id}/{safe_filename}"
         s3_locator = parse_locator(storage.s3.build_locator(object_key))
 
-        if not storage.s3.exists(s3_locator):
-            current_app.logger.info(
-                "Uploading recording %s to FunASR staging object %s",
-                recording.id,
+        # Track the staging key so the caller can clean it up after the run.
+        # Always re-upload: a replaced audio file must never re-sign a stale
+        # staging object left over from a previous run.
+        staging_keys = getattr(recording, '_funasr_staging_keys', None)
+        if staging_keys is None:
+            staging_keys = []
+            recording._funasr_staging_keys = staging_keys
+        if object_key not in staging_keys:
+            staging_keys.append(object_key)
+
+        current_app.logger.info(
+            "Uploading recording %s to FunASR staging object %s",
+            recording.id,
+            object_key,
+        )
+        with storage.materialize(locator_str) as materialized:
+            storage.s3.upload_local_file(
+                materialized.local_path,
                 object_key,
+                content_type=recording.mime_type or 'application/octet-stream',
             )
-            with storage.materialize(locator_str) as materialized:
-                storage.s3.upload_local_file(
-                    materialized.local_path,
-                    object_key,
-                    content_type=recording.mime_type or 'application/octet-stream',
-                )
 
     url = storage.s3.presign_get_url(
         s3_locator,
@@ -598,3 +637,30 @@ def prepare_funasr_file_url(recording) -> tuple:
 
     current_app.logger.info(f"FunASR URL ready for recording {recording.id}")
     return True, [url]
+
+
+def cleanup_funasr_staging(recording) -> None:
+    """Best-effort delete of FunASR staging objects created for a recording.
+
+    Deletes the objects uploaded to the ``funasr/{recording.id}/`` prefix so
+    the bucket does not grow without bound. Failures are logged and swallowed
+    so a cleanup hiccup never fails an otherwise-successful transcription.
+    """
+    from flask import current_app
+    from src.services.storage import get_storage_service
+    from src.services.storage.locator import parse_locator
+
+    storage = get_storage_service()
+    if not storage.s3:
+        return
+
+    staging_keys = getattr(recording, '_funasr_staging_keys', None) or []
+    for object_key in staging_keys:
+        try:
+            s3_locator = parse_locator(storage.s3.build_locator(object_key))
+            storage.s3.delete(s3_locator, missing_ok=True)
+            current_app.logger.info(f"Cleaned up FunASR staging object {object_key}")
+        except Exception as exc:  # noqa: BLE001 - best effort only
+            current_app.logger.warning(
+                f"Failed to clean up FunASR staging object {object_key}: {exc}"
+            )

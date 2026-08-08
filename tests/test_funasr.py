@@ -298,6 +298,197 @@ def test_prepare_audio_signs_directly_for_configured_intranet_endpoint():
     )
 
 
+def test_poll_4xx_is_terminal_and_not_retried():
+    """A 4xx response during polling (e.g. revoked key) must raise immediately."""
+    from httpx import HTTPStatusError, Request, Response
+
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.__exit__.return_value = False
+
+    def _raise_for_status():
+        resp = Response(401, request=Request('GET', 'https://dashscope.aliyuncs.com/tasks/x'))
+        raise HTTPStatusError('401 Unauthorized', request=resp.request, response=resp)
+
+    resp = MagicMock(status_code=401)
+    resp.raise_for_status.side_effect = _raise_for_status
+    client.get.return_value = resp
+
+    connector = AlibabaFunASRConnector({
+        'base_url': 'https://dashscope.aliyuncs.com/api/v1',
+        'api_key': 'sk-test',
+        'timeout': 30,
+        'poll_interval': 10,
+    })
+
+    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+        with pytest.raises(ProviderError) as exc_info:
+            connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
+
+    assert exc_info.value.status_code == 401
+    assert client.get.call_count == 1
+    sleep.assert_not_called()
+
+
+def test_transcribe_honors_request_diarize_and_speaker_count():
+    """Per-request diarize / speaker bounds must reach the FunASR payload."""
+    captured = {}
+
+    def _fake_post(url, **kwargs):
+        if 'json' in kwargs:
+            captured['payload'] = kwargs['json']
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = '{}'
+        resp.json.return_value = {
+            'output': {
+                'task_id': 'tid',
+                'task_status': 'SUCCEEDED',
+                'results': [{
+                    'subtask_status': 'SUCCEEDED',
+                    'transcription_url': 'https://signed.example/result.json',
+                }],
+            }
+        }
+        resp.raise_for_status.return_value = None
+        return resp
+
+    connector = AlibabaFunASRConnector(
+        config={'base_url': 'https://dashscope.aliyuncs.com/api/v1', 'api_key': 'sk-test'}
+    )
+    req = TranscriptionRequest(
+        audio_file=io.BytesIO(b'x'),
+        filename='x.mp3',
+        diarize=True,
+        min_speakers=2,
+        max_speakers=4,
+        extra_options={'funasr_file_urls': ['https://signed.example/x.mp3']},
+    )
+
+    with patch('httpx.Client') as client_cls:
+        client_instance = MagicMock()
+        client_instance.__enter__.return_value = client_instance
+        client_instance.__exit__.return_value = False
+        client_instance.post = MagicMock(side_effect=_fake_post)
+        client_instance.get = MagicMock(side_effect=_fake_post)
+        client_cls.return_value = client_instance
+
+        connector.transcribe(req)
+
+    params = captured['payload'].get('parameters', {})
+    assert params.get('diarization_enabled') is True
+    assert params.get('speaker_count') == 4
+
+
+def test_transcribe_falls_back_to_config_defaults():
+    """When the request carries no speaker bounds, config default is used."""
+    captured = {}
+
+    def _fake_post(url, **kwargs):
+        if 'json' in kwargs:
+            captured['payload'] = kwargs['json']
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = '{}'
+        resp.json.return_value = {
+            'output': {
+                'task_id': 'tid',
+                'task_status': 'SUCCEEDED',
+                'results': [{
+                    'subtask_status': 'SUCCEEDED',
+                    'transcription_url': 'https://signed.example/result.json',
+                }],
+            }
+        }
+        resp.raise_for_status.return_value = None
+        return resp
+
+    connector = AlibabaFunASRConnector(
+        config={
+            'base_url': 'https://dashscope.aliyuncs.com/api/v1',
+            'api_key': 'sk-test',
+            'diarize': True,
+            'speaker_count': 3,
+        }
+    )
+    req = TranscriptionRequest(
+        audio_file=io.BytesIO(b'x'),
+        filename='x.mp3',
+        extra_options={'funasr_file_urls': ['https://signed.example/x.mp3']},
+    )
+
+    with patch('httpx.Client') as client_cls:
+        client_instance = MagicMock()
+        client_instance.__enter__.return_value = client_instance
+        client_instance.__exit__.return_value = False
+        client_instance.post = MagicMock(side_effect=_fake_post)
+        client_instance.get = MagicMock(side_effect=_fake_post)
+        client_cls.return_value = client_instance
+
+        connector.transcribe(req)
+
+    params = captured['payload'].get('parameters', {})
+    assert params.get('diarization_enabled') is True
+    assert params.get('speaker_count') == 3
+
+
+def test_cleanup_funasr_staging_deletes_staged_keys():
+    """Staging keys recorded during prepare are deleted by cleanup."""
+    from src.services.transcription.connectors.alibaba_funasr import cleanup_funasr_staging
+
+    s3 = MagicMock()
+    s3.build_locator.return_value = 's3://bucket/funasr/1/source.wav'
+    storage = MagicMock(s3=s3)
+    recording = SimpleNamespace(
+        id=1,
+        _funasr_staging_keys=['funasr/1/source.wav'],
+    )
+
+    with Flask(__name__).app_context(), patch(
+        'src.services.storage.get_storage_service', return_value=storage
+    ):
+        cleanup_funasr_staging(recording)
+
+    s3.delete.assert_called_once()
+    assert s3.delete.call_args.args[0].raw == 's3://bucket/funasr/1/source.wav'
+
+
+def test_cleanup_funasr_staging_noop_without_keys():
+    """Cleanup with no recorded staging keys must not touch storage."""
+    from src.services.transcription.connectors.alibaba_funasr import cleanup_funasr_staging
+
+    s3 = MagicMock()
+    storage = MagicMock(s3=s3)
+    recording = SimpleNamespace(id=1)
+
+    with Flask(__name__).app_context(), patch(
+        'src.services.storage.get_storage_service', return_value=storage
+    ):
+        cleanup_funasr_staging(recording)
+
+    s3.delete.assert_not_called()
+
+
+def test_prepare_local_audio_always_reuploads_staging():
+    """A replaced audio file must never re-sign a stale staging object."""
+    storage = _fake_storage()
+    recording = SimpleNamespace(
+        id=1,
+        audio_path='local://recordings/source.wav',
+        original_filename='source.wav',
+        mime_type='audio/wav',
+    )
+
+    with Flask(__name__).app_context(), patch(
+        'src.services.storage.get_storage_service', return_value=storage
+    ):
+        success, urls = prepare_funasr_file_url(recording)
+
+    assert success is True
+    storage.s3.upload_local_file.assert_called_once()
+    assert recording._funasr_staging_keys == ['funasr/1/source.wav']
+
+
 if __name__ == '__main__':
     test_transcription_request_has_no_file_urls_field()
     test_transcription_request_extra_options_pass_through()
