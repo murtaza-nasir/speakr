@@ -330,6 +330,123 @@ def test_poll_4xx_is_terminal_and_not_retried():
     sleep.assert_not_called()
 
 
+def test_poll_5xx_is_retried():
+    """A 5xx response during polling is transient and must be retried."""
+    from httpx import HTTPStatusError, Request, Response
+
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.__exit__.return_value = False
+
+    def _raise_for_status():
+        resp = Response(503, request=Request('GET', 'https://dashscope.aliyuncs.com/tasks/x'))
+        raise HTTPStatusError('503 Service Unavailable', request=resp.request, response=resp)
+
+    resp = MagicMock(status_code=503)
+    resp.raise_for_status.side_effect = _raise_for_status
+    client.get.return_value = resp
+
+    connector = AlibabaFunASRConnector({
+        'base_url': 'https://dashscope.aliyuncs.com/api/v1',
+        'api_key': 'sk-test',
+        'timeout': 30,
+        'poll_interval': 10,
+    })
+
+    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+        with pytest.raises(HTTPStatusError):
+            connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
+
+    assert client.get.call_count > 1
+    sleep.assert_called()
+    # 503 (non-429) retries with the normal poll interval, not doubled.
+    assert sleep.call_args.args[0] == 10
+
+
+def test_poll_429_is_retried_with_doubled_backoff():
+    """429 is transient and must be retried with a doubled backoff."""
+    from httpx import HTTPStatusError, Request, Response
+
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.__exit__.return_value = False
+
+    def _raise_for_status():
+        resp = Response(429, request=Request('GET', 'https://dashscope.aliyuncs.com/tasks/x'))
+        raise HTTPStatusError('429 Too Many Requests', request=resp.request, response=resp)
+
+    resp = MagicMock(status_code=429)
+    resp.raise_for_status.side_effect = _raise_for_status
+    client.get.return_value = resp
+
+    connector = AlibabaFunASRConnector({
+        'base_url': 'https://dashscope.aliyuncs.com/api/v1',
+        'api_key': 'sk-test',
+        'timeout': 30,
+        'poll_interval': 10,
+    })
+
+    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+        with pytest.raises(HTTPStatusError):
+            connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
+
+    assert client.get.call_count > 1
+    sleep.assert_called()
+    # 429 retries with a doubled backoff.
+    assert sleep.call_args.args[0] == 20
+
+
+def test_transcribe_diarize_false_overrides_config_default():
+    """An explicit off toggle must beat the connector's default_diarize."""
+    captured = {}
+
+    def _fake_post(url, **kwargs):
+        if 'json' in kwargs:
+            captured['payload'] = kwargs['json']
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = '{}'
+        resp.json.return_value = {
+            'output': {
+                'task_id': 'tid',
+                'task_status': 'SUCCEEDED',
+                'results': [{
+                    'subtask_status': 'SUCCEEDED',
+                    'transcription_url': 'https://signed.example/result.json',
+                }],
+            }
+        }
+        resp.raise_for_status.return_value = None
+        return resp
+
+    connector = AlibabaFunASRConnector(
+        config={
+            'base_url': 'https://dashscope.aliyuncs.com/api/v1',
+            'api_key': 'sk-test',
+            'diarize': True,
+        }
+    )
+    req = TranscriptionRequest(
+        audio_file=io.BytesIO(b'x'),
+        filename='x.mp3',
+        diarize=False,
+        extra_options={'funasr_file_urls': ['https://signed.example/x.mp3']},
+    )
+
+    with patch('httpx.Client') as client_cls:
+        client_instance = MagicMock()
+        client_instance.__enter__.return_value = client_instance
+        client_instance.__exit__.return_value = False
+        client_instance.post = MagicMock(side_effect=_fake_post)
+        client_instance.get = MagicMock(side_effect=_fake_post)
+        client_cls.return_value = client_instance
+
+        connector.transcribe(req)
+
+    params = captured['payload'].get('parameters', {})
+    assert 'diarization_enabled' not in params
+
+
 def test_transcribe_honors_request_diarize_and_speaker_count():
     """Per-request diarize / speaker bounds must reach the FunASR payload."""
     captured = {}
@@ -380,7 +497,7 @@ def test_transcribe_honors_request_diarize_and_speaker_count():
     assert params.get('speaker_count') == 4
 
 
-def test_transcribe_falls_back_to_config_defaults():
+def test_transcribe_speaker_count_falls_back_to_config_default():
     """When the request carries no speaker bounds, config default is used."""
     captured = {}
 
@@ -428,7 +545,10 @@ def test_transcribe_falls_back_to_config_defaults():
         connector.transcribe(req)
 
     params = captured['payload'].get('parameters', {})
-    assert params.get('diarization_enabled') is True
+    # diarize is a plain bool (default False), so it never falls back to the
+    # connector default here; processing.py resolves the default before
+    # building the request. Only speaker_count falls back to config.
+    assert 'diarization_enabled' not in params
     assert params.get('speaker_count') == 3
 
 

@@ -251,10 +251,13 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 )
 
             # Build parameters dict. Per-request settings win over the
-            # env-derived defaults so the UI toggle is honored (the request
-            # always carries the resolved value, see processing.py).
+            # env-derived defaults so the UI toggle is honored. The request
+            # always carries the resolved value: processing.py falls back to
+            # the connector default (default_diarize / ASR_DIARIZE) before
+            # building the request, so OR-ing the default here again would
+            # override an explicit off toggle from the UI.
             parameters = {}
-            diarize = bool(getattr(request, 'diarize', False)) or bool(self.default_diarize)
+            diarize = bool(getattr(request, 'diarize', False))
             if diarize:
                 parameters['diarization_enabled'] = True
             if self.disfluency_removal_enabled:
