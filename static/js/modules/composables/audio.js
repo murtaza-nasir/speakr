@@ -6,6 +6,45 @@
 import * as RecordingDB from '../db/recording-persistence.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import * as ServerSessions from '../db/server-recording-sessions.js';
+import {
+    findExternalAudioInputCandidates,
+    getAudioInputCandidateSignature,
+    shouldAutoOfferExternalAudioInput
+} from '../utils/platform.js';
+
+export function buildMicrophoneConstraints(deviceId = '', disableAudioProcessing = false) {
+    const constraints = {
+        echoCancellation: !disableAudioProcessing,
+        noiseSuppression: !disableAudioProcessing,
+        autoGainControl: !disableAudioProcessing,
+        sampleRate: 48000
+    };
+    if (deviceId) constraints.deviceId = { exact: deviceId };
+    return constraints;
+}
+
+export function isUnavailableAudioInputError(error) {
+    return error?.name === 'NotFoundError' || error?.name === 'OverconstrainedError';
+}
+
+export async function acquireMicrophoneStream(mediaDevices, options = {}) {
+    const deviceId = options.deviceId || '';
+    const disableAudioProcessing = !!options.disableAudioProcessing;
+
+    try {
+        const stream = await mediaDevices.getUserMedia({
+            audio: buildMicrophoneConstraints(deviceId, disableAudioProcessing)
+        });
+        return { stream, requestedDeviceId: deviceId, usedFallback: false, originalError: null };
+    } catch (error) {
+        if (!deviceId || !isUnavailableAudioInputError(error)) throw error;
+
+        const stream = await mediaDevices.getUserMedia({
+            audio: buildMicrophoneConstraints('', disableAudioProcessing)
+        });
+        return { stream, requestedDeviceId: deviceId, usedFallback: true, originalError: error };
+    }
+}
 
 export function useAudio(state, utils) {
     const {
@@ -15,7 +54,7 @@ export function useAudio(state, utils) {
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, isFinalizingRecording, recordingDisclaimer,
         showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing,
         recordSystemVideo, recordingVideoActive, videoRetentionEnabled,
-        selectedMicDeviceId, selectedSecondaryDeviceId,
+        inputAudioDevices, selectedMicDeviceId, selectedSecondaryDeviceId,
         isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
@@ -38,6 +77,63 @@ export function useAudio(state, utils) {
     // Bytes already uploaded to the server before a resume, so the live size
     // estimate reflects the WHOLE recording, not just the new segment.
     let serverResumePriorBytes = 0;
+
+    const isPreparingRecording = Vue.ref(false);
+    const pendingMicrophoneSelection = Vue.ref(null);
+    let pendingMicrophoneSelectionResolver = null;
+    let dismissedMicrophoneCandidateSignature = '';
+    const dismissedCandidateStorageKey = 'dismissedExternalMicCandidateSignature';
+
+    try {
+        dismissedMicrophoneCandidateSignature = sessionStorage.getItem(dismissedCandidateStorageKey) || '';
+    } catch (_) { /* sessionStorage may be unavailable in private contexts */ }
+
+    const rememberDismissedMicrophoneCandidates = (signature) => {
+        dismissedMicrophoneCandidateSignature = signature || '';
+        try {
+            sessionStorage.setItem(dismissedCandidateStorageKey, dismissedMicrophoneCandidateSignature);
+        } catch (_) { /* keep the in-memory fallback */ }
+    };
+
+    const waitForMicrophoneSelection = (candidates, activeDeviceId) => new Promise((resolve) => {
+        const signature = getAudioInputCandidateSignature(candidates);
+        pendingMicrophoneSelection.value = {
+            candidates,
+            activeDeviceId: activeDeviceId || '',
+            candidateSignature: signature
+        };
+        pendingMicrophoneSelectionResolver = resolve;
+    });
+
+    const resolveMicrophoneSelection = (result) => {
+        const resolver = pendingMicrophoneSelectionResolver;
+        pendingMicrophoneSelectionResolver = null;
+        pendingMicrophoneSelection.value = null;
+        if (resolver) resolver(result);
+    };
+
+    const confirmPendingMicrophoneSelection = () => {
+        const deviceId = (selectedMicDeviceId && selectedMicDeviceId.value) || '';
+        const pending = pendingMicrophoneSelection.value;
+        if (!deviceId && pending?.candidateSignature) {
+            rememberDismissedMicrophoneCandidates(pending.candidateSignature);
+        }
+        resolveMicrophoneSelection(deviceId
+            ? { action: 'select', deviceId }
+            : { action: 'continue', deviceId: '' });
+    };
+
+    const cancelPendingMicrophoneSelection = () => {
+        resolveMicrophoneSelection({ action: 'cancel', deviceId: '' });
+    };
+
+    if (typeof Vue !== 'undefined' && Vue.watch && showUploadModal) {
+        Vue.watch(showUploadModal, (visible) => {
+            if (!visible && pendingMicrophoneSelection.value) {
+                cancelPendingMicrophoneSelection();
+            }
+        });
+    }
 
     // Phase B: server-side chunk streaming (#287 c/d). Feature-flagged via
     // the page-level dataset attribute `data-server-recording-chunks`
@@ -314,61 +410,114 @@ export function useAudio(state, utils) {
         }
     };
 
-    // Start recording
-    // IMPORTANT: For Firefox, getDisplayMedia MUST be the first async call from user gesture
-    const startRecording = async (mode = 'microphone', resumeContext = null) => {
-        const needsDisplayMedia = mode === 'system' || mode === 'both';
+    const refreshAudioDeviceLists = async () => {
+        if (utils.refreshVirtualAudioDevices) utils.refreshVirtualAudioDevices();
+        if (utils.refreshInputAudioDevices) return await utils.refreshInputAudioDevices();
+        return (inputAudioDevices && inputAudioDevices.value) || [];
+    };
 
-        // For system audio modes, get display media FIRST before any other operations
-        // This is required for Firefox's "transient activation" security model
-        if (needsDisplayMedia) {
-            try {
-                const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: true
-                });
+    const showSelectedMicrophoneUnavailable = () => {
+        const message = (utils.t && utils.t('recording.selectedMicUnavailable'))
+            || 'The selected microphone is no longer available. Using the system default.';
+        showToast(message, 'fa-exclamation-triangle');
+    };
 
-                // Check if we got an audio track
-                const audioTrack = displayStream.getAudioTracks()[0];
-                if (!audioTrack) {
-                    displayStream.getTracks().forEach(track => track.stop());
-                    // Open the platform-aware help modal so the user
-                    // gets per-OS guidance instead of a bare toast.
-                    if (showSystemAudioHelp) showSystemAudioHelp.value = true;
-                    showToast('No audio track came through — see the help guide for per-OS setup.', 'fa-exclamation-triangle');
-                    return;
-                }
-
-                // Store stream for use after disclaimer (if any)
-                pendingDisplayStream = displayStream;
-            } catch (error) {
-                console.error('[Recording] Failed to get display media:', error);
-                if (error.name === 'NotAllowedError') {
-                    showToast('Screen sharing was cancelled', 'error');
-                } else {
-                    showToast(`Failed to capture: ${error.message}`, 'error');
-                }
-                return;
-            }
-        }
-
-        // Now check for disclaimer (after we've secured the display stream)
-        if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
-            showRecordingDisclaimerModal.value = true;
-            pendingRecordingMode.value = mode;
-            pendingResumeContext = resumeContext;
+    const requestMicrophonePermission = async () => {
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            showToast(
+                (utils.t && utils.t('recording.micPermissionUnavailable'))
+                    || 'Microphone access is not available. Make sure you are using HTTPS.',
+                'error'
+            );
             return;
         }
 
-        await startRecordingInternal(mode, resumeContext);
+        let permissionStream = null;
+        try {
+            permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            await refreshAudioDeviceLists();
+        } catch (error) {
+            const denied = error?.name === 'NotAllowedError' || error?.name === 'SecurityError';
+            showToast(
+                (utils.t && utils.t(denied ? 'recording.microphonePermissionDenied' : 'recording.micPermissionFailed'))
+                    || (denied
+                        ? 'Microphone permission was denied. Allow access in your browser settings and try again.'
+                        : 'Could not access the microphone. Check that it is connected and not in use.'),
+                'error'
+            );
+        } finally {
+            if (permissionStream) permissionStream.getTracks().forEach(track => track.stop());
+        }
+    };
+
+    // Start recording
+    // IMPORTANT: For Firefox, getDisplayMedia MUST be the first async call from user gesture
+    const startRecording = async (mode = 'microphone', resumeContext = null) => {
+        if (isPreparingRecording.value || isRecording.value) return;
+        isPreparingRecording.value = true;
+
+        try {
+            const needsDisplayMedia = mode === 'system' || mode === 'both';
+
+            // For system audio modes, get display media FIRST before any other operations
+            // This is required for Firefox's "transient activation" security model
+            if (needsDisplayMedia) {
+                try {
+                    const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: true
+                    });
+
+                    // Check if we got an audio track
+                    const audioTrack = displayStream.getAudioTracks()[0];
+                    if (!audioTrack) {
+                        displayStream.getTracks().forEach(track => track.stop());
+                        // Open the platform-aware help modal so the user
+                        // gets per-OS guidance instead of a bare toast.
+                        if (showSystemAudioHelp) showSystemAudioHelp.value = true;
+                        showToast('No audio track came through — see the help guide for per-OS setup.', 'fa-exclamation-triangle');
+                        return;
+                    }
+
+                    // Store stream for use after disclaimer (if any)
+                    pendingDisplayStream = displayStream;
+                } catch (error) {
+                    console.error('[Recording] Failed to get display media:', error);
+                    if (error.name === 'NotAllowedError') {
+                        showToast('Screen sharing was cancelled', 'error');
+                    } else {
+                        showToast(`Failed to capture: ${error.message}`, 'error');
+                    }
+                    return;
+                }
+            }
+
+            // Now check for disclaimer (after we've secured the display stream)
+            if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
+                showRecordingDisclaimerModal.value = true;
+                pendingRecordingMode.value = mode;
+                pendingResumeContext = resumeContext;
+                return;
+            }
+
+            await startRecordingInternal(mode, resumeContext);
+        } finally {
+            isPreparingRecording.value = false;
+        }
     };
 
     // Accept recording disclaimer and start recording
     const acceptRecordingDisclaimer = async () => {
+        if (isPreparingRecording.value || isRecording.value) return;
+        isPreparingRecording.value = true;
         showRecordingDisclaimerModal.value = false;
         const resumeContext = pendingResumeContext;
         pendingResumeContext = null;
-        await startRecordingInternal(pendingRecordingMode.value || 'microphone', resumeContext);
+        try {
+            await startRecordingInternal(pendingRecordingMode.value || 'microphone', resumeContext);
+        } finally {
+            isPreparingRecording.value = false;
+        }
     };
 
     // Cancel recording disclaimer
@@ -446,37 +595,73 @@ export function useAudio(state, utils) {
                 // as a toggle in the upload modal next to the mic
                 // button and persisted in localStorage.
                 const skipProc = disableAudioProcessing && disableAudioProcessing.value;
-                const buildConstraints = (deviceId) => {
-                    const c = {
-                        echoCancellation: !skipProc,
-                        noiseSuppression: !skipProc,
-                        autoGainControl: !skipProc,
-                        sampleRate: 48000
-                    };
-                    if (deviceId) c.deviceId = { exact: deviceId };
-                    return c;
-                };
+                let primaryDeviceId = (selectedMicDeviceId && selectedMicDeviceId.value) || '';
 
-                const primaryDeviceId = (selectedMicDeviceId && selectedMicDeviceId.value) || '';
+                // Acquire first, then enumerate. Browsers reveal useful
+                // device labels only after the normal microphone permission
+                // grant initiated by the user's click.
+                let primaryResult = await acquireMicrophoneStream(navigator.mediaDevices, {
+                    deviceId: primaryDeviceId,
+                    disableAudioProcessing: skipProc
+                });
+                let micStreamA = primaryResult.stream;
+                activeStreams.value = [micStreamA];
+
+                if (primaryResult.usedFallback) {
+                    primaryDeviceId = '';
+                    if (selectedMicDeviceId) selectedMicDeviceId.value = '';
+                    showSelectedMicrophoneUnavailable();
+                }
+
+                const refreshedInputs = await refreshAudioDeviceLists();
+                const activeDeviceId = micStreamA.getAudioTracks()[0]?.getSettings?.().deviceId || '';
+
+                // Mobile browsers generally lack the desktop browser's own
+                // microphone chooser. Only offer Speakr's inline fallback on
+                // mobile, when no explicit selection is active and the browser
+                // exposes a confidently separate physical input. Desktop keeps
+                // its native chooser without a second automatic selection step.
+                // Never offer during a resume: a continued session must keep
+                // its original input, and the prompt UI lives inside the
+                // upload modal, which a crash-recovery resume may not have
+                // open — awaiting the selection there would hang forever
+                // with the record buttons stuck disabled.
+                if (!primaryDeviceId && !resumeContext && shouldAutoOfferExternalAudioInput()) {
+                    const candidates = findExternalAudioInputCandidates(refreshedInputs, activeDeviceId);
+                    const candidateSignature = getAudioInputCandidateSignature(candidates);
+                    if (candidates.length > 0
+                        && candidateSignature
+                        && candidateSignature !== dismissedMicrophoneCandidateSignature) {
+                        const selection = await waitForMicrophoneSelection(candidates, activeDeviceId);
+                        if (selection.action === 'cancel') {
+                            micStreamA.getTracks().forEach(track => track.stop());
+                            activeStreams.value = [];
+                            return;
+                        }
+
+                        if (selection.action === 'select' && selection.deviceId) {
+                            primaryDeviceId = selection.deviceId;
+                            if (primaryDeviceId !== activeDeviceId) {
+                                micStreamA.getTracks().forEach(track => track.stop());
+                                activeStreams.value = [];
+                                primaryResult = await acquireMicrophoneStream(navigator.mediaDevices, {
+                                    deviceId: primaryDeviceId,
+                                    disableAudioProcessing: skipProc
+                                });
+                                micStreamA = primaryResult.stream;
+                                activeStreams.value = [micStreamA];
+                                if (primaryResult.usedFallback) {
+                                    primaryDeviceId = '';
+                                    if (selectedMicDeviceId) selectedMicDeviceId.value = '';
+                                    showSelectedMicrophoneUnavailable();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 const secondaryDeviceId = (selectedSecondaryDeviceId && selectedSecondaryDeviceId.value) || '';
                 const wantsMix = !!secondaryDeviceId && secondaryDeviceId !== primaryDeviceId;
-
-                // Primary stream (the user's mic, or whatever they
-                // explicitly picked as the primary input).
-                const micStreamA = await navigator.mediaDevices.getUserMedia({
-                    audio: buildConstraints(primaryDeviceId)
-                });
-
-                // Now that the user has granted mic permission,
-                // device labels populate — re-scan for virtual audio
-                // routing devices (BlackHole / VB-Cable / monitor
-                // sources) so the upload modal can offer them. Also
-                // refresh the full input-device list for the picker
-                // (post-permission the labels are real names instead
-                // of opaque IDs).
-                if (utils.refreshVirtualAudioDevices) utils.refreshVirtualAudioDevices();
-                if (utils.refreshInputAudioDevices)   utils.refreshInputAudioDevices();
-
                 audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
 
                 if (wantsMix) {
@@ -491,10 +676,14 @@ export function useAudio(state, utils) {
                     let micStreamB;
                     try {
                         micStreamB = await navigator.mediaDevices.getUserMedia({
-                            audio: buildConstraints(secondaryDeviceId)
+                            audio: buildMicrophoneConstraints(secondaryDeviceId, skipProc)
                         });
                     } catch (mixErr) {
                         console.warn('[Recording] Secondary input unavailable, falling back to primary only:', mixErr);
+                        if (isUnavailableAudioInputError(mixErr) && selectedSecondaryDeviceId) {
+                            selectedSecondaryDeviceId.value = '';
+                            refreshAudioDeviceLists();
+                        }
                         if (utils.showToast) utils.showToast(
                             'Secondary input unavailable — recording primary only.',
                             'fa-exclamation-triangle'
@@ -596,17 +785,22 @@ export function useAudio(state, utils) {
                 if (!canRecordAudio.value || !canRecordSystemAudio.value) {
                     throw new Error('Recording is not available. Make sure you are using HTTPS.');
                 }
-                // Honour the disableAudioProcessing flag here too —
-                // see comment at the microphone-only path above.
+                // Honour the chosen primary input and the processing flag
+                // here too. Display capture was already acquired first in
+                // startRecording(), preserving Firefox's transient activation.
                 const skipProcBoth = disableAudioProcessing && disableAudioProcessing.value;
-                const micStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: !skipProcBoth,
-                        noiseSuppression: !skipProcBoth,
-                        autoGainControl: !skipProcBoth,
-                        sampleRate: 48000
-                    }
+                const selectedDeviceId = (selectedMicDeviceId && selectedMicDeviceId.value) || '';
+                const micResult = await acquireMicrophoneStream(navigator.mediaDevices, {
+                    deviceId: selectedDeviceId,
+                    disableAudioProcessing: skipProcBoth
                 });
+                const micStream = micResult.stream;
+                activeStreams.value = [micStream];
+                if (micResult.usedFallback) {
+                    if (selectedMicDeviceId) selectedMicDeviceId.value = '';
+                    showSelectedMicrophoneUnavailable();
+                }
+                await refreshAudioDeviceLists();
 
                 // Use pre-obtained display stream or get it now
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
@@ -1646,6 +1840,11 @@ export function useAudio(state, utils) {
 
     return {
         startRecording,
+        requestMicrophonePermission,
+        confirmPendingMicrophoneSelection,
+        cancelPendingMicrophoneSelection,
+        isPreparingRecording,
+        pendingMicrophoneSelection,
         pauseRecording,
         resumeRecording,
         stopRecording,

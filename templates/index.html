@@ -56,6 +56,7 @@
       })();
     </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-version" content="{{ app_version }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Speakr - Audio Transcription & Summarization</title>
     {% include 'includes/loading_overlay.html' %}
@@ -122,13 +123,7 @@
         {% include 'components/header.html' %}
 
         <div class="flex-1 flex overflow-hidden relative">
-            <!-- Mobile Sidebar Backdrop -->
-            <div v-if="!isSidebarCollapsed && isMobileScreen"
-                 @click="toggleSidebar"
-                 class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
-            </div>
-
-            <!-- Sidebar -->
+            <!-- Sidebar (renders its own mobile backdrop as its first element) -->
             {% include 'components/sidebar.html' %}
 
             <!-- Main Content Area -->

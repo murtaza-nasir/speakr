@@ -428,13 +428,29 @@ class FileMonitor:
                 # Create database record
                 now = datetime.utcnow()
 
+                # Filename-parsed date first when the owner opted in (#342):
+                # the configured pattern is explicit user intent, so it
+                # outranks embedded metadata. No client timezone exists on
+                # this path, so date-only matches anchor at 12:00 UTC.
+                meeting_date = None
+                if user and user.parse_filename_dates:
+                    from src.utils.filename_dates import parse_filename_date
+                    meeting_date = parse_filename_date(
+                        original_filename,
+                        pattern_key=user.filename_date_pattern or 'auto',
+                        custom_regex=user.filename_date_regex,
+                    )
+                    if meeting_date:
+                        self.logger.info(f"Using filename-parsed meeting date: {meeting_date}")
+
                 # Try to extract creation date from file metadata, fall back to current time
-                meeting_date = get_creation_date(str(final_path))
-                if meeting_date:
-                    self.logger.info(f"Using file metadata creation date: {meeting_date}")
-                else:
-                    meeting_date = now
-                    self.logger.debug("No metadata creation date found, using current time")
+                if not meeting_date:
+                    meeting_date = get_creation_date(str(final_path))
+                    if meeting_date:
+                        self.logger.info(f"Using file metadata creation date: {meeting_date}")
+                    else:
+                        meeting_date = now
+                        self.logger.debug("No metadata creation date found, using current time")
 
                 # Check for duplicate
                 if file_hash:

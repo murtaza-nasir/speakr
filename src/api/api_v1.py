@@ -16,7 +16,9 @@ All endpoints require token authentication via:
 import os
 import re
 import json
-from datetime import datetime, date, timedelta
+import math
+from datetime import datetime, date, timedelta, timezone
+from functools import wraps
 
 from src.utils.dates import to_utc_naive
 from typing import Optional
@@ -24,6 +26,8 @@ from typing import Optional
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from sqlalchemy import func, extract, or_, and_
+from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.utils import secure_filename
 
 from src.database import db
 from src.models import Recording, User, Tag, RecordingTag, Speaker, Event
@@ -33,8 +37,12 @@ from src.models.transcription_usage import TranscriptionUsage
 from src.services.token_tracking import TokenTracker
 from src.services.transcription_tracking import transcription_tracker
 from src.file_exporter import format_transcription_with_template
-from src.api.recordings import upload_file as _upload_file_ui
+from src.api.recordings import (
+    ingest_uploaded_recording,
+    upload_file as _upload_file_ui,
+)
 from src.services.storage import get_storage_service
+from src.utils.token_auth import load_user_from_token_value
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -67,6 +75,25 @@ def init_api_v1_helpers(**kwargs):
     chunking_service = kwargs.get('chunking_service')
 
 
+def rate_limit(limit_string, **limit_options):
+    """Apply an endpoint limit after the app injects Flask-Limiter."""
+    def decorator(f):
+        state = {'limited': None}
+
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if limiter is not None and getattr(limiter, 'enabled', True):
+                if state['limited'] is None:
+                    state['limited'] = limiter.limit(limit_string, **limit_options)(f)
+                return state['limited'](*args, **kwargs)
+            return f(*args, **kwargs)
+
+        wrapper._rate_limit = limit_string
+        wrapper._rate_limit_options = limit_options
+        return wrapper
+    return decorator
+
+
 def format_bytes(bytes_value: int) -> str:
     """Format bytes to human-readable string."""
     if bytes_value is None:
@@ -86,7 +113,7 @@ OPENAPI_SPEC = {
     "openapi": "3.0.3",
     "info": {
         "title": "Speakr API",
-        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nAll endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter\n\nGenerate tokens in Settings > API Tokens.",
+        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nMost endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter\n\nThe ASR Voice Recorder integration is the one exception: its required multipart `secret` field contains the personal Speakr API token because that client cannot set custom authorization headers. Generate tokens in Settings > API Tokens.",
         "version": "1.0.0"
     },
     "servers": [{"url": "/api/v1", "description": "API v1"}],
@@ -340,6 +367,47 @@ OPENAPI_SPEC = {
                     }
                 },
                 "responses": {"202": {"description": "Upload accepted and queued"}}
+            }
+        },
+        "/integrations/asr-voice-recorder/upload": {
+            "post": {
+                "tags": ["Integrations"],
+                "summary": "Receive a completed ASR Voice Recorder recording",
+                "description": (
+                    "Accepts ASR Voice Recorder's multipart webhook format and queues the "
+                    "recording through Speakr's normal transcription pipeline. It also accepts "
+                    "ASR's authenticated, fileless connection test without creating a recording. "
+                    "The required `secret` field must contain a personal Speakr API token. Session "
+                    "cookies and the API's normal authentication headers do not authenticate this endpoint."
+                ),
+                "security": [],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["secret"],
+                                "properties": {
+                                    "file": {"type": "string", "format": "binary", "description": "Required for a completed recording upload; omitted by ASR's connection test"},
+                                    "file_name": {"type": "string", "description": "Optional original filename override"},
+                                    "secret": {"type": "string", "format": "password", "writeOnly": True, "description": "A personal Speakr API token"},
+                                    "date": {"type": "integer", "format": "int64", "description": "Recording time as Unix epoch seconds or milliseconds"},
+                                    "duration": {"type": "number", "description": "Accepted for ASR compatibility but ignored; Speakr measures the media duration"},
+                                    "note": {"type": "string", "description": "Stored as the recording notes"},
+                                },
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {"description": "Connection test passed, recording accepted, or an idempotent retry matched an existing recording"},
+                    "400": {"description": "Upload metadata was provided without a file, or the multipart request is invalid"},
+                    "401": {"description": "Missing, invalid, expired, or revoked API token"},
+                    "413": {"description": "Upload exceeds the configured size limit"},
+                    "429": {"description": "Too many upload attempts"},
+                    "500": {"description": "Upload or queueing failed"},
+                },
             }
         },
         "/tags": {
@@ -2020,17 +2088,27 @@ def get_recording_speakers(recording_id):
             'segment_count': count
         })
 
-    # Get voice-based suggestions
+    # Get voice-based suggestions. speaker_embeddings maps each SPEAKER_XX
+    # label to one 256-dim embedding; find_matching_speakers takes a single
+    # embedding (plus user_id) and returns a sorted match list with
+    # similarity already expressed as a percentage.
     suggestions = {}
     if recording.speaker_embeddings:
         try:
-            matches = find_matching_speakers(current_user.id, recording.speaker_embeddings)
-            for label, speaker_matches in matches.items():
+            embeddings_data = (
+                json.loads(recording.speaker_embeddings)
+                if isinstance(recording.speaker_embeddings, str)
+                else recording.speaker_embeddings
+            )
+            for label, embedding in embeddings_data.items():
+                if not embedding or len(embedding) != 256:
+                    continue
+                matches = find_matching_speakers(embedding, current_user.id)
                 suggestions[label] = [{
                     'speaker_id': m['speaker_id'],
                     'name': m['name'],
-                    'similarity': round(m['similarity'] * 100, 1)
-                } for m in speaker_matches[:3]]
+                    'similarity': m['similarity']
+                } for m in matches[:3]]
         except Exception as e:
             current_app.logger.error(f"Error getting speaker suggestions: {e}")
 
@@ -2818,6 +2896,103 @@ def update_auto_summarization():
         'success': True,
         'auto_summarization': current_user.auto_summarization
     })
+
+
+def _normalize_asr_filename(file_name, uploaded_file):
+    raw_name = (file_name or uploaded_file.filename or '').strip()
+    raw_name = re.split(r'[/\\]+', raw_name)[-1]
+    normalized = secure_filename(raw_name)
+    if not normalized:
+        normalized = secure_filename(uploaded_file.filename or '') or 'recording.bin'
+
+    stem, extension = os.path.splitext(normalized)
+    extension = extension[:20]
+    max_stem = max(1, 180 - len(extension))
+    return f'{stem[:max_stem]}{extension}'
+
+
+def _asr_meeting_date(raw_date):
+    if raw_date is None or str(raw_date).strip() == '':
+        return None
+    try:
+        timestamp = float(raw_date)
+        if not math.isfinite(timestamp) or timestamp < 0:
+            return None
+        # ASR documents only "epoch time". Accept both common units.
+        if timestamp > 100_000_000_000:
+            timestamp /= 1000
+        parsed = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        return parsed.isoformat().replace('+00:00', 'Z')
+    except (ValueError, TypeError, OSError, OverflowError):
+        return None
+
+
+_ASR_RATE_UNITS_PER_MINUTE = 520
+_ASR_MIN_REQUEST_COST = 52
+
+
+def _asr_upload_rate_cost():
+    """Bound both requests and declared MiB with one pre-parse IP bucket."""
+    content_length = request.content_length
+    if content_length is None:
+        return _ASR_RATE_UNITS_PER_MINUTE
+    declared_mib = max(1, math.ceil(content_length / (1024 * 1024)))
+    return max(_ASR_MIN_REQUEST_COST, declared_mib)
+
+
+@api_v1_bp.route('/integrations/asr-voice-recorder/upload', methods=['POST'])
+@rate_limit(f'{_ASR_RATE_UNITS_PER_MINUTE} per minute', cost=_asr_upload_rate_cost)
+def upload_from_asr_voice_recorder():
+    """Accept an ASR Voice Recorder connection test or completed upload."""
+    try:
+        # ASR sends its token inside the multipart body, so Flask must parse
+        # the request before authentication can complete. Apply the regular
+        # audio-file ceiling to this route before parsing instead of the
+        # larger global video ceiling. The small allowance covers multipart
+        # headers and metadata around a file at the configured limit.
+        from src.models import SystemSetting
+        regular_limit_mb = max(1, int(SystemSetting.get_setting('max_file_size_mb', 250)))
+        # Assigning request.max_content_length requires Flask >= 3.1 /
+        # Werkzeug >= 3.1 (older versions expose it as a read-only property
+        # and this line raises AttributeError, 500ing every upload).
+        # requirements.txt pins flask==3.1.0 / werkzeug==3.1.3.
+        request.max_content_length = regular_limit_mb * 1024 * 1024 + 64 * 1024
+
+        secret = request.form.get('secret', '')
+        owner = load_user_from_token_value(secret)
+        if owner is None:
+            return jsonify({'error': 'Authentication failed'}), 401
+
+        uploaded_file = request.files.get('file')
+        if uploaded_file is None:
+            upload_fields = ('file_name', 'date', 'duration', 'note')
+            has_upload_metadata = any(request.form.get(field) for field in upload_fields)
+            if not has_upload_metadata:
+                return jsonify({'status': 'ok', 'connection_test': True}), 200
+            return jsonify({'error': 'No file provided'}), 400
+
+        form = {}
+        note = request.form.get('note')
+        if note is not None:
+            form['notes'] = note
+        meeting_date = _asr_meeting_date(request.form.get('date'))
+        if meeting_date:
+            form['meeting_date'] = meeting_date
+
+        return ingest_uploaded_recording(
+            owner=owner,
+            uploaded_file=uploaded_file,
+            form=form,
+            original_filename=_normalize_asr_filename(
+                request.form.get('file_name'),
+                uploaded_file,
+            ),
+            processing_source='asr_voice_recorder',
+            success_status=200,
+            reuse_duplicate=True,
+        )
+    except RequestEntityTooLarge:
+        return jsonify({'error': 'File too large'}), 413
 
 
 @api_v1_bp.route('/recordings/upload', methods=['POST'])

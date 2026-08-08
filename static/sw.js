@@ -1,4 +1,9 @@
-const CACHE_NAME = 'Speakr-cache-v4';
+// The registration URL carries the app version as ?v=<version> (see
+// app.modular.js). Deriving the cache name from it gives every release its
+// own cache namespace, so the activate handler below clears the previous
+// release's app shell instead of serving it forever (issue #357).
+const APP_VERSION = new URLSearchParams(self.location.search).get('v') || 'v5';
+const CACHE_NAME = `Speakr-cache-${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
   '/',
   '/static/offline.html',
@@ -230,12 +235,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets listed in ASSETS_TO_CACHE, use cache-first.
-  // This ensures that if an asset path is directly requested, it's served from cache if possible.
-  // We need to match against the origin + pathname for ASSETS_TO_CACHE.
+  // For static assets listed in ASSETS_TO_CACHE, use stale-while-revalidate:
+  // the cached copy keeps loads fast (and works offline), while the
+  // background refetch means a stale shell self-heals on the next load
+  // instead of being pinned until the service worker itself changes.
   const requestPath = url.origin === self.origin ? url.pathname : request.url;
   if (ASSETS_TO_CACHE.includes(requestPath)) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
 

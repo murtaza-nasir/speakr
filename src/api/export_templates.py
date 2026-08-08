@@ -160,3 +160,27 @@ def create_default_export_templates():
         'success': True,
         'templates': [default_template.to_dict()]
     }), 201
+
+
+@export_templates_bp.route('/api/export/apply-filename-template', methods=['POST'])
+@login_required
+def apply_filename_template():
+    """Rename the current user's existing export files to match their current
+    filename template (#348).
+
+    Re-renders every exported recording's filename, renames the files on disk
+    (including "[deleted]_"-prefixed files, which keep their prefix) and
+    updates the stored export_filename values. Missing files are skipped.
+    """
+    from src.file_exporter import ENABLE_AUTO_EXPORT as auto_export_enabled
+    from src.file_exporter import apply_filename_template_for_user
+
+    if not auto_export_enabled:
+        return jsonify({'error': 'Auto-export is not enabled on this server'}), 400
+
+    try:
+        result = apply_filename_template_for_user(current_user.id)
+        return jsonify(result)
+    except Exception as e:
+        current_app.logger.error(f"Error applying export filename template: {e}")
+        return jsonify({'error': 'Failed to rename existing exports'}), 500

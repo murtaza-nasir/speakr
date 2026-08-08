@@ -70,6 +70,27 @@ def hash_token(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def load_user_from_token_value(token):
+    """Validate a plaintext API token and return its associated user.
+
+    The caller controls where the token came from. Keeping this separate from
+    request extraction lets narrow integrations authenticate an explicit field
+    without making that field a global token source for every route.
+    """
+    if not token:
+        return None
+
+    token_hash = hash_token(token)
+    api_token = APIToken.query.filter_by(token_hash=token_hash).first()
+    if not api_token or not api_token.is_valid():
+        return None
+
+    api_token.last_used_at = datetime.utcnow()
+    from src.database import db
+    db.session.commit()
+    return api_token.user
+
+
 def load_user_from_token():
     """
     Load a user from an API token in the request.
@@ -80,31 +101,7 @@ def load_user_from_token():
     Returns:
         User: The authenticated user, or None if authentication fails
     """
-    # Extract token from request
-    token = extract_token_from_request()
-    if not token:
-        return None
-
-    # Hash the token to look up in database
-    token_hash = hash_token(token)
-
-    # Find the token in the database
-    api_token = APIToken.query.filter_by(token_hash=token_hash).first()
-
-    # Validate token
-    if not api_token:
-        return None
-
-    if not api_token.is_valid():
-        return None
-
-    # Update last used timestamp
-    api_token.last_used_at = datetime.utcnow()
-    from src.database import db
-    db.session.commit()
-
-    # Return the associated user
-    return api_token.user
+    return load_user_from_token_value(extract_token_from_request())
 
 
 def load_user_from_token_headers_only():
@@ -119,18 +116,6 @@ def load_user_from_token_headers_only():
 
     Returns the authenticated User, or None.
     """
-    token = extract_token_from_request(headers_only=True)
-    if not token:
-        return None
-
-    token_hash = hash_token(token)
-    api_token = APIToken.query.filter_by(token_hash=token_hash).first()
-    if not api_token or not api_token.is_valid():
-        return None
-
-    api_token.last_used_at = datetime.utcnow()
-    from src.database import db
-    db.session.commit()
-    return api_token.user
+    return load_user_from_token_value(extract_token_from_request(headers_only=True))
 
 

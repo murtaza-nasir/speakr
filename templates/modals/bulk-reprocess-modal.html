@@ -4,29 +4,29 @@
         <div class="modal-header">
             <i class="fas fa-sync-alt text-2xl text-[var(--text-accent)]"></i>
             <div class="flex-1">
-                <h3 class="modal-title">Bulk Reprocess</h3>
-                <div class="modal-subtitle">${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } selected</div>
+                <h3 class="modal-title" v-text="t('bulkReprocessModal.title')"></h3>
+                <div class="modal-subtitle" v-text="selectedCount !== 1 ? t('bulkReprocessModal.recordingsSelectedPlural', {count: selectedCount}) : t('bulkReprocessModal.recordingsSelected', {count: selectedCount})"></div>
             </div>
             <button @click="closeBulkReprocessModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div class="mb-5">
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-3">What do you want to reprocess?</label>
+                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-3" v-text="t('bulkReprocessModal.whatToReprocess')"></label>
                 <div class="space-y-2">
                     <label class="flex items-start gap-3 p-3 rounded-md border border-[var(--border-primary)] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
                            :class="{ 'border-[var(--text-accent)]': bulkReprocessType === 'summary' }">
                         <input type="radio" v-model="bulkReprocessType" value="summary" class="mt-1">
                         <div>
-                            <span class="t-body-strong">Summary Only</span>
-                            <p class="t-meta mt-0.5">Regenerate title and summary from existing transcription. Faster option.</p>
+                            <span class="t-body-strong" v-text="t('bulkReprocessModal.summaryOnly')"></span>
+                            <p class="t-meta mt-0.5" v-text="t('bulkReprocessModal.summaryOnlyDesc')"></p>
                         </div>
                     </label>
                     <label class="flex items-start gap-3 p-3 rounded-md border border-[var(--border-primary)] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
                            :class="{ 'border-[var(--text-accent)]': bulkReprocessType === 'transcription' }">
                         <input type="radio" v-model="bulkReprocessType" value="transcription" class="mt-1">
                         <div>
-                            <span class="t-body-strong">Full Transcription</span>
-                            <p class="t-meta mt-0.5">Re-transcribe audio and regenerate everything. Takes longer.</p>
+                            <span class="t-body-strong" v-text="t('bulkReprocessModal.fullTranscription')"></span>
+                            <p class="t-meta mt-0.5" v-text="t('bulkReprocessModal.fullTranscriptionDesc')"></p>
                         </div>
                     </label>
                 </div>
@@ -35,23 +35,23 @@
             <div class="banner banner--warn mb-3" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                 <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
                 <div>
-                    <div class="t-body-strong">Note</div>
-                    <div class="t-meta mt-0.5" v-if="bulkReprocessType === 'summary'">This will overwrite any manual edits to titles and summaries.</div>
-                    <div class="t-meta mt-0.5" v-else>This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.</div>
+                    <div class="t-body-strong" v-text="t('bulkReprocessModal.note')"></div>
+                    <div class="t-meta mt-0.5" v-if="bulkReprocessType === 'summary'" v-text="t('bulkReprocessModal.warningSummary')"></div>
+                    <div class="t-meta mt-0.5" v-else v-text="t('bulkReprocessModal.warningTranscription')"></div>
                 </div>
             </div>
 
             <div class="t-meta">
                 <i class="fas fa-info-circle mr-1"></i>
-                <span v-if="bulkReprocessType === 'summary'">${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } will be queued for summary regeneration.</span>
-                <span v-else>${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } will be queued for full reprocessing.</span>
+                <span v-if="bulkReprocessType === 'summary'" v-text="selectedCount !== 1 ? t('bulkReprocessModal.queuedSummaryPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedSummary', {count: selectedCount})"></span>
+                <span v-else v-text="selectedCount !== 1 ? t('bulkReprocessModal.queuedTranscriptionPlural', {count: selectedCount}) : t('bulkReprocessModal.queuedTranscription', {count: selectedCount})"></span>
             </div>
         </div>
         <div class="modal-footer">
             <button @click="closeBulkReprocessModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="executeBulkReprocess" class="btn btn--primary">
                 <i class="fas fa-sync-alt"></i>
-                <span>Start Reprocessing</span>
+                <span v-text="t('bulkReprocessModal.startReprocessing')"></span>
             </button>
         </div>
     </div>

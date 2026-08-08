@@ -522,8 +522,17 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
     content_buffer = ""
     in_thinking = False
     thinking_buffer = ""
+    finish_reason = None
 
     for chunk in stream:
+        # Capture the provider's final finish_reason so truncation
+        # (finish_reason == 'length') survives to the terminal SSE event
+        # instead of being silently dropped (issue #349).
+        if chunk.choices:
+            chunk_finish = getattr(chunk.choices[0], 'finish_reason', None)
+            if chunk_finish:
+                finish_reason = chunk_finish
+
         # Check for usage in final chunk (from stream_options={'include_usage': True})
         if hasattr(chunk, 'usage') and chunk.usage and user_id and operation_type:
             try:
@@ -613,8 +622,14 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
         # Regular content
         yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
 
-    # Signal the end of the stream
-    yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+    # Signal the end of the stream, propagating the provider's finish_reason
+    # so the frontend can flag truncated (finish_reason == 'length') responses.
+    end_event = {'end_of_stream': True}
+    if finish_reason:
+        end_event['finish_reason'] = finish_reason
+        if finish_reason == 'length':
+            end_event['truncated'] = True
+    yield f"data: {json.dumps(end_event)}\n\n"
 
 
 

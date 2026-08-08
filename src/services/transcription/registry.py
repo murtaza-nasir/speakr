@@ -50,6 +50,7 @@ class ConnectorRegistry:
         from .connectors.alibaba_funasr import AlibabaFunASRConnector
         from .connectors.mossland import MosslandTranscriptionConnector
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
+        from .connectors.openasr import OpenASRTranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -60,6 +61,7 @@ class ConnectorRegistry:
         self.register('funasr', AlibabaFunASRConnector)
         self.register('mossland', MosslandTranscriptionConnector)
         self.register('assemblyai', AssemblyAITranscriptionConnector)
+        self.register('openasr', OpenASRTranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -365,6 +367,23 @@ class ConnectorRegistry:
                 # AssemblyAI would reject). Account default when blank; a
                 # comma-separated list becomes an ordered speech_models fallback.
                 'model': os.environ.get('ASSEMBLYAI_SPEECH_MODEL', ''),
+            }
+
+        elif connector_name == 'openasr':
+            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', 'http://127.0.0.1:8080')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+            api_key = os.environ.get('TRANSCRIPTION_API_KEY', '')
+            model = os.environ.get('TRANSCRIPTION_MODEL', '')
+            diarize = (os.environ.get('ASR_DIARIZE') or 'false').lower() == 'true'
+            timeout = int(os.environ.get('ASR_TIMEOUT') or '1800')
+
+            return {
+                'base_url': base_url,
+                'api_key': api_key,
+                'model': model,
+                'diarize': diarize,
+                'timeout': timeout,
             }
 
         else:  # openai_whisper (default)

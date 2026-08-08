@@ -179,39 +179,6 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not migrate password column to nullable (may cause issues with SSO): {e}")
 
-        # One-time email normalization: lowercase (and trim) existing stored
-        # emails so they match the normalize-on-write behavior. Login and
-        # uniqueness are case-insensitive regardless, so this is cleanup, not a
-        # correctness requirement. Collision-aware: if two accounts differ only
-        # by case/whitespace, both are left untouched and logged, since merging
-        # them is a manual decision. DB-agnostic (operates through the ORM).
-        try:
-            from collections import defaultdict
-            from src.models import User
-            users = User.query.all()
-            by_norm = defaultdict(list)
-            for u in users:
-                by_norm[User.normalize_email(u.email)].append(u)
-            changed = 0
-            for u in users:
-                norm = User.normalize_email(u.email)
-                if norm == u.email:
-                    continue  # already normalized
-                if len(by_norm[norm]) > 1:
-                    app.logger.warning(
-                        f"Skipped email normalization for user {u.id}: multiple "
-                        f"accounts map to '{norm}' case-insensitively; resolve manually."
-                    )
-                    continue
-                u.email = norm
-                changed += 1
-            if changed:
-                db.session.commit()
-                app.logger.info(f"Normalized {changed} stored email address(es) to lowercase")
-        except Exception as e:
-            db.session.rollback()
-            app.logger.warning(f"Email normalization migration skipped: {e}")
-
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):
@@ -400,6 +367,14 @@ def initialize_database(app):
             app.logger.info("Added editor_autosave column to user table")
         if add_column_if_not_exists(engine, 'user', 'audio_player_position', "VARCHAR(10) DEFAULT 'bottom'"):
             app.logger.info("Added audio_player_position column to user table")
+
+        # Filename date parsing (#342)
+        if add_column_if_not_exists(engine, 'user', 'parse_filename_dates', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added parse_filename_dates column to user table")
+        if add_column_if_not_exists(engine, 'user', 'filename_date_pattern', "VARCHAR(50) DEFAULT 'auto'"):
+            app.logger.info("Added filename_date_pattern column to user table")
+        if add_column_if_not_exists(engine, 'user', 'filename_date_regex', 'VARCHAR(500)'):
+            app.logger.info("Added filename_date_regex column to user table")
         if add_column_if_not_exists(engine, 'tag', 'default_hotwords', 'TEXT'):
             app.logger.info("Added default_hotwords column to tag table")
         if add_column_if_not_exists(engine, 'tag', 'default_initial_prompt', 'TEXT'):
@@ -425,6 +400,12 @@ def initialize_database(app):
             app.logger.info("Added export_template_id column to tag table")
         if add_column_if_not_exists(engine, 'folder', 'export_template_id', 'INTEGER'):
             app.logger.info("Added export_template_id column to folder table")
+
+        # Configurable auto-export filenames (#348)
+        if add_column_if_not_exists(engine, 'user', 'export_filename_template', 'VARCHAR(500)'):
+            app.logger.info("Added export_filename_template column to user table")
+        if add_column_if_not_exists(engine, 'recording', 'export_filename', 'VARCHAR(500)'):
+            app.logger.info("Added export_filename column to recording table")
 
         # Add source tracking columns to internal_share table
         if add_column_if_not_exists(engine, 'internal_share', 'source_type', "VARCHAR(20) DEFAULT 'manual'"):
@@ -875,6 +856,39 @@ def initialize_database(app):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"embedding_identifier compatibility check skipped: {e}")
+
+        # One-time email normalization: lowercase (and trim) existing stored
+        # emails so they match the normalize-on-write behavior. Login and
+        # uniqueness are case-insensitive regardless, so this is cleanup, not a
+        # correctness requirement. Collision-aware: if two accounts differ only
+        # by case/whitespace, both are left untouched and logged, since merging
+        # them is a manual decision. DB-agnostic (operates through the ORM).
+        try:
+            from collections import defaultdict
+            from src.models import User
+            users = User.query.all()
+            by_norm = defaultdict(list)
+            for u in users:
+                by_norm[User.normalize_email(u.email)].append(u)
+            changed = 0
+            for u in users:
+                norm = User.normalize_email(u.email)
+                if norm == u.email:
+                    continue  # already normalized
+                if len(by_norm[norm]) > 1:
+                    app.logger.warning(
+                        f"Skipped email normalization for user {u.id}: multiple "
+                        f"accounts map to '{norm}' case-insensitively; resolve manually."
+                    )
+                    continue
+                u.email = norm
+                changed += 1
+            if changed:
+                db.session.commit()
+                app.logger.info(f"Normalized {changed} stored email address(es) to lowercase")
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Email normalization migration skipped: {e}")
 
         # One-shot migration: clean up legacy User.transcription_language values
         # that were stored as display names ("Français", "English") before the

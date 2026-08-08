@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
+const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
 
 // Import composables
 import { useRecordings } from './modules/composables/recordings.js';
@@ -22,7 +22,12 @@ import { useFolders } from './modules/composables/folders.js';
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
-import { detectPlatform, getAudioCapabilities, enumerateVirtualAudioDevices } from './modules/utils/platform.js';
+import {
+    detectPlatform,
+    getAudioCapabilities,
+    enumerateVirtualAudioDevices,
+    normalizeAudioInputDevices
+} from './modules/utils/platform.js';
 
 // Number of speaker colors available in CSS (must match styles.css)
 const SPEAKER_COLOR_COUNT = 16;
@@ -219,9 +224,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Register Service Worker (non-blocking)
     if ('serviceWorker' in navigator) {
+        // Version the registration URL so every release installs a fresh
+        // worker with its own cache namespace; otherwise a byte-identical
+        // sw.js keeps serving the previous release's cached app shell
+        // forever (issue #357).
+        const appVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || '';
+        const swUrl = appVersion ? `/static/sw.js?v=${encodeURIComponent(appVersion)}` : '/static/sw.js';
         // Delay registration to not block page load
         setTimeout(() => {
-            navigator.serviceWorker.register('/static/sw.js')
+            navigator.serviceWorker.register(swUrl)
                 .then(registration => {
                     console.log('ServiceWorker registration successful with scope:', registration.scope);
                 })
@@ -436,19 +447,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try { localStorage.setItem('selectedSecondaryDeviceId', v || ''); } catch (_) {}
             });
             const refreshInputAudioDevices = async () => {
-                if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+                if (typeof navigator === 'undefined'
+                    || !navigator.mediaDevices
+                    || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+                    return [];
+                }
                 try {
                     const devs = await navigator.mediaDevices.enumerateDevices();
-                    inputAudioDevices.value = devs
-                        .filter(d => d.kind === 'audioinput')
-                        .map(d => ({
-                            deviceId: d.deviceId,
-                            label: d.label || '',
-                            // Tag virtual/monitor devices so the UI can badge them
-                            isVirtual: /\bmonitor of |blackhole|loopback|soundflower|vb[- ]?(audio|cable)|voicemeeter|stereo mix|what u hear|pulse.*monitor|pipewire.*monitor|monitor source/i.test(d.label || '')
-                        }));
+                    const inputs = normalizeAudioInputDevices(devs);
+                    inputAudioDevices.value = inputs;
+                    // Deliberately no reconciliation of the persisted device
+                    // IDs here: a device can be momentarily absent from an
+                    // enumeration (undock/redock, USB re-plug, devicechange
+                    // races), and clearing the saved selection on that signal
+                    // silently switches later recordings to the default mic.
+                    // A genuinely stale selection is handled loudly at
+                    // acquisition time instead: acquireMicrophoneStream falls
+                    // back to the default, clears the saved ID, and shows the
+                    // "selected microphone unavailable" toast.
+                    return inputs;
                 } catch (_) {
                     inputAudioDevices.value = [];
+                    return [];
                 }
             };
             refreshInputAudioDevices();
@@ -475,6 +495,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             // so the result is often []; refreshed again after the
             // first getUserMedia / getDisplayMedia grant.
             refreshVirtualAudioDevices();
+
+            const handleAudioDeviceChange = () => {
+                refreshInputAudioDevices();
+                refreshVirtualAudioDevices();
+            };
+            onMounted(() => {
+                if (typeof navigator !== 'undefined'
+                    && navigator.mediaDevices
+                    && typeof navigator.mediaDevices.addEventListener === 'function') {
+                    navigator.mediaDevices.addEventListener('devicechange', handleAudioDeviceChange);
+                }
+            });
+            onUnmounted(() => {
+                if (typeof navigator !== 'undefined'
+                    && navigator.mediaDevices
+                    && typeof navigator.mediaDevices.removeEventListener === 'function') {
+                    navigator.mediaDevices.removeEventListener('devicechange', handleAudioDeviceChange);
+                }
+            });
+
             const showRecoveryModal = ref(false);
             const recoverableRecording = ref(null);
             const asrLanguage = ref('');
@@ -2687,22 +2727,55 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ];
             });
 
-            // Language options for ASR
+            // Language options for ASR: the full Whisper language set (the
+            // old hardcoded 11-language list locked out every other
+            // supported language, issue #359). Labels come from
+            // Intl.DisplayNames so they render localized without needing
+            // translation keys for ~100 languages.
+            const WHISPER_LANGUAGE_CODES = [
+                'en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca',
+                'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'he', 'uk', 'el', 'ms',
+                'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la',
+                'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn',
+                'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw',
+                'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be',
+                'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn',
+                'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha',
+                'ba', 'jw', 'su', 'yue'
+            ];
+            // Codes Intl.DisplayNames can't resolve (or resolves under a
+            // different ISO tag than Whisper uses).
+            const WHISPER_LANGUAGE_LABEL_OVERRIDES = {
+                jw: 'jv',   // Whisper uses 'jw' for Javanese (ISO is 'jv')
+            };
+            const WHISPER_LANGUAGE_FALLBACK_NAMES = {
+                haw: 'Hawaiian',
+                yue: 'Cantonese',
+                ba: 'Bashkir',   // some ICU builds return the bare code
+                bo: 'Tibetan',
+            };
             const languageOptions = computed(() => {
-                return [
-                    { value: '', label: t('form.autoDetect') },
-                    { value: 'en', label: t('languages.en') },
-                    { value: 'es', label: t('languages.es') },
-                    { value: 'fr', label: t('languages.fr') },
-                    { value: 'de', label: t('languages.de') },
-                    { value: 'it', label: t('languages.it') },
-                    { value: 'pt', label: t('languages.pt') },
-                    { value: 'nl', label: t('languages.nl') },
-                    { value: 'ru', label: t('languages.ru') },
-                    { value: 'zh', label: t('languages.zh') },
-                    { value: 'ja', label: t('languages.ja') },
-                    { value: 'ko', label: t('languages.ko') }
-                ];
+                const uiLocale = (window.i18n && window.i18n.currentLocale) || 'en';
+                let displayNames = null;
+                try {
+                    displayNames = new Intl.DisplayNames([uiLocale, 'en'], { type: 'language' });
+                } catch (e) { /* very old browsers: fall back to raw codes */ }
+                const options = WHISPER_LANGUAGE_CODES.map(code => {
+                    const lookup = WHISPER_LANGUAGE_LABEL_OVERRIDES[code] || code;
+                    let label = null;
+                    if (displayNames) {
+                        try {
+                            const name = displayNames.of(lookup);
+                            // DisplayNames echoes back unknown codes; treat that as a miss
+                            if (name && name !== lookup) label = name;
+                        } catch (e) { /* invalid tag for this engine */ }
+                    }
+                    if (!label) label = WHISPER_LANGUAGE_FALLBACK_NAMES[code] || code;
+                    label = label.charAt(0).toLocaleUpperCase(uiLocale) + label.slice(1);
+                    return { value: code, label };
+                });
+                options.sort((a, b) => a.label.localeCompare(b.label, uiLocale));
+                return [{ value: '', label: t('form.autoDetect') }, ...options];
             });
 
             // Recording metadata for sidebar

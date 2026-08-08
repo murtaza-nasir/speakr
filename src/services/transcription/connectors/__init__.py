@@ -10,6 +10,7 @@ from .mistral import MistralTranscriptionConnector
 from .vibevoice import VibeVoiceTranscriptionConnector
 from .alibaba_funasr import AlibabaFunASRConnector
 from .mossland import MosslandTranscriptionConnector
+from .openasr import OpenASRTranscriptionConnector
 
 __all__ = [
     'OpenAIWhisperConnector',
@@ -20,4 +21,5 @@ __all__ = [
     'VibeVoiceTranscriptionConnector',
     'AlibabaFunASRConnector',
     'MosslandTranscriptionConnector',
+    'OpenASRTranscriptionConnector',
 ]

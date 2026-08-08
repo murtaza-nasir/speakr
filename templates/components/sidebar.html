@@ -36,8 +36,8 @@
                     <button v-if="selectionMode"
                             @click="exitSelectionMode"
                             class="btn btn--primary"
-                            title="Exit selection mode">
-                        <i class="fas fa-times mr-1"></i>Done
+                            :title="t('bulkActions.exitSelection')">
+                        <i class="fas fa-times mr-1"></i>${ t('common.done') }
                     </button>
                     <!-- New button - compact when folders enabled -->
                     <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
@@ -382,11 +382,9 @@
                     <div class="flex items-center gap-3">
                         <button @click="allVisibleSelected ? clearSelection() : selectAll()"
                                 class="text-xs text-[var(--text-accent)] hover:underline">
-                            ${ allVisibleSelected ? 'Clear all' : 'Select all' }
+                            ${ allVisibleSelected ? t('common.clearAll') : t('common.selectAll') }
                         </button>
-                        <span class="text-xs text-[var(--text-muted)]">
-                            ${ selectedCount } selected
-                        </span>
+                        <span class="text-xs text-[var(--text-muted)]" v-text="t('bulkActions.selectedCount', {count: selectedCount})"></span>
                     </div>
                 </div>
 
@@ -600,7 +598,7 @@
 
         <button @click="openBulkTagModal('add')"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                title="Add or remove tags">
+                :title="t('bulkActions.addOrRemoveTags')">
             <i class="fas fa-tags text-[var(--text-muted)]"></i>
         </button>
 
@@ -625,7 +623,7 @@
 
         <button @click="openBulkReprocessModal"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                title="Reprocess">
+                :title="t('bulkActions.reprocess')">
             <i class="fas fa-redo text-[var(--text-muted)]"></i>
         </button>
 
@@ -640,13 +638,13 @@
 
         <button @click="openBulkDeleteModal"
                 class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                title="Delete selected">
+                :title="t('bulkActions.deleteSelected')">
             <i class="fas fa-trash"></i>
         </button>
 
         <button @click="exitSelectionMode"
                 class="w-10 h-10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                title="Exit selection mode">
+                :title="t('bulkActions.exitSelection')">
             <i class="fas fa-times"></i>
         </button>
     </div>
@@ -665,9 +663,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <p class="text-sm text-[var(--text-muted)] mt-1">
-                ${ selectedCount } recording(s) selected
-            </p>
+            <p class="text-sm text-[var(--text-muted)] mt-1" v-text="selectedCount !== 1 ? t('bulkReprocessModal.recordingsSelectedPlural', {count: selectedCount}) : t('bulkReprocessModal.recordingsSelected', {count: selectedCount})"></p>
         </div>
         <div class="p-4 max-h-64 overflow-y-auto">
             <!-- No Folder Option -->

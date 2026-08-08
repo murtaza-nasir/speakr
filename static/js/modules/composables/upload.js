@@ -462,6 +462,9 @@ export function useUpload(state, utils) {
             if (fileItem.file.lastModified) {
                 const lastModified = fileItem.file.lastModified;
                 formData.append('file_last_modified', lastModified.toString());
+                // Client timezone offset so filename-parsed wall-clock dates
+                // can be converted to UTC server-side (#342)
+                formData.append('client_tz_offset', new Date().getTimezoneOffset().toString());
             }
 
             if (fileItem.notes) {

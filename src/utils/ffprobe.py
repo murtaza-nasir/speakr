@@ -13,6 +13,8 @@ import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
+from src.utils.ffmpeg_utils import decode_ffmpeg_output
+
 logger = logging.getLogger(__name__)
 
 # Every valid WebM/Matroska file begins with this 4-byte EBML magic. A browser
@@ -57,10 +59,12 @@ def probe(filename: str, cmd: str = 'ffprobe', timeout: Optional[int] = None) ->
         out, err = p.communicate(timeout=timeout)
         
         if p.returncode != 0:
-            error_msg = err.decode('utf-8', errors='ignore')
+            error_msg = decode_ffmpeg_output(err)
             raise FFProbeError(f'ffprobe failed: {error_msg}')
-        
-        return json.loads(out.decode('utf-8'))
+
+        # ffprobe copies metadata tag values into its JSON as raw bytes, so
+        # the output is not guaranteed to be valid UTF-8 (e.g. GBK ID3 tags).
+        return json.loads(decode_ffmpeg_output(out))
     except subprocess.TimeoutExpired:
         if p:
             p.kill()
@@ -101,12 +105,11 @@ def mp3_duration_is_estimated(filename: str, timeout: Optional[int] = None) -> b
         result = subprocess.run(
             args,
             capture_output=True,
-            text=True,
             timeout=timeout,
         )
         if result.returncode != 0:
             return False
-        return 'Estimating duration from bitrate' in (result.stderr or '')
+        return 'Estimating duration from bitrate' in decode_ffmpeg_output(result.stderr)
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
         logger.warning(f"Could not check MP3 duration header for {filename}: {e}")
         return False
@@ -469,7 +472,7 @@ def _get_duration_from_packets(filename: str, timeout: Optional[int] = None) -> 
             return None
 
         # Parse the output to find the last timestamp
-        lines = out.decode('utf-8').strip().split('\n')
+        lines = decode_ffmpeg_output(out).strip().split('\n')
         last_valid_time = None
         for line in reversed(lines):
             line = line.strip()

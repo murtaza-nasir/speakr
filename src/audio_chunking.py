@@ -18,7 +18,7 @@ from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 from datetime import datetime
 import mimetypes
 
-from src.utils.ffmpeg_utils import convert_to_mp3, FFmpegError, FFmpegNotFoundError
+from src.utils.ffmpeg_utils import convert_to_mp3, decode_ffmpeg_output, FFmpegError, FFmpegNotFoundError
 
 if TYPE_CHECKING:
     from src.services.transcription.base import ConnectorSpecifications
@@ -348,9 +348,9 @@ class AudioChunkingService:
             result = subprocess.run([
                 'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
                 '-of', 'default=noprint_wrappers=1:nokey=1', file_path
-            ], capture_output=True, text=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+            ], capture_output=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
 
-            duration = float(result.stdout.strip())
+            duration = float(decode_ffmpeg_output(result.stdout).strip())
             return duration
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError, FileNotFoundError) as e:
             logger.error(f"Error getting audio duration for {file_path}: {e}")
@@ -617,12 +617,12 @@ class AudioChunkingService:
                 ]
                 
                 try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+                    result = subprocess.run(cmd, capture_output=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
                 except subprocess.TimeoutExpired:
                     logger.error(f"ffmpeg timed out extracting chunk {chunk_index} after {_SUBPROCESS_TIMEOUT_SECONDS}s")
                     continue
                 if result.returncode != 0:
-                    logger.error(f"ffmpeg failed for chunk {chunk_index}: {result.stderr}")
+                    logger.error(f"ffmpeg failed for chunk {chunk_index}: {decode_ffmpeg_output(result.stderr)}")
                     continue
                 
                 # Verify chunk was created and get its size
@@ -822,8 +822,8 @@ class AudioChunkingService:
                 '-show_format', '-show_streams', chunk_path
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
-            probe_data = json.loads(result.stdout)
+            result = subprocess.run(cmd, capture_output=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+            probe_data = json.loads(decode_ffmpeg_output(result.stdout))
 
             audio_stream = None
             for stream in probe_data.get('streams', []):
@@ -996,8 +996,8 @@ def get_audio_duration_ffprobe(file_path: str) -> Optional[float]:
         result = subprocess.run([
             'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
             '-of', 'default=noprint_wrappers=1:nokey=1', file_path
-        ], capture_output=True, text=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
-        return float(result.stdout.strip())
+        ], capture_output=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+        return float(decode_ffmpeg_output(result.stdout).strip())
     except Exception:
         return None
 
@@ -1142,12 +1142,12 @@ def extract_speaker_samples(
             ]
 
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+                result = subprocess.run(cmd, capture_output=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
             except subprocess.TimeoutExpired:
                 logger.error(f"ffmpeg timed out extracting sample for speaker {speaker} after {_SUBPROCESS_TIMEOUT_SECONDS}s")
                 continue
             if result.returncode != 0:
-                logger.error(f"Failed to extract sample for speaker {speaker}: {result.stderr}")
+                logger.error(f"Failed to extract sample for speaker {speaker}: {decode_ffmpeg_output(result.stderr)}")
                 continue
 
             if os.path.exists(sample_path) and os.path.getsize(sample_path) > 0:

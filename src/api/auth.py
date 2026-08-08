@@ -628,6 +628,27 @@ def account():
             current_user.transcription_language = normalize_language_code(transcription_lang)
             current_user.output_language = output_lang if output_lang else None
 
+            # Filename date parsing (#342). Gated on the select being present
+            # so other tabs that submit 'preferences_form' without this
+            # section cannot clobber the settings (same reasoning as
+            # audio_player_position above).
+            if 'filename_date_pattern' in request.form:
+                from src.utils.filename_dates import VALID_PATTERN_KEYS, validate_custom_regex
+                pattern = request.form.get('filename_date_pattern', 'auto')
+                if pattern not in VALID_PATTERN_KEYS:
+                    pattern = 'auto'
+                custom_regex = (request.form.get('filename_date_regex') or '').strip() or None
+                if pattern == 'custom':
+                    regex_error = validate_custom_regex(custom_regex or '')
+                    if regex_error:
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+                            return jsonify({'success': False, 'error': regex_error}), 400
+                        flash(regex_error, 'error')
+                        return redirect(url_for('auth.account'))
+                current_user.parse_filename_dates = 'parse_filename_dates' in request.form
+                current_user.filename_date_pattern = pattern
+                current_user.filename_date_regex = custom_regex
+
         # Check if this is the custom prompts form (has summary_prompt field)
         elif 'summary_prompt' in request.form:
             # Handle custom prompt updates
@@ -656,6 +677,20 @@ def account():
             current_user.summary_timestamp_template_id = _ts_template_id('summary_timestamp_template_id')
             current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
             current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
+
+        # Check if this is the export filename template form (#348)
+        elif 'export_filename_template' in request.form:
+            template_value = (request.form.get('export_filename_template') or '').strip()
+            # Path separators would let a template escape the per-user export
+            # directory; reject them outright.
+            if '/' in template_value or '\\' in template_value:
+                error_msg = 'The filename template cannot contain path separators (/ or \\).'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('auth.account'))
+            # Empty string = use the default template (recording_{{id}})
+            current_user.export_filename_template = template_value if template_value else None
 
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:

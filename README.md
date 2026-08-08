@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.2--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.3--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -210,7 +210,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.2-alpha)
+## Latest Release (v0.10.3-alpha)
+
+**A features and fixes release shaped by community reports and contributions.** Meeting dates can now be parsed from filenames on upload, with preset patterns and an optional custom expression, which saves manual edits on batch uploads of older recordings. Auto-export filenames are configurable through a template, and existing exports can be renamed to a new scheme in one pass. Mobile recording gains an external microphone selector for USB and wireless receivers, and a new webhook endpoint accepts uploads directly from the ASR Voice Recorder Android app, both community contributions. The transcription language dropdown now offers the full Whisper language set. On the fixes side, chat responses that hit the output token limit are now flagged instead of being presented as complete, a database-lock failure when editing speakers with Inquire mode enabled is resolved, browser caches self-heal after image upgrades so stale interfaces no longer appear, audio files with non-UTF-8 metadata no longer crash processing, embedding provider compatibility is improved, and transcript downloads keep non-ASCII titles instead of saving as underscores (community contribution). Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.3-alpha).**
+
+### v0.10.2-alpha (previous release)
 
 **A security and dependency release. Upgrading is recommended for all deployments.** This release resolves three coordinated security reports: a stored cross-site scripting issue reachable by a group administrator through a tag color or name, a webhook server-side request forgery via DNS rebinding, and an SSO account-takeover path through an unverified email claim. Verified-email enforcement for SSO is now on by default; deployments whose identity provider does not send an `email_verified` claim must set `SSO_REQUIRE_VERIFIED_EMAIL=false`. The web framework moves to the Flask 3.1 and Werkzeug 3.1 line, which also closes two Werkzeug multipart denial-of-service issues. New features include contextual speaker labelling for transcription engines that diarize without voice embeddings, and pause/resume for in-app recording. This release also fixes malformed browser recording uploads, restores the API documentation page under the default Content-Security-Policy, and improves transcription-failure error messages. A one-time migration lowercases existing stored email addresses. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.2-alpha).**
 

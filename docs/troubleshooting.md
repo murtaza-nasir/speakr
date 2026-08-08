@@ -137,7 +137,17 @@ Browser performance degrades with very large transcriptions. Recordings over 2 h
 
 Clear your browser cache if the interface gradually becomes slower over time. Speakr caches data locally for performance, but this cache can become corrupted. In Chrome or Firefox, hard refresh with Ctrl+Shift+R to reload fresh assets.
 
+### Blank Screens or Missing Text After Upgrading
+
+If the interface shows blank panels or raw translation keys (console messages like `Translation not found for key: ...`) right after upgrading the Docker image, your browser is serving cached assets from the previous version against the new pages. Clear the site data for your Speakr domain (in Chrome: DevTools → Application → Storage → Clear site data), or unregister the service worker and hard refresh.
+
+From v0.10.3-alpha onward this heals itself: each release installs a service worker with its own cache namespace, static assets are revalidated on load, and translation files are always fetched fresh, so an image upgrade can no longer strand a stale app shell. Upgrades from versions before v0.10.3-alpha may still need the one-time manual clear described above.
+
 ## Feature-Specific Issues
+
+### Chat Responses End Mid-Sentence
+
+If a chat or Inquire response stops abruptly with a note that the output token limit was reached, the model hit the configured `CHAT_MAX_TOKENS` ceiling (default 2000). This is common with reasoning models, whose hidden reasoning tokens share the same budget as the visible answer. Ask the model to continue from where it stopped, or raise `CHAT_MAX_TOKENS` in your `.env`. Before v0.10.3-alpha these truncated responses were displayed as if they had completed normally; they are now flagged explicitly.
 
 ### Speaker Identification Not Working
 

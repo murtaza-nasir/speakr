@@ -131,12 +131,20 @@ Under the recording buttons is a collapsible **Input devices** section. Expanded
 
 ![Input device picker](../assets/images/screenshots/recording-input-device-picker.png)
 
-- **Primary input** — defaults to your OS's default microphone. Pick a specific input here if you want a USB headset, BlackHole, VB-Cable, or a Pulse / PipeWire monitor source as your primary capture device. Virtual / monitor entries are badged.
+- **Primary input** — defaults to your OS's default microphone. Pick a specific input here if you want a USB headset, wireless receiver, audio interface, BlackHole, VB-Cable, or a Pulse / PipeWire monitor source as your primary capture device. Virtual / monitor entries are badged. The primary selection is used by both **Microphone** and **Mic + System** recording.
 - **Also mix in (optional)** — pick a second input device and Speakr will capture both streams in parallel and mix them via Web Audio into one MediaRecorder track. This is the canonical solution for **capturing both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively — set your real mic as Primary, set BlackHole / `speakr_loopback` / VB-Cable as the secondary, and one recording captures your voice plus the remote participants.
 
-Device labels are blank until you grant microphone permission. The first time you expand the picker, click the **Request microphone permission** link so the OS shows the prompt; subsequent recordings remember the permission and the labels populate.
+Opening **New Recording** does not request microphone permission. Device labels are normally blank until permission is granted. You can expand the picker and click **Request microphone permission**, or simply press **Microphone** and respond to the browser's normal permission prompt.
 
-**Persistence**: the primary + secondary device choices are saved in `localStorage` so you configure them once and they survive across sessions.
+On mobile, after permission is granted, Speakr checks the labeled inputs. If a likely separate physical microphone is available and you have not already selected one, the existing **Input devices** section expands with an **Another microphone is available** notice before recording starts. Choose the input and continue, or keep the system default. When only the built-in/default microphone is present, recording starts immediately with no extra Speakr prompt. Detection is deliberately conservative: it only triggers on devices whose labels clearly indicate an external input (USB receivers, wireless and headset microphones, webcams, audio interfaces), so a device the browser exposes without a recognisable label starts no prompt — you can still select it manually from the picker. The prompt also never appears when a recording is being resumed after an interruption; a continued session always keeps its original input.
+
+![Mobile external microphone choice](../assets/images/screenshots/recording-external-microphone-mobile.png)
+
+Desktop browsers already provide their own microphone chooser, so Speakr does not automatically open a second selection step there. The collapsed **Input devices** picker remains available for an explicit device choice or multi-input mixing, and any microphone chosen in the browser's permission dialog remains active unless you deliberately override it in Speakr.
+
+Automatic mobile detection is deliberately conservative. If your browser hides labels or grouping metadata, open **Input devices** and select the device manually. Speakr refreshes the list when the browser reports a device change and again when recording starts. A previously selected device that has been disconnected falls back to the system default with a warning.
+
+**Persistence**: the primary + secondary device choices are saved in `localStorage` so you configure them once and they survive across sessions. Choosing to keep the default when Speakr offers another microphone is remembered only for the current browser session and is reconsidered when the candidate device set changes.
 
 ### Disable echo cancellation, noise suppression & auto-gain
 
@@ -340,6 +348,8 @@ Because notes cannot be meaningfully combined, when more than one source has not
 - Persistent notification during recording
 
 See the [PWA Guide](pwa.md) for installation instructions and important limitations.
+
+**External microphones on Android:** Current Chromium-based browsers can expose class-compliant USB-C receivers and other external inputs through the normal microphone device list. Speakr can select only devices the browser exposes; it cannot force Android to route unsupported hardware. Device labels and `groupId` metadata vary by browser, `devicechange` may not fire on every phone, and device IDs can change after permissions or browser data are reset. If automatic detection does not appear, reconnect the receiver, grant microphone permission, and check **Input devices** manually. Verify the actual recorded source with a short test recording rather than relying only on the displayed device name.
 
 ### Optimizing Audio Quality
 

@@ -11,6 +11,7 @@ import mimetypes
 import time
 import threading
 import subprocess
+import uuid
 from datetime import datetime, timedelta, timezone
 from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
@@ -19,6 +20,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from sqlalchemy import select
 from email.utils import encode_rfc2231
+from urllib.parse import quote
 
 from src.database import db
 from src.models import *
@@ -327,9 +329,21 @@ def download_transcript_with_template(recording_id):
         else:
             # Plain text transcription
             filename = f"{recording.title or 'transcript'}.{ext}"
-        filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
+        # Strip only what is illegal in a filename; keep non-ASCII titles intact
+        # and advertise them through RFC 5987 filename* (same approach as the
+        # summary/chat/notes downloads below).
+        filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', filename)
+        filename = re.sub(r'\s+', ' ', filename).strip() or f'transcript-{recording_id}.{ext}'
         response.headers['Content-Type'] = content_type
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        try:
+            filename.encode('ascii')
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            ascii_fallback = f'transcript-{recording_id}.{ext}'
+            response.headers['Content-Disposition'] = (
+                f'attachment; filename="{ascii_fallback}"; '
+                + "filename*=UTF-8''" + quote(filename, safe='')
+            )
 
         return response
 
@@ -2370,19 +2384,41 @@ def share_target():
 @recordings_bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
+    return ingest_uploaded_recording(
+        owner=current_user,
+        uploaded_file=request.files.get('file'),
+        form=request.form,
+    )
+
+
+def ingest_uploaded_recording(
+    *,
+    owner,
+    uploaded_file,
+    form,
+    original_filename=None,
+    processing_source='upload',
+    success_status=202,
+    reuse_duplicate=False,
+):
+    """Run an uploaded file through Speakr's standard ingestion pipeline."""
     try:
-        if 'file' not in request.files:
+        if uploaded_file is None:
             return jsonify({'error': 'No file provided'}), 400
 
-        file = request.files['file']
-        if file.filename == '':
+        file = uploaded_file
+        if not original_filename:
+            original_filename = file.filename
+        if not original_filename:
             return jsonify({'error': 'No file selected'}), 400
 
-        original_filename = file.filename
         safe_filename = secure_filename(original_filename)
         storage = get_storage_service()
         staging_dir = storage.get_staging_dir()
-        filepath = os.path.join(staging_dir, f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}")
+        filepath = os.path.join(
+            staging_dir,
+            f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}_{safe_filename}",
+        )
 
         # Per-upload override for VIDEO_RETENTION. When True, the
         # processing pipeline extracts audio and discards the video stream
@@ -2391,7 +2427,7 @@ def upload_file():
         # only the extracted audio needs to fit that limit. Sent by the
         # frontend either explicitly (toggle) or implicitly when
         # VIDEO_RETENTION is off and the queued file is video.
-        keep_audio_only_flag = request.form.get('keep_audio_only', 'false').lower() == 'true'
+        keep_audio_only_flag = form.get('keep_audio_only', 'false').lower() == 'true'
         effective_audio_only = keep_audio_only_flag or not VIDEO_RETENTION
 
         # Detect "this looks like a video" by extension up front so the
@@ -2472,23 +2508,83 @@ def upload_file():
         # so hashing after conversion would miss duplicates.
         file_hash = None
         duplicate_warning = None
+        existing = None
         try:
             file_hash = compute_file_sha256(filepath)
-            existing = Recording.query.filter_by(
-                user_id=current_user.id, file_hash=file_hash
-            ).first()
-            if existing:
-                duplicate_warning = {
-                    'existing_recording_id': existing.id,
-                    'existing_title': existing.title,
-                    'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
-                }
-                current_app.logger.info(
-                    f"Duplicate file detected for user {current_user.id}: "
-                    f"hash={file_hash[:12]}... matches recording {existing.id}"
+            duplicate_query = Recording.query.filter_by(
+                user_id=owner.id,
+                file_hash=file_hash,
+            )
+            if reuse_duplicate:
+                duplicate_query = duplicate_query.filter_by(
+                    processing_source=processing_source,
+                    original_filename=original_filename,
+                    notes=form.get('notes'),
                 )
+                replay_meeting_date = None
+                raw_meeting_date = form.get('meeting_date')
+                if raw_meeting_date:
+                    try:
+                        replay_meeting_date = to_utc_naive(
+                            datetime.fromisoformat(raw_meeting_date.replace('Z', '+00:00'))
+                        )
+                    except (ValueError, TypeError):
+                        pass
+                if replay_meeting_date is not None:
+                    duplicate_query = duplicate_query.filter_by(meeting_date=replay_meeting_date)
+                else:
+                    duplicate_query = duplicate_query.filter(
+                        Recording.created_at >= datetime.utcnow() - timedelta(days=1)
+                    )
+            existing = duplicate_query.first()
         except Exception as e:
-            current_app.logger.warning(f"Could not compute file hash: {e}")
+            current_app.logger.warning(f"Could not compute file hash or check duplicates: {e}")
+
+        if existing and reuse_duplicate:
+            # The existing recording already owns the durable media object, so
+            # the retry's staging copy is never needed for job recovery. Remove
+            # it before enqueueing to avoid leaking one full file each time a
+            # temporarily unavailable queue makes ASR retry the delivery.
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except OSError:
+                pass
+
+            existing_job = ProcessingJob.query.filter_by(
+                recording_id=existing.id,
+                job_type='transcribe',
+            ).first()
+            if existing.status in ('PENDING', 'QUEUED') and existing_job is None:
+                # Resolve from the existing recording (tags/folder aware), not
+                # just the owner: equivalent for ASR-sourced recordings today,
+                # but robust if another caller ever reuses this recovery path.
+                recovery_params = resolve_transcription_params(existing)
+                job_queue.enqueue(
+                    user_id=owner.id,
+                    recording_id=existing.id,
+                    job_type='transcribe',
+                    params=recovery_params,
+                    is_new_upload=True,
+                )
+            current_app.logger.info(
+                f"Idempotent upload replay for user {owner.id}: "
+                f"hash={file_hash[:12]}... matches recording {existing.id}"
+            )
+            response_data = existing.to_dict(viewer_user=owner)
+            response_data['idempotent_replay'] = True
+            return jsonify(response_data), success_status
+
+        if existing:
+            duplicate_warning = {
+                'existing_recording_id': existing.id,
+                'existing_title': existing.title,
+                'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
+            }
+            current_app.logger.info(
+                f"Duplicate file detected for user {owner.id}: "
+                f"hash={file_hash[:12]}... matches recording {existing.id}"
+            )
 
         # --- Convert files only when chunking is needed ---
         filename_lower = original_filename.lower()
@@ -2527,12 +2623,29 @@ def upload_file():
         # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False
 
+        # The extension is only a pre-probe size hint. Once ffprobe proves the
+        # upload is audio-only, do not let a video-looking filename grant the
+        # larger video upload ceiling.
+        if codec_info is not None and is_likely_video_by_ext and not has_video:
+            is_likely_video_by_ext = False
+            if should_enforce_size_limit and original_file_size > regular_limit_mb * 1024 * 1024:
+                effective_limit_mb = regular_limit_mb
+                raise RequestEntityTooLarge()
+
         # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
         # to avoid silently discarding video from files we couldn't probe
         if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
             video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
             file_ext = os.path.splitext(original_filename)[1].lower()
             if file_ext in video_extensions:
+                # A failed probe cannot justify the larger video ceiling: an
+                # arbitrary blob or audio file can also carry a video-looking
+                # extension. Require positive video detection for oversized
+                # uploads; smaller files can continue through conversion.
+                if should_enforce_size_limit and original_file_size > regular_limit_mb * 1024 * 1024:
+                    effective_limit_mb = regular_limit_mb
+                    is_likely_video_by_ext = False
+                    raise RequestEntityTooLarge()
                 has_video = True
                 current_app.logger.info(
                     f"Probe failed but file extension '{file_ext}' indicates video — "
@@ -2648,21 +2761,25 @@ def upload_file():
             current_app.logger.warning(f"Could not determine duration for upload {original_filename}: {e}")
 
         # Get notes from the form
-        notes = request.form.get('notes')
+        notes = form.get('notes')
 
         # Get optional user-provided title and meeting_date
-        user_title = request.form.get('title')
-        user_meeting_date = request.form.get('meeting_date')
+        user_title = form.get('title')
+        user_meeting_date = form.get('meeting_date')
 
         # Get file's lastModified timestamp from client (milliseconds since epoch)
-        file_last_modified = request.form.get('file_last_modified')
+        file_last_modified = form.get('file_last_modified')
+        # Client timezone offset (JS getTimezoneOffset(): minutes to add to
+        # local time to reach UTC). Used to convert filename wall-clock dates
+        # to the naive-UTC storage convention.
+        client_tz_offset = form.get('client_tz_offset')
 
         # Get selected tags if provided (multiple tags support)
         selected_tags = []
         tag_index = 0
         while True:
             tag_id_key = f'tag_ids[{tag_index}]'
-            tag_id = request.form.get(tag_id_key)
+            tag_id = form.get(tag_id_key)
             if not tag_id:
                 break
 
@@ -2670,36 +2787,36 @@ def upload_file():
             tag = Tag.query.filter_by(id=tag_id).first()
             if tag:
                 # Allow tag if it's user's own tag OR it's a group tag where user is a member
-                if tag.user_id == current_user.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first()):
+                if tag.user_id == owner.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=owner.id).first()):
                     selected_tags.append(tag)
             tag_index += 1
 
         # For backward compatibility with single tag uploads
         if not selected_tags:
-            single_tag_id = request.form.get('tag_id')
+            single_tag_id = form.get('tag_id')
             if single_tag_id:
                 # Check if tag belongs to user OR is a group tag where user is a member
                 tag = Tag.query.filter_by(id=single_tag_id).first()
-                if tag and (tag.user_id == current_user.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first())):
+                if tag and (tag.user_id == owner.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=owner.id).first())):
                     selected_tags.append(tag)
 
         # Get folder_id if provided
         selected_folder = None
-        folder_id = request.form.get('folder_id')
+        folder_id = form.get('folder_id')
         if folder_id:
             folder = Folder.query.filter_by(id=folder_id).first()
             if folder:
                 # Allow folder if it's user's own folder OR it's a group folder where user is a member
-                if folder.user_id == current_user.id or (folder.group_id and GroupMembership.query.filter_by(group_id=folder.group_id, user_id=current_user.id).first()):
+                if folder.user_id == owner.id or (folder.group_id and GroupMembership.query.filter_by(group_id=folder.group_id, user_id=owner.id).first()):
                     selected_folder = folder
 
         # Get ASR advanced options if provided
-        language = request.form.get('language', '')
-        min_speakers = request.form.get('min_speakers') or None
-        max_speakers = request.form.get('max_speakers') or None
-        hotwords = request.form.get('hotwords', '').strip() or None
-        initial_prompt = request.form.get('initial_prompt', '').strip() or None
-        transcription_model = request.form.get('transcription_model', '').strip() or None
+        language = form.get('language', '')
+        min_speakers = form.get('min_speakers') or None
+        max_speakers = form.get('max_speakers') or None
+        hotwords = form.get('hotwords', '').strip() or None
+        initial_prompt = form.get('initial_prompt', '').strip() or None
+        transcription_model = form.get('transcription_model', '').strip() or None
 
         # Per-recording prompt-template variables. Sent as a JSON string from
         # the upload form so multiple values fit in a single form field. The
@@ -2707,7 +2824,7 @@ def upload_file():
         # size caps so an arbitrary JSON blob cannot bloat the column.
         from src.utils.prompt_variables import sanitize_variable_values
         prompt_variables = None
-        raw_prompt_variables = request.form.get('prompt_variables')
+        raw_prompt_variables = form.get('prompt_variables')
         if raw_prompt_variables:
             try:
                 parsed_vars = json.loads(raw_prompt_variables)
@@ -2748,7 +2865,7 @@ def upload_file():
             },
             tags=selected_tags,
             folder=selected_folder,
-            owner=current_user,
+            owner=owner,
         )
 
         # Create initial database entry
@@ -2767,6 +2884,26 @@ def upload_file():
                 current_app.logger.info(f"Using user-provided meeting_date: {meeting_date}")
             except (ValueError, TypeError) as e:
                 current_app.logger.warning(f"Could not parse user meeting_date '{user_meeting_date}': {e}")
+
+        # Then try parsing a date from the filename when the user opted in
+        # (#342). The pattern is explicit user intent, so it outranks the
+        # automatic sources (lastModified / embedded metadata) below.
+        if not meeting_date and owner.parse_filename_dates and original_filename:
+            from src.utils.filename_dates import parse_filename_date
+            tz_offset = None
+            if client_tz_offset is not None:
+                try:
+                    tz_offset = int(client_tz_offset)
+                except (TypeError, ValueError):
+                    tz_offset = None
+            meeting_date = parse_filename_date(
+                original_filename,
+                pattern_key=owner.filename_date_pattern or 'auto',
+                custom_regex=owner.filename_date_regex,
+                tz_offset_minutes=tz_offset,
+            )
+            if meeting_date:
+                current_app.logger.info(f"Using filename-parsed meeting_date: {meeting_date}")
 
         # Then try client-provided file lastModified (most reliable for uploads)
         if not meeting_date and file_last_modified:
@@ -2799,12 +2936,12 @@ def upload_file():
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,
-            user_id=current_user.id,
+            user_id=owner.id,
             mime_type=mime_type,
             audio_duration_seconds=audio_duration_seconds,
             notes=notes,
             folder_id=selected_folder.id if selected_folder else None,
-            processing_source='upload',  # Track that this was manually uploaded
+            processing_source=processing_source,
             file_hash=file_hash,
             prompt_variables=prompt_variables,
             # Per-upload override: record the effective audio-only flag so
@@ -2852,7 +2989,7 @@ def upload_file():
 
         current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
         job_queue.enqueue(
-            user_id=current_user.id,
+            user_id=owner.id,
             recording_id=recording.id,
             job_type='transcribe',
             params=job_params,
@@ -2866,7 +3003,7 @@ def upload_file():
         try:
             from src.services.webhook_dispatch import emit_webhook_event
             emit_webhook_event(
-                user_id=current_user.id,
+                user_id=owner.id,
                 event_type='recording.created',
                 data={
                     'recording_id': recording.id,
@@ -2878,12 +3015,19 @@ def upload_file():
         except Exception as e:
             current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
 
-        response_data = recording.to_dict(viewer_user=current_user)
+        response_data = recording.to_dict(viewer_user=owner)
         if duplicate_warning:
             response_data['duplicate_warning'] = duplicate_warning
-        return jsonify(response_data), 202
+        if reuse_duplicate:
+            response_data['idempotent_replay'] = False
+        return jsonify(response_data), success_status
 
     except RequestEntityTooLarge:
+        try:
+            if 'filepath' in locals() and filepath and os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError:
+            pass
         # Report the effective limit that fired (regular vs audio-only)
         # so the frontend can show the right message. effective_limit_mb
         # is set at the top of the function before the size check.

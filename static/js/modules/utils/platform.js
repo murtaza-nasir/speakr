@@ -31,9 +31,63 @@ const KNOWN_VIRTUAL_DEVICE_HINTS = [
     { match: /what u hear/i,          os: 'Windows', name: 'What U Hear' },
     // Linux
     { match: /monitor of /i,        os: 'Linux',   name: 'PulseAudio Monitor' },
+    { match: /monitor source/i,     os: 'Linux',   name: 'PulseAudio Monitor' },
     { match: /pipewire.*monitor/i,  os: 'Linux',   name: 'PipeWire Monitor' },
     { match: /pulse.*monitor/i,     os: 'Linux',   name: 'PulseAudio Monitor' },
 ];
+
+const EXTERNAL_INPUT_LABEL_HINT = /\b(?:usb|external|wireless|bluetooth|headset|receiver|webcam|camera|audio interface|audio codec)\b/i;
+const INTERNAL_INPUT_LABEL_HINT = /\b(?:built[- ]?in|internal|phone|handset|microphone array|bottom mic|top mic|front mic|rear mic)\b/i;
+const GENERIC_INPUT_LABEL = /^(?:default|communications|microphone(?:\s*\d+)?|earpiece|headset earpiece|speakerphone)$/i;
+
+function findVirtualDeviceHint(label) {
+    if (!label) return null;
+    return KNOWN_VIRTUAL_DEVICE_HINTS.find(hint => hint.match.test(label)) || null;
+}
+
+export function isVirtualAudioDeviceLabel(label) {
+    return !!findVirtualDeviceHint(label);
+}
+
+export function normalizeAudioInputDevices(devices = []) {
+    return devices
+        .filter(device => device && (!device.kind || device.kind === 'audioinput'))
+        .map(device => ({
+            kind: 'audioinput',
+            deviceId: device.deviceId || '',
+            label: device.label || '',
+            groupId: device.groupId || '',
+            isVirtual: isVirtualAudioDeviceLabel(device.label || '')
+        }));
+}
+
+export function findExternalAudioInputCandidates(devices = [], activeDeviceId = '') {
+    const inputs = normalizeAudioInputDevices(devices);
+    const active = inputs.find(device => device.deviceId === activeDeviceId) || null;
+
+    return inputs.filter(device => {
+        if (!device.deviceId || !device.label || device.isVirtual) return false;
+        if (device.deviceId === activeDeviceId) return false;
+        if (device.deviceId === 'default' || device.deviceId === 'communications') return false;
+        if (GENERIC_INPUT_LABEL.test(device.label) || INTERNAL_INPUT_LABEL_HINT.test(device.label)) return false;
+        // Positive label-hint matches only. A bare "different groupId"
+        // fallback was tried here and over-triggered badly: the
+        // internal/generic exclusion regexes are English-only, so on
+        // non-English devices internal routes (earpiece, speakerphone)
+        // escape them and every phone would prompt about its own built-in
+        // inputs. Requiring an explicit external hint keeps the prompt
+        // conservative; users can always open the device panel manually.
+        return EXTERNAL_INPUT_LABEL_HINT.test(device.label);
+    });
+}
+
+export function getAudioInputCandidateSignature(devices = []) {
+    return devices
+        .map(device => device?.deviceId || '')
+        .filter(Boolean)
+        .sort()
+        .join('|');
+}
 
 /**
  * Inspect the current user agent + platform string and return a small
@@ -71,6 +125,10 @@ export function detectPlatform() {
     else if (/opera|opr\//i.test(ua))     browser = 'Opera';
 
     return { os, browser };
+}
+
+export function shouldAutoOfferExternalAudioInput(platform = detectPlatform()) {
+    return platform?.os === 'Android' || platform?.os === 'iOS';
 }
 
 /**
@@ -163,19 +221,17 @@ export async function enumerateVirtualAudioDevices() {
     } catch (_) {
         return [];
     }
-    const inputs = devices.filter(d => d.kind === 'audioinput' && d.label);
+    const inputs = normalizeAudioInputDevices(devices).filter(d => d.label);
     const matches = [];
     for (const d of inputs) {
-        for (const hint of KNOWN_VIRTUAL_DEVICE_HINTS) {
-            if (hint.match.test(d.label)) {
-                matches.push({
-                    deviceId: d.deviceId,
-                    label: d.label,
-                    virtualToolName: hint.name,
-                    os: hint.os,
-                });
-                break;
-            }
+        const hint = findVirtualDeviceHint(d.label);
+        if (hint) {
+            matches.push({
+                deviceId: d.deviceId,
+                label: d.label,
+                virtualToolName: hint.name,
+                os: hint.os,
+            });
         }
     }
     return matches;

@@ -3,6 +3,8 @@
  * Handles dark mode, color schemes, sidebar, and other UI state
  */
 
+import { filenameFromContentDisposition } from '../utils/content-disposition.js';
+
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
@@ -531,6 +533,10 @@ export function useUI(state, utils, processedTranscription) {
             summaryMarkdownEditorInstance.value = new EasyMDE({
                 element: summaryMarkdownEditor.value,
                 spellChecker: false,
+                // The vendored bundle otherwise injects a Font Awesome stylesheet
+                // from an external CDN, which the app's CSP blocks (console error
+                // on every editor mount). Icons come from the locally served FA.
+                autoDownloadFontAwesome: false,
                 autofocus: true,
                 placeholder: t('form.enterSummaryMarkdown'),
                 initialValue: selectedRecording.value?.summary || '',
@@ -643,6 +649,10 @@ export function useUI(state, utils, processedTranscription) {
             markdownEditorInstance.value = new EasyMDE({
                 element: notesMarkdownEditor.value,
                 spellChecker: false,
+                // The vendored bundle otherwise injects a Font Awesome stylesheet
+                // from an external CDN, which the app's CSP blocks (console error
+                // on every editor mount). Icons come from the locally served FA.
+                autoDownloadFontAwesome: false,
                 autofocus: true,
                 placeholder: t('form.enterNotesMarkdown'),
                 initialValue: selectedRecording.value?.notes || '',
@@ -1602,19 +1612,7 @@ export function useUI(state, utils, processedTranscription) {
             a.href = url;
 
             const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = 'summary.docx';
-            if (contentDisposition) {
-                const utf8Match = /filename\*=utf-8''(.+)/.exec(contentDisposition);
-                if (utf8Match) {
-                    filename = decodeURIComponent(utf8Match[1]);
-                } else {
-                    const regularMatch = /filename="(.+)"/.exec(contentDisposition);
-                    if (regularMatch) {
-                        filename = regularMatch[1];
-                    }
-                }
-            }
-            a.download = filename;
+            a.download = filenameFromContentDisposition(contentDisposition, 'summary.docx');
 
             document.body.appendChild(a);
             a.click();
@@ -1769,13 +1767,7 @@ export function useUI(state, utils, processedTranscription) {
 
             const blob = await response.blob();
             const contentDisposition = response.headers.get('content-disposition');
-            let filename = `transcript.${fmt}`;
-            if (contentDisposition) {
-                const matches = contentDisposition.match(/filename="([^"]+)"/);
-                if (matches && matches[1]) {
-                    filename = matches[1];
-                }
-            }
+            const filename = filenameFromContentDisposition(contentDisposition, `transcript.${fmt}`);
 
             const downloadUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1810,13 +1802,7 @@ export function useUI(state, utils, processedTranscription) {
 
             const blob = await response.blob();
             const contentDisposition = response.headers.get('content-disposition');
-            let filename = `transcript.${fmt}`;
-            if (contentDisposition) {
-                const matches = contentDisposition.match(/filename="([^"]+)"/);
-                if (matches && matches[1]) {
-                    filename = matches[1];
-                }
-            }
+            const filename = filenameFromContentDisposition(contentDisposition, `transcript.${fmt}`);
 
             const downloadUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1985,6 +1971,10 @@ export function useUI(state, utils, processedTranscription) {
             recordingMarkdownEditorInstance.value = new EasyMDE({
                 element: recordingNotesEditor.value,
                 spellChecker: false,
+                // The vendored bundle otherwise injects a Font Awesome stylesheet
+                // from an external CDN, which the app's CSP blocks (console error
+                // on every editor mount). Icons come from the locally served FA.
+                autoDownloadFontAwesome: false,
                 autofocus: false,
                 // Use the same placeholder key as the plain textarea so the
                 // wording is consistent ("Type your notes in Markdown format…").

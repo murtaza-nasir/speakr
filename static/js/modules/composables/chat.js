@@ -3,6 +3,8 @@
  * Handles AI chat functionality with streaming responses
  */
 
+import { filenameFromContentDisposition } from '../utils/content-disposition.js';
+
 export function useChat(state, utils) {
     const {
         showChat, isChatMaximized, chatMessages, chatInput,
@@ -190,6 +192,13 @@ export function useChat(state, utils) {
                                         }
                                     }
                                     if (data.end_of_stream) {
+                                        // Provider hit its output-token limit: keep the
+                                        // partial answer but tell the user it was cut off
+                                        // instead of presenting it as complete (issue #349).
+                                        if (data.truncated && assistantMessage && assistantMessage.content) {
+                                            assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
+                                            assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
+                                        }
                                         return;
                                     }
                                     if (data.error) {
@@ -297,19 +306,7 @@ export function useChat(state, utils) {
             a.href = url;
 
             const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = 'chat.docx';
-            if (contentDisposition) {
-                const utf8Match = /filename\*=utf-8''(.+)/.exec(contentDisposition);
-                if (utf8Match) {
-                    filename = decodeURIComponent(utf8Match[1]);
-                } else {
-                    const regularMatch = /filename="(.+)"/.exec(contentDisposition);
-                    if (regularMatch) {
-                        filename = regularMatch[1];
-                    }
-                }
-            }
-            a.download = filename;
+            a.download = filenameFromContentDisposition(contentDisposition, 'chat.docx');
 
             document.body.appendChild(a);
             a.click();

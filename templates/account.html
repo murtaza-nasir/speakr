@@ -1005,6 +1005,39 @@
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
                                     </div>
                                 </div>
+
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.filenameDatesSection">Meeting date from filename</h3>
+                                <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
+                                    <label class="flex items-start gap-3 cursor-pointer">
+                                        <input type="checkbox" id="prefParseFilenameDates" name="parse_filename_dates" {% if current_user.parse_filename_dates %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.parseFilenameDates">Parse meeting date from filename</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.parseFilenameDatesHelp">When an uploaded filename contains a date (for example 20260716_meeting.mp3), use it as the meeting date instead of the file's timestamps. Files without a matching date keep the current behaviour.</span>
+                                        </span>
+                                    </label>
+                                    <div>
+                                        <label for="filename_date_pattern" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="preferences.filenameDatePattern">Filename date format</label>
+                                        {% set fdp = current_user.filename_date_pattern or 'auto' %}
+                                        <select name="filename_date_pattern" id="filename_date_pattern"
+                                                onchange="document.getElementById('filenameDateRegexRow').style.display = this.value === 'custom' ? '' : 'none';"
+                                                class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="auto" data-i18n="preferences.filenameDatePatternAuto" {% if fdp == 'auto' %}selected{% endif %}>Auto (common formats)</option>
+                                            <option value="yyyymmdd" {% if fdp == 'yyyymmdd' %}selected{% endif %}>YYYYMMDD &mdash; 20260716_meeting.mp3</option>
+                                            <option value="yyyymmdd_hhmm" {% if fdp == 'yyyymmdd_hhmm' %}selected{% endif %}>YYYYMMDD_HHMM &mdash; 20260716_1102.mp3</option>
+                                            <option value="yyyy-mm-dd" {% if fdp == 'yyyy-mm-dd' %}selected{% endif %}>YYYY-MM-DD &mdash; 2026-07-16 meeting.mp3</option>
+                                            <option value="yymmdd_hhmm" {% if fdp == 'yymmdd_hhmm' %}selected{% endif %}>YYMMDD_HHMM &mdash; 260716_1102.mp3</option>
+                                            <option value="yymmdd" {% if fdp == 'yymmdd' %}selected{% endif %}>YYMMDD &mdash; 260716.mp3</option>
+                                            <option value="custom" data-i18n="preferences.filenameDatePatternCustom" {% if fdp == 'custom' %}selected{% endif %}>Custom pattern</option>
+                                        </select>
+                                    </div>
+                                    <div id="filenameDateRegexRow" {% if fdp != 'custom' %}style="display: none;"{% endif %}>
+                                        <label for="filename_date_regex" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="preferences.filenameDateRegex">Custom pattern (regular expression)</label>
+                                        <input type="text" name="filename_date_regex" id="filename_date_regex" value="{{ current_user.filename_date_regex or '' }}"
+                                               placeholder="(?P&lt;year&gt;\d{4})(?P&lt;month&gt;\d{2})(?P&lt;day&gt;\d{2})" spellcheck="false"
+                                               class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] font-mono">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="preferences.filenameDateRegexHelp">Must contain named groups year, month and day; hour and minute are optional. Example: (?P&lt;year&gt;\d{4})-(?P&lt;month&gt;\d{2})-(?P&lt;day&gt;\d{2})</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Right column: Display + Editor toggles -->
@@ -1288,16 +1321,16 @@
                       <div class="border-b border-[var(--border-primary)] px-6 flex-shrink-0">
                           <nav class="tabs" id="templates-subtabs" style="border-bottom: none;">
                               <button id="subtab-transcript" class="tab is-active" data-i18n="transcriptTemplates.tabTitle">
-                                  Transcript
-                              </button>
-                              <button id="subtab-export" class="tab" style="display: none;" data-i18n="exportTemplates.tabTitle">
-                                  Export
-                              </button>
-                              <button id="subtab-naming" class="tab" data-i18n="namingTemplates.tabTitle">
-                                  Naming
+                                  Transcript Formatting
                               </button>
                               <button id="subtab-initial-prompts" class="tab" data-i18n="initialPromptTemplates.tabTitle">
-                                  Transcription Prompts
+                                  Transcription Hints
+                              </button>
+                              <button id="subtab-naming" class="tab" data-i18n="namingTemplates.tabTitle">
+                                  Recording Titles
+                              </button>
+                              <button id="subtab-export" class="tab" style="display: none;" data-i18n="exportTemplates.tabTitle">
+                                  Exports
                               </button>
                           </nav>
                       </div>
@@ -1432,6 +1465,31 @@
                                         <span data-i18n="exportTemplates.bulkExportButton">Export all to disk</span>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Export filename template (#348) -->
+                            <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6">
+                                <h3 class="text-lg font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.filenameTemplateTitle">Export filename template</h3>
+                                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="exportTemplates.filenameTemplateDescription">Customize the filenames of auto-exported markdown files. Leave empty to use the default (recording_{% raw %}{{id}}{% endraw %}). This setting controls only the file's name; the export templates below control the file's contents.</p>
+                                <form id="exportFilenameForm" method="POST" action="{{ url_for('auth.account') }}" class="mt-4 space-y-3">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="text" id="exportFilenameTemplateInput" name="export_filename_template" value="{{ current_user.export_filename_template or '' }}" maxlength="500" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" placeholder="{% raw %}{{date}} {{title}}{% endraw %}">
+                                    <p class="text-xs text-[var(--text-light)]">
+                                        <span data-i18n="exportTemplates.filenameTemplateHelp">Available variables:</span>
+                                        {% raw %}<code>{{id}}</code>, <code>{{title}}</code>, <code>{{filename}}</code>, <code>{{date}}</code>, <code>{{datetime}}</code>, <code>{{time}}</code>, <code>{{year}}</code>, <code>{{month}}</code>, <code>{{day}}</code>{% endraw %}
+                                    </p>
+                                    <p id="exportFilenameStatus" class="text-sm hidden"></p>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button type="submit" class="btn btn--primary">
+                                            <i class="fas fa-save mr-2"></i>
+                                            <span data-i18n="exportTemplates.save">Save</span>
+                                        </button>
+                                        <button type="button" id="renameExportsBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <i class="fas fa-pen mr-2"></i>
+                                            <span data-i18n="exportTemplates.renameExisting">Rename existing exports</span>
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                             {% endif %}
 
@@ -1668,7 +1726,7 @@
                         <div id="subcontent-initial-prompts" class="space-y-6 hidden">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="initialPromptTemplates.title">Transcription Prompts</h2>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="initialPromptTemplates.title">Saved Transcription Hints</h2>
                                     <p class="text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.description">Save reusable initial prompts that steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.</p>
                                 </div>
                                 <button id="ipCreateTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
@@ -4342,6 +4400,24 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             body: fd,
                             credentials: 'same-origin'
                         });
+                        if (response.status >= 400 && response.status < 500) {
+                            // Validation rejection (e.g. a bad custom regex):
+                            // surface the server's message inline instead of
+                            // re-POSTing via the native-submit fallback, which
+                            // reloaded the page, dropped the active tab, and
+                            // double-submitted the invalid form.
+                            let message = `Could not save settings (HTTP ${response.status}).`;
+                            try {
+                                const data = await response.json();
+                                if (data && data.error) message = data.error;
+                            } catch (_) { /* non-JSON body — keep generic message */ }
+                            if (typeof showToast === 'function') {
+                                showToast(message, 'error');
+                            } else {
+                                alert(message);
+                            }
+                            return;
+                        }
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}`);
                         }
@@ -7772,6 +7848,93 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 btn.innerHTML = original;
             }
         });
+
+        // Export filename template (#348): saves via the /account settings
+        // form branch (field presence selects the branch server-side). When
+        // the template changed, surface a note that previously exported
+        // files keep their names until "Rename existing exports" is used.
+        (function () {
+            const form = document.getElementById('exportFilenameForm');
+            if (!form) return;
+            const input = document.getElementById('exportFilenameTemplateInput');
+            const statusEl = document.getElementById('exportFilenameStatus');
+            let savedValue = input.value.trim();
+
+            const showFilenameStatus = (msg, isError) => {
+                if (!statusEl) return;
+                statusEl.textContent = msg;
+                statusEl.classList.remove('hidden');
+                statusEl.style.color = isError ? 'var(--color-danger, #ef4444)' : 'var(--text-secondary)';
+            };
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitBtn = form.querySelector('[type=submit]');
+                if (submitBtn) submitBtn.disabled = true;
+                try {
+                    const fd = new FormData(form);
+                    const csrfToken = form.querySelector('[name=csrf_token]')?.value;
+                    const response = await fetch(form.action || window.location.href, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {})
+                        },
+                        body: fd,
+                        credentials: 'same-origin'
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(result.error || t('exportTemplates.filenameTemplateInvalid'));
+                    }
+                    const changed = input.value.trim() !== savedValue;
+                    savedValue = input.value.trim();
+                    if (changed) {
+                        showFilenameStatus(t('exportTemplates.filenameSavedRenameNote'), false);
+                    } else if (statusEl) {
+                        statusEl.classList.add('hidden');
+                    }
+                    showToast(t('exportTemplates.filenameTemplateSaved'), 'success');
+                } catch (err) {
+                    console.error('[export filename template]', err);
+                    const msg = (err && err.message) || t('exportTemplates.filenameTemplateInvalid');
+                    showFilenameStatus(msg, true);
+                    showToast(msg, 'error');
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            });
+
+            document.getElementById('renameExportsBtn')?.addEventListener('click', async (e) => {
+                if (!confirm(t('exportTemplates.renameConfirm'))) return;
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const response = await fetch('/api/export/apply-filename-template', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || t('exportTemplates.renameFailed'));
+                    }
+                    const msg = t('exportTemplates.renameResult', {
+                        renamed: result.renamed,
+                        skipped: result.skipped,
+                        errors: result.errors
+                    });
+                    showFilenameStatus(msg, false);
+                    showToast(msg, 'success');
+                } catch (error) {
+                    console.error('Rename exports error:', error);
+                    showFilenameStatus((error && error.message) || t('exportTemplates.renameFailed'), true);
+                    showToast(t('exportTemplates.renameFailed'), 'error');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        })();
 
         // ============================================
         // Naming Templates Management
