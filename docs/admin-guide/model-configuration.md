@@ -28,6 +28,8 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 
 **OpenRouter** (recommended for most users): Provides access to multiple AI models through a single API, often at competitive prices. Supports GPT-4, Claude, and many other models. Configure using `TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1`.
 
+**OrcaRouter**: OpenAI-compatible model routing gateway that exposes 150+ models from OpenAI, Anthropic, Google, DeepSeek, Qwen, MiniMax, and xAI behind a single endpoint and API key. Configure using `TEXT_MODEL_BASE_URL=https://api.orcarouter.ai/v1`, `TEXT_MODEL_API_KEY=sk-orca-...`, and `TEXT_MODEL_NAME=orcarouter/auto` (or a specific model such as `openai/gpt-5.5`).
+
 **OpenAI Direct**: Use OpenAI's API directly for access to their latest models including GPT-5. Configure using `TEXT_MODEL_BASE_URL=https://api.openai.com/v1`. This option is required for GPT-5 models with their specialized parameters.
 
 **Custom Endpoints**: Speakr works with any OpenAI-compatible API endpoint, including self-hosted solutions like LocalAI, Ollama with OpenAI compatibility, or enterprise API gateways.
