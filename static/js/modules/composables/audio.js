@@ -1045,12 +1045,22 @@ export function useAudio(state, utils) {
             // recording restores recordingTime past the mark in one jump and
             // then gets the warning on its first tick.
             let durationWarningShown = false;
+            // Advance the counter by real elapsed wall time instead of by
+            // tick count (#341): mobile browsers (iOS especially) suspend
+            // timers while the screen is locked, so counting ticks makes the
+            // displayed duration fall far behind the actual recording even
+            // though the audio itself keeps capturing. On return from
+            // background the first tick folds in the whole missed interval.
+            let lastTickMs = Date.now();
             recordingInterval.value = setInterval(() => {
+                const nowMs = Date.now();
                 // Freeze the elapsed-time counter while paused (#338). The
                 // interval keeps running so the max-duration closure survives a
-                // pause/resume; it just skips ticking.
-                if (isPaused && isPaused.value) return;
-                recordingTime.value++;
+                // pause/resume; it just skips ticking (and absorbs the gap so
+                // paused time never counts).
+                if (isPaused && isPaused.value) { lastTickMs = nowMs; return; }
+                recordingTime.value += Math.max(0, Math.round((nowMs - lastTickMs) / 1000));
+                lastTickMs = nowMs;
                 if (!durationWarningShown && recordingTime.value >= recordingMaxSeconds * 0.8) {
                     durationWarningShown = true;
                     const minutesLeft = Math.max(1, Math.round((recordingMaxSeconds - recordingTime.value) / 60));
