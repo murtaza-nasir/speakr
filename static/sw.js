@@ -181,7 +181,24 @@ self.addEventListener('activate', (event) => {
             return caches.delete(name);
           })
       );
-    }).then(() => {
+    }).then(async () => {
+      // Purge any media responses cached by previous service worker versions
+      // within the SAME cache namespace (#374): a cached 200 for /audio/<id>
+      // would be served to the media element's Range requests and stall
+      // playback persistently for that user.
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        const keys = await cache.keys();
+        await Promise.all(keys.map((req) => {
+          const p = new URL(req.url).pathname;
+          if (p.startsWith('/audio/') || p.startsWith('/share/audio/') || p.startsWith('/speakers/snippet-audio/')) {
+            return cache.delete(req);
+          }
+          return Promise.resolve();
+        }));
+      } catch (e) {
+        console.warn('Service Worker: media cache purge failed:', e);
+      }
       console.log('Service Worker: Activated and old caches cleared.');
       return self.clients.claim(); // Take control of all open clients
     })
@@ -198,6 +215,21 @@ self.addEventListener('fetch', (event) => {
     return; // Or simply return to let the browser handle it
   }
 
+  // Media streams must bypass the service worker entirely (#374). The media
+  // element manages its own Range requests; proxying them through the Cache
+  // API breaks playback: cache.put() rejects 206 responses, a cached 200
+  // served to a Range request wedges the media pipeline, and the inner
+  // fetch() ignores the element's aborts, leaking held-open connections.
+  // Returning without respondWith lets the browser handle these natively.
+  if (request.headers.has('range') ||
+      request.destination === 'audio' ||
+      request.destination === 'video' ||
+      url.pathname.startsWith('/audio/') ||
+      url.pathname.startsWith('/share/audio/') ||
+      url.pathname.startsWith('/speakers/snippet-audio/')) {
+    return;
+  }
+
   // Serve API calls from /api/ with stale-while-revalidate
   // (excluding auth-related endpoints)
   if (url.pathname.startsWith('/api/')) {
@@ -210,13 +242,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Serve /audio/<id> requests with cache-first, then network.
-  // These are media files and can be large, so cache-first is good.
-  if (url.pathname.startsWith('/audio/')) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
   // Handle navigation requests (HTML pages) with network-first, then cache, then offline page.
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));
