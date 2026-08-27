@@ -10,6 +10,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -131,6 +132,9 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str = No
         msg['Subject'] = subject
         msg['From'] = f"{config['from_name']} <{config['from_address']}>"
         msg['To'] = to_email
+        msg['Date'] = formatdate(localtime=True)
+        from_domain = config['from_address'].rsplit('@', 1)[-1] if '@' in config['from_address'] else None
+        msg['Message-ID'] = make_msgid(domain=from_domain)
 
         # Add plain text version
         if text_body:
