@@ -149,6 +149,9 @@ def extract_audio_from_video(
                     '-y',
                     '-vn',  # No video
                     '-acodec', 'copy',  # Copy audio stream without re-encoding
+                    # m4a output must be pipe-streamable for the ASR
+                    # webservice: moov atom first (#372).
+                    *(['-movflags', '+faststart'] if output_ext == 'm4a' else []),
                     temp_audio_path
                 ]
                 

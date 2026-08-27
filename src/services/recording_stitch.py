@@ -145,7 +145,11 @@ def _remux_copy(src_path: str, output_path: str) -> None:
     losing the recording — logged loudly so it can be investigated."""
     cmd = [
         'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
-        '-i', src_path, '-c', 'copy', output_path,
+        '-i', src_path, '-c', 'copy',
+        # MP4 outputs (Safari MediaRecorder emits audio/mp4) must be
+        # pipe-streamable for the ASR webservice: moov first (#372).
+        *(['-movflags', '+faststart'] if output_path.lower().endswith(('.m4a', '.mp4', '.mov')) else []),
+        output_path,
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, timeout=600)
@@ -176,7 +180,9 @@ def _concat_demux(segment_files: list, output_path: str, work_dir: str) -> None:
     cmd = [
         'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
         '-f', 'concat', '-safe', '0', '-i', manifest_path,
-        '-c', 'copy', output_path,
+        '-c', 'copy',
+        *(['-movflags', '+faststart'] if output_path.lower().endswith(('.m4a', '.mp4', '.mov')) else []),
+        output_path,
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, timeout=600)

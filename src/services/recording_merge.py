@@ -109,6 +109,11 @@ def _concat_audio(input_paths: list, output_path: str) -> None:
         '-map', '[out]',
         '-c:a', 'aac',
         '-b:a', _MERGED_BITRATE,
+        # Put the moov atom first. Without this, MP4 output cannot be decoded
+        # from a non-seekable pipe — the WhisperX ASR webservice pipes uploads
+        # to ffmpeg stdin and silently decodes 0 samples, which surfaces as a
+        # pyannote "(channel, time) torch Tensor" 500 (#372).
+        '-movflags', '+faststart',
         output_path,
     ]
     _run_ffmpeg_command(cmd, f"merge concat of {len(input_paths)} recordings")
