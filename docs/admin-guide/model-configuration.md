@@ -131,6 +131,19 @@ Speakr automatically detects when you're using:
 1. A GPT-5 model (based on model name)
 2. The official OpenAI API (based on base URL containing `api.openai.com`)
 
+### GPT-5 Through Azure AI Foundry and Other Gateways
+
+The automatic detection only activates on the official OpenAI API URL. If you serve a GPT-5 model through Azure AI Foundry or another gateway, requests fail with an error such as `Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.` In that case, force GPT-5 parameter handling explicitly:
+
+```bash
+# Force GPT-5 parameters (reasoning_effort, verbosity, max_completion_tokens)
+# regardless of the base URL
+GPT5_FORCE_MODE=true
+
+# Same, for a separately configured chat model (not inherited from the above)
+# CHAT_GPT5_FORCE_MODE=true
+```
+
 When both conditions are met, Speakr automatically:
 
 - Removes `temperature` parameter from API calls
