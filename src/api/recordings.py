@@ -3124,6 +3124,8 @@ def upload_incognito():
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers')
         max_speakers = request.form.get('max_speakers')
+        hotwords = request.form.get('hotwords', '').strip() or None
+        initial_prompt = request.form.get('initial_prompt', '').strip() or None
         auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
 
         # Convert to int if provided
@@ -3152,6 +3154,8 @@ def upload_incognito():
             language=language,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
+            hotwords=hotwords,
+            initial_prompt=initial_prompt,
             user=current_user
         )
 

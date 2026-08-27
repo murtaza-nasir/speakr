@@ -2400,7 +2400,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             db.session.commit()
 
 
-def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, user=None):
+def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, hotwords=None, initial_prompt=None, user=None):
     """
     Perform transcription without any database operations.
     Used for Incognito Mode where no data is persisted.
@@ -2411,6 +2411,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         language: Optional language code for transcription
         min_speakers: Optional minimum speakers for diarization
         max_speakers: Optional maximum speakers for diarization
+        hotwords: Optional comma-separated hotwords to bias recognition
+        initial_prompt: Optional initial prompt to steer transcription
         user: Optional user object for language/diarization preferences
 
     Returns:
@@ -2556,7 +2558,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             # Use chunking for large files
             chunk_result = transcribe_chunks_with_connector(
                 connector, actual_filepath, actual_filename, actual_content_type, language,
-                diarize=should_diarize
+                diarize=should_diarize, hotwords=hotwords, initial_prompt=initial_prompt
             )
 
             if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
@@ -2573,7 +2575,9 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                     language=language,
                     diarize=should_diarize,
                     min_speakers=min_speakers,
-                    max_speakers=max_speakers
+                    max_speakers=max_speakers,
+                    prompt=initial_prompt,
+                    hotwords=hotwords
                 )
 
                 response = connector.transcribe(request)

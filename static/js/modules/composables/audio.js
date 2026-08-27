@@ -58,7 +58,7 @@ export function useAudio(state, utils) {
         isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
-        selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
+        selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, asrInitialPrompt, asrHotwords, uploadQueue,
         progressPopupMinimized, progressPopupClosed,
         // Incognito mode
         enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
@@ -910,7 +910,9 @@ export function useAudio(state, utils) {
                     asrOptions: {
                         language: asrLanguage.value || '',
                         min_speakers: asrMinSpeakers.value || '',
-                        max_speakers: asrMaxSpeakers.value || ''
+                        max_speakers: asrMaxSpeakers.value || '',
+                        initial_prompt: asrInitialPrompt.value || '',
+                        hotwords: asrHotwords.value || ''
                     },
                     mimeType,
                     incognito: !!(incognitoMode && incognitoMode.value)
@@ -1250,6 +1252,8 @@ export function useAudio(state, utils) {
                     language: asrLanguage.value || null,
                     min_speakers: asrMinSpeakers.value || null,
                     max_speakers: asrMaxSpeakers.value || null,
+                    initial_prompt: asrInitialPrompt.value || null,
+                    hotwords: asrHotwords.value || null,
                 };
                 if (mergeIntent) {
                     metadata.merge_intent = mergeIntent;
@@ -1316,7 +1320,9 @@ export function useAudio(state, utils) {
             asrOptions: {
                 language: asrLanguage.value,
                 min_speakers: asrMinSpeakers.value,
-                max_speakers: asrMaxSpeakers.value
+                max_speakers: asrMaxSpeakers.value,
+                initial_prompt: asrInitialPrompt.value,
+                hotwords: asrHotwords.value
             },
             status: 'queued',
             recordingId: null,
@@ -1343,6 +1349,8 @@ export function useAudio(state, utils) {
         asrLanguage.value = '';
         asrMinSpeakers.value = '';
         asrMaxSpeakers.value = '';
+        asrInitialPrompt.value = '';
+        asrHotwords.value = '';
         await releaseWakeLock();
         await hideRecordingNotification();
 
@@ -1489,6 +1497,12 @@ export function useAudio(state, utils) {
             if (asrMaxSpeakers.value && asrMaxSpeakers.value !== '') {
                 formData.append('max_speakers', asrMaxSpeakers.value.toString());
             }
+            if (asrInitialPrompt.value && asrInitialPrompt.value.trim()) {
+                formData.append('initial_prompt', asrInitialPrompt.value.trim());
+            }
+            if (asrHotwords.value && asrHotwords.value.trim()) {
+                formData.append('hotwords', asrHotwords.value.trim());
+            }
 
             // Request auto-summarization
             formData.append('auto_summarize', 'true');
@@ -1612,6 +1626,8 @@ export function useAudio(state, utils) {
         asrLanguage.value = '';
         asrMinSpeakers.value = '';
         asrMaxSpeakers.value = '';
+        asrInitialPrompt.value = '';
+        asrHotwords.value = '';
 
         // If a server-side session was open (Phase B of #287 c/d), abort it
         // so the chunks on disk are reaped immediately rather than waiting
@@ -1805,6 +1821,8 @@ export function useAudio(state, utils) {
                 asrLanguage.value = recovered.metadata.asrOptions.language || '';
                 asrMinSpeakers.value = recovered.metadata.asrOptions.min_speakers || '';
                 asrMaxSpeakers.value = recovered.metadata.asrOptions.max_speakers || '';
+                asrInitialPrompt.value = recovered.metadata.asrOptions.initial_prompt || '';
+                asrHotwords.value = recovered.metadata.asrOptions.hotwords || '';
             }
 
             // Restore the incognito state the recording was left in, so a

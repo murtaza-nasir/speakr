@@ -520,6 +520,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrLanguage = ref('');
             const asrMinSpeakers = ref('');
             const asrMaxSpeakers = ref('');
+            // Recorder-side transcription hints (#375): the in-app recorder
+            // has its own asr* option refs (separate from the upload modal's
+            // upload* refs) so a recording in progress keeps its options when
+            // the upload UI state changes.
+            const asrInitialPrompt = ref('');
+            const asrHotwords = ref('');
             const audioContext = ref(null);
             const analyser = ref(null);
             const micAnalyser = ref(null);
@@ -616,6 +622,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // A transcription template applies BOTH its prompt and hotwords.
                 uploadInitialPrompt.value = tpl.template || '';
                 uploadHotwords.value = tpl.hotwords || '';
+            };
+            // Same picker for the in-app recorder's Advanced ASR Options,
+            // which use the recorder-side asr* refs (#375).
+            const applyInitialPromptTemplateToRecording = (id) => {
+                const tpl = initialPromptTemplates.value.find(t => String(t.id) === String(id));
+                if (!tpl) return;
+                asrInitialPrompt.value = tpl.template || '';
+                asrHotwords.value = tpl.hotwords || '';
             };
             // Detail-view popover showing which hotwords/initial-prompt a
             // recording actually used (#309).
@@ -1756,6 +1770,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 inputAudioDevices, selectedMicDeviceId, selectedSecondaryDeviceId, refreshInputAudioDevices,
                 platformInfo, audioCaps, helpModalOsTab, virtualAudioDevices, refreshVirtualAudioDevices,
                 asrLanguage, asrMinSpeakers, asrMaxSpeakers,
+                asrInitialPrompt, asrHotwords, applyInitialPromptTemplateToRecording,
                 audioContext, analyser, micAnalyser, systemAnalyser, visualizer, micVisualizer,
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,
                 wakeLock, recordingNotification, isPageVisible,
