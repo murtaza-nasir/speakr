@@ -105,6 +105,14 @@ class FileMonitor:
                 users = User.query.all()
                 self._valid_users = {user.id: user.username for user in users}
                 self._username_to_id = {user.username: user.id for user in users}
+                # Username-named watch folders (#365) also accept the
+                # filesystem-safe variant, matching the per-user export
+                # directories which are created as secure_filename(username).
+                from werkzeug.utils import secure_filename
+                for user in users:
+                    safe = secure_filename(user.username)
+                    if safe and safe not in self._username_to_id:
+                        self._username_to_id[safe] = user.id
                 
                 self._last_user_cache_update = current_time
                 self.logger.debug(f"Updated user cache: {len(self._valid_users)} users, admin: {self._admin_user_id}")
@@ -145,7 +153,8 @@ class FileMonitor:
         if not self.base_watch_directory.exists():
             return
 
-        # Look for user directories (e.g., user123, user456)
+        # Look for user directories, either id-based (user123, 123) or named
+        # after the username itself (#365, consistent with export folders).
         for item in self.base_watch_directory.iterdir():
             if not item.is_dir():
                 continue
@@ -155,6 +164,14 @@ class FileMonitor:
             if user_id and user_id in self._valid_users:
                 self._scan_directory_for_user(item, user_id)
                 self._scan_tag_subdirectories(item, user_id)
+                continue
+
+            # Fall back to matching the directory name against usernames
+            # (raw or secure_filename form).
+            username_user_id = self._username_to_id.get(item.name)
+            if username_user_id:
+                self._scan_directory_for_user(item, username_user_id)
+                self._scan_tag_subdirectories(item, username_user_id)
             elif item.name.startswith('user'):
                 self.logger.warning(f"Found user directory '{item.name}' but user ID {user_id} is not valid")
 

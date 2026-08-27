@@ -313,6 +313,32 @@ class TestModeDispatch(unittest.TestCase):
         # Only the valid user's directory got scanned.
         self.assertEqual(scanned, [self.uid])
 
+    def test_user_directories_username_named_folder(self):
+        """#365: a watch folder named after the username (not the id) resolves."""
+        os.makedirs(os.path.join(self.temp_dir, f'u{self.uid}'))
+        # An unknown name is silently ignored (no 'user' prefix -> no warning path).
+        os.makedirs(os.path.join(self.temp_dir, 'not_a_user'))
+
+        monitor = _make_monitor(self.temp_dir, self.uid, mode='user_directories')
+        scanned = []
+        monitor._scan_directory_for_user = lambda d, u, **kw: scanned.append(u)
+        monitor._scan_tag_subdirectories = lambda *a, **kw: None
+        monitor._scan_user_directories()
+        self.assertEqual(scanned, [self.uid])
+
+    def test_user_directories_id_takes_precedence_over_username(self):
+        """A dir named user<id> resolves by id even if a username also matches."""
+        os.makedirs(os.path.join(self.temp_dir, f'user{self.uid}'))
+        monitor = _make_monitor(self.temp_dir, self.uid, mode='user_directories')
+        # Poison the username map: if the username fallback ran first it would
+        # resolve to a different (nonexistent) user id.
+        monitor._username_to_id[f'user{self.uid}'] = 424242
+        scanned = []
+        monitor._scan_directory_for_user = lambda d, u, **kw: scanned.append(u)
+        monitor._scan_tag_subdirectories = lambda *a, **kw: None
+        monitor._scan_user_directories()
+        self.assertEqual(scanned, [self.uid])
+
     def test_user_directories_missing_base_dir(self):
         monitor = _make_monitor(os.path.join(self.temp_dir, 'nope'), self.uid,
                                 mode='user_directories')
