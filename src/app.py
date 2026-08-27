@@ -660,6 +660,18 @@ def inject_app_version():
     return {'app_version': _app_version}
 
 @app.context_processor
+def inject_help_center_link():
+    """Optional custom help link in the user menu (#371).
+
+    Admins hosting their own FAQ/tutorial page set HELP_CENTER_URL (and
+    optionally HELP_CENTER_LABEL) to surface it prominently for users.
+    """
+    return {
+        'help_center_url': os.environ.get('HELP_CENTER_URL', '').strip(),
+        'help_center_label': os.environ.get('HELP_CENTER_LABEL', '').strip(),
+    }
+
+@app.context_processor
 def inject_group_admin_status():
     """Inject is_group_admin flag into all templates."""
     from flask_login import current_user

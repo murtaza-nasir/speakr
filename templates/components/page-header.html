@@ -49,6 +49,17 @@
                     <i class="fas fa-users-cog mr-2 w-4 text-center"></i><span data-i18n="nav.groupManagement">Team Management</span>
                 </a>
                 {% endif %}
+                {% if help_center_url %}
+                <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer"
+                   class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-question-circle mr-2 w-4 text-center"></i>
+                    {% if help_center_label %}
+                    <span>{{ help_center_label }}</span>
+                    {% else %}
+                    <span data-i18n="nav.helpCenter">Help Center</span>
+                    {% endif %}
+                </a>
+                {% endif %}
                 <div class="border-t border-[var(--border-primary)] my-1"></div>
                 <form method="POST" action="{{ url_for('auth.logout') }}" class="m-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

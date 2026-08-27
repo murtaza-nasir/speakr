@@ -233,6 +233,17 @@
                     <span v-text="t('nav.groupManagement')"></span>
                 </a>
                 {% endif %}
+                {% if help_center_url %}
+                <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer"
+                   class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-question-circle mr-2 w-4 text-center"></i>
+                    {% if help_center_label %}
+                    <span>{{ help_center_label }}</span>
+                    {% else %}
+                    <span v-text="t('nav.helpCenter')"></span>
+                    {% endif %}
+                </a>
+                {% endif %}
                 <div class="border-t border-[var(--border-primary)] my-1"></div>
                 <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
