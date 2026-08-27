@@ -414,7 +414,7 @@
             <div class="flex gap-2">
                 <button @click="closeSpeakerModal" class="btn btn--ghost" v-text="t('common.cancel')"></button>
                 <button @click="saveSpeakerNames"
-                        :disabled="!hasSpeakerNames"
+                        :disabled="!canSaveSpeakerEdits"
                         class="btn btn--primary"
                         v-text="t('buttons.saveNames')"></button>
             </div>

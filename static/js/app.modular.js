@@ -3414,6 +3414,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 );
             });
 
+            // Save is also valid with no names when per-segment edits are
+            // staged (speaker reassignments / text edits set
+            // editedTranscriptData and are persisted by the same button).
+            const canSaveSpeakerEdits = computed(() => {
+                return hasSpeakerNames.value || editedTranscriptData.value !== null;
+            });
+
             // Tags with custom prompts for reprocess modal
             const tagsWithCustomPrompts = computed(() => {
                 return availableTags.value.filter(tag => tag.custom_prompt && tag.custom_prompt.trim() !== '');
@@ -4236,6 +4243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 removeProgressItem,
                 retryProgressItem,
                 hasSpeakerNames,
+                canSaveSpeakerEdits,
                 showDuplicatesModal,
                 videoCollapsed,
                 videoFullscreen,
