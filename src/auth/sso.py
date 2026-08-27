@@ -100,6 +100,41 @@ def get_sso_client() -> Optional[OAuth]:
     return _oauth
 
 
+def resolve_userinfo(oauth, token) -> Dict:
+    """Resolve the full OIDC claim set for a login.
+
+    Authlib exposes the ID token claims as ``token['userinfo']``, but many
+    IdPs (Keycloak, Azure AD, LemonLDAP::NG) only publish ``email``, ``name``
+    and ``preferred_username`` at the UserInfo endpoint, not inside the ID
+    token. When any claim we consume is missing from the ID token, fetch the
+    endpoint and overlay its claims. Endpoint claims are discarded if their
+    ``sub`` does not match the ID token's (OIDC Core 5.3.2).
+    """
+    cfg = get_sso_config()
+    claims = dict(token.get("userinfo") or {})
+    wanted = ("email", cfg["username_claim"] or "preferred_username", cfg["name_claim"] or "name")
+    if claims and all(claims.get(c) for c in wanted):
+        return claims
+
+    try:
+        endpoint_claims = dict(oauth.sso.userinfo(token=token))
+    except Exception as e:
+        current_app.logger.warning(
+            "SSO UserInfo endpoint call failed, falling back to ID token claims: %s", e
+        )
+        return claims
+
+    if claims.get("sub") and endpoint_claims.get("sub") and claims["sub"] != endpoint_claims["sub"]:
+        current_app.logger.warning(
+            "SSO UserInfo 'sub' does not match ID token 'sub'; ignoring endpoint claims"
+        )
+        return claims
+
+    merged = dict(claims)
+    merged.update({k: v for k, v in endpoint_claims.items() if v is not None})
+    return merged
+
+
 def is_domain_allowed(email: Optional[str]) -> bool:
     """Check if email domain is allowed for auto-registration."""
     if not email:

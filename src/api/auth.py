@@ -28,6 +28,7 @@ from src.auth.sso import (
     create_or_update_sso_user,
     is_domain_allowed,
     link_sso_to_existing_user,
+    resolve_userinfo,
     update_user_profile_from_claims,
 )
 from src.services.email import (
@@ -290,7 +291,7 @@ def sso_callback():
 
     try:
         token = oauth.sso.authorize_access_token()
-        userinfo = token.get('userinfo') or oauth.sso.userinfo()
+        userinfo = resolve_userinfo(oauth, token)
     except Exception as e:
         current_app.logger.warning(f"SSO callback error: {e}")
         flash('SSO login failed. Please try again.', 'danger')

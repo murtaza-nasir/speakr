@@ -513,5 +513,84 @@ def test_require_verified_email_on_allows_no_email_claim(cleanup_users):
         assert user.email == f"{sub}@placeholder.local"
 
 
+# ---------------------------------------------------------------------------
+# resolve_userinfo (#377: ID token claims short-circuited the UserInfo endpoint)
+# ---------------------------------------------------------------------------
+
+class _FakeOAuth:
+    """Stand-in for the Authlib registry: oauth.sso.userinfo(token=...)."""
+
+    class _Sso:
+        def __init__(self, result):
+            self._result = result
+            self.calls = 0
+
+        def userinfo(self, token=None):
+            self.calls += 1
+            if isinstance(self._result, Exception):
+                raise self._result
+            return self._result
+
+    def __init__(self, result):
+        self.sso = self._Sso(result)
+
+
+def test_resolve_userinfo_fetches_endpoint_when_id_token_lacks_claims(app_ctx):
+    """ID token with only sub/iss/aud must not short-circuit the endpoint."""
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        oauth = _FakeOAuth({"sub": "abc", "email": "a@b.co", "name": "Ann", "preferred_username": "ann"})
+        token = {"userinfo": {"sub": "abc", "iss": "https://idp", "aud": "client"}}
+        claims = sso.resolve_userinfo(oauth, token)
+        assert oauth.sso.calls == 1
+        assert claims["email"] == "a@b.co"
+        assert claims["name"] == "Ann"
+        assert claims["preferred_username"] == "ann"
+
+
+def test_resolve_userinfo_skips_endpoint_when_id_token_complete(app_ctx):
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        full = {"sub": "abc", "email": "a@b.co", "name": "Ann", "preferred_username": "ann"}
+        oauth = _FakeOAuth(RuntimeError("endpoint should not be called"))
+        claims = sso.resolve_userinfo(oauth, {"userinfo": full})
+        assert oauth.sso.calls == 0
+        assert claims == full
+
+
+def test_resolve_userinfo_endpoint_failure_falls_back_to_id_token(app_ctx):
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        oauth = _FakeOAuth(RuntimeError("boom"))
+        idt = {"sub": "abc", "email": "a@b.co"}
+        claims = sso.resolve_userinfo(oauth, {"userinfo": idt})
+        assert oauth.sso.calls == 1
+        assert claims == idt
+
+
+def test_resolve_userinfo_rejects_endpoint_claims_on_sub_mismatch(app_ctx):
+    """OIDC Core 5.3.2: endpoint sub must match ID token sub."""
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        oauth = _FakeOAuth({"sub": "EVIL", "email": "evil@b.co"})
+        idt = {"sub": "abc"}
+        claims = sso.resolve_userinfo(oauth, {"userinfo": idt})
+        assert claims == idt
+
+
+def test_resolve_userinfo_id_token_claims_survive_merge(app_ctx):
+    """Endpoint claims overlay, but claims absent from the endpoint are kept."""
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        oauth = _FakeOAuth({"sub": "abc", "email": "new@b.co", "name": None})
+        idt = {"sub": "abc", "email_verified": True, "name": "From IDT"}
+        claims = sso.resolve_userinfo(oauth, {"userinfo": idt})
+        assert claims["email"] == "new@b.co"
+        assert claims["email_verified"] is True
+        assert claims["name"] == "From IDT"  # None from endpoint must not clobber
+
+
+def test_resolve_userinfo_no_id_token_claims_uses_endpoint(app_ctx):
+    with env(SSO_DEFAULT_USERNAME_CLAIM=None, SSO_DEFAULT_NAME_CLAIM=None):
+        oauth = _FakeOAuth({"sub": "abc", "email": "a@b.co"})
+        claims = sso.resolve_userinfo(oauth, {})
+        assert claims == {"sub": "abc", "email": "a@b.co"}
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
