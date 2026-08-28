@@ -50,6 +50,11 @@ os.environ.setdefault("TRANSCRIPTION_BASE_URL", "https://api.openai.com/v1")
 # exercise claiming drive _claim_next_job themselves.
 os.environ["JOB_QUEUE_WORKERS"] = "0"
 os.environ["SUMMARY_QUEUE_WORKERS"] = "0"
+# Force the agentic Inquire flag OFF for the suite: the legacy-pipeline tests
+# (test_cov_inquire) patch the single-shot pipeline's internals and would
+# silently route to the agent if the host .env enables the beta. The agent's
+# own tests call run_inquire_agent directly and manage their env explicitly.
+os.environ["ENABLE_INQUIRE_AGENT"] = "false"
 # NB: do NOT force WEBHOOK_GLOBAL_ENABLED=false here — the webhook suite needs
 # delivery enabled (it mocks the actual HTTP POST), so leave the default (true).
 
