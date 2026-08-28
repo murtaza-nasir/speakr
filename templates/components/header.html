@@ -245,14 +245,28 @@
                 </a>
                 {% endif %}
                 <div class="border-t border-[var(--border-primary)] my-1"></div>
-                <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
-                    <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
-                    <span v-text="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"></span>
-                </button>
-                <button @click="openColorSchemeModal" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
-                    <i class="fas fa-palette mr-2 w-4 text-center"></i>
-                    <span v-text="t('modal.colorScheme')"></span>
-                </button>
+                <!-- Combined appearance row: the row opens the color scheme
+                     modal, the sun/moon pill toggles light/dark in place
+                     (click.stop keeps the menu open for instant feedback). -->
+                <div @click="openColorSchemeModal"
+                     class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between cursor-pointer">
+                    <span class="flex items-center whitespace-nowrap">
+                        <i class="fas fa-palette mr-2 w-4 text-center"></i>
+                        <span v-text="t('modal.colorScheme')"></span>
+                    </span>
+                    <button @click.stop="toggleDarkMode"
+                            class="flex items-center rounded-full border border-[var(--border-secondary)] bg-[var(--bg-secondary)] p-0.5 ml-3 flex-shrink-0"
+                            :title="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')">
+                        <span :class="!isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
+                            <i class="fas fa-sun"></i>
+                        </span>
+                        <span :class="isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
+                            <i class="fas fa-moon"></i>
+                        </span>
+                    </button>
+                </div>
                 <div class="border-t border-[var(--border-primary)] my-1"></div>
                 <form method="POST" action="/logout" class="m-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
