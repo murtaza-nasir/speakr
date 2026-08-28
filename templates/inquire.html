@@ -140,6 +140,29 @@
             border-radius: 3px;
             font-size: 0.9em;
         }
+
+        /* Citation chips: the agent cites sources as markdown links to
+           /recordings/<id>; style them like small tag chips so they read
+           as references rather than inline hyperlinks. */
+        .chat-message .prose a[href^="/recordings/"] {
+            display: inline-block;
+            background-color: var(--bg-tertiary);
+            color: var(--text-accent);
+            border: 1px solid var(--border-secondary);
+            border-radius: 9999px;
+            padding: 0 0.55em;
+            font-size: 0.78em;
+            line-height: 1.6;
+            text-decoration: none;
+            vertical-align: baseline;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .chat-message .prose a[href^="/recordings/"]:hover {
+            border-color: var(--border-focus);
+        }
     </style>
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
@@ -465,29 +488,93 @@
                          markdown renders consistently. Both bubbles
                          use rounded-lg (instead of rounded-xl) so the
                          shape matches the rest of the design system. -->
-                    <div v-for="(message, index) in inquireChatMessages" :key="index"
-                         :class="['flex', message.role === 'user' ? 'justify-end' : 'justify-start']">
-                        <div class="max-w-3xl chat-message"
-                             :class="message.role === 'user' ? 'message user-message' : 'message ai-message'">
-                            <div v-if="message.html || message.content"
-                                 class="prose prose-sm max-w-none"
-                                 :class="message.role === 'user' ? 'prose-invert' : ''"
-                                 v-html="message.html || message.content">
+                    <template v-for="(message, index) in inquireChatMessages" :key="index">
+                        <!-- Compaction divider: older turns above this point were
+                             folded into a memory summary the assistant still sees.
+                             Click to inspect exactly what it remembers. -->
+                        <div v-if="index === memoryState.dividerIndex && memoryState.memory" class="my-2">
+                            <button @click="memoryState.showMemory = !memoryState.showMemory"
+                                    class="w-full flex items-center gap-3 text-xs"
+                                    style="color: var(--text-muted);">
+                                <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
+                                <span class="flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fas fa-layer-group"></i>
+                                    <span>Earlier conversation summarized</span>
+                                    <i :class="['fas text-[10px]', memoryState.showMemory ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                </span>
+                                <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
+                            </button>
+                            <div v-if="memoryState.showMemory"
+                                 class="surface-raised mt-2 text-xs whitespace-pre-wrap"
+                                 style="padding: var(--sp-3); color: var(--text-secondary);"
+                                 v-text="memoryState.memory">
                             </div>
                         </div>
-                    </div>
+
+                        <div :class="['flex', message.role === 'user' ? 'justify-end' : 'justify-start']">
+                            <div class="max-w-3xl chat-message"
+                                 :class="message.role === 'user' ? 'message user-message' : 'message ai-message'">
+                                <!-- Persistent provenance: the agent's collapsed
+                                     activity line, expandable to the full timeline. -->
+                                <div v-if="message.role === 'assistant' && message.activitySummary"
+                                     class="mb-2 pb-2 border-b" style="border-color: var(--border-primary);">
+                                    <button @click="message.showSteps = !message.showSteps"
+                                            class="flex items-center gap-2 text-xs" style="color: var(--text-muted);">
+                                        <i class="fas fa-list-check"></i>
+                                        <span v-text="message.agentStepCount + (message.agentStepCount === 1 ? ' step · ' : ' steps · ') + message.activitySummary"></span>
+                                        <i :class="['fas text-[10px]', message.showSteps ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                    </button>
+                                    <div v-if="message.showSteps && message.steps && message.steps.length" class="mt-2 space-y-1">
+                                        <div v-for="step in message.steps" :key="step.id"
+                                             class="flex items-start gap-2 text-xs" style="color: var(--text-secondary);">
+                                            <i :class="['fas mt-0.5 w-4 text-center', step.icon]" style="color: var(--text-muted);"></i>
+                                            <span class="min-w-0">
+                                                <span v-text="step.label"></span>
+                                                <span v-if="step.detail" style="color: var(--text-muted);" v-text="' — ' + step.detail"></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="message.html || message.content"
+                                     class="prose prose-sm max-w-none"
+                                     :class="message.role === 'user' ? 'prose-invert' : ''"
+                                     v-html="message.html || message.content">
+                                </div>
+                            </div>
+                        </div>
+                    </template>
 
                     <!-- Loading indicator — uses the .ai-message
                          primitive for visual consistency with normal
                          assistant messages, plus a clear step indicator
                          row so the user sees progress through the
                          analysis pipeline. -->
-                    <div v-if="isInquireChatLoading" class="flex justify-start">
-                        <div class="ai-message message max-w-md">
+                    <div v-if="isInquireChatLoading && !answerStarted" class="flex justify-start">
+                        <div class="ai-message message max-w-md" style="min-width: 260px;">
                             <div class="flex items-center gap-2">
                                 <div class="spinner flex-shrink-0"></div>
-                                <span class="t-meta" v-if="showProcessingStatus">${ chatProcessingStatus }</span>
-                                <span class="t-meta" v-else>Analyzing transcriptions...</span>
+                                <span class="t-meta flex-1" v-if="showProcessingStatus">${ chatProcessingStatus }</span>
+                                <span class="t-meta flex-1" v-else-if="agentSteps.length">Working on it...</span>
+                                <span class="t-meta flex-1" v-else>Analyzing transcriptions...</span>
+                                <button @click="stopInquireChat" class="btn btn--ghost btn--sm flex-shrink-0" title="Stop">
+                                    <i class="fas fa-stop text-xs"></i>
+                                </button>
+                            </div>
+                            <!-- Agent activity timeline: one row per tool step,
+                                 spinner while running, muted check when done.
+                                 Empty results and tool errors render calmly
+                                 (they are a normal part of searching). -->
+                            <div v-if="agentSteps.length" class="mt-2 space-y-1.5">
+                                <div v-for="step in agentSteps" :key="step.id"
+                                     class="flex items-start gap-2 text-xs" style="color: var(--text-secondary);">
+                                    <i v-if="step.status === 'running'" class="fas fa-circle-notch fa-spin mt-0.5 w-4 text-center" style="color: var(--text-accent);"></i>
+                                    <i v-else-if="step.status === 'done'" class="fas fa-check mt-0.5 w-4 text-center" style="color: var(--text-muted);"></i>
+                                    <i v-else :class="['fas mt-0.5 w-4 text-center', step.status === 'error' ? 'fa-circle-exclamation' : 'fa-minus']" style="color: var(--text-muted);"></i>
+                                    <span class="min-w-0">
+                                        <span v-text="step.label"></span>
+                                        <span v-if="step.detail" style="color: var(--text-muted);" v-text="' — ' + step.detail"></span>
+                                    </span>
+                                </div>
                             </div>
                             <div v-if="showProcessingStatus" class="mt-2 flex gap-1">
                                 <div class="h-1 w-4 rounded transition-colors"
@@ -528,8 +615,22 @@
                     </div>
                     <div class="t-meta mt-2 flex items-center justify-between">
                         <span>${t('inquire.sendHint')}</span>
-                        <span v-if="hasActiveFilters" style="color: var(--text-accent);">
-                            <i class="fas fa-filter mr-1"></i>${t('inquire.filtersActive')}
+                        <span class="flex items-center gap-3">
+                            <!-- Context meter: invisible below 50% to avoid
+                                 clutter; past that it shows how full the
+                                 conversation context is, so compaction never
+                                 feels like silent memory loss. -->
+                            <span v-if="contextUsage >= 50" class="flex items-center gap-1.5"
+                                  :title="'Conversation context: ' + contextUsage + '% — older messages are summarized when it fills up'">
+                                <span class="inline-block w-16 h-1 rounded-full overflow-hidden" style="background: var(--bg-tertiary);">
+                                    <span class="block h-full rounded-full"
+                                          :style="{ width: contextUsage + '%', background: 'var(--bg-accent)' }"></span>
+                                </span>
+                                <span v-text="contextUsage + '%'"></span>
+                            </span>
+                            <span v-if="hasActiveFilters" style="color: var(--text-accent);">
+                                <i class="fas fa-filter mr-1"></i>${t('inquire.filtersActive')}
+                            </span>
                         </span>
                     </div>
                 </div>
@@ -720,6 +821,19 @@
                     const isInquireChatLoading = ref(false);
                     const chatProcessingStatus = ref('');
                     const showProcessingStatus = ref(false);
+                    // --- Agentic Inquire state (ENABLE_INQUIRE_AGENT beta) ---
+                    // Live tool activity for the in-flight turn; moved onto the
+                    // finished message so provenance persists in the history.
+                    const agentSteps = ref([]);
+                    const answerStarted = ref(false);
+                    // Context accounting: 0-100 estimate from the server, and
+                    // the compaction state. `memory` is the server-produced
+                    // summary of folded turns; `fromIndex` is where verbatim
+                    // history starts in inquireChatMessages; `dividerIndex`
+                    // marks where the "summarized" divider renders.
+                    const contextUsage = ref(0);
+                    const memoryState = reactive({ memory: '', fromIndex: 0, dividerIndex: -1, showMemory: false });
+                    const inquireAbort = ref(null);
                     const inquireMessagesRef = ref(null);
                     const globalError = ref(null);
                     const shouldAutoScroll = ref(true); // Track if we should auto-scroll
@@ -786,21 +900,41 @@
                         }
                     };
 
+                    const stopInquireChat = () => {
+                        // Aborting the fetch closes the SSE stream; the server
+                        // agent loop stops between steps when the client goes away.
+                        if (inquireAbort.value) inquireAbort.value.abort();
+                    };
+
                     const sendInquireChatMessage = async () => {
                         if (!inquireChatInput.value.trim() || isInquireChatLoading.value) return;
-                        
+
                         const userMessage = inquireChatInput.value.trim();
                         inquireChatMessages.value.push({ role: 'user', content: userMessage, html: userMessage });
                         inquireChatInput.value = '';
                         isInquireChatLoading.value = true;
                         showProcessingStatus.value = true;
                         chatProcessingStatus.value = 'Initializing...';
-                        
+                        agentSteps.value = [];
+                        answerStarted.value = false;
+
                         // Always scroll to bottom when user sends a message
                         shouldAutoScroll.value = true;
                         await nextTick();
                         scrollToBottom();
-                        
+
+                        // Verbatim history starts at fromIndex (earlier turns
+                        // live in memoryState.memory after compaction). The
+                        // sent length is needed to map the server's keep_last
+                        // back to an index in the full message list.
+                        const sentHistory = inquireChatMessages.value
+                            .slice(memoryState.fromIndex, -1)
+                            .filter(m => m.role === 'user' || m.role === 'assistant')
+                            .map(m => ({ role: m.role, content: m.content, activity: m.activitySummary || undefined }));
+                        const sentFromIndex = memoryState.fromIndex;
+                        const controller = new AbortController();
+                        inquireAbort.value = controller;
+
                         try {
                             const response = await fetch('/api/inquire/chat', {
                                 method: 'POST',
@@ -808,9 +942,11 @@
                                     'Content-Type': 'application/json',
                                     'X-CSRFToken': csrfToken.value
                                 },
+                                signal: controller.signal,
                                 body: JSON.stringify({
                                     message: userMessage,
-                                    message_history: inquireChatMessages.value.slice(0, -1),
+                                    message_history: sentHistory,
+                                    conversation_memory: memoryState.memory || undefined,
                                     filter_tags: inquireFilters.selectedTags,
                                     filter_speakers: inquireFilters.selectedSpeakers,
                                     filter_recording_ids: inquireFilters.selectedRecordings,
@@ -819,24 +955,24 @@
                                     context_chunks: 8
                                 })
                             });
-                            
+
                             if (!response.ok) {
                                 throw new Error('Chat request failed');
                             }
-                            
+
                             // Handle streaming response
                             const reader = response.body.getReader();
                             const decoder = new TextDecoder();
-                            let assistantMessage = reactive({ role: 'assistant', content: '', html: '' });
+                            let assistantMessage = reactive({ role: 'assistant', content: '', html: '', steps: [], activitySummary: '', showSteps: false });
                             let messageAdded = false;
-                            
+
                             while (true) {
                                 const { done, value } = await reader.read();
                                 if (done) break;
-                                
+
                                 const chunk = decoder.decode(value, { stream: true });
                                 const lines = chunk.split('\n');
-                                
+
                                 for (const line of lines) {
                                     if (line.startsWith('data: ')) {
                                         try {
@@ -844,12 +980,46 @@
                                             if (data.status && data.message) {
                                                 // Update processing status
                                                 chatProcessingStatus.value = data.message;
+                                            } else if (data.agent_step) {
+                                                // Upsert by id: 'running' first, then the
+                                                // completion state with the result detail.
+                                                const step = data.agent_step;
+                                                const existing = agentSteps.value.find(s => s.id === step.id);
+                                                if (existing) Object.assign(existing, step);
+                                                else agentSteps.value.push(step);
+                                                showProcessingStatus.value = false;
+                                                await nextTick();
+                                                scrollToBottom();
+                                            } else if (data.context_usage !== undefined) {
+                                                contextUsage.value = data.context_usage;
+                                            } else if (data.context_compacted) {
+                                                // Older turns were folded into a memory block.
+                                                // Verbatim history now starts keep_last messages
+                                                // from the end of what we sent.
+                                                const kept = data.context_compacted.keep_last || 0;
+                                                memoryState.memory = data.context_compacted.memory || '';
+                                                const newFrom = Math.max(sentFromIndex, inquireChatMessages.value.length - 1 - kept);
+                                                memoryState.fromIndex = newFrom;
+                                                memoryState.dividerIndex = newFrom;
+                                            } else if (data.conversation_memory) {
+                                                memoryState.memory = data.conversation_memory;
+                                            } else if (data.agent_summary) {
+                                                assistantMessage.activitySummary = data.agent_summary.line || '';
+                                                assistantMessage.agentStepCount = data.agent_summary.steps || 0;
+                                            } else if (data.thinking) {
+                                                // Surfaced reasoning: keep the latest status text
+                                                // visible but do not render into the answer.
+                                                chatProcessingStatus.value = 'Thinking...';
                                             } else if (data.delta) {
                                                 // Hide status and start showing response
                                                 if (!messageAdded) {
                                                     inquireChatMessages.value.push(assistantMessage);
                                                     messageAdded = true;
                                                     showProcessingStatus.value = false;
+                                                    answerStarted.value = true;
+                                                    // Attach the activity timeline to the message
+                                                    // so provenance persists after the turn.
+                                                    assistantMessage.steps = agentSteps.value;
                                                 }
                                                 assistantMessage.content += data.delta;
                                                 assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
@@ -871,17 +1041,28 @@
                                                 throw new Error(data.error);
                                             }
                                         } catch (parseError) {
-                                            console.warn('Failed to parse SSE data:', line);
+                                            if (parseError instanceof SyntaxError) {
+                                                console.warn('Failed to parse SSE data:', line);
+                                            } else {
+                                                throw parseError;
+                                            }
                                         }
                                     }
                                 }
                             }
                         } catch (error) {
-                            console.error('Error in inquire chat:', error);
-                            setGlobalError(error.message || 'Chat failed. Please try again.', 10000);
+                            if (error && error.name === 'AbortError') {
+                                // User pressed Stop: keep whatever streamed so far.
+                                console.info('Inquire chat stopped by user');
+                            } else {
+                                console.error('Error in inquire chat:', error);
+                                setGlobalError(error.message || 'Chat failed. Please try again.', 10000);
+                            }
                         } finally {
                             isInquireChatLoading.value = false;
                             showProcessingStatus.value = false;
+                            inquireAbort.value = null;
+                            agentSteps.value = [];
                             loadTokenBudget(); // Refresh token usage after chat
                             await nextTick();
                             scrollToBottom(); // Use smart scrolling
@@ -906,6 +1087,12 @@
                         inquireFilters.dateFrom = null;
                         inquireFilters.dateTo = null;
                         inquireChatMessages.value = [];
+                        // New conversation: drop the agent's memory/compaction state.
+                        memoryState.memory = '';
+                        memoryState.fromIndex = 0;
+                        memoryState.dividerIndex = -1;
+                        memoryState.showMemory = false;
+                        contextUsage.value = 0;
                     };
                     
                     const formatDate = (dateString) => {
@@ -1035,6 +1222,11 @@
                         inquireChatMessages,
                         inquireChatInput,
                         isInquireChatLoading,
+                        agentSteps,
+                        answerStarted,
+                        contextUsage,
+                        memoryState,
+                        stopInquireChat,
                         inquireMessagesRef,
                         globalError,
                         tokenBudget,

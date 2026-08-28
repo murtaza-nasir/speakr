@@ -1086,6 +1086,14 @@
     "title": "Nachfragen",
     "to": "Bis"
   },
+  "inquirePrivacy": {
+    "title": "Inquire-Datenschutz",
+    "description": "Wählen Sie, was die Inquire-KI beim Beantworten Ihrer Fragen lesen darf. Transkripte sind immer verfügbar; alles andere entscheiden Sie.",
+    "summariesLabel": "Zugriff auf Zusammenfassungen erlauben",
+    "summariesHelp": "Erlaubt Inquire, die KI-Zusammenfassungen Ihrer Aufnahmen zu lesen, um lange Aufnahmen schnell zu überblicken.",
+    "notesLabel": "Zugriff auf Ihre Notizen erlauben",
+    "notesHelp": "Ihre privaten Notizen bleiben unzugänglich, solange Sie dies nicht aktivieren. Es werden nur Ihre eigenen Notizen verwendet, niemals Notizen zu mit Ihnen geteilten Aufnahmen."
+  },
   "languages": {
     "ar": "Arabisch",
     "de": "Deutsch",

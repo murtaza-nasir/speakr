@@ -365,7 +365,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
 
 
 def call_chat_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None,
-                         user_id=None, operation_type=None):
+                         user_id=None, operation_type=None, tools=None, tool_choice=None):
     """
     Chat-specific LLM completion function. Uses dedicated chat model if configured,
     otherwise falls back to standard TEXT_MODEL configuration.
@@ -378,6 +378,9 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         max_tokens: Optional maximum tokens to generate
         user_id: Optional user ID for token tracking and budget enforcement
         operation_type: Optional operation type for token tracking (e.g., 'chat')
+        tools: Optional list of tool schemas (OpenAI function-calling format).
+            Only sent when provided, so non-agent call sites are unaffected.
+        tool_choice: Optional tool_choice value, passed through when tools are set.
 
     Returns:
         OpenAI completion object or generator (if streaming)
@@ -440,6 +443,11 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
         if response_format:
             completion_args["response_format"] = response_format
+
+        if tools:
+            completion_args["tools"] = tools
+            if tool_choice:
+                completion_args["tool_choice"] = tool_choice
 
         # Visibility: surface the resolved budget per call so admins can
         # confirm CHAT_MAX_TOKENS or per-call overrides took effect.

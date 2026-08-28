@@ -1086,6 +1086,14 @@
     "title": "Enquêter",
     "to": "À"
   },
+  "inquirePrivacy": {
+    "title": "Confidentialité Inquire",
+    "description": "Choisissez ce que l'IA Inquire peut lire pour répondre à vos questions. Les transcriptions sont toujours disponibles ; tout le reste dépend de vous.",
+    "summariesLabel": "Autoriser l’accès aux résumés",
+    "summariesHelp": "Permet à Inquire de lire les résumés IA de vos enregistrements pour parcourir rapidement les enregistrements longs.",
+    "notesLabel": "Autoriser l’accès à vos notes",
+    "notesHelp": "Vos notes privées restent inaccessibles tant que vous n’activez pas cette option. Seules vos propres notes sont utilisées, jamais les notes des enregistrements partagés avec vous."
+  },
   "languages": {
     "ar": "Arabe",
     "de": "Allemand",

@@ -1086,6 +1086,14 @@
     "title": "查询",
     "to": "结束日期"
   },
+  "inquirePrivacy": {
+    "title": "Inquire 隐私",
+    "description": "选择 Inquire AI 在回答问题时可以读取的内容。转录文本始终可用；其余内容由您决定。",
+    "summariesLabel": "允许访问摘要",
+    "summariesHelp": "允许 Inquire 读取录音的 AI 摘要,以便快速浏览较长的录音。",
+    "notesLabel": "允许访问您的笔记",
+    "notesHelp": "除非您启用此选项,否则您的私人笔记不可访问。仅会使用您自己的笔记,绝不会使用他人共享给您的录音中的笔记。"
+  },
   "languages": {
     "ar": "阿拉伯语",
     "de": "德语",

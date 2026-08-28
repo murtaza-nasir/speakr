@@ -1086,6 +1086,14 @@
     "title": "Inquire",
     "to": "To"
   },
+  "inquirePrivacy": {
+    "title": "Inquire Privacy",
+    "description": "Choose what the Inquire AI may read when answering your questions. Transcripts are always available; everything else is up to you.",
+    "summariesLabel": "Allow access to summaries",
+    "summariesHelp": "Lets Inquire read your recordings' AI summaries to survey long recordings quickly.",
+    "notesLabel": "Allow access to your notes",
+    "notesHelp": "Your private notes stay unavailable unless you enable this. Only your own notes are ever used, never notes on recordings shared with you."
+  },
   "languages": {
     "ar": "Arabic",
     "de": "German",

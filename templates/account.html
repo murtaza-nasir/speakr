@@ -782,6 +782,52 @@
                             </div>
                         </div>
 
+                        <!-- Inquire Privacy Section: what the Inquire AI may read.
+                             Transcripts are always available (the minimum for
+                             Inquire to work); summaries and notes are optional.
+                             Enforcement is structural: a disabled type's tool is
+                             removed from the agent's toolbox entirely. -->
+                        <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                                <i class="fas fa-user-shield mr-2"></i>
+                                <span data-i18n="inquirePrivacy.title">Inquire Privacy</span>
+                            </h3>
+                            <input type="hidden" name="inquire_privacy_section" value="1">
+                            <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="inquirePrivacy.description">
+                                Choose what the Inquire AI may read when answering your questions. Transcripts are always available; everything else is up to you.
+                            </p>
+                            <div class="mb-3">
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" name="inquire_allow_summaries" id="inquire_allow_summaries"
+                                        {% if inquire_allow_summaries %}checked{% endif %}
+                                        class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="inquirePrivacy.summariesLabel">
+                                            Allow access to summaries
+                                        </span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="inquirePrivacy.summariesHelp">
+                                            Lets Inquire read your recordings' AI summaries to survey long recordings quickly.
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" name="inquire_allow_notes" id="inquire_allow_notes"
+                                        {% if inquire_allow_notes %}checked{% endif %}
+                                        class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="inquirePrivacy.notesLabel">
+                                            Allow access to your notes
+                                        </span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="inquirePrivacy.notesHelp">
+                                            Your private notes stay unavailable unless you enable this. Only your own notes are ever used, never notes on recordings shared with you.
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- Custom Prompts Section -->
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4" data-i18n="customPrompts.summaryGeneration">Summary Generation Prompt</h3>

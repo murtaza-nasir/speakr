@@ -1086,6 +1086,14 @@
     "title": "Consulta",
     "to": "Para"
   },
+  "inquirePrivacy": {
+    "title": "Privacidade do Inquire",
+    "description": "Escolha o que a IA do Inquire pode ler ao responder suas perguntas. As transcrições estão sempre disponíveis; todo o resto é você quem decide.",
+    "summariesLabel": "Permitir acesso aos resumos",
+    "summariesHelp": "Permite que o Inquire leia os resumos de IA das suas gravações para examinar rapidamente gravações longas.",
+    "notesLabel": "Permitir acesso às suas notas",
+    "notesHelp": "Suas notas privadas permanecem indisponíveis a menos que você ative esta opção. Somente as suas próprias notas são usadas, nunca notas de gravações compartilhadas com você."
+  },
   "languages": {
     "ar": "Árabe",
     "de": "Alemão",

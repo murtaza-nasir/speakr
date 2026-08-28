@@ -80,6 +80,16 @@ The system processes recordings in chunks, allowing it to search through even ve
 
 Performance scales well with proper setup. The initial indexing of recordings happens automatically after transcription, and subsequent searches leverage this pre-computed index. Response times typically range from a few seconds for focused searches to slightly longer for complex queries across large libraries.
 
+## Agentic Inquire (Beta)
+
+Administrators can enable an agentic mode with `ENABLE_INQUIRE_AGENT=true` (requires Inquire Mode to be enabled). Instead of a single retrieval pass, an AI agent works iteratively: it searches your transcripts, lists recordings, and reads transcripts, summaries, or notes as needed, thinking between steps until it can answer. The interface shows each step live (what was searched, what was read, how many matches), a Stop button to interrupt, and a collapsed activity line on every answer so you can always see how a conclusion was reached. Answers cite their sources as links back to the recordings they came from.
+
+The agent respects your privacy settings. Under Account, the Inquire Privacy section controls what the agent may read: transcripts are always available (they are the minimum for Inquire to function), summaries are optional and on by default, and your notes are optional and off by default. A disabled content type is removed from the agent's toolbox entirely. Only your own notes are ever used, never notes on recordings shared with you. The active filter selection is a hard boundary: the agent can narrow its search within your filters but can never reach recordings outside them.
+
+Long conversations are handled automatically. When the conversation grows past the context budget, older turns are folded into a summary the assistant keeps; a divider appears in the chat where this happened, and clicking it shows exactly what the assistant still remembers. A small meter next to the input shows how full the context is once it passes the halfway point.
+
+Agentic answers involve several model calls per question, so they take longer (typically ten to thirty seconds for multi-step questions) and consume more tokens than the classic pipeline. Usage is tracked separately in the admin dashboard under the `inquire_agent` operation type. The agent works with any OpenAI-compatible endpoint: it uses native tool calling when the endpoint supports it and falls back to a prompted protocol when it does not. If the agent fails for any reason, the classic single-shot pipeline answers instead. See `config/env.transcription.example` for the tuning variables (step limits, timeouts, context budget, and availability defaults).
+
 ## Making the Most of Inquire Mode
 
 To maximize the value of Inquire Mode, maintain good recording hygiene. Ensure your recordings have clear audio quality for accurate transcription, use speaker identification to track who said what, and apply consistent tags to organize your content. The better your input data, the more powerful your searches become.

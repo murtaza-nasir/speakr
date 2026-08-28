@@ -811,8 +811,26 @@ Order your response with notes from the most recent meetings first. Always use p
             finally:
                 ctx.pop()
 
+        # Agentic mode (opt-in beta, ENABLE_INQUIRE_AGENT): a ReAct-style tool
+        # loop replaces the single-shot pipeline. The legacy generator is
+        # passed as fallback so a failing agent never breaks Inquire.
+        from src.services.inquire_agent import agent_enabled, run_inquire_agent
+        if agent_enabled():
+            user_ctx = {
+                'name': user_name,
+                'title': user_title,
+                'company': user_company,
+                'output_language': user_output_language,
+            }
+            agent_gen = run_inquire_agent(
+                app, user_id, user_ctx, user_message, message_history,
+                data.get('conversation_memory'), filters,
+                legacy_fallback=generate_enhanced_chat,
+            )
+            return Response(agent_gen, mimetype='text/event-stream')
+
         return Response(generate_enhanced_chat(), mimetype='text/event-stream')
-        
+
     except Exception as e:
         current_app.logger.error(f"Error in inquire chat endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500

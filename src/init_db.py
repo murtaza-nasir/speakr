@@ -404,6 +404,13 @@ def initialize_database(app):
         # Configurable auto-export filenames (#348)
         if add_column_if_not_exists(engine, 'user', 'export_filename_template', 'VARCHAR(500)'):
             app.logger.info("Added export_filename_template column to user table")
+
+        # Inquire content availability toggles (agentic inquire). Nullable on
+        # purpose: NULL means "use the admin env default".
+        if add_column_if_not_exists(engine, 'user', 'inquire_allow_summaries', 'BOOLEAN'):
+            app.logger.info("Added inquire_allow_summaries column to user table")
+        if add_column_if_not_exists(engine, 'user', 'inquire_allow_notes', 'BOOLEAN'):
+            app.logger.info("Added inquire_allow_notes column to user table")
         if add_column_if_not_exists(engine, 'recording', 'export_filename', 'VARCHAR(500)'):
             app.logger.info("Added export_filename column to recording table")
 
