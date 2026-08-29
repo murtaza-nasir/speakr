@@ -1110,11 +1110,11 @@ Summarization Instructions:
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <span class="text-[var(--text-muted)]">${t('adminDashboard.chunkSize')}:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">500 ${t('adminDashboard.characters')}</span>
+                                <span class="ml-2 text-[var(--text-primary)]">${ inquireStatus.chunking_strategy === 'legacy' ? ('500 ' + t('adminDashboard.characters')) : ((inquireStatus.chunk_target_chars || 1400) + ' ' + t('adminDashboard.characters')) }</span>
                             </div>
                             <div>
-                                <span class="text-[var(--text-muted)]">${t('adminDashboard.overlap')}:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">50 ${t('adminDashboard.characters')}</span>
+                                <span class="text-[var(--text-muted)]">${t('adminDashboard.chunkingStrategy')}:</span>
+                                <span class="ml-2 text-[var(--text-primary)]" v-text="inquireStatus.chunking_strategy === 'legacy' ? t('adminDashboard.chunkingLegacy') : t('adminDashboard.chunkingSegmentAware')"></span>
                             </div>
                             <div>
                                 <span class="text-[var(--text-muted)]">${t('adminDashboard.embeddingModel')}:</span>

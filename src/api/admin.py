@@ -1557,6 +1557,10 @@ def admin_inquire_status():
             # Embedding configuration surfaced to the UI
             'embedding_model': EMBEDDING_MODEL,
             'embedding_provider': 'api' if USE_API_EMBEDDINGS else 'local',
+            # Chunking configuration (segment-aware since the speaker/timestamp
+            # chunk metadata rework; 'legacy' = plain 500-char windows)
+            'chunking_strategy': os.environ.get('CHUNKING_STRATEGY', 'segment').strip().lower(),
+            'chunk_target_chars': int(os.environ.get('CHUNK_TARGET_CHARS', '1400')),
             'embedding_base_url': EMBEDDING_BASE_URL or None,
             'embedding_dimensions_override': EMBEDDING_DIMENSIONS,
             'embedding_identifier': EMBEDDING_IDENTIFIER,
