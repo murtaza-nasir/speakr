@@ -381,7 +381,10 @@
             </label>
         </div>
 
-        <div class="modal-footer modal-footer--between">
+        <!-- flex-wrap + gap-y: on narrow (phone) widths the three-button
+             footer wraps to two rows instead of clipping Save Names at the
+             panel edge. -->
+        <div class="modal-footer modal-footer--between flex-wrap gap-y-2">
             <div class="flex items-center gap-2">
                 <div class="relative inline-flex" ref="autoIdSplitBtn">
                     <button @click="autoIdentifySpeakers(false)"
