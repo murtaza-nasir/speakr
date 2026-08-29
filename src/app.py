@@ -673,18 +673,30 @@ def inject_help_center_link():
 
 @app.context_processor
 def inject_group_admin_status():
-    """Inject is_group_admin flag into all templates."""
+    """Inject is_group_admin flag and the admin-group list into all templates.
+
+    user_admin_groups feeds the shared tag/folder modals (group assignment
+    dropdown), which render on the account page AND the main app now that
+    tags/folders can be created inline from the upload dialog.
+    """
     from flask_login import current_user
     from src.models.organization import GroupMembership
 
-    is_group_admin = False
+    user_admin_groups = []
     if current_user.is_authenticated:
-        is_group_admin = GroupMembership.query.filter_by(
+        memberships = GroupMembership.query.filter_by(
             user_id=current_user.id,
             role='admin'
-        ).first() is not None
+        ).all()
+        user_admin_groups = [
+            {'id': m.group.id, 'name': m.group.name}
+            for m in memberships if m.group
+        ]
 
-    return {'is_group_admin': is_group_admin}
+    return {
+        'is_group_admin': bool(user_admin_groups),
+        'user_admin_groups': user_admin_groups,
+    }
 
 # Ensure upload and instance directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

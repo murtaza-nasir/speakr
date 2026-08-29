@@ -182,6 +182,9 @@
         {% include 'modals/bulk-merge-modal.html' %}
     </div>
 
+    <!-- Shared tag/folder editor modals (outside the Vue root; driven by organizer-modals.js) -->
+    {% include 'includes/organizer_modals.html' %}
+
     <!-- CSRF Token Management -->
     <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
 
@@ -224,6 +227,9 @@
     </script>
 
     <!-- Service Worker Registration handled by app.modular.js -->
+
+    <!-- Shared tag/folder modal driver (standalone creation mode) -->
+    <script src="{{ url_for('static', filename='js/organizer-modals.js') }}"></script>
 
     <!-- Vue.js Application Script -->
     <script type="module" src="{{ url_for('static', filename='js/app.modular.js') }}"></script>

@@ -889,7 +889,8 @@
     "transcriptionModel": "Transkriptionsmodell",
     "useResolvedDefault": "(Tag-/Ordner-/globalen Standard verwenden)",
     "defaultTranscriptionModel": "Standard-Transkriptionsmodell",
-    "defaultTranscriptionModelHelp": "Überschreibt das Transkriptionsmodell für Aufnahmen mit diesem Tag oder Ordner."
+    "defaultTranscriptionModelHelp": "Überschreibt das Transkriptionsmodell für Aufnahmen mit diesem Tag oder Ordner.",
+    "newFolderOption": "Neuer Ordner…"
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen...",
@@ -1045,7 +1046,9 @@
     "uploadingRecording": "Aufnahme wird hochgeladen…",
     "whatWillHappen": "Was wird passieren?",
     "whyNotWorking": "Warum funktioniert es nicht?",
-    "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 16 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 16. Sprecher."
+    "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 16 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 16. Sprecher.",
+    "createTagNamed": "Tag \"{{name}}\" erstellen",
+    "newTag": "Neues Tag"
   },
   "incognito": {
     "audioNotStored": "Audio wird im Inkognito-Modus nicht gespeichert",

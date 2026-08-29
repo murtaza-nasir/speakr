@@ -889,7 +889,8 @@
     "transcriptionModel": "转录模型",
     "useResolvedDefault": "（使用标签/文件夹/全局默认）",
     "defaultTranscriptionModel": "默认转录模型",
-    "defaultTranscriptionModelHelp": "覆盖此标签或文件夹下录音所使用的转录模型。"
+    "defaultTranscriptionModelHelp": "覆盖此标签或文件夹下录音所使用的转录模型。",
+    "newFolderOption": "新建文件夹…"
   },
   "groups": {
     "addMembers": "添加成员...",
@@ -1045,7 +1046,9 @@
     "uploadingRecording": "正在上传录音…",
     "whatWillHappen": "会发生什么？",
     "whyNotWorking": "为什么不工作？",
-    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有16种独特的颜色可用。颜色将在第16位发言人之后重复。"
+    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有16种独特的颜色可用。颜色将在第16位发言人之后重复。",
+    "createTagNamed": "创建标签\"{{name}}\"",
+    "newTag": "新建标签"
   },
   "incognito": {
     "audioNotStored": "隐身模式下不会保存音频",

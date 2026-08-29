@@ -537,6 +537,7 @@
                         <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                             ${ folder.name }
                         </option>
+                        <option value="__create__" v-text="'+ ' + t('form.newFolderOption')"></option>
                     </select>
                     <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
                        :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
@@ -642,6 +643,11 @@
                             <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
                             ${ t('help.noMatchingTags') }
                         </p>
+                        <button @click="createTagFromUploadSearch"
+                                class="mt-1.5 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-accent)] transition-all">
+                            <i class="fas fa-plus" style="font-size: 9px;"></i>
+                            <span v-text="uploadTagSearchFilter ? t('help.createTagNamed', { name: uploadTagSearchFilter }) : t('help.newTag')"></span>
+                        </button>
                     </div>
                 </div>
                 <!-- Empty States -->
@@ -649,7 +655,7 @@
                      class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
                     <p class="text-xs text-[var(--text-muted)] text-center">
                         <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
-                        <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                        <span v-text="t('help.noTagsCreated')"></span> <button @click="createTagFromUploadSearch" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></button>
                     </p>
                 </div>
                 <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">

@@ -2473,6 +2473,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const uploadComposable = useUpload(state, utils);
 
+            // --- Inline tag/folder creation from the upload dialog ---
+            // Opens the shared organizer modals (organizer-modals.js standalone
+            // mode) and applies the created entity to the current selection.
+            const createTagFromUploadSearch = () => {
+                if (!window.SpeakrOrganizer) return;
+                window.SpeakrOrganizer.openTagCreate({
+                    name: (uploadTagSearchFilter.value || '').trim(),
+                    onSaved: async (tag) => {
+                        await recordingsComposable.loadTags();
+                        uploadComposable.addTagToSelection(tag.id);
+                        uploadTagSearchFilter.value = '';
+                    },
+                });
+            };
+            const createFolderFromUpload = () => {
+                if (!window.SpeakrOrganizer) return;
+                window.SpeakrOrganizer.openFolderCreate({
+                    onSaved: async (folder) => {
+                        await recordingsComposable.loadFolders();
+                        selectedFolderId.value = folder.id;
+                    },
+                });
+            };
+            // The folder <select> offers a "+ New folder" sentinel option;
+            // revert the selection and open the create modal. The revert must
+            // wait a tick: same-tick restore leaves the net value unchanged,
+            // so Vue would skip the DOM patch and the select would stay stuck
+            // on the sentinel option.
+            watch(selectedFolderId, (val, oldVal) => {
+                if (val === '__create__') {
+                    nextTick(() => {
+                        selectedFolderId.value = oldVal === '__create__' ? null : oldVal;
+                    });
+                    createFolderFromUpload();
+                }
+            });
+
             // Upload disclaimer handlers
             const acceptUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
@@ -4379,7 +4416,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...foldersComposable,
                 ...pwaComposable,
                 ...bulkSelectionComposable,
-                ...bulkOperationsComposable
+                ...bulkOperationsComposable,
+
+                // Inline tag/folder creation (upload dialog)
+                createTagFromUploadSearch,
+                createFolderFromUpload
             };
         },
         delimiters: ['${', '}']

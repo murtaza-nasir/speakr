@@ -889,7 +889,8 @@
     "transcriptionLanguage": "Transcription Language",
     "yourFullName": "Your full name",
     "transcriptionModel": "Transcription model",
-    "useResolvedDefault": "(use tag/folder/global default)"
+    "useResolvedDefault": "(use tag/folder/global default)",
+    "newFolderOption": "New folder…"
   },
   "groups": {
     "addMembers": "Add members...",
@@ -1045,7 +1046,9 @@
     "uploadingRecording": "Uploading recording…",
     "whatWillHappen": "What will happen?",
     "whyNotWorking": "Why isn't it working?",
-    "youHaveXSpeakers": "You have {{count}} speakers, but only 16 unique colors are available. Colors will repeat after the 16th speaker."
+    "youHaveXSpeakers": "You have {{count}} speakers, but only 16 unique colors are available. Colors will repeat after the 16th speaker.",
+    "createTagNamed": "Create tag \"{{name}}\"",
+    "newTag": "New tag"
   },
   "incognito": {
     "audioNotStored": "Audio not stored in incognito mode",

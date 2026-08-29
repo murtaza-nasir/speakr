@@ -889,7 +889,8 @@
     "defaultTranscriptionModel": "Modelo de transcrição padrão",
     "defaultTranscriptionModelHelp": "Sobrescreve o modelo de transcrição usado para gravações com esta tag ou pasta.",
     "transcriptionModel": "Modelo de transcrição",
-    "useResolvedDefault": "(usar padrão de tag/pasta/global)"
+    "useResolvedDefault": "(usar padrão de tag/pasta/global)",
+    "newFolderOption": "Nova pasta…"
   },
   "groups": {
     "addMembers": "Adicionar membros...",
@@ -1045,7 +1046,9 @@
     "uploadingRecording": "Enviando a gravação…",
     "whatWillHappen": "O que acontecerá?",
     "whyNotWorking": "Por que não está funcionando?",
-    "youHaveXSpeakers": "Você tem {{count}} oradores, mas apenas 16 cores únicas estão disponíveis. As cores se repetirão após o 16º orador."
+    "youHaveXSpeakers": "Você tem {{count}} oradores, mas apenas 16 cores únicas estão disponíveis. As cores se repetirão após o 16º orador.",
+    "createTagNamed": "Criar tag \"{{name}}\"",
+    "newTag": "Nova tag"
   },
   "incognito": {
     "audioNotStored": "Áudio não armazenado em modo incógnito",

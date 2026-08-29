@@ -889,7 +889,8 @@
     "transcriptionModel": "Modelo de transcripción",
     "useResolvedDefault": "(usar valor por defecto de etiqueta/carpeta/global)",
     "defaultTranscriptionModel": "Modelo de transcripción por defecto",
-    "defaultTranscriptionModelHelp": "Sobrescribe el modelo de transcripción usado para grabaciones con esta etiqueta o carpeta."
+    "defaultTranscriptionModelHelp": "Sobrescribe el modelo de transcripción usado para grabaciones con esta etiqueta o carpeta.",
+    "newFolderOption": "Nueva carpeta…"
   },
   "groups": {
     "addMembers": "Añadir miembros...",
@@ -1045,7 +1046,9 @@
     "uploadingRecording": "Subiendo la grabación…",
     "whatWillHappen": "¿Qué pasará?",
     "whyNotWorking": "¿Por qué no funciona?",
-    "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 16 colores únicos disponibles. Los colores se repetirán después del decimosexto orador."
+    "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 16 colores únicos disponibles. Los colores se repetirán después del decimosexto orador.",
+    "createTagNamed": "Crear etiqueta \"{{name}}\"",
+    "newTag": "Nueva etiqueta"
   },
   "incognito": {
     "audioNotStored": "El audio no se almacena en modo incógnito",
