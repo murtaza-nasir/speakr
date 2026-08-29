@@ -963,20 +963,40 @@
                             tpl.innerHTML = html;
                             const links = [...tpl.content.querySelectorAll('a[href^="/recordings/"]')];
                             if (!links.length) return html;
+                            const fmtSeconds = (s) => {
+                                s = Math.max(0, Math.floor(s));
+                                const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+                                return h > 0
+                                    ? h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0')
+                                    : m + ':' + String(sec).padStart(2, '0');
+                            };
                             const refs = new Map(); // recording id -> {n, title, href}
                             for (const a of links) {
-                                const m = (a.getAttribute('href') || '').match(/^\/recordings\/(\d+)/);
+                                const href = a.getAttribute('href') || '';
+                                const m = href.match(/^\/recordings\/(\d+)/);
                                 if (!m) continue;
                                 const recId = m[1];
                                 const raw = (a.textContent || '').trim();
-                                const tm = raw.match(/@\s*(\d+:\d{2}(?::\d{2})?)\s*$/);
+                                // Timestamp truth is the href's seek param; the
+                                // link text is only a fallback (the model
+                                // sometimes writes raw seconds like "@ 1317"
+                                // instead of the formatted time).
+                                const tm = raw.match(/@\s*(\d+(?::\d{1,2}){0,2})\s*$/);
+                                let seconds = null;
+                                const th = href.match(/[?&]t=(\d+)/);
+                                if (th) {
+                                    seconds = parseInt(th[1], 10);
+                                } else if (tm) {
+                                    const parts = tm[1].split(':').map(Number);
+                                    seconds = parts.reduce((acc, p) => acc * 60 + p, 0);
+                                }
                                 const title = (tm ? raw.slice(0, tm.index) : raw).trim() || ('Recording ' + recId);
                                 if (!refs.has(recId)) {
                                     refs.set(recId, { n: refs.size + 1, title: title, href: '/recordings/' + recId });
                                 }
                                 const entry = refs.get(recId);
                                 if (title.length > entry.title.length) entry.title = title;
-                                a.textContent = tm ? (entry.n + ' @ ' + tm[1]) : String(entry.n);
+                                a.textContent = seconds !== null ? (entry.n + ' @ ' + fmtSeconds(seconds)) : String(entry.n);
                                 a.setAttribute('title', entry.title);
                             }
                             if (message) {

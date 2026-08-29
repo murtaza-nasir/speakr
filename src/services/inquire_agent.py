@@ -569,7 +569,8 @@ Never invent content that is not in the tool results; say clearly when something
 {tool_mode_prompt_block}When you give your final answer:
 - Use clear markdown (headings per recording where it helps, bullets, **bold** speaker names).
 - Cite sources inline as markdown links. When the supporting search result has a time and \
-seek_seconds, link directly to that moment using the result's `time` value verbatim: \
+seek_seconds, link directly to that moment using the result's `time` value verbatim (the colon \
+form like 12:34 — never the raw seek_seconds number): \
 [Title @ time](/recordings/<recording_id>?t=<seek_seconds>) — for example \
 [Weekly Sync @ 12:34](/recordings/73?t=754) or [Board Meeting @ 1:31:03](/recordings/80?t=5463). \
 Without a timestamp, link the recording: \
