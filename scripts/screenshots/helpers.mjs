@@ -93,6 +93,7 @@ export async function go(page, path, extraMs) {
  * match hidden template duplicates, so filter by on-screen position.
  */
 export async function openRecordingByTitle(page, title) {
+    await loadSidebarUntil(page, title);
     const cands = page.locator(`h4:has-text(${JSON.stringify(title)})`);
     const n = await cands.count();
     for (let i = 0; i < n; i++) {
@@ -104,6 +105,45 @@ export async function openRecordingByTitle(page, title) {
         }
     }
     throw new Error(`Recording titled ${title} not visible in the sidebar`);
+}
+
+/**
+ * The sidebar list is infinite-scroll (25 rows per page). Scroll its
+ * container until a recording title is present in the DOM (or growth stops).
+ */
+export async function loadSidebarUntil(page, title) {
+    await page.evaluate(async (wanted) => {
+        const list = document.querySelector('.flex-1.overflow-y-auto.pb-3')
+            || document.querySelector('aside .overflow-y-auto');
+        if (!list) return;
+        let lastHeight = -1;
+        for (let i = 0; i < 30; i++) {
+            const found = [...list.querySelectorAll('h4')].some((h) => h.textContent.includes(wanted));
+            if (found) return;
+            if (list.scrollHeight === lastHeight) return;
+            lastHeight = list.scrollHeight;
+            list.scrollTop = list.scrollHeight;
+            await new Promise((r) => setTimeout(r, 600));
+        }
+    }, title);
+    await settle(page, 400);
+}
+
+/**
+ * Scroll the sidebar so the recording with `title` is the FIRST visible row.
+ * Use this to frame a curated, presentable region of the list (rows with
+ * tags, folders and participants) instead of whatever happens to be newest.
+ */
+export async function anchorSidebar(page, title) {
+    await loadSidebarUntil(page, title);
+    await page.evaluate((wanted) => {
+        const h = [...document.querySelectorAll('h4')].find((el) => el.textContent.includes(wanted) && el.closest('.overflow-y-auto'));
+        if (!h) return;
+        const row = h.closest('[class*="border-b"], .recording-item') || h.parentElement;
+        const list = h.closest('.overflow-y-auto');
+        list.scrollTop = row.offsetTop - list.offsetTop + list.scrollTop - 4;
+    }, title);
+    await page.waitForTimeout(400);
 }
 
 /** Click the first VISIBLE element matching a locator (skip hidden dupes). */
