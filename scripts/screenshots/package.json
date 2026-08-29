@@ -1,0 +1,12 @@
+{
+  "name": "speakr-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible documentation screenshots for Speakr",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.47.2"
+  }
+}
