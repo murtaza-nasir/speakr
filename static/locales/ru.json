@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
     "largeVideoNotice": "Большой видеофайл. Загрузка продолжится; транскрибация может занять больше времени и использует разбивку на сервере.",
     "options": "Параметры",
-    "transcriptionOptions": "Параметры транскрипции"
+    "transcriptionOptions": "Параметры транскрипции",
+    "uploadAndAddMore": "Загрузить и добавить ещё"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

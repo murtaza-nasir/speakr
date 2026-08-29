@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés",
     "largeVideoNotice": "Fichier vidéo volumineux. L’envoi va se poursuivre ; la transcription peut être plus longue et utilise le découpage côté serveur.",
     "options": "Options",
-    "transcriptionOptions": "Options de transcription"
+    "transcriptionOptions": "Options de transcription",
+    "uploadAndAddMore": "Téléverser et ajouter plus"
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"

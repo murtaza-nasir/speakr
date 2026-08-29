@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
     "largeVideoNotice": "Großes Videodatei. Upload wird fortgesetzt; Transkription dauert ggf. länger und nutzt das Chunking auf dem Server.",
     "options": "Optionen",
-    "transcriptionOptions": "Transkriptionsoptionen"
+    "transcriptionOptions": "Transkriptionsoptionen",
+    "uploadAndAddMore": "Hochladen & weitere hinzufügen"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

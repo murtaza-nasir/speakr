@@ -1783,7 +1783,8 @@
     "keepAudioOnlyLargerAllowed": "Larger uploads allowed",
     "largeVideoNotice": "Large video file. Upload will proceed; transcription may take longer and uses chunking on the server.",
     "options": "Options",
-    "transcriptionOptions": "Transcription Options"
+    "transcriptionOptions": "Transcription Options",
+    "uploadAndAddMore": "Upload & Add More"
   },
   "uploadProgress": {
     "title": "Upload Progress"

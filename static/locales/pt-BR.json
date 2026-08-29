@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "Envios maiores permitidos",
     "largeVideoNotice": "Arquivo de vídeo grande. O envio será concluído; a transcrição pode demorar mais e usa o particionamento no servidor.",
     "options": "Opções",
-    "transcriptionOptions": "Opções de transcrição"
+    "transcriptionOptions": "Opções de transcrição",
+    "uploadAndAddMore": "Enviar e adicionar mais"
   },
   "uploadProgress": {
     "title": "Progresso do Envio"

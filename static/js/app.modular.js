@@ -2508,6 +2508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const cancelUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
+                uploadComposable.cancelPendingUploadClose();
             };
 
             // Add startUpload to utils for audio composable to use

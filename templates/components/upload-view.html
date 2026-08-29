@@ -887,15 +887,24 @@
                 <span v-text="t('common.cancel')"></span>
             </button>
 
-            <!-- Normal Upload Button (when not in incognito mode or feature disabled) -->
-            <button v-if="!incognitoMode || !enableIncognitoMode"
-                    @click="startUpload"
-                    :disabled="pendingQueueFiles.length === 0"
-                    class="btn btn--primary">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <span v-if="pendingQueueFiles.length === 0">${ t('upload.title') || 'Upload' }</span>
-                <span v-else v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
-            </button>
+            <!-- Normal Upload Buttons (when not in incognito mode or feature disabled) -->
+            <div v-if="!incognitoMode || !enableIncognitoMode" class="flex items-center gap-2">
+                <!-- Queue the files but keep the modal open for more -->
+                <button @click="startUpload"
+                        :disabled="pendingQueueFiles.length === 0"
+                        class="btn btn--ghost">
+                    <i class="fas fa-plus"></i>
+                    <span v-text="t('upload.uploadAndAddMore')"></span>
+                </button>
+                <!-- Queue the files and close the modal -->
+                <button @click="startUploadAndClose"
+                        :disabled="pendingQueueFiles.length === 0"
+                        class="btn btn--primary">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span v-if="pendingQueueFiles.length === 0">${ t('upload.title') || 'Upload' }</span>
+                    <span v-else v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
+                </button>
+            </div>
 
             <!-- Incognito Upload Button (only when feature enabled and mode selected) -->
             <button v-else

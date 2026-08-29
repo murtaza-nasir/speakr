@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
     "largeVideoNotice": "Archivo de vídeo grande. La subida continuará; la transcripción puede tardar más y usa el troceado en el servidor.",
     "options": "Opciones",
-    "transcriptionOptions": "Opciones de transcripción"
+    "transcriptionOptions": "Opciones de transcripción",
+    "uploadAndAddMore": "Subir y añadir más"
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

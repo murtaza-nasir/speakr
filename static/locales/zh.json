@@ -1766,7 +1766,8 @@
     "keepAudioOnlyLargerAllowed": "允许更大文件",
     "largeVideoNotice": "视频文件较大。上传将继续；转录可能耗时更长，并依赖服务器端的分块处理。",
     "options": "选项",
-    "transcriptionOptions": "转录选项"
+    "transcriptionOptions": "转录选项",
+    "uploadAndAddMore": "上传并继续添加"
   },
   "uploadProgress": {
     "title": "上传进度"

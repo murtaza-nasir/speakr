@@ -366,9 +366,25 @@ export function useUpload(state, utils) {
     };
 
     // Start processing all queued files
+    // "Upload" closes the modal after queuing; "Upload & Add More" keeps it
+    // open. The flag survives the disclaimer round-trip (startUpload returns
+    // early, acceptUploadDisclaimer re-invokes it) and is reset when the
+    // disclaimer is cancelled (cancelPendingUploadClose).
+    let closeModalAfterUpload = false;
+
+    const startUploadAndClose = () => {
+        closeModalAfterUpload = true;
+        startUpload();
+    };
+
+    const cancelPendingUploadClose = () => {
+        closeModalAfterUpload = false;
+    };
+
     const startUpload = () => {
         const pendingFiles = uploadQueue.value.filter(item => item.status === 'queued');
         if (pendingFiles.length === 0) {
+            closeModalAfterUpload = false;
             return;
         }
         // Show upload disclaimer if configured
@@ -401,6 +417,10 @@ export function useUpload(state, utils) {
         progressPopupMinimized.value = false;
         progressPopupClosed.value = false;
         startProcessingQueue();
+        if (closeModalAfterUpload) {
+            closeModalAfterUpload = false;
+            if (showUploadModal) showUploadModal.value = false;
+        }
     };
 
     // --- Parallel Upload System ---
@@ -1208,6 +1228,8 @@ export function useUpload(state, utils) {
         cancelWaitingFile,
         clearCompletedUploads,
         startUpload,
+        startUploadAndClose,
+        cancelPendingUploadClose,
         startProcessingQueue,
         resetCurrentFileProcessingState,
         startStatusPolling,
