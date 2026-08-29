@@ -4773,11 +4773,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             displayOrganizer(tagSectionEls, tags, createTagCard);
         }
 
-        // Create tag card element
-        function createTagCard(tag) {
+        // Shared card builder for tags AND folders: both to_dicts expose the
+        // same shape (color, group, retention, ASR defaults, naming template,
+        // custom_prompt, recording_count), so one renderer keeps the two
+        // subtabs visually identical. Per-entity behavior comes in via cfg.
+        function createOrganizerCard(item, cfg) {
             const div = document.createElement('div');
-            const isGroupTag = tag.group_id !== null && tag.group_id !== undefined;
-            const canEdit = tag.can_edit !== undefined ? tag.can_edit : true;
+            const isGroupItem = item.group_id !== null && item.group_id !== undefined;
+            const canEdit = item.can_edit !== undefined ? item.can_edit : true;
 
             div.className = `bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200 overflow-hidden`;
 
@@ -4785,23 +4788,23 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const metadata = [];
 
             // Protection/Retention badge
-            if (tag.protect_from_deletion || tag.retention_days === -1) {
+            if (item.protect_from_deletion || item.retention_days === -1) {
                 metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #f59e0b; color: white;" title="Protected with infinite retention">
                     <i class="fas fa-shield-alt"></i>
                     <span>∞</span>
                 </span>`);
-            } else if (tag.retention_days && tag.retention_days > 0) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #2563eb; color: white;" title="Retention: ${tag.retention_days} days">
+            } else if (item.retention_days && item.retention_days > 0) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #2563eb; color: white;" title="Retention: ${item.retention_days} days">
                     <i class="fas fa-clock"></i>
-                    <span>${tag.retention_days}d</span>
+                    <span>${item.retention_days}d</span>
                 </span>`);
             }
 
-            // Sharing badge for group tags
-            if (isGroupTag) {
-                const shareIcon = tag.auto_share_on_apply ? 'user-friends' : (tag.share_with_group_lead ? 'user-tie' : 'user-lock');
-                const shareText = tag.auto_share_on_apply ? 'All members' : (tag.share_with_group_lead ? 'Admins only' : 'Manual');
-                const shareTooltip = tag.auto_share_on_apply ? 'Auto-shares with all group members' : (tag.share_with_group_lead ? 'Shares with group admins only' : 'Manual sharing only');
+            // Sharing badge for group-scoped items
+            if (isGroupItem) {
+                const shareIcon = item.auto_share_on_apply ? 'user-friends' : (item.share_with_group_lead ? 'user-tie' : 'user-lock');
+                const shareText = item.auto_share_on_apply ? 'All members' : (item.share_with_group_lead ? 'Admins only' : 'Manual');
+                const shareTooltip = item.auto_share_on_apply ? 'Auto-shares with all group members' : (item.share_with_group_lead ? 'Shares with group admins only' : 'Manual sharing only');
                 metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #9333ea; color: white;" title="${shareTooltip}">
                     <i class="fas fa-${shareIcon}"></i>
                     <span>${shareText}</span>
@@ -4809,47 +4812,70 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             // ASR defaults badges
-            if (tag.default_language) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #16a34a; color: white;" title="Language: ${escapeHtml(tag.default_language)}">
+            if (item.default_language) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #16a34a; color: white;" title="Language: ${escapeHtml(item.default_language)}">
                     <i class="fas fa-language"></i>
-                    <span>${escapeHtml(tag.default_language).toUpperCase()}</span>
+                    <span>${escapeHtml(item.default_language).toUpperCase()}</span>
                 </span>`);
             }
-            if (tag.default_min_speakers || tag.default_max_speakers) {
-                const min = tag.default_min_speakers || '?';
-                const max = tag.default_max_speakers || '?';
+            if (item.default_min_speakers || item.default_max_speakers) {
+                const min = item.default_min_speakers || '?';
+                const max = item.default_max_speakers || '?';
                 metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="Speaker range: ${min}-${max}">
                     <i class="fas fa-users"></i>
                     <span>${min}-${max}</span>
                 </span>`);
             }
 
+            // Naming template badge
+            if (item.naming_template_name) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #6366f1; color: white;" title="Naming template: ${escapeHtml(item.naming_template_name)}">
+                    <i class="fas fa-heading"></i>
+                    <span class="truncate max-w-[8rem]">${escapeHtml(item.naming_template_name)}</span>
+                </span>`);
+            }
+
+            // Watch-folder badge (tags only expose is_auto_process)
+            if (item.is_auto_process) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #ea580c; color: white;" title="Auto-processes files dropped in watch folder${item.auto_process_folder_name ? ': ' + escapeHtml(item.auto_process_folder_name) : ''}">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Watch</span>
+                </span>`);
+            }
+
+            // Recording count badge (neutral)
+            const count = item.recording_count || 0;
+            metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-secondary)]" title="${count} recording${count !== 1 ? 's' : ''}">
+                <i class="fas fa-microphone"></i>
+                <span>${count}</span>
+            </span>`);
+
             // Custom prompt indicator
-            const hasPrompt = tag.custom_prompt && tag.custom_prompt.trim().length > 0;
+            const hasPrompt = item.custom_prompt && item.custom_prompt.trim().length > 0;
 
             div.innerHTML = `
                 <!-- Header with color indicator and name -->
                 <div class="flex items-center justify-between gap-2 px-3 py-2 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]">
                     <div class="flex items-center gap-2 flex-1 min-w-0">
-                        ${isGroupTag
-                            ? `<i class="fas fa-users flex-shrink-0 text-sm" style="color: ${escapeHtml(tag.color)}"></i>`
-                            : `<div class="w-3 h-3 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${escapeHtml(tag.color)}"></div>`
+                        ${isGroupItem
+                            ? `<i class="fas fa-users flex-shrink-0 text-sm" style="color: ${escapeHtml(item.color)}"></i>`
+                            : `<div class="w-3 h-3 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${escapeHtml(item.color)}"></div>`
                         }
-                        <h3 class="font-semibold text-sm text-[var(--text-primary)] truncate" title="${escapeHtml(tag.name)}">
-                            ${isGroupTag ? `<span class="text-xs opacity-60">${escapeHtml(tag.group_name || 'Group')}:</span> ` : ''}${escapeHtml(tag.name)}
+                        <h3 class="font-semibold text-sm text-[var(--text-primary)] truncate" title="${escapeHtml(item.name)}">
+                            ${isGroupItem ? `<span class="text-xs opacity-60">${escapeHtml(item.group_name || 'Group')}:</span> ` : ''}${escapeHtml(item.name)}
                         </h3>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
                         ${!canEdit ? `
-                            <span class="px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]" title="Team tag - cannot edit">
+                            <span class="px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]" title="${cfg.lockTitle}">
                                 <i class="fas fa-lock"></i>
                             </span>
                         ` : ''}
                         ${canEdit ? `
-                            <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-tag-id="${tag.id}" title="Edit tag">
+                            <button class="edit-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="Edit ${cfg.kind}">
                                 <i class="fas fa-edit text-xs"></i>
                             </button>
-                            <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] transition-colors rounded" data-tag-id="${tag.id}" title="Delete tag">
+                            <button class="delete-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="Delete ${cfg.kind}">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         ` : ''}
@@ -4857,16 +4883,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div>
 
                 <!-- Metadata badges -->
-                ${metadata.length > 0 ? `
-                    <div class="px-3 py-2 flex flex-wrap gap-1.5">
-                        ${metadata.join('')}
-                    </div>
-                ` : ''}
+                <div class="px-3 py-2 flex flex-wrap gap-1.5">
+                    ${metadata.join('')}
+                </div>
 
                 <!-- Custom prompt section (collapsible) -->
                 ${hasPrompt ? `
                     <div class="border-t border-[var(--border-primary)]">
-                        <button class="toggle-prompt-btn w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[var(--bg-secondary)] transition-colors group" data-tag-id="${tag.id}">
+                        <button class="toggle-prompt-btn w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[var(--bg-secondary)] transition-colors group" data-${cfg.kind}-id="${item.id}">
                             <span class="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <i class="fas fa-message-lines text-[10px]"></i>
                                 Custom Prompt
@@ -4875,7 +4899,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </button>
                         <div class="prompt-content hidden px-3 pb-2">
                             <div class="text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded p-2 max-h-24 overflow-y-auto custom-scrollbar border border-[var(--border-secondary)]">
-                                ${escapeHtml(tag.custom_prompt)}
+                                ${escapeHtml(item.custom_prompt)}
                             </div>
                         </div>
                     </div>
@@ -4883,15 +4907,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             `;
 
             // Add event listeners
-            const editBtn = div.querySelector('.edit-tag-btn');
-            const deleteBtn = div.querySelector('.delete-tag-btn');
+            const editBtn = div.querySelector(`.edit-${cfg.kind}-btn`);
+            const deleteBtn = div.querySelector(`.delete-${cfg.kind}-btn`);
             const toggleBtn = div.querySelector('.toggle-prompt-btn');
 
             if (editBtn) {
-                editBtn.addEventListener('click', () => editTag(tag));
+                editBtn.addEventListener('click', () => cfg.onEdit(item));
             }
             if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => deleteTag(tag.id, tag.name));
+                deleteBtn.addEventListener('click', () => cfg.onDelete(item));
             }
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', function(e) {
@@ -4904,6 +4928,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             return div;
+        }
+
+        function createTagCard(tag) {
+            return createOrganizerCard(tag, {
+                kind: 'tag',
+                lockTitle: 'Team tag - cannot edit',
+                onEdit: (item) => editTag(item),
+                onDelete: (item) => deleteTag(item.id, item.name),
+            });
         }
 
         // Create tag modal functionality
@@ -5437,170 +5470,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
 
         function createFolderCard(folder) {
-            const div = document.createElement('div');
-            const isGroupFolder = folder.group_id !== null && folder.group_id !== undefined;
-            const canEdit = folder.can_edit !== undefined ? folder.can_edit : true;
-
-            div.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200 overflow-hidden';
-
-            // Create header
-            const header = document.createElement('div');
-            header.className = 'flex items-center px-4 py-3 border-b border-[var(--border-primary)]';
-            header.style.backgroundColor = folder.color + '15';
-
-            const colorDot = document.createElement('div');
-            colorDot.className = 'w-3 h-3 rounded-full mr-3 flex-shrink-0';
-            colorDot.style.backgroundColor = folder.color;
-
-            const titleWrapper = document.createElement('div');
-            titleWrapper.className = 'flex-grow';
-
-            const title = document.createElement('h3');
-            title.className = 'font-medium text-[var(--text-primary)] truncate';
-            title.textContent = folder.name;
-            titleWrapper.appendChild(title);
-
-            if (isGroupFolder) {
-                const groupLabel = document.createElement('span');
-                groupLabel.className = 'text-xs text-[var(--text-muted)]';
-                const groupIcon = document.createElement('i');
-                groupIcon.className = 'fas fa-users mr-1';
-                groupLabel.appendChild(groupIcon);
-                groupLabel.appendChild(document.createTextNode(folder.group_name || ''));
-                titleWrapper.appendChild(groupLabel);
-            }
-
-            header.appendChild(colorDot);
-            header.appendChild(titleWrapper);
-
-            if (canEdit) {
-                const actions = document.createElement('div');
-                actions.className = 'flex items-center space-x-2';
-
-                const editBtn = document.createElement('button');
-                editBtn.className = 'edit-folder-btn text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1';
-                editBtn.title = 'Edit folder';
-                const editIcon = document.createElement('i');
-                editIcon.className = 'fas fa-edit';
-                editBtn.appendChild(editIcon);
-                editBtn.addEventListener('click', () => openFolderModal(folder));
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-folder-btn text-[var(--text-muted)] hover:text-[var(--text-danger)] p-1';
-                deleteBtn.title = 'Delete folder';
-                const deleteIcon = document.createElement('i');
-                deleteIcon.className = 'fas fa-trash';
-                deleteBtn.appendChild(deleteIcon);
-                deleteBtn.addEventListener('click', () => deleteFolder(folder.id, folder.name));
-
-                actions.appendChild(editBtn);
-                actions.appendChild(deleteBtn);
-                header.appendChild(actions);
-            } else {
-                const lockIcon = document.createElement('span');
-                lockIcon.className = 'text-xs text-[var(--text-muted)]';
-                lockIcon.title = "You don't have permission to edit this group folder";
-                const lock = document.createElement('i');
-                lock.className = 'fas fa-lock';
-                lockIcon.appendChild(lock);
-                header.appendChild(lockIcon);
-            }
-
-            // Create body
-            const body = document.createElement('div');
-            body.className = 'px-4 py-3';
-
-            // Metadata badges
-            const badges = document.createElement('div');
-            badges.className = 'flex flex-wrap gap-2 mb-2';
-
-            if (folder.protect_from_deletion || folder.retention_days === -1) {
-                const badge = document.createElement('span');
-                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
-                badge.style.backgroundColor = '#f59e0b';
-                badge.style.color = 'white';
-                badge.title = 'Protected with infinite retention';
-                const shieldIcon = document.createElement('i');
-                shieldIcon.className = 'fas fa-shield-alt';
-                badge.appendChild(shieldIcon);
-                badge.appendChild(document.createTextNode(' ∞'));
-                badges.appendChild(badge);
-            } else if (folder.retention_days && folder.retention_days > 0) {
-                const badge = document.createElement('span');
-                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
-                badge.style.backgroundColor = '#2563eb';
-                badge.style.color = 'white';
-                badge.title = 'Retention: ' + folder.retention_days + ' days';
-                const clockIcon = document.createElement('i');
-                clockIcon.className = 'fas fa-clock';
-                badge.appendChild(clockIcon);
-                badge.appendChild(document.createTextNode(' ' + folder.retention_days + 'd'));
-                badges.appendChild(badge);
-            }
-
-            if (isGroupFolder) {
-                const badge = document.createElement('span');
-                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
-                badge.style.backgroundColor = '#9333ea';
-                badge.style.color = 'white';
-                const shareIcon = document.createElement('i');
-                if (folder.auto_share_on_apply) {
-                    shareIcon.className = 'fas fa-user-friends';
-                    badge.title = 'Auto-shares with all group members';
-                    badge.appendChild(shareIcon);
-                    badge.appendChild(document.createTextNode(' All members'));
-                } else if (folder.share_with_group_lead) {
-                    shareIcon.className = 'fas fa-user-tie';
-                    badge.title = 'Shares with group admins only';
-                    badge.appendChild(shareIcon);
-                    badge.appendChild(document.createTextNode(' Admins only'));
-                } else {
-                    shareIcon.className = 'fas fa-user-lock';
-                    badge.title = 'Manual sharing only';
-                    badge.appendChild(shareIcon);
-                    badge.appendChild(document.createTextNode(' Manual'));
-                }
-                badges.appendChild(badge);
-            }
-
-            if (badges.childNodes.length > 0) {
-                body.appendChild(badges);
-            }
-
-            // Info row
-            const infoRow = document.createElement('div');
-            infoRow.className = 'text-sm text-[var(--text-muted)]';
-
-            if (folder.custom_prompt) {
-                const promptIcon = document.createElement('i');
-                promptIcon.className = 'fas fa-comment-alt mr-1';
-                promptIcon.title = 'Has custom prompt';
-                infoRow.appendChild(promptIcon);
-            }
-            if (folder.default_language) {
-                const langIcon = document.createElement('i');
-                langIcon.className = 'fas fa-language mr-1';
-                langIcon.title = 'Language: ' + folder.default_language;
-                infoRow.appendChild(langIcon);
-            }
-            if (folder.naming_template_name) {
-                const templateIcon = document.createElement('i');
-                templateIcon.className = 'fas fa-heading mr-1';
-                templateIcon.title = 'Naming template: ' + folder.naming_template_name;
-                infoRow.appendChild(templateIcon);
-            }
-
-            const countSpan = document.createElement('span');
-            countSpan.className = 'ml-auto';
-            const count = folder.recording_count || 0;
-            countSpan.textContent = count + ' recording' + (count !== 1 ? 's' : '');
-            infoRow.appendChild(countSpan);
-            body.appendChild(infoRow);
-
-            div.appendChild(header);
-            div.appendChild(body);
-
-            return div;
+            return createOrganizerCard(folder, {
+                kind: 'folder',
+                lockTitle: "You don't have permission to edit this group folder",
+                onEdit: (item) => openFolderModal(item),
+                onDelete: (item) => deleteFolder(item.id, item.name),
+            });
         }
 
         // Close folder modal
