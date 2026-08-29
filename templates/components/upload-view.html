@@ -525,11 +525,18 @@
 
             <!-- Folder Selection (only shown if folders are enabled) -->
             <div v-if="foldersEnabled" class="mt-4">
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                    <i class="fas fa-folder mr-1"
-                       :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
-                    ${ t('form.folder') }
-                </label>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-[var(--text-secondary)]">
+                        <i class="fas fa-folder mr-1"
+                           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+                        ${ t('form.folder') }
+                    </label>
+                    <button @click="createFolderFromUpload"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-[var(--border-secondary)] text-[var(--text-accent)] hover:border-[var(--border-focus)] hover:bg-[var(--bg-secondary)] transition-colors">
+                        <i class="fas fa-plus" style="font-size: 9px;"></i>
+                        <span v-text="t('form.newFolderOption')"></span>
+                    </button>
+                </div>
                 <div class="relative">
                     <select v-model="selectedFolderId"
                             class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
@@ -537,7 +544,6 @@
                         <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                             ${ folder.name }
                         </option>
-                        <option value="__create__" v-text="'+ ' + t('form.newFolderOption')"></option>
                     </select>
                     <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
                        :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
@@ -555,10 +561,17 @@
 
             <!-- Tag Selection -->
             <div class="mt-4">
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                    <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
-                    ${ t('tags.title') }
-                </label>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-[var(--text-secondary)]">
+                        <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
+                        ${ t('tags.title') }
+                    </label>
+                    <button @click="createTagFromUploadSearch"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-[var(--border-secondary)] text-[var(--text-accent)] hover:border-[var(--border-focus)] hover:bg-[var(--bg-secondary)] transition-colors">
+                        <i class="fas fa-plus" style="font-size: 9px;"></i>
+                        <span v-text="t('help.newTag')"></span>
+                    </button>
+                </div>
 
                 <!-- Selected Tags Display - Compact with Drag Reorder -->
                 <div v-if="selectedTags.length > 0" class="mb-2">

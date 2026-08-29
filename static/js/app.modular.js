@@ -2496,20 +2496,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     },
                 });
             };
-            // The folder <select> offers a "+ New folder" sentinel option;
-            // revert the selection and open the create modal. The revert must
-            // wait a tick: same-tick restore leaves the net value unchanged,
-            // so Vue would skip the DOM patch and the select would stay stuck
-            // on the sentinel option.
-            watch(selectedFolderId, (val, oldVal) => {
-                if (val === '__create__') {
-                    nextTick(() => {
-                        selectedFolderId.value = oldVal === '__create__' ? null : oldVal;
-                    });
-                    createFolderFromUpload();
-                }
-            });
-
             // Upload disclaimer handlers
             const acceptUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
