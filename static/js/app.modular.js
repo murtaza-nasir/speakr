@@ -3877,10 +3877,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Deep link to a specific recording: /recordings/<id> (#301).
                 // Captured before load; selected once recordings are in.
                 let deepLinkRecordingId = null;
+                // Optional ?t=<seconds> seek (Inquire citations link to the
+                // cited moment): after the recording opens, seek the main
+                // player there and start playback.
+                let deepLinkSeekSeconds = null;
                 try {
                     const m = window.location.pathname.match(/^\/recordings\/(\d+)\/?$/);
                     if (m) deepLinkRecordingId = m[1];
+                    const t = new URLSearchParams(window.location.search).get('t');
+                    if (m && t !== null && /^\d+(\.\d+)?$/.test(t)) deepLinkSeekSeconds = parseFloat(t);
                 } catch (_) { /* best-effort */ }
+
+                const applyDeepLinkSeek = (seconds) => {
+                    const startedAt = Date.now();
+                    const attempt = () => {
+                        // The detail view's player is the media element whose
+                        // source is the recording's /audio/ stream.
+                        const media = [...document.querySelectorAll('audio, video')]
+                            .find(el => ((el.currentSrc || el.src || '').includes('/audio/')));
+                        if (media && media.readyState >= 1) {
+                            const target = isFinite(media.duration)
+                                ? Math.min(seconds, Math.max(0, media.duration - 1))
+                                : seconds;
+                            media.currentTime = target;
+                            // Best-effort autoplay; stays paused at the right
+                            // spot if the browser blocks it.
+                            media.play().catch(() => {});
+                            return;
+                        }
+                        if (Date.now() - startedAt < 15000) setTimeout(attempt, 400);
+                    };
+                    setTimeout(attempt, 400);
+                };
 
                 // Load initial data
                 await Promise.all([
@@ -3900,6 +3928,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else if (deepLinkRecordingId) {
                     // Honour the /recordings/<id> deep link now that data is loaded.
                     await recordingsComposable.selectRecordingById(deepLinkRecordingId);
+                    if (deepLinkSeekSeconds !== null) {
+                        applyDeepLinkSeek(deepLinkSeekSeconds);
+                    }
                 }
 
                 // Auto-retry any uploads that previously failed and were saved to

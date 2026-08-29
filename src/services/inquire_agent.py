@@ -279,6 +279,7 @@ def tool_search_transcripts(ctx, args):
             'meeting_date': chunk.recording.meeting_date.strftime('%Y-%m-%d') if chunk.recording.meeting_date else None,
             'speaker': chunk.speaker_name,
             'time': _fmt_time(chunk.start_time),
+            'seek_seconds': int(chunk.start_time) if chunk.start_time is not None else None,
             'chunk_index': chunk.chunk_index,
             'snippet': chunk.content,
             'similarity': round(float(similarity), 3),
@@ -565,8 +566,11 @@ Never invent content that is not in the tool results; say clearly when something
 
 {tool_mode_prompt_block}When you give your final answer:
 - Use clear markdown (headings per recording where it helps, bullets, **bold** speaker names).
-- Cite sources inline as markdown links: [Recording Title](/recordings/<recording_id>) — cite the \
-recording you drew each substantive point from, at most one citation per bullet or paragraph.
+- Cite sources inline as markdown links. When the supporting search result has a time and \
+seek_seconds, link directly to that moment: [Title @ m:ss](/recordings/<recording_id>?t=<seek_seconds>) \
+— for example [Weekly Sync @ 12:34](/recordings/73?t=754). Without a timestamp, link the recording: \
+[Title](/recordings/<recording_id>). Cite the recording each substantive point came from, at most \
+one citation per bullet or paragraph. These links open the recording and start playback at that moment.
 - Order information from the most recent recordings first unless the question implies otherwise."""
 
 

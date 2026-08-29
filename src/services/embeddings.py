@@ -4,6 +4,7 @@ Embedding generation and semantic search services.
 
 import os
 import re
+import json
 import time
 import random
 import numpy as np
@@ -178,6 +179,20 @@ def _api_embed(texts, user_id=None):
     if client is None or not texts:
         return []
 
+    # Batch large inputs: providers cap the number of inputs per embeddings
+    # request (Gemini far lower than OpenAI), and a long recording can have
+    # hundreds of chunks. All-or-nothing semantics are preserved: any failed
+    # batch fails the whole call so callers keep their existing chunks.
+    batch_size = max(1, int(os.environ.get('EMBEDDING_API_BATCH_SIZE', '96')))
+    if len(texts) > batch_size:
+        out = []
+        for i in range(0, len(texts), batch_size):
+            part = _api_embed(texts[i:i + batch_size], user_id=user_id)
+            if len(part) != len(texts[i:i + batch_size]):
+                return []
+            out.extend(part)
+        return out
+
     # Circuit breaker: after a full retry cycle fails, skip the API entirely
     # for a cooldown window instead of burning ~9s of retries on every call
     # (searches fall back to keyword matching immediately; indexing fails
@@ -259,6 +274,126 @@ def _api_embed(texts, user_id=None):
     current_app.logger.error(f"Embedding API call exhausted retries: {last_exc}")
     return []
 
+
+
+# Segment-aware chunking target. ~1400 chars ≈ 300-350 tokens: large enough
+# that a rapid back-and-forth exchange stays together in one chunk, small
+# enough to stay a precise retrieval unit.
+CHUNK_TARGET_CHARS = int(os.environ.get('CHUNK_TARGET_CHARS', '1400'))
+
+
+def build_transcript_segments(transcription):
+    """Parse a stored transcription into [{speaker, text, start, end}].
+
+    Returns None when the transcription is not the JSON segment format
+    (plain-text transcripts fall back to character windowing).
+    """
+    if not transcription:
+        return None
+    try:
+        data = json.loads(transcription)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, list):
+        return None
+    segments = []
+    for seg in data:
+        if not isinstance(seg, dict):
+            continue
+        text = (seg.get('sentence') or seg.get('text') or '').strip()
+        if not text:
+            continue
+        segments.append({
+            'speaker': (seg.get('speaker') or '').strip() or None,
+            'text': text,
+            'start': seg.get('start_time'),
+            'end': seg.get('end_time'),
+        })
+    return segments if segments else None
+
+
+def _segment_line(seg):
+    """Render one segment as a transcript-style line: 'Speaker: text'."""
+    return f"{seg['speaker']}: {seg['text']}" if seg['speaker'] else seg['text']
+
+
+def _finalize_segment_chunk(segs):
+    """Build a chunk dict from a run of consecutive segments."""
+    text = "\n".join(_segment_line(s) for s in segs)
+    speakers = [s['speaker'] for s in segs if s['speaker']]
+    # Dominant speaker goes in the metadata column (single exact name, so the
+    # speaker-rename maintenance which matches by equality keeps working);
+    # every speaker remains visible inline in the chunk text itself.
+    dominant = max(set(speakers), key=speakers.count) if speakers else None
+    starts = [s['start'] for s in segs if s['start'] is not None]
+    ends = [s['end'] for s in segs if s['end'] is not None]
+    return {
+        'text': text,
+        'speaker_name': dominant,
+        'start_time': min(starts) if starts else None,
+        'end_time': max(ends) if ends else None,
+    }
+
+
+def chunk_transcript_segments(transcription, max_chunk_chars=None):
+    """Segment-aware chunking for diarized (JSON) transcripts.
+
+    Strategy: render each segment as a 'Speaker: text' line and pack WHOLE
+    segments into chunks up to ``max_chunk_chars``, never splitting a
+    speaker turn across chunks (except single turns longer than the limit,
+    which are sentence-split on their own). Chunk boundaries are size-based,
+    not turn-based, so a quickfire exchange of many short turns lands
+    together in one chunk with every speaker labeled inline. Consecutive
+    chunks overlap by one segment for continuity.
+
+    Returns a list of chunk dicts: {text, speaker_name (dominant),
+    start_time, end_time}. Plain-text transcripts fall back to the classic
+    character windows with null metadata.
+    """
+    # Backwards-compatibility escape hatch: CHUNKING_STRATEGY=legacy keeps
+    # the pre-segment-aware behavior byte-identical (500-char windows over
+    # the stored string, no speaker/time metadata) for admins who do not
+    # want indexing behavior to change. Existing chunks are never touched
+    # by an upgrade either way; the strategy only applies when a recording
+    # is (re)indexed.
+    if os.environ.get('CHUNKING_STRATEGY', 'segment').strip().lower() == 'legacy':
+        return [{'text': t, 'speaker_name': None, 'start_time': None, 'end_time': None}
+                for t in chunk_transcription(transcription)]
+
+    max_chunk_chars = max_chunk_chars or CHUNK_TARGET_CHARS
+    segments = build_transcript_segments(transcription)
+    if segments is None:
+        return [{'text': t, 'speaker_name': None, 'start_time': None, 'end_time': None}
+                for t in chunk_transcription(transcription, max_chunk_length=max_chunk_chars,
+                                             overlap=max(50, max_chunk_chars // 20))]
+
+    chunks = []
+    current = []
+    current_len = 0
+    for seg in segments:
+        line_len = len(_segment_line(seg)) + 1
+        if line_len > max_chunk_chars:
+            # A single oversized turn: flush what we have, then sentence-split
+            # the turn into its own chunks carrying its speaker and times.
+            if current:
+                chunks.append(_finalize_segment_chunk(current))
+                current, current_len = [], 0
+            for piece in chunk_transcription(seg['text'], max_chunk_length=max_chunk_chars,
+                                             overlap=max(50, max_chunk_chars // 20)):
+                chunks.append(_finalize_segment_chunk([{**seg, 'text': piece}]))
+            continue
+        if current and current_len + line_len > max_chunk_chars:
+            chunks.append(_finalize_segment_chunk(current))
+            # One-segment overlap so a thought spanning the boundary stays
+            # findable from either side.
+            tail = current[-1]
+            current = [tail] if len(_segment_line(tail)) + line_len <= max_chunk_chars else []
+            current_len = sum(len(_segment_line(s)) + 1 for s in current)
+        current.append(seg)
+        current_len += line_len
+    if current:
+        chunks.append(_finalize_segment_chunk(current))
+    return chunks
 
 
 def chunk_transcription(transcription, max_chunk_length=500, overlap=50):
@@ -420,7 +555,7 @@ def process_recording_chunks(recording_id):
         # for the whole duration and starved concurrent writers such as the
         # summarize-job enqueue (issue #355). Doing the slow work first keeps
         # the delete + insert + commit window down to milliseconds.
-        chunks = chunk_transcription(recording.transcription)
+        chunks = chunk_transcript_segments(recording.transcription)
 
         if not chunks:
             TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
@@ -428,7 +563,7 @@ def process_recording_chunks(recording_id):
             return True
 
         # Generate embeddings (recording owner gets billed for API-mode usage)
-        embeddings = generate_embeddings(chunks, user_id=recording.user_id)
+        embeddings = generate_embeddings([c['text'] for c in chunks], user_id=recording.user_id)
 
         # Verify we got one embedding per chunk. _api_embed returns [] on
         # exhausted retries, and a partial provider response could return
@@ -447,12 +582,15 @@ def process_recording_chunks(recording_id):
         # only the final commit makes it permanent, so a failure here still
         # rolls back to the old chunks.
         TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
-        for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+        for i, (chunk_data, embedding) in enumerate(zip(chunks, embeddings)):
             chunk = TranscriptChunk(
                 recording_id=recording_id,
                 user_id=recording.user_id,
                 chunk_index=i,
-                content=chunk_text,
+                content=chunk_data['text'],
+                speaker_name=(chunk_data['speaker_name'] or None) and chunk_data['speaker_name'][:100],
+                start_time=chunk_data['start_time'],
+                end_time=chunk_data['end_time'],
                 embedding=serialize_embedding(embedding) if embedding is not None else None
             )
             db.session.add(chunk)

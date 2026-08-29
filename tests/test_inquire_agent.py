@@ -95,7 +95,8 @@ def event_types(events):
 
 USER_CTX = {'name': 'Testy', 'title': 'analyst', 'company': 'ACME', 'output_language': None}
 
-SEGMENTS = [{'speaker': f'S{i % 2}', 'sentence': f'sentence number {i}', 'start_time': i * 2.0}
+SEGMENTS = [{'speaker': f'S{i % 2}', 'sentence': f'sentence number {i}',
+             'start_time': i * 2.0, 'end_time': i * 2.0 + 1.5}
             for i in range(300)]
 
 
@@ -369,6 +370,101 @@ def test_truncation_marker():
     out = ia._truncate_to_tokens(text, 100, 'More available.')
     assert len(out) < 1000
     assert 'TRUNCATED' in out and 'More available.' in out
+
+
+# ---------------------------------------------------------------------------
+# Segment-aware chunking
+# ---------------------------------------------------------------------------
+
+def _seg(speaker, text, start, end):
+    return {'speaker': speaker, 'sentence': text, 'start_time': start, 'end_time': end}
+
+
+def test_chunking_quickfire_exchange_stays_together():
+    """Many short turns pack into ONE chunk with every speaker labeled inline;
+    chunk boundaries are size-based, never per-turn."""
+    from src.services.embeddings import chunk_transcript_segments
+    segs = []
+    t = 0.0
+    for i in range(20):
+        who = 'Alice' if i % 2 == 0 else 'Bob'
+        segs.append(_seg(who, f'quick reply {i}', t, t + 1.5))
+        t += 2.0
+    chunks = chunk_transcript_segments(json.dumps(segs), max_chunk_chars=1400)
+    assert len(chunks) == 1
+    c = chunks[0]
+    assert c['text'].count('Alice:') == 10 and c['text'].count('Bob:') == 10
+    assert c['start_time'] == 0.0 and c['end_time'] == pytest.approx(39.5)
+    assert c['speaker_name'] in ('Alice', 'Bob')
+
+
+def test_chunking_dominant_speaker_and_times():
+    from src.services.embeddings import chunk_transcript_segments
+    segs = [
+        _seg('Alice', 'point one', 10.0, 12.0),
+        _seg('Alice', 'point two', 12.0, 14.0),
+        _seg('Bob', 'brief interjection', 14.0, 15.0),
+    ]
+    chunks = chunk_transcript_segments(json.dumps(segs), max_chunk_chars=1400)
+    assert len(chunks) == 1
+    assert chunks[0]['speaker_name'] == 'Alice'  # dominant
+    assert chunks[0]['start_time'] == 10.0 and chunks[0]['end_time'] == 15.0
+    assert 'Bob: brief interjection' in chunks[0]['text']
+
+
+def test_chunking_splits_on_size_with_segment_overlap():
+    from src.services.embeddings import chunk_transcript_segments
+    segs = [_seg('S1' if i % 2 == 0 else 'S2', f'sentence {i} ' + 'word ' * 20, i * 10.0, i * 10.0 + 8)
+            for i in range(12)]
+    chunks = chunk_transcript_segments(json.dumps(segs), max_chunk_chars=500)
+    assert len(chunks) > 1
+    # No chunk exceeds the cap; whole turns are never split across chunks
+    for c in chunks:
+        assert len(c['text']) <= 500 + 50
+        for line in c['text'].split('\n'):
+            assert line.startswith(('S1: ', 'S2: '))
+    # One-segment overlap: last line of chunk N reappears as first line of N+1
+    for a, b in zip(chunks, chunks[1:]):
+        assert a['text'].split('\n')[-1] == b['text'].split('\n')[0]
+    # Times track the segments actually in the chunk
+    assert chunks[0]['start_time'] == 0.0
+    assert chunks[-1]['end_time'] == segs[-1]['end_time']
+
+
+def test_chunking_oversized_single_turn_is_sentence_split():
+    from src.services.embeddings import chunk_transcript_segments
+    monologue = ('This is a long sentence about the quarterly results. ' * 30).strip()
+    segs = [_seg('Speaker', monologue, 5.0, 300.0)]
+    chunks = chunk_transcript_segments(json.dumps(segs), max_chunk_chars=400)
+    assert len(chunks) > 1
+    for c in chunks:
+        assert c['speaker_name'] == 'Speaker'
+        assert c['start_time'] == 5.0 and c['end_time'] == 300.0
+
+
+def test_chunking_plain_text_fallback_has_null_metadata():
+    from src.services.embeddings import chunk_transcript_segments
+    chunks = chunk_transcript_segments('just a plain text transcript. ' * 100, max_chunk_chars=500)
+    assert len(chunks) > 1
+    assert all(c['speaker_name'] is None and c['start_time'] is None for c in chunks)
+
+
+def test_process_recording_chunks_populates_metadata(data, monkeypatch):
+    import numpy as np
+    from src.services import embeddings as emb
+    with app.app_context():
+        monkeypatch.setattr(emb, 'generate_embeddings',
+                            lambda texts, user_id=None: [np.zeros(8, dtype=np.float32) for _ in texts])
+        assert emb.process_recording_chunks(data['r1']) is True
+        from src.models import TranscriptChunk
+        chunks = TranscriptChunk.query.filter_by(recording_id=data['r1']).order_by(TranscriptChunk.chunk_index).all()
+        assert chunks
+        assert chunks[0].speaker_name in ('S0', 'S1')
+        assert chunks[0].start_time == 0.0
+        assert chunks[0].end_time is not None
+        assert 'S0: sentence number 0' in chunks[0].content
+        TranscriptChunk.query.filter_by(recording_id=data['r1']).delete()
+        db.session.commit()
 
 
 # ---------------------------------------------------------------------------
