@@ -1284,7 +1284,7 @@
                          pattern as the Templates tab) so it stays fixed
                          while the pane scrolls. -->
                     <div id="content-organize" class="hidden tab-content">
-                      <div class="px-1 mb-2">
+                      <div class="border-b border-[var(--border-primary)] px-6 flex-shrink-0">
                           <nav class="tabs" id="organize-subtabs" style="border-bottom: none;">
                               <button id="subtab-org-tags" class="tab is-active">
                                   <i class="fas fa-tags mr-1"></i><span data-i18n="accountTabs.tagsSubtab">Tags</span>
@@ -1294,10 +1294,10 @@
                               </button>
                           </nav>
                       </div>
+                      <div class="tab-scroll">
 
                     <!-- Folders subpane -->
                     <div id="content-folders" class="hidden">
-                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder Management</h2>
 
                     <div class="mb-6">
@@ -1332,12 +1332,10 @@
                             <!-- Folders will be populated here -->
                         </div>
                     </div>
-                      </div>
-                      <div class="tab-footer"></div>
                 </div>
 
+                    <!-- Tags subpane -->
                     <div id="content-tags">
-                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
 
                     <div class="mb-6">
@@ -1372,10 +1370,10 @@
                             <!-- Tags will be populated here -->
                         </div>
                     </div>
-                      </div>
-                      <div class="tab-footer"></div>
                 </div>
 
+                      </div><!-- /.tab-scroll -->
+                      <div class="tab-footer"></div>
                     </div><!-- /content-organize -->
 
                     <div id="content-templates" class="hidden tab-content">
