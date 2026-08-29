@@ -489,14 +489,16 @@ def test_sanitize_history_folds_activity_and_drops_junk():
     ]
     out = ia.sanitize_history(history)
     assert len(out) == 2
-    assert out[1]['content'].startswith('a1')
-    assert 'research performed' in out[1]['content']
-    assert all(set(m) == {'role', 'content'} for m in out)
+    # Provenance goes into the out-of-band note, NEVER into the assistant's
+    # own content (models imitate their previous answers' tails).
+    assert out[1]['content'] == 'a1'
+    assert 'research performed' in out[1]['note']
 
 
-def test_sanitize_history_folds_displayed_citation_numbering():
+def test_sanitize_history_carries_displayed_citation_numbering_as_note():
     """The UI numbers citations at render time; the mapping must reach the
-    model so 'tell me more about 5' resolves to what the user saw."""
+    model (as a system-side note) so 'tell me more about 5' resolves to what
+    the user saw — without polluting the assistant content it would mimic."""
     history = [
         {'role': 'assistant', 'content': 'answer text',
          'sources': [{'n': 1, 'recording_id': 58, 'title': 'Integrating AI'},
@@ -505,12 +507,32 @@ def test_sanitize_history_folds_displayed_citation_numbering():
         {'role': 'user', 'content': 'tell me more about 2'},
     ]
     out = ia.sanitize_history(history)
-    folded = out[0]['content']
-    assert 'displayed to the user numbered' in folded
-    assert '1 = Integrating AI (recording 58)' in folded
-    assert '2 = Impact of AI (recording 73)' in folded
-    assert 'dropped' not in folded
-    assert set(out[0]) == {'role', 'content'}
+    assert out[0]['content'] == 'answer text'
+    note = out[0]['note']
+    assert 'displayed to the user numbered' in note
+    assert '1 = Integrating AI (recording 58)' in note
+    assert '2 = Impact of AI (recording 73)' in note
+    assert 'dropped' not in note
+
+
+def test_history_notes_become_system_messages_in_the_loop(data):
+    os.environ['INQUIRE_AGENT_TOOL_MODE'] = 'prompt'
+    history = [
+        {'role': 'user', 'content': 'earlier question'},
+        {'role': 'assistant', 'content': 'earlier answer', 'activity': '2 searches',
+         'sources': [{'n': 1, 'recording_id': data['r1'], 'title': 'Weekly Sync'}]},
+    ]
+    fake = FakeLLM([nonstream_response('follow-up answer')])
+    events = _run(data, fake, history=history)
+    msgs = fake.calls[0]['messages']
+    assistant_msgs = [m for m in msgs if m['role'] == 'assistant']
+    assert assistant_msgs[0]['content'] == 'earlier answer'
+    notes = [m for m in msgs if m['role'] == 'system' and 'displayed to the user numbered' in m['content']]
+    assert len(notes) == 1
+    # The note follows its assistant message
+    idx = msgs.index(assistant_msgs[0])
+    assert msgs[idx + 1] == notes[0]
+    assert any(e.get('delta') == 'follow-up answer' for e in events)
 
 
 def test_compact_history_uses_llm_and_keeps_tail(data, monkeypatch):

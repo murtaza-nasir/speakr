@@ -985,6 +985,15 @@
                                 // this mapping is sent back with the history.
                                 message.sources = [...refs.entries()].map(([id, e]) => ({ n: e.n, recording_id: Number(id), title: e.title }));
                             }
+                            // Backstop: strip leaked system-record notes if the
+                            // model ever echoes them ("[citations in this answer
+                            // were displayed...]", "[research performed...]").
+                            [...tpl.content.querySelectorAll('p')].forEach(p => {
+                                const txt = p.textContent.trim();
+                                if (/^\[(citations in this answer|research performed|note about the assistant)/i.test(txt) && txt.endsWith(']')) {
+                                    p.remove();
+                                }
+                            });
                             // Strip a model-written trailing Sources/References
                             // section (the interface appends its own). Removed
                             // ONLY when everything after the heading is bare

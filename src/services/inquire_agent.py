@@ -606,11 +606,15 @@ KEEP_VERBATIM_MESSAGES = 8  # last 4 turns
 
 
 def sanitize_history(message_history):
-    """Client history -> [{role, content}] with activity provenance folded in.
+    """Client history -> [{role, content, note?}].
 
-    Assistant messages also carry the citation numbering the UI actually
-    displayed (the client assigns numbers at render time), so a follow-up
-    like "tell me more about 5" resolves to what the user saw on screen.
+    Assistant messages carry provenance out-of-band in ``note`` (research
+    performed, plus the citation numbering the UI actually displayed, so a
+    follow-up like "tell me more about 5" resolves to what the user saw).
+    The note is injected as a SEPARATE system message at build time, never
+    folded into the assistant's own content: models imitate the tail of
+    their previous answers, and an inline annotation ends up reproduced
+    verbatim at the bottom of new answers.
     """
     out = []
     for msg in message_history or []:
@@ -620,9 +624,11 @@ def sanitize_history(message_history):
         content = msg.get('content')
         if role not in ('user', 'assistant') or not isinstance(content, str) or not content.strip():
             continue
+        entry = {'role': role, 'content': content}
         if role == 'assistant':
+            note_bits = []
             if msg.get('activity'):
-                content = f"{content}\n\n[research performed for this answer: {str(msg['activity'])[:300]}]"
+                note_bits.append(f"research performed: {str(msg['activity'])[:300]}")
             sources = msg.get('sources')
             if isinstance(sources, list) and sources:
                 lines = []
@@ -637,15 +643,18 @@ def sanitize_history(message_history):
                     title = str(s.get('title') or '')[:120]
                     lines.append(f"{n} = {title} (recording {rid})")
                 if lines:
-                    content = (f"{content}\n\n[citations in this answer were displayed to the "
-                               f"user numbered: {'; '.join(lines)}]")
-        out.append({'role': role, 'content': content})
+                    note_bits.append(f"citations were displayed to the user numbered: {'; '.join(lines)}")
+            if note_bits:
+                entry['note'] = ("Note about the assistant's previous answer (system record, "
+                                 "never reproduce in answers): " + " | ".join(note_bits))
+        out.append(entry)
     return out
 
 
 def estimate_context_tokens(system_prompt, memory, history, toolbox_schemas):
     total = _estimate_tokens(system_prompt) + _estimate_tokens(memory or '')
-    total += sum(_estimate_tokens(m['content']) for m in history)
+    total += sum(_estimate_tokens(m['content']) + _estimate_tokens(m.get('note', ''))
+                 for m in history)
     total += _estimate_tokens(json.dumps(toolbox_schemas))
     return total
 
@@ -660,7 +669,10 @@ def compact_history(user_id, memory, history, keep_last=KEEP_VERBATIM_MESSAGES):
         return memory, history, 0
     to_fold = history[:-keep_last]
     kept = history[-keep_last:]
-    transcript = "\n\n".join(f"{m['role'].upper()}: {m['content']}" for m in to_fold)
+    transcript = "\n\n".join(
+        f"{m['role'].upper()}: {m['content']}"
+        + (f"\n[{m['note']}]" if m.get('note') else '')
+        for m in to_fold)
     prompt = f"""Summarize this conversation-so-far into a compact memory block that lets an assistant \
 continue the conversation seamlessly. Capture: topics discussed, questions asked and their answers (with \
 any recording titles/ids referenced), decisions or conclusions, and open threads. Be dense and factual; \
@@ -822,7 +834,12 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
             if memory:
                 msgs.append({'role': 'system',
                              'content': f"Conversation memory (earlier turns, summarized):\n{memory}"})
-            msgs.extend(history)
+            for m in history:
+                msgs.append({'role': m['role'], 'content': m['content']})
+                # Provenance notes travel as system messages so the model
+                # never mistakes them for part of its own answer style.
+                if m.get('note'):
+                    msgs.append({'role': 'system', 'content': m['note']})
             msgs.append({'role': 'user', 'content': user_message})
             return msgs
 
