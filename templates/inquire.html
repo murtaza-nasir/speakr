@@ -168,6 +168,47 @@
         .chat-message .prose a[href^="/recordings/"]:hover {
             border-color: var(--border-focus);
         }
+
+        /* Sources footer: numbered list mapping citation numbers to
+           recording titles. Links here render as plain links, not chips. */
+        .chat-message .citation-refs {
+            margin-top: 1em;
+            padding-top: 0.6em;
+            border-top: 1px solid var(--border-primary);
+        }
+        .chat-message .citation-refs__label {
+            font-size: 0.72em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 0.3em;
+        }
+        .chat-message .citation-refs ol {
+            margin: 0;
+            padding-left: 1.4em;
+            font-size: 0.85em;
+        }
+        .chat-message .citation-refs li {
+            margin: 0.15em 0;
+            color: var(--text-secondary);
+        }
+        .chat-message .prose .citation-refs a[href^="/recordings/"] {
+            display: inline;
+            background: none;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            font-size: 1em;
+            vertical-align: baseline;
+            margin: 0;
+            white-space: normal;
+            color: var(--text-accent);
+            text-decoration: none;
+        }
+        .chat-message .prose .citation-refs a[href^="/recordings/"]:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
@@ -905,6 +946,62 @@
                         }
                     };
 
+                    // Rewrite citation links into numbered chips plus a
+                    // trailing Sources list. The model emits
+                    // [Title @ m:ss](/recordings/<id>?t=s); repeating the full
+                    // title on every chip is noisy, so chips become
+                    // "<n> @ m:ss" (full title on hover), numbered by first
+                    // appearance per unique recording, with one Sources entry
+                    // per recording at the end. Deterministic here rather than
+                    // trusting the model to number consistently.
+                    const decorateCitations = (html) => {
+                        try {
+                            const tpl = document.createElement('template');
+                            tpl.innerHTML = html;
+                            const links = [...tpl.content.querySelectorAll('a[href^="/recordings/"]')];
+                            if (!links.length) return html;
+                            const refs = new Map(); // recording id -> {n, title, href}
+                            for (const a of links) {
+                                const m = (a.getAttribute('href') || '').match(/^\/recordings\/(\d+)/);
+                                if (!m) continue;
+                                const recId = m[1];
+                                const raw = (a.textContent || '').trim();
+                                const tm = raw.match(/@\s*(\d+:\d{2}(?::\d{2})?)\s*$/);
+                                const title = (tm ? raw.slice(0, tm.index) : raw).trim() || ('Recording ' + recId);
+                                if (!refs.has(recId)) {
+                                    refs.set(recId, { n: refs.size + 1, title: title, href: '/recordings/' + recId });
+                                }
+                                const entry = refs.get(recId);
+                                if (title.length > entry.title.length) entry.title = title;
+                                a.textContent = tm ? (entry.n + ' @ ' + tm[1]) : String(entry.n);
+                                a.setAttribute('title', entry.title);
+                            }
+                            if (refs.size) {
+                                const wrap = document.createElement('div');
+                                wrap.className = 'citation-refs';
+                                const label = document.createElement('div');
+                                label.className = 'citation-refs__label';
+                                const tSources = t('inquire.sources');
+                                label.textContent = tSources !== 'inquire.sources' ? tSources : 'Sources';
+                                wrap.appendChild(label);
+                                const ol = document.createElement('ol');
+                                for (const entry of refs.values()) {
+                                    const li = document.createElement('li');
+                                    const link = document.createElement('a');
+                                    link.href = entry.href;
+                                    link.textContent = entry.title;
+                                    li.appendChild(link);
+                                    ol.appendChild(li);
+                                }
+                                wrap.appendChild(ol);
+                                tpl.content.appendChild(wrap);
+                            }
+                            return tpl.innerHTML;
+                        } catch (e) {
+                            return html;
+                        }
+                    };
+
                     const stopInquireChat = () => {
                         // Aborting the fetch closes the SSE stream; the server
                         // agent loop stops between steps when the client goes away.
@@ -1027,7 +1124,7 @@
                                                     assistantMessage.steps = agentSteps.value;
                                                 }
                                                 assistantMessage.content += data.delta;
-                                                assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
+                                                assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content));
                                                 // Smart scroll during streaming
                                                 await nextTick();
                                                 scrollToBottom();
@@ -1036,7 +1133,7 @@
                                                 // presenting the partial answer as complete (issue #349).
                                                 if (data.truncated && messageAdded && assistantMessage.content) {
                                                     assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
-                                                    assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
+                                                    assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content));
                                                 }
                                                 return;
                                             } else if (data.error) {

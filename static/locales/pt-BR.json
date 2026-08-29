@@ -1078,6 +1078,7 @@
     "placeholder": "Faça perguntas sobre suas transcrições filtradas...",
     "selectFilters": "Selecione filtros à esquerda para restringir suas transcrições e, em seguida, faça perguntas para obter insights de suas gravações.",
     "sendHint": "Pressione Enter para enviar • Ctrl+Enter para nova linha",
+    "sources": "Fontes",
     "speakerRequirement": "A identificação de oradores requer gravações com múltiplos oradores",
     "speakers": "Oradores",
     "speakersCount": "oradores",

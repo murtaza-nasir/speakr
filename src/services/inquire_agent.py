@@ -570,7 +570,10 @@ Never invent content that is not in the tool results; say clearly when something
 seek_seconds, link directly to that moment: [Title @ m:ss](/recordings/<recording_id>?t=<seek_seconds>) \
 — for example [Weekly Sync @ 12:34](/recordings/73?t=754). Without a timestamp, link the recording: \
 [Title](/recordings/<recording_id>). Cite the recording each substantive point came from, at most \
-one citation per bullet or paragraph. These links open the recording and start playback at that moment.
+one citation per bullet or paragraph. These links open the recording and start playback at that \
+moment. The interface renders citations as compact numbered markers with a source list at the end, \
+so do NOT also write the recording's title in the prose around a citation; let the citation itself \
+identify the recording.
 - Order information from the most recent recordings first unless the question implies otherwise."""
 
 

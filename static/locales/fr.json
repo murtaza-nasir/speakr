@@ -1078,6 +1078,7 @@
     "placeholder": "Posez des questions sur vos transcriptions filtrées...",
     "selectFilters": "Sélectionnez les filtres à gauche pour affiner vos transcriptions, puis posez des questions pour obtenir des informations à partir de vos enregistrements.",
     "sendHint": "Appuyez sur Entrée pour envoyer • Ctrl+Entrée pour nouvelle ligne",
+    "sources": "Sources",
     "speakerRequirement": "L'identification des intervenants nécessite des enregistrements avec plusieurs intervenants",
     "speakers": "Intervenants",
     "speakersCount": "intervenants",

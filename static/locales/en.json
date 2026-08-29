@@ -1078,6 +1078,7 @@
     "placeholder": "Ask questions about your filtered transcriptions...",
     "selectFilters": "Select filters on the left to narrow down your transcriptions, then ask questions to get insights from your recordings.",
     "sendHint": "Press Enter to send • Ctrl+Enter for new line",
+    "sources": "Sources",
     "speakerRequirement": "Speaker identification requires recordings with multiple speakers",
     "speakers": "Speakers",
     "speakersCount": "speakers",

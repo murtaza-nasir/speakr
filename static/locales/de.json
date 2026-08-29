@@ -1078,6 +1078,7 @@
     "placeholder": "Stellen Sie Fragen zu Ihren gefilterten Transkriptionen...",
     "selectFilters": "Wählen Sie Filter auf der linken Seite aus, um Ihre Transkriptionen einzugrenzen, und stellen Sie dann Fragen, um Einblicke aus Ihren Aufnahmen zu erhalten.",
     "sendHint": "Enter zum Senden • Strg+Enter für neue Zeile",
+    "sources": "Quellen",
     "speakerRequirement": "Sprecheridentifikation erfordert Aufnahmen mit mehreren Sprechern",
     "speakers": "Sprecher",
     "speakersCount": "Sprecher",

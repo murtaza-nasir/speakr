@@ -1078,6 +1078,7 @@
     "placeholder": "询问关于您筛选的转录内容...",
     "selectFilters": "在左侧选择筛选器以缩小转录范围，然后提问以从录音中获得见解。",
     "sendHint": "按Enter发送 • Ctrl+Enter换行",
+    "sources": "来源",
     "speakerRequirement": "发言人识别需要包含多个发言人的录音",
     "speakers": "发言人",
     "speakersCount": "个发言人",
