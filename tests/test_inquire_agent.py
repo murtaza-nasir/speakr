@@ -494,6 +494,25 @@ def test_sanitize_history_folds_activity_and_drops_junk():
     assert all(set(m) == {'role', 'content'} for m in out)
 
 
+def test_sanitize_history_folds_displayed_citation_numbering():
+    """The UI numbers citations at render time; the mapping must reach the
+    model so 'tell me more about 5' resolves to what the user saw."""
+    history = [
+        {'role': 'assistant', 'content': 'answer text',
+         'sources': [{'n': 1, 'recording_id': 58, 'title': 'Integrating AI'},
+                     {'n': 2, 'recording_id': 73, 'title': 'Impact of AI'},
+                     {'n': 'junk', 'recording_id': None, 'title': 'dropped'}]},
+        {'role': 'user', 'content': 'tell me more about 2'},
+    ]
+    out = ia.sanitize_history(history)
+    folded = out[0]['content']
+    assert 'displayed to the user numbered' in folded
+    assert '1 = Integrating AI (recording 58)' in folded
+    assert '2 = Impact of AI (recording 73)' in folded
+    assert 'dropped' not in folded
+    assert set(out[0]) == {'role', 'content'}
+
+
 def test_compact_history_uses_llm_and_keeps_tail(data, monkeypatch):
     with app.app_context():
         history = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': f'm{i}'}

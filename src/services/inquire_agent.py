@@ -575,9 +575,13 @@ seek_seconds, link directly to that moment using the result's `time` value verba
 Without a timestamp, link the recording: \
 [Title](/recordings/<recording_id>). Cite the recording each substantive point came from, at most \
 one citation per bullet or paragraph. These links open the recording and start playback at that \
-moment. The interface renders citations as compact numbered markers with a source list at the end, \
-so do NOT also write the recording's title in the prose around a citation; let the citation itself \
-identify the recording.
+moment. The link text must ALWAYS be the recording's exact title (plus " @ time" when known) — \
+never a date, a number, or other text — because the interface derives a numbered source list from \
+it: citations render as compact numbered markers and the titles appear once at the end. For the \
+same reason, avoid repeating a recording's title in the prose immediately around its citation. \
+When the user refers to a bare number ("what about 5", "open 3"), they mean that numbered citation \
+from your previous answer; the displayed numbering is included with each earlier answer in this \
+conversation — use it, never guess.
 - Order information from the most recent recordings first unless the question implies otherwise."""
 
 
@@ -601,7 +605,12 @@ KEEP_VERBATIM_MESSAGES = 8  # last 4 turns
 
 
 def sanitize_history(message_history):
-    """Client history -> [{role, content}] with activity provenance folded in."""
+    """Client history -> [{role, content}] with activity provenance folded in.
+
+    Assistant messages also carry the citation numbering the UI actually
+    displayed (the client assigns numbers at render time), so a follow-up
+    like "tell me more about 5" resolves to what the user saw on screen.
+    """
     out = []
     for msg in message_history or []:
         if not isinstance(msg, dict):
@@ -610,8 +619,25 @@ def sanitize_history(message_history):
         content = msg.get('content')
         if role not in ('user', 'assistant') or not isinstance(content, str) or not content.strip():
             continue
-        if role == 'assistant' and msg.get('activity'):
-            content = f"{content}\n\n[research performed for this answer: {str(msg['activity'])[:300]}]"
+        if role == 'assistant':
+            if msg.get('activity'):
+                content = f"{content}\n\n[research performed for this answer: {str(msg['activity'])[:300]}]"
+            sources = msg.get('sources')
+            if isinstance(sources, list) and sources:
+                lines = []
+                for s in sources[:20]:
+                    if not isinstance(s, dict):
+                        continue
+                    try:
+                        n = int(s.get('n'))
+                        rid = int(s.get('recording_id'))
+                    except (TypeError, ValueError):
+                        continue
+                    title = str(s.get('title') or '')[:120]
+                    lines.append(f"{n} = {title} (recording {rid})")
+                if lines:
+                    content = (f"{content}\n\n[citations in this answer were displayed to the "
+                               f"user numbered: {'; '.join(lines)}]")
         out.append({'role': role, 'content': content})
     return out
 

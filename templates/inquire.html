@@ -957,7 +957,7 @@
                     // appearance per unique recording, with one Sources entry
                     // per recording at the end. Deterministic here rather than
                     // trusting the model to number consistently.
-                    const decorateCitations = (html) => {
+                    const decorateCitations = (html, message) => {
                         try {
                             const tpl = document.createElement('template');
                             tpl.innerHTML = html;
@@ -978,6 +978,12 @@
                                 if (title.length > entry.title.length) entry.title = title;
                                 a.textContent = tm ? (entry.n + ' @ ' + tm[1]) : String(entry.n);
                                 a.setAttribute('title', entry.title);
+                            }
+                            if (message) {
+                                // Persist the displayed numbering so follow-up
+                                // turns can resolve "tell me more about 5":
+                                // this mapping is sent back with the history.
+                                message.sources = [...refs.entries()].map(([id, e]) => ({ n: e.n, recording_id: Number(id), title: e.title }));
                             }
                             if (refs.size) {
                                 const wrap = document.createElement('div');
@@ -1035,7 +1041,7 @@
                         const sentHistory = inquireChatMessages.value
                             .slice(memoryState.fromIndex, -1)
                             .filter(m => m.role === 'user' || m.role === 'assistant')
-                            .map(m => ({ role: m.role, content: m.content, activity: m.activitySummary || undefined }));
+                            .map(m => ({ role: m.role, content: m.content, activity: m.activitySummary || undefined, sources: (m.sources && m.sources.length) ? m.sources : undefined }));
                         const sentFromIndex = memoryState.fromIndex;
                         const controller = new AbortController();
                         inquireAbort.value = controller;
@@ -1127,7 +1133,7 @@
                                                     assistantMessage.steps = agentSteps.value;
                                                 }
                                                 assistantMessage.content += data.delta;
-                                                assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content));
+                                                assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content), assistantMessage);
                                                 // Smart scroll during streaming
                                                 await nextTick();
                                                 scrollToBottom();
@@ -1136,7 +1142,7 @@
                                                 // presenting the partial answer as complete (issue #349).
                                                 if (data.truncated && messageAdded && assistantMessage.content) {
                                                     assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
-                                                    assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content));
+                                                    assistantMessage.html = decorateCitations(window.renderMarkdownSafe(assistantMessage.content), assistantMessage);
                                                 }
                                                 return;
                                             } else if (data.error) {
