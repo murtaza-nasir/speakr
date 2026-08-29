@@ -391,7 +391,7 @@ AUTO_PROCESS_WATCH_DIR=/data/auto-process
 AUTO_PROCESS_CHECK_INTERVAL=30
 ```
 
-When enabled, Speakr checks the watch directory every 30 seconds for new audio files. Any files found are automatically moved to the uploads directory and processed using your configured transcription settings. The `admin_only` mode assigns all processed files to the admin user, but you can also configure it for multi-user scenarios with separate directories for each user.
+When enabled, Speakr checks the watch directory every 30 seconds for new audio files. Any files found are automatically moved to the uploads directory and processed using your configured transcription settings. The `admin_only` mode assigns all processed files to the admin user, but you can also configure it for multi-user scenarios with separate directories for each user (`AUTO_PROCESS_MODE=user_directories`). Per-user subfolders may be named after the user id (`user123` or `123`) or after the username itself, mirroring the naming of the per-user export folders.
 
 To use this feature, you'll need to mount an additional volume in your Docker Compose configuration, which we'll cover in the next steps.
 

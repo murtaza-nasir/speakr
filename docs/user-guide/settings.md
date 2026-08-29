@@ -83,6 +83,15 @@ These defaults apply to all your recordings unless overridden by tag defaults, f
 !!! tip "When to use hotwords vs initial prompt"
     Use **hotwords** for specific terms the model tends to misspell - proper nouns, brand names, technical acronyms. Use **initial prompt** for broader context that helps the model understand the domain and make better overall word choices.
 
+### Inquire Privacy
+
+The **Inquire Privacy** section controls what the Inquire AI may read when answering your questions. Transcripts are always available, since they are the minimum Inquire needs to function; everything else is your choice:
+
+- **Allow access to summaries** (on by default) - lets Inquire read your recordings' AI summaries, which is a fast way for the agentic mode to survey a long recording before deciding whether to read its transcript.
+- **Allow access to your notes** (off by default) - your private notes stay unavailable unless you enable this. Only your own notes are ever used; notes on recordings shared with you are never exposed, regardless of this setting.
+
+These settings are enforced structurally: a disabled content type is removed from the AI's capabilities entirely rather than merely discouraged. See [Inquire Mode](inquire-mode.md#agentic-inquire-beta) for how the agentic mode uses these permissions.
+
 ### Timestamp Availability for Summary and Chat
 
 At the top of the Prompt Options you can control whether the AI receives per-line timestamps with the transcript. There are two independent toggles, one for **summarization** and one for **chat**, so you can enable the feature only where you need it:

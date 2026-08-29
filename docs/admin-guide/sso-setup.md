@@ -40,6 +40,8 @@ Restart Speakr after updating environment variables.
 - `email` (recommended): used for matching and domain allowlist.
 - `preferred_username` or `name`: used for username/full name if provided.
 
+The claims may live in the ID token or at the UserInfo endpoint; both work. When the ID token carries only the bare claims (`sub`, `iss`, `aud`), as Keycloak, Azure AD, and LemonLDAP::NG do by default, Speakr fetches the UserInfo endpoint automatically and merges its claims, verifying the endpoint's `sub` matches the ID token's. No mapper configuration is needed on the IdP side to embed claims in the ID token.
+
 ## Keycloak quick start
 
 1. In Keycloak, create a new client (e.g., `speakr`) with:

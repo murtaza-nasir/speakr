@@ -244,6 +244,8 @@ The **Initial Prompt** field provides context to the transcription engine about 
 
 Both fields follow a precedence hierarchy: values you set in the upload form override tag defaults, which override folder defaults, which override your personal defaults in [account settings](settings.md#custom-prompts-tab). If you regularly transcribe similar content, set your defaults at the tag or user level so you don't have to enter them every time.
 
+The same fields, along with the saved-template picker, are also available in the in-app recorder: after stopping a recording, expand **Upload Settings**, then **Advanced ASR Options**. Values set there travel with the recording through every upload path, including crash recovery and incognito processing.
+
 #### Transcription Model
 
 When your administrator has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a model list from the admin dashboard), the upload form gains a **Transcription model** dropdown that lets you pick the specific model used for this recording. The default option uses whichever model the resolved tag, folder, or admin default specifies. The dropdown is hidden if only one option would be available, since there is no real choice to offer.

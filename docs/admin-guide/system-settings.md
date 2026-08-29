@@ -126,6 +126,12 @@ Processing backlogs might indicate your timeout is too high. If the system waits
 
 Beyond the UI-configurable settings above, several environment variables in your `.env` file control fundamental system behaviors. These require instance restart to take effect.
 
+### Interface Customization
+
+**HELP_CENTER_URL**: Adds a Help Center link to the user menu (on both the main app and the account/admin pages), opening in a new tab. Point it at your own FAQ, tutorial, or intranet page so users find your organization's guidance instead of the technical documentation. Unset by default (no link shown).
+
+**HELP_CENTER_LABEL**: Optional custom label for the Help Center link. When unset, a localized "Help Center" label is used.
+
 ### Collaboration & Sharing
 
 **ENABLE_INTERNAL_SHARING**: Controls user-to-user sharing capabilities. Set to `true` to enable internal sharing features, allowing users to share recordings with specific colleagues. Required for group functionality. Default: `false`.

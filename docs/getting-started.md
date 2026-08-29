@@ -192,6 +192,8 @@ ENABLE_INQUIRE_MODE=true
 
 Then restart the container with `docker compose restart` for the change to take effect.
 
+Once Inquire Mode works, you can additionally try the [agentic mode beta](user-guide/inquire-mode.md#agentic-inquire-beta) (`ENABLE_INQUIRE_AGENT=true`), which answers by iteratively searching and reading your recordings, with live activity display and timestamped, click-to-play citations.
+
 ### Enable User Registration
 
 By default, only the admin can create new users. Learn more about [user management](admin-guide/user-management.md) in the admin guide. To allow self-registration, set:
