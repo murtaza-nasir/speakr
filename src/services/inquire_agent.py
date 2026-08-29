@@ -579,9 +579,10 @@ moment. The link text must ALWAYS be the recording's exact title (plus " @ time"
 never a date, a number, or other text — because the interface derives a numbered source list from \
 it: citations render as compact numbered markers and the titles appear once at the end. For the \
 same reason, avoid repeating a recording's title in the prose immediately around its citation. \
-When the user refers to a bare number ("what about 5", "open 3"), they mean that numbered citation \
-from your previous answer; the displayed numbering is included with each earlier answer in this \
-conversation — use it, never guess.
+Never write a "Sources" or "References" section yourself — the interface appends one \
+automatically; end your answer after the last point. When the user refers to a bare number \
+("what about 5", "open 3"), they mean that numbered citation from your previous answer; the \
+displayed numbering is included with each earlier answer in this conversation — use it, never guess.
 - Order information from the most recent recordings first unless the question implies otherwise."""
 
 

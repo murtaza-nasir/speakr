@@ -985,6 +985,31 @@
                                 // this mapping is sent back with the history.
                                 message.sources = [...refs.entries()].map(([id, e]) => ({ n: e.n, recording_id: Number(id), title: e.title }));
                             }
+                            // Strip a model-written trailing Sources/References
+                            // section (the interface appends its own). Removed
+                            // ONLY when everything after the heading is bare
+                            // citation links — real prose is never dropped.
+                            const topNodes = [...tpl.content.children];
+                            for (let i = topNodes.length - 1; i >= 0; i--) {
+                                const el = topNodes[i];
+                                const headingish = /^H[1-6]$/.test(el.tagName) ||
+                                    (el.tagName === 'P' && el.children.length === 1 &&
+                                     el.firstElementChild && el.firstElementChild.tagName === 'STRONG' &&
+                                     el.firstElementChild.textContent.trim() === el.textContent.trim());
+                                if (!headingish) continue;
+                                if (!/^(sources?|references?|quellen|fuentes|fontes|источники|来源)\s*:?$/i.test(el.textContent.trim())) continue;
+                                const tail = topNodes.slice(i + 1);
+                                const onlyCitations = tail.every(node => {
+                                    const clone = node.cloneNode(true);
+                                    clone.querySelectorAll('a[href^="/recordings/"]').forEach(a => a.remove());
+                                    return clone.textContent.replace(/[\d\s.,;:()\[\]@–—-]+/g, '') === '';
+                                });
+                                if (onlyCitations) {
+                                    tail.forEach(node => node.remove());
+                                    el.remove();
+                                }
+                                break;
+                            }
                             if (refs.size) {
                                 const wrap = document.createElement('div');
                                 wrap.className = 'citation-refs';
