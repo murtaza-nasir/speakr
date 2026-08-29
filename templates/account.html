@@ -491,11 +491,13 @@
                     <a href="#" id="tab-speakers" class="tab">
                         <i class="fas fa-users"></i><span data-i18n="accountTabs.speakersManagement">Speakers</span>
                     </a>
-                    <a href="#" id="tab-folders" class="tab" style="display: none;">
-                        <i class="fas fa-folder"></i><span data-i18n="accountTabs.folderManagement">Folders</span>
-                    </a>
-                    <a href="#" id="tab-tags" class="tab">
-                        <i class="fas fa-tags"></i><span data-i18n="accountTabs.tagManagement">Tags</span>
+                    <!-- Tags and Folders share one tab with subtabs inside:
+                         the two management screens are the same shape, and a
+                         single "organize" destination keeps the strip short.
+                         The Folders SUBTAB stays hidden unless the folders
+                         feature is enabled (mirrors the old hidden tab). -->
+                    <a href="#" id="tab-organize" class="tab">
+                        <i class="fas fa-tags"></i><span data-i18n="accountTabs.tagsAndFolders">Tags &amp; Folders</span>
                     </a>
                     <a href="#" id="tab-templates" class="tab">
                         <i class="fas fa-file-alt"></i><span data-i18n="accountTabs.templates">Templates</span>
@@ -1277,8 +1279,24 @@
                       <div class="tab-footer"></div>
                 </div>
 
-                    <!-- Folders Tab Content -->
-                    <div id="content-folders" class="hidden tab-content">
+                    <!-- Tags & Folders tab: one destination, two subtabs.
+                         The subtab strip sits outside .tab-scroll (same
+                         pattern as the Templates tab) so it stays fixed
+                         while the pane scrolls. -->
+                    <div id="content-organize" class="hidden tab-content">
+                      <div class="px-1 mb-2">
+                          <nav class="tabs" id="organize-subtabs" style="border-bottom: none;">
+                              <button id="subtab-org-tags" class="tab is-active">
+                                  <i class="fas fa-tags mr-1"></i><span data-i18n="accountTabs.tagsSubtab">Tags</span>
+                              </button>
+                              <button id="subtab-org-folders" class="tab" style="display: none;">
+                                  <i class="fas fa-folder mr-1"></i><span data-i18n="accountTabs.foldersSubtab">Folders</span>
+                              </button>
+                          </nav>
+                      </div>
+
+                    <!-- Folders subpane -->
+                    <div id="content-folders" class="hidden">
                       <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder Management</h2>
 
@@ -1318,7 +1336,7 @@
                       <div class="tab-footer"></div>
                 </div>
 
-                    <div id="content-tags" class="hidden tab-content">
+                    <div id="content-tags">
                       <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
 
@@ -1357,6 +1375,8 @@
                       </div>
                       <div class="tab-footer"></div>
                 </div>
+
+                    </div><!-- /content-organize -->
 
                     <div id="content-templates" class="hidden tab-content">
                       <!-- Sub-tabs sit OUTSIDE .tab-scroll so they're a real
@@ -3288,8 +3308,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabAccount = document.getElementById('tab-account');
             const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
-            const tabFolders = document.getElementById('tab-folders');
-            const tabTags = document.getElementById('tab-tags');
+            const tabOrganize = document.getElementById('tab-organize');
             const tabTemplates = document.getElementById('tab-templates');
             const tabTokens = document.getElementById('tab-tokens');
             const tabWebhooks = document.getElementById('tab-webhooks');
@@ -3300,6 +3319,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const contentPreferences = document.getElementById('content-preferences');
             const contentShares = document.getElementById('content-shares');
             const contentSpeakers = document.getElementById('content-speakers');
+            const contentOrganize = document.getElementById('content-organize');
             const contentFolders = document.getElementById('content-folders');
             const contentTags = document.getElementById('content-tags');
             const contentTemplates = document.getElementById('content-templates');
@@ -3318,8 +3338,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
-                { tab: tabFolders, content: contentFolders, name: 'folders' },
-                { tab: tabTags, content: contentTags, name: 'tags' },
+                { tab: tabOrganize, content: contentOrganize, name: 'organize' },
                 { tab: tabTemplates, content: contentTemplates, name: 'templates' },
                 { tab: tabTokens, content: contentTokens, name: 'tokens' },
                 { tab: tabWebhooks, content: contentWebhooks, name: 'webhooks' },
@@ -3342,10 +3361,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadSpeakersTab();
                 } else if (targetName === 'shares') {
                     loadShares();
-                } else if (targetName === 'folders') {
-                    loadFolders();
-                } else if (targetName === 'tags') {
-                    loadTags();
+                } else if (targetName === 'organize') {
+                    setOrganizeSubtab(currentOrganizeSubtab);
                 } else if (targetName === 'templates') {
                     loadTemplates();
                 } else if (targetName === 'tokens') {
@@ -3380,12 +3397,34 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 switchToTab('speakers');
             }
 
+            // Tags & Folders live in ONE tab with subtabs; these keep all
+            // existing callers (hash routing, user-menu deep links) working.
+            let currentOrganizeSubtab = 'tags';
+            function setOrganizeSubtab(name) {
+                if (name === 'folders' && !foldersEnabled) name = 'tags';
+                currentOrganizeSubtab = name;
+                const isTags = name === 'tags';
+                if (contentTags) contentTags.classList.toggle('hidden', !isTags);
+                if (contentFolders) contentFolders.classList.toggle('hidden', isTags);
+                const tBtn = document.getElementById('subtab-org-tags');
+                const fBtn = document.getElementById('subtab-org-folders');
+                if (tBtn) tBtn.classList.toggle('is-active', isTags);
+                if (fBtn) fBtn.classList.toggle('is-active', !isTags);
+                if (isTags) loadTags(); else loadFolders();
+            }
+
+            // checkFeaturesEnabled() lives outside this closure and needs
+            // to re-apply a #folders deep link once the feature flag loads.
+            window.setOrganizeSubtab = setOrganizeSubtab;
+
             function showTagsTab() {
-                switchToTab('tags');
+                currentOrganizeSubtab = 'tags';
+                switchToTab('organize');
             }
 
             function showFoldersTab() {
-                switchToTab('folders');
+                currentOrganizeSubtab = 'folders';
+                switchToTab('organize');
             }
 
             function showTemplatesTab() {
@@ -3427,17 +3466,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showSpeakersTab();
             });
 
-            tabTags.addEventListener('click', (e) => {
+            tabOrganize.addEventListener('click', (e) => {
                 e.preventDefault();
-                showTagsTab();
+                switchToTab('organize');
             });
 
-            if (tabFolders) {
-                tabFolders.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showFoldersTab();
-                });
-            }
+            const subtabOrgTags = document.getElementById('subtab-org-tags');
+            const subtabOrgFolders = document.getElementById('subtab-org-folders');
+            if (subtabOrgTags) subtabOrgTags.addEventListener('click', () => setOrganizeSubtab('tags'));
+            if (subtabOrgFolders) subtabOrgFolders.addEventListener('click', () => setOrganizeSubtab('folders'));
 
             tabTemplates.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -5134,63 +5171,58 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         checkAutoDeletionEnabled();
 
         // Load tags from API
+        // --- Shared organizer-section plumbing -------------------------------
+        // Tags and Folders render identical section shells (loading / error /
+        // empty / grid states and a card grid); one implementation serves
+        // both so styling and behaviour can never drift apart again.
+        function setOrganizerState(els, state, message) {
+            const show = (el, on) => { if (el) el.classList.toggle('hidden', !on); };
+            show(els.loading, state === 'loading');
+            show(els.error, state === 'error');
+            show(els.empty, state === 'empty');
+            show(els.grid, state === 'grid');
+            if (state === 'error' && els.errorMessage) {
+                els.errorMessage.textContent = message || '';
+            }
+        }
+
+        function displayOrganizer(els, items, buildCard) {
+            if (!items || items.length === 0) {
+                setOrganizerState(els, 'empty');
+                return;
+            }
+            setOrganizerState(els, 'grid');
+            els.grid.textContent = '';
+            items.forEach((item) => els.grid.appendChild(buildCard(item)));
+        }
+
+        async function loadOrganizerItems(els, url) {
+            setOrganizerState(els, 'loading');
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+            }
+            return response.json();
+        }
+        // ---------------------------------------------------------------------
+
+        const tagSectionEls = {
+            loading: tagsLoading, error: tagsError, errorMessage: tagsErrorMessage,
+            empty: tagsEmpty, grid: tagsGrid,
+        };
+
         async function loadTags() {
-            showTagsLoadingState();
-            
             try {
-                const response = await fetch('/api/tags');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                tags = await response.json();
+                tags = await loadOrganizerItems(tagSectionEls, '/api/tags');
                 displayTags();
             } catch (error) {
                 console.error('Error loading tags:', error);
-                showTagsErrorState(error.message);
+                setOrganizerState(tagSectionEls, 'error', error.message);
             }
         }
 
-        // Show loading state
-        function showTagsLoadingState() {
-            tagsLoading.classList.remove('hidden');
-            tagsError.classList.add('hidden');
-            tagsEmpty.classList.add('hidden');
-            tagsGrid.classList.add('hidden');
-        }
-
-        // Show error state
-        function showTagsErrorState(message) {
-            tagsLoading.classList.add('hidden');
-            tagsError.classList.remove('hidden');
-            tagsEmpty.classList.add('hidden');
-            tagsGrid.classList.add('hidden');
-            tagsErrorMessage.textContent = message;
-        }
-
-        // Display tags
         function displayTags() {
-            tagsLoading.classList.add('hidden');
-            tagsError.classList.add('hidden');
-            
-            if (tags.length === 0) {
-                tagsEmpty.classList.remove('hidden');
-                tagsGrid.classList.add('hidden');
-            } else {
-                tagsEmpty.classList.add('hidden');
-                tagsGrid.classList.remove('hidden');
-                renderTagsGrid();
-            }
-        }
-
-        // Render tags grid
-        function renderTagsGrid() {
-            tagsGrid.innerHTML = '';
-            
-            tags.forEach(tag => {
-                const tagCard = createTagCard(tag);
-                tagsGrid.appendChild(tagCard);
-            });
+            displayOrganizer(tagSectionEls, tags, createTagCard);
         }
 
         // Create tag card element
@@ -5543,8 +5575,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // re-run the tab indicators once they settle to catch the
             // Summary tab's template selections.
             Promise.allSettled([
-                loadNamingTemplatesForTagModal(),
-                loadExportTemplatesForTagModal()
+                loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)'),
+                loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', 'No template (use user default)', { markDefault: true })
             ]).then(refreshTagTabIndicators);
 
             // Reset to first tab
@@ -5560,77 +5592,34 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
 
         // Load naming templates for the tag modal dropdown
-        async function loadNamingTemplatesForTagModal() {
-            const select = document.getElementById('tagNamingTemplate');
+        // Shared template-dropdown filler for the tag/folder modals.
+        // opts.selected sets an explicit value (folder edit); otherwise the
+        // select's current value is preserved (tag modal repopulation).
+        async function loadTemplateOptionsInto(selectId, url, defaultLabel, opts = {}) {
+            const select = document.getElementById(selectId);
             if (!select) return;
-
             try {
-                const response = await fetch('/api/naming-templates');
+                const response = await fetch(url);
                 if (!response.ok) return;
-
                 const templates = await response.json();
-
-                // Preserve current selection
-                const currentValue = select.value;
-
-                // Clear all options except the first one
-                select.innerHTML = '<option value="">No template (use user default or AI title)</option>';
-
-                // Add template options
-                templates.forEach(template => {
-                    const option = document.createElement('option');
-                    option.value = template.id;
-                    option.textContent = template.name;
-                    if (template.description) {
-                        option.title = template.description;
-                    }
-                    select.appendChild(option);
-                });
-
-                // Restore selection
-                if (currentValue) {
-                    select.value = currentValue;
-                }
-            } catch (error) {
-                console.error('Error loading naming templates for tag modal:', error);
-            }
-        }
-
-        // Load export templates for the tag modal dropdown
-        async function loadExportTemplatesForTagModal() {
-            const select = document.getElementById('tagExportTemplate');
-            if (!select) return;
-
-            try {
-                const response = await fetch('/api/export-templates');
-                if (!response.ok) return;
-
-                const templates = await response.json();
-
-                // Preserve current selection
-                const currentValue = select.value;
-
-                // Clear all options and add default
+                const previous = select.value;
                 select.textContent = '';
                 const defaultOpt = document.createElement('option');
                 defaultOpt.value = '';
-                defaultOpt.textContent = 'No template (use user default)';
+                defaultOpt.textContent = defaultLabel;
                 select.appendChild(defaultOpt);
-
-                // Add template options
-                templates.forEach(template => {
+                templates.forEach((template) => {
                     const option = document.createElement('option');
                     option.value = template.id;
-                    option.textContent = template.name + (template.is_default ? ' (Default)' : '');
+                    option.textContent = template.name + (opts.markDefault && template.is_default ? ' (Default)' : '');
+                    if (template.description) option.title = template.description;
                     select.appendChild(option);
                 });
-
-                // Restore selection
-                if (currentValue) {
-                    select.value = currentValue;
-                }
+                const wanted = opts.selected !== undefined && opts.selected !== null
+                    ? String(opts.selected) : previous;
+                if (wanted) select.value = wanted;
             } catch (error) {
-                console.error('Error loading export templates for tag modal:', error);
+                console.error('Error loading template options for ' + selectId + ':', error);
             }
         }
 
@@ -5805,8 +5794,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const config = await response.json();
                     foldersEnabled = config.enable_folders === true;
 
-                    if (foldersEnabled && tabFolders) {
-                        tabFolders.style.display = '';
+                    if (foldersEnabled) {
+                        const fSub = document.getElementById('subtab-org-folders');
+                        if (fSub) fSub.style.display = '';
+                        // A #folders deep link may have landed before this
+                        // config arrived and been bounced to Tags; honour it.
+                        if (window.location.hash === '#folders'
+                            && !document.getElementById('content-organize').classList.contains('hidden')
+                            && window.setOrganizeSubtab) {
+                            window.setOrganizeSubtab('folders');
+                        }
                     }
 
                     // Show export templates sub-tab if auto-export is enabled
@@ -5937,67 +5934,27 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         // Load folders from API
+        const folderSectionEls = {
+            loading: foldersLoading, error: foldersError, errorMessage: foldersErrorMessage,
+            empty: foldersEmpty, grid: foldersGrid,
+        };
+
         async function loadFolders() {
             if (!foldersEnabled) {
-                if (foldersError) {
-                    foldersErrorMessage.textContent = 'Folders feature is not enabled';
-                    foldersError.classList.remove('hidden');
-                }
+                setOrganizerState(folderSectionEls, 'error', 'Folders feature is not enabled');
                 return;
             }
-            showFoldersLoadingState();
-
             try {
-                const response = await fetch('/api/folders');
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-                }
-
-                folders = await response.json();
+                folders = await loadOrganizerItems(folderSectionEls, '/api/folders');
                 displayFolders();
             } catch (error) {
                 console.error('Error loading folders:', error);
-                showFoldersErrorState(error.message);
+                setOrganizerState(folderSectionEls, 'error', error.message);
             }
-        }
-
-        function showFoldersLoadingState() {
-            if (foldersLoading) foldersLoading.classList.remove('hidden');
-            if (foldersError) foldersError.classList.add('hidden');
-            if (foldersEmpty) foldersEmpty.classList.add('hidden');
-            if (foldersGrid) foldersGrid.classList.add('hidden');
-        }
-
-        function showFoldersErrorState(message) {
-            if (foldersLoading) foldersLoading.classList.add('hidden');
-            if (foldersError) foldersError.classList.remove('hidden');
-            if (foldersEmpty) foldersEmpty.classList.add('hidden');
-            if (foldersGrid) foldersGrid.classList.add('hidden');
-            if (foldersErrorMessage) foldersErrorMessage.textContent = message;
         }
 
         function displayFolders() {
-            if (foldersLoading) foldersLoading.classList.add('hidden');
-            if (foldersError) foldersError.classList.add('hidden');
-
-            if (folders.length === 0) {
-                if (foldersEmpty) foldersEmpty.classList.remove('hidden');
-                if (foldersGrid) foldersGrid.classList.add('hidden');
-            } else {
-                if (foldersEmpty) foldersEmpty.classList.add('hidden');
-                if (foldersGrid) foldersGrid.classList.remove('hidden');
-                renderFoldersGrid();
-            }
-        }
-
-        function renderFoldersGrid() {
-            if (!foldersGrid) return;
-            foldersGrid.textContent = '';
-
-            folders.forEach(folder => {
-                const folderCard = createFolderCard(folder);
-                foldersGrid.appendChild(folderCard);
-            });
+            displayOrganizer(folderSectionEls, folders, createFolderCard);
         }
 
         function createFolderCard(folder) {
@@ -6273,8 +6230,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // value), then re-run tab indicators so the Summary tab's
             // template selections are reflected once they settle.
             Promise.allSettled([
-                loadNamingTemplatesForFolderModal(folder),
-                loadExportTemplatesForFolderModal(folder)
+                loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)', { selected: (folder && folder.naming_template_id) || '' }),
+                loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', 'No template (use user default)', { selected: (folder && folder.export_template_id) || '', markDefault: true })
             ]).then(refreshFolderTabIndicators);
 
             // Reset to first tab
@@ -6289,67 +6246,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
 
         // Load naming templates for folder modal
-        async function loadNamingTemplatesForFolderModal(folder) {
-            const select = document.getElementById('folderNamingTemplate');
-            if (!select) return;
-
-            try {
-                const response = await fetch('/api/naming-templates');
-                if (response.ok) {
-                    const templates = await response.json();
-                    select.textContent = '';
-                    const defaultOpt = document.createElement('option');
-                    defaultOpt.value = '';
-                    defaultOpt.textContent = 'No template (use user default or AI title)';
-                    select.appendChild(defaultOpt);
-                    templates.forEach(function(t) {
-                        const option = document.createElement('option');
-                        option.value = t.id;
-                        option.textContent = t.name;
-                        select.appendChild(option);
-                    });
-
-                    // Set value if editing
-                    if (folder && folder.naming_template_id) {
-                        select.value = folder.naming_template_id;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading naming templates:', error);
-            }
-        }
-
-        // Load export templates for folder modal
-        async function loadExportTemplatesForFolderModal(folder) {
-            const select = document.getElementById('folderExportTemplate');
-            if (!select) return;
-
-            try {
-                const response = await fetch('/api/export-templates');
-                if (response.ok) {
-                    const templates = await response.json();
-                    select.textContent = '';
-                    const defaultOpt = document.createElement('option');
-                    defaultOpt.value = '';
-                    defaultOpt.textContent = 'No template (use user default)';
-                    select.appendChild(defaultOpt);
-                    templates.forEach(function(t) {
-                        const option = document.createElement('option');
-                        option.value = t.id;
-                        option.textContent = t.name + (t.is_default ? ' (Default)' : '');
-                        select.appendChild(option);
-                    });
-
-                    // Set value if editing
-                    if (folder && folder.export_template_id) {
-                        select.value = folder.export_template_id;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading export templates:', error);
-            }
-        }
-
         // Update folder group settings visibility
         function updateFolderGroupSettingsVisibility() {
             const folderGroupId = document.getElementById('folderGroupId');
@@ -6657,6 +6553,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             showPromptsTab();
         } else if (urlHash === 'tags') {
             showTagsTab();
+        } else if (urlHash === 'folders') {
+            showFoldersTab();
         } else if (urlHash === 'shares') {
             showSharesTab();
         } else if (urlHash === 'about') {
