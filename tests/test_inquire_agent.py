@@ -278,6 +278,92 @@ def test_search_tool_scopes_and_shapes(data, monkeypatch):
         assert hit['recording_id'] == data['r1'] and hit['time'] == '1:03'
 
 
+def test_search_tool_modes_and_keyword_fallback(data, monkeypatch):
+    with app.app_context():
+        r1 = db.session.get(Recording, data['r1'])
+        kw_chunk = NS(id=990001, recording_id=r1.id, recording=r1, speaker_name='Bob',
+                      start_time=10.0, chunk_index=1, content='the MR rate improved')
+        sem_calls, kw_calls = [], []
+        monkeypatch.setattr(ia, 'semantic_search_chunks',
+                            lambda uid, q, f, k: sem_calls.append(q) or [])
+        monkeypatch.setattr(ia, 'basic_text_search_chunks',
+                            lambda uid, q, f, k: kw_calls.append(q) or [(kw_chunk, 0.9)])
+        ctx = ia.ToolContext(data['owner'], {}, {data['r1']}, {'summaries': True, 'notes': False})
+
+        # auto: semantic empty -> keyword fallback kicks in
+        res = ia.tool_search_transcripts(ctx, {'query': 'MR rate'})
+        assert res['search_type'] == 'semantic+keyword'
+        assert res['result_count'] == 1 and sem_calls and kw_calls
+
+        # keyword mode: semantic never called
+        sem_calls.clear(); kw_calls.clear()
+        res = ia.tool_search_transcripts(ctx, {'query': 'MR rate', 'mode': 'keyword'})
+        assert res['search_type'] == 'keyword'
+        assert not sem_calls and kw_calls
+
+        # semantic mode: no fallback even when empty
+        sem_calls.clear(); kw_calls.clear()
+        res = ia.tool_search_transcripts(ctx, {'query': 'MR rate', 'mode': 'semantic'})
+        assert res['search_type'] == 'semantic' and res['result_count'] == 0
+        assert sem_calls and not kw_calls
+
+
+def test_basic_text_search_ranks_before_limiting(data):
+    """The pre-fix code applied LIMIT before ranking, so a rare phrase in a
+    high-id chunk lost to arbitrary low-id chunks matching one common word."""
+    from src.services.embeddings import basic_text_search_chunks
+    from src.models import TranscriptChunk
+    with app.app_context():
+        made = []
+        # 60 decoys that only match the common word "rate", created FIRST so
+        # they occupy the low-id region the old code's LIMIT would grab.
+        for i in range(60):
+            c = TranscriptChunk(recording_id=data['r2'], user_id=data['owner'],
+                                chunk_index=1000 + i,
+                                content=f'the interest rate discussion item {i}')
+            db.session.add(c)
+            made.append(c)
+        target = TranscriptChunk(recording_id=data['r1'], user_id=data['owner'],
+                                 chunk_index=2000,
+                                 content='we reviewed the MR rate for the SEC team')
+        db.session.add(target)
+        made.append(target)
+        db.session.commit()
+        try:
+            results = basic_text_search_chunks(data['owner'], 'MR rate', None, 8)
+            assert results, 'expected matches'
+            top_chunk, top_score = results[0]
+            assert top_chunk.id == target.id, 'phrase match must outrank single-word decoys'
+            assert top_score > results[-1][1] or len(results) == 1
+        finally:
+            for c in made:
+                db.session.delete(c)
+            db.session.commit()
+
+
+def test_api_embed_cooldown(monkeypatch):
+    from src.services import embeddings as emb
+    with app.app_context():
+        calls = []
+        class BoomClient:
+            class embeddings:
+                @staticmethod
+                def create(**kw):
+                    calls.append(1)
+                    raise RuntimeError('auth failure')  # non-transient: fails fast
+        monkeypatch.setattr(emb, 'get_embedding_api_client', lambda: BoomClient)
+        emb._api_embed_down_until = 0
+        try:
+            assert emb._api_embed(['x']) == []
+            assert len(calls) == 1
+            assert emb._api_embed_down_until > 0
+            # During cooldown the client is not touched at all
+            assert emb._api_embed(['y']) == []
+            assert len(calls) == 1
+        finally:
+            emb._api_embed_down_until = 0
+
+
 def test_truncation_marker():
     text = 'x' * 100000
     out = ia._truncate_to_tokens(text, 100, 'More available.')

@@ -152,9 +152,14 @@
             border-radius: 9999px;
             padding: 0 0.55em;
             font-size: 0.78em;
-            line-height: 1.6;
+            line-height: 1.55;
             text-decoration: none;
-            vertical-align: baseline;
+            /* Sit on the text line instead of riding above it: an
+               inline-block chip aligned to baseline extends mostly upward
+               because of its padding, so nudge it down to visually centre
+               against the surrounding line. */
+            vertical-align: -0.35em;
+            margin: 0 0.1em;
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;

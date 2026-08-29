@@ -27,7 +27,11 @@ from datetime import datetime, time as dtime
 
 from src.database import db
 from src.models import Recording, RecordingTag, Tag, User
-from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks
+from src.services.embeddings import (
+    get_accessible_recording_ids,
+    semantic_search_chunks,
+    basic_text_search_chunks,
+)
 from src.services.llm import call_chat_completion, TokenBudgetExceeded, get_chat_config
 
 # ---------------------------------------------------------------------------
@@ -225,7 +229,10 @@ def tool_search_transcripts(ctx, args):
     query = (args.get('query') or '').strip()
     if not query:
         return {'error': "query is required"}
-    top_k = min(max(int(args.get('top_k', 8) or 8), 1), 20)
+    top_k = min(max(int(args.get('top_k', 8) or 8), 1), 40)
+    mode = str(args.get('mode', 'auto') or 'auto').lower()
+    if mode not in ('auto', 'semantic', 'keyword'):
+        mode = 'auto'
 
     # Narrow within the UI filters: tool args can only tighten, never widen.
     filters = dict(ctx.filters)
@@ -245,9 +252,25 @@ def tool_search_transcripts(ctx, args):
             except ValueError:
                 return {'error': f"{arg} must be an ISO date (YYYY-MM-DD)"}
 
-    results = semantic_search_chunks(ctx.user_id, query, filters, top_k)
+    if mode == 'keyword':
+        results = basic_text_search_chunks(ctx.user_id, query, filters, top_k)
+        search_type = 'keyword'
+    else:
+        results = semantic_search_chunks(ctx.user_id, query, filters, top_k)
+        search_type = 'semantic'
+        # Semantic misses are not proof of absence: exact terms, acronyms and
+        # rare tokens ("MR rate") can rank poorly in embedding space (and the
+        # embedding API may be degraded). In auto mode, back an empty or thin
+        # semantic result with a literal keyword pass over the same scope.
+        if mode == 'auto' and len(results) < 2:
+            keyword_results = basic_text_search_chunks(ctx.user_id, query, filters, top_k)
+            if keyword_results:
+                seen = {c.id for c, _s in results if c}
+                results = list(results) + [(c, s) for c, s in keyword_results if c and c.id not in seen]
+                search_type = 'semantic+keyword'
+
     hits = []
-    for chunk, similarity in results:
+    for chunk, similarity in results[:top_k]:
         if not chunk or not chunk.recording or chunk.recording_id not in ctx.allowed_ids:
             continue
         hits.append({
@@ -260,7 +283,7 @@ def tool_search_transcripts(ctx, args):
             'snippet': chunk.content,
             'similarity': round(float(similarity), 3),
         })
-    return {'query': query, 'result_count': len(hits), 'results': hits}
+    return {'query': query, 'search_type': search_type, 'result_count': len(hits), 'results': hits}
 
 
 def tool_list_recordings(ctx, args):
@@ -384,13 +407,19 @@ def build_toolbox(availability):
     """
     tools = [
         ('search_transcripts', tool_search_transcripts,
-         'Semantic search across the transcripts of the recordings in scope. '
-         'Returns matching snippets with recording ids, titles, speakers and timestamps. '
-         'Use short, content-bearing queries; call multiple times with different phrasings if needed.',
+         'Search the transcripts of the recordings in scope. Default mode combines semantic search '
+         'with a literal keyword fallback when semantic results are thin. Returns matching snippets '
+         'with recording ids, titles, speakers and timestamps. Use short, content-bearing queries; '
+         'call multiple times with different phrasings. For exact terms, acronyms or jargon '
+         '(project names, metric names), also try mode="keyword" with just that term. Raise top_k '
+         'when surveying a topic broadly.',
          {'type': 'object',
           'properties': {
               'query': {'type': 'string', 'description': 'Search phrase'},
-              'top_k': {'type': 'integer', 'description': 'Max results, 1-20 (default 8)'},
+              'top_k': {'type': 'integer', 'description': 'Max results, 1-40 (default 8)'},
+              'mode': {'type': 'string', 'enum': ['auto', 'semantic', 'keyword'],
+                       'description': 'auto (default): semantic with keyword fallback; '
+                                      'keyword: literal word/phrase matching only'},
               'speakers': {'type': 'array', 'items': {'type': 'string'},
                            'description': 'Restrict to recordings whose participants include these names'},
               **_DATE_PROPS,
@@ -482,7 +511,11 @@ def _activity_result(tool, result):
         if not n:
             return 'empty', 'no matches'
         recs = {r['recording_id'] for r in result.get('results', [])}
-        return 'done', f"{n} match{'es' if n != 1 else ''} in {len(recs)} recording{'s' if len(recs) != 1 else ''}"
+        detail = f"{n} match{'es' if n != 1 else ''} in {len(recs)} recording{'s' if len(recs) != 1 else ''}"
+        stype = result.get('search_type')
+        if stype and stype != 'semantic':
+            detail += f" ({stype.replace('semantic+keyword', 'incl. keyword')})"
+        return 'done', detail
     if tool == 'list_recordings':
         return 'done', f"{result.get('returned', 0)} of {result.get('total_in_scope', 0)} recordings"
     if tool == 'get_transcript':

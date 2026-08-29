@@ -3,6 +3,7 @@ Embedding generation and semantic search services.
 """
 
 import os
+import re
 import time
 import random
 import numpy as np
@@ -118,6 +119,10 @@ def get_embedding_api_client():
 
 
 _API_EMBED_MAX_ATTEMPTS = int(os.environ.get('EMBEDDING_API_MAX_RETRIES', '3'))
+# After a full retry cycle fails, skip the embedding API for this long so
+# every search doesn't pay the retry latency while the provider is down.
+_API_EMBED_COOLDOWN_SECONDS = int(os.environ.get('EMBEDDING_API_COOLDOWN_SECONDS', '120'))
+_api_embed_down_until = 0.0
 _API_EMBED_BASE_BACKOFF_SECONDS = float(os.environ.get('EMBEDDING_API_BACKOFF_SECONDS', '1.5'))
 
 # Substrings of error messages that suggest the failure is transient and
@@ -167,10 +172,19 @@ def _api_embed(texts, user_id=None):
     When ``user_id`` is provided and the response includes a ``usage``
     block, record the call against the daily token-usage aggregate.
     """
-    global _dimensions_rejected
+    global _dimensions_rejected, _api_embed_down_until
 
     client = get_embedding_api_client()
     if client is None or not texts:
+        return []
+
+    # Circuit breaker: after a full retry cycle fails, skip the API entirely
+    # for a cooldown window instead of burning ~9s of retries on every call
+    # (searches fall back to keyword matching immediately; indexing fails
+    # fast with the usual empty-list sentinel and is retried later).
+    if time.time() < _api_embed_down_until:
+        current_app.logger.debug(
+            "Embedding API in failure cooldown; skipping call and using fallback")
         return []
 
     # encoding_format='float' explicitly: OpenAI SDK v2 defaults to base64,
@@ -208,6 +222,7 @@ def _api_embed(texts, user_id=None):
                 except Exception as track_err:
                     current_app.logger.warning(f"Failed to record embedding usage: {track_err}")
 
+            _api_embed_down_until = 0
             return [np.array(d.embedding, dtype=np.float32) for d in response.data]
 
         except Exception as e:
@@ -228,6 +243,7 @@ def _api_embed(texts, user_id=None):
                     f"Embedding API call failed (attempt {attempt}/{_API_EMBED_MAX_ATTEMPTS}, "
                     f"transient={transient}): {e}"
                 )
+                _api_embed_down_until = time.time() + _API_EMBED_COOLDOWN_SECONDS
                 return []
             # Exponential backoff with light jitter so concurrent retries
             # do not all hit the provider at the same instant.
@@ -521,7 +537,7 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
             query_words = [w for w in query.lower().split() if len(w) > 1]
 
         if query_words:
-            from sqlalchemy import or_, func, case, literal
+            from sqlalchemy import or_, case
 
             # Filter: match ANY keyword (OR) to get candidates
             text_conditions = []
@@ -529,15 +545,45 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
                 text_conditions.append(TranscriptChunk.content.ilike(f'%{word}%'))
             chunks_query = chunks_query.filter(or_(*text_conditions))
 
-            # Fetch more candidates than needed so we can rank them
-            chunks = chunks_query.limit(top_k * 5).all()
+            # Rank IN SQL before limiting. The previous code applied
+            # LIMIT before any ranking, so with a common word in the query
+            # ("rate", "team") the candidate set filled up with arbitrary
+            # low-id chunks and the actually-relevant chunks never entered
+            # the ranking at all. Score = number of matched words, with the
+            # full phrase counting double so exact-phrase hits always
+            # outrank scattered single-word matches.
+            score_expr = sum(
+                case((TranscriptChunk.content.ilike(f'%{word}%'), 1), else_=0)
+                for word in query_words
+            )
+            phrase = query.lower().strip()
+            if len(query_words) > 1 and len(phrase) >= 5:
+                score_expr = score_expr + case(
+                    (TranscriptChunk.content.ilike(f'%{phrase}%'), len(query_words)),
+                    else_=0,
+                )
+            chunks = (chunks_query
+                      .order_by(score_expr.desc(), TranscriptChunk.id.desc())
+                      .limit(top_k * 5)
+                      .all())
 
-            # Rank by how many query words each chunk matches
+            # Refine in Python over the now well-chosen candidates: exact
+            # word-boundary matches beat substring matches ("rate" inside
+            # "separate"), and phrase presence keeps its bonus.
             scored_chunks = []
             for chunk in chunks:
                 content_lower = chunk.content.lower()
-                match_count = sum(1 for word in query_words if word in content_lower)
-                score = match_count / len(query_words)  # 0.0 to 1.0
+                match_count = 0.0
+                for word in query_words:
+                    if re.search(r'\b' + re.escape(word) + r'\b', content_lower):
+                        match_count += 1.0
+                    elif word in content_lower:
+                        match_count += 0.5
+                if len(query_words) > 1 and phrase in content_lower:
+                    match_count += len(query_words)
+                # Full word-boundary matches on every word score 1.0; the
+                # phrase bonus only breaks ties above, capped back to 1.0.
+                score = min(match_count / len(query_words), 1.0)
                 scored_chunks.append((chunk, score))
 
             # Sort by score descending, take top_k
