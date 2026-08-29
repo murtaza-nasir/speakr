@@ -199,6 +199,8 @@ def _fmt_time(seconds):
     if seconds is None:
         return None
     seconds = int(seconds)
+    if seconds >= 3600:
+        return f"{seconds // 3600}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
@@ -567,8 +569,10 @@ Never invent content that is not in the tool results; say clearly when something
 {tool_mode_prompt_block}When you give your final answer:
 - Use clear markdown (headings per recording where it helps, bullets, **bold** speaker names).
 - Cite sources inline as markdown links. When the supporting search result has a time and \
-seek_seconds, link directly to that moment: [Title @ m:ss](/recordings/<recording_id>?t=<seek_seconds>) \
-— for example [Weekly Sync @ 12:34](/recordings/73?t=754). Without a timestamp, link the recording: \
+seek_seconds, link directly to that moment using the result's `time` value verbatim: \
+[Title @ time](/recordings/<recording_id>?t=<seek_seconds>) — for example \
+[Weekly Sync @ 12:34](/recordings/73?t=754) or [Board Meeting @ 1:31:03](/recordings/80?t=5463). \
+Without a timestamp, link the recording: \
 [Title](/recordings/<recording_id>). Cite the recording each substantive point came from, at most \
 one citation per bullet or paragraph. These links open the recording and start playback at that \
 moment. The interface renders citations as compact numbered markers with a source list at the end, \

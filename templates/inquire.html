@@ -146,9 +146,12 @@
            as references rather than inline hyperlinks. */
         .chat-message .prose a[href^="/recordings/"] {
             display: inline-block;
-            background-color: var(--bg-tertiary);
+            /* Theme accent tint (same pairing as selected options/highlights)
+               so the chip contrasts slightly with the bubble in every color
+               scheme, light and dark. */
+            background-color: var(--bg-accent);
             color: var(--text-accent);
-            border: 1px solid var(--border-secondary);
+            border: 1px solid var(--border-accent, var(--border-secondary));
             border-radius: 9999px;
             padding: 0 0.55em;
             font-size: 0.78em;

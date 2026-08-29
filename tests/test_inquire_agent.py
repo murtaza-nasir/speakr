@@ -365,6 +365,14 @@ def test_api_embed_cooldown(monkeypatch):
             emb._api_embed_down_until = 0
 
 
+def test_fmt_time_shows_hours_past_sixty_minutes():
+    assert ia._fmt_time(63) == '1:03'
+    assert ia._fmt_time(3599) == '59:59'
+    assert ia._fmt_time(3600) == '1:00:00'
+    assert ia._fmt_time(5463) == '1:31:03'
+    assert ia._fmt_time(None) is None
+
+
 def test_truncation_marker():
     text = 'x' * 100000
     out = ia._truncate_to_tokens(text, 100, 'More available.')
