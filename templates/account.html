@@ -4843,11 +4843,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </span>`);
             }
 
-            // Recording count badge (neutral)
+            // Recording count badge (neutral, same box as the colored badges)
             const count = item.recording_count || 0;
-            metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-secondary)]" title="${count} recording${count !== 1 ? 's' : ''}">
+            const countLabel = `${count} recording${count !== 1 ? 's' : ''}`;
+            metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-muted)]" title="${countLabel}">
                 <i class="fas fa-microphone"></i>
-                <span>${count}</span>
+                <span>${countLabel}</span>
             </span>`);
 
             // Custom prompt indicator
