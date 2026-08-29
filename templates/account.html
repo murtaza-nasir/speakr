@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/asr-languages.js') }}"></script>
     <script src="{{ url_for('static', filename='js/organizer-modals.js') }}"></script>
 
     <!-- Loading overlay to prevent FOUC -->
@@ -121,6 +122,10 @@
                 // current locale's alphabetical order. Values stay intact so
                 // already-saved user preferences continue to resolve.
                 sortLanguageDropdowns();
+
+                // Relocalize the tag/folder modals' language dropdowns too
+                // (their initial population can predate i18n.init).
+                window.SpeakrOrganizer?.populateLanguageSelects?.();
             }
         }
 
@@ -5043,9 +5048,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
 
                 // Populate ASR settings
-                if (document.getElementById('tagLanguage')) {
-                    document.getElementById('tagLanguage').value = tag.default_language || '';
-                }
+                window.SpeakrOrganizer.setLanguageValue('tagLanguage', tag.default_language);
                 if (document.getElementById('tagMinSpeakers')) {
                     document.getElementById('tagMinSpeakers').value = tag.default_min_speakers || '';
                 }
@@ -5519,8 +5522,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('folderName').value = folder.name;
                 document.getElementById('folderColor').value = folder.color;
                 document.getElementById('folderCustomPrompt').value = folder.custom_prompt || '';
-                var langField = document.getElementById('folderLanguage');
-                if (langField) langField.value = folder.default_language || '';
+                window.SpeakrOrganizer.setLanguageValue('folderLanguage', folder.default_language);
                 var minField = document.getElementById('folderMinSpeakers');
                 if (minField) minField.value = folder.default_min_speakers || '';
                 var maxField = document.getElementById('folderMaxSpeakers');

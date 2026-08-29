@@ -213,6 +213,9 @@
                 if (translated && translated !== key) el.placeholder = translated;
             });
         }
+        // Relocalize the language dropdowns now that i18n is ready (the
+        // initial DOMContentLoaded population can predate i18n.init).
+        populateLanguageSelects();
 
         // Modal tab strips (the account page binds its own copies of these).
         document.getElementById('tagModalTabs')?.addEventListener('click', (e) => {
@@ -376,12 +379,48 @@
         setTimeout(() => document.getElementById('folderName')?.focus(), 50);
     }
 
+    // ------------------------------------------------------------------
+    // Default Language selects: localized dropdown instead of free-text
+    // codes, fed from the shared list (asr-languages.js) on both pages.
+    // ------------------------------------------------------------------
+
+    function populateLanguageSelects() {
+        if (!window.SpeakrASRLanguages) return;
+        const emptyLabel = tr('form.autoDetect', 'Auto detect');
+        window.SpeakrASRLanguages.populateSelect(document.getElementById('tagLanguage'), emptyLabel);
+        window.SpeakrASRLanguages.populateSelect(document.getElementById('folderLanguage'), emptyLabel);
+    }
+
+    /** Select a stored language code, keeping unknown legacy codes intact. */
+    function setLanguageValue(selectId, value) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        if (window.SpeakrASRLanguages) {
+            if (!select.options.length) populateLanguageSelects();
+            window.SpeakrASRLanguages.setValue(select, value);
+        } else {
+            select.value = value || '';
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', populateLanguageSelects);
+    } else {
+        populateLanguageSelects();
+    }
+    // Repopulate with relocalized labels once i18n resolves the locale
+    // (initial population can run before i18n.init finishes). Values are
+    // preserved across repopulation.
+    window.addEventListener('localeChanged', populateLanguageSelects);
+
     window.SpeakrOrganizer = {
         loadTemplateOptionsInto,
         buildTagPayload,
         buildFolderPayload,
         openTagCreate,
         openFolderCreate,
+        setLanguageValue,
+        populateLanguageSelects,
     };
     // The account page's inline script calls this by its bare name.
     window.loadTemplateOptionsInto = loadTemplateOptionsInto;

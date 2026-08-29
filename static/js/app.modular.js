@@ -2814,54 +2814,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ];
             });
 
-            // Language options for ASR: the full Whisper language set (the
-            // old hardcoded 11-language list locked out every other
-            // supported language, issue #359). Labels come from
-            // Intl.DisplayNames so they render localized without needing
-            // translation keys for ~100 languages.
-            const WHISPER_LANGUAGE_CODES = [
-                'en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca',
-                'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'he', 'uk', 'el', 'ms',
-                'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la',
-                'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn',
-                'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw',
-                'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be',
-                'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn',
-                'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha',
-                'ba', 'jw', 'su', 'yue'
-            ];
-            // Codes Intl.DisplayNames can't resolve (or resolves under a
-            // different ISO tag than Whisper uses).
-            const WHISPER_LANGUAGE_LABEL_OVERRIDES = {
-                jw: 'jv',   // Whisper uses 'jw' for Javanese (ISO is 'jv')
-            };
-            const WHISPER_LANGUAGE_FALLBACK_NAMES = {
-                haw: 'Hawaiian',
-                yue: 'Cantonese',
-                ba: 'Bashkir',   // some ICU builds return the bare code
-                bo: 'Tibetan',
-            };
+            // Language options for ASR: the full Whisper language set with
+            // localized labels, from the shared asr-languages.js module
+            // (also feeds the tag/folder modals' Default Language selects).
             const languageOptions = computed(() => {
-                const uiLocale = (window.i18n && window.i18n.currentLocale) || 'en';
-                let displayNames = null;
-                try {
-                    displayNames = new Intl.DisplayNames([uiLocale, 'en'], { type: 'language' });
-                } catch (e) { /* very old browsers: fall back to raw codes */ }
-                const options = WHISPER_LANGUAGE_CODES.map(code => {
-                    const lookup = WHISPER_LANGUAGE_LABEL_OVERRIDES[code] || code;
-                    let label = null;
-                    if (displayNames) {
-                        try {
-                            const name = displayNames.of(lookup);
-                            // DisplayNames echoes back unknown codes; treat that as a miss
-                            if (name && name !== lookup) label = name;
-                        } catch (e) { /* invalid tag for this engine */ }
-                    }
-                    if (!label) label = WHISPER_LANGUAGE_FALLBACK_NAMES[code] || code;
-                    label = label.charAt(0).toLocaleUpperCase(uiLocale) + label.slice(1);
-                    return { value: code, label };
-                });
-                options.sort((a, b) => a.label.localeCompare(b.label, uiLocale));
+                const options = window.SpeakrASRLanguages
+                    ? window.SpeakrASRLanguages.buildOptions((window.i18n && window.i18n.currentLocale) || 'en')
+                    : [];
                 return [{ value: '', label: t('form.autoDetect') }, ...options];
             });
 
