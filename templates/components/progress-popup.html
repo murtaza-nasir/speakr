@@ -14,7 +14,11 @@
        player / nav — never obscures content. -->
 <div v-if="showProcessingPopup && !progressPopupClosed && !(isMobileScreen && !isSidebarCollapsed)"
      :class="[
-         'progress-popup fixed z-40 transition-all duration-300',
+         {# z-50 ties with the sidebar and the modal overlays; DOM order
+            settles the ties (sidebar < this popup < modals, per the include
+            order in index.html), so the popup sits above the sidebar but
+            can never cover a modal's action footer. #}
+         'progress-popup fixed z-50 transition-all duration-300',
          progressPopupMinimized ? 'minimized' : ''
      ]">
     <div class="progress-popup__card bg-[var(--bg-secondary)] border border-[var(--bg-accent)] shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">

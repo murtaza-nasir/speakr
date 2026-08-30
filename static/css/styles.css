@@ -443,7 +443,10 @@ main {
     padding-right: 6px; /* Space for scrollbar */
     min-height: 0; /* Added for robust flex scrolling */
 }
-.progress-popup { position: fixed; bottom: 1rem; left: 1rem; z-index: 100; transition: all 0.3s ease-in-out; min-width: 300px; max-width: 400px; border-radius: 12px; overflow: hidden; }
+/* z-index comes from the template's utility class (z-50; DOM-order ties
+   with sidebar/modals) — do not set one here, a higher value would let the
+   popup cover modal footers again. */
+.progress-popup { position: fixed; bottom: 1rem; left: 1rem; transition: all 0.3s ease-in-out; min-width: 300px; max-width: 400px; border-radius: 12px; overflow: hidden; }
 .progress-popup.minimized { transform: translateY(calc(100% - 45px)); }
 .progress-list-item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; }
 .progress-list-item .truncate { 
