@@ -891,7 +891,7 @@
     "defaultTranscriptionModelHelp": "Sobrescreve o modelo de transcrição usado para gravações com esta tag ou pasta.",
     "transcriptionModel": "Modelo de transcrição",
     "useResolvedDefault": "(usar padrão de tag/pasta/global)",
-    "newFolderOption": "Nova pasta…",
+    "newFolderOption": "Nova pasta",
     "speakers": "Falantes",
     "speakerModeRange": "Intervalo",
     "speakerModeExact": "Exato",

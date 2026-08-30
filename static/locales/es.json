@@ -891,7 +891,7 @@
     "useResolvedDefault": "(usar valor por defecto de etiqueta/carpeta/global)",
     "defaultTranscriptionModel": "Modelo de transcripción por defecto",
     "defaultTranscriptionModelHelp": "Sobrescribe el modelo de transcripción usado para grabaciones con esta etiqueta o carpeta.",
-    "newFolderOption": "Nueva carpeta…",
+    "newFolderOption": "Nueva carpeta",
     "speakers": "Hablantes",
     "speakerModeRange": "Rango",
     "speakerModeExact": "Exacto",

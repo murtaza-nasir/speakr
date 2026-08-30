@@ -891,7 +891,7 @@
     "useResolvedDefault": "(использовать стандарт тега/папки/глобальный)",
     "defaultTranscriptionModel": "Модель транскрипции по умолчанию",
     "defaultTranscriptionModelHelp": "Переопределяет модель транскрипции для записей с этим тегом или папкой.",
-    "newFolderOption": "Новая папка…",
+    "newFolderOption": "Новая папка",
     "speakers": "Говорящие",
     "speakerModeRange": "Диапазон",
     "speakerModeExact": "Точно",
