@@ -1,0 +1,173 @@
+{#
+  Shared folder + tag picker for the upload dialog AND the recording view's
+  Upload Settings. Both render inside the same Vue app scope and bind the
+  same state (selectedFolderId, availableTags, selectedTagIds,
+  uploadTagSearchFilter, drag handlers, createTagFromUploadSearch,
+  createFolderFromUpload), so one include serves both and the two surfaces
+  can no longer drift apart.
+#}
+<!-- Folder Selection (only shown if folders are enabled) -->
+<div v-if="foldersEnabled" class="mt-4">
+    <div class="flex items-center justify-between mb-2">
+        <label class="block text-sm font-medium text-[var(--text-secondary)]">
+            <i class="fas fa-folder mr-1"
+               :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+            ${ t('form.folder') }
+        </label>
+        <button @click="createFolderFromUpload"
+                class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-[var(--border-secondary)] text-[var(--text-accent)] hover:border-[var(--border-focus)] hover:bg-[var(--bg-secondary)] transition-colors">
+            <i class="fas fa-plus" style="font-size: 9px;"></i>
+            <span v-text="t('form.newFolderOption')"></span>
+        </button>
+    </div>
+    <div class="relative">
+        <select v-model="selectedFolderId"
+                class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
+            <option :value="null">No Folder</option>
+            <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                ${ folder.name }
+            </option>
+        </select>
+        <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
+           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+        <i class="fas fa-chevron-down absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
+    </div>
+    <p v-if="selectedFolderId && getFolderById(selectedFolderId)?.custom_prompt" class="text-xs text-[var(--text-muted)] mt-1">
+        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+        ${ t('help.folderHasCustomPrompt') }
+    </p>
+    <p v-if="availableFolders.length === 0" class="text-xs text-[var(--text-muted)] mt-1">
+        <i class="fas fa-info-circle mr-1"></i>
+        <a href="/account#folders" class="text-[var(--text-accent)] hover:underline">${ t('help.createFolders') }</a> ${ t('help.toOrganizeRecordings') }
+    </p>
+</div>
+
+<!-- Tag Selection -->
+<div class="mt-4">
+    <div class="flex items-center justify-between mb-2">
+        <label class="block text-sm font-medium text-[var(--text-secondary)]">
+            <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
+            ${ t('tags.title') }
+        </label>
+        <button @click="createTagFromUploadSearch"
+                class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-[var(--border-secondary)] text-[var(--text-accent)] hover:border-[var(--border-focus)] hover:bg-[var(--bg-secondary)] transition-colors">
+            <i class="fas fa-plus" style="font-size: 9px;"></i>
+            <span v-text="t('help.newTag')"></span>
+        </button>
+    </div>
+
+    <!-- Selected Tags Display - Compact with Drag Reorder -->
+    <div v-if="selectedTags.length > 0" class="mb-2">
+        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto"
+             @touchmove="handleTagTouchMove">
+            <div class="flex flex-wrap gap-1">
+                <span v-for="(tag, index) in selectedTags" :key="tag.id"
+                      :data-tag-index="index"
+                      draggable="true"
+                      @dragstart="handleTagDragStart(index, $event)"
+                      @dragover="handleTagDragOver(index, $event)"
+                      @drop="handleTagDrop(index, $event)"
+                      @dragend="handleTagDragEnd"
+                      @touchstart="handleTagTouchStart(index, $event)"
+                      @touchend="handleTagTouchEnd"
+                      :class="[
+                          'inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium transition-all duration-150',
+                          draggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+                          dragOverTagIndex === index && draggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
+                      ]"
+                      :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                      :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
+                    <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
+                    <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
+                    <span>${tag.name}</span>
+                    <button @click.stop="removeTagFromSelection(tag.id)"
+                            class="ml-1 hover:opacity-100 opacity-70">
+                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                    </button>
+                </span>
+            </div>
+        </div>
+        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+            <i class="fas fa-grip-vertical mr-0.5" style="font-size: 9px;"></i>
+            ${ t('help.dragToReorder') } &bull; ${ t('help.firstTagDefaultsApplied') }
+        </p>
+    </div>
+
+    <!-- Tag Selection Container - Compact -->
+    <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0"
+         class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+        <!-- Search Filter (always visible if tags available) -->
+        <div class="mb-1.5">
+            <div class="relative">
+                <input v-model="uploadTagSearchFilter"
+                       type="text"
+                       :placeholder="t('tagsModal.searchTags')"
+                       class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                <button v-if="uploadTagSearchFilter"
+                        @click="uploadTagSearchFilter = ''"
+                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Available Tags Grid - Fixed Height -->
+        <div v-if="filteredAvailableTagsForUpload.length > 0"
+             class="overflow-y-auto"
+             style="max-height: 100px;">
+            <div class="grid grid-cols-2 gap-1">
+                <button v-for="tag in filteredAvailableTagsForUpload"
+                        :key="tag.id"
+                        @click="addTagToSelection(tag.id)"
+                        class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                    <div class="flex items-center gap-1 min-w-0">
+                        <i v-if="tag.group_id" class="fas fa-users flex-shrink-0" style="font-size: 9px;" :style="{ color: tag.color || '#6B7280' }"></i>
+                        <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
+                              :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                        <span class="text-[11px] text-[var(--text-primary)] truncate">
+                            <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>${tag.name}
+                        </span>
+                    </div>
+                    <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                </button>
+            </div>
+        </div>
+        <div v-else class="py-2 text-center">
+            <p class="text-[11px] text-[var(--text-muted)]">
+                <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                ${ t('help.noMatchingTags') }
+            </p>
+            <button @click="createTagFromUploadSearch"
+                    class="mt-1.5 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-accent)] transition-all">
+                <i class="fas fa-plus" style="font-size: 9px;"></i>
+                <span v-text="uploadTagSearchFilter ? t('help.createTagNamed', { name: uploadTagSearchFilter }) : t('help.newTag')"></span>
+            </button>
+        </div>
+    </div>
+    <!-- Empty States -->
+    <div v-else-if="availableTags.length === 0"
+         class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+        <p class="text-xs text-[var(--text-muted)] text-center">
+            <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+            <span v-text="t('help.noTagsCreated')"></span> <button @click="createTagFromUploadSearch" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></button>
+        </p>
+    </div>
+    <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+        <p class="text-xs text-[var(--text-muted)] text-center">
+            <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+            ${ t('help.allTagsSelected') }
+        </p>
+    </div>
+
+    <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+        ${ t('help.selectedTagsCustomPrompts') }
+    </p>
+    <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers || tag.default_hotwords || tag.default_initial_prompt)"
+       class="text-xs text-[var(--text-muted)] mt-1">
+        <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+        ${ t('help.firstTagAsrSettings') } ${selectedTags[0].name}
+    </p>
+</div>
