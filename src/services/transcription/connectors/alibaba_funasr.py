@@ -77,7 +77,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
         self.api_key = api_key
         self.model = model
         self._config_timeout = config.get('timeout', 1800)
-        self.poll_interval = config.get('poll_interval', 10)
+        self.poll_interval = max(1, int(config.get('poll_interval', 10) or 10))
         self.default_diarize = config.get('diarize', False)
         self.disfluency_removal_enabled = config.get('disfluency_removal_enabled', False)
         self.timestamp_alignment_enabled = config.get('timestamp_alignment_enabled', False)
@@ -106,7 +106,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
     @property
     def timeout(self):
         """Get timeout with env-var override, falling back to config default."""
-        env_timeout = os.environ.get('ASR_TIMEOUT') or os.environ.get('asr_timeout_seconds')
+        env_timeout = os.environ.get('ASR_TIMEOUT')
         if env_timeout:
             try:
                 return int(env_timeout)
@@ -351,10 +351,6 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 if not transcription_url:
                     raise TranscriptionError("FunASR response missing transcription_url")
 
-                logger.info(
-                    "Downloading transcription result: %s",
-                    _redact_url(transcription_url),
-                )
                 transcription_data = self._download_transcription_result(transcription_url)
 
                 return self._parse_transcription_data(transcription_data)
@@ -528,12 +524,12 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                 },
                 "diarize": {
                     "type": "boolean",
-                    "default": True,
+                    "default": False,
                     "description": "Enable speaker diarization"
                 },
                 "disfluency_removal_enabled": {
                     "type": "boolean",
-                    "default": True,
+                    "default": False,
                     "description": "Filter filler words"
                 },
                 "timestamp_alignment_enabled": {
