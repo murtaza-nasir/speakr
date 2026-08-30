@@ -143,6 +143,10 @@ If the interface shows blank panels or raw translation keys (console messages li
 
 From v0.10.3-alpha onward this heals itself: each release installs a service worker with its own cache namespace, static assets are revalidated on load, and translation files are always fetched fresh, so an image upgrade can no longer strand a stale app shell. Upgrades from versions before v0.10.3-alpha may still need the one-time manual clear described above.
 
+### App Unresponsive While Media Plays or Chats Stream
+
+Since v0.10.4-alpha the stock image runs threaded gunicorn workers (3 processes x 8 threads), so streaming responses such as chat answers and audio or video playback no longer occupy one of only three request slots. If you override the container command, adopt `--worker-class gthread --threads 8` to get the same behavior. Behind nginx, `proxy_buffering on` helps further: nginx absorbs each response at local speed and feeds slow clients itself, freeing the application thread in seconds rather than for the duration of playback.
+
 ## Feature-Specific Issues
 
 ### Chat Responses End Mid-Sentence

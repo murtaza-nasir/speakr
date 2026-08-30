@@ -1987,5 +1987,12 @@
     "warningSummary": "这将覆盖对标题和摘要的所有手动编辑。",
     "warningTranscription": "这将覆盖所有转录、标题和摘要。手动编辑将丢失。",
     "whatToReprocess": "您要重新处理什么？"
+  },
+  "emptyState": {
+    "readyToCapture": "准备录制",
+    "readyBody": "拖入音频文件、通过麦克风录制或捕获系统音频。Speakr 会将其转换为可搜索的转录文本，并附带摘要和聊天。",
+    "newRecording": "新建录音",
+    "selectRecording": "选择一个录音",
+    "selectBody": "从侧边栏中选择一个，或开始新的录音。"
   }
 }

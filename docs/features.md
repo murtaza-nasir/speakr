@@ -30,6 +30,8 @@ Speakr supports multiple transcription engines to match your needs and budget. U
 
 When using the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration), Speakr automatically identifies different speakers in your recordings. If you encounter issues, check the [troubleshooting guide](troubleshooting.md#speaker-identification-not-working). Each speaker gets a unique label that you can later customize with actual names. The system remembers these speaker profiles, building a library that improves identification accuracy over time. Manage your speaker library in [account settings](user-guide/settings.md). This feature transforms multi-person meetings from walls of text into organized conversations.
 
+You can guide diarization with a speaker count. The upload, recording, and reprocess dialogs offer a Range / Exact toggle (remembered per user): Range sends a minimum and maximum, while Exact sends one number, and providers that only accept an exact count (such as OpenASR) show the single field automatically. Tag and folder defaults work with either form.
+
 **Cloud Diarization with OpenAI**: When using OpenAI's `gpt-4o-transcribe-diarize` model, speaker diarization is also available with speakers labeled as A, B, C, etc. For longer files (over ~23 minutes) that require chunking, the system maintains speaker identity across chunks using audio reference samples. This technique supports **up to 4 speakers** - recordings with more speakers may have inconsistent labels across different sections of the transcript.
 
 **Cloud Diarization with Mistral**: Mistral's Voxtral model provides built-in speaker diarization and automatic language detection. It handles chunking internally, so long files work without extra configuration.

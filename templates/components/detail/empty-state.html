@@ -27,15 +27,11 @@
                  style="background: var(--bg-tertiary);">
                 <i class="fas fa-microphone text-3xl" style="color: var(--text-accent);"></i>
             </div>
-            <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);">
-                Ready to capture
-            </h2>
-            <p class="t-body mb-6" style="color: var(--text-muted);">
-                Drop an audio file, record from your microphone, or capture system audio — Speakr turns it into a searchable transcript with summary and chat.
-            </p>
+            <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);" v-text="t('emptyState.readyToCapture')"></h2>
+            <p class="t-body mb-6" style="color: var(--text-muted);" v-text="t('emptyState.readyBody')"></p>
             <div class="flex flex-col sm:flex-row gap-2 justify-center">
                 <button @click="switchToUploadView" class="btn btn--primary">
-                    <i class="fas fa-plus"></i><span>New recording</span>
+                    <i class="fas fa-plus"></i><span v-text="t('emptyState.newRecording')"></span>
                 </button>
             </div>
         </template>
@@ -46,14 +42,10 @@
                  style="background: var(--bg-tertiary);">
                 <i class="fas fa-list text-xl" style="color: var(--text-muted);"></i>
             </div>
-            <h2 class="text-lg font-semibold mb-1" style="color: var(--text-primary);">
-                Select a recording
-            </h2>
-            <p class="t-meta mb-5">
-                Pick one from the sidebar or start a new recording.
-            </p>
+            <h2 class="text-lg font-semibold mb-1" style="color: var(--text-primary);" v-text="t('emptyState.selectRecording')"></h2>
+            <p class="t-meta mb-5" v-text="t('emptyState.selectBody')"></p>
             <button @click="switchToUploadView" class="btn btn--ghost">
-                <i class="fas fa-plus"></i><span>New recording</span>
+                <i class="fas fa-plus"></i><span v-text="t('emptyState.newRecording')"></span>
             </button>
         </template>
     </div>

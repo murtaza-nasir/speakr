@@ -23,7 +23,7 @@
     <div class="relative">
         <select v-model="selectedFolderId"
                 class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
-            <option :value="null">No Folder</option>
+            <option :value="null" v-text="t('folderManagement.noFolder')"></option>
             <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                 ${ folder.name }
             </option>

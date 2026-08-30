@@ -40,18 +40,18 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Hands-off intake** - a watched "black hole" folder auto-imports and processes any audio dropped into it, with optional per-user subfolders named by user id or username.
 
 ### Transcribe
-- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, AssemblyAI, or any custom ASR webservice. The right connector is auto-detected from your configuration.
+- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, AssemblyAI, OpenASR, Alibaba FunASR, or any custom ASR webservice. The right connector is auto-detected from your configuration.
 - **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
 - **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
 - **Custom vocabulary and hotwords** (most effective with the WhisperX backend) - bias the transcriber toward names, jargon, and acronyms it would otherwise mishear; configurable globally, per tag / folder, or right in the upload and in-app recording dialogs, with reusable saved templates.
 - **Synced playback** - click any line to jump to that moment, follow-along highlighting during playback, and a chat-style bubble view.
-- **Language support** - automatic language detection plus a quick-pick of 11 common languages.
+- **Language support** - automatic language detection plus the full Whisper language list (about one hundred languages), with names localized to your interface language.
 
 ### Understand
 - **Summaries** - generated automatically, with prompts you can fully customize per recording, tag, or folder (including reusable prompt variables).
 - **Event extraction** - surface action items and calendar-worthy events from a transcript.
-- **Per-recording chat** - ask questions about a single recording in a floating, dockable panel.
-- **Inquire Mode** - semantic search and natural-language chat across your entire library at once. An optional **agentic mode** (opt-in beta) upgrades this to an AI researcher that iteratively searches, lists, and reads your recordings until it can answer - showing every step live, and citing the exact moment with numbered source links that open the recording and play from that point. You decide what it may read: transcripts always, summaries and private notes only if you allow them.
+- **Per-recording chat** - ask questions about a single recording in a floating, dockable panel; answers cite transcript timestamps as clickable chips that start playback at that moment.
+- **Inquire Mode** - semantic search and natural-language chat across your entire library at once. An optional **agentic mode** (opt-in beta) upgrades this to an AI researcher that iteratively searches, lists, and reads your recordings until it can answer - showing every step live, and citing the exact moment with numbered source links that open the recording and play from that point. Ask "what did we decide about the pricing change, and did anyone disagree?" and it reads across the relevant meetings and cites each position to the second it was said. You decide what it may read: transcripts always, summaries and private notes only if you allow them.
 
 ### Organize
 - **Folders and bulk operations** to keep a large library tidy.
@@ -151,6 +151,8 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
 | **MOSI/Mossland MOSS** | Hosted API key | Yes (built-in) | No |
 | **AssemblyAI** | Just API key | Yes (built-in) | No |
+| **OpenASR** | Self-hosted server | Yes (built-in) | No |
+| **Alibaba FunASR** | API key + OSS bucket | Yes (built-in) | No |
 | **Legacy Whisper** | Just API key | No | No |
 
 **Simplest setup (OpenAI with diarization):**

@@ -1987,5 +1987,12 @@
     "warningSummary": "Cela écrasera toutes les modifications manuelles des titres et des résumés.",
     "warningTranscription": "Cela écrasera toutes les transcriptions, tous les titres et tous les résumés. Les modifications manuelles seront perdues.",
     "whatToReprocess": "Que souhaitez-vous retraiter ?"
+  },
+  "emptyState": {
+    "readyToCapture": "Prêt à enregistrer",
+    "readyBody": "Déposez un fichier audio, enregistrez depuis le microphone ou capturez l'audio système. Speakr le transforme en transcription consultable avec résumé et chat.",
+    "newRecording": "Nouvel enregistrement",
+    "selectRecording": "Sélectionnez un enregistrement",
+    "selectBody": "Choisissez-en un dans la barre latérale ou lancez un nouvel enregistrement."
   }
 }

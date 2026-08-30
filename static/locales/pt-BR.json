@@ -1987,5 +1987,12 @@
     "warningSummary": "Isso substituirá todas as edições manuais de títulos e resumos.",
     "warningTranscription": "Isso substituirá todas as transcrições, títulos e resumos. As edições manuais serão perdidas.",
     "whatToReprocess": "O que você deseja reprocessar?"
+  },
+  "emptyState": {
+    "readyToCapture": "Pronto para gravar",
+    "readyBody": "Arraste um arquivo de áudio, grave pelo microfone ou capture o áudio do sistema. O Speakr o transforma em uma transcrição pesquisável com resumo e chat.",
+    "newRecording": "Nova gravação",
+    "selectRecording": "Selecione uma gravação",
+    "selectBody": "Escolha uma na barra lateral ou inicie uma nova gravação."
   }
 }

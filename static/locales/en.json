@@ -1987,5 +1987,12 @@
     "warningSummary": "This will overwrite any manual edits to titles and summaries.",
     "warningTranscription": "This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.",
     "whatToReprocess": "What do you want to reprocess?"
+  },
+  "emptyState": {
+    "readyToCapture": "Ready to capture",
+    "readyBody": "Drop an audio file, record from your microphone, or capture system audio. Speakr turns it into a searchable transcript with summary and chat.",
+    "newRecording": "New recording",
+    "selectRecording": "Select a recording",
+    "selectBody": "Pick one from the sidebar or start a new recording."
   }
 }

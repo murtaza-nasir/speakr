@@ -1987,5 +1987,12 @@
     "warningSummary": "Dadurch werden alle manuellen Änderungen an Titeln und Zusammenfassungen überschrieben.",
     "warningTranscription": "Dadurch werden alle Transkriptionen, Titel und Zusammenfassungen überschrieben. Manuelle Änderungen gehen verloren.",
     "whatToReprocess": "Was möchten Sie neu verarbeiten?"
+  },
+  "emptyState": {
+    "readyToCapture": "Bereit zur Aufnahme",
+    "readyBody": "Ziehen Sie eine Audiodatei hierher, nehmen Sie über das Mikrofon auf oder erfassen Sie Systemaudio. Speakr erstellt daraus ein durchsuchbares Transkript mit Zusammenfassung und Chat.",
+    "newRecording": "Neue Aufnahme",
+    "selectRecording": "Aufnahme auswählen",
+    "selectBody": "Wählen Sie eine aus der Seitenleiste oder starten Sie eine neue Aufnahme."
   }
 }
