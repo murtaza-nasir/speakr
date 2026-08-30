@@ -4662,14 +4662,16 @@ select:disabled {
     color: var(--text-accent);
     border: 1px solid var(--border-accent, var(--border-secondary));
     border-radius: 9999px;
-    padding: 0 0.55em;
+    padding: 0.14em 0.55em;
     font-size: 0.78em;
-    line-height: 1.55;
+    /* Baseline-align the chip's own text with the surrounding sentence and
+       let the pill wrap it symmetrically. Unlike a fixed -0.35em nudge on a
+       tall inline-block (the first attempt), this stays optically in-line at
+       every bubble font size and layout. */
+    line-height: 1.1;
+    vertical-align: baseline;
     font-family: inherit;
     cursor: pointer;
-    /* Centre the pill against the surrounding text line (see the
-       matching Inquire chip rule for the rationale). */
-    vertical-align: -0.35em;
     margin: 0 0.1em;
     white-space: nowrap;
 }
