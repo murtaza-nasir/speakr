@@ -239,7 +239,7 @@ export default [
         run: async (page) => {
             await openTagEditor(page, 'Interview', 'tagTabTranscription');
             // Example values only — the form is never submitted.
-            await page.fill('#tagLanguage', 'en');
+            await page.selectOption('#tagLanguage', 'en');  // language is a dropdown now (#362 round)
             await page.fill('#tagMinSpeakers', '2');
             await page.fill('#tagMaxSpeakers', '4');
             await page.fill('#tagHotwords', 'Speakr, WhisperX, PyAnnote, diarization');

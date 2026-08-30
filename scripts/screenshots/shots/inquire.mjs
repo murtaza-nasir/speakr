@@ -116,6 +116,40 @@ export default [
         },
     },
     {
+        name: 'inquire-agent-activity',
+        description: 'Agentic Inquire (beta): the agent searches, lists, and reads iteratively - every step is recorded and expandable on the answer',
+        theme: { dark: true, scheme: 'teal' },
+        run: async (page) => {
+            await go(page, '/inquire');
+            await askInquire(page, 'Which recordings mention the incognito feature, and what was decided about it?');
+            await settle(page, 600);
+            // Expand the activity timeline on the latest answer.
+            await page.evaluate(() => {
+                const lines = [...document.querySelectorAll('.chat-message')]
+                    .flatMap((m) => [...m.querySelectorAll('span')])
+                    .filter((el) => /steps? ·/.test(el.textContent));
+                const last = lines[lines.length - 1];
+                last?.closest('[class]')?.click();
+            });
+            await page.waitForTimeout(600);
+            await frameLatestAnswer(page);
+        },
+    },
+    {
+        name: 'inquire-privacy-settings',
+        description: 'Per-user Inquire privacy: you decide whether the AI may read your summaries and private notes - transcripts only, if you prefer',
+        theme: { dark: false, scheme: 'blue' },
+        run: async (page) => {
+            await go(page, '/account#prompts');
+            await settle(page, 800);
+            await page.evaluate(() => {
+                const el = [...document.querySelectorAll('span')].find((x) => x.textContent.trim() === 'Inquire Privacy');
+                el?.scrollIntoView({ block: 'center' });
+            });
+            await page.waitForTimeout(400);
+        },
+    },
+    {
         name: 'upload-modal',
         description: 'Uploading a file',
         theme: { dark: true, scheme: 'emerald' },

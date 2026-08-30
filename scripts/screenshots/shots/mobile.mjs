@@ -231,14 +231,9 @@ export default [
         mobile: true,
         run: async (page) => {
             await go(page, '/');
-            // The list is a drawer over the detail screen, so open a
-            // recording first: the sliver of screen beside the drawer then
-            // shows a real note instead of the empty-state placeholder.
+            // Open a recording and leave the list drawer CLOSED: the main
+            // mobile shot is the detail screen, not the drawer.
             await openRecording(page, 'Attempting a Michelin Star Dish Challenge');
-            await openListDrawer(page);
-            // Park the list on a stretch of real, tagged recordings rather
-            // than on whatever happens to be newest.
-            await anchorList(page, 'Manager Introductions at Sihai Meeting');
         },
     },
     {

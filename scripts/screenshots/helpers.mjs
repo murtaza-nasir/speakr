@@ -159,3 +159,29 @@ export async function clickVisible(page, selector) {
     }
     return false;
 }
+
+/**
+ * Blur every visible email address on the page (privacy: documentation
+ * screenshots must not leak real addresses/domains). Applies a CSS blur to
+ * the deepest elements whose own text contains an email; idempotent.
+ */
+export async function blurEmails(page) {
+    await page.evaluate(() => {
+        const emailRe = /[\w.+-]+@[\w-]+\.[\w.]+/;
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const seen = new Set();
+        let n;
+        while ((n = walker.nextNode())) {
+            if (!emailRe.test(n.nodeValue)) continue;
+            const el = n.parentElement;
+            if (!el || seen.has(el)) continue;
+            seen.add(el);
+            el.style.filter = 'blur(5px)';
+        }
+        // inputs whose VALUE is an email (account forms)
+        document.querySelectorAll('input').forEach((inp) => {
+            if (emailRe.test(inp.value)) inp.style.filter = 'blur(5px)';
+        });
+    });
+    await page.waitForTimeout(200);
+}

@@ -4,7 +4,7 @@
 // each tab a `#content-*` panel with its own `.tab-scroll` scroller) and
 // /admin (a small Vue app whose tabs are driven by `activeTab`).
 
-import { go, settle, clickVisible, openRecordingByTitle } from '../helpers.mjs';
+import { go, settle, clickVisible, openRecordingByTitle, blurEmails } from '../helpers.mjs';
 
 /** A recording carrying tags, used for the localized interface shots. */
 const TAGGED_RECORDING = 'SEC/Data Science Team Updates and Announcements';
@@ -147,6 +147,7 @@ export default [
         theme: { dark: true, scheme: 'blue' },
         run: async (page) => {
             await go(page, '/admin', 1500);
+            await blurEmails(page);
         },
     },
     {
@@ -156,6 +157,7 @@ export default [
         run: async (page) => {
             await go(page, '/admin', 1500);
             await adminTab(page, 'Groups');
+            await blurEmails(page);
         },
     },
     {
@@ -187,6 +189,7 @@ export default [
             // margin parks the section heading just above the frame so the
             // whole per-user budget panel fits.
             await scrollTabTo(page, 'h4', -60, 'Token Usage Statistics');
+            await blurEmails(page);
         },
     },
     {
