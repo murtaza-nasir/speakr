@@ -15,7 +15,10 @@
      explicit child-stretching context — without this the flex-1
      collapsed to 0 height on phones (visible as a blank screen
      under the global header when no recording is selected). -->
-<div v-if="!selectedRecording && currentView !== 'recording'"
+{# Render whenever neither sibling surface does: not just "nothing
+   selected", but also any state mismatch (a selected recording with no
+   active view) — the prompt is always better than a blank main area. #}
+<div v-if="currentView !== 'recording' && !(currentView === 'detail' && selectedRecording)"
      class="flex-1 flex items-center justify-center p-6 min-h-[60vh]">
     <div class="max-w-md w-full text-center">
         <!-- TRULY EMPTY (no recordings at all) -->

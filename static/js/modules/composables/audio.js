@@ -1296,7 +1296,7 @@ export function useAudio(state, utils) {
                 // panel so the queued recording appears immediately, the same
                 // way a drag-drop upload does (instead of only after a manual
                 // page refresh).
-                currentView.value = null;
+                currentView.value = selectedRecording.value ? 'detail' : null;
                 showUploadModal.value = false;
                 try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
                 return result;
@@ -1369,7 +1369,10 @@ export function useAudio(state, utils) {
         await hideRecordingNotification();
 
         // Return to upload modal so the user can finish the upload form.
-        currentView.value = null;
+        // Behind the modal, land on the open recording's detail view when one
+        // is selected (a bare null left a blank main area if the user then
+        // cancelled the modal).
+        currentView.value = selectedRecording.value ? 'detail' : null;
         showUploadModal.value = true;
 
         // Start upload immediately
@@ -1667,7 +1670,10 @@ export function useAudio(state, utils) {
         await hideRecordingNotification();
 
         // Return to upload modal so the user can finish the upload form.
-        currentView.value = null;
+        // Behind the modal, land on the open recording's detail view when one
+        // is selected (a bare null left a blank main area if the user then
+        // cancelled the modal).
+        currentView.value = selectedRecording.value ? 'detail' : null;
         showUploadModal.value = true;
     };
 
