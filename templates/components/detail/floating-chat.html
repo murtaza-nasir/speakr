@@ -133,7 +133,7 @@
             </div>
 
             <!-- Messages -->
-            <div ref="chatMessagesRef" class="floating-chat-messages">
+            <div ref="chatMessagesRef" class="floating-chat-messages" @click="handleChatBubbleClick">
                 <div v-if="chatMessages.length === 0" class="empty">
                     <div class="empty__icon"><i class="fas fa-robot"></i></div>
                     <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>

@@ -425,7 +425,8 @@
     "whatAreActionItems": "Какие есть задачи к выполнению?",
     "whatAreKeyPoints": "Каковы ключевые моменты?",
     "whatWasDiscussed": "Что обсуждалось?",
-    "whoSaidWhat": "Кто что сказал?"
+    "whoSaidWhat": "Кто что сказал?",
+    "playFromHere": "Воспроизвести отсюда"
   },
   "colorScheme": {
     "chooseRecording": "Выберите запись на боковой панели, чтобы увидеть её транскрипцию и резюме",

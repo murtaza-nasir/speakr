@@ -4652,3 +4652,32 @@ select:disabled {
 .recording-row {
     position: relative;
 }
+
+/* Chat timestamp chips: the recording chat cites moments as bracketed
+   transcript timestamps; they render as clickable pills (same visual
+   language as Inquire citation chips) that seek the in-view player. */
+.chat-ts-chip {
+    display: inline-block;
+    background-color: var(--bg-accent);
+    color: var(--text-accent);
+    border: 1px solid var(--border-accent, var(--border-secondary));
+    border-radius: 9999px;
+    padding: 0 0.55em;
+    font-size: 0.78em;
+    line-height: 1.55;
+    font-family: inherit;
+    cursor: pointer;
+    /* Centre the pill against the surrounding text line (see the
+       matching Inquire chip rule for the rationale). */
+    vertical-align: -0.35em;
+    margin: 0 0.1em;
+    white-space: nowrap;
+}
+.chat-ts-chip::before {
+    content: "\25B8";  /* small play triangle */
+    margin-right: 0.3em;
+    font-size: 0.9em;
+}
+.chat-ts-chip:hover {
+    border-color: var(--border-focus);
+}

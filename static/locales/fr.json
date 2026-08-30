@@ -425,7 +425,8 @@
     "whatAreActionItems": "Quelles sont les actions à mener?",
     "whatAreKeyPoints": "Quels sont les points clés?",
     "whatWasDiscussed": "Qu'est-ce qui a été discuté?",
-    "whoSaidWhat": "Qui a dit quoi?"
+    "whoSaidWhat": "Qui a dit quoi?",
+    "playFromHere": "Lire à partir d'ici"
   },
   "colorScheme": {
     "chooseRecording": "Choisissez un enregistrement dans la barre latérale pour voir sa transcription et son résumé",

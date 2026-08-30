@@ -425,7 +425,8 @@
     "whatAreActionItems": "What are the action items?",
     "whatAreKeyPoints": "What are the key points?",
     "whatWasDiscussed": "What was discussed?",
-    "whoSaidWhat": "Who said what?"
+    "whoSaidWhat": "Who said what?",
+    "playFromHere": "Play from here"
   },
   "colorScheme": {
     "chooseRecording": "Choose a recording from the sidebar to view its transcription and summary",

@@ -2,7 +2,7 @@
      contextual toolbar so this panel no longer overlays its own
      floating × button on top of message content. -->
 <div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden">
-    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-4" @click="handleChatBubbleClick">
         <div v-if="chatMessages.length === 0" class="empty">
             <div class="empty__icon"><i class="fas fa-robot"></i></div>
             <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>

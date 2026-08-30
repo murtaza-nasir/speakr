@@ -3281,8 +3281,21 @@ def chat_incognito():
         else:
             chat_transcript = formatted_transcription[:transcript_limit]
 
-        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
+        # When timestamps are in the transcript, ask the model to cite them so
+        # the chat panel can render clickable seek chips (bracketed [h:mm:ss]).
+        timestamp_instruction = ""
+        if _chat_ts:
+            timestamp_instruction = (
+                "\nWhen you reference a specific moment in the recording, cite its "
+                "timestamp in square brackets exactly as it appears in the transcript "
+                "(for example [00:07:35]). The interface renders these as clickable "
+                "links that start playback at that moment, so cite them wherever they "
+                "support your answer. Never invent a timestamp that is not in the "
+                "transcript.\n"
+            )
 
+        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
+{timestamp_instruction}
 Following are the meeting participants and their roles:
 {participants or "No specific participants information provided."}
 
@@ -4017,8 +4030,21 @@ def chat_with_transcription():
         else:
             chat_transcript = formatted_transcription[:transcript_limit]
 
-        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
+        # When timestamps are in the transcript, ask the model to cite them so
+        # the chat panel can render clickable seek chips (bracketed [h:mm:ss]).
+        timestamp_instruction = ""
+        if _chat_ts:
+            timestamp_instruction = (
+                "\nWhen you reference a specific moment in the recording, cite its "
+                "timestamp in square brackets exactly as it appears in the transcript "
+                "(for example [00:07:35]). The interface renders these as clickable "
+                "links that start playback at that moment, so cite them wherever they "
+                "support your answer. Never invent a timestamp that is not in the "
+                "transcript.\n"
+            )
 
+        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
+{timestamp_instruction}
 Following are the meeting participants and their roles:
 {recording.participants or "No specific participants information provided."}
 
