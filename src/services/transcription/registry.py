@@ -47,6 +47,7 @@ class ConnectorRegistry:
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
         from .connectors.mistral import MistralTranscriptionConnector
         from .connectors.vibevoice import VibeVoiceTranscriptionConnector
+        from .connectors.alibaba_funasr import AlibabaFunASRConnector
         from .connectors.mossland import MosslandTranscriptionConnector
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
         from .connectors.openasr import OpenASRTranscriptionConnector
@@ -57,6 +58,7 @@ class ConnectorRegistry:
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
         self.register('mistral', MistralTranscriptionConnector)
         self.register('vibevoice', VibeVoiceTranscriptionConnector)
+        self.register('funasr', AlibabaFunASRConnector)
         self.register('mossland', MosslandTranscriptionConnector)
         self.register('assemblyai', AssemblyAITranscriptionConnector)
         self.register('openasr', OpenASRTranscriptionConnector)
@@ -128,11 +130,12 @@ class ConnectorRegistry:
 
         Auto-detection priority:
         1. TRANSCRIPTION_CONNECTOR - explicit connector name
-        2. ASR_BASE_URL is set - use ASR endpoint (smarter detection)
+        2. ASR_BASE_URL contains dashscope - use FunASR connector
+        3. ASR_BASE_URL is set - use ASR endpoint (smarter detection)
            - USE_ASR_ENDPOINT=true also works (backwards compat, with deprecation warning)
-        3. TRANSCRIPTION_MODEL contains 'gpt-4o' - use OpenAI Transcribe
-        4. TRANSCRIPTION_MODEL is set - use OpenAI Whisper with that model
-        5. Default to OpenAI Whisper (whisper-1)
+        4. TRANSCRIPTION_MODEL contains 'gpt-4o' - use OpenAI Transcribe
+        5. TRANSCRIPTION_MODEL is set - use OpenAI Whisper with that model
+        6. Default to OpenAI Whisper (whisper-1)
 
         Returns:
             The initialized connector
@@ -153,20 +156,24 @@ class ConnectorRegistry:
                     "Set ASR_BASE_URL instead for auto-detection, or use TRANSCRIPTION_CONNECTOR=asr_endpoint"
                 )
 
-            # Priority 2: ASR endpoint - check ASR_BASE_URL or legacy flag
-            if asr_base_url or use_asr_flag:
+            # Priority 2: FunASR - auto-detect from ASR_BASE_URL containing dashscope
+            if asr_base_url and 'dashscope.aliyuncs.com' in asr_base_url:
+                connector_name = 'funasr'
+                logger.info("Auto-detected FunASR from ASR_BASE_URL")
+            # Priority 3: Other ASR endpoint - check ASR_BASE_URL or legacy flag
+            elif asr_base_url or use_asr_flag:
                 connector_name = 'asr_endpoint'
                 if asr_base_url:
                     logger.info("Auto-detected ASR endpoint from ASR_BASE_URL")
-            # Priority 2.5: Azure OpenAI - check for Azure endpoint URL
+            # Priority 3.5: Azure OpenAI - check for Azure endpoint URL
             elif self._is_azure_endpoint():
                 connector_name = 'azure_openai_transcribe'
                 logger.info("Auto-detected Azure OpenAI from TRANSCRIPTION_BASE_URL")
-            # Priority 3: Model-based detection
+            # Priority 4: Model-based detection
             elif transcription_model and 'gpt-4o' in transcription_model:
                 connector_name = 'openai_transcribe'
                 logger.info(f"Auto-detected OpenAI Transcribe from TRANSCRIPTION_MODEL={transcription_model}")
-            # Priority 4 & 5: OpenAI Whisper (with custom or default model)
+            # Priority 5 & 6: OpenAI Whisper (with custom or default model)
             else:
                 connector_name = 'openai_whisper'
                 model = transcription_model or whisper_model or 'whisper-1'
@@ -237,6 +244,7 @@ class ConnectorRegistry:
 
             return {
                 'base_url': base_url,
+                'api_key': os.environ.get('ASR_API_KEY', ''),
                 'timeout': self._get_asr_timeout(),
                 'diarize': os.environ.get('ASR_DIARIZE', 'true').lower() == 'true',
                 'return_speaker_embeddings': os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
@@ -293,6 +301,44 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'microsoft/VibeVoice-ASR'),
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+            }
+
+        elif connector_name == 'funasr':
+            base_url = os.environ.get('ASR_BASE_URL', '')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+            api_key = os.environ.get('ASR_API_KEY', '')
+            model = os.environ.get('ASR_MODEL', 'fun-asr') or 'fun-asr'
+
+            timeout = int(os.environ.get('ASR_TIMEOUT') or '1800')
+            diarize = (os.environ.get('ASR_DIARIZE') or 'false').lower() == 'true'
+            lang_str = os.environ.get('ASR_LANGUAGE_HINTS') or 'zh,en'
+            language_hints = [l.strip() for l in lang_str.split(',') if l.strip()]
+
+            # FunASR-specific params (only FUNASR_* prefix)
+            poll_interval = float(os.environ.get('FUNASR_POLL_INTERVAL', '10'))
+            disfluency = os.environ.get('FUNASR_DISFLUENCY_REMOVAL', 'false').lower() == 'true'
+            timestamp_align = os.environ.get('FUNASR_TIMESTAMP_ALIGNMENT', 'false').lower() == 'true'
+            speaker_count = os.environ.get('FUNASR_SPEAKER_COUNT', '').strip() or None
+            vocabulary_id = os.environ.get('FUNASR_VOCABULARY_ID', '').strip() or None
+
+            # channel_id: comma-separated integers
+            channel_str = os.environ.get('FUNASR_CHANNEL_ID', '')
+            channel_id = [int(c.strip()) for c in channel_str.split(',') if c.strip()] or None
+
+            return {
+                'base_url': base_url,
+                'api_key': api_key,
+                'model': model,
+                'timeout': timeout,
+                'poll_interval': poll_interval,
+                'diarize': diarize,
+                'disfluency_removal_enabled': disfluency,
+                'timestamp_alignment_enabled': timestamp_align,
+                'speaker_count': int(speaker_count) if speaker_count else None,
+                'vocabulary_id': vocabulary_id,
+                'language_hints': language_hints,
+                'channel_id': channel_id,
             }
 
         elif connector_name == 'mossland':

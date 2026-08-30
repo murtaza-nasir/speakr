@@ -95,6 +95,11 @@ FILE_STORAGE_STAGING_DIR = os.environ.get('FILE_STORAGE_STAGING_DIR', '').strip(
 S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', '').strip() or None
 S3_REGION = os.environ.get('S3_REGION', '').strip() or None
 S3_ENDPOINT_URL = os.environ.get('S3_ENDPOINT_URL', '').strip() or None
+if S3_ENDPOINT_URL and not S3_ENDPOINT_URL.startswith(('http://', 'https://')):
+    S3_ENDPOINT_URL = f'https://{S3_ENDPOINT_URL}'
+S3_INTRANET_ENDPOINT_URL = os.environ.get('S3_INTRANET_ENDPOINT_URL', '').strip() or None
+if S3_INTRANET_ENDPOINT_URL and not S3_INTRANET_ENDPOINT_URL.startswith(('http://', 'https://')):
+    S3_INTRANET_ENDPOINT_URL = f'https://{S3_INTRANET_ENDPOINT_URL}'
 S3_ACCESS_KEY_ID = os.environ.get('S3_ACCESS_KEY_ID', '').strip() or None
 S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY', '').strip() or None
 S3_SESSION_TOKEN = os.environ.get('S3_SESSION_TOKEN', '').strip() or None

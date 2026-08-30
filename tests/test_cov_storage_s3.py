@@ -6,6 +6,7 @@ All tests run fully offline using a mocked boto3 client. No real network/AWS.
 import os
 import tempfile
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -190,6 +191,36 @@ def test_upload_local_file_without_extra_args():
     fake.upload_file.assert_called_once_with('/tmp/src.mp3', 'mybucket', 'audio/z.mp3')
 
 
+def test_upload_local_file_aliyun_uses_single_put():
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    fake = MagicMock()
+    fake.head_object.return_value = make_head_response(size=3)
+    fd, tmp_path = tempfile.mkstemp(prefix='speakr_test_aliyun_')
+    os.write(fd, b'abc')
+    os.close(fd)
+
+    try:
+        with patch_client(backend, fake):
+            result = backend.upload_local_file(
+                tmp_path,
+                'audio/z.mp3',
+                content_type='audio/mpeg',
+                metadata={'a': 'b'},
+            )
+    finally:
+        os.remove(tmp_path)
+
+    fake.upload_file.assert_not_called()
+    kwargs = fake.put_object.call_args.kwargs
+    assert kwargs['Bucket'] == 'mybucket'
+    assert kwargs['Key'] == 'audio/z.mp3'
+    assert kwargs['ContentType'] == 'audio/mpeg'
+    assert kwargs['Metadata'] == {'a': 'b'}
+    assert kwargs['Body'].name == tmp_path
+    assert kwargs['Body'].closed is True
+    assert result.size == 3
+
+
 def test_upload_local_file_delete_source_removes_file():
     backend = make_backend()
     fake = MagicMock()
@@ -364,6 +395,33 @@ def test_presign_get_url_with_response_overrides():
     )
 
 
+def test_presign_get_url_endpoint_override_signs_the_target_host():
+    backend = make_backend(
+        region='cn-shanghai',
+        endpoint_url='https://oss-cn-shanghai.aliyuncs.com',
+        access_key_id='AKIDEXAMPLE',
+        secret_access_key='secret',
+    )
+
+    public_url = backend.presign_get_url(s3_locator(key='audio/p.mp3'), 600)
+    intranet_url = backend.presign_get_url(
+        s3_locator(key='audio/p.mp3'),
+        600,
+        endpoint_url='https://oss-cn-shanghai-internal.aliyuncs.com',
+    )
+
+    public = urlparse(public_url)
+    intranet = urlparse(intranet_url)
+    public_query = parse_qs(public.query)
+    intranet_query = parse_qs(intranet.query)
+
+    assert public.hostname == 'mybucket.oss-cn-shanghai.aliyuncs.com'
+    assert intranet.hostname == 'mybucket.oss-cn-shanghai-internal.aliyuncs.com'
+    assert public_query['X-Amz-SignedHeaders'] == ['host']
+    assert intranet_query['X-Amz-SignedHeaders'] == ['host']
+    assert public_query['X-Amz-Signature'] != intranet_query['X-Amz-Signature']
+
+
 # ---------------------------------------------------------------------------
 # _get_client config wiring (patch boto3.client and inspect kwargs)
 # ---------------------------------------------------------------------------
@@ -413,6 +471,55 @@ def test_get_client_virtual_addressing_and_minimal_kwargs():
     assert 'aws_access_key_id' not in kwargs
     config_kwargs = mock_config.call_args.kwargs
     assert config_kwargs['s3'] == {'addressing_style': 'auto'}
+
+
+def test_get_client_uses_virtual_addressing_for_aliyun_oss():
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config:
+        backend._get_client()
+
+    assert mock_config.call_args.kwargs['s3'] == {'addressing_style': 'virtual'}
+
+
+def test_get_client_checksum_option_only_for_aliyun_oss():
+    """request_checksum_calculation must NOT be set for generic AWS/MinIO."""
+    backend = make_backend(endpoint_url='http://minio:9000')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config:
+        backend._get_client()
+
+    assert 'request_checksum_calculation' not in mock_config.call_args.kwargs
+
+
+def test_get_client_checksum_option_set_for_aliyun_oss_new_botocore():
+    """Aliyun OSS + botocore >= 1.36 opts out of request checksums."""
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config, patch(
+        'src.services.storage.s3._botocore_supports_request_checksum',
+        return_value=True,
+    ):
+        backend._get_client()
+
+    assert mock_config.call_args.kwargs['request_checksum_calculation'] == 'when_required'
+
+
+def test_get_client_checksum_option_skipped_for_old_botocore():
+    """botocore < 1.36 must not receive the unsupported option at all."""
+    backend = make_backend(endpoint_url='https://oss-cn-shanghai.aliyuncs.com')
+    with patch('boto3.client', return_value=MagicMock()), patch(
+        'botocore.config.Config', return_value=MagicMock()
+    ) as mock_config, patch(
+        'src.services.storage.s3._botocore_supports_request_checksum',
+        return_value=False,
+    ):
+        backend._get_client()
+
+    assert 'request_checksum_calculation' not in mock_config.call_args.kwargs
 
 
 def test_get_client_is_cached():
