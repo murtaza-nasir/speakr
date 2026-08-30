@@ -177,90 +177,12 @@
                                 </button>
 
                                 <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
-                                    <!-- Prompt & hotwords sub-card: same grouping as the upload
-                                         modal — the saved-template dropdown fills BOTH fields. -->
-                                    <div v-if="connectorSupportsInitialPrompt || connectorSupportsHotwords"
-                                         class="rounded-md border border-[var(--border-secondary)] bg-[var(--bg-secondary)] p-3 space-y-3">
-                                        <div v-if="initialPromptTemplates && initialPromptTemplates.length">
-                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                ${ t('initialPromptTemplates.savedTemplate') }
-                                            </label>
-                                            <select @change="applyInitialPromptTemplateToRecording($event.target.value); $event.target.value=''"
-                                                    class="w-full px-2 py-1 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                                                <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
-                                                <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
-                                            </select>
-                                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('initialPromptTemplates.savedTemplateHelp') }</p>
-                                        </div>
-
-                                        <div v-if="connectorSupportsInitialPrompt">
-                                            <label for="recordingAsrInitialPrompt" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                ${ t('form.initialPrompt') }
-                                            </label>
-                                            <textarea id="recordingAsrInitialPrompt" v-model="asrInitialPrompt"
-                                                      rows="2"
-                                                      :placeholder="t('form.initialPromptPlaceholder')"
-                                                      class="w-full px-2 py-1 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] resize-y"></textarea>
-                                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.initialPromptHelp') }</p>
-                                        </div>
-
-                                        <div v-if="connectorSupportsHotwords">
-                                            <label for="recordingAsrHotwords" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                ${ t('form.hotwords') }
-                                            </label>
-                                            <input type="text" id="recordingAsrHotwords" v-model="asrHotwords"
-                                                   :placeholder="t('form.hotwordsPlaceholder')"
-                                                   class="w-full px-2 py-1 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.hotwordsHelp') }</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div>
-                                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                ${ t('form.transcriptionLanguage') }
-                                            </label>
-                                            <select id="recordingAsrLanguage" v-model="asrLanguage"
-                                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <!-- Divider between the language row and the speaker controls -->
-                                    <hr v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount"
-                                        class="border-t border-[var(--border-secondary)] my-1">
-
-                                    <!-- Speaker Settings (#362): one compact row — label,
-                                         Range/Exact toggle (range connectors only), narrow
-                                         inputs. A single count writes min == max. -->
-                                    <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount"
-                                         class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                                        <label class="text-xs font-medium text-[var(--text-secondary)]" v-text="t('form.speakers')"></label>
-                                        <div v-if="connectorSupportsSpeakerCount"
-                                             class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
-                                            <button type="button" @click="setSpeakerCountMode('range')"
-                                                    :class="['px-2 py-0.5 text-[10px] transition-colors', !exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
-                                                    v-text="t('form.speakerModeRange')"></button>
-                                            <button type="button" @click="setSpeakerCountMode('single')"
-                                                    :class="['px-2 py-0.5 text-[10px] transition-colors border-l border-[var(--border-secondary)]', exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
-                                                    v-text="t('form.speakerModeExact')"></button>
-                                        </div>
-                                        <input v-if="exactSpeakerEntry"
-                                               type="number" id="recordingAsrSpeakersExact" v-model.number="asrSpeakersExact"
-                                               min="1" max="20"
-                                               class="w-20 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                        <template v-else>
-                                            <label for="recordingAsrMinSpeakers" class="text-[11px] text-[var(--text-muted)]" v-text="t('form.minSpeakers')"></label>
-                                            <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
-                                                   min="1" max="20" :placeholder="t('form.auto')"
-                                                   class="w-16 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                            <label for="recordingAsrMaxSpeakers" class="text-[11px] text-[var(--text-muted)]" v-text="t('form.maxSpeakers')"></label>
-                                            <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
-                                                   min="1" max="20" :placeholder="t('form.auto')"
-                                                   class="w-16 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                        </template>
-                                    </div>
+                                    {% with apply_template_fn='applyInitialPromptTemplateToRecording',
+                                            prompt_ref='asrInitialPrompt', hotwords_ref='asrHotwords',
+                                            model_ref='asrTranscriptionModel', lang_ref='asrLanguage',
+                                            exact_ref='asrSpeakersExact', min_ref='asrMinSpeakers', max_ref='asrMaxSpeakers' %}
+                                    {% include 'components/shared/asr-options.html' %}
+                                    {% endwith %}
                                 </div>
                             </div>
 

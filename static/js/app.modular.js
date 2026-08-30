@@ -526,6 +526,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // the upload UI state changes.
             const asrInitialPrompt = ref('');
             const asrHotwords = ref('');
+            const asrTranscriptionModel = ref('');  // Per-recording model override (#266 parity with upload)
             const audioContext = ref(null);
             const analyser = ref(null);
             const micAnalyser = ref(null);
@@ -1771,7 +1772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordSystemVideo, recordingVideoActive,
                 inputAudioDevices, selectedMicDeviceId, selectedSecondaryDeviceId, refreshInputAudioDevices,
                 platformInfo, audioCaps, helpModalOsTab, virtualAudioDevices, refreshVirtualAudioDevices,
-                asrLanguage, asrMinSpeakers, asrMaxSpeakers,
+                asrLanguage, asrMinSpeakers, asrMaxSpeakers, asrTranscriptionModel,
                 asrInitialPrompt, asrHotwords, applyInitialPromptTemplateToRecording,
                 audioContext, analyser, micAnalyser, systemAnalyser, visualizer, micVisualizer,
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,

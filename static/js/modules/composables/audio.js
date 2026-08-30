@@ -58,7 +58,7 @@ export function useAudio(state, utils) {
         isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
-        selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, asrInitialPrompt, asrHotwords, uploadQueue,
+        selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, asrInitialPrompt, asrHotwords, asrTranscriptionModel, uploadQueue,
         progressPopupMinimized, progressPopupClosed,
         // Incognito mode
         enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
@@ -912,7 +912,8 @@ export function useAudio(state, utils) {
                         min_speakers: asrMinSpeakers.value || '',
                         max_speakers: asrMaxSpeakers.value || '',
                         initial_prompt: asrInitialPrompt.value || '',
-                        hotwords: asrHotwords.value || ''
+                        hotwords: asrHotwords.value || '',
+                        transcription_model: asrTranscriptionModel.value || ''
                     },
                     mimeType,
                     incognito: !!(incognitoMode && incognitoMode.value)
@@ -1264,6 +1265,7 @@ export function useAudio(state, utils) {
                     max_speakers: asrMaxSpeakers.value || null,
                     initial_prompt: asrInitialPrompt.value || null,
                     hotwords: asrHotwords.value || null,
+                    transcription_model: asrTranscriptionModel.value || null,
                 };
                 if (mergeIntent) {
                     metadata.merge_intent = mergeIntent;
@@ -1332,7 +1334,8 @@ export function useAudio(state, utils) {
                 min_speakers: asrMinSpeakers.value,
                 max_speakers: asrMaxSpeakers.value,
                 initial_prompt: asrInitialPrompt.value,
-                hotwords: asrHotwords.value
+                hotwords: asrHotwords.value,
+                transcription_model: asrTranscriptionModel.value
             },
             status: 'queued',
             recordingId: null,
@@ -1361,6 +1364,7 @@ export function useAudio(state, utils) {
         asrMaxSpeakers.value = '';
         asrInitialPrompt.value = '';
         asrHotwords.value = '';
+        asrTranscriptionModel.value = '';
         await releaseWakeLock();
         await hideRecordingNotification();
 
@@ -1638,6 +1642,7 @@ export function useAudio(state, utils) {
         asrMaxSpeakers.value = '';
         asrInitialPrompt.value = '';
         asrHotwords.value = '';
+        asrTranscriptionModel.value = '';
 
         // If a server-side session was open (Phase B of #287 c/d), abort it
         // so the chunks on disk are reaped immediately rather than waiting
@@ -1833,6 +1838,7 @@ export function useAudio(state, utils) {
                 asrMaxSpeakers.value = recovered.metadata.asrOptions.max_speakers || '';
                 asrInitialPrompt.value = recovered.metadata.asrOptions.initial_prompt || '';
                 asrHotwords.value = recovered.metadata.asrOptions.hotwords || '';
+                asrTranscriptionModel.value = recovered.metadata.asrOptions.transcription_model || '';
             }
 
             // Restore the incognito state the recording was left in, so a
