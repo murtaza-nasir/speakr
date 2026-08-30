@@ -27,7 +27,6 @@ docker-compose.postgres.yml
 .clinerules
 temp/
 .claude/
-plan/
 
 # Offline vendor dependencies (downloaded during Docker build)
 static/vendor/
@@ -60,4 +59,3 @@ temp/ux-redesign-*.md
 
 # Internal-only documentation (design system, working notes, etc.).
 # Lives on disk for local reference but is never tracked.
-internal-docs/
