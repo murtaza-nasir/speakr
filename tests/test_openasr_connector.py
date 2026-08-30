@@ -168,3 +168,55 @@ def test_timeout_is_terminal_transcription_error():
         with pytest.raises(TranscriptionError) as exc:
             _connector(timeout=7).transcribe(_request())
     assert 'timed out after 7' in str(exc.value)
+
+
+# --- Exact speaker count (#362) ---
+# OpenASR takes `speakers=N` (exact), not a min/max range. The app stores a
+# single count as min == max; legacy range defaults resolve to the max.
+
+def test_declares_exact_speaker_count_not_range():
+    c = _connector()
+    assert TranscriptionCapability.EXACT_SPEAKER_COUNT in c.CAPABILITIES
+    assert TranscriptionCapability.SPEAKER_COUNT_CONTROL not in c.CAPABILITIES
+    assert c.supports_exact_speaker_count is True
+    assert c.supports_speaker_count_control is False
+
+
+def test_exact_count_sent_when_min_equals_max():
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        _connector().transcribe(_request(diarize=True, min_speakers=3, max_speakers=3))
+    _, kwargs = client.calls[0]
+    assert kwargs['files']['speakers'] == (None, '3')
+
+
+def test_legacy_range_resolves_to_max():
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        _connector().transcribe(_request(diarize=True, min_speakers=2, max_speakers=5))
+    _, kwargs = client.calls[0]
+    assert kwargs['files']['speakers'] == (None, '5')
+
+
+def test_min_only_resolves_to_min():
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        _connector().transcribe(_request(diarize=True, min_speakers=2))
+    _, kwargs = client.calls[0]
+    assert kwargs['files']['speakers'] == (None, '2')
+
+
+def test_no_speakers_param_without_counts():
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        _connector().transcribe(_request(diarize=True))
+    _, kwargs = client.calls[0]
+    assert 'speakers' not in kwargs['files']
+
+
+def test_no_speakers_param_without_diarize():
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        _connector().transcribe(_request(min_speakers=3, max_speakers=3))
+    _, kwargs = client.calls[0]
+    assert 'speakers' not in kwargs['files']

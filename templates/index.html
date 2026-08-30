@@ -104,6 +104,8 @@
          data-use-asr-endpoint="{{ use_asr_endpoint }}"
          data-connector-supports-diarization="{{ connector_supports_diarization }}"
          data-connector-supports-speaker-count="{{ connector_supports_speaker_count }}"
+         data-connector-supports-exact-speaker-count="{{ connector_supports_exact_speaker_count }}"
+         data-speaker-count-mode="{{ current_user.speaker_count_mode or 'range' if current_user.is_authenticated else 'range' }}"
          data-connector-supports-hotwords="{{ connector_supports_hotwords }}"
          data-connector-supports-initial-prompt="{{ connector_supports_initial_prompt }}"
          data-enable-archive-toggle="{{ enable_archive_toggle }}"

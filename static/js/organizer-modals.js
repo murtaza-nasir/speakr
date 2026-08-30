@@ -403,10 +403,109 @@
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', populateLanguageSelects);
-    } else {
+    // ------------------------------------------------------------------
+    // Speaker count entry (#362): Range / Exact toggle in the tag and
+    // folder editors. Canonical storage stays min/max (a single count N is
+    // min == max == N), so the payload builders are untouched: the single
+    // input just syncs both hidden range fields. The toggle follows the
+    // user's persisted preference, except that opening an entity whose
+    // stored min != max forces range mode for that open so data is never
+    // silently collapsed.
+    // ------------------------------------------------------------------
+
+    function _speakerEls(prefix) {
+        const root = document.querySelector(`.org-speaker-controls[data-speaker-prefix="${prefix}"]`);
+        if (!root) return null;
+        return {
+            root,
+            single: root.querySelector('.org-speaker-single'),
+            range: root.querySelector('.org-speaker-range'),
+            exactInput: document.getElementById(prefix + 'SpeakersExact'),
+            minInput: document.getElementById(prefix + 'MinSpeakers'),
+            maxInput: document.getElementById(prefix + 'MaxSpeakers'),
+            buttons: root.querySelectorAll('.org-speaker-mode'),
+        };
+    }
+
+    function _prefMode() {
+        const holder = document.getElementById('organizerModals');
+        return holder?.dataset.speakerCountMode === 'single' ? 'single' : 'range';
+    }
+
+    function _applySpeakerMode(els, mode) {
+        els.single.classList.toggle('hidden', mode !== 'single');
+        els.range.classList.toggle('hidden', mode === 'single');
+        els.buttons.forEach((btn) => {
+            const active = btn.dataset.mode === mode;
+            btn.classList.toggle('bg-[var(--bg-accent)]', active);
+            btn.classList.toggle('text-[var(--text-accent)]', active);
+            btn.classList.toggle('font-medium', active);
+            btn.classList.toggle('text-[var(--text-muted)]', !active);
+        });
+    }
+
+    /** Sync display state from the (authoritative) min/max inputs. */
+    function refreshSpeakerControls() {
+        for (const prefix of ['tag', 'folder']) {
+            const els = _speakerEls(prefix);
+            if (!els) continue;
+            const mn = els.minInput.value, mx = els.maxInput.value;
+            els.exactInput.value = (mn && mn === mx) ? mn : (mx || mn || '');
+            // Stored range (min != max) wins over the preference for this open.
+            const mode = (mn && mx && mn !== mx) ? 'range' : _prefMode();
+            _applySpeakerMode(els, mode);
+        }
+    }
+
+    function armSpeakerControls() {
+        const holder = document.getElementById('organizerModals');
+        if (!holder) return;
+        for (const prefix of ['tag', 'folder']) {
+            const els = _speakerEls(prefix);
+            if (!els) continue;
+            els.exactInput.addEventListener('input', () => {
+                els.minInput.value = els.exactInput.value;
+                els.maxInput.value = els.exactInput.value;
+            });
+            els.buttons.forEach((btn) => btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                _applySpeakerMode(els, mode);
+                if (mode === 'single') {
+                    // Entering single mode collapses an existing range to its max.
+                    const v = els.maxInput.value || els.minInput.value || '';
+                    els.exactInput.value = v;
+                    els.minInput.value = v;
+                    els.maxInput.value = v;
+                }
+                holder.dataset.speakerCountMode = mode;
+                fetch('/api/user/preferences', {
+                    method: 'POST',
+                    headers: csrfHeaders(),
+                    body: JSON.stringify({ speaker_count_mode: mode }),
+                }).catch(() => {});
+            }));
+        }
+        // Refresh whenever a modal opens (account edit/create and standalone
+        // create all toggle the overlay's hidden class).
+        for (const id of ['tagModal', 'folderModal']) {
+            const overlay = document.getElementById(id);
+            if (!overlay) continue;
+            new MutationObserver(() => {
+                if (!overlay.classList.contains('hidden')) refreshSpeakerControls();
+            }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+        }
+        refreshSpeakerControls();
+    }
+
+    function _initShared() {
         populateLanguageSelects();
+        armSpeakerControls();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _initShared);
+    } else {
+        _initShared();
     }
     // Repopulate with relocalized labels once i18n resolves the locale
     // (initial population can run before i18n.init finishes). Values are

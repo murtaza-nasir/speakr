@@ -891,7 +891,11 @@
     "useResolvedDefault": "(utiliser la valeur par défaut tag/dossier/global)",
     "defaultTranscriptionModel": "Modèle de transcription par défaut",
     "defaultTranscriptionModelHelp": "Remplace le modèle de transcription utilisé pour les enregistrements avec ce tag ou ce dossier.",
-    "newFolderOption": "Nouveau dossier…"
+    "newFolderOption": "Nouveau dossier…",
+    "speakers": "Locuteurs",
+    "speakerModeRange": "Plage",
+    "speakerModeExact": "Exact",
+    "numberOfSpeakers": "Nombre de locuteurs"
   },
   "groups": {
     "addMembers": "Ajouter des membres...",

@@ -891,7 +891,11 @@
     "useResolvedDefault": "（使用标签/文件夹/全局默认）",
     "defaultTranscriptionModel": "默认转录模型",
     "defaultTranscriptionModelHelp": "覆盖此标签或文件夹下录音所使用的转录模型。",
-    "newFolderOption": "新建文件夹…"
+    "newFolderOption": "新建文件夹…",
+    "speakers": "说话人",
+    "speakerModeRange": "范围",
+    "speakerModeExact": "精确",
+    "numberOfSpeakers": "说话人数量"
   },
   "groups": {
     "addMembers": "添加成员...",

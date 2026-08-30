@@ -33,6 +33,9 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.CHUNKING,
         TranscriptionCapability.HOTWORDS,
         TranscriptionCapability.INITIAL_PROMPT,
+        # OpenASR's /audio/transcriptions takes an exact `speakers=N` count,
+        # not a min/max range (#362).
+        TranscriptionCapability.EXACT_SPEAKER_COUNT,
     }
     PROVIDER_NAME = "openasr"
 
@@ -75,6 +78,13 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
             should_diarize = request.diarize if request.diarize is not None else self.default_diarize
             if should_diarize:
                 files['diarize'] = (None, 'true')
+                # Exact speaker count (#362): OpenASR takes `speakers=N`, not a
+                # range. The app-wide convention stores a single count as
+                # min == max; legacy range defaults resolve to the max, the
+                # same rule the FunASR connector uses.
+                exact_speakers = request.max_speakers or request.min_speakers
+                if exact_speakers:
+                    files['speakers'] = (None, str(int(exact_speakers)))
 
             if request.language:
                 files['language'] = (None, request.language)

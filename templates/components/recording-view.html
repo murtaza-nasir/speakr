@@ -166,7 +166,7 @@
                                  connector supports any of the options inside — mirrors the
                                  upload modal so in-browser recordings can also set the
                                  initial prompt and hotwords (#375). -->
-                            <div v-if="connectorSupportsDiarization || connectorSupportsHotwords || connectorSupportsInitialPrompt">
+                            <div v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt">
                                 <button @click="showAdvancedOptions = !showAdvancedOptions"
                                         class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
                                     <span class="flex items-center gap-2 text-[var(--text-secondary)]">
@@ -225,22 +225,42 @@
                                         </select>
                                     </div>
 
-                                    <!-- Speaker Settings - only show for connectors that support min/max speakers -->
-                                    <div v-if="connectorSupportsSpeakerCount" class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
-                                            </label>
-                                            <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
-                                                   min="1" max="20" :placeholder="t('form.auto')"
+                                    <!-- Speaker Settings (#362): toggle for range connectors,
+                                         single field for exact-only; single writes min == max. -->
+                                    <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-medium text-[var(--text-secondary)]" v-text="t('form.speakers')"></label>
+                                            <div v-if="connectorSupportsSpeakerCount"
+                                                 class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
+                                                <button type="button" @click="setSpeakerCountMode('range')"
+                                                        :class="['px-2 py-0.5 text-[10px] transition-colors', !exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+                                                        v-text="t('form.speakerModeRange')"></button>
+                                                <button type="button" @click="setSpeakerCountMode('single')"
+                                                        :class="['px-2 py-0.5 text-[10px] transition-colors border-l border-[var(--border-secondary)]', exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+                                                        v-text="t('form.speakerModeExact')"></button>
+                                            </div>
+                                        </div>
+                                        <div v-if="exactSpeakerEntry">
+                                            <input type="number" id="recordingAsrSpeakersExact" v-model.number="asrSpeakersExact"
+                                                   min="1" max="20" :placeholder="t('form.numberOfSpeakers')"
                                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
                                         </div>
+                                        <div v-else class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('form.minSpeakers')">
+                                                </label>
+                                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                                       min="1" max="20" :placeholder="t('form.auto')"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
 
-                                        <div>
-                                            <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
-                                            </label>
-                                            <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
-                                                   min="1" max="20" :placeholder="t('form.auto')"
-                                                   class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            <div>
+                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('form.maxSpeakers')">
+                                                </label>
+                                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                                       min="1" max="20" :placeholder="t('form.auto')"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

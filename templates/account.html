@@ -4826,9 +4826,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (item.default_min_speakers || item.default_max_speakers) {
                 const min = item.default_min_speakers || '?';
                 const max = item.default_max_speakers || '?';
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="Speaker range: ${min}-${max}">
+                // A single count is stored as min == max (#362); show one number.
+                const speakerLabel = (min === max) ? String(min) : `${min}-${max}`;
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="Speakers: ${speakerLabel}">
                     <i class="fas fa-users"></i>
-                    <span>${min}-${max}</span>
+                    <span>${speakerLabel}</span>
                 </span>`);
             }
 

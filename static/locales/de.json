@@ -891,7 +891,11 @@
     "useResolvedDefault": "(Tag-/Ordner-/globalen Standard verwenden)",
     "defaultTranscriptionModel": "Standard-Transkriptionsmodell",
     "defaultTranscriptionModelHelp": "Überschreibt das Transkriptionsmodell für Aufnahmen mit diesem Tag oder Ordner.",
-    "newFolderOption": "Neuer Ordner…"
+    "newFolderOption": "Neuer Ordner…",
+    "speakers": "Sprecher",
+    "speakerModeRange": "Bereich",
+    "speakerModeExact": "Genau",
+    "numberOfSpeakers": "Anzahl der Sprecher"
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen...",

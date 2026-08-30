@@ -18,6 +18,7 @@ class TranscriptionCapability(Enum):
     KNOWN_SPEAKERS = auto()        # Support for known speaker references (future)
     SPEAKER_EMBEDDINGS = auto()    # Return speaker embeddings
     SPEAKER_COUNT_CONTROL = auto() # Support for min/max speaker count parameters
+    EXACT_SPEAKER_COUNT = auto()   # Accepts exactly-N speakers only (no range); UI shows a single count field
     HOTWORDS = auto()              # Hotword/keyword biasing (or prompt-based equivalent)
     INITIAL_PROMPT = auto()        # Free-text initial prompt / context hint
     STREAMING = auto()             # Real-time streaming transcription
@@ -232,6 +233,11 @@ class BaseTranscriptionConnector(ABC):
     def supports_speaker_count_control(self) -> bool:
         """Check if connector supports min/max speaker count parameters."""
         return TranscriptionCapability.SPEAKER_COUNT_CONTROL in self.CAPABILITIES
+
+    @property
+    def supports_exact_speaker_count(self) -> bool:
+        """Check if connector accepts an exact speaker count (no range)."""
+        return TranscriptionCapability.EXACT_SPEAKER_COUNT in self.CAPABILITIES
 
     @property
     def supports_hotwords(self) -> bool:

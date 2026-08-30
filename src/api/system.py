@@ -68,6 +68,14 @@ def save_user_preferences():
     
     if 'language' in data:
         current_user.ui_language = data['language']
+
+    # Speaker-count entry mode for the transcription UIs (#362):
+    # 'range' (min/max fields) or 'single' (one count stored as min == max).
+    if 'speaker_count_mode' in data:
+        mode = data['speaker_count_mode']
+        if mode not in ('range', 'single'):
+            return jsonify({'error': 'Invalid speaker_count_mode'}), 400
+        current_user.speaker_count_mode = mode
     
     db.session.commit()
     
@@ -242,6 +250,7 @@ def get_config():
         # Defaults to USE_ASR_ENDPOINT for backwards compatibility
         connector_supports_diarization = USE_ASR_ENDPOINT
         connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+        connector_supports_exact_speaker_count = False  # Exact-N connectors (openasr) declare it (#362)
         connector_supports_hotwords = USE_ASR_ENDPOINT
         connector_supports_initial_prompt = USE_ASR_ENDPOINT
         is_asr_connector = False
@@ -253,6 +262,7 @@ def get_config():
                 if connector:
                     connector_supports_diarization = connector.supports_diarization
                     connector_supports_speaker_count = connector.supports_speaker_count_control
+                    connector_supports_exact_speaker_count = connector.supports_exact_speaker_count
                     connector_supports_hotwords = connector.supports_hotwords
                     connector_supports_initial_prompt = connector.supports_initial_prompt
                     is_asr_connector = registry.get_active_connector_name() == 'asr_endpoint'
@@ -288,6 +298,7 @@ def get_config():
             'use_asr_endpoint': asr_enabled,  # Derived from connector or legacy env var
             'connector_supports_diarization': connector_supports_diarization,  # Connector capability
             'connector_supports_speaker_count': connector_supports_speaker_count,  # Min/max speakers
+            'connector_supports_exact_speaker_count': connector_supports_exact_speaker_count,  # Exact-N only (#362)
             'connector_supports_hotwords': connector_supports_hotwords,
             'connector_supports_initial_prompt': connector_supports_initial_prompt,
             'enable_internal_sharing': ENABLE_INTERNAL_SHARING,

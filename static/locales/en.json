@@ -891,7 +891,11 @@
     "yourFullName": "Your full name",
     "transcriptionModel": "Transcription model",
     "useResolvedDefault": "(use tag/folder/global default)",
-    "newFolderOption": "New folder…"
+    "newFolderOption": "New folder…",
+    "speakers": "Speakers",
+    "speakerModeRange": "Range",
+    "speakerModeExact": "Exact",
+    "numberOfSpeakers": "Number of speakers"
   },
   "groups": {
     "addMembers": "Add members...",

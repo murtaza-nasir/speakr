@@ -1419,6 +1419,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const useAsrEndpoint = ref(false);
             const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
             const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
+            const connectorSupportsExactSpeakerCount = ref(false); // Connector accepts exactly-N speakers only (#362)
+            const speakerCountMode = ref('range');           // User pref: 'range' (min/max) or 'single' (one count)
             const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
             const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
             const showTimestampsSimpleView = ref(false);     // User pref: display timestamps in simple view
@@ -1854,7 +1856,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -2825,6 +2827,51 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return [{ value: '', label: t('form.autoDetect') }, ...options];
             });
 
+            // --- Speaker count entry (#362) ---
+            // Canonical storage is always (min, max); a single count N is
+            // min == max == N. exactSpeakerEntry decides which editor renders:
+            // exact-only connectors force the single field, range connectors
+            // follow the user's persisted toggle.
+            const exactSpeakerEntry = computed(() =>
+                (connectorSupportsExactSpeakerCount.value && !connectorSupportsSpeakerCount.value)
+                || speakerCountMode.value === 'single');
+
+            const setSpeakerCountMode = async (mode) => {
+                speakerCountMode.value = mode;
+                try {
+                    await fetch('/api/user/preferences', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken.value },
+                        body: JSON.stringify({ speaker_count_mode: mode }),
+                    });
+                } catch (e) { /* non-fatal; the toggle still works this session */ }
+            };
+
+            const makeExactSpeakers = (minRef, maxRef) => computed({
+                get: () => {
+                    const mn = minRef.value, mx = maxRef.value;
+                    return (mn && mn === mx) ? mn : (mx || mn || '');
+                },
+                set: (v) => {
+                    const n = v === '' || v === null ? '' : Number(v);
+                    minRef.value = n;
+                    maxRef.value = n;
+                },
+            });
+            const uploadSpeakersExact = makeExactSpeakers(uploadMinSpeakers, uploadMaxSpeakers);
+            const asrSpeakersExact = makeExactSpeakers(asrMinSpeakers, asrMaxSpeakers);
+            const reprocessSpeakersExact = computed({
+                get: () => {
+                    const mn = asrReprocessOptions.min_speakers, mx = asrReprocessOptions.max_speakers;
+                    return (mn && mn === mx) ? mn : (mx || mn || '');
+                },
+                set: (v) => {
+                    const n = v === '' || v === null ? null : Number(v);
+                    asrReprocessOptions.min_speakers = n;
+                    asrReprocessOptions.max_speakers = n;
+                },
+            });
+
             // Recording metadata for sidebar
             const activeRecordingMetadata = computed(() => {
                 if (!selectedRecording.value) return [];
@@ -3727,6 +3774,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     useAsrEndpoint.value = appElement.dataset.useAsrEndpoint === 'True';
                     connectorSupportsDiarization.value = appElement.dataset.connectorSupportsDiarization === 'True';
                     connectorSupportsSpeakerCount.value = appElement.dataset.connectorSupportsSpeakerCount === 'True';
+                    connectorSupportsExactSpeakerCount.value = appElement.dataset.connectorSupportsExactSpeakerCount === 'True';
+                    speakerCountMode.value = appElement.dataset.speakerCountMode === 'single' ? 'single' : 'range';
                     connectorSupportsHotwords.value = appElement.dataset.connectorSupportsHotwords === 'True';
                     connectorSupportsInitialPrompt.value = appElement.dataset.connectorSupportsInitialPrompt === 'True';
                     showTimestampsSimpleView.value = appElement.dataset.showTimestampsSimpleView === 'True';
@@ -4366,7 +4415,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Inline tag/folder creation (upload dialog)
                 createTagFromUploadSearch,
-                createFolderFromUpload
+                createFolderFromUpload,
+
+                // Speaker count entry (#362)
+                exactSpeakerEntry, setSpeakerCountMode,
+                uploadSpeakersExact, asrSpeakersExact, reprocessSpeakersExact
             };
         },
         delimiters: ['${', '}']

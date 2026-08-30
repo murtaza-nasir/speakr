@@ -7,7 +7,7 @@
 
    The wrapper div carries the admin-group list for the group-assignment
    dropdown so standalone pages need no extra endpoint. #}
-<div id="organizerModals" data-admin-groups='{{ (user_admin_groups if user_admin_groups is defined else []) | tojson }}'>
+<div id="organizerModals" data-admin-groups='{{ (user_admin_groups if user_admin_groups is defined else []) | tojson }}' data-speaker-count-mode="{{ (current_user.speaker_count_mode or 'range') if current_user.is_authenticated else 'range' }}">
     <div id="tagModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--md">
             <div class="modal-header">
@@ -79,7 +79,18 @@
                                 <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.defaultLanguage">Default Language</label>
                                 <select id="tagLanguage" name="default_language" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"></select>
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="org-speaker-controls" data-speaker-prefix="tag">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="form.speakers">Speakers</span>
+                                <div class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
+                                    <button type="button" class="org-speaker-mode px-2 py-0.5 text-xs" data-mode="range" data-i18n="form.speakerModeRange">Range</button>
+                                    <button type="button" class="org-speaker-mode px-2 py-0.5 text-xs border-l border-[var(--border-secondary)]" data-mode="single" data-i18n="form.speakerModeExact">Exact</button>
+                                </div>
+                            </div>
+                            <div class="org-speaker-single hidden">
+                                <input type="number" id="tagSpeakersExact" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+                            <div class="org-speaker-range grid grid-cols-2 gap-3">
                                 <div>
                                     <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.minSpeakers">Min Speakers</label>
                                     <input type="number" id="tagMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -88,6 +99,7 @@
                                     <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.maxSpeakers">Max Speakers</label>
                                     <input type="number" id="tagMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -301,7 +313,18 @@
                                 <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.defaultLanguage">Default Language</label>
                                 <select id="folderLanguage" name="default_language" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"></select>
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="org-speaker-controls" data-speaker-prefix="folder">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="form.speakers">Speakers</span>
+                                <div class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
+                                    <button type="button" class="org-speaker-mode px-2 py-0.5 text-xs" data-mode="range" data-i18n="form.speakerModeRange">Range</button>
+                                    <button type="button" class="org-speaker-mode px-2 py-0.5 text-xs border-l border-[var(--border-secondary)]" data-mode="single" data-i18n="form.speakerModeExact">Exact</button>
+                                </div>
+                            </div>
+                            <div class="org-speaker-single hidden">
+                                <input type="number" id="folderSpeakersExact" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+                            <div class="org-speaker-range grid grid-cols-2 gap-3">
                                 <div>
                                     <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.minSpeakers">Min Speakers</label>
                                     <input type="number" id="folderMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -310,6 +333,7 @@
                                     <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.maxSpeakers">Max Speakers</label>
                                     <input type="number" id="folderMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
