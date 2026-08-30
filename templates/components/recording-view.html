@@ -215,53 +215,51 @@
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                            Language
-                                        </label>
-                                        <select id="recordingAsrLanguage" v-model="asrLanguage"
-                                                class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                            <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
-                                        </select>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                ${ t('form.transcriptionLanguage') }
+                                            </label>
+                                            <select id="recordingAsrLanguage" v-model="asrLanguage"
+                                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <!-- Speaker Settings (#362): toggle for range connectors,
-                                         single field for exact-only; single writes min == max. -->
-                                    <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <label class="block text-xs font-medium text-[var(--text-secondary)]" v-text="t('form.speakers')"></label>
-                                            <div v-if="connectorSupportsSpeakerCount"
-                                                 class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
-                                                <button type="button" @click="setSpeakerCountMode('range')"
-                                                        :class="['px-2 py-0.5 text-[10px] transition-colors', !exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
-                                                        v-text="t('form.speakerModeRange')"></button>
-                                                <button type="button" @click="setSpeakerCountMode('single')"
-                                                        :class="['px-2 py-0.5 text-[10px] transition-colors border-l border-[var(--border-secondary)]', exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
-                                                        v-text="t('form.speakerModeExact')"></button>
-                                            </div>
-                                        </div>
-                                        <div v-if="exactSpeakerEntry">
-                                            <input type="number" id="recordingAsrSpeakersExact" v-model.number="asrSpeakersExact"
-                                                   min="1" max="20" :placeholder="t('form.numberOfSpeakers')"
-                                                   class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                        </div>
-                                        <div v-else class="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('form.minSpeakers')">
-                                                </label>
-                                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
-                                                       min="1" max="20" :placeholder="t('form.auto')"
-                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                            </div>
+                                    <!-- Divider between the language row and the speaker controls -->
+                                    <hr v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount"
+                                        class="border-t border-[var(--border-secondary)] my-1">
 
-                                            <div>
-                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('form.maxSpeakers')">
-                                                </label>
-                                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
-                                                       min="1" max="20" :placeholder="t('form.auto')"
-                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                            </div>
+                                    <!-- Speaker Settings (#362): one compact row — label,
+                                         Range/Exact toggle (range connectors only), narrow
+                                         inputs. A single count writes min == max. -->
+                                    <div v-if="connectorSupportsSpeakerCount || connectorSupportsExactSpeakerCount"
+                                         class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                        <label class="text-xs font-medium text-[var(--text-secondary)]" v-text="t('form.speakers')"></label>
+                                        <div v-if="connectorSupportsSpeakerCount"
+                                             class="inline-flex rounded border border-[var(--border-secondary)] overflow-hidden">
+                                            <button type="button" @click="setSpeakerCountMode('range')"
+                                                    :class="['px-2 py-0.5 text-[10px] transition-colors', !exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+                                                    v-text="t('form.speakerModeRange')"></button>
+                                            <button type="button" @click="setSpeakerCountMode('single')"
+                                                    :class="['px-2 py-0.5 text-[10px] transition-colors border-l border-[var(--border-secondary)]', exactSpeakerEntry ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+                                                    v-text="t('form.speakerModeExact')"></button>
                                         </div>
+                                        <input v-if="exactSpeakerEntry"
+                                               type="number" id="recordingAsrSpeakersExact" v-model.number="asrSpeakersExact"
+                                               min="1" max="20"
+                                               class="w-20 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                        <template v-else>
+                                            <label for="recordingAsrMinSpeakers" class="text-[11px] text-[var(--text-muted)]" v-text="t('form.minSpeakers')"></label>
+                                            <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                                   min="1" max="20" :placeholder="t('form.auto')"
+                                                   class="w-16 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            <label for="recordingAsrMaxSpeakers" class="text-[11px] text-[var(--text-muted)]" v-text="t('form.maxSpeakers')"></label>
+                                            <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                                   min="1" max="20" :placeholder="t('form.auto')"
+                                                   class="w-16 px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                        </template>
                                     </div>
                                 </div>
                             </div>
