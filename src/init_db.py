@@ -16,7 +16,15 @@ from sqlalchemy import text, inspect
 from src.database import db
 from src.models import Recording, TranscriptChunk, SystemSetting, User
 from src.services.embeddings import process_recording_chunks
-from src.utils import add_column_if_not_exists, migrate_column_type, create_index_if_not_exists, drop_not_null
+from src.utils import (
+    add_column_if_not_exists,
+    migrate_column_type,
+    create_index_if_not_exists,
+    drop_not_null,
+    migration_lock,
+    run_once,
+)
+from src.utils.database import ensure_migration_ledger
 
 # Configuration
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
@@ -116,6 +124,20 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not enable WAL mode: {e}")
 
+    # Only one process at a time, so the several startup processes cannot
+    # interleave and see each other's half-applied schema. Failing to take the
+    # lock is not fatal; every migration below is independently idempotent.
+    with migration_lock(engine, logger=app.logger):
+        try:
+            ensure_migration_ledger(engine)
+        except Exception as e:
+            app.logger.warning(f"Could not create the schema_migrations ledger: {e}")
+
+        _run_migrations(app, engine)
+
+
+def _run_migrations(app, engine):
+    """Apply every schema migration. Assumes the migration lock is held."""
     try:
         # Add is_inbox column with default value of 1 (True)
         if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
@@ -885,11 +907,12 @@ def initialize_database(app):
         # One-shot migration: clean up legacy User.transcription_language values
         # that were stored as display names ("Français", "English") before the
         # account-settings input was a dropdown. Issue #256.
-        try:
+        #
+        # Recorded in the ledger rather than re-detected, because detecting it
+        # means loading every user on every startup for a fix that can only ever
+        # be needed once.
+        def _normalize_transcription_languages(_engine):
             from src.utils.language import normalize_language_code
-            from sqlalchemy import or_
-            # Touch only rows where the value isn't already a valid 2-letter code,
-            # to keep this idempotent across restarts.
             stale_users = User.query.filter(User.transcription_language.isnot(None)).all()
             cleaned = 0
             for u in stale_users:
@@ -903,6 +926,10 @@ def initialize_database(app):
             if cleaned:
                 db.session.commit()
                 app.logger.info(f"Normalized transcription_language for {cleaned} user(s)")
+
+        try:
+            run_once(engine, '0001_normalize_transcription_language',
+                     _normalize_transcription_languages, logger=app.logger)
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"transcription_language normalization migration skipped: {e}")
@@ -964,7 +991,18 @@ def initialize_database(app):
                 app.logger.info("Existing recordings can be migrated later using the admin API or migration script.")
             
     except Exception as e:
-        app.logger.error(f"Error during database migration: {e}")
+        # Everything above shares one try block, so this aborts each remaining
+        # migration and leaves the schema part-upgraded. That must not scroll
+        # past as a single line among the ordinary startup chatter.
+        app.logger.error("=" * 72)
+        app.logger.error("DATABASE MIGRATION FAILED: %s", e)
+        app.logger.error("The schema may be partly upgraded and later migrations were skipped.")
+        app.logger.error("The application will keep starting, but expect errors until this is fixed.")
+        app.logger.error("Please report this with the traceback below: "
+                         "https://github.com/murtaza-nasir/speakr/issues")
+        app.logger.error("=" * 72)
+        app.logger.exception("Migration traceback")
+        app.config['MIGRATION_FAILED'] = str(e)
 
 
 if __name__ == '__main__':

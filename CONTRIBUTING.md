@@ -82,8 +82,22 @@ instead, which is what the helpers do.
 
 **Make it idempotent.** Migrations run several times per container start, some of them
 concurrently: from the entrypoint, from the admin user script, and once per worker
-process. A migration must recognise that its work is already done and return without
-acting.
+process. A `migration_lock()` keeps them from interleaving, but it fails open after a
+timeout rather than holding the container down, so every migration must still recognise
+that its work is already done and return without acting.
+
+**Register genuinely one-shot work instead of re-detecting it.** A data fix that can
+only ever be needed once, or whose "has this run?" check would scan a whole table on
+every boot, belongs in the ledger:
+
+```python
+run_once(engine, '0002_short_description_of_the_change', my_migration, logger=app.logger)
+```
+
+It runs the callable the first time only and records the id in `schema_migrations`. A
+failure is left unrecorded, so it is retried on the next startup. Number ids in
+sequence and never reuse or renumber one, since existing installations have the old id
+recorded.
 
 **Make failure recoverable.** pysqlite does not open a transaction for DDL, so a bare
 `CREATE TABLE` or `ALTER TABLE` commits immediately even inside a
@@ -95,19 +109,38 @@ yourself; `drop_not_null()` shows the pattern.
 function, so referencing a column that is added further down fails on precisely the
 upgrade path the migration exists for.
 
+**Test the upgrade, not just the result.** `tests/test_upgrade_path.py` takes real
+schemas from older releases, seeds them, runs the current migrations over them, and
+asserts that no column, index or value was lost and that the schema ends up matching
+today's models. Every other test in the suite runs against a database built fresh from
+current models, which is the one shape no upgrading user ever has.
+
+The fixtures live in `tests/fixtures/schemas/` as plain SQL, dumped from each tag's own
+models, so the tests need no old dependencies and no network. Add a version with:
+
+```bash
+python scripts/generate_schema_fixtures.py v0.9.0-alpha
+```
+
 Verify with:
 
 ```bash
-python -m pytest tests/test_migration_compatibility.py tests/test_migration_drop_not_null.py -q
+python -m pytest -q tests/test_migration_compatibility.py tests/test_upgrade_path.py \
+    tests/test_migration_drop_not_null.py tests/test_migration_infrastructure.py
 
-# and against a real PostgreSQL, which the tests skip without a URL
+# and against a real PostgreSQL, which the tests skip without one
 docker compose -f docker-compose.postgres.yml up -d postgres
-SPEAKR_TEST_POSTGRES_URL=postgresql://speakr:speakr@localhost:5432/speakr \
-    python -m pytest tests/test_migration_drop_not_null.py -q
+TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr python -m pytest -q tests/
 ```
+
+These run in CI, and the pre-commit hook runs them whenever you touch `src/init_db.py`,
+`src/utils/database.py` or `src/models/`.
 
 A migration needs a test asserting on what a bad one would take away, meaning the other
 columns, the indexes and the row values, not merely that the intended change happened.
+Values matter as much as schema: when the #379 migration destroyed 27 columns, the
+`add_column_if_not_exists()` calls further down the same function immediately put the
+names back, so only the emptied values revealed the damage.
 
 ### Commit Message Guidelines
 

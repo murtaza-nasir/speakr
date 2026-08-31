@@ -9,8 +9,148 @@ IMPORTANT: All migrations must be compatible with both SQLite and PostgreSQL.
 - Use create_index_if_not_exists() for index creation with proper quoting
 """
 
+import fcntl
+import hashlib
+import os
 import re
+import tempfile
+import time
+from contextlib import contextmanager
+
 from sqlalchemy import inspect, text
+
+# Arbitrary but fixed key for PostgreSQL advisory locking, derived from a name so
+# it cannot collide with an application lock chosen the same way.
+_PG_MIGRATION_LOCK_KEY = int.from_bytes(
+    hashlib.sha256(b'speakr.startup_migrations').digest()[:4], 'big'
+)
+
+
+@contextmanager
+def migration_lock(engine, logger=None, timeout=120):
+    """Serialise startup migrations across every process touching this database.
+
+    `initialize_database()` runs about five times per container start: from the
+    entrypoint, from the admin-user script, and once per gunicorn worker, several
+    of them simultaneously. Without a lock they interleave, and a migration can
+    see a half-applied schema produced by a sibling process.
+
+    Yields True when the lock was taken and False when it timed out. Timing out
+    is not fatal and the caller should proceed: migrations are individually
+    idempotent, so the lock is protection against wasted work and interleaving
+    rather than a correctness requirement. Failing open keeps a stuck lock from
+    holding the container down.
+    """
+    acquired = False
+    handle = None
+    connection = None
+
+    try:
+        if engine.name == 'postgresql':
+            connection = engine.connect()
+            deadline = time.monotonic() + timeout
+            while True:
+                acquired = bool(connection.execute(
+                    text('SELECT pg_try_advisory_lock(:key)'),
+                    {'key': _PG_MIGRATION_LOCK_KEY},
+                ).scalar())
+                if acquired or time.monotonic() >= deadline:
+                    break
+                time.sleep(0.5)
+        else:
+            # One lock file per database URL so unrelated databases on the same
+            # host do not serialise against each other.
+            digest = hashlib.sha256(str(engine.url).encode()).hexdigest()[:16]
+            lock_path = os.path.join(tempfile.gettempdir(), f'speakr_migration_{digest}.lock')
+            handle = open(lock_path, 'w')
+            deadline = time.monotonic() + timeout
+            while True:
+                try:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    acquired = True
+                except BlockingIOError:
+                    acquired = False
+                if acquired or time.monotonic() >= deadline:
+                    break
+                time.sleep(0.5)
+
+        if not acquired and logger:
+            logger.warning(
+                "Could not acquire the migration lock within %ss; proceeding anyway. "
+                "Migrations are idempotent, so this is safe but may duplicate work.",
+                timeout,
+            )
+
+        yield acquired
+
+    finally:
+        try:
+            if connection is not None:
+                if acquired:
+                    connection.execute(
+                        text('SELECT pg_advisory_unlock(:key)'),
+                        {'key': _PG_MIGRATION_LOCK_KEY},
+                    )
+                connection.close()
+            if handle is not None:
+                if acquired:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                handle.close()
+        except Exception:
+            # Both lock types are released by the OS or the connection closing,
+            # so a failure here must not mask whatever the caller was doing.
+            pass
+
+
+def ensure_migration_ledger(engine):
+    """Create the table recording which one-shot migrations have already run."""
+    with engine.connect() as conn:
+        conn.execute(text(
+            'CREATE TABLE IF NOT EXISTS schema_migrations ('
+            '  migration_id VARCHAR(255) NOT NULL PRIMARY KEY,'
+            '  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        ))
+        conn.commit()
+
+
+def run_once(engine, migration_id, migration, logger=None):
+    """Run a one-shot migration the first time only, then never again.
+
+    Most migrations here detect their own state, which works but means every
+    startup pays to re-check, and the detection is itself a source of bugs when
+    the schema drifts underneath it. A migration that cannot cheaply tell
+    whether it has run, or that would otherwise scan a whole table on every
+    boot, should be registered here instead.
+
+    The callable is passed the engine and runs before the id is recorded, so a
+    failure leaves the migration unrecorded and it is retried next startup.
+
+    Returns True if the migration ran on this call, False if it had already run.
+    """
+    ensure_migration_ledger(engine)
+
+    with engine.connect() as conn:
+        already_applied = conn.execute(
+            text('SELECT 1 FROM schema_migrations WHERE migration_id = :id'),
+            {'id': migration_id},
+        ).scalar()
+
+    if already_applied:
+        return False
+
+    migration(engine)
+
+    with engine.connect() as conn:
+        conn.execute(
+            text('INSERT INTO schema_migrations (migration_id) VALUES (:id)'),
+            {'id': migration_id},
+        )
+        conn.commit()
+
+    if logger:
+        logger.info("Applied one-shot migration '%s'", migration_id)
+    return True
 
 
 def add_column_if_not_exists(engine, table_name, column_name, column_type):

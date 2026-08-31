@@ -29,7 +29,9 @@ from .database import (
     add_column_if_not_exists,
     migrate_column_type,
     create_index_if_not_exists,
-    drop_not_null
+    drop_not_null,
+    migration_lock,
+    run_once
 )
 
 from .token_auth import (
@@ -63,6 +65,8 @@ __all__ = [
     'migrate_column_type',
     'create_index_if_not_exists',
     'drop_not_null',
+    'migration_lock',
+    'run_once',
     # Token authentication
     'extract_token_from_request',
     'hash_token',

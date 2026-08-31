@@ -9,8 +9,9 @@ the frozen DDL had fallen behind on.
 The replacement swaps a single column, so the tests below assert on what the
 rebuild destroyed: the other columns, the indexes and the row data.
 
-Set SPEAKR_TEST_POSTGRES_URL to also exercise the PostgreSQL path, e.g.
-    SPEAKR_TEST_POSTGRES_URL=postgresql://speakr:speakr@localhost:5433/speakr
+Set TEST_DATABASE_URI to a PostgreSQL URL to also exercise that path, e.g.
+    TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr
+CI sets it already, so these run there without further configuration.
 """
 
 import os
@@ -225,10 +226,11 @@ class TestSQLiteIssue379:
         assert "user_new" not in inspect(sqlite_engine).get_table_names()
 
 
-POSTGRES_URL = os.environ.get("SPEAKR_TEST_POSTGRES_URL")
+_TEST_DB_URI = os.environ.get("TEST_DATABASE_URI", "")
+POSTGRES_URL = _TEST_DB_URI if _TEST_DB_URI.startswith("postgresql") else None
 
 
-@pytest.mark.skipif(not POSTGRES_URL, reason="SPEAKR_TEST_POSTGRES_URL is not set")
+@pytest.mark.skipif(not POSTGRES_URL, reason="TEST_DATABASE_URI is not a PostgreSQL URL")
 class TestPostgreSQL:
     """The production deployment runs PostgreSQL, so the native path needs cover too."""
 
