@@ -55,6 +55,60 @@ Please review the [CLA document](CLA.md) before submitting your contribution. Wh
 - Test your changes before submitting
 - Keep PRs focused on a single feature or fix
 
+### Database Migrations
+
+Speakr has no migration framework. Schema changes are hand-written in
+`src/init_db.py` and run on every startup, against SQLite (the shipped default) and
+PostgreSQL (common in larger deployments). Both have to keep working, and a migration
+that misbehaves runs on databases full of other people's recordings, so this area has
+stricter rules than the rest of the codebase.
+
+**Use the helpers in `src/utils/database.py`, never raw DDL.** Each one alters a single
+thing and handles the differences between the two backends, including boolean defaults,
+type names and quoting of reserved words such as `user`.
+
+| Need | Helper |
+|---|---|
+| Add a column | `add_column_if_not_exists()` |
+| Relax `NOT NULL` | `drop_not_null()` |
+| Change a column type | `migrate_column_type()` |
+| Add an index | `create_index_if_not_exists()` |
+
+**Never rebuild a table from a written-out schema.** A migration that does
+`CREATE TABLE x_new (...)`, copies the rows, drops the original and renames has frozen
+that column list at the moment it was written. Every column added afterwards is
+silently destroyed the day the migration runs. Change the one column you care about
+instead, which is what the helpers do.
+
+**Make it idempotent.** Migrations run several times per container start, some of them
+concurrently: from the entrypoint, from the admin user script, and once per worker
+process. A migration must recognise that its work is already done and return without
+acting.
+
+**Make failure recoverable.** pysqlite does not open a transaction for DDL, so a bare
+`CREATE TABLE` or `ALTER TABLE` commits immediately even inside a
+`with engine.connect()` block, and a failure later in the sequence leaves it behind
+permanently. If a migration writes more than one statement, drive the transaction
+yourself; `drop_not_null()` shows the pattern.
+
+**Add a column before anything reads it.** Migrations execute top to bottom in one
+function, so referencing a column that is added further down fails on precisely the
+upgrade path the migration exists for.
+
+Verify with:
+
+```bash
+python -m pytest tests/test_migration_compatibility.py tests/test_migration_drop_not_null.py -q
+
+# and against a real PostgreSQL, which the tests skip without a URL
+docker compose -f docker-compose.postgres.yml up -d postgres
+SPEAKR_TEST_POSTGRES_URL=postgresql://speakr:speakr@localhost:5432/speakr \
+    python -m pytest tests/test_migration_drop_not_null.py -q
+```
+
+A migration needs a test asserting on what a bad one would take away, meaning the other
+columns, the indexes and the row values, not merely that the intended change happened.
+
 ### Commit Message Guidelines
 
 Follow the format used in the project:

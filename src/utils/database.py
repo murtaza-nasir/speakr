@@ -118,6 +118,127 @@ def create_index_if_not_exists(engine, index_name, table_name, columns, unique=F
     return True
 
 
+def drop_not_null(engine, table_name, column_name):
+    """
+    Make an existing NOT NULL column nullable.
+
+    PostgreSQL and MySQL alter the constraint in place. SQLite cannot alter a
+    column constraint at all, so it swaps in a fresh column: ADD COLUMN always
+    produces a nullable column, so copying the values across and renaming
+    reaches the same end state.
+
+    The SQLite path deliberately does NOT rebuild the table. A rebuild has to
+    restate the whole schema in hand-written DDL, which silently drops every
+    column, index and constraint the DDL has fallen behind on; that is exactly
+    how the previous version of this migration came to destroy 27 columns of
+    user settings on any database it managed to run to completion (#379).
+
+    The SQLite statements run inside one explicit transaction because pysqlite
+    does not open one for DDL by itself. Without it a failure partway through
+    leaves the half-built column committed and the migration permanently
+    wedged, which is the other half of #379. BEGIN IMMEDIATE takes the write
+    lock up front so the several worker processes that run migrations at
+    startup cannot race, and the constraint is re-checked under that lock.
+
+    Note: SQLite refuses to drop a column that is indexed, unique or part of
+    the primary key, so this helper cannot be used on such a column.
+
+    Args:
+        engine: SQLAlchemy engine
+        table_name: Name of the table
+        column_name: Name of the column to make nullable
+
+    Returns:
+        bool: True if the column was made nullable, False if there was nothing
+              to do (table or column missing, or already nullable).
+    """
+    inspector = inspect(engine)
+
+    if table_name not in inspector.get_table_names():
+        return False
+
+    columns = {col['name']: col for col in inspector.get_columns(table_name)}
+    temp_col = f"{column_name}__nullable_tmp"
+
+    # Resume an attempt that died between DROP COLUMN and RENAME COLUMN: the
+    # data is all in the temporary column, so completing the rename is safe.
+    if engine.name == 'sqlite' and column_name not in columns and temp_col in columns:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'
+            ))
+            conn.commit()
+        return True
+
+    column = columns.get(column_name)
+    if column is None or column.get('nullable', True):
+        return False
+
+    column_type = column['type'].compile(engine.dialect)
+
+    if engine.name == 'postgresql':
+        with engine.connect() as conn:
+            conn.execute(text(
+                f'ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" DROP NOT NULL'
+            ))
+            conn.commit()
+        return True
+
+    if engine.name == 'mysql':
+        with engine.connect() as conn:
+            conn.execute(text(
+                f'ALTER TABLE `{table_name}` MODIFY COLUMN `{column_name}` {column_type} NULL'
+            ))
+            conn.commit()
+        return True
+
+    if engine.name != 'sqlite':
+        raise NotImplementedError(
+            f"drop_not_null() does not support the '{engine.name}' dialect"
+        )
+
+    raw_connection = engine.raw_connection()
+    try:
+        dbapi_connection = raw_connection.driver_connection
+        previous_isolation = dbapi_connection.isolation_level
+        # Hand transaction control to us so that BEGIN covers the DDL too.
+        dbapi_connection.isolation_level = None
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute('BEGIN IMMEDIATE')
+
+            # Re-check under the write lock; a concurrent worker may have
+            # completed the migration between our inspection and this point.
+            still_not_null = any(
+                row[1] == column_name and row[3] == 1
+                for row in cursor.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+            )
+            if not still_not_null:
+                cursor.execute('ROLLBACK')
+                return False
+
+            if temp_col in columns:
+                cursor.execute(f'ALTER TABLE "{table_name}" DROP COLUMN "{temp_col}"')
+
+            cursor.execute(f'ALTER TABLE "{table_name}" ADD COLUMN "{temp_col}" {column_type}')
+            cursor.execute(f'UPDATE "{table_name}" SET "{temp_col}" = "{column_name}"')
+            cursor.execute(f'ALTER TABLE "{table_name}" DROP COLUMN "{column_name}"')
+            cursor.execute(
+                f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'
+            )
+            cursor.execute('COMMIT')
+        except Exception:
+            cursor.execute('ROLLBACK')
+            raise
+        finally:
+            cursor.close()
+            dbapi_connection.isolation_level = previous_isolation
+    finally:
+        raw_connection.close()
+
+    return True
+
+
 def migrate_column_type(engine, table_name, column_name, new_type, transform_sql=None):
     """
     Migrate a column to a new type if it exists.

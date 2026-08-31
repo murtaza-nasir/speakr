@@ -229,22 +229,35 @@ class TestMigrationCompatibility(unittest.TestCase):
         raw_pattern = r"conn\.execute\s*\(\s*text\s*\(['\"][^'\"]*CREATE\s+(?:UNIQUE\s+)?INDEX[^'\"]*ON\s+[\"'`]?user"
         raw_matches = re.findall(raw_pattern, self.content, re.IGNORECASE)
 
-        # Count uses of create_index_if_not_exists for user table
-        utility_pattern = r"create_index_if_not_exists\s*\([^)]*['\"]user['\"]"
-        utility_matches = re.findall(utility_pattern, self.content, re.IGNORECASE)
+        # All index creation on the user table must use the utility.
+        self.assertEqual(
+            len(raw_matches), 0,
+            f"Found {len(raw_matches)} raw CREATE INDEX statements on 'user' table. "
+            f"Use create_index_if_not_exists() for proper quoting of reserved keywords."
+        )
 
-        # All index creation on user table should use the utility
-        # (excluding table recreation scenarios which have their own quoting)
-        if len(raw_matches) > 0:
-            # Check if these are in table recreation blocks (acceptable)
-            table_recreation_pattern = r"CREATE\s+TABLE\s+user_new"
-            has_table_recreation = re.search(table_recreation_pattern, self.content, re.IGNORECASE)
+    def test_no_table_rebuild_from_frozen_ddl(self):
+        """
+        Ensure no migration recreates a live table from a hand-written column list.
 
-            if not has_table_recreation or len(raw_matches) > 1:
-                self.fail(
-                    f"Found {len(raw_matches)} raw CREATE INDEX statements on 'user' table. "
-                    f"Use create_index_if_not_exists() for proper quoting of reserved keywords."
-                )
+        A migration that spells out a table's schema in a CREATE TABLE and then
+        copies rows into it freezes that schema at the moment it was written.
+        Every column added afterwards is silently dropped the day the migration
+        finally runs. This destroyed 27 columns of user settings in #379.
+
+        Change a column in place instead: add_column_if_not_exists() to add,
+        drop_not_null() to relax a constraint, migrate_column_type() to retype.
+        """
+        rebuild_pattern = r"CREATE\s+TABLE\s+(\w+_new)\b"
+        matches = re.findall(rebuild_pattern, self.content, re.IGNORECASE)
+
+        self.assertEqual(
+            matches, [],
+            f"Found table rebuild(s) from frozen DDL in init_db.py: {matches}. "
+            f"A hand-written CREATE TABLE goes stale the moment the next column "
+            f"is added, and the rebuild then drops it. Alter the column in place "
+            f"with the helpers in src/utils/database.py instead."
+        )
 
 
 if __name__ == '__main__':

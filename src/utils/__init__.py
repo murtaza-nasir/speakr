@@ -28,7 +28,8 @@ from .security import (
 from .database import (
     add_column_if_not_exists,
     migrate_column_type,
-    create_index_if_not_exists
+    create_index_if_not_exists,
+    drop_not_null
 )
 
 from .token_auth import (
@@ -61,6 +62,7 @@ __all__ = [
     'add_column_if_not_exists',
     'migrate_column_type',
     'create_index_if_not_exists',
+    'drop_not_null',
     # Token authentication
     'extract_token_from_request',
     'hash_token',

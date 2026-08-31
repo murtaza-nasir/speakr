@@ -16,7 +16,7 @@ from sqlalchemy import text, inspect
 from src.database import db
 from src.models import Recording, TranscriptChunk, SystemSetting, User
 from src.services.embeddings import process_recording_chunks
-from src.utils import add_column_if_not_exists, migrate_column_type, create_index_if_not_exists
+from src.utils import add_column_if_not_exists, migrate_column_type, create_index_if_not_exists, drop_not_null
 
 # Configuration
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
@@ -51,6 +51,48 @@ def classify_embedding_identifier_state(current_identifier, stored_identifier, l
         outcome = 'warn-mismatch'
 
     return stored_identifier, migrated_from_legacy, outcome
+
+
+def _remove_orphaned_user_new(engine, app):
+    """Drop the 'user_new' table stranded by the pre-0.10.5 password migration.
+
+    That migration rebuilt the user table from hand-written DDL. pysqlite does
+    not wrap DDL in a transaction, so when the row copy failed the CREATE had
+    already been committed; every later startup then aborted on 'table
+    user_new already exists' and the migration could never complete (#379).
+
+    The table is only ever dropped once the real one is present and holds at
+    least as many rows, so a database left mid-rebuild keeps its only copy of
+    the data and gets a warning instead.
+    """
+    if engine.name != 'sqlite':
+        return
+
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if 'user_new' not in tables:
+            return
+
+        with engine.connect() as conn:
+            orphaned_rows = conn.execute(text('SELECT COUNT(*) FROM user_new')).scalar()
+            live_rows = (
+                conn.execute(text('SELECT COUNT(*) FROM "user"')).scalar()
+                if 'user' in tables else 0
+            )
+
+            if live_rows and live_rows >= orphaned_rows:
+                conn.execute(text('DROP TABLE user_new'))
+                conn.commit()
+                app.logger.info("Removed orphaned user_new table left by an interrupted migration")
+            else:
+                app.logger.warning(
+                    "Leaving orphaned user_new table in place: it holds %d row(s) but the "
+                    "live user table holds %d. Inspect the database before removing it.",
+                    orphaned_rows, live_rows
+                )
+    except Exception as e:
+        app.logger.warning(f"Could not clean up orphaned user_new table: {e}")
 
 
 def initialize_database(app):
@@ -109,75 +151,16 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'user', 'sso_subject', 'VARCHAR(255)'):
             app.logger.info("Added sso_subject column to user table")
         
-        # Make password column nullable for SSO users
+        # SSO users authenticate against their provider and never hold a local
+        # password, so the column has to accept NULL.
         try:
-            inspector = inspect(engine)
-            if 'user' in inspector.get_table_names():
-                if engine.name == 'sqlite':
-                    # SQLite doesn't support ALTER COLUMN, so we need to check and recreate
-                    with engine.connect() as conn:
-                        result = conn.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='user'"))
-                        schema = result.scalar()
-
-                        if schema and 'password VARCHAR(60) NOT NULL' in schema:
-                            app.logger.info("Migrating user table to make password nullable for SSO support...")
-
-                            conn.execute(text("""
-                                CREATE TABLE user_new (
-                                    id INTEGER NOT NULL,
-                                    username VARCHAR(20) NOT NULL,
-                                    email VARCHAR(120) NOT NULL,
-                                    password VARCHAR(60),
-                                    is_admin BOOLEAN,
-                                    can_share_publicly BOOLEAN,
-                                    transcription_language VARCHAR(10),
-                                    output_language VARCHAR(50),
-                                    ui_language VARCHAR(10),
-                                    summary_prompt TEXT,
-                                    extract_events BOOLEAN,
-                                    name VARCHAR(100),
-                                    job_title VARCHAR(100),
-                                    company VARCHAR(100),
-                                    diarize BOOLEAN,
-                                    sso_provider VARCHAR(100),
-                                    sso_subject VARCHAR(255),
-                                    PRIMARY KEY (id),
-                                    UNIQUE (username),
-                                    UNIQUE (email)
-                                )
-                            """))
-                            conn.execute(text("""
-                                INSERT INTO user_new
-                                SELECT id, username, email, password, is_admin, can_share_publicly,
-                                       transcription_language, output_language, ui_language,
-                                       summary_prompt, extract_events, name, job_title, company,
-                                       diarize, sso_provider, sso_subject
-                                FROM user
-                            """))
-                            conn.execute(text("DROP TABLE user"))
-                            conn.execute(text("ALTER TABLE user_new RENAME TO user"))
-                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
-                            conn.commit()
-                            app.logger.info("Successfully made password column nullable for SSO support")
-                        else:
-                            app.logger.info("Password column is already nullable, skipping migration")
-
-                elif engine.name == 'postgresql':
-                    # PostgreSQL supports ALTER COLUMN directly
-                    with engine.connect() as conn:
-                        result = conn.execute(text("""
-                            SELECT is_nullable FROM information_schema.columns
-                            WHERE table_name = 'user' AND column_name = 'password'
-                        """))
-                        row = result.fetchone()
-                        if row and row[0] == 'NO':
-                            conn.execute(text('ALTER TABLE "user" ALTER COLUMN password DROP NOT NULL'))
-                            conn.commit()
-                            app.logger.info("Made password column nullable for SSO support (PostgreSQL)")
-                        else:
-                            app.logger.info("Password column is already nullable, skipping migration")
+            if drop_not_null(engine, 'user', 'password'):
+                app.logger.info("Made password column nullable for SSO support")
         except Exception as e:
             app.logger.warning(f"Could not migrate password column to nullable (may cause issues with SSO): {e}")
+
+        _remove_orphaned_user_new(engine, app)
+
 
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
