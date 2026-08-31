@@ -276,6 +276,49 @@ class TestSectionIsolation:
         assert "recording, tag, speaker and processing columns" in app.config["MIGRATION_FAILED"]
         assert "poisoned migration" in app.config["MIGRATION_FAILED"]
 
+    def test_a_failure_mid_session_does_not_poison_later_sections(self, old_db, monkeypatch):
+        """A section failing with pending ORM writes must not damage the rest.
+
+        Its open transaction holds SQLite's write lock, so later sections fail
+        with "database is locked", and its half-built rows are flushed to disk
+        by the next section that commits. The section handler rolls the session
+        back to prevent both.
+        """
+        import src.init_db as init_db
+        from src.database import db
+        from src.models import SystemSetting
+
+        real_index = init_db.create_index_if_not_exists
+        fired = []
+
+        def poisoned(*args, **kwargs):
+            if not fired:
+                fired.append(True)
+                db.session.add(SystemSetting(key="poison-row", value="v"))
+                db.session.flush()
+                raise RuntimeError("poisoned mid-session")
+            return real_index(*args, **kwargs)
+
+        monkeypatch.setattr(init_db, "create_index_if_not_exists", poisoned)
+
+        app = _fixture_app(old_db)
+        with app.app_context():
+            initialize_database(app)
+
+        con = sqlite3.connect(old_db)
+        leaked = con.execute(
+            "SELECT COUNT(*) FROM system_setting WHERE key = 'poison-row'"
+        ).fetchone()[0]
+        recording_cols = [r[1] for r in con.execute('PRAGMA table_info("recording")')]
+        con.close()
+
+        assert leaked == 0, "the failed section's pending row was committed by a later section"
+        # The section after the failure completed rather than dying on the lock.
+        assert "file_hash" in recording_cols
+        assert app.config["MIGRATION_FAILED"].count(";") == 0, (
+            f"only one section should have failed: {app.config['MIGRATION_FAILED']}"
+        )
+
     def test_next_clean_startup_heals_the_skipped_section(self, old_db, monkeypatch):
         import src.init_db as init_db
 

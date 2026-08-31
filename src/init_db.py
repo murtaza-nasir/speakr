@@ -159,6 +159,16 @@ def _migration_section(app, failures, name):
         failures.append((name, e))
         app.logger.error("Migration section '%s' failed: %s", name, e)
         app.logger.exception("Section '%s' traceback", name)
+        # Discard whatever the failed section left pending in the ORM session.
+        # Without this its open transaction keeps SQLite's write lock, so the
+        # following sections fail with "database is locked", and its half-built
+        # rows get flushed to disk by the next section that commits.
+        try:
+            db.session.rollback()
+        except Exception as rollback_error:
+            app.logger.warning(
+                "Could not roll back the session after section '%s': %s", name, rollback_error
+            )
 
 
 def _run_migrations(app, engine):
