@@ -57,6 +57,11 @@ def migration_lock(engine, logger=None, timeout=120):
                 if acquired or time.monotonic() >= deadline:
                     break
                 time.sleep(0.5)
+            # Close the implicit transaction the SELECT opened. The advisory
+            # lock is session-level, so it survives the commit; without this
+            # the connection sits idle-in-transaction for the whole migration
+            # run and a hardened server's timeout could kill it mid-hold.
+            connection.commit()
         else:
             # One lock file per database URL so unrelated databases on the same
             # host do not serialise against each other.
@@ -368,7 +373,12 @@ def drop_not_null(engine, table_name, column_name):
             )
             cursor.execute('COMMIT')
         except Exception:
-            cursor.execute('ROLLBACK')
+            # If BEGIN itself failed there is no transaction to roll back, and
+            # that secondary error must not mask the one we are re-raising.
+            try:
+                cursor.execute('ROLLBACK')
+            except Exception:
+                pass
             raise
         finally:
             cursor.close()
