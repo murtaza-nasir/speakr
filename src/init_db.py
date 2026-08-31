@@ -11,6 +11,8 @@ This module handles:
 import os
 import fcntl
 import tempfile
+from contextlib import contextmanager
+
 from sqlalchemy import text, inspect
 
 from src.database import db
@@ -136,9 +138,34 @@ def initialize_database(app):
         _run_migrations(app, engine)
 
 
+@contextmanager
+def _migration_section(app, failures, name):
+    """Contain a failure to one group of migrations instead of all of them.
+
+    The sections in _run_migrations used to share a single try block, so the
+    first unguarded failure silently skipped every migration after it and the
+    app then served a part-upgraded schema. Each section now fails alone: the
+    error is logged with its traceback, recorded for the summary banner, and
+    the remaining sections still run.
+
+    Later sections may assume earlier ones succeeded (a column addition, most
+    commonly), so a failure can still cascade into further section failures.
+    That is acceptable: each is reported, and every section is retried on the
+    next startup because migrations are idempotent.
+    """
+    try:
+        yield
+    except Exception as e:
+        failures.append((name, e))
+        app.logger.error("Migration section '%s' failed: %s", name, e)
+        app.logger.exception("Section '%s' traceback", name)
+
+
 def _run_migrations(app, engine):
     """Apply every schema migration. Assumes the migration lock is held."""
-    try:
+    failures = []
+
+    with _migration_section(app, failures, "core recording and user columns"):
         # Add is_inbox column with default value of 1 (True)
         if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added is_inbox column to recording table")
@@ -184,6 +211,7 @@ def _run_migrations(app, engine):
         _remove_orphaned_user_new(engine, app)
 
 
+    with _migration_section(app, failures, "recording, tag, speaker and processing columns"):
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):
@@ -305,6 +333,7 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'can_share_publicly', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added can_share_publicly column to user table")
 
+    with _migration_section(app, failures, "user settings columns"):
         # Token budget for rate limiting
         if add_column_if_not_exists(engine, 'user', 'monthly_token_budget', 'INTEGER'):
             app.logger.info("Added monthly_token_budget column to user table")
@@ -391,6 +420,7 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'folder', 'default_initial_prompt', 'TEXT'):
             app.logger.info("Added default_initial_prompt column to folder table")
 
+    with _migration_section(app, failures, "token indexes, export templates and sharing columns"):
         # Create indexes for token lookups (for faster token verification)
         try:
             if create_index_if_not_exists(engine, 'ix_user_email_verification_token', 'user', 'email_verification_token'):
@@ -517,6 +547,7 @@ def _run_migrations(app, engine):
                 if add_column_if_not_exists(engine, 'shared_recording_state', 'is_highlighted', 'BOOLEAN DEFAULT 0'):
                     app.logger.info("Added is_highlighted column to shared_recording_state table")
 
+    with _migration_section(app, failures, "meeting_date datetime migration"):
         # Migrate meeting_date from DATE to DATETIME format
         # This migration handles both:
         # 1. Converting existing DATE columns to DATETIME (for fresh pulls)
@@ -611,6 +642,7 @@ def _run_migrations(app, engine):
             app.logger.warning(f"Error during meeting_date migration: {e}")
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
+    with _migration_section(app, failures, "performance and uniqueness indexes"):
         # Add index on TranscriptChunk.speaker_name for performance
         # This improves speaker rename operations which update all chunks
         try:
@@ -680,6 +712,7 @@ def _run_migrations(app, engine):
         except Exception as e:
             app.logger.warning(f"Could not create index on recording.folder_id: {e}")
 
+    with _migration_section(app, failures, "default system settings"):
         # Initialize default system settings
         if not SystemSetting.query.filter_by(key='transcript_length_limit').first():
             SystemSetting.set_setting(
@@ -808,6 +841,7 @@ def _run_migrations(app, engine):
             )
             app.logger.info("Initialized enable_folders setting")
 
+    with _migration_section(app, failures, "embedding identifier tracking"):
         # Track the embedding identifier (provider + model) in system_setting
         # so we can warn when either changes between restarts. Issue #262 —
         # old vectors will not match a new model's output dimensionality or
@@ -871,6 +905,7 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"embedding_identifier compatibility check skipped: {e}")
 
+    with _migration_section(app, failures, "one-shot data cleanups"):
         # One-time email normalization: lowercase (and trim) existing stored
         # emails so they match the normalize-on-write behavior. Login and
         # uniqueness are case-insensitive regardless, so this is cleanup, not a
@@ -934,6 +969,7 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"transcription_language normalization migration skipped: {e}")
 
+    with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
         if ENABLE_INQUIRE_MODE:
@@ -990,19 +1026,18 @@ def _run_migrations(app, engine):
                 app.logger.warning(f"Error during existing recordings migration: {e}")
                 app.logger.info("Existing recordings can be migrated later using the admin API or migration script.")
             
-    except Exception as e:
-        # Everything above shares one try block, so this aborts each remaining
-        # migration and leaves the schema part-upgraded. That must not scroll
-        # past as a single line among the ordinary startup chatter.
+    if failures:
         app.logger.error("=" * 72)
-        app.logger.error("DATABASE MIGRATION FAILED: %s", e)
-        app.logger.error("The schema may be partly upgraded and later migrations were skipped.")
+        app.logger.error("DATABASE MIGRATION: %d section(s) failed: %s",
+                         len(failures), ", ".join(name for name, _ in failures))
+        app.logger.error("Sections after a failed one were still applied, but the schema "
+                         "may be partly upgraded.")
         app.logger.error("The application will keep starting, but expect errors until this is fixed.")
-        app.logger.error("Please report this with the traceback below: "
+        app.logger.error("Please report this with the tracebacks above: "
                          "https://github.com/murtaza-nasir/speakr/issues")
         app.logger.error("=" * 72)
-        app.logger.exception("Migration traceback")
-        app.config['MIGRATION_FAILED'] = str(e)
+        app.config['MIGRATION_FAILED'] = "; ".join(
+            f"{name}: {error}" for name, error in failures)
 
 
 if __name__ == '__main__':

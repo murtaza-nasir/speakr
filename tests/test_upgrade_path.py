@@ -215,6 +215,95 @@ def test_second_startup_is_a_no_op(upgraded):
     assert _live(upgraded["path"]) == before
 
 
+class TestSectionIsolation:
+    """One failing migration section must not take down the sections after it.
+
+    Before the sections existed, everything shared a single try block, so the
+    first unguarded failure silently skipped every remaining migration and the
+    app booted against a part-upgraded schema.
+    """
+
+    @pytest.fixture
+    def old_db(self, tmp_path):
+        db_path = str(tmp_path / "poisoned.db")
+        with open(os.path.join(FIXTURE_DIR, "v0.5.8-alpha.sql")) as fh:
+            schema_sql = fh.read()
+        con = sqlite3.connect(db_path)
+        con.executescript(schema_sql)
+        con.execute(
+            'INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+            ("existing", "existing@example.test", "bcrypt-hash-preserved"),
+        )
+        con.commit()
+        con.close()
+        return db_path
+
+    def test_later_sections_still_run_after_a_failure(self, old_db, monkeypatch):
+        import src.init_db as init_db
+
+        real_add = init_db.add_column_if_not_exists
+
+        def poisoned(engine, table, column, column_type):
+            if column == "mime_type":  # first statement of its section
+                raise RuntimeError("poisoned migration")
+            return real_add(engine, table, column, column_type)
+
+        monkeypatch.setattr(init_db, "add_column_if_not_exists", poisoned)
+
+        app = _fixture_app(old_db)
+        with app.app_context():
+            initialize_database(app)
+
+        con = sqlite3.connect(old_db)
+        user_cols = [r[1] for r in con.execute('PRAGMA table_info("user")')]
+        recording_cols = [r[1] for r in con.execute('PRAGMA table_info("recording")')]
+        password_not_null = [
+            r[3] for r in con.execute('PRAGMA table_info("user")') if r[1] == "password"
+        ][0]
+        con.close()
+
+        # The section before the failure completed.
+        assert password_not_null == 0
+        # The poisoned section aborted: statements after the failing one were
+        # skipped. (mime_type itself already exists in the v0.5.8 schema; the
+        # poison fires on the call, not the column's absence.)
+        assert "audio_deleted_at" not in recording_cols
+        assert "prompt_variables" not in recording_cols
+        # Sections after it still ran.
+        assert "monthly_token_budget" in user_cols
+        assert "speaker_count_mode" in user_cols
+        # The failure is recorded, named, and loud.
+        assert "recording, tag, speaker and processing columns" in app.config["MIGRATION_FAILED"]
+        assert "poisoned migration" in app.config["MIGRATION_FAILED"]
+
+    def test_next_clean_startup_heals_the_skipped_section(self, old_db, monkeypatch):
+        import src.init_db as init_db
+
+        real_add = init_db.add_column_if_not_exists
+
+        def poisoned(engine, table, column, column_type):
+            if column == "mime_type":
+                raise RuntimeError("poisoned migration")
+            return real_add(engine, table, column, column_type)
+
+        monkeypatch.setattr(init_db, "add_column_if_not_exists", poisoned)
+        app = _fixture_app(old_db)
+        with app.app_context():
+            initialize_database(app)
+        monkeypatch.setattr(init_db, "add_column_if_not_exists", real_add)
+
+        clean_app = _fixture_app(old_db)
+        with clean_app.app_context():
+            initialize_database(clean_app)
+
+        columns, _, _ = _live(old_db)
+        assert {c.name for c in User.__table__.columns} - set(columns) == set()
+        con = sqlite3.connect(old_db)
+        assert "audio_deleted_at" in [r[1] for r in con.execute('PRAGMA table_info("recording")')]
+        con.close()
+        assert "MIGRATION_FAILED" not in clean_app.config
+
+
 class TestIssue379:
     """The specific database state reported in #379, on a real historical schema."""
 

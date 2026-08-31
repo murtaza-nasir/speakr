@@ -105,6 +105,11 @@ recorded.
 permanently. If a migration writes more than one statement, drive the transaction
 yourself; `drop_not_null()` shows the pattern.
 
+Migrations run in named `_migration_section(...)` groups, so one failure aborts only
+its own group and the rest still apply; every failed section is named in an error
+banner and recorded in `app.config['MIGRATION_FAILED']`. Put a new migration inside
+the section it belongs to (or add a section), never outside all of them.
+
 **Add a column before anything reads it.** Migrations execute top to bottom in one
 function, so referencing a column that is added further down fails on precisely the
 upgrade path the migration exists for.
