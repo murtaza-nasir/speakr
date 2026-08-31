@@ -149,6 +149,16 @@ A tour of Speakr, section by section. Click any image to view it full size.
   <p class="caption">Inquire Mode: ask questions across all your recordings, filtered by tag, speaker, or date</p>
 </div>
 
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/inquire-agent-activity.png" alt="Agentic Inquire activity" />
+  <p class="caption">Agentic Inquire (beta): every research step is recorded and expandable, with timestamped citations and sources</p>
+</div>
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/inquire-privacy-settings.png" alt="Inquire privacy settings" />
+  <p class="caption">Per-user Inquire privacy: choose whether the AI may read your summaries and notes</p>
+</div>
+
 ## Organization
 
 <div class="screenshot-grid">
