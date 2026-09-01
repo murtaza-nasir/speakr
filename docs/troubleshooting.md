@@ -10,6 +10,14 @@ When your Docker container refuses to start or immediately exits, the problem us
 
 If you see database connection errors, ensure your database file has proper permissions. The container runs as a specific user and needs read/write access to the data directories. On Linux systems, you might need to adjust ownership with `chown -R 1000:1000 ./uploads ./instance`.
 
+### "table user_new already exists" on Startup (Fixed in v0.10.5-alpha)
+
+Installations upgraded from a version older than v0.5.9-alpha may log `Could not migrate password column to nullable (may cause issues with SSO): table user_new already exists` on every startup, repeated once per worker process. The application otherwise runs normally, and no data is lost.
+
+The cause was a migration that rebuilt the whole user table to make one column nullable for SSO support. On those older databases the copy step failed, and because SQLite's Python driver does not wrap schema changes in a transaction, the temporary `user_new` table survived and blocked every later attempt. The practical consequence is that `user.password` stayed `NOT NULL`, so accounts without a local password, meaning SSO accounts, could not be created.
+
+Upgrade to v0.10.5-alpha or later. The migration now alters only the column it needs and removes the leftover table for you. **Do not delete `user_new` manually on an older version.** Doing so lets the old migration complete, and it rebuilds the user table from a column list frozen years earlier, discarding later settings such as token budgets, verification state and transcription hints.
+
 ### Can't Access the Web Interface
 
 When Speakr starts successfully but you can't reach the web interface, network configuration is usually the issue. First, verify the container is actually running with `docker ps`. Check that port 8899 is properly mapped - the docker-compose file should show `"8899:8899"` in the ports section.

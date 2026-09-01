@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.4--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.5--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -212,11 +212,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.4-alpha)
+## Latest Release (v0.10.5-alpha)
+
+**A database migration fix for long-running installations.** A migration added with SSO support rebuilt the whole user table to change one column, which on databases upgraded from very old versions could fail partway, strand a temporary table and repeat the same error on every startup (#379). Worse, had that rebuild ever completed it would have restored the table from a column list frozen years earlier, discarding later settings such as token budgets, verification state and transcription hints. It now alters only the column it needs, leaving every other column, index and value untouched, and clears the stranded table once it confirms the real one is intact. Startup migrations are additionally serialised across worker processes, grouped so one failure cannot skip the rest, and reported clearly instead of as a single warning line. Upgrading is routine and no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.5-alpha).**
+
+### v0.10.4-alpha (previous release)
 
 **An agentic Inquire beta, reorganized tag and folder management, and upload workflow improvements.** Inquire gains an opt-in agent mode (`ENABLE_INQUIRE_AGENT=true`) that researches across your recordings with search, listing, and reading tools, shows a live activity timeline, and answers with numbered citations that click through to the exact moment in the recording; each user controls whether their summaries and notes are available to it. Search indexing now chunks along whole speaker turns with timestamps, which is what makes citation deep links land precisely. Tag and folder management merge into one account tab with a single shared card design, and both can now be created directly from the upload dialog with the full editor, including a proper localized language dropdown. The upload button now closes the dialog after queuing, with a new "Upload & Add More" button for the previous behaviour. A community-contributed OpenASR connector adds another local transcription option. Fixes cover the iOS locked-screen recording timer, merged-audio decoding on ASR pipelines, media playback through the service worker, SSO providers with minimal ID tokens, email deliverability headers, and the Identify Speakers save button. Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.4-alpha).**
 
-### v0.10.3-alpha (previous release)
+### v0.10.3-alpha
 
 **A features and fixes release shaped by community reports and contributions.** Meeting dates can now be parsed from filenames on upload, with preset patterns and an optional custom expression, which saves manual edits on batch uploads of older recordings. Auto-export filenames are configurable through a template, and existing exports can be renamed to a new scheme in one pass. Mobile recording gains an external microphone selector for USB and wireless receivers, and a new webhook endpoint accepts uploads directly from the ASR Voice Recorder Android app, both community contributions. The transcription language dropdown now offers the full Whisper language set. On the fixes side, chat responses that hit the output token limit are now flagged instead of being presented as complete, a database-lock failure when editing speakers with Inquire mode enabled is resolved, browser caches self-heal after image upgrades so stale interfaces no longer appear, audio files with non-UTF-8 metadata no longer crash processing, embedding provider compatibility is improved, and transcript downloads keep non-ASCII titles instead of saving as underscores (community contribution). Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.3-alpha).**
 
