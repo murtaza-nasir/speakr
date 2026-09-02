@@ -37,7 +37,7 @@ from src.models import User, Recording, RecordingSession
 from src.services.recording_stitch import (
     stitch_recording_session,
     StitchError,
-    _chunk_paths,
+    session_chunk_paths,
     _mime_to_extension,
     _chunk_starts_segment,
     _partition_into_segments,
@@ -208,7 +208,7 @@ def test_chunk_paths_returns_sorted_chunks():
             f.write(b'{}')
         with open(os.path.join(tmp, 'chunk-bad.txt'), 'wb') as f:
             f.write(b'.')
-        paths = _chunk_paths(tmp)
+        paths = session_chunk_paths(tmp)
         assert [os.path.basename(p) for p in paths] == ['chunk-000001.bin', 'chunk-000002.bin', 'chunk-000003.bin']
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -217,7 +217,7 @@ def test_chunk_paths_returns_sorted_chunks():
 def test_chunk_paths_empty_dir_returns_empty_list():
     tmp = tempfile.mkdtemp(prefix="speakr-stitch-empty-")
     try:
-        assert _chunk_paths(tmp) == []
+        assert session_chunk_paths(tmp) == []
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

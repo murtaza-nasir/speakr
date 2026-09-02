@@ -67,7 +67,7 @@ def _session_dir(upload_folder: str, session_id: str) -> str:
     return os.path.join(upload_folder, '_sessions', session_id)
 
 
-def _chunk_paths(session_dir: str) -> list:
+def session_chunk_paths(session_dir: str) -> list:
     """Return chunk file paths in monotonic order. ``chunk-NNNNNN.bin``
     naming sorts lexicographically by index because of the zero pad."""
     if not os.path.isdir(session_dir):
@@ -130,7 +130,7 @@ def _partition_into_segments(chunk_paths: list) -> list:
     return segments
 
 
-def _byte_join(chunk_paths: list, output_path: str) -> None:
+def byte_join(chunk_paths: list, output_path: str) -> None:
     """Raw byte concatenation in order, streamed for flat memory use."""
     with open(output_path, 'wb') as out:
         for p in chunk_paths:
@@ -212,7 +212,7 @@ def _assemble_session_audio(chunk_paths: list, output_path: str, mime_type: str)
         segment_files = []
         for i, seg_chunks in enumerate(segments):
             seg_path = os.path.join(work_dir, f'segment-{i:04d}.bin')
-            _byte_join(seg_chunks, seg_path)
+            byte_join(seg_chunks, seg_path)
             segment_files.append(seg_path)
 
         if len(segment_files) == 1:
@@ -326,7 +326,7 @@ def stitch_recording_session(session_id: str) -> Tuple[int, str, dict]:
     upload_folder = current_app.config.get('UPLOAD_FOLDER') or '/data/uploads'
     sess_dir = _session_dir(upload_folder, session_id)
 
-    chunk_paths = _chunk_paths(sess_dir)
+    chunk_paths = session_chunk_paths(sess_dir)
     if not chunk_paths:
         raise StitchError(f'session {session_id} has no chunks on disk')
 
