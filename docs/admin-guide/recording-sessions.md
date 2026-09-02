@@ -25,6 +25,45 @@ so the legacy 200 MB cap and its warning still apply to them. If a recording
 did stream to the server and the user switches it to incognito in the review
 pane afterwards, the server-side chunks are deleted before processing.
 
+## Sliced uploads of files on disk
+
+The same session machinery also carries uploads of files the user already
+has on disk. A normal upload is one multipart `POST /upload` of the whole
+file, so a reverse proxy whose body limit is below the file size rejects
+it before Speakr sees it (Cloudflare's proxy caps request bodies at
+100 MB on most plans). Any file larger than one slice is instead sent as
+fixed-size byte slices through `POST /upload/session/{id}/chunks/{N}` and
+finalized with `POST /upload/session/{id}/finalize-upload`, which
+byte-joins the slices and runs the result through the same ingestion
+pipeline as a single-shot upload.
+
+This needs no configuration and is not covered by
+`ENABLE_SERVER_RECORDING_CHUNKS`, which governs the recorder only. The
+slice size is `RECORDING_SESSION_MAX_CHUNK_BYTES` (16 MB), advertised in
+the create response, and files at or below that size still go up in one
+request.
+
+A few differences from a recorder session are worth knowing when reading
+logs:
+
+- Its `recording_session` row has `upload_filename` set. That is what
+  distinguishes the two, and each finalize route rejects the other's
+  sessions with a 409.
+- The slices are byte ranges of one complete container, not
+  MediaRecorder timeslices, so finalize does a plain byte-join with no
+  ffmpeg concat, no remux, and no container sniffing. The stored file is
+  byte-identical to what the user picked.
+- `finalize-upload` is synchronous: hashing, probing and any conversion
+  happen in-request exactly as they do for `POST /upload`, so it holds
+  the connection for as long as that takes and needs the same generous
+  proxy read timeout.
+- An abandoned one is expired by the cleanup sweep rather than
+  auto-finalized. The user still has the original file, and its slices
+  are a truncated container rather than a playable partial recording.
+- Losing the finalize response loses the upload: unlike the recorder's
+  `/finalize`, it is not replayable. The client re-uploads, and
+  duplicate detection flags the second copy if the first landed.
+
 ## Configuration
 
 Environment variables, all optional:
@@ -50,7 +89,8 @@ so neither is killed in flight.
 
 ```nginx
 location /upload/session/ {
-    # Chunk POSTs are small; keep timeouts modest.
+    # Chunk POSTs are capped at RECORDING_SESSION_MAX_CHUNK_BYTES (16 MB),
+    # whether they carry a recorder timeslice or a file slice.
     proxy_pass http://speakr_upstream;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -60,9 +100,10 @@ location /upload/session/ {
     proxy_read_timeout 30s;
 }
 
-location ~* ^/upload/session/.+/finalize$ {
-    # Finalize triggers ffmpeg concat which can take tens of seconds
-    # for long recordings. Give it room.
+location ~* ^/upload/session/.+/finalize(-upload)?$ {
+    # Finalize triggers ffmpeg concat which can take tens of seconds for
+    # long recordings, and finalize-upload also hashes, probes and may
+    # convert the file in-request. Give it room.
     proxy_pass http://speakr_upstream;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -80,7 +121,7 @@ the larger timeout; finalize will get the headroom it needs.
 ### Caddy
 
 ```
-@finalize path_regexp ^/upload/session/[^/]+/finalize$
+@finalize path_regexp ^/upload/session/[^/]+/finalize(-upload)?$
 handle @finalize {
     reverse_proxy speakr:8899 {
         transport http {
@@ -103,6 +144,7 @@ LimitRequestBody 33554432
 UPLOAD_FOLDER/_sessions/
   <uuid-1>/
     session.json
+    joined.bin              ← sliced uploads only, during finalize
     chunk-000001.bin
     chunk-000002.bin
     ...
@@ -153,10 +195,11 @@ on the server, or discard them.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/upload/session` | Create a new session. Body: `{mime_type}`. |
+| POST | `/upload/session` | Create a new session. Body: `{mime_type}`, plus `{filename}` for a sliced file upload. |
 | POST | `/upload/session/{id}/chunks/{N}` | Append chunk N (must be `chunk_count + 1`). Body is raw bytes. |
 | GET | `/upload/session/{id}` | Status of an existing session. |
 | POST | `/upload/session/{id}/finalize` | Request asynchronous stitch + transcribe kickoff. |
+| POST | `/upload/session/{id}/finalize-upload` | Reassemble a sliced file upload and ingest it. Body is the `POST /upload` form without the file. |
 | DELETE | `/upload/session/{id}` | Abort and remove the on-disk chunks. |
 
 All endpoints require an authenticated session. The CSRF token from the

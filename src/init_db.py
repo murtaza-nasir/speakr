@@ -652,6 +652,10 @@ def _run_migrations(app, engine):
             app.logger.warning(f"Error during meeting_date migration: {e}")
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
+    with _migration_section(app, failures, "sliced file upload sessions"):
+        if add_column_if_not_exists(engine, 'recording_session', 'upload_filename', 'VARCHAR(255)'):
+            app.logger.info("Added upload_filename column to recording_session table")
+
     with _migration_section(app, failures, "performance and uniqueness indexes"):
         # Add index on TranscriptChunk.speaker_name for performance
         # This improves speaker rename operations which update all chunks

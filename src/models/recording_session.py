@@ -20,6 +20,16 @@ On finalize, the chunks are stitched into a single file via ffmpeg concat
 demux (handles pause/resume across MediaRecorder restarts, which a raw
 cat would corrupt). The resulting file becomes the new Recording's
 audio_path and the session directory is removed.
+
+The same session machinery also carries sliced uploads of files the user
+already has on disk, so those can cross a reverse proxy with a body-size
+limit below the file size. Such a session has ``upload_filename`` set,
+which is what distinguishes it from a recorder session. Its chunks are
+fixed-size byte slices of one complete container rather than
+MediaRecorder timeslices, so it finalizes through the normal upload
+ingestion path (plain byte-join, no stitch, no remux) and is never
+auto-finalized when abandoned: the user's original file still exists, so
+there is nothing to recover.
 """
 
 import uuid
@@ -62,6 +72,8 @@ class RecordingSession(db.Model):
     # we can validate per-chunk uploads (reject anything inconsistent with
     # the declared type) and pick the right ffmpeg input args at stitch time.
     mime_type = db.Column(db.String(100), nullable=False, default='audio/webm')
+
+    upload_filename = db.Column(db.String(255), nullable=True)
 
     # Status transitions are guarded by the API; see RECORDING_SESSION_STATUSES.
     status = db.Column(db.String(20), nullable=False, default='recording', index=True)
@@ -112,6 +124,7 @@ class RecordingSession(db.Model):
             'session_id': self.id,
             'status': self.status,
             'mime_type': self.mime_type,
+            'upload_filename': self.upload_filename,
             'chunk_count': self.chunk_count,
             'bytes_received': self.bytes_received,
             'created_at': self.created_at.isoformat() if self.created_at else None,
