@@ -653,8 +653,12 @@ def _run_migrations(app, engine):
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
     with _migration_section(app, failures, "sliced file upload sessions"):
+        if add_column_if_not_exists(engine, 'recording_session', 'kind', "VARCHAR(20) DEFAULT 'recorder'"):
+            app.logger.info("Added kind column to recording_session table")
         if add_column_if_not_exists(engine, 'recording_session', 'upload_filename', 'VARCHAR(255)'):
             app.logger.info("Added upload_filename column to recording_session table")
+        if add_column_if_not_exists(engine, 'recording_session', 'upload_total_bytes', 'BIGINT'):
+            app.logger.info("Added upload_total_bytes column to recording_session table")
 
     with _migration_section(app, failures, "performance and uniqueness indexes"):
         # Add index on TranscriptChunk.speaker_name for performance

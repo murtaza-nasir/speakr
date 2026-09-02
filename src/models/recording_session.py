@@ -23,13 +23,12 @@ audio_path and the session directory is removed.
 
 The same session machinery also carries sliced uploads of files the user
 already has on disk, so those can cross a reverse proxy with a body-size
-limit below the file size. Such a session has ``upload_filename`` set,
-which is what distinguishes it from a recorder session. Its chunks are
-fixed-size byte slices of one complete container rather than
-MediaRecorder timeslices, so it finalizes through the normal upload
-ingestion path (plain byte-join, no stitch, no remux) and is never
-auto-finalized when abandoned: the user's original file still exists, so
-there is nothing to recover.
+limit below the file size. ``kind`` says which of the two a session is.
+A sliced upload's chunks are fixed-size byte slices of one complete
+container rather than MediaRecorder timeslices, so it finalizes through
+the normal upload ingestion path (plain byte-join, no stitch, no remux)
+and is never auto-finalized when abandoned: the user's original file
+still exists, so there is nothing to recover.
 """
 
 import uuid
@@ -47,7 +46,12 @@ RECORDING_SESSION_STATUSES = (
     'finalized',     # stitch completed; session dir may already be removed
     'aborted',       # user (or admin) cancelled before finalize
     'expired',       # TTL elapsed without finalize; cleanup ran
-    'failed',        # stitch job hit a permanent error
+    'failed',        # stitch or ingestion hit a permanent error
+)
+
+RECORDING_SESSION_KINDS = (
+    'recorder',        # in-app recorder streaming MediaRecorder timeslices
+    'sliced_upload',   # byte slices of a file the user already has on disk
 )
 
 
@@ -73,7 +77,11 @@ class RecordingSession(db.Model):
     # the declared type) and pick the right ffmpeg input args at stitch time.
     mime_type = db.Column(db.String(100), nullable=False, default='audio/webm')
 
+    kind = db.Column(db.String(20), nullable=False, default='recorder', index=True)
+
     upload_filename = db.Column(db.String(255), nullable=True)
+
+    upload_total_bytes = db.Column(db.BigInteger, nullable=True)
 
     # Status transitions are guarded by the API; see RECORDING_SESSION_STATUSES.
     status = db.Column(db.String(20), nullable=False, default='recording', index=True)
@@ -115,6 +123,10 @@ class RecordingSession(db.Model):
     )
     finalized_recording = db.relationship('Recording', foreign_keys=[finalized_recording_id])
 
+    @property
+    def is_sliced_upload(self):
+        return self.kind == 'sliced_upload'
+
     def __repr__(self):  # pragma: no cover - debugging aid
         return f'<RecordingSession {self.id} user={self.user_id} status={self.status} chunks={self.chunk_count}>'
 
@@ -124,7 +136,9 @@ class RecordingSession(db.Model):
             'session_id': self.id,
             'status': self.status,
             'mime_type': self.mime_type,
+            'kind': self.kind,
             'upload_filename': self.upload_filename,
+            'upload_total_bytes': self.upload_total_bytes,
             'chunk_count': self.chunk_count,
             'bytes_received': self.bytes_received,
             'created_at': self.created_at.isoformat() if self.created_at else None,

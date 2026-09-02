@@ -21,13 +21,14 @@ All endpoints require login. They write the on-disk layout described in
 
 Creating a session with a ``filename`` makes it a sliced upload of a file
 the user already has on disk (used to cross a reverse proxy whose body
-limit is below the file size) rather than a recorder session. Those
-sessions share create / chunk / abort with the recorder but finalize
-through ``/finalize-upload``, which byte-joins the slices and hands the
-result to the same ingestion pipeline ``POST /upload`` uses. The declared
-mime type is not checked against ``RECORDING_SESSION_ALLOWED_MIME_TYPES``
-for them: the user picks the container, and ffprobe gates it at ingest.
-The two finalize routes reject each other's sessions.
+limit is below the file size) rather than a recorder session; the row's
+``kind`` records which it is. Those sessions share create / chunk / abort
+with the recorder but finalize through ``/finalize-upload``, which
+byte-joins the slices and hands the result to the same ingestion pipeline
+``POST /upload`` uses. The declared mime type is not checked against
+``RECORDING_SESSION_ALLOWED_MIME_TYPES`` for them: the user picks the
+container, and ffprobe gates it at ingest. The two finalize routes reject
+each other's sessions.
 
 Finalize is async: the endpoint creates a placeholder Recording row in
 ``STITCHING`` status, enqueues a ``stitch`` job via the existing
@@ -56,6 +57,7 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
+from werkzeug.datastructures import FileStorage
 
 from src.database import db
 from src.models import RecordingSession, Recording, RECORDING_SESSION_STATUSES
@@ -276,18 +278,26 @@ def create_session():
     """Create a new in-progress recording session.
 
     Body (JSON, all optional): ``{"mime_type": "audio/webm"}`` for a
-    recorder session, plus ``{"filename": "talk.mp4"}`` to make it a
-    sliced upload of a file the user already has on disk.
+    recorder session. ``{"filename": "talk.mp4", "total_bytes": 1234}``
+    makes it a sliced upload of a file the user already has on disk;
+    ``total_bytes`` is what the reassembled file must weigh at finalize.
 
     Returns ``{session_id, expires_at, max_chunk_bytes}`` on success.
     """
     data = request.get_json(silent=True) or {}
     declared_mime = (data.get('mime_type') or '').strip().lower()
     upload_filename = (data.get('filename') or '').strip()
+    total_bytes = None
 
     if upload_filename:
         if len(upload_filename) > 255:
             return jsonify({'error': 'filename must be 255 characters or fewer'}), 400
+        try:
+            total_bytes = int(data.get('total_bytes'))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'total_bytes is required for a sliced upload'}), 400
+        if total_bytes <= 0:
+            return jsonify({'error': 'total_bytes must be a positive integer'}), 400
         mime_type = declared_mime or 'application/octet-stream'
     else:
         mime_type = declared_mime or 'audio/webm'
@@ -307,7 +317,9 @@ def create_session():
     session = RecordingSession(
         user_id=current_user.id,
         mime_type=mime_type,
+        kind='sliced_upload' if upload_filename else 'recorder',
         upload_filename=upload_filename or None,
+        upload_total_bytes=total_bytes,
         status='recording',
     )
     db.session.add(session)
@@ -327,6 +339,7 @@ def create_session():
     return jsonify({
         'session_id': session.id,
         'mime_type': session.mime_type,
+        'kind': session.kind,
         'upload_filename': session.upload_filename,
         'status': session.status,
         'expires_at': expires_at.isoformat(),
@@ -462,7 +475,7 @@ def finalize_session(session_id):
     if err is not None:
         return err
 
-    if session.upload_filename:
+    if session.is_sliced_upload:
         return jsonify({
             'error': 'Session is a sliced file upload; finalize it with /finalize-upload',
         }), 409
@@ -552,35 +565,27 @@ def finalize_session(session_id):
     }), 202
 
 
-class ReassembledUpload:
-    """A Werkzeug ``FileStorage``-shaped view of reassembled slices.
+class ReassembledUpload(FileStorage):
+    """The reassembled slices, presented as the upload they stand for.
 
-    Exposes only what :func:`ingest_uploaded_recording` asks of an upload
-    (``filename``, ``seek``, ``tell``, ``save``) so a sliced upload runs
-    through the same ingestion pipeline as a single-shot one. ``save``
-    moves the joined file rather than copying it, so a large upload is
-    written once.
+    A real ``FileStorage`` over the joined file, so a sliced upload runs
+    through :func:`ingest_uploaded_recording` exactly as a single-shot one
+    does and gains no dependency on which of the class's members that
+    function happens to touch. ``save`` moves the joined file instead of
+    copying it, so a large upload is written once.
     """
 
     def __init__(self, path, filename):
+        super().__init__(
+            stream=open(path, 'rb'),
+            filename=filename,
+            content_type='application/octet-stream',
+            content_length=os.path.getsize(path),
+        )
         self._path = path
-        self.filename = filename
-        self._size = os.path.getsize(path)
-        self._pos = 0
 
-    def seek(self, offset, whence=os.SEEK_SET):
-        if whence == os.SEEK_END:
-            self._pos = self._size + offset
-        elif whence == os.SEEK_CUR:
-            self._pos += offset
-        else:
-            self._pos = offset
-        return self._pos
-
-    def tell(self):
-        return self._pos
-
-    def save(self, dst):
+    def save(self, dst, buffer_size=None):
+        self.close()
         shutil.move(self._path, dst)
 
 
@@ -594,35 +599,35 @@ def finalize_sliced_upload(session_id):
     response is that endpoint's response, so a client can treat the two
     transports interchangeably.
 
-    Unlike the recorder's ``/finalize``, this is synchronous and not
-    replayable: ingestion (hash, probe, convert) happens in-request
-    exactly as it does for a single-shot upload. A client that loses the
-    response has to re-upload, and Speakr's duplicate detection flags the
-    second copy. Concurrent calls are claimed atomically so only one of
-    them ingests.
+    Ingestion (hash, probe, convert) happens in-request exactly as it does
+    for a single-shot upload, so unlike the recorder's ``/finalize`` this
+    holds the connection for its whole duration. Concurrent calls are
+    claimed atomically so only one of them ingests, and a client that
+    lost the response gets the same recording back on its retry.
+
+    The session is claimed BEFORE its directory is read, because a slice
+    POST still in flight would otherwise be able to land between the
+    listing and the join, and the ingested file would be a prefix of the
+    user's. What the slices weigh together is checked against the size
+    declared at create, so a short or missing slice fails loudly instead
+    of ingesting as a truncated recording.
     """
     session = db.session.get(RecordingSession, session_id)
     err = _ensure_owned(session)
     if err is not None:
         return err
 
-    if not session.upload_filename:
+    if not session.is_sliced_upload:
         return jsonify({
             'error': 'Session is a recorder session; finalize it with /finalize',
         }), 409
 
+    if session.status == 'finalized':
+        return _replay_sliced_upload_response(session)
+
     if session.status != 'recording':
         return jsonify({
             'error': f'Session is in status {session.status!r}; cannot finalize',
-        }), 409
-
-    dir_path = _session_dir(session.id)
-    slice_paths = session_chunk_paths(dir_path)
-    if not slice_paths or len(slice_paths) != session.chunk_count:
-        return jsonify({
-            'error': 'Slices on disk do not match the session',
-            'expected_chunk_index': len(slice_paths) + 1,
-            'chunk_count': session.chunk_count,
         }), 409
 
     claimed = db.session.query(RecordingSession).filter(
@@ -634,6 +639,20 @@ def finalize_sliced_upload(session_id):
         return jsonify({'error': 'Session is already being finalized'}), 409
     session.last_seen_at = datetime.utcnow()
     db.session.commit()
+
+    dir_path = _session_dir(session.id)
+    slice_paths = session_chunk_paths(dir_path)
+    slice_bytes = sum(os.path.getsize(p) for p in slice_paths)
+    if not slice_paths or slice_bytes != session.upload_total_bytes:
+        _fail_sliced_upload(session, (
+            f'Reassembled {slice_bytes} bytes from {len(slice_paths)} slices, '
+            f'expected {session.upload_total_bytes}'
+        ))
+        return jsonify({
+            'error': 'Uploaded slices do not add up to the declared file size',
+            'received_bytes': slice_bytes,
+            'expected_bytes': session.upload_total_bytes,
+        }), 409
 
     joined_path = os.path.join(dir_path, 'joined.bin')
     try:
@@ -659,18 +678,43 @@ def finalize_sliced_upload(session_id):
         session.finalized_recording_id = body.get('id')
         session.last_seen_at = datetime.utcnow()
         db.session.commit()
+        _remove_session_dir(session_id)
     else:
         _fail_sliced_upload(session, f'Ingestion rejected the upload (HTTP {status})')
-
-    _remove_session_dir(session_id)
     return result
 
 
+def _replay_sliced_upload_response(session):
+    """Answer a retry of a finalize whose response the client lost.
+
+    Without this, a lost response costs the user the whole upload again:
+    the slices are gone and the session can no longer be finalized, so
+    the client would start over on a file it already delivered in full.
+    """
+    existing = (db.session.get(Recording, session.finalized_recording_id)
+                if session.finalized_recording_id else None)
+    if existing is None or existing.user_id != current_user.id:
+        return jsonify({
+            'error': 'Session was already finalized and its recording no longer exists',
+        }), 409
+    response_data = existing.to_dict(viewer_user=current_user)
+    response_data['idempotent_replay'] = True
+    return jsonify(response_data), 202
+
+
 def _fail_sliced_upload(session, message):
+    """Mark a sliced upload failed and reclaim its slices.
+
+    The slices cannot be reused: finalize only accepts a session still in
+    ``recording``, and no sweep collects a terminal one, so leaving them
+    behind leaks the whole file until an operator notices. Which is the
+    worst possible moment, the common cause being a full disk.
+    """
     session.status = 'failed'
     session.error_message = message
     session.last_seen_at = datetime.utcnow()
     db.session.commit()
+    _remove_session_dir(session.id)
 
 
 @recording_sessions_bp.route('/upload/session/<string:session_id>', methods=['DELETE'])
@@ -679,7 +723,9 @@ def abort_session(session_id):
     """Abort an in-progress session and clean up its on-disk chunks.
 
     If the session has already finalized, this returns 409; finalized
-    sessions are owned by the stitch worker, not the user.
+    sessions are owned by the stitch worker, not the user. A sliced
+    upload that is finalizing is refused too: its slices are being read
+    in-request, so removing them would fail the ingestion under way.
     """
     session = db.session.get(RecordingSession, session_id)
     err = _ensure_owned(session)
@@ -688,6 +734,9 @@ def abort_session(session_id):
 
     if session.status == 'finalized':
         return jsonify({'error': 'Session already finalized'}), 409
+
+    if session.status == 'finalizing' and session.is_sliced_upload:
+        return jsonify({'error': 'Session is being finalized'}), 409
 
     session.status = 'aborted'
     session.last_seen_at = datetime.utcnow()
@@ -713,9 +762,13 @@ def cleanup_expired_sessions(app=None):
       what was uploaded and land it in the user's library (same path as a
       manual finalize), rather than discarding it.
     - ``recording`` with no chunks → expire and delete the empty directory.
-    - a sliced file upload (``upload_filename`` set) → expire, whatever it
-      holds: the user still has the original file, and its slices are a
-      truncated container rather than a playable partial recording.
+    - a sliced file upload → expire, whatever it holds: the user still has
+      the original file, and its slices are a truncated container rather
+      than a playable partial recording.
+
+    Expiry claims the row conditionally, so a session that came back to
+    life between the candidate query and the claim (a resumed upload, a
+    finalize) keeps its files instead of having them swept.
     - ``finalizing`` (already has a placeholder recording) but never reached
       a terminal stitch state → **re-enqueue** the stitch to unstick it
       (enqueue dedupes an already-active job). Bumping ``last_seen_at`` here
@@ -737,7 +790,7 @@ def cleanup_expired_sessions(app=None):
         finalized = rekicked = expired = 0
         for s in candidates:
             try:
-                if s.status == 'recording' and (s.chunk_count or 0) > 0 and not s.upload_filename:
+                if s.status == 'recording' and (s.chunk_count or 0) > 0 and not s.is_sliced_upload:
                     when = s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''
                     title = f"Recovered recording {when}".strip()
                     recovered_rec, _enq_err = _finalize_session_into_stitch(
@@ -771,8 +824,14 @@ def cleanup_expired_sessions(app=None):
                 else:
                     # No chunks to save (or finalizing without a recording):
                     # nothing recoverable — expire and remove the directory.
-                    s.status = 'expired'
+                    claimed = db.session.query(RecordingSession).filter(
+                        RecordingSession.id == s.id,
+                        RecordingSession.status == s.status,
+                        RecordingSession.last_seen_at < cutoff,
+                    ).update({'status': 'expired'}, synchronize_session=False)
                     db.session.commit()
+                    if not claimed:
+                        continue
                     _remove_session_dir(s.id, app)
                     expired += 1
             except Exception as e:

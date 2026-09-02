@@ -46,23 +46,34 @@ request.
 A few differences from a recorder session are worth knowing when reading
 logs:
 
-- Its `recording_session` row has `upload_filename` set. That is what
-  distinguishes the two, and each finalize route rejects the other's
-  sessions with a 409.
+- Its `recording_session` row has `kind = 'sliced_upload'`, and each
+  finalize route rejects the other kind with a 409.
 - The slices are byte ranges of one complete container, not
   MediaRecorder timeslices, so finalize does a plain byte-join with no
-  ffmpeg concat, no remux, and no container sniffing. The stored file is
-  byte-identical to what the user picked.
+  ffmpeg concat, no remux, and no container sniffing. What reaches
+  ingestion is byte-identical to what the user picked, and from there it
+  is treated exactly like a single-shot upload, conversion included.
+- The client declares the file size when it opens the session, and
+  finalize refuses to ingest slices that do not add up to it. A missing
+  or short slice fails loudly rather than becoming a truncated recording.
 - `finalize-upload` is synchronous: hashing, probing and any conversion
   happen in-request exactly as they do for `POST /upload`, so it holds
   the connection for as long as that takes and needs the same generous
-  proxy read timeout.
+  proxy read timeout. A retry after a lost response gets the first
+  call's recording back rather than re-ingesting the file.
 - An abandoned one is expired by the cleanup sweep rather than
   auto-finalized. The user still has the original file, and its slices
   are a truncated container rather than a playable partial recording.
-- Losing the finalize response loses the upload: unlike the recorder's
-  `/finalize`, it is not replayable. The client re-uploads, and
-  duplicate detection flags the second copy if the first landed.
+- A failed finalize deletes the slices with it. They cannot be reused,
+  since finalize only accepts a session that is still recording.
+
+!!! warning "`RECORDING_SESSION_COMMIT_BATCH_SIZE` must stay at 1"
+
+    Above 1, the chunk endpoint flushes its bookkeeping without
+    committing and the request teardown rolls it back, so the server
+    keeps asking for the same chunk index forever. A sliced upload gives
+    up after a few non-advancing retries and reports it; a recorder
+    session silently overwrites its first chunk and loses the recording.
 
 ## Configuration
 
@@ -195,7 +206,7 @@ on the server, or discard them.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/upload/session` | Create a new session. Body: `{mime_type}`, plus `{filename}` for a sliced file upload. |
+| POST | `/upload/session` | Create a new session. Body: `{mime_type}`, plus `{filename, total_bytes}` for a sliced file upload. |
 | POST | `/upload/session/{id}/chunks/{N}` | Append chunk N (must be `chunk_count + 1`). Body is raw bytes. |
 | GET | `/upload/session/{id}` | Status of an existing session. |
 | POST | `/upload/session/{id}/finalize` | Request asynchronous stitch + transcribe kickoff. |

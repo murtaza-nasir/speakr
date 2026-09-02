@@ -32,6 +32,7 @@ const SESSION_BASE = '/upload/session';
 export const SLICE_BYTES = 16 * 1024 * 1024;
 
 const MAX_SLICE_ATTEMPTS = 6;
+const MAX_STALLED_RESYNCS = 2;
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 
@@ -82,7 +83,11 @@ async function createFileSession(file, token) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
         credentials: 'same-origin',
-        body: JSON.stringify({ filename: file.name, mime_type: file.type || '' }),
+        body: JSON.stringify({
+            filename: file.name,
+            mime_type: file.type || '',
+            total_bytes: file.size,
+        }),
     });
     const body = parseJson(await response.text());
     if (response.status !== 201 || !body?.session_id) {
@@ -173,7 +178,7 @@ async function finalize(sessionId, formData, tokenRef, options) {
             onXhr: options.onXhr,
         });
         const body = parseJson(result.text);
-        if (result.status === 202 && body?.id) return body;
+        if (result.status >= 200 && result.status < 300 && body?.id) return body;
         if (isCsrfRejection(result.status, result.text) && attempt === 1) {
             tokenRef.token = await getUploadCsrfToken();
             continue;
@@ -199,6 +204,8 @@ export async function uploadFileInSlices(file, formData, options = {}) {
 
     try {
         let index = 1;
+        let highWaterMark = 0;
+        let stalledResyncs = 0;
         while ((index - 1) * sliceBytes < file.size) {
             const start = (index - 1) * sliceBytes;
             const end = Math.min(start + sliceBytes, file.size);
@@ -206,6 +213,14 @@ export async function uploadFileInSlices(file, formData, options = {}) {
                 onXhr: options.onXhr,
                 onSliceProgress: (loaded) => onProgress(Math.min(1, (start + loaded) / file.size)),
             });
+            if (index > highWaterMark) {
+                highWaterMark = index;
+                stalledResyncs = 0;
+            } else if (++stalledResyncs > MAX_STALLED_RESYNCS) {
+                throw new Error(
+                    `Server keeps asking for slice ${index} after accepting it; `
+                    + 'its slice bookkeeping is not advancing');
+            }
             onProgress(Math.min(1, ((index - 1) * sliceBytes) / file.size));
         }
         return await finalize(session.session_id, formData, tokenRef, {

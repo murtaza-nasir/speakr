@@ -116,6 +116,7 @@ describe('uploadFileInSlices', () => {
         expect(JSON.parse(fetchCalls[0].options.body)).toEqual({
             filename: 'talk.mp4',
             mime_type: 'video/mp4',
+            total_bytes: 40 * MB,
         });
         expect(slicePosts().map((call) => call.url)).toEqual([
             '/upload/session/sess-1/chunks/1',
@@ -187,6 +188,29 @@ describe('uploadFileInSlices', () => {
             url: '/upload/session/sess-1',
             options: { method: 'DELETE' },
         });
+    });
+
+    // A server running RECORDING_SESSION_COMMIT_BATCH_SIZE > 1 rolls its slice bookkeeping back per request.
+    it('stops uploading when the server keeps asking for a slice it accepted', async () => {
+        vi.useFakeTimers();
+        global.XMLHttpRequest = class extends global.XMLHttpRequest {
+            send(body) {
+                sent.push({ url: this.url, body, headers: this.headers });
+                const accepted = this.url.endsWith('/chunks/1');
+                queueMicrotask(() => {
+                    this.status = accepted ? 204 : 409;
+                    this.responseText = accepted ? '' : JSON.stringify({ expected_chunk_index: 1 });
+                    this.onload();
+                });
+            }
+        };
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('bookkeeping is not advancing');
+        await vi.advanceTimersByTimeAsync(60000);
+        await assertion;
+
+        expect(slicePosts().length).toBeLessThan(10);
     });
 
     it('blames the reverse proxy for a 413 with no Speakr error body', async () => {
