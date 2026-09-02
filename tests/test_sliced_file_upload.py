@@ -32,6 +32,7 @@ from src.models import Recording, RecordingSession
 from src.api.recording_sessions import (
     _beat_until_stopped,
     _ingest_heartbeat_seconds,
+    _touch_session,
     cleanup_expired_sessions,
 )
 
@@ -434,6 +435,34 @@ def test_an_ingest_stamps_the_session_it_is_working_on():
         assert db.session.get(RecordingSession, session_id).last_seen_at > went_quiet_at
 
         client.delete(f"/upload/session/{session_id}")
+        _cleanup(user)
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
+def test_a_stamp_that_arrives_late_cannot_revive_a_finished_session():
+    """The heartbeat is stopped and joined with a timeout, so a beat can
+    still be in flight when the ingest publishes. Stamping only a
+    'finalizing' row is what keeps that beat from resurrecting a session
+    the sweep and the status endpoint have both moved on from."""
+    upload_folder = _tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _mk_user("slice_latebeat")
+        client = app.test_client()
+        _login(client, user)
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg")["session_id"]
+
+        session = db.session.get(RecordingSession, session_id)
+        session.status = "finalized"
+        published_at = datetime.utcnow() - timedelta(minutes=5)
+        session.last_seen_at = published_at
+        db.session.commit()
+
+        _touch_session(app, session_id)
+
+        db.session.expire_all()
+        assert db.session.get(RecordingSession, session_id).last_seen_at == published_at
+
         _cleanup(user)
     shutil.rmtree(upload_folder, ignore_errors=True)
 

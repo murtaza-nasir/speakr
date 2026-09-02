@@ -182,9 +182,18 @@ def _write_session_manifest(session):
 
 
 def _touch_session(app, session_id):
-    """Stamp a session as still being worked on. Best-effort by design:
-    a missed stamp costs a takeover, a raised exception would cost the
-    ingest it is reporting on."""
+    """Stamp a session as still being worked on.
+
+    Best-effort by design: a raised exception here would cost the ingest
+    it reports on. Three stamps missed in a row hand a live ingest's
+    session to a takeover, and since the completion path publishes
+    unconditionally, the two ingests then produce two recordings for the
+    one upload, only the later of which the session points at. It takes a
+    database unreachable for the whole of three intervals to get there.
+
+    Only a ``finalizing`` row is stamped, so a beat that arrives after
+    the ingest published cannot revive a finished session.
+    """
     try:
         with app.app_context():
             db.session.query(RecordingSession).filter(
@@ -203,12 +212,9 @@ def _beat_until_stopped(app, session_id, stop, interval):
             return
 
 
+@contextlib.contextmanager
 def _ingest_heartbeat(session_id):
-    """Report an ingest alive until the returned callable is invoked.
-
-    Used as a context manager so the stamping stops whichever way the
-    ingest ends, including an exception on the way out.
-    """
+    """Report an ingest alive for as long as the block runs, however it ends."""
     app = current_app._get_current_object()
     stop = threading.Event()
     beater = threading.Thread(
@@ -218,17 +224,11 @@ def _ingest_heartbeat(session_id):
         daemon=True,
     )
     beater.start()
-    return contextlib.closing(_Heartbeat(stop, beater))
-
-
-class _Heartbeat:
-    def __init__(self, stop, beater):
-        self._stop = stop
-        self._beater = beater
-
-    def close(self):
-        self._stop.set()
-        self._beater.join(timeout=5)
+    try:
+        yield
+    finally:
+        stop.set()
+        beater.join(timeout=5)
 
 
 def _remove_session_dir(session_id, app=None):
