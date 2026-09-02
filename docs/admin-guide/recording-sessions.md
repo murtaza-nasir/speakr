@@ -67,6 +67,27 @@ logs:
 - A failed finalize deletes the slices with it. They cannot be reused,
   since finalize only accepts a session that is still recording.
 
+### Resuming
+
+An upload interrupted by the network is not restarted. The browser keeps
+the session id in `localStorage` under the file's identity (name, size,
+last-modified), so adding the same file again continues from the slice
+count the server reports rather than from zero, which is what makes the
+feature usable on a link bad enough to need it.
+
+Only a rejection the server would repeat (an oversize slice, an
+exhausted quota, slices that do not add up) deletes the session, because
+retrying that costs the user another full transfer for the same answer.
+A dropped connection or a timeout leaves the session alone, including
+when it happens waiting for `finalize-upload`: the server may be
+ingesting at that moment, and the retry gets that recording back.
+
+Operationally this means in-progress sliced uploads sit in
+`UPLOAD_FOLDER/_sessions/` for up to `RECORDING_SESSION_TTL_HOURS`
+waiting for a resume that may never come, and count against
+`RECORDING_SESSION_MAX_BYTES_PER_USER` until the sweep expires them.
+The browser forgets a session after 24 hours regardless.
+
 !!! warning "`RECORDING_SESSION_COMMIT_BATCH_SIZE` must stay at 1"
 
     Above 1, the chunk endpoint flushes its bookkeeping without

@@ -22,6 +22,13 @@
  * File slices are Blob views, so nothing here holds the file in memory:
  * a multi-gigabyte upload costs one slice's worth of buffering in the
  * browser's network stack.
+ *
+ * An upload interrupted by the network resumes rather than restarting:
+ * the session id is kept in localStorage under the file's identity
+ * (name, size, lastModified), and re-adding the same file continues from
+ * the slice count the server reports. Only a rejection the server will
+ * repeat (an oversize slice, an exhausted quota, a size mismatch) drops
+ * the session, because retrying it would fail the same way.
  */
 
 import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
@@ -38,12 +45,103 @@ const MAX_RETRY_MS = 30000;
 
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
+const RESUME_KEY = 'speakr.slicedUploads';
+const RESUME_TTL_MS = 24 * 60 * 60 * 1000;
+const RESUME_MAX_ENTRIES = 20;
+
 /** True when the file is large enough that slicing it is worth a session. */
 export function shouldSliceUpload(file) {
     return !!file && file.size > SLICE_BYTES;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Identity of the file on this machine. `lastModified` is in it so an
+ * edited or re-exported file of the same name and size is not resumed
+ * onto slices of the older one.
+ */
+function fileKey(file) {
+    return `${file.name}|${file.size}|${file.lastModified || 0}`;
+}
+
+/** Open sessions by file key. Best-effort: private mode has no store. */
+function readResumeMemory() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(RESUME_KEY) || '{}');
+        const fresh = {};
+        for (const [key, entry] of Object.entries(parsed)) {
+            if (entry?.sessionId && Date.now() - (entry.savedAt || 0) < RESUME_TTL_MS) {
+                fresh[key] = entry;
+            }
+        }
+        return fresh;
+    } catch (_) {
+        return {};
+    }
+}
+
+function writeResumeMemory(memory) {
+    try {
+        const entries = Object.entries(memory)
+            .sort((a, b) => (b[1].savedAt || 0) - (a[1].savedAt || 0))
+            .slice(0, RESUME_MAX_ENTRIES);
+        localStorage.setItem(RESUME_KEY, JSON.stringify(Object.fromEntries(entries)));
+    } catch (_) { /* private mode / quota: resuming is a bonus, not a requirement */ }
+}
+
+function rememberSession(file, sessionId, sliceBytes) {
+    const memory = readResumeMemory();
+    memory[fileKey(file)] = { sessionId, sliceBytes, savedAt: Date.now() };
+    writeResumeMemory(memory);
+}
+
+export function forgetSession(file) {
+    const memory = readResumeMemory();
+    delete memory[fileKey(file)];
+    writeResumeMemory(memory);
+}
+
+/**
+ * The server's view of a session we started for this file, when it can
+ * still be continued. Returns `{sessionId, sliceBytes, chunkCount}` or
+ * null, and forgets anything the server no longer recognises.
+ */
+async function resumableSession(file, token) {
+    const remembered = readResumeMemory()[fileKey(file)];
+    if (!remembered) return null;
+
+    let status;
+    try {
+        const response = await fetch(
+            `${SESSION_BASE}/${encodeURIComponent(remembered.sessionId)}`,
+            { credentials: 'same-origin', headers: { 'X-CSRFToken': token } });
+        if (!response.ok) {
+            forgetSession(file);
+            return null;
+        }
+        status = parseJson(await response.text());
+    } catch (error) {
+        console.warn('[SlicedUpload] Could not read the remembered session:', error);
+        return null;
+    }
+
+    const continuable = status
+        && status.kind === 'sliced_upload'
+        && status.upload_total_bytes === file.size
+        && ['recording', 'finalized'].includes(status.status)
+        && remembered.sliceBytes > 0;
+    if (!continuable) {
+        forgetSession(file);
+        return null;
+    }
+
+    return {
+        sessionId: remembered.sessionId,
+        sliceBytes: remembered.sliceBytes,
+        chunkCount: status.chunk_count || 0,
+    };
+}
 
 const retryDelay = (attempts) =>
     Math.min(MAX_RETRY_MS, BASE_RETRY_MS * Math.pow(2, attempts - 1));
@@ -116,6 +214,10 @@ async function deleteFileSession(sessionId, token) {
  * token when the server rejects it. Returns the index the server expects
  * next, which is normally `index + 1` but can jump when a 409 reveals
  * the server already holds slices whose responses we lost.
+ *
+ * Failures that outlive the retries are marked resumable when nothing
+ * about them says the next attempt would fail too: the transport, and
+ * the statuses a gateway returns while something behind it restarts.
  */
 async function sendSlice(sessionId, index, blob, tokenRef, options) {
     const url = `${SESSION_BASE}/${encodeURIComponent(sessionId)}/chunks/${index}`;
@@ -130,7 +232,10 @@ async function sendSlice(sessionId, index, blob, tokenRef, options) {
                 onXhr: options.onXhr,
             });
         } catch (transportError) {
-            if (attempt >= MAX_SLICE_ATTEMPTS) throw transportError;
+            if (attempt >= MAX_SLICE_ATTEMPTS) {
+                transportError.resumable = true;
+                throw transportError;
+            }
             await sleep(retryDelay(attempt));
             continue;
         }
@@ -150,7 +255,11 @@ async function sendSlice(sessionId, index, blob, tokenRef, options) {
 
         const error = new Error(sliceRejectionMessage(index, blob.size, result, body));
         error.status = result.status;
-        if (!RETRYABLE_STATUSES.has(result.status) || attempt >= MAX_SLICE_ATTEMPTS) throw error;
+        if (!RETRYABLE_STATUSES.has(result.status)) throw error;
+        if (attempt >= MAX_SLICE_ATTEMPTS) {
+            error.resumable = true;
+            throw error;
+        }
         await sleep(retryDelay(attempt));
     }
 }
@@ -169,14 +278,28 @@ function sliceRejectionMessage(index, sliceSize, result, body) {
     return body?.error || `Slice ${index} rejected (HTTP ${result.status})`;
 }
 
+/**
+ * Turn the uploaded slices into a recording.
+ *
+ * A transport failure here is marked resumable: the server may be
+ * ingesting at that moment, so the slices have to survive, and a retry
+ * gets back the recording that call produced rather than sending the
+ * file a second time.
+ */
 async function finalize(sessionId, formData, tokenRef, options) {
     const url = `${SESSION_BASE}/${encodeURIComponent(sessionId)}/finalize-upload`;
     for (let attempt = 1; ; attempt++) {
-        const result = await xhrPost(url, formData, {
-            token: tokenRef.token,
-            timeoutMs: options.finalizeTimeoutMs,
-            onXhr: options.onXhr,
-        });
+        let result;
+        try {
+            result = await xhrPost(url, formData, {
+                token: tokenRef.token,
+                timeoutMs: options.finalizeTimeoutMs,
+                onXhr: options.onXhr,
+            });
+        } catch (transportError) {
+            transportError.resumable = true;
+            throw transportError;
+        }
         const body = parseJson(result.text);
         if (result.status >= 200 && result.status < 300 && body?.id) return body;
         if (isCsrfRejection(result.status, result.text) && attempt === 1) {
@@ -193,23 +316,36 @@ async function finalize(sessionId, formData, tokenRef, options) {
  * single-shot path builds, minus the file part). Resolves to the created
  * recording, matching what POST /upload returns.
  *
+ * An interrupted upload of the same file continues where it stopped. A
+ * failure the server would repeat takes the session down with it; one
+ * that might not (the network, a timeout) leaves it for the next attempt.
+ *
  * `onProgress` is called with a 0..1 fraction of bytes accepted by the
  * server. `onXhr` receives each in-flight XHR so a caller can cancel.
  */
 export async function uploadFileInSlices(file, formData, options = {}) {
     const tokenRef = { token: await getUploadCsrfToken() };
-    const session = await createFileSession(file, tokenRef.token);
-    const sliceBytes = Math.min(SLICE_BYTES, session.max_chunk_bytes || SLICE_BYTES);
     const onProgress = options.onProgress || (() => {});
 
+    const resumed = await resumableSession(file, tokenRef.token);
+    let sessionId = resumed?.sessionId;
+    let sliceBytes = resumed?.sliceBytes;
+    if (!resumed) {
+        const created = await createFileSession(file, tokenRef.token);
+        sessionId = created.session_id;
+        sliceBytes = Math.min(SLICE_BYTES, created.max_chunk_bytes || SLICE_BYTES);
+        rememberSession(file, sessionId, sliceBytes);
+    }
+
     try {
-        let index = 1;
-        let highWaterMark = 0;
+        let index = (resumed?.chunkCount || 0) + 1;
+        let highWaterMark = index;
         let stalledResyncs = 0;
+        onProgress(Math.min(1, ((index - 1) * sliceBytes) / file.size));
         while ((index - 1) * sliceBytes < file.size) {
             const start = (index - 1) * sliceBytes;
             const end = Math.min(start + sliceBytes, file.size);
-            index = await sendSlice(session.session_id, index, file.slice(start, end), tokenRef, {
+            index = await sendSlice(sessionId, index, file.slice(start, end), tokenRef, {
                 onXhr: options.onXhr,
                 onSliceProgress: (loaded) => onProgress(Math.min(1, (start + loaded) / file.size)),
             });
@@ -223,12 +359,16 @@ export async function uploadFileInSlices(file, formData, options = {}) {
             }
             onProgress(Math.min(1, ((index - 1) * sliceBytes) / file.size));
         }
-        return await finalize(session.session_id, formData, tokenRef, {
+        const recording = await finalize(sessionId, formData, tokenRef, {
             finalizeTimeoutMs: computeUploadTimeout(file.size),
             onXhr: options.onXhr,
         });
+        forgetSession(file);
+        return recording;
     } catch (error) {
-        await deleteFileSession(session.session_id, tokenRef.token);
+        if (error.resumable) throw error;
+        await deleteFileSession(sessionId, tokenRef.token);
+        forgetSession(file);
         throw error;
     }
 }

@@ -12,11 +12,12 @@ import { SLICE_BYTES, shouldSliceUpload, uploadFileInSlices } from './sliced-fil
 
 const MB = 1024 * 1024;
 
-function fakeFile(size, name = 'talk.mp4', type = 'video/mp4') {
+function fakeFile(size, name = 'talk.mp4', type = 'video/mp4', lastModified = 0) {
     return {
         name,
         type,
         size,
+        lastModified,
         slice: (start, end) => ({ size: end - start, start, end }),
     };
 }
@@ -25,15 +26,27 @@ let sent;
 let sliceResponses;
 let finalizeResponse;
 let fetchCalls;
+let sessionStatus;
+let defaultSliceResponse;
+let store;
 
 function _installMocks() {
     sent = [];
     fetchCalls = [];
     sliceResponses = [];
+    defaultSliceResponse = { status: 204, text: '' };
     finalizeResponse = { status: 202, text: JSON.stringify({ id: 42, title: 'talk' }) };
+    sessionStatus = null;
 
     global.window = { csrfManager: { refreshToken: async () => 'fresh-token' } };
     global.document = { querySelector: () => null };
+
+    store = new Map();
+    global.localStorage = {
+        getItem: (key) => (store.has(key) ? store.get(key) : null),
+        setItem: (key, value) => store.set(key, String(value)),
+        removeItem: (key) => store.delete(key),
+    };
 
     global.fetch = vi.fn(async (url, options) => {
         fetchCalls.push({ url, options });
@@ -45,6 +58,13 @@ function _installMocks() {
                     upload_filename: JSON.parse(options.body).filename,
                     max_chunk_bytes: SLICE_BYTES,
                 }),
+            };
+        }
+        if (!options.method) {
+            return {
+                status: sessionStatus ? 200 : 404,
+                ok: !!sessionStatus,
+                text: async () => JSON.stringify(sessionStatus || {}),
             };
         }
         return { status: 204, text: async () => '' };
@@ -66,7 +86,7 @@ function _installMocks() {
             sent.push(call);
             const response = this.url.endsWith('/finalize-upload')
                 ? finalizeResponse
-                : (sliceResponses.shift() || { status: 204, text: '' });
+                : (sliceResponses.shift() || defaultSliceResponse);
             queueMicrotask(() => {
                 if (response.networkError) {
                     this.onerror();
@@ -84,6 +104,9 @@ function _installMocks() {
 }
 
 const slicePosts = () => sent.filter((call) => !call.url.endsWith('/finalize-upload'));
+const createCalls = () => fetchCalls.filter((call) => call.options.method === 'POST');
+const deleteCalls = () => fetchCalls.filter((call) => call.options.method === 'DELETE');
+const rememberedSessions = () => JSON.parse(store.get('speakr.slicedUploads') || '{}');
 
 describe('shouldSliceUpload', () => {
     it('leaves files that fit one request on the single-shot path', () => {
@@ -102,6 +125,7 @@ describe('uploadFileInSlices', () => {
         delete global.XMLHttpRequest;
         delete global.window;
         delete global.document;
+        delete global.localStorage;
     });
 
     it('opens a session for the filename, sends whole slices in order, and finalizes', async () => {
@@ -245,5 +269,140 @@ describe('uploadFileInSlices', () => {
         await expect(uploadFileInSlices(fakeFile(20 * MB), new Map(), {}))
             .rejects.toThrow('Slices on disk do not match the session');
         expect(fetchCalls[fetchCalls.length - 1].options.method).toBe('DELETE');
+    });
+
+    it('forgets the session once the upload is finalized', async () => {
+        await uploadFileInSlices(fakeFile(20 * MB), new Map(), {});
+
+        expect(rememberedSessions()).toEqual({});
+    });
+});
+
+describe('resuming an interrupted upload', () => {
+    beforeEach(() => { _installMocks(); });
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+        delete global.fetch;
+        delete global.XMLHttpRequest;
+        delete global.window;
+        delete global.document;
+        delete global.localStorage;
+    });
+
+    const interrupt = async (file) => {
+        vi.useFakeTimers();
+        sliceResponses = [{ status: 204, text: '' }];
+        defaultSliceResponse = { networkError: true };
+        const upload = uploadFileInSlices(file, new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('Network error');
+        await vi.advanceTimersByTimeAsync(120000);
+        await assertion;
+        vi.useRealTimers();
+        defaultSliceResponse = { status: 204, text: '' };
+    };
+
+    it('keeps the session and its slices when the network drops', async () => {
+        const file = fakeFile(40 * MB);
+
+        await interrupt(file);
+
+        expect(deleteCalls()).toHaveLength(0);
+        expect(rememberedSessions()[`talk.mp4|${40 * MB}|0`]).toMatchObject({
+            sessionId: 'sess-1',
+            sliceBytes: SLICE_BYTES,
+        });
+    });
+
+    it('keeps the session when a gateway error outlives the retries', async () => {
+        vi.useFakeTimers();
+        sliceResponses = [{ status: 204, text: '' }];
+        defaultSliceResponse = { status: 502, text: 'Bad Gateway' };
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('HTTP 502');
+        await vi.advanceTimersByTimeAsync(120000);
+        await assertion;
+
+        expect(deleteCalls()).toHaveLength(0);
+        expect(Object.keys(rememberedSessions())).toHaveLength(1);
+    });
+
+    it('sends only the slices the server is missing on the next attempt', async () => {
+        const file = fakeFile(40 * MB);
+        await interrupt(file);
+        sent = [];
+        fetchCalls = [];
+        sessionStatus = {
+            kind: 'sliced_upload',
+            status: 'recording',
+            chunk_count: 1,
+            upload_total_bytes: 40 * MB,
+        };
+
+        const progress = [];
+        const result = await uploadFileInSlices(file, new Map(), {
+            onProgress: (fraction) => progress.push(fraction),
+        });
+
+        expect(createCalls()).toHaveLength(0);
+        expect(slicePosts().map((call) => [call.url, call.body.start])).toEqual([
+            ['/upload/session/sess-1/chunks/2', SLICE_BYTES],
+            ['/upload/session/sess-1/chunks/3', 2 * SLICE_BYTES],
+        ]);
+        expect(progress[0]).toBeCloseTo(SLICE_BYTES / (40 * MB));
+        expect(result).toEqual({ id: 42, title: 'talk' });
+        expect(rememberedSessions()).toEqual({});
+    });
+
+    it('replays the recording when the upload had already been finalized', async () => {
+        const file = fakeFile(40 * MB);
+        await interrupt(file);
+        sent = [];
+        sessionStatus = {
+            kind: 'sliced_upload',
+            status: 'finalized',
+            chunk_count: 3,
+            upload_total_bytes: 40 * MB,
+        };
+        finalizeResponse = {
+            status: 202,
+            text: JSON.stringify({ id: 42, title: 'talk', idempotent_replay: true }),
+        };
+
+        const result = await uploadFileInSlices(file, new Map(), {});
+
+        expect(slicePosts()).toHaveLength(0);
+        expect(result.id).toBe(42);
+    });
+
+    it('starts over when the file is not the one the session was opened for', async () => {
+        await interrupt(fakeFile(40 * MB));
+        sent = [];
+        fetchCalls = [];
+        sessionStatus = {
+            kind: 'sliced_upload',
+            status: 'recording',
+            chunk_count: 1,
+            upload_total_bytes: 40 * MB,
+        };
+
+        await uploadFileInSlices(fakeFile(40 * MB, 'talk.mp4', 'video/mp4', 99), new Map(), {});
+
+        expect(createCalls()).toHaveLength(1);
+        expect(slicePosts()[0].body.start).toBe(0);
+    });
+
+    it('starts over when the server no longer has the session', async () => {
+        const file = fakeFile(40 * MB);
+        await interrupt(file);
+        sent = [];
+        fetchCalls = [];
+        sessionStatus = null;
+
+        await uploadFileInSlices(file, new Map(), {});
+
+        expect(createCalls()).toHaveLength(1);
+        expect(slicePosts()[0].body.start).toBe(0);
     });
 });

@@ -358,6 +358,50 @@ def test_a_replayed_finalize_upload_returns_the_first_call_s_recording():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
+def test_an_interrupted_sliced_upload_resumes_from_the_slices_already_sent():
+    """What the client needs to resume: the status endpoint has to say the
+    session is a sliced upload of this exact file and how many slices it
+    already holds, and the next slice has to pick up from there."""
+    upload_folder = _tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _mk_user("slice_resume")
+        client = app.test_client()
+        _login(client, user)
+
+        payload = _payload(SLICE_BYTES * 3)
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg",
+                                   total_bytes=len(payload))["session_id"]
+        _send_slices(client, session_id, payload[:SLICE_BYTES])
+
+        status = client.get(f"/upload/session/{session_id}").get_json()
+        assert status["kind"] == "sliced_upload"
+        assert status["upload_total_bytes"] == len(payload)
+        assert status["status"] == "recording"
+        assert status["chunk_count"] == 1
+
+        for index in (2, 3):
+            start = (index - 1) * SLICE_BYTES
+            resumed = client.post(
+                f"/upload/session/{session_id}/chunks/{index}",
+                data=payload[start:start + SLICE_BYTES],
+                content_type="application/octet-stream",
+            )
+            assert resumed.status_code == 204, (index, resumed.data)
+
+        staging = os.path.join(upload_folder, f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging):
+            response = client.post(f"/upload/session/{session_id}/finalize-upload",
+                                   data={}, content_type="multipart/form-data")
+
+        assert response.status_code == 202, response.data
+        recording = db.session.get(Recording, response.get_json()["id"])
+        assert recording.file_hash == hashlib.sha256(payload).hexdigest()
+
+        _cleanup(recording, user)
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
 def test_another_user_cannot_finalize_someone_elses_sliced_upload():
     upload_folder = _tmp_upload_folder()
     with app.app_context():
