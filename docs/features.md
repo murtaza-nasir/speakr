@@ -20,6 +20,10 @@ A per-recording Stats tab shows total length, speaker count, conversation turns,
 
 An opt-in mode (`ENABLE_SERVER_RECORDING_CHUNKS`) streams in-app recording chunks to the server as you record instead of buffering them in browser memory, raising the practical recording ceiling to hours-long sessions and letting you resume a recording after a page reload. See the [Recording guide](user-guide/recording.md#server-side-recording-sessions-long-recordings) and [admin setup](admin-guide/recording-sessions.md).
 
+### Sliced File Uploads
+
+Uploads of files larger than 16 MB are sent as fixed-size slices through the same session endpoints and reassembled server-side, so a reverse proxy with a request-body limit below the file size (Cloudflare caps bodies at 100 MB on most plans) no longer blocks large uploads. This needs no configuration; see [Recording Sessions](admin-guide/recording-sessions.md#sliced-uploads-of-files-on-disk).
+
 ## Core Transcription Features
 
 ### Multi-Engine Support
