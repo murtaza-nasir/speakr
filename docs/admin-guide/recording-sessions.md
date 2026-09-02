@@ -82,6 +82,23 @@ A dropped connection or a timeout leaves the session alone, including
 when it happens waiting for `finalize-upload`: the server may be
 ingesting at that moment, and the retry gets that recording back.
 
+!!! note "Behind Cloudflare, mind the 125-second Proxy Read Timeout"
+
+    `finalize-upload` ingests in-request, exactly as `POST /upload`
+    does: hash, ffprobe, and audio extraction or codec conversion. For
+    audio that is a sub-second call, but extracting the audio from a
+    long video can outlast Cloudflare's 125-second Proxy Read Timeout
+    (not adjustable below Enterprise). The edge then answers 524 while
+    the origin finishes ingesting anyway.
+
+    Speakr treats 524 and the rest of Cloudflare's 52x range as
+    inconclusive rather than fatal, so the session survives and the
+    user's retry replays the recording that landed instead of sending
+    the file again. Time your worst realistic upload before putting the
+    edge in front of it: if it breaches the budget, the fix is deferring
+    conversion to the job queue, which `VIDEO_RETENTION=true` already
+    does for videos whose original you want to keep.
+
 Operationally this means in-progress sliced uploads sit in
 `UPLOAD_FOLDER/_sessions/` for up to `RECORDING_SESSION_TTL_HOURS`
 waiting for a resume that may never come, and count against

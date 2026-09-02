@@ -43,7 +43,9 @@ const MAX_STALLED_RESYNCS = 2;
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 
-const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527]);
+
+const INCONCLUSIVE_STATUSES = new Set([408, 429, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527]);
 
 const RESUME_KEY = 'speakr.slicedUploads';
 const RESUME_TTL_MS = 24 * 60 * 60 * 1000;
@@ -279,12 +281,29 @@ function sliceRejectionMessage(index, sliceSize, result, body) {
 }
 
 /**
+ * True when the session has to outlive a failed finalize.
+ *
+ * Covers the statuses that leave the outcome unknown, and the 409 that
+ * says another request holds the finalize claim. Cloudflare answers 524
+ * at 125 seconds while the origin carries on ingesting, which is the
+ * case that matters: the retry is then the replay that hands back the
+ * recording rather than a second upload of the same file.
+ *
+ * Guessing wrong in this direction is cheap. The resume check reads the
+ * session's real state first and only continues one the server still
+ * has, so a session that did fail costs one request to discover it.
+ */
+function finalizeCouldStillLand(status) {
+    return INCONCLUSIVE_STATUSES.has(status) || status === 409;
+}
+
+/**
  * Turn the uploaded slices into a recording.
  *
- * A transport failure here is marked resumable: the server may be
- * ingesting at that moment, so the slices have to survive, and a retry
- * gets back the recording that call produced rather than sending the
- * file a second time.
+ * A transport failure or an inconclusive status here is marked resumable:
+ * the server may be ingesting at that moment, so the slices have to
+ * survive, and a retry gets back the recording that call produced rather
+ * than sending the file a second time.
  */
 async function finalize(sessionId, formData, tokenRef, options) {
     const url = `${SESSION_BASE}/${encodeURIComponent(sessionId)}/finalize-upload`;
@@ -306,8 +325,11 @@ async function finalize(sessionId, formData, tokenRef, options) {
             tokenRef.token = await getUploadCsrfToken();
             continue;
         }
-        throw new Error(body?.error
+        const error = new Error(body?.error
             || `Upload could not be finalized (HTTP ${result.status})`);
+        error.status = result.status;
+        error.resumable = finalizeCouldStillLand(result.status);
+        throw error;
     }
 }
 

@@ -264,10 +264,10 @@ describe('uploadFileInSlices', () => {
     });
 
     it('surfaces the finalize error and deletes the session', async () => {
-        finalizeResponse = { status: 409, text: JSON.stringify({ error: 'Slices on disk do not match the session' }) };
+        finalizeResponse = { status: 400, text: JSON.stringify({ error: 'No file provided' }) };
 
         await expect(uploadFileInSlices(fakeFile(20 * MB), new Map(), {}))
-            .rejects.toThrow('Slices on disk do not match the session');
+            .rejects.toThrow('No file provided');
         expect(fetchCalls[fetchCalls.length - 1].options.method).toBe('DELETE');
     });
 
@@ -312,6 +312,48 @@ describe('resuming an interrupted upload', () => {
             sessionId: 'sess-1',
             sliceBytes: SLICE_BYTES,
         });
+    });
+
+    // Cloudflare answers 524 at 125s while the origin is still ingesting, and the finalize it timed out on may well have landed.
+    it('keeps the session when the edge times the finalize out', async () => {
+        finalizeResponse = { status: 524, text: '<html><title>524: A timeout occurred</title></html>' };
+        const file = fakeFile(40 * MB);
+
+        await expect(uploadFileInSlices(file, new Map(), {}))
+            .rejects.toThrow('HTTP 524');
+
+        expect(deleteCalls()).toHaveLength(0);
+        expect(rememberedSessions()[`talk.mp4|${40 * MB}|0`]).toMatchObject({ sessionId: 'sess-1' });
+    });
+
+    it('keeps the session when another request already holds the finalize claim', async () => {
+        finalizeResponse = { status: 409, text: JSON.stringify({ error: 'Session is already being finalized' }) };
+
+        await expect(uploadFileInSlices(fakeFile(40 * MB), new Map(), {}))
+            .rejects.toThrow('already being finalized');
+
+        expect(deleteCalls()).toHaveLength(0);
+        expect(Object.keys(rememberedSessions())).toHaveLength(1);
+    });
+
+    it('retries a slice the edge timed out instead of abandoning the upload', async () => {
+        vi.useFakeTimers();
+        sliceResponses = [
+            { status: 204, text: '' },
+            { status: 524, text: '<html><title>524: A timeout occurred</title></html>' },
+        ];
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        await vi.advanceTimersByTimeAsync(5000);
+        await upload;
+
+        expect(slicePosts().map((call) => [call.url, call.body.start])).toEqual([
+            ['/upload/session/sess-1/chunks/1', 0],
+            ['/upload/session/sess-1/chunks/2', SLICE_BYTES],
+            ['/upload/session/sess-1/chunks/2', SLICE_BYTES],
+            ['/upload/session/sess-1/chunks/3', 2 * SLICE_BYTES],
+        ]);
+        expect(deleteCalls()).toHaveLength(0);
     });
 
     it('keeps the session when a gateway error outlives the retries', async () => {
