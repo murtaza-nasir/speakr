@@ -92,12 +92,19 @@ ingesting at that moment, and the retry gets that recording back.
     the origin finishes ingesting anyway.
 
     Speakr treats 524 and the rest of Cloudflare's 52x range as
-    inconclusive rather than fatal, so the session survives and the
-    user's retry replays the recording that landed instead of sending
-    the file again. Time your worst realistic upload before putting the
-    edge in front of it: if it breaches the budget, the fix is deferring
-    conversion to the job queue, which `VIDEO_RETENTION=true` already
-    does for videos whose original you want to keep.
+    inconclusive rather than fatal. The browser polls the session until
+    the ingest settles, for up to ten minutes, and then either takes the
+    recording that landed or finalizes for real if the request never
+    arrived. Nothing is re-uploaded and the user is not asked to retry;
+    the upload simply takes as long as the ingest does. Re-adding the
+    same file while an ingest is still running waits on it too, rather
+    than starting a second copy.
+
+    Time your worst realistic upload before putting the edge in front of
+    it anyway: a wait that outlives ten minutes still surfaces as a
+    failure, and the fix for that is deferring conversion to the job
+    queue, which `VIDEO_RETENTION=true` already does for videos whose
+    original you want to keep.
 
 Operationally this means in-progress sliced uploads sit in
 `UPLOAD_FOLDER/_sessions/` for up to `RECORDING_SESSION_TTL_HOURS`

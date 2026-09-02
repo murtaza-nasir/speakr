@@ -47,6 +47,10 @@ const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 520, 521,
 
 const INCONCLUSIVE_STATUSES = new Set([408, 429, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527]);
 
+const INGEST_POLL_MS = 3000;
+const INGEST_WAIT_MS = 10 * 60 * 1000;
+const MAX_FINALIZE_ATTEMPTS = 3;
+
 const RESUME_KEY = 'speakr.slicedUploads';
 const RESUME_TTL_MS = 24 * 60 * 60 * 1000;
 const RESUME_MAX_ENTRIES = 20;
@@ -104,10 +108,24 @@ export function forgetSession(file) {
     writeResumeMemory(memory);
 }
 
+/** The server's view of a session, or null when it no longer has one. */
+async function readSessionStatus(sessionId, token) {
+    const response = await fetch(`${SESSION_BASE}/${encodeURIComponent(sessionId)}`, {
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': token },
+    });
+    if (!response.ok) return null;
+    return parseJson(await response.text());
+}
+
 /**
- * The server's view of a session we started for this file, when it can
- * still be continued. Returns `{sessionId, sliceBytes, chunkCount}` or
- * null, and forgets anything the server no longer recognises.
+ * The session we opened for this file, when it can still be continued.
+ * Returns `{sessionId, sliceBytes, chunkCount, status}` or null, and
+ * forgets anything the server no longer recognises.
+ *
+ * `finalizing` counts as continuable: it is what an ingest that outran
+ * the proxy's patience looks like from here, and the caller waits it out
+ * rather than sending the file again.
  */
 async function resumableSession(file, token) {
     const remembered = readResumeMemory()[fileKey(file)];
@@ -115,14 +133,7 @@ async function resumableSession(file, token) {
 
     let status;
     try {
-        const response = await fetch(
-            `${SESSION_BASE}/${encodeURIComponent(remembered.sessionId)}`,
-            { credentials: 'same-origin', headers: { 'X-CSRFToken': token } });
-        if (!response.ok) {
-            forgetSession(file);
-            return null;
-        }
-        status = parseJson(await response.text());
+        status = await readSessionStatus(remembered.sessionId, token);
     } catch (error) {
         console.warn('[SlicedUpload] Could not read the remembered session:', error);
         return null;
@@ -131,7 +142,7 @@ async function resumableSession(file, token) {
     const continuable = status
         && status.kind === 'sliced_upload'
         && status.upload_total_bytes === file.size
-        && ['recording', 'finalized'].includes(status.status)
+        && ['recording', 'finalizing', 'finalized'].includes(status.status)
         && remembered.sliceBytes > 0;
     if (!continuable) {
         forgetSession(file);
@@ -142,6 +153,7 @@ async function resumableSession(file, token) {
         sessionId: remembered.sessionId,
         sliceBytes: remembered.sliceBytes,
         chunkCount: status.chunk_count || 0,
+        status: status.status,
     };
 }
 
@@ -334,6 +346,48 @@ async function finalize(sessionId, formData, tokenRef, options) {
 }
 
 /**
+ * Settle a finalize whose answer never arrived.
+ *
+ * The ingest runs in-request, so Cloudflare's 125-second Proxy Read
+ * Timeout can cut the answer off while the origin carries on and
+ * produces the recording anyway. Rather than report a failure the user
+ * has to interpret, wait the session out: once it leaves `finalizing`,
+ * asking again either replays the recording that landed (`finalized`) or
+ * finalizes for real (`recording`, meaning the request never reached
+ * Speakr at all). Only when the wait runs out does `firstError` surface,
+ * with the session left in place for another attempt.
+ */
+async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, firstError) {
+    const deadline = Date.now() + INGEST_WAIT_MS;
+    let finalizeAttempts = 1;
+
+    while (Date.now() < deadline) {
+        let status;
+        try {
+            status = await readSessionStatus(sessionId, tokenRef.token);
+        } catch (_) {
+            status = undefined;
+        }
+
+        if (status === null) throw firstError;
+
+        if (status?.status === 'finalizing' || status === undefined) {
+            await sleep(INGEST_POLL_MS);
+            continue;
+        }
+
+        if (['recording', 'finalized'].includes(status.status)
+            && ++finalizeAttempts <= MAX_FINALIZE_ATTEMPTS) {
+            return await finalize(sessionId, formData, tokenRef, options);
+        }
+
+        throw firstError;
+    }
+
+    throw firstError;
+}
+
+/**
  * Upload `file` in slices and finalize with `formData` (the same form the
  * single-shot path builds, minus the file part). Resolves to the created
  * recording, matching what POST /upload returns.
@@ -381,10 +435,18 @@ export async function uploadFileInSlices(file, formData, options = {}) {
             }
             onProgress(Math.min(1, ((index - 1) * sliceBytes) / file.size));
         }
-        const recording = await finalize(sessionId, formData, tokenRef, {
+        const finalizeOptions = {
             finalizeTimeoutMs: computeUploadTimeout(file.size),
             onXhr: options.onXhr,
-        });
+        };
+        let recording;
+        try {
+            recording = await finalize(sessionId, formData, tokenRef, finalizeOptions);
+        } catch (error) {
+            if (!error.resumable) throw error;
+            recording = await settleUnfinishedFinalize(
+                sessionId, formData, tokenRef, finalizeOptions, error);
+        }
         forgetSession(file);
         return recording;
     } catch (error) {

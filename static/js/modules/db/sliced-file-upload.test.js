@@ -61,10 +61,11 @@ function _installMocks() {
             };
         }
         if (!options.method) {
+            const status = nextOf(sessionStatus);
             return {
-                status: sessionStatus ? 200 : 404,
-                ok: !!sessionStatus,
-                text: async () => JSON.stringify(sessionStatus || {}),
+                status: status ? 200 : 404,
+                ok: !!status,
+                text: async () => JSON.stringify(status || {}),
             };
         }
         return { status: 204, text: async () => '' };
@@ -85,7 +86,7 @@ function _installMocks() {
             const call = { url: this.url, body, headers: this.headers };
             sent.push(call);
             const response = this.url.endsWith('/finalize-upload')
-                ? finalizeResponse
+                ? nextOf(finalizeResponse)
                 : (sliceResponses.shift() || defaultSliceResponse);
             queueMicrotask(() => {
                 if (response.networkError) {
@@ -103,7 +104,14 @@ function _installMocks() {
     };
 }
 
+/** Queued answers are consumed in order; the last one repeats. */
+function nextOf(answers) {
+    if (!Array.isArray(answers)) return answers;
+    return answers.length > 1 ? answers.shift() : answers[0];
+}
+
 const slicePosts = () => sent.filter((call) => !call.url.endsWith('/finalize-upload'));
+const finalizePosts = () => sent.filter((call) => call.url.endsWith('/finalize-upload'));
 const createCalls = () => fetchCalls.filter((call) => call.options.method === 'POST');
 const deleteCalls = () => fetchCalls.filter((call) => call.options.method === 'DELETE');
 const rememberedSessions = () => JSON.parse(store.get('speakr.slicedUploads') || '{}');
@@ -314,26 +322,80 @@ describe('resuming an interrupted upload', () => {
         });
     });
 
-    // Cloudflare answers 524 at 125s while the origin is still ingesting, and the finalize it timed out on may well have landed.
-    it('keeps the session when the edge times the finalize out', async () => {
-        finalizeResponse = { status: 524, text: '<html><title>524: A timeout occurred</title></html>' };
+    const TIMED_OUT = { status: 524, text: '<html><title>524: A timeout occurred</title></html>' };
+    const INGESTED = { status: 202, text: JSON.stringify({ id: 42, title: 'talk', idempotent_replay: true }) };
+
+    // Cloudflare cuts the answer off at 125s while the origin finishes the ingest, so the recording exists and the client must not re-send the file.
+    it('waits out an ingest the edge timed out on and returns its recording', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = [TIMED_OUT, INGESTED];
+        sessionStatus = [
+            { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB },
+            { kind: 'sliced_upload', status: 'finalized', chunk_count: 3, upload_total_bytes: 40 * MB },
+        ];
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(await upload).toMatchObject({ id: 42, idempotent_replay: true });
+        expect(slicePosts()).toHaveLength(3);
+        expect(finalizePosts()).toHaveLength(2);
+        expect(deleteCalls()).toHaveLength(0);
+        expect(rememberedSessions()).toEqual({});
+    });
+
+    it('finalizes for real when the timed-out request never reached Speakr', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = [{ status: 502, text: 'Bad Gateway' },
+                            { status: 202, text: JSON.stringify({ id: 43 }) }];
+        sessionStatus = { kind: 'sliced_upload', status: 'recording', chunk_count: 3, upload_total_bytes: 40 * MB };
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(await upload).toMatchObject({ id: 43 });
+        expect(slicePosts()).toHaveLength(3);
+    });
+
+    it('surfaces the timeout and keeps the session when the ingest never settles', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = TIMED_OUT;
+        sessionStatus = { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB };
         const file = fakeFile(40 * MB);
 
-        await expect(uploadFileInSlices(file, new Map(), {}))
-            .rejects.toThrow('HTTP 524');
+        const upload = uploadFileInSlices(file, new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('HTTP 524');
+        await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
+        await assertion;
 
         expect(deleteCalls()).toHaveLength(0);
         expect(rememberedSessions()[`talk.mp4|${40 * MB}|0`]).toMatchObject({ sessionId: 'sess-1' });
     });
 
-    it('keeps the session when another request already holds the finalize claim', async () => {
-        finalizeResponse = { status: 409, text: JSON.stringify({ error: 'Session is already being finalized' }) };
+    it('waits out an ingest that was already running when the file was added again', async () => {
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);
+        finalizeResponse = TIMED_OUT;
+        sessionStatus = { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB };
+        const abandoned = uploadFileInSlices(file, new Map(), {});
+        const abandonedAssertion = expect(abandoned).rejects.toThrow('HTTP 524');
+        await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
+        await abandonedAssertion;
 
-        await expect(uploadFileInSlices(fakeFile(40 * MB), new Map(), {}))
-            .rejects.toThrow('already being finalized');
+        sent = [];
+        fetchCalls = [];
+        finalizeResponse = [{ status: 409, text: JSON.stringify({ error: 'Session is already being finalized' }) }, INGESTED];
+        sessionStatus = [
+            { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB },
+            { kind: 'sliced_upload', status: 'finalized', chunk_count: 3, upload_total_bytes: 40 * MB },
+        ];
 
-        expect(deleteCalls()).toHaveLength(0);
-        expect(Object.keys(rememberedSessions())).toHaveLength(1);
+        const retry = uploadFileInSlices(file, new Map(), {});
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(await retry).toMatchObject({ id: 42 });
+        expect(createCalls()).toHaveLength(0);
+        expect(slicePosts()).toHaveLength(0);
     });
 
     it('retries a slice the edge timed out instead of abandoning the upload', async () => {
