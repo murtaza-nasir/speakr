@@ -107,6 +107,22 @@ def _max_chunk_bytes():
     return int(os.environ.get('RECORDING_SESSION_MAX_CHUNK_BYTES', str(16 * 1024 * 1024)))
 
 
+def _ingest_ceiling_seconds():
+    """How long a finalize's ingest can possibly still be running.
+
+    A sliced upload's ingest happens inside the request, so no ingest
+    outlives the WSGI server's own request timeout (gunicorn runs with
+    ``--timeout 600``). Past this, a session still marked ``finalizing``
+    belongs to a worker that no longer exists, typically because the
+    container was recreated mid-ingest, and the next finalize may take it
+    over. Set it above the deployment's request timeout, never below.
+    """
+    try:
+        return max(60, int(os.environ.get('RECORDING_SESSION_INGEST_CEILING_SECONDS', '900')))
+    except (TypeError, ValueError):
+        return 900
+
+
 def _commit_batch_size():
     """How many chunks to accumulate before committing session bookkeeping.
 
@@ -611,6 +627,12 @@ def finalize_sliced_upload(session_id):
     user's. What the slices weigh together is checked against the size
     declared at create, so a short or missing slice fails loudly instead
     of ingesting as a truncated recording.
+
+    A session already ``finalizing`` is claimable again once its claim is
+    older than :func:`_ingest_ceiling_seconds`, which no live ingest can
+    be: that state otherwise outlives the worker that owned it whenever a
+    container is recreated mid-ingest, and the user's retry would wait
+    for an ingest nobody is running until the TTL sweep, a day later.
     """
     session = db.session.get(RecordingSession, session_id)
     err = _ensure_owned(session)
@@ -625,19 +647,26 @@ def finalize_sliced_upload(session_id):
     if session.status == 'finalized':
         return _replay_sliced_upload_response(session)
 
-    if session.status != 'recording':
+    if session.status not in ('recording', 'finalizing'):
         return jsonify({
             'error': f'Session is in status {session.status!r}; cannot finalize',
         }), 409
 
+    now = datetime.utcnow()
+    abandoned_before = now - timedelta(seconds=_ingest_ceiling_seconds())
     claimed = db.session.query(RecordingSession).filter(
         RecordingSession.id == session.id,
-        RecordingSession.status == 'recording',
-    ).update({'status': 'finalizing'}, synchronize_session=False)
+        db.or_(
+            RecordingSession.status == 'recording',
+            db.and_(
+                RecordingSession.status == 'finalizing',
+                RecordingSession.last_seen_at < abandoned_before,
+            ),
+        ),
+    ).update({'status': 'finalizing', 'last_seen_at': now}, synchronize_session=False)
     if not claimed:
         db.session.rollback()
         return jsonify({'error': 'Session is already being finalized'}), 409
-    session.last_seen_at = datetime.utcnow()
     db.session.commit()
 
     dir_path = _session_dir(session.id)

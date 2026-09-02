@@ -108,20 +108,34 @@ export function forgetSession(file) {
     writeResumeMemory(memory);
 }
 
-/** The server's view of a session, or null when it no longer has one. */
+/**
+ * The server's view of a session.
+ *
+ * Null means the server says there is no such session, which is a fact
+ * about the session. Every other failure throws, because a status
+ * endpoint that cannot be reached says nothing about the upload behind
+ * it, and the difference decides whether a caller gives up or waits.
+ */
 async function readSessionStatus(sessionId, token) {
     const response = await fetch(`${SESSION_BASE}/${encodeURIComponent(sessionId)}`, {
         credentials: 'same-origin',
         headers: { 'X-CSRFToken': token },
     });
-    if (!response.ok) return null;
-    return parseJson(await response.text());
+    if (response.status === 404 || response.status === 403) return null;
+    if (!response.ok) {
+        const error = new Error(`Could not read the upload session (HTTP ${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+    const session = parseJson(await response.text());
+    if (!session) throw new Error('Upload session status was not JSON');
+    return session;
 }
 
 /**
  * The session we opened for this file, when it can still be continued.
- * Returns `{sessionId, sliceBytes, chunkCount, status}` or null, and
- * forgets anything the server no longer recognises.
+ * Returns `{sessionId, sliceBytes, chunkCount}` or null, and forgets
+ * anything the server no longer recognises.
  *
  * `finalizing` counts as continuable: it is what an ingest that outran
  * the proxy's patience looks like from here, and the caller waits it out
@@ -153,7 +167,6 @@ async function resumableSession(file, token) {
         sessionId: remembered.sessionId,
         sliceBytes: remembered.sliceBytes,
         chunkCount: status.chunk_count || 0,
-        status: status.status,
     };
 }
 
@@ -356,6 +369,11 @@ async function finalize(sessionId, formData, tokenRef, options) {
  * finalizes for real (`recording`, meaning the request never reached
  * Speakr at all). Only when the wait runs out does `firstError` surface,
  * with the session left in place for another attempt.
+ *
+ * A status endpoint that answers with anything but "no such session" is
+ * treated as part of the same outage: this code runs precisely where a
+ * proxy is having a bad time, so ending the wait on the first 502 from
+ * it would abandon an ingest that is still running.
  */
 async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, firstError) {
     const deadline = Date.now() + INGEST_WAIT_MS;
@@ -366,22 +384,25 @@ async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, 
         try {
             status = await readSessionStatus(sessionId, tokenRef.token);
         } catch (_) {
-            status = undefined;
-        }
-
-        if (status === null) throw firstError;
-
-        if (status?.status === 'finalizing' || status === undefined) {
             await sleep(INGEST_POLL_MS);
             continue;
         }
 
-        if (['recording', 'finalized'].includes(status.status)
-            && ++finalizeAttempts <= MAX_FINALIZE_ATTEMPTS) {
-            return await finalize(sessionId, formData, tokenRef, options);
+        if (status === null) throw firstError;
+        if (status.status === 'finalizing') {
+            await sleep(INGEST_POLL_MS);
+            continue;
         }
+        if (!['recording', 'finalized'].includes(status.status)) throw firstError;
+        if (finalizeAttempts >= MAX_FINALIZE_ATTEMPTS) throw firstError;
 
-        throw firstError;
+        finalizeAttempts += 1;
+        try {
+            return await finalize(sessionId, formData, tokenRef, options);
+        } catch (error) {
+            if (!error.resumable) throw error;
+            await sleep(INGEST_POLL_MS);
+        }
     }
 
     throw firstError;

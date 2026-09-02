@@ -61,11 +61,14 @@ function _installMocks() {
             };
         }
         if (!options.method) {
-            const status = nextOf(sessionStatus);
+            const answer = nextOf(sessionStatus);
+            if (answer?.httpStatus) {
+                return { status: answer.httpStatus, ok: false, text: async () => 'proxy error' };
+            }
             return {
-                status: status ? 200 : 404,
-                ok: !!status,
-                text: async () => JSON.stringify(status || {}),
+                status: answer ? 200 : 404,
+                ok: !!answer,
+                text: async () => JSON.stringify(answer || {}),
             };
         }
         return { status: 204, text: async () => '' };
@@ -342,6 +345,53 @@ describe('resuming an interrupted upload', () => {
         expect(finalizePosts()).toHaveLength(2);
         expect(deleteCalls()).toHaveLength(0);
         expect(rememberedSessions()).toEqual({});
+    });
+
+    // The wait runs while a proxy is misbehaving, so its errors are part of that outage, not an answer.
+    it('keeps waiting when the status endpoint itself is failing', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = [TIMED_OUT, INGESTED];
+        sessionStatus = [
+            { httpStatus: 502 },
+            { httpStatus: 504 },
+            { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB },
+            { kind: 'sliced_upload', status: 'finalized', chunk_count: 3, upload_total_bytes: 40 * MB },
+        ];
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        await vi.advanceTimersByTimeAsync(20000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        expect(deleteCalls()).toHaveLength(0);
+    });
+
+    it('gives up on the wait when the server says the session is gone', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = TIMED_OUT;
+        sessionStatus = null;
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('HTTP 524');
+        await vi.advanceTimersByTimeAsync(10000);
+        await assertion;
+
+        expect(finalizePosts()).toHaveLength(1);
+    });
+
+    it('keeps polling when a second finalize is cut off as well', async () => {
+        vi.useFakeTimers();
+        finalizeResponse = [TIMED_OUT, TIMED_OUT, INGESTED];
+        sessionStatus = [
+            { kind: 'sliced_upload', status: 'recording', chunk_count: 3, upload_total_bytes: 40 * MB },
+            { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3, upload_total_bytes: 40 * MB },
+            { kind: 'sliced_upload', status: 'finalized', chunk_count: 3, upload_total_bytes: 40 * MB },
+        ];
+
+        const upload = uploadFileInSlices(fakeFile(40 * MB), new Map(), {});
+        await vi.advanceTimersByTimeAsync(30000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        expect(finalizePosts()).toHaveLength(3);
     });
 
     it('finalizes for real when the timed-out request never reached Speakr', async () => {

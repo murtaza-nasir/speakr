@@ -402,6 +402,48 @@ def test_an_interrupted_sliced_upload_resumes_from_the_slices_already_sent():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
+def test_a_finalize_abandoned_by_a_dead_worker_can_be_taken_over():
+    """Recreating the container mid-ingest leaves the session finalizing
+    with nobody ingesting. Without a takeover the user's retry waits for
+    a worker that no longer exists until the TTL sweep, a day later."""
+    upload_folder = _tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _mk_user("slice_takeover")
+        client = app.test_client()
+        _login(client, user)
+
+        payload = _payload(SLICE_BYTES)
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg",
+                                   total_bytes=len(payload))["session_id"]
+        _send_slices(client, session_id, payload)
+
+        session = db.session.get(RecordingSession, session_id)
+        session.status = "finalizing"
+        session.last_seen_at = datetime.utcnow()
+        db.session.commit()
+
+        fresh_claim = client.post(f"/upload/session/{session_id}/finalize-upload",
+                                  data={}, content_type="multipart/form-data")
+        assert fresh_claim.status_code == 409
+        assert "already being finalized" in fresh_claim.get_json()["error"]
+
+        session.last_seen_at = datetime.utcnow() - timedelta(hours=1)
+        db.session.commit()
+
+        staging = os.path.join(upload_folder, f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging):
+            taken_over = client.post(f"/upload/session/{session_id}/finalize-upload",
+                                     data={}, content_type="multipart/form-data")
+
+        assert taken_over.status_code == 202, taken_over.data
+        recording = db.session.get(Recording, taken_over.get_json()["id"])
+        assert recording.file_hash == hashlib.sha256(payload).hexdigest()
+
+        _cleanup(recording, user)
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
 def test_another_user_cannot_finalize_someone_elses_sliced_upload():
     upload_folder = _tmp_upload_folder()
     with app.app_context():
