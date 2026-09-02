@@ -50,9 +50,11 @@ what was uploaded into the user's library) and only deletes sessions that
 have nothing to recover. See that function for the full policy.
 """
 
+import contextlib
 import json
 import os
 import shutil
+import threading
 from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify, current_app
@@ -107,20 +109,26 @@ def _max_chunk_bytes():
     return int(os.environ.get('RECORDING_SESSION_MAX_CHUNK_BYTES', str(16 * 1024 * 1024)))
 
 
-def _ingest_ceiling_seconds():
-    """How long a finalize's ingest can possibly still be running.
+def _ingest_heartbeat_seconds():
+    """How often an in-progress ingest stamps the session it is working on.
 
-    A sliced upload's ingest happens inside the request, so no ingest
-    outlives the WSGI server's own request timeout (gunicorn runs with
-    ``--timeout 600``). Past this, a session still marked ``finalizing``
-    belongs to a worker that no longer exists, typically because the
-    container was recreated mid-ingest, and the next finalize may take it
-    over. Set it above the deployment's request timeout, never below.
+    A sliced upload's ingest runs inside the request, and its liveness
+    cannot be inferred from any timeout: under gunicorn's ``gthread``
+    worker, which is what Speakr ships, ``--timeout`` bounds the accept
+    loop's silence, not a request's duration (``notify()`` fires every
+    iteration regardless of what the thread pool is doing), so a request
+    in a pool thread is never aborted. An ingest therefore says so
+    itself, every interval, and a session whose stamp has gone quiet for
+    three intervals is one whose worker is gone.
     """
     try:
-        return max(60, int(os.environ.get('RECORDING_SESSION_INGEST_CEILING_SECONDS', '900')))
+        return max(5, int(os.environ.get('RECORDING_SESSION_INGEST_HEARTBEAT_SECONDS', '30')))
     except (TypeError, ValueError):
-        return 900
+        return 30
+
+
+def _ingest_abandoned_after_seconds():
+    return _ingest_heartbeat_seconds() * 3
 
 
 def _commit_batch_size():
@@ -171,6 +179,56 @@ def _write_session_manifest(session):
             json.dump(session.to_dict(), f, indent=2)
     except Exception as e:
         current_app.logger.warning(f"Could not write session manifest for {session.id}: {e}")
+
+
+def _touch_session(app, session_id):
+    """Stamp a session as still being worked on. Best-effort by design:
+    a missed stamp costs a takeover, a raised exception would cost the
+    ingest it is reporting on."""
+    try:
+        with app.app_context():
+            db.session.query(RecordingSession).filter(
+                RecordingSession.id == session_id,
+                RecordingSession.status == 'finalizing',
+            ).update({'last_seen_at': datetime.utcnow()}, synchronize_session=False)
+            db.session.commit()
+    except Exception as e:
+        app.logger.warning(f"Could not stamp session {session_id} during ingest: {e}")
+
+
+def _beat_until_stopped(app, session_id, stop, interval):
+    while True:
+        _touch_session(app, session_id)
+        if stop.wait(interval):
+            return
+
+
+def _ingest_heartbeat(session_id):
+    """Report an ingest alive until the returned callable is invoked.
+
+    Used as a context manager so the stamping stops whichever way the
+    ingest ends, including an exception on the way out.
+    """
+    app = current_app._get_current_object()
+    stop = threading.Event()
+    beater = threading.Thread(
+        target=_beat_until_stopped,
+        args=(app, session_id, stop, _ingest_heartbeat_seconds()),
+        name=f'ingest-heartbeat-{session_id[:8]}',
+        daemon=True,
+    )
+    beater.start()
+    return contextlib.closing(_Heartbeat(stop, beater))
+
+
+class _Heartbeat:
+    def __init__(self, stop, beater):
+        self._stop = stop
+        self._beater = beater
+
+    def close(self):
+        self._stop.set()
+        self._beater.join(timeout=5)
 
 
 def _remove_session_dir(session_id, app=None):
@@ -628,11 +686,12 @@ def finalize_sliced_upload(session_id):
     declared at create, so a short or missing slice fails loudly instead
     of ingesting as a truncated recording.
 
-    A session already ``finalizing`` is claimable again once its claim is
-    older than :func:`_ingest_ceiling_seconds`, which no live ingest can
-    be: that state otherwise outlives the worker that owned it whenever a
-    container is recreated mid-ingest, and the user's retry would wait
-    for an ingest nobody is running until the TTL sweep, a day later.
+    A session already ``finalizing`` is claimable again once its ingest
+    has stopped saying it is alive (see
+    :func:`_ingest_heartbeat_seconds`). That state otherwise outlives the
+    worker that owned it whenever a container is recreated mid-ingest,
+    and the user's retry would wait for an ingest nobody is running until
+    the TTL sweep, a day later.
     """
     session = db.session.get(RecordingSession, session_id)
     err = _ensure_owned(session)
@@ -653,7 +712,7 @@ def finalize_sliced_upload(session_id):
         }), 409
 
     now = datetime.utcnow()
-    abandoned_before = now - timedelta(seconds=_ingest_ceiling_seconds())
+    abandoned_before = now - timedelta(seconds=_ingest_abandoned_after_seconds())
     claimed = db.session.query(RecordingSession).filter(
         RecordingSession.id == session.id,
         db.or_(
@@ -684,20 +743,21 @@ def finalize_sliced_upload(session_id):
         }), 409
 
     joined_path = os.path.join(dir_path, 'joined.bin')
-    try:
-        byte_join(slice_paths, joined_path)
-    except OSError as e:
-        current_app.logger.error(f"Could not join slices for session {session_id}: {e}")
-        _fail_sliced_upload(session, f'Could not reassemble slices: {e}')
-        return jsonify({'error': 'Server could not reassemble the uploaded slices'}), 500
+    with _ingest_heartbeat(session.id):
+        try:
+            byte_join(slice_paths, joined_path)
+        except OSError as e:
+            current_app.logger.error(f"Could not join slices for session {session_id}: {e}")
+            _fail_sliced_upload(session, f'Could not reassemble slices: {e}')
+            return jsonify({'error': 'Server could not reassemble the uploaded slices'}), 500
 
-    from src.api.recordings import ingest_uploaded_recording
-    result = ingest_uploaded_recording(
-        owner=current_user,
-        uploaded_file=ReassembledUpload(joined_path, session.upload_filename),
-        form=request.form,
-        original_filename=session.upload_filename,
-    )
+        from src.api.recordings import ingest_uploaded_recording
+        result = ingest_uploaded_recording(
+            owner=current_user,
+            uploaded_file=ReassembledUpload(joined_path, session.upload_filename),
+            form=request.form,
+            original_filename=session.upload_filename,
+        )
 
     response, status = result if isinstance(result, tuple) else (result, 200)
     if 200 <= status < 300:

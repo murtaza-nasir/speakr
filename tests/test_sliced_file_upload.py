@@ -20,6 +20,7 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 import uuid
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -28,7 +29,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import Recording, RecordingSession
-from src.api.recording_sessions import cleanup_expired_sessions
+from src.api.recording_sessions import (
+    _beat_until_stopped,
+    _ingest_heartbeat_seconds,
+    cleanup_expired_sessions,
+)
 
 from tests.test_cov_recordings_write import _cleanup, _mk_user, _upload_mocks
 from tests.test_recording_sessions import _login
@@ -402,6 +407,37 @@ def test_an_interrupted_sliced_upload_resumes_from_the_slices_already_sent():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
+def test_an_ingest_stamps_the_session_it_is_working_on():
+    """The stamp is the only liveness signal there is: under gunicorn's
+    gthread worker no timeout aborts a request, so a session in
+    'finalizing' says nothing about whether anyone is still ingesting
+    it."""
+    upload_folder = _tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _mk_user("slice_beat")
+        client = app.test_client()
+        _login(client, user)
+        session_id = _open_session(client, filename="sample.mp3", mime_type="audio/mpeg")["session_id"]
+
+        session = db.session.get(RecordingSession, session_id)
+        session.status = "finalizing"
+        went_quiet_at = datetime.utcnow() - timedelta(minutes=5)
+        session.last_seen_at = went_quiet_at
+        db.session.commit()
+
+        stop = threading.Event()
+        stop.set()
+        _beat_until_stopped(app, session_id, stop, interval=999)
+
+        db.session.expire_all()
+        assert db.session.get(RecordingSession, session_id).last_seen_at > went_quiet_at
+
+        client.delete(f"/upload/session/{session_id}")
+        _cleanup(user)
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
 def test_a_finalize_abandoned_by_a_dead_worker_can_be_taken_over():
     """Recreating the container mid-ingest leaves the session finalizing
     with nobody ingesting. Without a takeover the user's retry waits for
@@ -418,9 +454,10 @@ def test_a_finalize_abandoned_by_a_dead_worker_can_be_taken_over():
                                    total_bytes=len(payload))["session_id"]
         _send_slices(client, session_id, payload)
 
+        heartbeat = _ingest_heartbeat_seconds()
         session = db.session.get(RecordingSession, session_id)
         session.status = "finalizing"
-        session.last_seen_at = datetime.utcnow()
+        session.last_seen_at = datetime.utcnow() - timedelta(seconds=heartbeat * 2)
         db.session.commit()
 
         fresh_claim = client.post(f"/upload/session/{session_id}/finalize-upload",
@@ -428,7 +465,7 @@ def test_a_finalize_abandoned_by_a_dead_worker_can_be_taken_over():
         assert fresh_claim.status_code == 409
         assert "already being finalized" in fresh_claim.get_json()["error"]
 
-        session.last_seen_at = datetime.utcnow() - timedelta(hours=1)
+        session.last_seen_at = datetime.utcnow() - timedelta(seconds=heartbeat * 4)
         db.session.commit()
 
         staging = os.path.join(upload_folder, f"stg_{uuid.uuid4().hex[:6]}")

@@ -132,7 +132,7 @@ Environment variables, all optional:
 | `RECORDING_SESSION_MAX_CHUNK_BYTES` | `16777216` (16 MB) | Per-chunk upload cap. Generous; MediaRecorder chunks are typically <1 MB. |
 | `RECORDING_SESSION_ALLOWED_MIME_TYPES` | `audio/webm,audio/ogg,audio/mp4,audio/mpeg,audio/wav,audio/x-m4a,video/webm,video/mp4` | Comma-separated whitelist. The video types carry the optional tab/window/screen video capture. |
 | `RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS` | `3600` | How often the background thread sweeps expired sessions. Set to `0` to disable. |
-| `RECORDING_SESSION_INGEST_CEILING_SECONDS` | `900` | How long a sliced upload's in-request ingest can possibly still be running. Past this, a session left `finalizing` is taken over by the next finalize. Keep it above the WSGI request timeout (gunicorn ships with `--timeout 600`), never below, or a live ingest could be claimed twice. |
+| `RECORDING_SESSION_INGEST_HEARTBEAT_SECONDS` | `30` | How often a sliced upload's in-request ingest stamps its session to say it is alive. Three missed stamps mark the session abandoned, and the next finalize takes it over. Nothing else can tell: under gunicorn's `gthread` worker, which is what Speakr ships, `--timeout` bounds the accept loop's silence rather than a request's duration, so a long ingest is never aborted and its session's age says nothing about whether anyone is still working on it. |
 | `RECORDING_MAX_HOURS` | `8` | Absolute ceiling on a single recording. Stops the recorder automatically at this duration regardless of size; a toast warns the user at 80% of the ceiling. |
 | `RECORDING_VIDEO_KBPS` | `2500` | Video bitrate cap (kbps) for the opt-in tab/window/screen video capture. At the default, an hour of capture is roughly 1 GB. |
 
@@ -250,14 +250,19 @@ on the server, or discard them.
 - **Deploys interrupt sliced uploads that are ingesting.** A sliced
   upload ingests inside the finalize request, so recreating the
   container mid-ingest loses that work and leaves the session
-  `finalizing` with nobody running it. Nothing is lost and nothing
-  leaks: the slices stay on disk and the user's retry takes the session
-  over once its claim is older than
-  `RECORDING_SESSION_INGEST_CEILING_SECONDS`, re-ingesting from the
-  slices already delivered. But a retry *before* that point waits ten
-  minutes and then fails, so a deploy is best timed when nothing is
-  uploading. Slice POSTs and recorder sessions are unaffected: those
-  requests are short, and their retries resume.
+  `finalizing` with nobody running it. The slices stay on disk, the
+  stamping stops with the container, and about a minute and a half
+  later the user's retry takes the session over and re-ingests from the
+  slices already delivered. A retry inside that window is told the
+  session is being finalized and waits. Slice POSTs and recorder
+  sessions are unaffected: those requests are short, and their retries
+  resume. Still worth timing a deploy for when nothing is uploading,
+  since the interrupted ingest's work is thrown away either way.
+- **The upload staging directory has no sweeper.** An ingest killed
+  mid-flight leaves its staged copy of the file behind, and nothing
+  removes it: the session sweep only owns `_sessions/`. This is not
+  specific to sliced uploads, `POST /upload` behaves the same way, but
+  it is worth a glance at `UPLOAD_FOLDER/_staging` after an incident.
 
 ## API
 
