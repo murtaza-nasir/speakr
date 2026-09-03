@@ -114,12 +114,23 @@ def test_asking_twice_in_one_process_is_stable(sqlite_url):
 
 @pytest.fixture
 def unowned_queue():
-    """The queue as a non-owner process sees it."""
-    previous = job_queue._is_owner
+    """The queue as a non-owner process sees it.
+
+    Importing src.app runs the election, and in a test process there is no
+    competition, so the queue arrives here already owned and already running.
+    Both flags have to be reset: start() returns early on `_running` before it
+    ever consults ownership, so leaving it set would make these tests pass for
+    the wrong reason.
+    """
+    previous_owner = job_queue._is_owner
+    previous_running = job_queue._running
     job_queue._is_owner = False
-    yield job_queue
-    job_queue._is_owner = previous
     job_queue._running = False
+    job_queue._transcription_workers = []
+    job_queue._summary_workers = []
+    yield job_queue
+    job_queue._is_owner = previous_owner
+    job_queue._running = previous_running
 
 
 def test_a_non_owner_starts_no_workers(unowned_queue):
