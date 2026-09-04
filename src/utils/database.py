@@ -107,6 +107,59 @@ def migration_lock(engine, logger=None, timeout=120):
             pass
 
 
+# Singleton locks are held for the process lifetime; keeping the file handle
+# referenced here is what keeps them held.
+_held_singleton_locks = {}
+
+
+def acquire_singleton_lock(engine, name, logger=None):
+    """Elect exactly one process on this host to own a named responsibility, for its lifetime.
+
+    The counterpart of `migration_lock`: that serialises work every process must
+    do, this picks the one process that should do it at all, such as running the
+    job-queue workers. It does not wait (a loser returns False at once) and it
+    never releases: the holder keeps the lock until the process exits, so
+    leadership ends on process death, crash or SIGKILL included, and the
+    replacement process wins the next election.
+
+    A file lock is used for every backend: a session-level advisory lock lives
+    on a database connection nobody watches, and when that connection dies the
+    lock is gone while the owner still believes it holds it. Returns True when
+    this process holds `name`; asking again returns the original answer. If the
+    lock cannot be taken at all this process takes ownership anyway, failing
+    open like `migration_lock`, so the worst case is the pre-election behaviour
+    rather than an app that transcribes nothing.
+    """
+    if name in _held_singleton_locks:
+        return _held_singleton_locks[name][0]
+
+    # One lock file per (database, name) so unrelated databases elect independently
+    digest = hashlib.sha256(f'{engine.url}|{name}'.encode()).hexdigest()[:16]
+    lock_path = os.path.join(tempfile.gettempdir(), f'speakr_singleton_{digest}.lock')
+    handle = None
+    try:
+        handle = open(lock_path, 'w')
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        acquired = True
+    except BlockingIOError:
+        acquired = False
+    except Exception as e:
+        # Fail open: every process working (today's behaviour) beats none working
+        if logger:
+            logger.error("Could not run the '%s' election, taking ownership anyway: %s", name, e)
+        acquired = True
+    if not acquired and handle is not None:
+        handle.close()
+        handle = None
+
+    # Keep the file handle referenced so GC cannot release the lock
+    _held_singleton_locks[name] = (acquired, handle)
+
+    if logger:
+        logger.info("Singleton '%s': this process %s", name, "holds it" if acquired else "does not hold it")
+    return acquired
+
+
 def ensure_migration_ledger(engine):
     """Create the table recording which one-shot migrations have already run."""
     with engine.connect() as conn:

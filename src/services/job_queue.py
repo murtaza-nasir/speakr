@@ -73,6 +73,8 @@ class FairJobQueue:
         self._last_user_id_summary = None
         # Lock for claiming jobs (SQLite doesn't support row-level locking)
         self._claim_lock = threading.Lock()
+        # Whether this process won the queue-owner election (see startup.initialize_job_queue)
+        self._is_owner = False
         self._initialized = True
 
         logger.info(f"FairJobQueue initialized: {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers")
@@ -90,9 +92,20 @@ class FairJobQueue:
         else:
             yield
 
+    def mark_as_owner(self):
+        """Mark this process as the elected owner of the queue."""
+        self._is_owner = True
+
     def start(self):
         """Start the worker threads for both queues."""
         if self._running:
+            return
+
+        # Only the elected owner runs workers; this also covers the auto-start in enqueue()
+        if not self._is_owner:
+            logger.debug(
+                "Not the job queue owner; no worker threads started in this process"
+            )
             return
 
         self._running = True
@@ -640,7 +653,7 @@ class FairJobQueue:
 
             db.session.commit()
 
-            # Auto-start workers if not running
+            # Auto-start workers if not running (no-op unless this process owns the queue)
             if not self._running:
                 self.start()
 

@@ -11,6 +11,9 @@ from flask import current_app
 ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
 GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
 
+# Cross-process election that decides which process runs the job queue
+JOB_QUEUE_OWNER_LOCK = 'speakr.job_queue_owner'
+
 
 def initialize_file_monitor(app):
     """Initialize file monitor after app is fully loaded to avoid circular imports."""
@@ -109,12 +112,23 @@ def initialize_file_exporter(app):
 
 
 def initialize_job_queue(app):
-    """Initialize and start the background job queue with orphan recovery."""
+    """Initialize the background job queue; only the elected owner process recovers orphans and runs workers."""
     try:
+        from src.database import db
         from src.services.job_queue import job_queue
+        from src.utils.database import acquire_singleton_lock
 
         # Initialize job queue with app context
         job_queue.init_app(app)
+
+        # Only the elected owner recovers orphans and runs workers; the rest just enqueue
+        if not acquire_singleton_lock(db.engine, JOB_QUEUE_OWNER_LOCK, app.logger):
+            app.logger.info(
+                "Job queue owned by another process; this one will enqueue only"
+            )
+            return
+
+        job_queue.mark_as_owner()
 
         # Recover any jobs that were processing when the app crashed
         job_queue.recover_orphaned_jobs()
