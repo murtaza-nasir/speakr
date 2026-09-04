@@ -1483,10 +1483,15 @@ def reset_status(recording_id):
 
 @recordings_bp.route('/')
 @recordings_bp.route('/recordings/<int:recording_id>')
+@recordings_bp.route('/label/<label_name>')
 @login_required
-def index(recording_id=None):
+def index(recording_id=None, label_name=None):
     # recording_id is a deep link (#301): the server just serves the SPA shell
     # here; the frontend reads it from the path and pre-selects the recording.
+    # label_name works the same way for /label/<name>: the shell is served and
+    # the frontend resolves the name against the viewer's own accessible tags
+    # and applies it as the tag filter, so one link points at a group of
+    # recordings. Neither value is used server-side.
     # Check if user is a group admin
     is_team_admin = GroupMembership.query.filter_by(
         user_id=current_user.id,
@@ -1923,7 +1928,13 @@ def get_recordings_paginated():
                 for tag_filter in tag_filters:
                     # Replace underscores back to spaces for matching
                     tag_name = tag_filter.replace('_', ' ')
-                    tag_conditions.append(Tag.name.ilike(f'%{tag_name}%'))
+                    # Exact, case-insensitive: the filter is built from a tag
+                    # the user picked (sidebar chip, or a /label/<name> link),
+                    # so 'foo' must not also drag in 'foobar'. lower() == is
+                    # used over ilike so '%' and '_' in a tag name stay literal.
+                    tag_conditions.append(
+                        db.func.lower(Tag.name) == tag_name.lower()
+                    )
 
                 stmt = stmt.join(RecordingTag).join(Tag).where(db.or_(*tag_conditions))
 

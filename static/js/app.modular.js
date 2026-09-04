@@ -21,6 +21,7 @@ import { useFolders } from './modules/composables/folders.js';
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
+import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
 import {
     detectPlatform,
@@ -278,6 +279,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             // leave the modal alone (and consumes itself) so the deep-linked
             // upload modal stays open behind the freshly-loaded detail view.
             const uploadDeepLinkPending = ref(false);
+            // Set true on mount when arriving via the /label/<name> deep link.
+            // The first loadRecordings would otherwise auto-select the last
+            // viewed recording, opening the detail view and rewriting the
+            // address bar to /recordings/<id>. The flag suppresses that one
+            // auto-selection so the label list is what the user lands on.
+            const labelDeepLinkPending = ref(false);
             const dragover = ref(false);
             const recordings = ref([]);
             const selectedRecording = ref(null);
@@ -1734,7 +1741,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             const state = {
                 // Core
-                currentView, showUploadModal, uploadDeepLinkPending, dragover, recordings, selectedRecording, selectedTab, searchQuery,
+                currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending, dragover, recordings, selectedRecording, selectedTab, searchQuery,
                 isLoadingRecordings, globalError, csrfToken,
 
                 // Filters
@@ -3595,18 +3602,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // Keep the address bar in sync with the open recording so links are
-            // shareable/bookmarkable (#301). replaceState avoids history spam;
-            // the path is only changed (query + hash preserved). Incognito (id
-            // 'incognito') and the list view map back to '/'.
-            watch(selectedRecording, (rec) => {
+            // Keep the address bar in sync with what's on screen so links are
+            // shareable/bookmarkable (#301). An open recording wins
+            // (/recordings/<id>); otherwise a lone active label filter is
+            // reflected as /label/<name>, so clicking a tag hands the user a
+            // link to that group of recordings without them having to know the
+            // URL shape. Everything else maps back to '/'. replaceState avoids
+            // history spam; the path is only changed (query + hash preserved).
+            // Incognito (id 'incognito') is not a number, so it maps to '/'.
+            const syncAddressBar = () => {
                 try {
-                    const path = (rec && typeof rec.id === 'number') ? `/recordings/${rec.id}` : '/';
+                    const rec = selectedRecording.value;
+                    const path = (rec && typeof rec.id === 'number')
+                        ? `/recordings/${rec.id}`
+                        : (labelPathForFilter(filterTags.value, availableTags.value) || '/');
                     if (window.location.pathname !== path) {
                         window.history.replaceState({}, '', path + window.location.search + window.location.hash);
                     }
                 } catch (_) { /* best-effort */ }
-            });
+            };
+
+            watch(selectedRecording, syncAddressBar);
+            watch(filterTags, syncAddressBar, { deep: true });
 
             watch(sortBy, (newValue) => {
                 localStorage.setItem('recordingsSortBy', newValue);
@@ -3943,14 +3960,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                     setTimeout(attempt, 400);
                 };
 
+                // Deep link to a label: /label/<name>. Unlike the recording
+                // deep link this has to be resolved BEFORE the list loads —
+                // the name only becomes tag ids once the tags are in, and the
+                // filter has to be in place for the very first page fetch so
+                // the user never sees the unfiltered list flash past.
+                const deepLinkLabelName = parseLabelPath(window.location.pathname);
+
+                let labelDeepLinkResolved = false;
+                if (deepLinkLabelName) {
+                    labelDeepLinkPending.value = true;
+                    await recordingsComposable.loadTags();
+                    labelDeepLinkResolved = recordingsComposable.filterByLabelName(deepLinkLabelName);
+                    if (labelDeepLinkResolved) {
+                        // Applying the filter also wakes the filterTags ->
+                        // searchQuery watchers, which queue a debounced
+                        // re-search. Let them run, then drop the timer: the
+                        // load below already carries the filter, so a second
+                        // identical fetch 300ms later is pure waste.
+                        await nextTick();
+                        clearTimeout(searchDebounceTimer.value);
+                    } else {
+                        labelDeepLinkPending.value = false;
+                    }
+                }
+
                 // Load initial data
                 await Promise.all([
-                    recordingsComposable.loadRecordings(),
-                    recordingsComposable.loadTags(),
+                    recordingsComposable.loadRecordings(1, false, searchQuery.value),
+                    ...(deepLinkLabelName ? [] : [recordingsComposable.loadTags()]),
                     recordingsComposable.loadFolders(),
                     recordingsComposable.loadSpeakers(),
                     loadTokenBudget()
                 ]);
+
+                // The viewer has no label by that name (wrong case is fine,
+                // a typo or someone else's private tag is not). Say so rather
+                // than let an unfiltered list masquerade as the label's
+                // contents, and drop the dead path from the address bar.
+                if (deepLinkLabelName && !labelDeepLinkResolved) {
+                    showToast(`No label named "${deepLinkLabelName}"`, 'fa-tag', 4000, 'error');
+                    syncAddressBar();
+                }
 
                 // Now open the upload modal. The pending flag (set above)
                 // prevents the auto-selected recording's selectRecording() from
