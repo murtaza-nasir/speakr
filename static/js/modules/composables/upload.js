@@ -7,6 +7,7 @@ import * as FailedUploads from '../db/failed-uploads.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import * as RecordingDB from '../db/recording-persistence.js';
 import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
+import { shouldSliceUpload, uploadFileInSlices } from '../db/sliced-file-upload.js';
 import { computeUploadTimeout } from '../utils/upload-timeout.js';
 
 // Parse error message and return friendly error info
@@ -467,16 +468,23 @@ export function useUpload(state, utils) {
      * Upload a single file to the server.
      * Acquires a concurrency slot, uploads, then releases.
      * Status updates are per-item (no global processingProgress).
+     *
+     * Files past the slice threshold go up through the sliced-upload
+     * transport instead of one multipart POST, so a reverse proxy whose
+     * body limit is below the file size cannot reject them. Both
+     * transports send the same form and return the same response, so
+     * everything below the transport call is shared.
      */
     const uploadSingleFile = async (fileItem) => {
         await acquireUploadSlot();
 
         fileItem.status = 'uploading';
         fileItem.progress = 5;
+        const sliced = shouldSliceUpload(fileItem.file);
 
         try {
             const formData = new FormData();
-            formData.append('file', fileItem.file);
+            if (!sliced) formData.append('file', fileItem.file);
 
             // Send file's lastModified timestamp for meeting_date
             if (fileItem.file.lastModified) {
@@ -650,18 +658,27 @@ export function useUpload(state, utils) {
                 xhr.send(formData);
             });
 
-            // Refresh the token right before sending, and retry exactly once
-            // with another fresh token if the server still rejects it —
-            // mirroring what the fetch interceptor in csrf-refresh.js does
-            // for non-XHR requests.
             let data;
-            try {
-                data = await sendUpload(await getUploadCsrfToken());
-            } catch (uploadError) {
-                if (!uploadError.isCsrfRejection) throw uploadError;
-                console.warn(`[Upload] CSRF rejection for ${fileItem.file.name}; refreshing token and retrying once.`);
-                fileItem.progress = 5;
-                data = await sendUpload(await getUploadCsrfToken());
+            if (sliced) {
+                data = await uploadFileInSlices(fileItem.file, formData, {
+                    onProgress: (fraction) => {
+                        fileItem.progress = Math.round(5 + fraction * 85);
+                    },
+                    onXhr: (xhr) => { fileItem._xhr = xhr; },
+                });
+            } else {
+                // Refresh the token right before sending, and retry exactly once
+                // with another fresh token if the server still rejects it —
+                // mirroring what the fetch interceptor in csrf-refresh.js does
+                // for non-XHR requests.
+                try {
+                    data = await sendUpload(await getUploadCsrfToken());
+                } catch (uploadError) {
+                    if (!uploadError.isCsrfRejection) throw uploadError;
+                    console.warn(`[Upload] CSRF rejection for ${fileItem.file.name}; refreshing token and retrying once.`);
+                    fileItem.progress = 5;
+                    data = await sendUpload(await getUploadCsrfToken());
+                }
             }
 
             // Upload succeeded - recording is now on the server
