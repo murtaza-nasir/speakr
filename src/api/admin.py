@@ -1576,3 +1576,54 @@ def admin_inquire_status():
 
 # --- Group Management API (Admin Only) ---
 
+
+
+# --- Voice embedding compatibility (#380) ---------------------------------
+
+@admin_bp.route('/admin/voice-embeddings/status', methods=['GET'])
+@login_required
+def admin_voice_embedding_status():
+    """Report whether the backend still produces compatible voice embeddings.
+
+    Reads the stored verdict only. Probing costs a real transcription, so it
+    is never done on a page load.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    from src.services.voice_embedding_check import get_status
+    return jsonify(get_status(current_app))
+
+
+@admin_bp.route('/admin/voice-embeddings/check', methods=['POST'])
+@login_required
+def admin_voice_embedding_check():
+    """Re-run the check now, regardless of whether the backend looks changed."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    from src.services.voice_embedding_check import check_voice_embeddings
+    result = check_voice_embeddings(current_app, force=True)
+    current_app.config['VOICE_EMBEDDING_STATUS'] = result
+    return jsonify(result)
+
+
+@admin_bp.route('/admin/voice-embeddings/rebaseline', methods=['POST'])
+@login_required
+def admin_voice_embedding_rebaseline():
+    """Accept the current backend as the reference.
+
+    For when the change was intentional and the voice profiles have been
+    rebuilt against the new model, or are being abandoned. This discards the
+    embedding the existing profiles were built against, so it cannot be undone
+    by restoring the old backend.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    from src.services.voice_embedding_check import rebaseline
+    result = rebaseline(current_app)
+    current_app.config['VOICE_EMBEDDING_STATUS'] = result
+    current_app.logger.info(
+        "Voice embedding reference re-baselined by admin user %s", current_user.id)
+    return jsonify(result)

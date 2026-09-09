@@ -34,6 +34,7 @@ FILE_MONITOR_OWNER_LOCK = 'speakr.file_monitor_owner'
 AUTO_DELETION_OWNER_LOCK = 'speakr.auto_deletion_owner'
 SESSION_CLEANUP_OWNER_LOCK = 'speakr.session_cleanup_owner'
 WEBHOOK_DISPATCHER_OWNER_LOCK = 'speakr.webhook_dispatcher_owner'
+VOICE_EMBEDDING_CHECK_OWNER_LOCK = 'speakr.voice_embedding_check_owner'
 
 # Every lock name this module elects on. The test suite asserts that each
 # background starter in run_startup_tasks() goes through one of these.
@@ -43,6 +44,7 @@ SINGLE_INSTANCE_LOCKS = (
     AUTO_DELETION_OWNER_LOCK,
     SESSION_CLEANUP_OWNER_LOCK,
     WEBHOOK_DISPATCHER_OWNER_LOCK,
+    VOICE_EMBEDDING_CHECK_OWNER_LOCK,
 )
 
 
@@ -265,6 +267,32 @@ def initialize_recording_session_cleanup(app):
     app.logger.info("✅ Recording-session cleanup scheduler initialized")
 
 
+def initialize_voice_embedding_check(app):
+    """Check the voice embedding backend on a background thread (#380).
+
+    Off the boot path on purpose: it makes a real transcription request, and a
+    slow or unreachable ASR service must not delay the app coming up. A
+    failure to check is logged and leaves the previous verdict alone; a
+    backend that is down is not a backend that changed.
+    """
+    import threading
+
+    if os.environ.get('DISABLE_VOICE_EMBEDDING_CHECK', 'false').lower() == 'true':
+        app.logger.info("Voice embedding check disabled (DISABLE_VOICE_EMBEDDING_CHECK=true)")
+        return
+
+    def _run():
+        from src.services.voice_embedding_check import check_voice_embeddings
+        try:
+            with app.app_context():
+                result = check_voice_embeddings(app)
+                app.config['VOICE_EMBEDDING_STATUS'] = result
+        except Exception as e:
+            app.logger.warning(f"Voice embedding check failed to run: {e}")
+
+    threading.Thread(target=_run, daemon=True, name="VoiceEmbeddingCheck").start()
+
+
 def run_startup_tasks(app):
     """Run all startup tasks that need to happen after app creation."""
     from src.models import SystemSetting
@@ -323,6 +351,13 @@ def run_startup_tasks(app):
         start_single_instance(
             app, WEBHOOK_DISPATCHER_OWNER_LOCK,
             lambda: start_dispatcher_thread(app), 'webhook dispatcher')
+
+        # Checks that the backend still returns voice embeddings compatible
+        # with the stored profiles (#380). Runs on a thread because it makes a
+        # real transcription request and must not hold up the boot.
+        start_single_instance(
+            app, VOICE_EMBEDDING_CHECK_OWNER_LOCK,
+            lambda: initialize_voice_embedding_check(app), 'voice embedding check')
 
         # Not elected: this only creates a directory and logs. No thread, no
         # sweep, nothing to duplicate. If it ever grows a background task it

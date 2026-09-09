@@ -13,6 +13,7 @@ Uses 256-dimensional embeddings from WhisperX diarization.
 """
 
 import json
+import logging
 import numpy as np
 from datetime import datetime
 try:
@@ -21,6 +22,8 @@ except ImportError:
     cosine_similarity = None
 from src.database import db
 from src.models import Speaker
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_embedding(embedding_array):
@@ -90,11 +93,27 @@ def find_matching_speakers(target_embedding, user_id, threshold=0.70):
     if not speakers:
         return []
 
+    target_dims = len(target_embedding) if target_embedding is not None else 0
+
     matches = []
+    dimension_mismatches = 0
+    mismatched_dims = set()
     for speaker in speakers:
         try:
             # Deserialize and compare
             speaker_emb = deserialize_embedding(speaker.average_embedding)
+
+            # Checked explicitly rather than left to raise below. A stored
+            # profile of a different length is not a corrupt profile: it is a
+            # profile built by a different embedding model, and treating it as
+            # corruption is what made a backend change look like voice
+            # matching quietly ceasing to work, with nothing in the log to say
+            # why (#380).
+            if target_dims and len(speaker_emb) != target_dims:
+                dimension_mismatches += 1
+                mismatched_dims.add(len(speaker_emb))
+                continue
+
             similarity = calculate_similarity(target_embedding, speaker_emb)
 
             if similarity >= threshold:
@@ -106,8 +125,24 @@ def find_matching_speakers(target_embedding, user_id, threshold=0.70):
                     'embedding_count': speaker.embedding_count or 0
                 })
         except Exception as e:
-            # Skip speakers with corrupted embeddings
+            # Genuinely unreadable stored bytes. Logged rather than swallowed,
+            # so a systematic problem is visible instead of showing up only as
+            # an empty match list.
+            logger.warning(
+                "Skipping speaker %s: its stored embedding could not be compared: %s",
+                getattr(speaker, 'id', '?'), e)
             continue
+
+    if dimension_mismatches:
+        # One line per call rather than per speaker, so this stays readable
+        # when a whole library is affected, which is the usual case.
+        sizes = ', '.join(str(d) for d in sorted(mismatched_dims))
+        logger.error(
+            "%d of %d stored voice profiles have %s dimensions and cannot be compared "
+            "with the %d-dimensional embeddings this backend now returns. Voice matching "
+            "will find nothing until the previous transcription backend is restored or "
+            "the profiles are rebuilt.",
+            dimension_mismatches, len(speakers), sizes, target_dims)
 
     # Sort by similarity (highest first)
     return sorted(matches, key=lambda x: x['similarity'], reverse=True)
