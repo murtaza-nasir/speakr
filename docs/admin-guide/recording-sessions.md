@@ -238,6 +238,14 @@ on the server, or discard them.
   cleanup gaps or stuck `recording` rows can let it grow. The cleanup
   thread logs a summary line on every sweep that reaps at least one
   session.
+- **Peak disk during a sliced finalize**: reassembly writes `joined.bin`
+  alongside the slices it is built from, so a sliced upload briefly needs
+  about twice the size of the file being uploaded. The slices are released
+  once ingestion has taken the joined file. Size `UPLOAD_FOLDER` for twice
+  your largest expected upload, per upload finalizing at once, and note
+  that the usual reason a finalize fails is that the disk filled during
+  this step. A failed reassembly marks the session `failed` and removes
+  its slices rather than leaving the full file behind.
 - **ffmpeg availability**: the stitch worker shells out to `ffmpeg`. If
   the binary is missing, finalize fails with a clear "ffmpeg binary not
   found on server PATH" error on the affected recording. Docker images

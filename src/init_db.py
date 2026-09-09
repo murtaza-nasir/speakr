@@ -653,12 +653,24 @@ def _run_migrations(app, engine):
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
     with _migration_section(app, failures, "sliced file upload sessions"):
+        # The model declares kind as NOT NULL with index=True, but both of
+        # those only reach a database that create_all() built. An upgraded
+        # database gets the column from the ALTER below, so the index has to
+        # be created explicitly here or existing installations never get one.
+        #
+        # The NOT NULL half is deliberately left alone. ADD COLUMN ... DEFAULT
+        # backfills every existing row, the ORM always supplies a value, and
+        # the default covers a direct insert, so the constraint would buy
+        # nothing that is not already true. Adding it to SQLite would mean
+        # swapping the column, which is real risk for no gain.
         if add_column_if_not_exists(engine, 'recording_session', 'kind', "VARCHAR(20) DEFAULT 'recorder'"):
             app.logger.info("Added kind column to recording_session table")
         if add_column_if_not_exists(engine, 'recording_session', 'upload_filename', 'VARCHAR(255)'):
             app.logger.info("Added upload_filename column to recording_session table")
         if add_column_if_not_exists(engine, 'recording_session', 'upload_total_bytes', 'BIGINT'):
             app.logger.info("Added upload_total_bytes column to recording_session table")
+        if create_index_if_not_exists(engine, 'ix_recording_session_kind', 'recording_session', 'kind'):
+            app.logger.info("Added index on recording_session.kind")
 
     with _migration_section(app, failures, "performance and uniqueness indexes"):
         # Add index on TranscriptChunk.speaker_name for performance
