@@ -5,10 +5,12 @@ This module provides email functionality using Python's built-in smtplib.
 All email features are opt-in via environment variables.
 """
 
+import html
 import os
 import smtplib
 import logging
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate, make_msgid
 from datetime import datetime, timedelta
@@ -115,6 +117,37 @@ def verify_reset_token(token: str) -> Optional[int]:
         return None
 
 
+
+# The header logo is attached to the message and referenced by Content-ID
+# rather than linked. Three reasons, in order of how often they bite:
+# most mail clients block remote images until the reader clicks "show
+# images"; a notification is sent from a worker with no request context, so
+# url_for(_external=True) raises there and used to fall back to src="",
+# which renders as a broken image; and plenty of self-hosted instances are
+# not reachable from wherever the recipient reads their mail.
+LOGO_CID = 'speakr-logo'
+_LOGO_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', 'static', 'img', 'icon-192x192.png')
+
+
+def _load_logo_bytes() -> Optional[bytes]:
+    """Read the logo once per process; None if it cannot be read."""
+    global _logo_cache
+    if _logo_cache is not _LOGO_UNREAD:
+        return _logo_cache
+    try:
+        with open(os.path.normpath(_LOGO_PATH), 'rb') as f:
+            _logo_cache = f.read()
+    except OSError as e:
+        logger.warning(f"Could not read the email logo, sending without it: {e}")
+        _logo_cache = None
+    return _logo_cache
+
+
+_LOGO_UNREAD = object()
+_logo_cache = _LOGO_UNREAD
+
+
 def _send_email(to_email: str, subject: str, html_body: str, text_body: str = None) -> bool:
     """
     Send an email using SMTP.
@@ -128,7 +161,12 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str = No
         return False
 
     try:
-        msg = MIMEMultipart('alternative')
+        # related( alternative( text, html ), image ) so the HTML part can
+        # point at the attached logo by cid: and clients that show only text
+        # still get a clean message.
+        logo_bytes = _load_logo_bytes()
+        body = MIMEMultipart('alternative')
+        msg = MIMEMultipart('related') if logo_bytes else body
         msg['Subject'] = subject
         msg['From'] = f"{config['from_name']} <{config['from_address']}>"
         msg['To'] = to_email
@@ -138,12 +176,18 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str = No
 
         # Add plain text version
         if text_body:
-            part1 = MIMEText(text_body, 'plain')
-            msg.attach(part1)
+            body.attach(MIMEText(text_body, 'plain'))
 
         # Add HTML version
-        part2 = MIMEText(html_body, 'html')
-        msg.attach(part2)
+        body.attach(MIMEText(html_body, 'html'))
+
+        if logo_bytes:
+            msg.attach(body)
+            logo = MIMEImage(logo_bytes, _subtype='png')
+            # The angle brackets are what the cid: reference resolves against.
+            logo.add_header('Content-ID', f'<{LOGO_CID}>')
+            logo.add_header('Content-Disposition', 'inline', filename='speakr.png')
+            msg.attach(logo)
 
         # Connect to SMTP server
         if config['smtp_use_ssl']:
@@ -177,12 +221,10 @@ def _get_email_template(content_html: str, content_text: str, subject: str) -> t
 
     Returns (html_body, text_body)
     """
-    # Get the base URL for the logo
-    try:
-        logo_url = url_for('static', filename='img/icon-192x192.png', _external=True)
-    except RuntimeError:
-        # Outside of request context, use a placeholder
-        logo_url = ""
+    # Points at the image _send_email attaches. When the logo cannot be read
+    # the attachment is skipped and this src resolves to nothing, so the alt
+    # text carries the brand instead of a broken-image icon.
+    logo_url = f'cid:{LOGO_CID}'
 
     html_body = f"""
 <!DOCTYPE html>
@@ -303,7 +345,7 @@ def send_verification_email(user) -> bool:
     content_html = f"""
 <h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Verify Your Email Address</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
 
 <p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
     Welcome to Speakr! To complete your registration and start transcribing your audio recordings, please verify your email address.
@@ -367,7 +409,7 @@ def send_password_reset_email(user) -> bool:
     content_html = f"""
 <h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Reset Your Password</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
 
 <p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
     We received a request to reset your Speakr account password. Click the button below to create a new password.
@@ -465,6 +507,24 @@ def can_resend_password_reset(user) -> tuple[bool, Optional[int]]:
 _UNDELIVERABLE_EMAIL_SUFFIXES = ('@placeholder.local',)
 
 
+def _h(value) -> str:
+    """Escape a value for interpolation into an email's HTML body.
+
+    Every value these templates interpolate is user-controlled: usernames have
+    only a length validator, and recording titles are set from the API or
+    generated by the LLM from transcript content, which can originate from
+    somebody other than the recipient (a watch-folder drop, a file handed over
+    to be transcribed). Mail clients do not run scripts, so the risk is not
+    XSS; it is content injection into a genuine, correctly-addressed Speakr
+    email, which is what would make an injected link convincing.
+
+    Only the HTML alternative is escaped. Doing the same to the text/plain
+    twin would show the reader literal "&amp;".
+    """
+    return html.escape(str(value if value is not None else ''), quote=True)
+
+
+
 def get_app_base_url() -> Optional[str]:
     """External base URL of this instance, e.g. https://speakr.example.com."""
     base = (os.environ.get('APP_BASE_URL') or '').split('#')[0].strip()
@@ -509,8 +569,8 @@ def _detail_rows_html(rows) -> str:
     """A small label/value table, matching the body type scale."""
     cells = ''.join(f"""
     <tr>
-        <td style="padding: 6px 16px 6px 0; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">{label}</td>
-        <td style="padding: 6px 0; color: #374151; font-size: 14px;">{value}</td>
+        <td style="padding: 6px 16px 6px 0; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">{_h(label)}</td>
+        <td style="padding: 6px 0; color: #374151; font-size: 14px;">{_h(value)}</td>
     </tr>""" for label, value in rows)
     return f"""
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px 0; background-color: #f8f9fa; border-radius: 8px; padding: 8px 16px;">
@@ -558,10 +618,10 @@ def send_transcription_complete_email(user, recording) -> bool:
     content_html = f"""
 <h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Your transcription is ready</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
 
 <p style="color: #374151; margin: 0 0 8px 0; font-size: 16px;">
-    Speakr has finished transcribing <strong>{title}</strong>. It is waiting for you in your library.
+    Speakr has finished transcribing <strong>{_h(title)}</strong>. It is waiting for you in your library.
 </p>
 
 {_detail_rows_html(rows)}
@@ -602,16 +662,16 @@ def send_transcription_failed_email(user, recording, error: str = None) -> bool:
     # summarised rather than forwarded in full.
     reason = (error or '').strip().splitlines()[0][:200] if error else ''
     reason_html = f"""
-<p style="color: #6b7280; font-size: 14px; margin: 0 0 24px 0; padding: 12px 16px; background-color: #f8f9fa; border-left: 3px solid #d1d5db; border-radius: 4px;">{reason}</p>
+<p style="color: #6b7280; font-size: 14px; margin: 0 0 24px 0; padding: 12px 16px; background-color: #f8f9fa; border-left: 3px solid #d1d5db; border-radius: 4px;">{_h(reason)}</p>
 """ if reason else ''
 
     content_html = f"""
 <h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">A transcription did not finish</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
 
 <p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
-    Speakr was not able to transcribe <strong>{title}</strong>. The recording itself is safe and you can retry it from your library.
+    Speakr was not able to transcribe <strong>{_h(title)}</strong>. The recording itself is safe and you can retry it from your library.
 </p>
 
 {reason_html}
