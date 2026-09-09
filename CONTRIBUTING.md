@@ -147,6 +147,66 @@ Values matter as much as schema: when the #379 migration destroyed 27 columns, t
 `add_column_if_not_exists()` calls further down the same function immediately put the
 names back, so only the emptied values revealed the damage.
 
+### Background Work at Startup
+
+`src/app.py` calls `run_startup_tasks()` at module scope, so **every process that
+imports the app runs it**: the entrypoint's schema check, `docker_create_admin.py`, and
+each gunicorn worker. The shipped image runs three workers, so anything started there
+runs about five times per container, several of them concurrently.
+
+A `global _x_started` flag does not help. Each process has its own copy, so it guards a
+second start inside one process and nothing else.
+
+This is not a hypothetical risk. In #384 the job queue's orphan recovery ran in every
+booting process, and because it resets every row in `processing` back to `queued` with
+no way to tell a job abandoned by a crash from one a sibling is transcribing right now,
+a worker starting up un-claimed live work and the same audio went to the ASR service
+once per worker. It shipped for nine months.
+
+**Anything that starts a thread, watches a directory, or sweeps a table goes through
+`start_single_instance()` in `src/config/startup.py`,** with a lock name registered in
+`SINGLE_INSTANCE_LOCKS`:
+
+```python
+start_single_instance(
+    app, MY_TASK_OWNER_LOCK,
+    lambda: initialize_my_task(app), 'my task')
+```
+
+The election uses a file lock held for the life of the process, so leadership ends on
+process death, including a crash, and the replacement worker wins the next one. It fails
+open: if the election cannot run, the process takes ownership rather than leaving the
+work undone.
+
+Two things stay outside the election. Work every process genuinely needs, such as
+binding the job queue so any worker can accept an upload and enqueue it. And work with
+nothing to duplicate, such as creating a directory.
+
+`tests/test_startup_single_instance.py` enforces this, and the enforcing test is
+structural rather than a list: it neutralises `start_single_instance` and asserts that
+`run_startup_tasks` then starts no threads at all, so a new task that skips the election
+fails it without anyone remembering to add a case.
+
+### Testing Concurrency
+
+Test cross-process behaviour **with processes**. The suite already had
+`tests/test_job_queue_race_condition.py` when #384 was reported, written specifically to
+prove that two workers cannot claim the same job. It passes, and it is correct. It also
+could not have caught the bug: it uses a `ThreadPoolExecutor` inside one process, and
+its own docstring notes that it never calls `start()`. Claiming was never broken. Several
+*processes* running the queue was.
+
+A test near a bug that structurally cannot observe it is worse than no test, because it
+makes the area feel covered.
+
+Prefer real subprocesses over `fork` for these. A gunicorn worker without `--preload`
+imports the app fresh, so a new interpreter is the honest simulation, and forking a
+process that already has background threads holding locks can deadlock the child.
+
+Assert on the duplication itself, not on the lock's return value, and keep the workers
+alive at the same time. Started one after another, each wins every election and the test
+passes while proving nothing.
+
 ### Commit Message Guidelines
 
 Follow the format used in the project:
