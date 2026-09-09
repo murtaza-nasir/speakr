@@ -1247,9 +1247,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // didn't actually drag.
             };
 
+            // Pull a floating panel back inside the content area (#383).
+            // Position and size are persisted per recording and restored
+            // verbatim, and the drag handler only clamps on release, so a
+            // panel saved on a large window came back off-screen on a
+            // smaller one — with its header, and therefore its close and
+            // dock buttons, above the visible area and unreachable. The
+            // only way out was clearing localStorage by hand. Clamping
+            // here covers both the restore (the selectedRecording watch
+            // bumps the layout on the next tick) and a live resize.
+            const clampChatPanelIntoView = () => {
+                if (chatPanelState.value !== 'floating') return;
+                if (chatPanelX.value == null || chatPanelY.value == null) return;
+                // Don't fight the user mid-gesture; the drag and resize
+                // handlers clamp on release.
+                if (chatDragActive.value || chatResizeActive.value) return;
+                const cols = _rect('#mainContentColumns');
+                if (!cols || cols.width <= 0) return;
+
+                // Shrink first: clamping a panel that no longer fits would
+                // otherwise push its left/top edge off the other side.
+                const MIN_W = 320, MIN_H = 360;
+                chatPanelW.value = Math.max(MIN_W, Math.min(chatPanelW.value, cols.width - 16));
+                chatPanelH.value = Math.max(MIN_H, Math.min(chatPanelH.value, cols.height - 16));
+
+                // Math.max last so the top-left corner always wins when the
+                // panel is larger than the area it has to fit into: a
+                // reachable header matters more than a fully visible panel.
+                chatPanelX.value = Math.max(
+                    cols.left + 8,
+                    Math.min(chatPanelX.value, cols.right - chatPanelW.value - 8)
+                );
+                chatPanelY.value = Math.max(
+                    cols.top + 8,
+                    Math.min(chatPanelY.value, cols.bottom - chatPanelH.value - 8)
+                );
+            };
+
             // Bump the layout tick on window resize / sidebar toggle so
             // the docked positioning style recomputes.
-            const _bumpChatLayout = () => { chatLayoutTick.value += 1; };
+            const _bumpChatLayout = () => {
+                clampChatPanelIntoView();
+                chatLayoutTick.value += 1;
+            };
             if (typeof window !== 'undefined') {
                 window.addEventListener('resize', _bumpChatLayout);
                 // Close the floating-chat dock dropdown on any outside click.
