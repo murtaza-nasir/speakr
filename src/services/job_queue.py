@@ -366,6 +366,14 @@ class FairJobQueue:
                 except Exception as e:
                     logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
 
+                # Email notification (#386), independent of webhooks so a user
+                # can have one without the other. Also best-effort: an SMTP
+                # server that is down must not fail a completed job.
+                try:
+                    self._emit_completion_email(job_type, recording_id)
+                except Exception as e:
+                    logger.warning(f"Completion email for job {job_id} failed: {e}")
+
             except Exception as e:
                 error_str = str(e)
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
@@ -415,6 +423,11 @@ class FairJobQueue:
                             self._emit_failure_webhook(job_type, recording_id, error_str)
                         except Exception as e:
                             logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
+
+                        try:
+                            self._emit_failure_email(job_type, recording_id, error_str)
+                        except Exception as e:
+                            logger.warning(f"Failure email for job {job_id} failed: {e}")
 
                     db.session.commit()
 
@@ -824,19 +837,61 @@ class FairJobQueue:
             recording = db.session.get(Recording, recording_id)
             if not recording:
                 return
+            # audio_duration_seconds read `recording.audio_duration`, which is
+            # not a column on Recording, so getattr's default made it None and
+            # the None-filter below dropped the key. Subscribers have never
+            # received it despite it being documented since #275. `language`
+            # was dropped outright for the same reason: there is no per-recording
+            # language anywhere. The nearest thing, User.transcription_language,
+            # is a live preference rather than a property of this recording, so
+            # sending it would report today's setting for last month's audio.
             data = {
                 'recording_id': recording.id,
                 'title': recording.title,
-                'language': getattr(recording, 'transcription_language', None),
-                'audio_duration_seconds': getattr(recording, 'audio_duration', None),
-                'transcription_duration_seconds': getattr(recording, 'transcription_duration_seconds', None),
-                'summarization_duration_seconds': getattr(recording, 'summarization_duration_seconds', None),
+                'audio_duration_seconds': recording.audio_duration_seconds,
+                'transcription_duration_seconds': recording.transcription_duration_seconds,
+                'summarization_duration_seconds': recording.summarization_duration_seconds,
             }
             emit_webhook_event(
                 user_id=recording.user_id,
                 event_type=event_type,
                 data={k: v for k, v in data.items() if v is not None},
             )
+
+    # Only transcription reaches the inbox. A summary finishing is not an
+    # event a user waits on the way they wait on a transcript, and mailing
+    # both would double the volume for no extra signal.
+    _EMAIL_JOB_TYPES = ('transcribe', 'reprocess_transcription')
+
+    def _load_recording_and_owner(self, recording_id: int):
+        from src.database import db
+        from src.models import Recording, User
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return None, None
+        return recording, db.session.get(User, recording.user_id)
+
+    def _emit_completion_email(self, job_type: str, recording_id: int):
+        if job_type not in self._EMAIL_JOB_TYPES:
+            return
+        with self._app_context():
+            from src.services.email import send_transcription_complete_email
+            recording, owner = self._load_recording_and_owner(recording_id)
+            if not recording or not owner:
+                return
+            if send_transcription_complete_email(owner, recording):
+                logger.info(f"Sent completion email for recording {recording_id} to user {owner.id}")
+
+    def _emit_failure_email(self, job_type: str, recording_id: int, error: str):
+        if job_type not in self._EMAIL_JOB_TYPES:
+            return
+        with self._app_context():
+            from src.services.email import send_transcription_failed_email
+            recording, owner = self._load_recording_and_owner(recording_id)
+            if not recording or not owner:
+                return
+            if send_transcription_failed_email(owner, recording, error):
+                logger.info(f"Sent failure email for recording {recording_id} to user {owner.id}")
 
     def _emit_failure_webhook(self, job_type: str, recording_id: int, error: str):
         event_type = self._FAILURE_EVENT_MAP.get(job_type)

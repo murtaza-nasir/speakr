@@ -449,3 +449,190 @@ def can_resend_password_reset(user) -> tuple[bool, Optional[int]]:
 
     remaining = (cooldown - time_since_last).seconds
     return False, remaining
+
+
+# --- Processing notifications (#386) -------------------------------------
+#
+# Unlike verification and password reset, these are sent from a job-queue
+# worker thread with no request context, so `url_for(_external=True)` is not
+# available: it needs SERVER_NAME, which Speakr does not set. The deep link
+# therefore comes from APP_BASE_URL, and when that is unset the mail is sent
+# without a link rather than with a broken one.
+
+# An SSO login whose provider withheld an address gets a synthetic one (see
+# src/auth/sso.py). Mailing it would hard-bounce on every finished recording,
+# which is a good way to get a sending domain blocked.
+_UNDELIVERABLE_EMAIL_SUFFIXES = ('@placeholder.local',)
+
+
+def get_app_base_url() -> Optional[str]:
+    """External base URL of this instance, e.g. https://speakr.example.com."""
+    base = (os.environ.get('APP_BASE_URL') or '').split('#')[0].strip()
+    return base.rstrip('/') or None
+
+
+def _recording_url(recording_id: int) -> Optional[str]:
+    base = get_app_base_url()
+    return f'{base}/recordings/{recording_id}' if base else None
+
+
+def can_email_user(user) -> bool:
+    """Whether Speakr is able to send this user mail at all.
+
+    Kept separate from the user's preference so that "they asked for it" and
+    "we can actually deliver it" stay distinct in the logs.
+    """
+    if not is_smtp_configured():
+        return False
+    email = (getattr(user, 'email', '') or '').strip().lower()
+    if not email or '@' not in email:
+        return False
+    return not email.endswith(_UNDELIVERABLE_EMAIL_SUFFIXES)
+
+
+def wants_completion_email(user) -> bool:
+    """Whether this user has opted in and can be reached."""
+    return bool(getattr(user, 'notify_email_on_completion', False)) and can_email_user(user)
+
+
+def _button_html(url: str, label: str) -> str:
+    if not url:
+        return ''
+    return f"""
+<div style="text-align: center; margin: 32px 0;">
+    <a href="{url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">{label}</a>
+</div>
+"""
+
+
+def _detail_rows_html(rows) -> str:
+    """A small label/value table, matching the body type scale."""
+    cells = ''.join(f"""
+    <tr>
+        <td style="padding: 6px 16px 6px 0; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">{label}</td>
+        <td style="padding: 6px 0; color: #374151; font-size: 14px;">{value}</td>
+    </tr>""" for label, value in rows)
+    return f"""
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px 0; background-color: #f8f9fa; border-radius: 8px; padding: 8px 16px;">
+    {cells}
+</table>
+"""
+
+
+def _format_duration(seconds) -> Optional[str]:
+    try:
+        total = int(round(float(seconds)))
+    except (TypeError, ValueError):
+        return None
+    if total <= 0:
+        return None
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f'{hours}h {minutes}m'
+    if minutes:
+        return f'{minutes}m {secs}s'
+    return f'{secs}s'
+
+
+def send_transcription_complete_email(user, recording) -> bool:
+    """Tell a user their recording finished transcribing.
+
+    Returns True only if a message was actually handed to the SMTP server.
+    """
+    if not wants_completion_email(user):
+        return False
+
+    title = (getattr(recording, 'title', None) or 'Untitled recording').strip()
+    url = _recording_url(recording.id)
+    subject = f'Transcription ready: {title}'
+
+    rows = [('Recording', title)]
+    duration = _format_duration(getattr(recording, 'audio_duration_seconds', None))
+    if duration:
+        rows.append(('Length', duration))
+    took = _format_duration(getattr(recording, 'transcription_duration_seconds', None))
+    if took:
+        rows.append(('Transcribed in', took))
+
+    content_html = f"""
+<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Your transcription is ready</h2>
+
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+
+<p style="color: #374151; margin: 0 0 8px 0; font-size: 16px;">
+    Speakr has finished transcribing <strong>{title}</strong>. It is waiting for you in your library.
+</p>
+
+{_detail_rows_html(rows)}
+{_button_html(url, 'Open recording')}
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+    <p style="color: #9ca3af; font-size: 13px; margin: 0;">
+        You are receiving this because you turned on email notifications in your Speakr account settings. You can turn them off there at any time.
+    </p>
+</div>
+"""
+
+    detail_lines = '\n'.join(f'{label}: {value}' for label, value in rows)
+    link_line = f'\nOpen it here: {url}\n' if url else ''
+    content_text = f"""Hi {user.username},
+
+Speakr has finished transcribing "{title}". It is waiting for you in your library.
+
+{detail_lines}
+{link_line}
+You are receiving this because you turned on email notifications in your Speakr
+account settings. You can turn them off there at any time."""
+
+    html_body, text_body = _get_email_template(content_html, content_text, subject)
+    return _send_email(user.email, subject, html_body, text_body)
+
+
+def send_transcription_failed_email(user, recording, error: str = None) -> bool:
+    """Tell a user their recording could not be transcribed."""
+    if not wants_completion_email(user):
+        return False
+
+    title = (getattr(recording, 'title', None) or 'Untitled recording').strip()
+    url = _recording_url(recording.id)
+    subject = f'Transcription failed: {title}'
+
+    # The worker's error text can carry an upstream URL or key, so it is
+    # summarised rather than forwarded in full.
+    reason = (error or '').strip().splitlines()[0][:200] if error else ''
+    reason_html = f"""
+<p style="color: #6b7280; font-size: 14px; margin: 0 0 24px 0; padding: 12px 16px; background-color: #f8f9fa; border-left: 3px solid #d1d5db; border-radius: 4px;">{reason}</p>
+""" if reason else ''
+
+    content_html = f"""
+<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">A transcription did not finish</h2>
+
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {user.username},</p>
+
+<p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
+    Speakr was not able to transcribe <strong>{title}</strong>. The recording itself is safe and you can retry it from your library.
+</p>
+
+{reason_html}
+{_button_html(url, 'Open recording')}
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+    <p style="color: #9ca3af; font-size: 13px; margin: 0;">
+        You are receiving this because you turned on email notifications in your Speakr account settings. You can turn them off there at any time.
+    </p>
+</div>
+"""
+
+    reason_text = f'\nReason: {reason}\n' if reason else ''
+    link_line = f'\nOpen it here: {url}\n' if url else ''
+    content_text = f"""Hi {user.username},
+
+Speakr was not able to transcribe "{title}". The recording itself is safe and you
+can retry it from your library.
+{reason_text}{link_line}
+You are receiving this because you turned on email notifications in your Speakr
+account settings. You can turn them off there at any time."""
+
+    html_body, text_body = _get_email_template(content_html, content_text, subject)
+    return _send_email(user.email, subject, html_body, text_body)

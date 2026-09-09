@@ -35,6 +35,7 @@ from src.services.email import (
     is_email_verification_enabled,
     is_email_verification_required,
     is_smtp_configured,
+    can_email_user,
     send_verification_email,
     send_password_reset_email,
     verify_email_token,
@@ -145,6 +146,16 @@ def is_registration_domain_allowed(email: str) -> bool:
 
     domain = parts[1]
     return domain in allowed
+
+
+def _email_notifications_available(user) -> bool:
+    """Whether to offer this user the completion-email toggle (#386).
+
+    Offering a switch that cannot do anything is worse than hiding it, so the
+    account page asks the same question the sender will ask: is SMTP set up,
+    and is this user's address one we can actually deliver to.
+    """
+    return can_email_user(user)
 
 
 # --- Routes ---
@@ -609,6 +620,12 @@ def account():
         elif 'preferences_form' in request.form:
             current_user.show_timestamps_simple_view = 'show_timestamps_simple_view' in request.form
             current_user.editor_autosave = 'editor_autosave' in request.form
+            # Only honour the notification toggle when the form actually
+            # rendered it. The checkbox is hidden when Speakr cannot mail this
+            # user, and an absent checkbox must not silently clear a
+            # preference they set while SMTP was working.
+            if 'email_notifications_shown' in request.form:
+                current_user.notify_email_on_completion = 'notify_email_on_completion' in request.form
             # Audio player position — only update if the field is
             # actually present in the submission. The Preferences tab
             # (which doesn't expose the radio) submits without this
@@ -825,6 +842,7 @@ def account():
                            has_password=bool(current_user.password),
                            password_login_disabled=password_login_disabled,
                            speaker_embeddings_enabled=connector_supports_speaker_embeddings,
+                           email_notifications_available=_email_notifications_available(current_user),
                            contextual_labelling_available=contextual_labelling_available,
                            auto_speaker_labelling=current_user.auto_speaker_labelling,
                            auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',

@@ -57,6 +57,11 @@ class User(db.Model, UserMixin):
     password_reset_token = db.Column(db.String(200), nullable=True, index=True)
     password_reset_sent_at = db.Column(db.DateTime, nullable=True)
 
+    # Email notifications for finished processing (#386). Opt-in: mail nobody
+    # asked for is worse than no mail at all, so this defaults off and the
+    # sender additionally requires working SMTP and a deliverable address.
+    notify_email_on_completion = db.Column(db.Boolean, default=False)
+
     # Auto speaker labelling settings
     auto_speaker_labelling = db.Column(db.Boolean, default=False)  # Enable auto-labelling when voice confidence exceeds threshold
     auto_speaker_labelling_threshold = db.Column(db.String(10), nullable=True, default='medium')  # 'low', 'medium', 'high'

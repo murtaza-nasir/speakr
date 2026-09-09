@@ -1105,6 +1105,18 @@
                                     </span>
                                 </label>
 
+                                {% if email_notifications_available %}
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.notifications">Notifications</h3>
+                                <input type="hidden" name="email_notifications_shown" value="1">
+                                <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                    <input type="checkbox" id="prefNotifyEmailOnCompletion" name="notify_email_on_completion" {% if current_user.notify_email_on_completion %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                    <span class="flex-1">
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.notifyEmailOnCompletion">Email me when a transcription finishes</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.notifyEmailOnCompletionHelp">Sends a message to your account address when a recording finishes transcribing, and when one fails. Summaries are not included. Useful for long recordings you do not want to sit and wait for; less so if you upload many files at once, since each one sends its own message.</span>
+                                    </span>
+                                </label>
+                                {% endif %}
+
                                 <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.transcriptEditor">Transcript editor</h3>
                                 <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
                                     <input type="checkbox" id="prefEditorAutosave" name="editor_autosave" {% if current_user.editor_autosave %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">

@@ -356,6 +356,11 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'default_naming_template_id', 'INTEGER'):
             app.logger.info("Added default_naming_template_id column to user table")
 
+        # Email notification preference (#386). Defaults off, so an upgrade
+        # never starts mailing anyone who did not ask for it.
+        if add_column_if_not_exists(engine, 'user', 'notify_email_on_completion', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added notify_email_on_completion column to user table")
+
         # Email verification fields
         email_verified_added = add_column_if_not_exists(engine, 'user', 'email_verified', 'BOOLEAN DEFAULT 0')
         if email_verified_added:

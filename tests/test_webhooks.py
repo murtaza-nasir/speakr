@@ -1194,3 +1194,43 @@ def teardown_module(module):
                 db.session.delete(w)
             db.session.delete(u)
         db.session.commit()
+
+
+def test_completion_payload_carries_the_documented_duration_fields():
+    """The completion payload promised `audio_duration_seconds` from #275 but
+    read `recording.audio_duration`, which is not a column. getattr's default
+    made it None and the None-filter dropped the key, so no subscriber has
+    ever received it. This pins the real attribute names against the model.
+    """
+    from unittest.mock import patch
+    from src.app import app
+    from src.models import Recording
+    from src.services.job_queue import job_queue
+
+    model_columns = {c.name for c in Recording.__table__.columns}
+    for field in ('audio_duration_seconds', 'transcription_duration_seconds',
+                  'summarization_duration_seconds'):
+        assert field in model_columns, f'{field} is not a Recording column'
+
+    class _Rec:
+        id = 5150
+        user_id = 7
+        title = 'Q3 planning'
+        audio_duration_seconds = 3624.7
+        transcription_duration_seconds = 212
+        summarization_duration_seconds = None
+
+    with app.app_context():
+        job_queue.init_app(app)
+        with patch('src.services.webhook_dispatch.emit_webhook_event') as emit, \
+                patch('src.database.db.session.get', return_value=_Rec()):
+            job_queue._emit_completion_webhook('transcribe', 5150)
+
+        assert emit.call_count == 1
+        data = emit.call_args.kwargs['data']
+        assert data['audio_duration_seconds'] == 3624.7
+        assert data['transcription_duration_seconds'] == 212
+        # None-valued keys are still filtered out.
+        assert 'summarization_duration_seconds' not in data
+        # `language` was removed: there is no per-recording language to send.
+        assert 'language' not in data

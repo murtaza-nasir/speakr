@@ -786,6 +786,7 @@ def get_current_user():
             'auto_summarization': bool(current_user.auto_summarization),
             'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
             'editor_autosave': bool(current_user.editor_autosave),
+            'notify_email_on_completion': bool(current_user.notify_email_on_completion),
             'diarize': bool(current_user.diarize),
         },
         'group_memberships': memberships,

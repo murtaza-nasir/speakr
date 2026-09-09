@@ -8,6 +8,7 @@ Email features in Speakr are completely opt-in. When configured, they provide:
 
 - **Email Verification**: Require new users to verify their email address before accessing the system
 - **Password Reset**: Allow users to reset forgotten passwords via email
+- **Processing Notifications**: Let each user opt in to a message when one of their recordings finishes transcribing, or fails
 
 Both features work independently of domain restrictions—you can use email verification even with open registration (`ALLOW_REGISTRATION=true`) and no domain restrictions.
 
@@ -53,6 +54,38 @@ Restart Speakr after updating environment variables.
 | `SMTP_USE_SSL` | `false` | Use SSL encryption (port 465) |
 | `SMTP_FROM_ADDRESS` | `noreply@yourdomain.com` | Email address shown in "From" field |
 | `SMTP_FROM_NAME` | `Speakr` | Display name shown alongside from address |
+| `APP_BASE_URL` | (none) | External URL of this instance, used for links in notification email |
+
+### Processing Notifications
+
+Once SMTP works, each user can turn on "Email me when a transcription finishes"
+under Account, Preferences. It is off by default, so upgrading an existing
+instance does not start mailing anyone. The message is sent when a transcription
+completes and when one fails permanently. Summaries do not send mail, since a
+summary is quick and follows a transcript the user has already been told about.
+
+Two things suppress the mail regardless of the user's preference. SMTP has to be
+configured, and the address has to be one Speakr can deliver to: an SSO account
+whose provider withheld an address is given a synthetic `@placeholder.local` one,
+and mailing that on every finished recording would bounce repeatedly and put the
+sending domain's reputation at risk. The toggle is hidden for those accounts
+rather than shown and quietly ignored.
+
+Set `APP_BASE_URL` to the address your users reach Speakr on, with no trailing
+path:
+
+```bash
+APP_BASE_URL=https://speakr.example.com
+```
+
+Verification and reset mail work out their own URL because they are sent while
+handling a request. A notification is sent from a background worker, which has
+no request to look at, so without this variable the mail goes out without a link
+to the recording rather than with a broken one.
+
+Note that each recording sends its own message, so a bulk upload of fifty files
+produces fifty emails. The setting is most useful for long recordings the user
+does not want to wait on.
 
 ### Understanding the Two Verification Modes
 
