@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.5--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.6--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -212,11 +212,19 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.5-alpha)
+## Latest Release (v0.10.6-alpha)
+
+**Background work now runs once per installation instead of once per worker, plus large uploads through restrictive proxies and opt-in email notifications.** Speakr's startup code runs in every process that imports the application, so with the three gunicorn workers the image ships, each of them started its own copy of the background machinery. For the job queue that meant a process booting while another was mid-transcription could un-claim that live job and send the same audio to the ASR service again, once per worker, with the transcript still arriving correctly so nothing looked wrong (#384, reported and fixed by @jagd700). The same pattern affected the webhook dispatcher, the watch-folder monitor and the retention and cleanup schedulers. One process is now elected to own each of these, the rest serve requests and enqueue normally, and raising `--workers` for request capacity is safe.
+
+Files larger than a reverse proxy's request body limit can now be uploaded, sent in slices through the existing session endpoints and reassembled server-side before going through the ordinary ingestion path, with resume across a dropped connection (#381, contributed by @fcatuhe). Cloudflare's 100 MB body cap on most plans is well under a normal two-hour recording, and the only workaround was routing uploads around the proxy.
+
+Each user can now opt in to an email when a recording finishes transcribing or fails (#386), using the same SMTP configuration as verification and password resets. Speakr also detects when the transcription backend starts returning voice embeddings from a different model, which otherwise makes existing voice profiles silently stop matching with nothing in the logs to explain it (#380). Also fixed: a chat panel restored from a larger display could strand its close button off-screen (#383), the webhook completion payload never actually contained the duration field it documented, and user-supplied text in outgoing email is now escaped and the logo travels with the message rather than being linked. Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.6-alpha).**
+
+### v0.10.5-alpha (previous release)
 
 **A database migration fix for long-running installations.** A migration added with SSO support rebuilt the whole user table to change one column, which on databases upgraded from very old versions could fail partway, strand a temporary table and repeat the same error on every startup (#379). Worse, had that rebuild ever completed it would have restored the table from a column list frozen years earlier, discarding later settings such as token budgets, verification state and transcription hints. It now alters only the column it needs, leaving every other column, index and value untouched, and clears the stranded table once it confirms the real one is intact. Startup migrations are additionally serialised across worker processes, grouped so one failure cannot skip the rest, and reported clearly instead of as a single warning line. Upgrading is routine and no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.5-alpha).**
 
-### v0.10.4-alpha (previous release)
+### v0.10.4-alpha
 
 **An agentic Inquire beta, reorganized tag and folder management, and upload workflow improvements.** Inquire gains an opt-in agent mode (`ENABLE_INQUIRE_AGENT=true`) that researches across your recordings with search, listing, and reading tools, shows a live activity timeline, and answers with numbered citations that click through to the exact moment in the recording; each user controls whether their summaries and notes are available to it. Search indexing now chunks along whole speaker turns with timestamps, which is what makes citation deep links land precisely. Tag and folder management merge into one account tab with a single shared card design, and both can now be created directly from the upload dialog with the full editor, including a proper localized language dropdown. The upload button now closes the dialog after queuing, with a new "Upload & Add More" button for the previous behaviour. A community-contributed OpenASR connector adds another local transcription option. Fixes cover the iOS locked-screen recording timer, merged-audio decoding on ASR pipelines, media playback through the service worker, SSO providers with minimal ID tokens, email deliverability headers, and the Identify Speakers save button. Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.4-alpha).**
 

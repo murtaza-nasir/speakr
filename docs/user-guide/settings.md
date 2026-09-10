@@ -133,6 +133,14 @@ This setting is not the same as **Naming Templates** (Account → Templates), wh
 
 **Show timestamps in simple view.** When enabled, a compact `mm:ss` (or `h:mm:ss` for long recordings) timestamp appears next to each speaker label in the simple transcript view, making it easier to navigate long meetings. The bubble view is unaffected. Off by default to keep the existing aesthetic for users who prefer a clean read.
 
+### Notifications
+
+**Email me when a transcription finishes.** When enabled, Speakr sends a message to your account email address as each recording finishes transcribing, and again if one fails permanently. The message names the recording, its length and how long transcription took, and links straight to it. Summaries do not send mail, since a summary follows a transcript you have already been told about.
+
+Off by default. It is most useful for long recordings you would rather not sit and wait for; less so if you upload many files at once, because each one sends its own message.
+
+The setting only appears when your administrator has configured email delivery and your account has an address Speakr can reach. Accounts created through single sign-on whose provider did not supply an email address do not see it, because there is nowhere to deliver to.
+
 ### Transcript Editor
 
 **Auto-save edits in the transcript editor.** When enabled, edits made in the transcript editor are saved automatically a couple of seconds after you stop typing, with a small `Saved` indicator to confirm. When disabled (the default), saves are explicit via the Save buttons or the `Ctrl+S` keyboard shortcut. Auto-save is useful for long editing sessions where the risk of losing work outweighs the predictability of explicit writes.

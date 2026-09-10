@@ -166,6 +166,12 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
 
+**These are threads, not processes.** `JOB_QUEUE_WORKERS` controls how many transcriptions run at once inside the one process that owns the queue, which is the right shape for this work: a worker spends its time waiting on an ASR endpoint or an LLM API rather than using CPU, so more threads means more concurrency without more memory.
+
+They are a separate thing from gunicorn's `--workers`, which controls how many processes serve HTTP. The container runs three of those by default. Because Speakr's startup code runs in every process that imports the app, background work is claimed by exactly one of them: the others serve requests and enqueue jobs normally, but run no workers, no watch-folder monitor and no schedulers. Before v0.10.6-alpha every process ran its own copy, which could send the same recording to the ASR service once per gunicorn worker. Raising `--workers` for more request capacity is safe.
+
+If the process that owns the background work is recycled or killed, the replacement claims it on startup and any job that was interrupted is recovered.
+
 ### Folders Feature
 
 **ENABLE_FOLDERS**: Enable the folders organization feature. When `true`, users can create folders to organize recordings with per-folder custom prompts and ASR settings. Default: `false`.
