@@ -1526,6 +1526,7 @@
   "status": {
     "completed": "Terminé",
     "failed": "Échec",
+    "pending": "En attente",
     "processing": "Traitement",
     "queued": "En file d'attente",
     "stuck": "Réinitialiser le traitement bloqué",

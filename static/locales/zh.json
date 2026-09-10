@@ -1526,6 +1526,7 @@
   "status": {
     "completed": "已完成",
     "failed": "失败",
+    "pending": "待处理",
     "processing": "处理中",
     "queued": "排队中",
     "stuck": "重置卡住的处理",

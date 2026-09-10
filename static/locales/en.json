@@ -1546,6 +1546,7 @@
   "status": {
     "completed": "Completed",
     "failed": "Failed",
+    "pending": "Pending",
     "processing": "Processing",
     "queued": "Queued",
     "stuck": "Reset stuck processing",
