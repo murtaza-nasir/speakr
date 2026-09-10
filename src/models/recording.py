@@ -25,6 +25,12 @@ class Recording(db.Model):
     participants = db.Column(db.String(500))
     notes = db.Column(db.Text)
     transcription = db.Column(db.Text, nullable=True)
+    # Language the transcription service reported for THIS recording, as an
+    # ISO 639-1 code. Recorded at transcription time rather than read from the
+    # user's preference, which is a live setting and would describe today's
+    # configuration rather than the audio. None when the backend did not
+    # report one, or reported something that is not a language code.
+    transcription_language = db.Column(db.String(20), nullable=True)
     summary = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(50), default='PENDING')  # PENDING, PROCESSING, SUMMARIZING, COMPLETED, FAILED
     audio_path = db.Column(db.String(500))
@@ -429,6 +435,7 @@ class Recording(db.Model):
             'participants': self.participants,
             'notes': user_notes,
             'transcription': self.transcription,
+            'transcription_language': self.transcription_language,
             'summary': self.summary,
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,

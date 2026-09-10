@@ -850,17 +850,21 @@ class FairJobQueue:
             recording = db.session.get(Recording, recording_id)
             if not recording:
                 return
-            # audio_duration_seconds read `recording.audio_duration`, which is
-            # not a column on Recording, so getattr's default made it None and
-            # the None-filter below dropped the key. Subscribers have never
-            # received it despite it being documented since #275. `language`
-            # was dropped outright for the same reason: there is no per-recording
-            # language anywhere. The nearest thing, User.transcription_language,
-            # is a live preference rather than a property of this recording, so
-            # sending it would report today's setting for last month's audio.
+            # Both of these were documented from #275 and neither was ever
+            # sent. audio_duration_seconds read `recording.audio_duration`,
+            # which is not a column, and `language` read a per-recording
+            # language that did not exist either. getattr's default made both
+            # None and the None-filter below then dropped the keys.
+            #
+            # The language is now recorded at transcription time from what the
+            # service reports, so it describes this audio rather than the
+            # user's current preference. It stays absent for recordings
+            # transcribed before that column existed, and for backends that
+            # report no language.
             data = {
                 'recording_id': recording.id,
                 'title': recording.title,
+                'language': recording.transcription_language,
                 'audio_duration_seconds': recording.audio_duration_seconds,
                 'transcription_duration_seconds': recording.transcription_duration_seconds,
                 'summarization_duration_seconds': recording.summarization_duration_seconds,

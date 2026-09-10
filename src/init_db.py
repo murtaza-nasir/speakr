@@ -224,6 +224,11 @@ def _run_migrations(app, engine):
     with _migration_section(app, failures, "recording, tag, speaker and processing columns"):
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
+        # Detected transcription language (#386). Existing rows stay NULL:
+        # the audio would have to be re-transcribed to learn it, and the
+        # webhook simply omits the field when it is not known.
+        if add_column_if_not_exists(engine, 'recording', 'transcription_language', 'VARCHAR(20)'):
+            app.logger.info("Added transcription_language column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):
             app.logger.info("Added audio_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):

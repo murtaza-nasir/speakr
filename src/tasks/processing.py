@@ -2026,6 +2026,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             transcription_model=transcription_model,
                         )
 
+                        recording.transcription_language = normalize_language_code(
+                            getattr(chunk_result, 'language', None))
+
                         # Handle result based on type (TranscriptionResponse for diarized, string for plain)
                         if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
                             # Diarized response - store with segments for click-to-seek and speaker identification
@@ -2082,6 +2085,14 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 # soon as the run finishes, success or failure.
                                 if funasr_active:
                                     cleanup_funasr_staging(recording)
+
+                        # Record the language the service reported for this
+                        # audio. Normalised because backends differ on whether
+                        # they return 'en' or 'english', and normalisation
+                        # yields None rather than raising on anything it does
+                        # not recognise.
+                        recording.transcription_language = normalize_language_code(
+                            getattr(response, 'language', None))
 
                         # Store the result
                         if response.segments and response.has_diarization():

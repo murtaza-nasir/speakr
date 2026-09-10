@@ -14,7 +14,7 @@ or programmatically via the `/api/v1/webhooks` API.
 |---|---|---|
 | `recording.created` | A recording row is created (upload arrived) | `recording_id`, `title`, `file_size`, `original_filename` |
 | `recording.transcription.started` | Worker picks up a transcribe or reprocess-transcription job and the audio file is on disk | `recording_id`, `title` |
-| `recording.transcription.completed` | Transcription job finished successfully | `recording_id`, `title`, `audio_duration_seconds`, `transcription_duration_seconds` |
+| `recording.transcription.completed` | Transcription job finished successfully | `recording_id`, `title`, `language`, `audio_duration_seconds`, `transcription_duration_seconds` |
 | `recording.transcription.failed` | Transcription failed permanently (retries exhausted) | `recording_id`, `title`, `error` |
 | `recording.summary.completed` | Summary generated successfully | `recording_id`, `title`, `summarization_duration_seconds` |
 | `recording.summary.failed` | Summary failed permanently | `recording_id`, `title`, `error` |
@@ -48,11 +48,19 @@ Every delivery is a `POST` with a JSON body shaped like:
   "data": {
     "recording_id": 9173,
     "title": "Q3 planning",
+    "language": "en",
     "audio_duration_seconds": 3624.7,
     "transcription_duration_seconds": 212
   }
 }
 ```
+
+`language` is the language the transcription service reported for that recording,
+as an ISO 639-1 code. It reflects what was detected or used for that audio, not the
+user's current transcription-language preference. Fields are omitted when Speakr does
+not have a value, so `language` is absent for backends that report none, and for
+recordings transcribed before v0.10.6-alpha, which is when Speakr began storing it.
+
 
 Headers:
 
