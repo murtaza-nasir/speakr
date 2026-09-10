@@ -465,7 +465,8 @@ export function useAudio(state, utils) {
                 try {
                     const displayStream = await navigator.mediaDevices.getDisplayMedia({
                         video: true,
-                        audio: true
+                        audio: true,
+                        audioSelection: 'preferred'
                     });
 
                     // Check if we got an audio track
@@ -739,7 +740,8 @@ export function useAudio(state, utils) {
                             echoCancellation: false,
                             noiseSuppression: false,
                             autoGainControl: false
-                        }
+                        },
+                        audioSelection: 'preferred'
                     };
                     stream = await navigator.mediaDevices.getDisplayMedia(displayMediaConstraints);
                 }
@@ -816,7 +818,8 @@ export function useAudio(state, utils) {
                             echoCancellation: false,
                             noiseSuppression: false,
                             autoGainControl: false
-                        }
+                        },
+                        audioSelection: 'preferred'
                     });
                 }
 
