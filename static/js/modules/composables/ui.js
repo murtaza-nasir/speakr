@@ -5,6 +5,31 @@
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 
+/**
+ * Decide whether the sidebar should start collapsed.
+ *
+ * Under Tailwind's `lg` breakpoint the sidebar stops being a column and becomes
+ * an overlay with a half-opaque backdrop across the whole app
+ * (templates/components/sidebar.html renders that backdrop whenever the sidebar
+ * is expanded and the screen is narrow). So on a narrow screen an expanded
+ * sidebar does not just take up room, it greys out everything behind it.
+ *
+ * The stored `sidebarCollapsed` value is a preference someone set at a desktop
+ * width, and restoring it on a narrow screen is what puts a first-time visitor
+ * behind that grey. Narrow screens therefore always start collapsed, and the
+ * stored preference is left alone so it still applies when the window is wide
+ * again.
+ *
+ * @param {string|null} saved  raw localStorage value ('true' / 'false' / null)
+ * @param {boolean} isMobileScreen  true below the lg breakpoint
+ * @returns {boolean} whether the sidebar should start collapsed
+ */
+export function resolveSidebarCollapsed(saved, isMobileScreen) {
+    if (isMobileScreen) return true;
+    if (saved === null || saved === undefined) return false;
+    return saved === 'true';
+}
+
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
@@ -136,10 +161,10 @@ export function useUI(state, utils, processedTranscription) {
 
     // Initialize sidebar state
     const initializeSidebar = () => {
-        const saved = localStorage.getItem('sidebarCollapsed');
-        if (saved !== null) {
-            isSidebarCollapsed.value = saved === 'true';
-        }
+        isSidebarCollapsed.value = resolveSidebarCollapsed(
+            localStorage.getItem('sidebarCollapsed'),
+            isMobileScreen.value
+        );
     };
 
     // Switch to upload view. Guarded against silently abandoning an unsaved
