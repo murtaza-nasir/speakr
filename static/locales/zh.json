@@ -342,6 +342,41 @@
     "title": "API 令牌",
     "usageExamples": "使用示例"
   },
+  "asrEditor": {
+    "saved": "已保存",
+    "ctrlSHint": "Ctrl+S 保存",
+    "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
+  },
+  "bulkActions": {
+    "addOrRemoveTags": "添加或移除标签",
+    "deleteSelected": "删除所选",
+    "exitSelection": "退出选择模式",
+    "reprocess": "重新处理",
+    "selectedCount": "已选择 {{count}} 项",
+    "star": "加星标"
+  },
+  "bulkReprocessModal": {
+    "fullTranscription": "完整转录",
+    "fullTranscriptionDesc": "重新转录音频并重新生成所有内容。耗时较长。",
+    "note": "注意",
+    "queuedSummary": "{{count}} 个录音将排队等待重新生成摘要。",
+    "queuedSummaryPlural": "{{count}} 个录音将排队等待重新生成摘要。",
+    "queuedSummaryToast": "{{count}} 个录音已排队等待重新生成摘要",
+    "queuedSummaryToastPlural": "{{count}} 个录音已排队等待重新生成摘要",
+    "queuedTranscription": "{{count}} 个录音将排队等待完整重新处理。",
+    "queuedTranscriptionPlural": "{{count}} 个录音将排队等待完整重新处理。",
+    "queuedTranscriptionToast": "{{count}} 个录音已排队等待完整重新处理",
+    "queuedTranscriptionToastPlural": "{{count}} 个录音已排队等待完整重新处理",
+    "recordingsSelected": "已选择 {{count}} 个录音",
+    "recordingsSelectedPlural": "已选择 {{count}} 个录音",
+    "startReprocessing": "开始重新处理",
+    "summaryOnly": "仅摘要",
+    "summaryOnlyDesc": "从现有转录重新生成标题和摘要。速度更快。",
+    "title": "批量重新处理",
+    "warningSummary": "这将覆盖对标题和摘要的所有手动编辑。",
+    "warningTranscription": "这将覆盖所有转录、标题和摘要。手动编辑将丢失。",
+    "whatToReprocess": "您要重新处理什么？"
+  },
   "buttons": {
     "addSegment": "添加片段",
     "addSpeaker": "添加发言人",
@@ -544,6 +579,9 @@
     "warning": "警告",
     "yes": "是"
   },
+  "confirms": {
+    "discardUnsavedRecording": "您有一段未保存的录音。离开将丢弃该录音。是否继续？"
+  },
   "customPrompts": {
     "currentDefaultPrompt": "当前默认提示（如果上面留空则使用此提示）",
     "promptDescription": "此提示将用于生成转录的摘要。它将覆盖管理员的默认提示。",
@@ -557,9 +595,22 @@
     "tipsTitle": "编写有效提示的技巧",
     "yourCustomPrompt": "您的自定义摘要提示"
   },
+  "customizeSummary": {
+    "title": "自定义摘要提示",
+    "body": "为此摘要添加一次性上下文，或完全替换已解析的提示。",
+    "additionalContext": "附加上下文",
+    "customPrompt": "自定义提示",
+    "appendPlaceholder": "例如：今天的议程是：…",
+    "replacePlaceholder": "输入完整的摘要提示…",
+    "generateSummary": "生成摘要"
+  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "您确定要删除所有保存的发言人吗？此操作无法撤销。",
     "title": "删除所有发言人"
+  },
+  "detail": {
+    "hints": "提示",
+    "hintsUsed": "本次录音使用的转录提示"
   },
   "dialogs": {
     "deleteRecording": {
@@ -585,6 +636,15 @@
       "save": "保存",
       "title": "未保存的更改"
     }
+  },
+  "display": {
+    "audioPlayerSection": "音频播放器",
+    "audioPlayerPositionLabel": "录音详情页中播放器的位置",
+    "audioPlayerPositionHelp": "选择音频播放器是位于屏幕底部（默认）还是顶部（紧贴录音标题和元数据下方）。",
+    "playerPositionBottom": "底部",
+    "playerPositionBottomHelp": "播放器固定在转录和摘要栏下方。默认。",
+    "playerPositionTop": "顶部",
+    "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。"
   },
   "duration": {
     "hours": "{{count}} 小时",
@@ -626,6 +686,13 @@
     "watchFolderRemoved": "监视文件夹已删除",
     "watchFolderError": "无法创建监视文件夹",
     "watchFolderVariableWarning": "此标签被配置为监视文件夹，且提示中包含占位符变量。通过自动处理目录摄入的录音没有界面让用户填写这些值，因此首次生成摘要时占位符将被替换为空字符串。请删除占位符，或在上传后通过重新处理填写值。"
+  },
+  "emptyState": {
+    "readyToCapture": "准备录制",
+    "readyBody": "拖入音频文件、通过麦克风录制或捕获系统音频。Speakr 会将其转换为可搜索的转录文本，并附带摘要和聊天。",
+    "newRecording": "新建录音",
+    "selectRecording": "选择一个录音",
+    "selectBody": "从侧边栏中选择一个，或开始新的录音。"
   },
   "errors": {
     "audioExtractionFailed": "音频提取失败",
@@ -789,6 +856,11 @@
     "gigabytes": "{{count}} GB",
     "kilobytes": "{{count}} KB",
     "megabytes": "{{count}} MB"
+  },
+  "floatingChat": {
+    "dockLeft": "停靠左侧",
+    "dockRight": "停靠右侧",
+    "dockFull": "全屏"
   },
   "folderManagement": {
     "allFolders": "所有文件夹",
@@ -1084,6 +1156,29 @@
     "sessionOnly": "仅当前会话",
     "uploadingFile": "正在上传文件用于隐身处理…"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "转录提示",
+    "title": "已保存的转录提示",
+    "description": "保存可重复使用的模板，将初始提示词和热词组合起来引导转录引擎。上传时选择一个，或将其用作标签、文件夹或账户的默认值。",
+    "createNew": "创建模板",
+    "availableTemplates": "已保存的模板",
+    "createDefaults": "创建入门模板",
+    "templateName": "名称",
+    "descriptionLabel": "描述",
+    "template": "初始提示词",
+    "help": "用一句简短、朴素的话描述录音，例如“这是一场关于季度销售的商务会议。”它会发送给转录引擎以引导识别。",
+    "setDefault": "设为默认模板",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "selectOrCreate": "选择一个模板进行编辑，或创建一个新的",
+    "default": "默认",
+    "pickPlaceholder": "插入已保存的模板…",
+    "hotwords": "热词",
+    "hotwordsHelp": "可选的、以逗号分隔的词语，用于提高特定术语的识别。",
+    "savedTemplate": "已保存的模板",
+    "savedTemplateHelp": "填充下方的初始提示和热词。"
+  },
   "inquire": {
     "activeFilters": "活动筛选器：",
     "askQuestions": "询问您的转录内容",
@@ -1156,6 +1251,40 @@
     "times": "次",
     "title": "管理发言人",
     "used": "已使用"
+  },
+  "mergeRecordings": {
+    "title": "合并录音",
+    "action": "合并",
+    "subtitle": "合并为一条录音",
+    "orderHint": "录音将按此顺序拼接。请调整顺序以匹配对话的实际先后。",
+    "untitled": "未命名录音",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "titleLabel": "标题（可选）",
+    "titlePlaceholder": "留空则使用第一条录音的标题",
+    "deleteOriginals": "删除原始录音",
+    "deleteOriginalsHint": "创建合并录音后删除源录音。默认关闭。",
+    "reprocessNote": "合并后的音频将被重新转录和总结，以生成连续的转录文本和摘要。",
+    "merging": "正在合并…",
+    "confirm": "合并",
+    "videoNote": "这些录音包含视频。合并仅会合并音频；合并后的录音将不包含视频。",
+    "audioPreparing": "音频仍在准备中，稍后即可播放。",
+    "remove": "移除",
+    "addRecording": "添加录音",
+    "searchRecordings": "搜索录音…",
+    "noCandidates": "没有可添加的录音",
+    "moreOptions": "更多选项",
+    "mergeWithExisting": "与现有录音合并…",
+    "noClip": "没有可合并的录音。",
+    "uploadedMergeManually": "您的片段已上传。请在列表中选择它和另一条录音以进行合并。",
+    "preparingClip": "正在准备您的片段——准备就绪后将打开合并选项。",
+    "clipNotReady": "无法准备该片段以进行合并。",
+    "thisRecording": "此录音",
+    "searching": "搜索中…",
+    "notesLabel": "保留备注来自",
+    "notesNone": "不保留备注",
+    "notesWarning": "只能保留一条录音的备注。所有录音的参与者和标签将被合并。",
+    "notesHint": "所有录音的参与者和标签将被合并。"
   },
   "messages": {
     "colorSchemeApplied": "已应用配色方案",
@@ -1287,6 +1416,7 @@
     "language": "语言",
     "lightMode": "浅色模式",
     "newRecording": "新录音",
+    "notifications": "通知",
     "recording": "录音",
     "settings": "设置",
     "signOut": "退出登录",
@@ -1303,6 +1433,66 @@
     "placeholder": "在此添加您的笔记...",
     "saveNotes": "保存笔记",
     "title": "笔记"
+  },
+  "notifications": {
+    "dismiss": "忽略",
+    "empty": "暂无需要处理的事项。",
+    "view": "查看",
+    "voiceEmbeddingChanged": "转录服务返回的声音特征已发生变化，现有的声纹档案将无法匹配新录音。请恢复之前的后端，或重建声纹档案并重置参考值。"
+  },
+  "preferences": {
+    "description": "显示与编辑器行为偏好。这些设置保存在您的账户中，并在所有设备上生效。",
+    "editorAutosave": "自动保存转录编辑器中的修改",
+    "editorAutosaveHelp": "启用后，转录编辑器中的修改会在停止输入约两秒后自动保存。默认关闭，您需要通过保存按钮或 Ctrl+S 手动保存。",
+    "filenameDatePattern": "文件名日期格式",
+    "filenameDatePatternAuto": "自动（常见格式）",
+    "filenameDatePatternCustom": "自定义模式",
+    "filenameDateRegex": "自定义模式（正则表达式）",
+    "filenameDateRegexHelp": "必须包含命名分组 year、month 和 day；hour 和 minute 可选。示例：(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
+    "filenameDatesSection": "从文件名解析会议日期",
+    "notifications": "通知",
+    "notifyEmailOnCompletion": "转录完成时给我发送邮件",
+    "notifyEmailOnCompletionHelp": "当一段录音转录完成或失败时，向您的账户邮箱发送一封邮件。不包含摘要。适用于您不想一直等待的长录音；如果一次上传大量文件则不太适合，因为每个文件都会单独发送一封邮件。",
+    "parseFilenameDates": "从文件名解析会议日期",
+    "parseFilenameDatesHelp": "当上传的文件名包含日期（例如 20260716_meeting.mp3）时，将其用作会议日期，而不是文件的时间戳。没有匹配日期的文件保持当前行为。",
+    "showTimestampsSimpleView": "在简单视图中显示时间戳",
+    "showTimestampsSimpleViewHelp": "在简单视图中，每个发言人标签旁显示紧凑的 mm:ss 时间戳。气泡视图不受影响。",
+    "transcriptDisplay": "转录显示",
+    "transcriptEditor": "转录编辑器"
+  },
+  "preview": {
+    "placeholderLegend": "占位符图例：",
+    "systemReplaced": "由系统替换（当前日期、转录、标签名称等）",
+    "userSupplied": "上传或重新处理时由用户提供",
+    "userMessageHeading": "用户消息：",
+    "liveUpdateNote": "上方编辑自定义提示时，摘要指令区会实时更新。处理录音时，占位符将被替换为真实值。"
+  },
+  "progressQueue": {
+    "title": "处理队列",
+    "clear": "清除",
+    "uploading": "{{count}} 个正在上传",
+    "transcribing": "{{count}} 个正在转录",
+    "summarizing": "{{count}} 个正在生成摘要",
+    "queued": "{{count}} 个排队中",
+    "cancel": "取消",
+    "failed": "失败",
+    "completed": "已完成",
+    "done": "完成",
+    "empty": "队列中没有项目",
+    "duplicateWarning": "检测到重复文件",
+    "retry": "重试",
+    "delete": "删除",
+    "uploadingShort": "个正在上传",
+    "transcribingShort": "个正在转录",
+    "summarizingShort": "个正在生成摘要",
+    "queuedShort": "个排队中"
+  },
+  "promptVariables": {
+    "title": "提示变量",
+    "infoTooltip": "关于提示变量",
+    "hintUpload": "所选标签或文件夹使用提示占位符。填写后将替换到此录音的摘要提示中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
+    "hintReprocess": "这些值会替换已解析提示中的占位符。此处的修改会保存到录音中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
+    "placeholderPrefix": "输入"
   },
   "pwa": {
     "installApp": "安装应用",
@@ -1533,6 +1723,22 @@
     "voiceMatchSuggestions": "声音匹配建议",
     "voiceProfile": "声音档案"
   },
+  "stats": {
+    "title": "统计",
+    "totalLength": "总时长",
+    "speakers": "发言人",
+    "turns": "发言轮次",
+    "words": "字数",
+    "perSpeaker": "按发言人",
+    "sortedBySpeakingTime": "按发言时长排序",
+    "speaker": "发言人",
+    "time": "时间",
+    "pctAudio": "占音频比例",
+    "wpm": "字/分",
+    "silence": "静默",
+    "noStatsTitle": "暂无统计数据",
+    "noStatsBody": "在录音完成带有说话人分离和片段时间戳的转录后,统计数据将会显示。"
+  },
   "status": {
     "completed": "已完成",
     "failed": "失败",
@@ -1560,6 +1766,13 @@
     "title": "摘要",
     "customizePrompt": "自定义提示词",
     "editingSaveHint": "正在编辑 — 请通过上方的标签栏保存"
+  },
+  "summaryMode": {
+    "applyMode": "应用模式",
+    "append": "追加",
+    "appendHelp": "使用默认提示，并将此内容作为额外上下文。",
+    "replace": "替换",
+    "replaceHelp": "仅使用此文本作为摘要指令。"
   },
   "tagManagement": {
     "asrDefaults": "ASR 默认值",
@@ -1607,6 +1820,32 @@
     "weeksAgo": "{{count}} 周前",
     "yearAgo": "1 年前",
     "yearsAgo": "{{count}} 年前"
+  },
+  "timestamps": {
+    "title": "转录时间戳可用性",
+    "description": "选择摘要代理和聊天代理是否在转录中收到时间戳，以便它们能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
+    "summaryLabel": "让摘要代理获得时间戳",
+    "chatLabel": "让聊天代理获得时间戳",
+    "defaultFormat": "默认时间戳格式"
+  },
+  "toasts": {
+    "processingCompleted": "处理完成！",
+    "processingFailed": "处理失败",
+    "recordingFinalized": "录音已上传等待处理",
+    "recordingPaused": "录音已暂停",
+    "recordingResumed": "录音已恢复",
+    "recordingMaxDurationApproaching": "录音将在约 {{minutes}} 分钟后自动停止（已接近最长时长）。",
+    "resumedRecordingNotIncognito": "隐身模式已关闭：此恢复的录音已在向服务器传输。",
+    "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
+    "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?",
+    "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
+    "retryingPendingUploads": "正在重试待处理的上传…",
+    "shareTargetReceived": "已接收共享音频并加入转录队列",
+    "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
+    "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
+    "uploadFailedWillRetry": "上传失败——已保存，将在重新联网后自动重试。",
+    "uploadRetriesExhaustedDownloaded": "自动重试上传已达上限。音频已保存到您的下载文件夹。",
+    "videoRecordingUnsupported": "此浏览器无法录制视频，将仅录制音频。"
   },
   "tooltips": {
     "assignFolder": "分配文件夹",
@@ -1693,40 +1932,6 @@
     "viewGuide": "查看模板指南",
     "format": "格式"
   },
-  "initialPromptTemplates": {
-    "tabTitle": "转录提示",
-    "title": "已保存的转录提示",
-    "description": "保存可重复使用的模板，将初始提示词和热词组合起来引导转录引擎。上传时选择一个，或将其用作标签、文件夹或账户的默认值。",
-    "createNew": "创建模板",
-    "availableTemplates": "已保存的模板",
-    "createDefaults": "创建入门模板",
-    "templateName": "名称",
-    "descriptionLabel": "描述",
-    "template": "初始提示词",
-    "help": "用一句简短、朴素的话描述录音，例如“这是一场关于季度销售的商务会议。”它会发送给转录引擎以引导识别。",
-    "setDefault": "设为默认模板",
-    "save": "保存",
-    "cancel": "取消",
-    "delete": "删除",
-    "selectOrCreate": "选择一个模板进行编辑，或创建一个新的",
-    "default": "默认",
-    "pickPlaceholder": "插入已保存的模板…",
-    "hotwords": "热词",
-    "hotwordsHelp": "可选的、以逗号分隔的词语，用于提高特定术语的识别。",
-    "savedTemplate": "已保存的模板",
-    "savedTemplateHelp": "填充下方的初始提示和热词。"
-  },
-  "detail": {
-    "hints": "提示",
-    "hintsUsed": "本次录音使用的转录提示"
-  },
-  "timestamps": {
-    "title": "转录时间戳可用性",
-    "description": "选择摘要代理和聊天代理是否在转录中收到时间戳，以便它们能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
-    "summaryLabel": "让摘要代理获得时间戳",
-    "chatLabel": "让聊天代理获得时间戳",
-    "defaultFormat": "默认时间戳格式"
-  },
   "transcription": {
     "autoIdentifySpeakers": "自动识别发言人",
     "bubble": "气泡",
@@ -1748,6 +1953,12 @@
     "speakerLabels": "发言人标签",
     "title": "转录",
     "unknownSpeaker": "未知发言人"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "尚无公开分享链接",
+    "noUsersFound": "未找到用户",
+    "add": "添加",
+    "notSharedYet": "尚未与任何人分享"
   },
   "upload": {
     "chunking": "大文件将自动分块处理",
@@ -1788,83 +1999,6 @@
   "uploadProgress": {
     "title": "上传进度"
   },
-  "promptVariables": {
-    "title": "提示变量",
-    "infoTooltip": "关于提示变量",
-    "hintUpload": "所选标签或文件夹使用提示占位符。填写后将替换到此录音的摘要提示中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
-    "hintReprocess": "这些值会替换已解析提示中的占位符。此处的修改会保存到录音中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
-    "placeholderPrefix": "输入"
-  },
-  "summaryMode": {
-    "applyMode": "应用模式",
-    "append": "追加",
-    "appendHelp": "使用默认提示，并将此内容作为额外上下文。",
-    "replace": "替换",
-    "replaceHelp": "仅使用此文本作为摘要指令。"
-  },
-  "customizeSummary": {
-    "title": "自定义摘要提示",
-    "body": "为此摘要添加一次性上下文，或完全替换已解析的提示。",
-    "additionalContext": "附加上下文",
-    "customPrompt": "自定义提示",
-    "appendPlaceholder": "例如：今天的议程是：…",
-    "replacePlaceholder": "输入完整的摘要提示…",
-    "generateSummary": "生成摘要"
-  },
-  "asrEditor": {
-    "saved": "已保存",
-    "ctrlSHint": "Ctrl+S 保存",
-    "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
-  },
-  "preview": {
-    "placeholderLegend": "占位符图例：",
-    "systemReplaced": "由系统替换（当前日期、转录、标签名称等）",
-    "userSupplied": "上传或重新处理时由用户提供",
-    "userMessageHeading": "用户消息：",
-    "liveUpdateNote": "上方编辑自定义提示时，摘要指令区会实时更新。处理录音时，占位符将被替换为真实值。"
-  },
-  "preferences": {
-    "description": "显示与编辑器行为偏好。这些设置保存在您的账户中，并在所有设备上生效。",
-    "editorAutosave": "自动保存转录编辑器中的修改",
-    "editorAutosaveHelp": "启用后，转录编辑器中的修改会在停止输入约两秒后自动保存。默认关闭，您需要通过保存按钮或 Ctrl+S 手动保存。",
-    "filenameDatePattern": "文件名日期格式",
-    "filenameDatePatternAuto": "自动（常见格式）",
-    "filenameDatePatternCustom": "自定义模式",
-    "filenameDateRegex": "自定义模式（正则表达式）",
-    "filenameDateRegexHelp": "必须包含命名分组 year、month 和 day；hour 和 minute 可选。示例：(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
-    "filenameDatesSection": "从文件名解析会议日期",
-    "notifications": "通知",
-    "notifyEmailOnCompletion": "转录完成时给我发送邮件",
-    "notifyEmailOnCompletionHelp": "当一段录音转录完成或失败时，向您的账户邮箱发送一封邮件。不包含摘要。适用于您不想一直等待的长录音；如果一次上传大量文件则不太适合，因为每个文件都会单独发送一封邮件。",
-    "parseFilenameDates": "从文件名解析会议日期",
-    "parseFilenameDatesHelp": "当上传的文件名包含日期（例如 20260716_meeting.mp3）时，将其用作会议日期，而不是文件的时间戳。没有匹配日期的文件保持当前行为。",
-    "showTimestampsSimpleView": "在简单视图中显示时间戳",
-    "showTimestampsSimpleViewHelp": "在简单视图中，每个发言人标签旁显示紧凑的 mm:ss 时间戳。气泡视图不受影响。",
-    "transcriptDisplay": "转录显示",
-    "transcriptEditor": "转录编辑器"
-  },
-  "confirms": {
-    "discardUnsavedRecording": "您有一段未保存的录音。离开将丢弃该录音。是否继续？"
-  },
-  "toasts": {
-    "processingCompleted": "处理完成！",
-    "processingFailed": "处理失败",
-    "recordingFinalized": "录音已上传等待处理",
-    "recordingPaused": "录音已暂停",
-    "recordingResumed": "录音已恢复",
-    "recordingMaxDurationApproaching": "录音将在约 {{minutes}} 分钟后自动停止（已接近最长时长）。",
-    "resumedRecordingNotIncognito": "隐身模式已关闭：此恢复的录音已在向服务器传输。",
-    "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
-    "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?",
-    "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
-    "retryingPendingUploads": "正在重试待处理的上传…",
-    "shareTargetReceived": "已接收共享音频并加入转录队列",
-    "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
-    "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
-    "uploadFailedWillRetry": "上传失败——已保存，将在重新联网后自动重试。",
-    "uploadRetriesExhaustedDownloaded": "自动重试上传已达上限。音频已保存到您的下载文件夹。",
-    "videoRecordingUnsupported": "此浏览器无法录制视频，将仅录制音频。"
-  },
   "webhooks": {
     "title": "Webhook",
     "subtitle": "在录音发生变化时接收 HTTP 通知。每个端点使用 HMAC-SHA256 签名,接收方可以验证真实性。",
@@ -1881,132 +2015,5 @@
     "secretBannerTitle": "立即复制此密钥 — 不会再次显示",
     "secretBannerHint": "用此密钥对每个接收方请求进行签名: 原始正文的 HMAC-SHA256。请求头: Speakr-Signature: sha256=<hex>",
     "copy": "复制"
-  },
-  "display": {
-    "audioPlayerSection": "音频播放器",
-    "audioPlayerPositionLabel": "录音详情页中播放器的位置",
-    "audioPlayerPositionHelp": "选择音频播放器是位于屏幕底部（默认）还是顶部（紧贴录音标题和元数据下方）。",
-    "playerPositionBottom": "底部",
-    "playerPositionBottomHelp": "播放器固定在转录和摘要栏下方。默认。",
-    "playerPositionTop": "顶部",
-    "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。"
-  },
-  "stats": {
-    "title": "统计",
-    "totalLength": "总时长",
-    "speakers": "发言人",
-    "turns": "发言轮次",
-    "words": "字数",
-    "perSpeaker": "按发言人",
-    "sortedBySpeakingTime": "按发言时长排序",
-    "speaker": "发言人",
-    "time": "时间",
-    "pctAudio": "占音频比例",
-    "wpm": "字/分",
-    "silence": "静默",
-    "noStatsTitle": "暂无统计数据",
-    "noStatsBody": "在录音完成带有说话人分离和片段时间戳的转录后,统计数据将会显示。"
-  },
-  "progressQueue": {
-    "title": "处理队列",
-    "clear": "清除",
-    "uploading": "{{count}} 个正在上传",
-    "transcribing": "{{count}} 个正在转录",
-    "summarizing": "{{count}} 个正在生成摘要",
-    "queued": "{{count}} 个排队中",
-    "cancel": "取消",
-    "failed": "失败",
-    "completed": "已完成",
-    "done": "完成",
-    "empty": "队列中没有项目",
-    "duplicateWarning": "检测到重复文件",
-    "retry": "重试",
-    "delete": "删除",
-    "uploadingShort": "个正在上传",
-    "transcribingShort": "个正在转录",
-    "summarizingShort": "个正在生成摘要",
-    "queuedShort": "个排队中"
-  },
-  "floatingChat": {
-    "dockLeft": "停靠左侧",
-    "dockRight": "停靠右侧",
-    "dockFull": "全屏"
-  },
-  "bulkActions": {
-    "addOrRemoveTags": "添加或移除标签",
-    "deleteSelected": "删除所选",
-    "exitSelection": "退出选择模式",
-    "reprocess": "重新处理",
-    "selectedCount": "已选择 {{count}} 项",
-    "star": "加星标"
-  },
-  "unifiedShareModal": {
-    "noPublicLinks": "尚无公开分享链接",
-    "noUsersFound": "未找到用户",
-    "add": "添加",
-    "notSharedYet": "尚未与任何人分享"
-  },
-  "mergeRecordings": {
-    "title": "合并录音",
-    "action": "合并",
-    "subtitle": "合并为一条录音",
-    "orderHint": "录音将按此顺序拼接。请调整顺序以匹配对话的实际先后。",
-    "untitled": "未命名录音",
-    "moveUp": "上移",
-    "moveDown": "下移",
-    "titleLabel": "标题（可选）",
-    "titlePlaceholder": "留空则使用第一条录音的标题",
-    "deleteOriginals": "删除原始录音",
-    "deleteOriginalsHint": "创建合并录音后删除源录音。默认关闭。",
-    "reprocessNote": "合并后的音频将被重新转录和总结，以生成连续的转录文本和摘要。",
-    "merging": "正在合并…",
-    "confirm": "合并",
-    "videoNote": "这些录音包含视频。合并仅会合并音频；合并后的录音将不包含视频。",
-    "audioPreparing": "音频仍在准备中，稍后即可播放。",
-    "remove": "移除",
-    "addRecording": "添加录音",
-    "searchRecordings": "搜索录音…",
-    "noCandidates": "没有可添加的录音",
-    "moreOptions": "更多选项",
-    "mergeWithExisting": "与现有录音合并…",
-    "noClip": "没有可合并的录音。",
-    "uploadedMergeManually": "您的片段已上传。请在列表中选择它和另一条录音以进行合并。",
-    "preparingClip": "正在准备您的片段——准备就绪后将打开合并选项。",
-    "clipNotReady": "无法准备该片段以进行合并。",
-    "thisRecording": "此录音",
-    "searching": "搜索中…",
-    "notesLabel": "保留备注来自",
-    "notesNone": "不保留备注",
-    "notesWarning": "只能保留一条录音的备注。所有录音的参与者和标签将被合并。",
-    "notesHint": "所有录音的参与者和标签将被合并。"
-  },
-  "bulkReprocessModal": {
-    "fullTranscription": "完整转录",
-    "fullTranscriptionDesc": "重新转录音频并重新生成所有内容。耗时较长。",
-    "note": "注意",
-    "queuedSummary": "{{count}} 个录音将排队等待重新生成摘要。",
-    "queuedSummaryPlural": "{{count}} 个录音将排队等待重新生成摘要。",
-    "queuedSummaryToast": "{{count}} 个录音已排队等待重新生成摘要",
-    "queuedSummaryToastPlural": "{{count}} 个录音已排队等待重新生成摘要",
-    "queuedTranscription": "{{count}} 个录音将排队等待完整重新处理。",
-    "queuedTranscriptionPlural": "{{count}} 个录音将排队等待完整重新处理。",
-    "queuedTranscriptionToast": "{{count}} 个录音已排队等待完整重新处理",
-    "queuedTranscriptionToastPlural": "{{count}} 个录音已排队等待完整重新处理",
-    "recordingsSelected": "已选择 {{count}} 个录音",
-    "recordingsSelectedPlural": "已选择 {{count}} 个录音",
-    "startReprocessing": "开始重新处理",
-    "summaryOnly": "仅摘要",
-    "summaryOnlyDesc": "从现有转录重新生成标题和摘要。速度更快。",
-    "title": "批量重新处理",
-    "warningSummary": "这将覆盖对标题和摘要的所有手动编辑。",
-    "warningTranscription": "这将覆盖所有转录、标题和摘要。手动编辑将丢失。",
-    "whatToReprocess": "您要重新处理什么？"
-  },
-  "emptyState": {
-    "readyToCapture": "准备录制",
-    "readyBody": "拖入音频文件、通过麦克风录制或捕获系统音频。Speakr 会将其转换为可搜索的转录文本，并附带摘要和聊天。",
-    "newRecording": "新建录音",
-    "selectRecording": "选择一个录音",
-    "selectBody": "从侧边栏中选择一个，或开始新的录音。"
   }
 }

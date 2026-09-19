@@ -342,6 +342,41 @@
     "title": "API Tokens",
     "usageExamples": "Usage Examples"
   },
+  "asrEditor": {
+    "saved": "Saved",
+    "ctrlSHint": "Ctrl+S to save",
+    "saveWithoutClosing": "Save without closing (Ctrl+S)"
+  },
+  "bulkActions": {
+    "addOrRemoveTags": "Add or remove tags",
+    "deleteSelected": "Delete selected",
+    "exitSelection": "Exit selection mode",
+    "reprocess": "Reprocess",
+    "selectedCount": "{{count}} selected",
+    "star": "Star"
+  },
+  "bulkReprocessModal": {
+    "fullTranscription": "Full Transcription",
+    "fullTranscriptionDesc": "Re-transcribe audio and regenerate everything. Takes longer.",
+    "note": "Note",
+    "queuedSummary": "{{count}} recording will be queued for summary regeneration.",
+    "queuedSummaryPlural": "{{count}} recordings will be queued for summary regeneration.",
+    "queuedSummaryToast": "{{count}} recording queued for summary regeneration",
+    "queuedSummaryToastPlural": "{{count}} recordings queued for summary regeneration",
+    "queuedTranscription": "{{count}} recording will be queued for full reprocessing.",
+    "queuedTranscriptionPlural": "{{count}} recordings will be queued for full reprocessing.",
+    "queuedTranscriptionToast": "{{count}} recording queued for full reprocessing",
+    "queuedTranscriptionToastPlural": "{{count}} recordings queued for full reprocessing",
+    "recordingsSelected": "{{count}} recording selected",
+    "recordingsSelectedPlural": "{{count}} recordings selected",
+    "startReprocessing": "Start Reprocessing",
+    "summaryOnly": "Summary Only",
+    "summaryOnlyDesc": "Regenerate title and summary from existing transcription. Faster option.",
+    "title": "Bulk Reprocess",
+    "warningSummary": "This will overwrite any manual edits to titles and summaries.",
+    "warningTranscription": "This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.",
+    "whatToReprocess": "What do you want to reprocess?"
+  },
   "buttons": {
     "addSegment": "Add Segment",
     "addSpeaker": "Add Speaker",
@@ -544,6 +579,9 @@
     "warning": "Warning",
     "yes": "Yes"
   },
+  "confirms": {
+    "discardUnsavedRecording": "You have an unsaved recording. Leaving will discard it. Continue?"
+  },
   "customPrompts": {
     "currentDefaultPrompt": "Current Default Prompt (Used if you leave the above blank)",
     "promptDescription": "This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.",
@@ -557,9 +595,22 @@
     "tipsTitle": "Tips for Writing Effective Prompts",
     "yourCustomPrompt": "Your Custom Summary Prompt"
   },
+  "customizeSummary": {
+    "title": "Customise summary prompt",
+    "body": "Add one-off context for this summary, or replace the resolved prompt entirely.",
+    "additionalContext": "Additional context",
+    "customPrompt": "Custom prompt",
+    "appendPlaceholder": "e.g. Today's agenda is: ...",
+    "replacePlaceholder": "Enter a complete summarisation prompt...",
+    "generateSummary": "Generate Summary"
+  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Are you sure you want to delete all saved speakers? This action cannot be undone.",
     "title": "Delete All Speakers"
+  },
+  "detail": {
+    "hints": "Hints",
+    "hintsUsed": "Transcription hints used for this recording"
   },
   "dialogs": {
     "deleteRecording": {
@@ -585,6 +636,15 @@
       "save": "Save",
       "title": "Unsaved Changes"
     }
+  },
+  "display": {
+    "audioPlayerSection": "Audio player",
+    "audioPlayerPositionLabel": "Player position in the recording-detail screen",
+    "audioPlayerPositionHelp": "Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.",
+    "playerPositionBottom": "Bottom",
+    "playerPositionBottomHelp": "Player anchored under the transcript + summary columns. Default.",
+    "playerPositionTop": "Top",
+    "playerPositionTopHelp": "Player sits above the columns, just under the title and metadata strip."
   },
   "duration": {
     "hours": "{{count}} hour",
@@ -626,6 +686,13 @@
     "watchFolderRemoved": "Watch folder removed",
     "watchFolderError": "Could not create watch folder",
     "watchFolderVariableWarning": "This tag is set up as a watch folder and the prompt contains placeholder variables. Recordings ingested through the auto-process directory have no UI for users to fill those values, so the placeholders will substitute to empty strings on the first summary run. Either remove the placeholders or fill the values via reprocess after upload."
+  },
+  "emptyState": {
+    "readyToCapture": "Ready to capture",
+    "readyBody": "Drop an audio file, record from your microphone, or capture system audio. Speakr turns it into a searchable transcript with summary and chat.",
+    "newRecording": "New recording",
+    "selectRecording": "Select a recording",
+    "selectBody": "Pick one from the sidebar or start a new recording."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -789,6 +856,11 @@
     "gigabytes": "{{count}} GB",
     "kilobytes": "{{count}} KB",
     "megabytes": "{{count}} MB"
+  },
+  "floatingChat": {
+    "dockLeft": "Dock left",
+    "dockRight": "Dock right",
+    "dockFull": "Dock full"
   },
   "folderManagement": {
     "allFolders": "All Folders",
@@ -1084,6 +1156,29 @@
     "sessionOnly": "Session only",
     "uploadingFile": "Uploading file for incognito processing..."
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Transcription Hints",
+    "title": "Saved Transcription Hints",
+    "description": "Save reusable templates that bundle an initial prompt and hotwords to steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.",
+    "createNew": "Create Template",
+    "availableTemplates": "Saved Templates",
+    "createDefaults": "Create Starter Templates",
+    "templateName": "Name",
+    "descriptionLabel": "Description",
+    "template": "Initial prompt",
+    "help": "A short, plain sentence that describes the recording, e.g. \"This is a business meeting about quarterly sales.\" It is sent to the transcription engine to steer recognition.",
+    "setDefault": "Set as default template",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "selectOrCreate": "Select a template to edit or create a new one",
+    "default": "Default",
+    "pickPlaceholder": "Insert a saved template…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Optional comma-separated words to bias recognition of domain-specific terms.",
+    "savedTemplate": "Saved template",
+    "savedTemplateHelp": "Fills the initial prompt and hotwords below."
+  },
   "inquire": {
     "activeFilters": "Active Filters:",
     "askQuestions": "Ask Questions About Your Transcriptions",
@@ -1156,6 +1251,40 @@
     "times": "times",
     "title": "Manage Speakers",
     "used": "Used"
+  },
+  "mergeRecordings": {
+    "title": "Merge Recordings",
+    "action": "Merge",
+    "subtitle": "Combine into one recording",
+    "orderHint": "Recordings will be joined in this order. Reorder them to match the sequence of the conversation.",
+    "untitled": "Untitled recording",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "titleLabel": "Title (optional)",
+    "titlePlaceholder": "Leave blank to use the first recording's title",
+    "deleteOriginals": "Delete original recordings",
+    "deleteOriginalsHint": "Remove the source recordings after the merged one is created. Off by default.",
+    "reprocessNote": "The combined audio will be transcribed and summarized again to produce one continuous transcript and summary.",
+    "merging": "Merging…",
+    "confirm": "Merge recordings",
+    "videoNote": "These recordings include video. Merging combines the audio only; the merged recording will not have video.",
+    "audioPreparing": "Audio is still being prepared. It will be playable in a moment.",
+    "remove": "Remove",
+    "addRecording": "Add a recording",
+    "searchRecordings": "Search recordings…",
+    "noCandidates": "No recordings available to add",
+    "moreOptions": "More options",
+    "mergeWithExisting": "Merge with an existing recording…",
+    "noClip": "No recorded audio to merge.",
+    "uploadedMergeManually": "Your clip was uploaded. Select it and another recording in the list to merge them.",
+    "preparingClip": "Preparing your clip — the merge options will open when it's ready.",
+    "clipNotReady": "The clip could not be prepared for merging.",
+    "thisRecording": "This recording",
+    "searching": "Searching…",
+    "notesLabel": "Keep notes from",
+    "notesNone": "Don't keep notes",
+    "notesWarning": "Only one recording's notes can be kept. Participants and tags from all recordings are combined.",
+    "notesHint": "Participants and tags from all recordings are combined."
   },
   "messages": {
     "colorSchemeApplied": "Color scheme applied",
@@ -1287,6 +1416,7 @@
     "language": "Language",
     "lightMode": "Light Mode",
     "newRecording": "New Recording",
+    "notifications": "Notifications",
     "recording": "Recording",
     "settings": "Settings",
     "signOut": "Sign Out",
@@ -1303,6 +1433,12 @@
     "placeholder": "Add your notes here...",
     "saveNotes": "Save Notes",
     "title": "Notes"
+  },
+  "notifications": {
+    "dismiss": "Dismiss",
+    "empty": "Nothing needs your attention.",
+    "view": "View",
+    "voiceEmbeddingChanged": "The transcription service is returning different voice embeddings, so existing voice profiles will not match new recordings. Restore the previous backend, or rebuild the profiles and reset the reference."
   },
   "preferences": {
     "description": "Display and editor behaviour preferences. These settings are saved to your account and apply across devices.",
@@ -1323,6 +1459,40 @@
     "showTimestampsSimpleViewHelp": "Display a compact mm:ss timestamp next to each speaker label in the simple transcript view. The bubble view is unaffected.",
     "transcriptDisplay": "Transcript display",
     "transcriptEditor": "Transcript editor"
+  },
+  "preview": {
+    "placeholderLegend": "Placeholder legend:",
+    "systemReplaced": "system-replaced (current date, transcript, tag names, etc.)",
+    "userSupplied": "user-supplied at upload or reprocess",
+    "userMessageHeading": "User Message:",
+    "liveUpdateNote": "The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed."
+  },
+  "progressQueue": {
+    "title": "Processing Queue",
+    "clear": "Clear",
+    "uploading": "{{count}} uploading",
+    "transcribing": "{{count}} transcribing",
+    "summarizing": "{{count}} summarizing",
+    "queued": "{{count}} queued",
+    "cancel": "Cancel",
+    "failed": "Failed",
+    "completed": "Completed",
+    "done": "Done",
+    "empty": "No items in queue",
+    "duplicateWarning": "Duplicate file detected",
+    "retry": "Retry",
+    "delete": "Delete",
+    "uploadingShort": "uploading",
+    "transcribingShort": "transcribing",
+    "summarizingShort": "summarizing",
+    "queuedShort": "queued"
+  },
+  "promptVariables": {
+    "title": "Prompt variables",
+    "infoTooltip": "About prompt variables",
+    "hintUpload": "The selected tag or folder uses prompt placeholders. Fill these in and they'll be substituted into the summarisation prompt for this recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
+    "hintReprocess": "These values are substituted into placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
+    "placeholderPrefix": "Enter"
   },
   "pwa": {
     "installApp": "Install App",
@@ -1553,6 +1723,22 @@
     "voiceMatchSuggestions": "Voice Match Suggestions",
     "voiceProfile": "Voice Profile"
   },
+  "stats": {
+    "title": "Stats",
+    "totalLength": "Total length",
+    "speakers": "Speakers",
+    "turns": "Turns",
+    "words": "Words",
+    "perSpeaker": "Per speaker",
+    "sortedBySpeakingTime": "sorted by speaking time",
+    "speaker": "Speaker",
+    "time": "Time",
+    "pctAudio": "% of audio",
+    "wpm": "WPM",
+    "silence": "Silence",
+    "noStatsTitle": "No stats yet",
+    "noStatsBody": "Stats appear once this recording has been transcribed with speaker diarization and segment timestamps."
+  },
   "status": {
     "completed": "Completed",
     "failed": "Failed",
@@ -1580,6 +1766,13 @@
     "title": "Summary",
     "customizePrompt": "Customise prompt",
     "editingSaveHint": "Editing — save from the tab bar above"
+  },
+  "summaryMode": {
+    "applyMode": "Apply mode",
+    "append": "Append",
+    "appendHelp": "Use the default prompt and add this as extra context.",
+    "replace": "Replace",
+    "replaceHelp": "Use only this text as the summarisation instructions."
   },
   "tagManagement": {
     "asrDefaults": "ASR Defaults",
@@ -1627,6 +1820,32 @@
     "weeksAgo": "{{count}} weeks ago",
     "yearAgo": "1 year ago",
     "yearsAgo": "{{count}} years ago"
+  },
+  "timestamps": {
+    "title": "Transcript Timestamp Availability",
+    "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
+    "summaryLabel": "Give the summarization agent timestamps",
+    "chatLabel": "Give the chat agent timestamps",
+    "defaultFormat": "Default timestamp format"
+  },
+  "toasts": {
+    "processingCompleted": "Processing completed!",
+    "processingFailed": "Processing failed",
+    "recordingFinalized": "Recording uploaded for processing",
+    "recordingPaused": "Recording paused",
+    "recordingResumed": "Recording resumed",
+    "recordingMaxDurationApproaching": "Recording will stop automatically in about {{minutes}} minutes (maximum duration).",
+    "resumedRecordingNotIncognito": "Incognito was turned off: this resumed recording was already streaming to the server.",
+    "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
+    "recordingResumeFound": "An in-progress recording from this browser was detected on the server. Resume?",
+    "recordingSizeSoftWarning": "Recording is {{size}}. Consider stopping when convenient.",
+    "retryingPendingUploads": "Retrying pending upload(s)…",
+    "shareTargetReceived": "Shared audio received and queued for transcription",
+    "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
+    "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
+    "uploadFailedWillRetry": "Upload failed — saved and will retry automatically when you reconnect.",
+    "uploadRetriesExhaustedDownloaded": "Automatic upload retries exhausted. The audio was saved to your Downloads folder.",
+    "videoRecordingUnsupported": "This browser cannot record video — capturing audio only."
   },
   "tooltips": {
     "assignFolder": "Assign Folder",
@@ -1713,40 +1932,6 @@
     "viewGuide": "View Template Guide",
     "format": "Format"
   },
-  "initialPromptTemplates": {
-    "tabTitle": "Transcription Hints",
-    "title": "Saved Transcription Hints",
-    "description": "Save reusable templates that bundle an initial prompt and hotwords to steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.",
-    "createNew": "Create Template",
-    "availableTemplates": "Saved Templates",
-    "createDefaults": "Create Starter Templates",
-    "templateName": "Name",
-    "descriptionLabel": "Description",
-    "template": "Initial prompt",
-    "help": "A short, plain sentence that describes the recording, e.g. \"This is a business meeting about quarterly sales.\" It is sent to the transcription engine to steer recognition.",
-    "setDefault": "Set as default template",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "selectOrCreate": "Select a template to edit or create a new one",
-    "default": "Default",
-    "pickPlaceholder": "Insert a saved template…",
-    "hotwords": "Hotwords",
-    "hotwordsHelp": "Optional comma-separated words to bias recognition of domain-specific terms.",
-    "savedTemplate": "Saved template",
-    "savedTemplateHelp": "Fills the initial prompt and hotwords below."
-  },
-  "detail": {
-    "hints": "Hints",
-    "hintsUsed": "Transcription hints used for this recording"
-  },
-  "timestamps": {
-    "title": "Transcript Timestamp Availability",
-    "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
-    "summaryLabel": "Give the summarization agent timestamps",
-    "chatLabel": "Give the chat agent timestamps",
-    "defaultFormat": "Default timestamp format"
-  },
   "transcription": {
     "autoIdentifySpeakers": "Auto-identify Speakers",
     "bubble": "Bubble",
@@ -1768,6 +1953,12 @@
     "speakerLabels": "Speaker Labels",
     "title": "Transcription",
     "unknownSpeaker": "Unknown Speaker"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "No public share links yet",
+    "noUsersFound": "No users found",
+    "add": "Add",
+    "notSharedYet": "Not shared with anyone yet"
   },
   "upload": {
     "chunking": "Large files will be automatically chunked for processing",
@@ -1808,63 +1999,6 @@
   "uploadProgress": {
     "title": "Upload Progress"
   },
-  "promptVariables": {
-    "title": "Prompt variables",
-    "infoTooltip": "About prompt variables",
-    "hintUpload": "The selected tag or folder uses prompt placeholders. Fill these in and they'll be substituted into the summarisation prompt for this recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
-    "hintReprocess": "These values are substituted into placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
-    "placeholderPrefix": "Enter"
-  },
-  "summaryMode": {
-    "applyMode": "Apply mode",
-    "append": "Append",
-    "appendHelp": "Use the default prompt and add this as extra context.",
-    "replace": "Replace",
-    "replaceHelp": "Use only this text as the summarisation instructions."
-  },
-  "customizeSummary": {
-    "title": "Customise summary prompt",
-    "body": "Add one-off context for this summary, or replace the resolved prompt entirely.",
-    "additionalContext": "Additional context",
-    "customPrompt": "Custom prompt",
-    "appendPlaceholder": "e.g. Today's agenda is: ...",
-    "replacePlaceholder": "Enter a complete summarisation prompt...",
-    "generateSummary": "Generate Summary"
-  },
-  "asrEditor": {
-    "saved": "Saved",
-    "ctrlSHint": "Ctrl+S to save",
-    "saveWithoutClosing": "Save without closing (Ctrl+S)"
-  },
-  "preview": {
-    "placeholderLegend": "Placeholder legend:",
-    "systemReplaced": "system-replaced (current date, transcript, tag names, etc.)",
-    "userSupplied": "user-supplied at upload or reprocess",
-    "userMessageHeading": "User Message:",
-    "liveUpdateNote": "The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed."
-  },
-  "confirms": {
-    "discardUnsavedRecording": "You have an unsaved recording. Leaving will discard it. Continue?"
-  },
-  "toasts": {
-    "processingCompleted": "Processing completed!",
-    "processingFailed": "Processing failed",
-    "recordingFinalized": "Recording uploaded for processing",
-    "recordingPaused": "Recording paused",
-    "recordingResumed": "Recording resumed",
-    "recordingMaxDurationApproaching": "Recording will stop automatically in about {{minutes}} minutes (maximum duration).",
-    "resumedRecordingNotIncognito": "Incognito was turned off: this resumed recording was already streaming to the server.",
-    "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
-    "recordingResumeFound": "An in-progress recording from this browser was detected on the server. Resume?",
-    "recordingSizeSoftWarning": "Recording is {{size}}. Consider stopping when convenient.",
-    "retryingPendingUploads": "Retrying pending upload(s)…",
-    "shareTargetReceived": "Shared audio received and queued for transcription",
-    "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
-    "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
-    "uploadFailedWillRetry": "Upload failed — saved and will retry automatically when you reconnect.",
-    "uploadRetriesExhaustedDownloaded": "Automatic upload retries exhausted. The audio was saved to your Downloads folder.",
-    "videoRecordingUnsupported": "This browser cannot record video — capturing audio only."
-  },
   "webhooks": {
     "title": "Webhooks",
     "subtitle": "Receive HTTP notifications when recordings change. Each endpoint is signed with HMAC-SHA256 so receivers can verify authenticity.",
@@ -1881,132 +2015,5 @@
     "secretBannerTitle": "Copy this secret now — it will not be shown again",
     "secretBannerHint": "Sign every receiver request: HMAC-SHA256 of the raw body using this secret. Header: Speakr-Signature: sha256=<hex>",
     "copy": "Copy"
-  },
-  "display": {
-    "audioPlayerSection": "Audio player",
-    "audioPlayerPositionLabel": "Player position in the recording-detail screen",
-    "audioPlayerPositionHelp": "Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.",
-    "playerPositionBottom": "Bottom",
-    "playerPositionBottomHelp": "Player anchored under the transcript + summary columns. Default.",
-    "playerPositionTop": "Top",
-    "playerPositionTopHelp": "Player sits above the columns, just under the title and metadata strip."
-  },
-  "stats": {
-    "title": "Stats",
-    "totalLength": "Total length",
-    "speakers": "Speakers",
-    "turns": "Turns",
-    "words": "Words",
-    "perSpeaker": "Per speaker",
-    "sortedBySpeakingTime": "sorted by speaking time",
-    "speaker": "Speaker",
-    "time": "Time",
-    "pctAudio": "% of audio",
-    "wpm": "WPM",
-    "silence": "Silence",
-    "noStatsTitle": "No stats yet",
-    "noStatsBody": "Stats appear once this recording has been transcribed with speaker diarization and segment timestamps."
-  },
-  "progressQueue": {
-    "title": "Processing Queue",
-    "clear": "Clear",
-    "uploading": "{{count}} uploading",
-    "transcribing": "{{count}} transcribing",
-    "summarizing": "{{count}} summarizing",
-    "queued": "{{count}} queued",
-    "cancel": "Cancel",
-    "failed": "Failed",
-    "completed": "Completed",
-    "done": "Done",
-    "empty": "No items in queue",
-    "duplicateWarning": "Duplicate file detected",
-    "retry": "Retry",
-    "delete": "Delete",
-    "uploadingShort": "uploading",
-    "transcribingShort": "transcribing",
-    "summarizingShort": "summarizing",
-    "queuedShort": "queued"
-  },
-  "floatingChat": {
-    "dockLeft": "Dock left",
-    "dockRight": "Dock right",
-    "dockFull": "Dock full"
-  },
-  "bulkActions": {
-    "addOrRemoveTags": "Add or remove tags",
-    "deleteSelected": "Delete selected",
-    "exitSelection": "Exit selection mode",
-    "reprocess": "Reprocess",
-    "selectedCount": "{{count}} selected",
-    "star": "Star"
-  },
-  "unifiedShareModal": {
-    "noPublicLinks": "No public share links yet",
-    "noUsersFound": "No users found",
-    "add": "Add",
-    "notSharedYet": "Not shared with anyone yet"
-  },
-  "mergeRecordings": {
-    "title": "Merge Recordings",
-    "action": "Merge",
-    "subtitle": "Combine into one recording",
-    "orderHint": "Recordings will be joined in this order. Reorder them to match the sequence of the conversation.",
-    "untitled": "Untitled recording",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
-    "titleLabel": "Title (optional)",
-    "titlePlaceholder": "Leave blank to use the first recording's title",
-    "deleteOriginals": "Delete original recordings",
-    "deleteOriginalsHint": "Remove the source recordings after the merged one is created. Off by default.",
-    "reprocessNote": "The combined audio will be transcribed and summarized again to produce one continuous transcript and summary.",
-    "merging": "Merging…",
-    "confirm": "Merge recordings",
-    "videoNote": "These recordings include video. Merging combines the audio only; the merged recording will not have video.",
-    "audioPreparing": "Audio is still being prepared. It will be playable in a moment.",
-    "remove": "Remove",
-    "addRecording": "Add a recording",
-    "searchRecordings": "Search recordings…",
-    "noCandidates": "No recordings available to add",
-    "moreOptions": "More options",
-    "mergeWithExisting": "Merge with an existing recording…",
-    "noClip": "No recorded audio to merge.",
-    "uploadedMergeManually": "Your clip was uploaded. Select it and another recording in the list to merge them.",
-    "preparingClip": "Preparing your clip — the merge options will open when it's ready.",
-    "clipNotReady": "The clip could not be prepared for merging.",
-    "thisRecording": "This recording",
-    "searching": "Searching…",
-    "notesLabel": "Keep notes from",
-    "notesNone": "Don't keep notes",
-    "notesWarning": "Only one recording's notes can be kept. Participants and tags from all recordings are combined.",
-    "notesHint": "Participants and tags from all recordings are combined."
-  },
-  "bulkReprocessModal": {
-    "fullTranscription": "Full Transcription",
-    "fullTranscriptionDesc": "Re-transcribe audio and regenerate everything. Takes longer.",
-    "note": "Note",
-    "queuedSummary": "{{count}} recording will be queued for summary regeneration.",
-    "queuedSummaryPlural": "{{count}} recordings will be queued for summary regeneration.",
-    "queuedSummaryToast": "{{count}} recording queued for summary regeneration",
-    "queuedSummaryToastPlural": "{{count}} recordings queued for summary regeneration",
-    "queuedTranscription": "{{count}} recording will be queued for full reprocessing.",
-    "queuedTranscriptionPlural": "{{count}} recordings will be queued for full reprocessing.",
-    "queuedTranscriptionToast": "{{count}} recording queued for full reprocessing",
-    "queuedTranscriptionToastPlural": "{{count}} recordings queued for full reprocessing",
-    "recordingsSelected": "{{count}} recording selected",
-    "recordingsSelectedPlural": "{{count}} recordings selected",
-    "startReprocessing": "Start Reprocessing",
-    "summaryOnly": "Summary Only",
-    "summaryOnlyDesc": "Regenerate title and summary from existing transcription. Faster option.",
-    "title": "Bulk Reprocess",
-    "warningSummary": "This will overwrite any manual edits to titles and summaries.",
-    "warningTranscription": "This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.",
-    "whatToReprocess": "What do you want to reprocess?"
-  },
-  "emptyState": {
-    "readyToCapture": "Ready to capture",
-    "readyBody": "Drop an audio file, record from your microphone, or capture system audio. Speakr turns it into a searchable transcript with summary and chat.",
-    "newRecording": "New recording",
-    "selectRecording": "Select a recording",
-    "selectBody": "Pick one from the sidebar or start a new recording."
   }
 }

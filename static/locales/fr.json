@@ -342,6 +342,41 @@
     "title": "Jetons API",
     "usageExamples": "Exemples d'utilisation"
   },
+  "asrEditor": {
+    "saved": "Enregistré",
+    "ctrlSHint": "Ctrl+S pour enregistrer",
+    "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
+  },
+  "bulkActions": {
+    "addOrRemoveTags": "Ajouter ou retirer des étiquettes",
+    "deleteSelected": "Supprimer la sélection",
+    "exitSelection": "Quitter le mode sélection",
+    "reprocess": "Retraiter",
+    "selectedCount": "{{count}} sélectionnés",
+    "star": "Favoris"
+  },
+  "bulkReprocessModal": {
+    "fullTranscription": "Transcription complète",
+    "fullTranscriptionDesc": "Retranscrire l'audio et tout régénérer. Prend plus de temps.",
+    "note": "Remarque",
+    "queuedSummary": "{{count}} enregistrement sera mis en file d'attente pour la régénération du résumé.",
+    "queuedSummaryPlural": "{{count}} enregistrements seront mis en file d'attente pour la régénération du résumé.",
+    "queuedSummaryToast": "{{count}} enregistrement mis en file d'attente pour la régénération du résumé",
+    "queuedSummaryToastPlural": "{{count}} enregistrements mis en file d'attente pour la régénération du résumé",
+    "queuedTranscription": "{{count}} enregistrement sera mis en file d'attente pour le retraitement complet.",
+    "queuedTranscriptionPlural": "{{count}} enregistrements seront mis en file d'attente pour le retraitement complet.",
+    "queuedTranscriptionToast": "{{count}} enregistrement mis en file d'attente pour le retraitement complet",
+    "queuedTranscriptionToastPlural": "{{count}} enregistrements mis en file d'attente pour le retraitement complet",
+    "recordingsSelected": "{{count}} enregistrement sélectionné",
+    "recordingsSelectedPlural": "{{count}} enregistrements sélectionnés",
+    "startReprocessing": "Démarrer le retraitement",
+    "summaryOnly": "Résumé uniquement",
+    "summaryOnlyDesc": "Régénérer le titre et le résumé à partir de la transcription existante. Option plus rapide.",
+    "title": "Retraitement en masse",
+    "warningSummary": "Cela écrasera toutes les modifications manuelles des titres et des résumés.",
+    "warningTranscription": "Cela écrasera toutes les transcriptions, tous les titres et tous les résumés. Les modifications manuelles seront perdues.",
+    "whatToReprocess": "Que souhaitez-vous retraiter ?"
+  },
   "buttons": {
     "addSegment": "Ajouter un Segment",
     "addSpeaker": "Ajouter un orateur",
@@ -544,6 +579,9 @@
     "warning": "Avertissement",
     "yes": "Oui"
   },
+  "confirms": {
+    "discardUnsavedRecording": "Vous avez un enregistrement non sauvegardé. Quitter le supprimera. Continuer ?"
+  },
   "customPrompts": {
     "currentDefaultPrompt": "Invite Par Défaut Actuelle (Utilisée si vous laissez le champ ci-dessus vide)",
     "promptDescription": "Cette invite sera utilisée pour générer des résumés de vos transcriptions. Elle remplace l'invite par défaut de l'administrateur.",
@@ -557,9 +595,22 @@
     "tipsTitle": "Conseils pour Rédiger des Invites Efficaces",
     "yourCustomPrompt": "Votre Invite Personnalisée de Résumé"
   },
+  "customizeSummary": {
+    "title": "Personnaliser l'invite de résumé",
+    "body": "Ajoutez un contexte ponctuel pour ce résumé ou remplacez entièrement l'invite résolue.",
+    "additionalContext": "Contexte supplémentaire",
+    "customPrompt": "Invite personnalisée",
+    "appendPlaceholder": "ex. L'ordre du jour est : ...",
+    "replacePlaceholder": "Saisissez une invite de résumé complète...",
+    "generateSummary": "Générer le résumé"
+  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Êtes-vous sûr de vouloir supprimer tous les intervenants sauvegardés ? Cette action ne peut pas être annulée.",
     "title": "Supprimer Tous les Intervenants"
+  },
+  "detail": {
+    "hints": "Indices",
+    "hintsUsed": "Indices de transcription utilisés pour cet enregistrement"
   },
   "dialogs": {
     "deleteRecording": {
@@ -585,6 +636,15 @@
       "save": "Enregistrer",
       "title": "Modifications Non Enregistrées"
     }
+  },
+  "display": {
+    "audioPlayerSection": "Lecteur audio",
+    "audioPlayerPositionLabel": "Position du lecteur dans l'écran de détail de l'enregistrement",
+    "audioPlayerPositionHelp": "Choisissez si le lecteur audio se trouve en bas de l'écran (par défaut) ou en haut, juste sous le titre et les métadonnées de l'enregistrement.",
+    "playerPositionBottom": "En bas",
+    "playerPositionBottomHelp": "Lecteur ancré sous les colonnes de transcription et de résumé. Par défaut.",
+    "playerPositionTop": "En haut",
+    "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées."
   },
   "duration": {
     "hours": "{{count}} heure",
@@ -626,6 +686,13 @@
     "watchFolderRemoved": "Dossier surveillé supprimé",
     "watchFolderError": "Impossible de créer le dossier surveillé",
     "watchFolderVariableWarning": "Ce tag est configuré comme dossier surveillé et l'invite contient des variables d'espace réservé. Les enregistrements traités via le répertoire d'auto-traitement n'ont pas d'interface permettant aux utilisateurs de saisir ces valeurs, donc les espaces réservés seront remplacés par des chaînes vides lors du premier résumé. Supprimez les espaces réservés ou renseignez les valeurs via le retraitement après téléversement."
+  },
+  "emptyState": {
+    "readyToCapture": "Prêt à enregistrer",
+    "readyBody": "Déposez un fichier audio, enregistrez depuis le microphone ou capturez l'audio système. Speakr le transforme en transcription consultable avec résumé et chat.",
+    "newRecording": "Nouvel enregistrement",
+    "selectRecording": "Sélectionnez un enregistrement",
+    "selectBody": "Choisissez-en un dans la barre latérale ou lancez un nouvel enregistrement."
   },
   "errors": {
     "audioExtractionFailed": "Échec de l’extraction audio",
@@ -789,6 +856,11 @@
     "gigabytes": "{{count}} GB",
     "kilobytes": "{{count}} KB",
     "megabytes": "{{count}} MB"
+  },
+  "floatingChat": {
+    "dockLeft": "Ancrer à gauche",
+    "dockRight": "Ancrer à droite",
+    "dockFull": "Plein écran"
   },
   "folderManagement": {
     "allFolders": "Tous les dossiers",
@@ -1084,6 +1156,29 @@
     "sessionOnly": "Session uniquement",
     "uploadingFile": "Envoi du fichier pour traitement incognito…"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Indications de transcription",
+    "title": "Indications de transcription enregistrées",
+    "description": "Enregistrez des modèles réutilisables combinant un prompt initial et des hotwords pour orienter le moteur de transcription. Choisissez-en un lors de l'envoi, ou utilisez-le comme valeur par défaut d'étiquette, de dossier ou de compte.",
+    "createNew": "Créer un modèle",
+    "availableTemplates": "Modèles enregistrés",
+    "createDefaults": "Créer des modèles de départ",
+    "templateName": "Nom",
+    "descriptionLabel": "Description",
+    "template": "Prompt initial",
+    "help": "Une phrase courte et simple décrivant l'enregistrement, par ex. « Ceci est une réunion d'affaires sur les ventes trimestrielles. » Elle est envoyée au moteur de transcription pour orienter la reconnaissance.",
+    "setDefault": "Définir comme modèle par défaut",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "selectOrCreate": "Sélectionnez un modèle à modifier ou créez-en un nouveau",
+    "default": "Par défaut",
+    "pickPlaceholder": "Insérer un modèle enregistré…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Mots optionnels séparés par des virgules pour améliorer la reconnaissance de termes spécifiques.",
+    "savedTemplate": "Modèle enregistré",
+    "savedTemplateHelp": "Remplit le prompt initial et les mots-clés ci-dessous."
+  },
   "inquire": {
     "activeFilters": "Filtres Actifs :",
     "askQuestions": "Posez des Questions sur Vos Transcriptions",
@@ -1156,6 +1251,40 @@
     "times": "fois",
     "title": "Gérer les Intervenants",
     "used": "Utilisé"
+  },
+  "mergeRecordings": {
+    "title": "Fusionner les enregistrements",
+    "action": "Fusionner",
+    "subtitle": "Combiner en un seul enregistrement",
+    "orderHint": "Les enregistrements seront joints dans cet ordre. Réorganisez-les pour correspondre au déroulement de la conversation.",
+    "untitled": "Enregistrement sans titre",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "titleLabel": "Titre (facultatif)",
+    "titlePlaceholder": "Laissez vide pour utiliser le titre du premier enregistrement",
+    "deleteOriginals": "Supprimer les enregistrements d'origine",
+    "deleteOriginalsHint": "Supprime les enregistrements sources après la création de l'enregistrement fusionné. Désactivé par défaut.",
+    "reprocessNote": "L'audio combiné sera de nouveau transcrit et résumé afin de produire une transcription et un résumé continus.",
+    "merging": "Fusion…",
+    "confirm": "Fusionner",
+    "videoNote": "Ces enregistrements contiennent de la vidéo. La fusion ne combine que l'audio ; l'enregistrement fusionné n'aura pas de vidéo.",
+    "audioPreparing": "L'audio est en cours de préparation. Il sera lisible dans un instant.",
+    "remove": "Retirer",
+    "addRecording": "Ajouter un enregistrement",
+    "searchRecordings": "Rechercher des enregistrements…",
+    "noCandidates": "Aucun enregistrement à ajouter",
+    "moreOptions": "Plus d'options",
+    "mergeWithExisting": "Fusionner avec un enregistrement existant…",
+    "noClip": "Aucun audio enregistré à fusionner.",
+    "uploadedMergeManually": "Votre extrait a été téléversé. Sélectionnez-le ainsi qu'un autre enregistrement de la liste pour les fusionner.",
+    "preparingClip": "Préparation de votre extrait — les options de fusion s'ouvriront dès qu'il sera prêt.",
+    "clipNotReady": "Impossible de préparer l'extrait pour la fusion.",
+    "thisRecording": "Cet enregistrement",
+    "searching": "Recherche…",
+    "notesLabel": "Conserver les notes de",
+    "notesNone": "Ne pas conserver de notes",
+    "notesWarning": "Les notes d'un seul enregistrement peuvent être conservées. Les participants et les étiquettes de tous les enregistrements sont regroupés.",
+    "notesHint": "Les participants et les étiquettes de tous les enregistrements sont regroupés."
   },
   "messages": {
     "colorSchemeApplied": "Thème de couleurs appliqué",
@@ -1287,6 +1416,7 @@
     "language": "Langue",
     "lightMode": "Mode Clair",
     "newRecording": "Nouvel Enregistrement",
+    "notifications": "Notifications",
     "recording": "Enregistrement",
     "settings": "Paramètres",
     "signOut": "Déconnexion",
@@ -1303,6 +1433,66 @@
     "placeholder": "Ajoutez vos notes ici...",
     "saveNotes": "Enregistrer les Notes",
     "title": "Notes"
+  },
+  "notifications": {
+    "dismiss": "Masquer",
+    "empty": "Rien ne requiert votre attention.",
+    "view": "Afficher",
+    "voiceEmbeddingChanged": "Le service de transcription renvoie des empreintes vocales différentes : les profils vocaux existants ne correspondront donc pas aux nouveaux enregistrements. Rétablissez le service précédent, ou reconstruisez les profils et réinitialisez la référence."
+  },
+  "preferences": {
+    "description": "Préférences d'affichage et de comportement de l'éditeur. Ces paramètres sont enregistrés sur votre compte et s'appliquent à tous les appareils.",
+    "editorAutosave": "Enregistrer automatiquement dans l'éditeur de transcription",
+    "editorAutosaveHelp": "Lorsque cette option est activée, les modifications dans l'éditeur de transcription sont enregistrées automatiquement quelques secondes après l'arrêt de la saisie. Désactivée par défaut, vous enregistrez explicitement via les boutons Enregistrer ou Ctrl+S.",
+    "filenameDatePattern": "Format de date du nom de fichier",
+    "filenameDatePatternAuto": "Automatique (formats courants)",
+    "filenameDatePatternCustom": "Motif personnalisé",
+    "filenameDateRegex": "Motif personnalisé (expression régulière)",
+    "filenameDateRegexHelp": "Doit contenir les groupes nommés year, month et day ; hour et minute sont facultatifs. Exemple : (?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
+    "filenameDatesSection": "Date de réunion depuis le nom de fichier",
+    "notifications": "Notifications",
+    "notifyEmailOnCompletion": "M'envoyer un e-mail à la fin d'une transcription",
+    "notifyEmailOnCompletionHelp": "Envoie un message à l'adresse de votre compte lorsqu'un enregistrement finit d'être transcrit, ainsi qu'en cas d'échec. Les résumés ne sont pas inclus. Utile pour les longs enregistrements que vous ne souhaitez pas attendre ; moins si vous importez de nombreux fichiers à la fois, chacun envoyant son propre message.",
+    "parseFilenameDates": "Extraire la date de réunion du nom de fichier",
+    "parseFilenameDatesHelp": "Lorsqu'un nom de fichier importé contient une date (par exemple 20260716_meeting.mp3), elle est utilisée comme date de réunion à la place des horodatages du fichier. Les fichiers sans date correspondante conservent le comportement actuel.",
+    "showTimestampsSimpleView": "Afficher les horodatages dans la vue simple",
+    "showTimestampsSimpleViewHelp": "Affiche un horodatage compact mm:ss à côté de chaque libellé de locuteur dans la vue simple. La vue bulle n'est pas affectée.",
+    "transcriptDisplay": "Affichage de la transcription",
+    "transcriptEditor": "Éditeur de transcription"
+  },
+  "preview": {
+    "placeholderLegend": "Légende des espaces réservés :",
+    "systemReplaced": "remplacé par le système (date du jour, transcription, noms des tags, etc.)",
+    "userSupplied": "fourni par l'utilisateur lors du téléversement ou du retraitement",
+    "userMessageHeading": "Message utilisateur :",
+    "liveUpdateNote": "L'emplacement des instructions de résumé se met à jour pendant que vous modifiez votre invite personnalisée ci-dessus. Les espaces réservés sont remplacés par les valeurs réelles lors du traitement d'un enregistrement."
+  },
+  "progressQueue": {
+    "title": "File de traitement",
+    "clear": "Effacer",
+    "uploading": "{{count}} en cours d'envoi",
+    "transcribing": "{{count}} en transcription",
+    "summarizing": "{{count}} en résumé",
+    "queued": "{{count}} en attente",
+    "cancel": "Annuler",
+    "failed": "Échecs",
+    "completed": "Terminés",
+    "done": "Terminé",
+    "empty": "Aucun élément dans la file",
+    "duplicateWarning": "Fichier en double détecté",
+    "retry": "Réessayer",
+    "delete": "Supprimer",
+    "uploadingShort": "en cours d'envoi",
+    "transcribingShort": "en transcription",
+    "summarizingShort": "en résumé",
+    "queuedShort": "en attente"
+  },
+  "promptVariables": {
+    "title": "Variables de l'invite",
+    "infoTooltip": "À propos des variables de l'invite",
+    "hintUpload": "Le tag ou le dossier sélectionné utilise des espaces réservés. Renseignez-les et ils seront substitués dans l'invite de résumé pour cet enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
+    "hintReprocess": "Ces valeurs sont substituées aux espaces réservés dans l'invite résolue. Les modifications sont enregistrées sur l'enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
+    "placeholderPrefix": "Entrer"
   },
   "pwa": {
     "installApp": "Installer l'App",
@@ -1533,6 +1723,22 @@
     "voiceMatchSuggestions": "Suggestions de correspondance vocale",
     "voiceProfile": "Profil vocal"
   },
+  "stats": {
+    "title": "Statistiques",
+    "totalLength": "Durée totale",
+    "speakers": "Intervenants",
+    "turns": "Tours de parole",
+    "words": "Mots",
+    "perSpeaker": "Par intervenant",
+    "sortedBySpeakingTime": "trié par temps de parole",
+    "speaker": "Intervenant",
+    "time": "Temps",
+    "pctAudio": "% de l'audio",
+    "wpm": "MPM",
+    "silence": "Silence",
+    "noStatsTitle": "Pas encore de statistiques",
+    "noStatsBody": "Les statistiques apparaissent une fois que l'enregistrement a été transcrit avec identification des intervenants et horodatage des segments."
+  },
   "status": {
     "completed": "Terminé",
     "failed": "Échec",
@@ -1560,6 +1766,13 @@
     "title": "Résumé",
     "customizePrompt": "Personnaliser le prompt",
     "editingSaveHint": "Modification — enregistrer depuis la barre d'onglets ci-dessus"
+  },
+  "summaryMode": {
+    "applyMode": "Mode d'application",
+    "append": "Ajouter",
+    "appendHelp": "Utiliser l'invite par défaut et ajouter ceci comme contexte supplémentaire.",
+    "replace": "Remplacer",
+    "replaceHelp": "Utiliser uniquement ce texte comme instructions de résumé."
   },
   "tagManagement": {
     "asrDefaults": "Paramètres ASR par Défaut",
@@ -1607,6 +1820,32 @@
     "weeksAgo": "Il y a {{count}} semaines",
     "yearAgo": "Il y a 1 an",
     "yearsAgo": "Il y a {{count}} ans"
+  },
+  "timestamps": {
+    "title": "Disponibilité des horodatages de transcription",
+    "description": "Choisissez si les agents de résumé et de chat reçoivent les horodatages dans la transcription, afin qu'ils puissent indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
+    "summaryLabel": "Fournir les horodatages à l'agent de résumé",
+    "chatLabel": "Fournir les horodatages à l'agent de chat",
+    "defaultFormat": "Format d'horodatage par défaut"
+  },
+  "toasts": {
+    "processingCompleted": "Traitement terminé !",
+    "processingFailed": "Échec du traitement",
+    "recordingFinalized": "Enregistrement envoyé pour traitement",
+    "recordingPaused": "Enregistrement en pause",
+    "recordingResumed": "Enregistrement repris",
+    "recordingMaxDurationApproaching": "L'enregistrement s'arrêtera automatiquement dans environ {{minutes}} minutes (durée maximale).",
+    "resumedRecordingNotIncognito": "Le mode incognito a été désactivé : cet enregistrement repris était déjà transmis au serveur.",
+    "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
+    "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?",
+    "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",
+    "retryingPendingUploads": "Nouvelle tentative des envois en attente…",
+    "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription",
+    "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
+    "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
+    "uploadFailedWillRetry": "Échec de l'envoi — enregistré et réessayé automatiquement à la reconnexion.",
+    "uploadRetriesExhaustedDownloaded": "Les tentatives automatiques d'envoi sont épuisées. L'audio a été enregistré dans votre dossier Téléchargements.",
+    "videoRecordingUnsupported": "Ce navigateur ne peut pas enregistrer la vidéo — capture de l'audio uniquement."
   },
   "tooltips": {
     "assignFolder": "Attribuer un dossier",
@@ -1693,40 +1932,6 @@
     "viewGuide": "Voir le Guide des Modèles",
     "format": "Format"
   },
-  "initialPromptTemplates": {
-    "tabTitle": "Indications de transcription",
-    "title": "Indications de transcription enregistrées",
-    "description": "Enregistrez des modèles réutilisables combinant un prompt initial et des hotwords pour orienter le moteur de transcription. Choisissez-en un lors de l'envoi, ou utilisez-le comme valeur par défaut d'étiquette, de dossier ou de compte.",
-    "createNew": "Créer un modèle",
-    "availableTemplates": "Modèles enregistrés",
-    "createDefaults": "Créer des modèles de départ",
-    "templateName": "Nom",
-    "descriptionLabel": "Description",
-    "template": "Prompt initial",
-    "help": "Une phrase courte et simple décrivant l'enregistrement, par ex. « Ceci est une réunion d'affaires sur les ventes trimestrielles. » Elle est envoyée au moteur de transcription pour orienter la reconnaissance.",
-    "setDefault": "Définir comme modèle par défaut",
-    "save": "Enregistrer",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "selectOrCreate": "Sélectionnez un modèle à modifier ou créez-en un nouveau",
-    "default": "Par défaut",
-    "pickPlaceholder": "Insérer un modèle enregistré…",
-    "hotwords": "Hotwords",
-    "hotwordsHelp": "Mots optionnels séparés par des virgules pour améliorer la reconnaissance de termes spécifiques.",
-    "savedTemplate": "Modèle enregistré",
-    "savedTemplateHelp": "Remplit le prompt initial et les mots-clés ci-dessous."
-  },
-  "detail": {
-    "hints": "Indices",
-    "hintsUsed": "Indices de transcription utilisés pour cet enregistrement"
-  },
-  "timestamps": {
-    "title": "Disponibilité des horodatages de transcription",
-    "description": "Choisissez si les agents de résumé et de chat reçoivent les horodatages dans la transcription, afin qu'ils puissent indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
-    "summaryLabel": "Fournir les horodatages à l'agent de résumé",
-    "chatLabel": "Fournir les horodatages à l'agent de chat",
-    "defaultFormat": "Format d'horodatage par défaut"
-  },
   "transcription": {
     "autoIdentifySpeakers": "Identifier Automatiquement les Orateurs",
     "bubble": "Bulle",
@@ -1748,6 +1953,12 @@
     "speakerLabels": "Étiquettes d'Orateur",
     "title": "Transcription",
     "unknownSpeaker": "Orateur Inconnu"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Aucun lien public pour le moment",
+    "noUsersFound": "Aucun utilisateur trouvé",
+    "add": "Ajouter",
+    "notSharedYet": "Pas encore partagé"
   },
   "upload": {
     "chunking": "Les gros fichiers seront automatiquement divisés pour le traitement",
@@ -1788,83 +1999,6 @@
   "uploadProgress": {
     "title": "Progression du Téléchargement"
   },
-  "promptVariables": {
-    "title": "Variables de l'invite",
-    "infoTooltip": "À propos des variables de l'invite",
-    "hintUpload": "Le tag ou le dossier sélectionné utilise des espaces réservés. Renseignez-les et ils seront substitués dans l'invite de résumé pour cet enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
-    "hintReprocess": "Ces valeurs sont substituées aux espaces réservés dans l'invite résolue. Les modifications sont enregistrées sur l'enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
-    "placeholderPrefix": "Entrer"
-  },
-  "summaryMode": {
-    "applyMode": "Mode d'application",
-    "append": "Ajouter",
-    "appendHelp": "Utiliser l'invite par défaut et ajouter ceci comme contexte supplémentaire.",
-    "replace": "Remplacer",
-    "replaceHelp": "Utiliser uniquement ce texte comme instructions de résumé."
-  },
-  "customizeSummary": {
-    "title": "Personnaliser l'invite de résumé",
-    "body": "Ajoutez un contexte ponctuel pour ce résumé ou remplacez entièrement l'invite résolue.",
-    "additionalContext": "Contexte supplémentaire",
-    "customPrompt": "Invite personnalisée",
-    "appendPlaceholder": "ex. L'ordre du jour est : ...",
-    "replacePlaceholder": "Saisissez une invite de résumé complète...",
-    "generateSummary": "Générer le résumé"
-  },
-  "asrEditor": {
-    "saved": "Enregistré",
-    "ctrlSHint": "Ctrl+S pour enregistrer",
-    "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
-  },
-  "preview": {
-    "placeholderLegend": "Légende des espaces réservés :",
-    "systemReplaced": "remplacé par le système (date du jour, transcription, noms des tags, etc.)",
-    "userSupplied": "fourni par l'utilisateur lors du téléversement ou du retraitement",
-    "userMessageHeading": "Message utilisateur :",
-    "liveUpdateNote": "L'emplacement des instructions de résumé se met à jour pendant que vous modifiez votre invite personnalisée ci-dessus. Les espaces réservés sont remplacés par les valeurs réelles lors du traitement d'un enregistrement."
-  },
-  "preferences": {
-    "description": "Préférences d'affichage et de comportement de l'éditeur. Ces paramètres sont enregistrés sur votre compte et s'appliquent à tous les appareils.",
-    "editorAutosave": "Enregistrer automatiquement dans l'éditeur de transcription",
-    "editorAutosaveHelp": "Lorsque cette option est activée, les modifications dans l'éditeur de transcription sont enregistrées automatiquement quelques secondes après l'arrêt de la saisie. Désactivée par défaut, vous enregistrez explicitement via les boutons Enregistrer ou Ctrl+S.",
-    "filenameDatePattern": "Format de date du nom de fichier",
-    "filenameDatePatternAuto": "Automatique (formats courants)",
-    "filenameDatePatternCustom": "Motif personnalisé",
-    "filenameDateRegex": "Motif personnalisé (expression régulière)",
-    "filenameDateRegexHelp": "Doit contenir les groupes nommés year, month et day ; hour et minute sont facultatifs. Exemple : (?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
-    "filenameDatesSection": "Date de réunion depuis le nom de fichier",
-    "notifications": "Notifications",
-    "notifyEmailOnCompletion": "M'envoyer un e-mail à la fin d'une transcription",
-    "notifyEmailOnCompletionHelp": "Envoie un message à l'adresse de votre compte lorsqu'un enregistrement finit d'être transcrit, ainsi qu'en cas d'échec. Les résumés ne sont pas inclus. Utile pour les longs enregistrements que vous ne souhaitez pas attendre ; moins si vous importez de nombreux fichiers à la fois, chacun envoyant son propre message.",
-    "parseFilenameDates": "Extraire la date de réunion du nom de fichier",
-    "parseFilenameDatesHelp": "Lorsqu'un nom de fichier importé contient une date (par exemple 20260716_meeting.mp3), elle est utilisée comme date de réunion à la place des horodatages du fichier. Les fichiers sans date correspondante conservent le comportement actuel.",
-    "showTimestampsSimpleView": "Afficher les horodatages dans la vue simple",
-    "showTimestampsSimpleViewHelp": "Affiche un horodatage compact mm:ss à côté de chaque libellé de locuteur dans la vue simple. La vue bulle n'est pas affectée.",
-    "transcriptDisplay": "Affichage de la transcription",
-    "transcriptEditor": "Éditeur de transcription"
-  },
-  "confirms": {
-    "discardUnsavedRecording": "Vous avez un enregistrement non sauvegardé. Quitter le supprimera. Continuer ?"
-  },
-  "toasts": {
-    "processingCompleted": "Traitement terminé !",
-    "processingFailed": "Échec du traitement",
-    "recordingFinalized": "Enregistrement envoyé pour traitement",
-    "recordingPaused": "Enregistrement en pause",
-    "recordingResumed": "Enregistrement repris",
-    "recordingMaxDurationApproaching": "L'enregistrement s'arrêtera automatiquement dans environ {{minutes}} minutes (durée maximale).",
-    "resumedRecordingNotIncognito": "Le mode incognito a été désactivé : cet enregistrement repris était déjà transmis au serveur.",
-    "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
-    "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?",
-    "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",
-    "retryingPendingUploads": "Nouvelle tentative des envois en attente…",
-    "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription",
-    "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
-    "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
-    "uploadFailedWillRetry": "Échec de l'envoi — enregistré et réessayé automatiquement à la reconnexion.",
-    "uploadRetriesExhaustedDownloaded": "Les tentatives automatiques d'envoi sont épuisées. L'audio a été enregistré dans votre dossier Téléchargements.",
-    "videoRecordingUnsupported": "Ce navigateur ne peut pas enregistrer la vidéo — capture de l'audio uniquement."
-  },
   "webhooks": {
     "title": "Webhooks",
     "subtitle": "Recevez des notifications HTTP lorsque les enregistrements changent. Chaque endpoint est signé en HMAC-SHA256 pour que les récepteurs puissent vérifier l'authenticité.",
@@ -1881,132 +2015,5 @@
     "secretBannerTitle": "Copiez ce secret maintenant — il ne sera plus affiché",
     "secretBannerHint": "Signez chaque requête du récepteur : HMAC-SHA256 du corps brut avec ce secret. En-tête : Speakr-Signature: sha256=<hex>",
     "copy": "Copier"
-  },
-  "display": {
-    "audioPlayerSection": "Lecteur audio",
-    "audioPlayerPositionLabel": "Position du lecteur dans l'écran de détail de l'enregistrement",
-    "audioPlayerPositionHelp": "Choisissez si le lecteur audio se trouve en bas de l'écran (par défaut) ou en haut, juste sous le titre et les métadonnées de l'enregistrement.",
-    "playerPositionBottom": "En bas",
-    "playerPositionBottomHelp": "Lecteur ancré sous les colonnes de transcription et de résumé. Par défaut.",
-    "playerPositionTop": "En haut",
-    "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées."
-  },
-  "stats": {
-    "title": "Statistiques",
-    "totalLength": "Durée totale",
-    "speakers": "Intervenants",
-    "turns": "Tours de parole",
-    "words": "Mots",
-    "perSpeaker": "Par intervenant",
-    "sortedBySpeakingTime": "trié par temps de parole",
-    "speaker": "Intervenant",
-    "time": "Temps",
-    "pctAudio": "% de l'audio",
-    "wpm": "MPM",
-    "silence": "Silence",
-    "noStatsTitle": "Pas encore de statistiques",
-    "noStatsBody": "Les statistiques apparaissent une fois que l'enregistrement a été transcrit avec identification des intervenants et horodatage des segments."
-  },
-  "progressQueue": {
-    "title": "File de traitement",
-    "clear": "Effacer",
-    "uploading": "{{count}} en cours d'envoi",
-    "transcribing": "{{count}} en transcription",
-    "summarizing": "{{count}} en résumé",
-    "queued": "{{count}} en attente",
-    "cancel": "Annuler",
-    "failed": "Échecs",
-    "completed": "Terminés",
-    "done": "Terminé",
-    "empty": "Aucun élément dans la file",
-    "duplicateWarning": "Fichier en double détecté",
-    "retry": "Réessayer",
-    "delete": "Supprimer",
-    "uploadingShort": "en cours d'envoi",
-    "transcribingShort": "en transcription",
-    "summarizingShort": "en résumé",
-    "queuedShort": "en attente"
-  },
-  "floatingChat": {
-    "dockLeft": "Ancrer à gauche",
-    "dockRight": "Ancrer à droite",
-    "dockFull": "Plein écran"
-  },
-  "bulkActions": {
-    "addOrRemoveTags": "Ajouter ou retirer des étiquettes",
-    "deleteSelected": "Supprimer la sélection",
-    "exitSelection": "Quitter le mode sélection",
-    "reprocess": "Retraiter",
-    "selectedCount": "{{count}} sélectionnés",
-    "star": "Favoris"
-  },
-  "unifiedShareModal": {
-    "noPublicLinks": "Aucun lien public pour le moment",
-    "noUsersFound": "Aucun utilisateur trouvé",
-    "add": "Ajouter",
-    "notSharedYet": "Pas encore partagé"
-  },
-  "mergeRecordings": {
-    "title": "Fusionner les enregistrements",
-    "action": "Fusionner",
-    "subtitle": "Combiner en un seul enregistrement",
-    "orderHint": "Les enregistrements seront joints dans cet ordre. Réorganisez-les pour correspondre au déroulement de la conversation.",
-    "untitled": "Enregistrement sans titre",
-    "moveUp": "Monter",
-    "moveDown": "Descendre",
-    "titleLabel": "Titre (facultatif)",
-    "titlePlaceholder": "Laissez vide pour utiliser le titre du premier enregistrement",
-    "deleteOriginals": "Supprimer les enregistrements d'origine",
-    "deleteOriginalsHint": "Supprime les enregistrements sources après la création de l'enregistrement fusionné. Désactivé par défaut.",
-    "reprocessNote": "L'audio combiné sera de nouveau transcrit et résumé afin de produire une transcription et un résumé continus.",
-    "merging": "Fusion…",
-    "confirm": "Fusionner",
-    "videoNote": "Ces enregistrements contiennent de la vidéo. La fusion ne combine que l'audio ; l'enregistrement fusionné n'aura pas de vidéo.",
-    "audioPreparing": "L'audio est en cours de préparation. Il sera lisible dans un instant.",
-    "remove": "Retirer",
-    "addRecording": "Ajouter un enregistrement",
-    "searchRecordings": "Rechercher des enregistrements…",
-    "noCandidates": "Aucun enregistrement à ajouter",
-    "moreOptions": "Plus d'options",
-    "mergeWithExisting": "Fusionner avec un enregistrement existant…",
-    "noClip": "Aucun audio enregistré à fusionner.",
-    "uploadedMergeManually": "Votre extrait a été téléversé. Sélectionnez-le ainsi qu'un autre enregistrement de la liste pour les fusionner.",
-    "preparingClip": "Préparation de votre extrait — les options de fusion s'ouvriront dès qu'il sera prêt.",
-    "clipNotReady": "Impossible de préparer l'extrait pour la fusion.",
-    "thisRecording": "Cet enregistrement",
-    "searching": "Recherche…",
-    "notesLabel": "Conserver les notes de",
-    "notesNone": "Ne pas conserver de notes",
-    "notesWarning": "Les notes d'un seul enregistrement peuvent être conservées. Les participants et les étiquettes de tous les enregistrements sont regroupés.",
-    "notesHint": "Les participants et les étiquettes de tous les enregistrements sont regroupés."
-  },
-  "bulkReprocessModal": {
-    "fullTranscription": "Transcription complète",
-    "fullTranscriptionDesc": "Retranscrire l'audio et tout régénérer. Prend plus de temps.",
-    "note": "Remarque",
-    "queuedSummary": "{{count}} enregistrement sera mis en file d'attente pour la régénération du résumé.",
-    "queuedSummaryPlural": "{{count}} enregistrements seront mis en file d'attente pour la régénération du résumé.",
-    "queuedSummaryToast": "{{count}} enregistrement mis en file d'attente pour la régénération du résumé",
-    "queuedSummaryToastPlural": "{{count}} enregistrements mis en file d'attente pour la régénération du résumé",
-    "queuedTranscription": "{{count}} enregistrement sera mis en file d'attente pour le retraitement complet.",
-    "queuedTranscriptionPlural": "{{count}} enregistrements seront mis en file d'attente pour le retraitement complet.",
-    "queuedTranscriptionToast": "{{count}} enregistrement mis en file d'attente pour le retraitement complet",
-    "queuedTranscriptionToastPlural": "{{count}} enregistrements mis en file d'attente pour le retraitement complet",
-    "recordingsSelected": "{{count}} enregistrement sélectionné",
-    "recordingsSelectedPlural": "{{count}} enregistrements sélectionnés",
-    "startReprocessing": "Démarrer le retraitement",
-    "summaryOnly": "Résumé uniquement",
-    "summaryOnlyDesc": "Régénérer le titre et le résumé à partir de la transcription existante. Option plus rapide.",
-    "title": "Retraitement en masse",
-    "warningSummary": "Cela écrasera toutes les modifications manuelles des titres et des résumés.",
-    "warningTranscription": "Cela écrasera toutes les transcriptions, tous les titres et tous les résumés. Les modifications manuelles seront perdues.",
-    "whatToReprocess": "Que souhaitez-vous retraiter ?"
-  },
-  "emptyState": {
-    "readyToCapture": "Prêt à enregistrer",
-    "readyBody": "Déposez un fichier audio, enregistrez depuis le microphone ou capturez l'audio système. Speakr le transforme en transcription consultable avec résumé et chat.",
-    "newRecording": "Nouvel enregistrement",
-    "selectRecording": "Sélectionnez un enregistrement",
-    "selectBody": "Choisissez-en un dans la barre latérale ou lancez un nouvel enregistrement."
   }
 }

@@ -342,6 +342,41 @@
     "title": "Tokens de API",
     "usageExamples": "Ejemplos de uso"
   },
+  "asrEditor": {
+    "saved": "Guardado",
+    "ctrlSHint": "Ctrl+S para guardar",
+    "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
+  },
+  "bulkActions": {
+    "addOrRemoveTags": "Añadir o quitar etiquetas",
+    "deleteSelected": "Eliminar seleccionados",
+    "exitSelection": "Salir del modo de selección",
+    "reprocess": "Reprocesar",
+    "selectedCount": "{{count}} seleccionados",
+    "star": "Destacar"
+  },
+  "bulkReprocessModal": {
+    "fullTranscription": "Transcripción completa",
+    "fullTranscriptionDesc": "Volver a transcribir el audio y regenerar todo. Tarda más.",
+    "note": "Nota",
+    "queuedSummary": "{{count}} grabación se pondrá en cola para regenerar el resumen.",
+    "queuedSummaryPlural": "{{count}} grabaciones se pondrán en cola para regenerar el resumen.",
+    "queuedSummaryToast": "{{count}} grabación en cola para regenerar el resumen",
+    "queuedSummaryToastPlural": "{{count}} grabaciones en cola para regenerar el resumen",
+    "queuedTranscription": "{{count}} grabación se pondrá en cola para el reprocesamiento completo.",
+    "queuedTranscriptionPlural": "{{count}} grabaciones se pondrán en cola para el reprocesamiento completo.",
+    "queuedTranscriptionToast": "{{count}} grabación en cola para reprocesamiento completo",
+    "queuedTranscriptionToastPlural": "{{count}} grabaciones en cola para reprocesamiento completo",
+    "recordingsSelected": "{{count}} grabación seleccionada",
+    "recordingsSelectedPlural": "{{count}} grabaciones seleccionadas",
+    "startReprocessing": "Iniciar reprocesamiento",
+    "summaryOnly": "Solo resumen",
+    "summaryOnlyDesc": "Regenerar el título y el resumen a partir de la transcripción existente. Opción más rápida.",
+    "title": "Reprocesamiento masivo",
+    "warningSummary": "Esto sobrescribirá cualquier edición manual de títulos y resúmenes.",
+    "warningTranscription": "Esto sobrescribirá todas las transcripciones, títulos y resúmenes. Las ediciones manuales se perderán.",
+    "whatToReprocess": "¿Qué desea reprocesar?"
+  },
   "buttons": {
     "addSegment": "Agregar Segmento",
     "addSpeaker": "Añadir Hablante",
@@ -544,6 +579,9 @@
     "warning": "Advertencia",
     "yes": "Sí"
   },
+  "confirms": {
+    "discardUnsavedRecording": "Tiene una grabación sin guardar. Si sale, se descartará. ¿Continuar?"
+  },
   "customPrompts": {
     "currentDefaultPrompt": "Prompt Predeterminado Actual (Se usa si dejas lo anterior en blanco)",
     "promptDescription": "Este prompt se utilizará para generar resúmenes de tus transcripciones. Anula el prompt predeterminado del administrador.",
@@ -557,9 +595,22 @@
     "tipsTitle": "Consejos para Escribir Prompts Efectivos",
     "yourCustomPrompt": "Tu Prompt Personalizado de Resumen"
   },
+  "customizeSummary": {
+    "title": "Personalizar prompt de resumen",
+    "body": "Añade contexto puntual para este resumen o reemplaza por completo el prompt resuelto.",
+    "additionalContext": "Contexto adicional",
+    "customPrompt": "Prompt personalizado",
+    "appendPlaceholder": "p. ej. El orden del día es: ...",
+    "replacePlaceholder": "Introduce un prompt de resumen completo...",
+    "generateSummary": "Generar resumen"
+  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "¿Estás seguro de que quieres eliminar todos los oradores guardados? Esta acción no se puede deshacer.",
     "title": "Eliminar Todos los Oradores"
+  },
+  "detail": {
+    "hints": "Indicaciones",
+    "hintsUsed": "Indicaciones de transcripción usadas en esta grabación"
   },
   "dialogs": {
     "deleteRecording": {
@@ -585,6 +636,15 @@
       "save": "Guardar",
       "title": "Cambios Sin Guardar"
     }
+  },
+  "display": {
+    "audioPlayerSection": "Reproductor de audio",
+    "audioPlayerPositionLabel": "Posición del reproductor en la pantalla de detalle de la grabación",
+    "audioPlayerPositionHelp": "Elige si el reproductor de audio se sitúa en la parte inferior de la pantalla (predeterminado) o en la parte superior, justo debajo del título y los metadatos de la grabación.",
+    "playerPositionBottom": "Inferior",
+    "playerPositionBottomHelp": "Reproductor anclado debajo de las columnas de transcripción y resumen. Predeterminado.",
+    "playerPositionTop": "Superior",
+    "playerPositionTopHelp": "El reproductor se sitúa encima de las columnas, justo debajo del título y la barra de metadatos."
   },
   "duration": {
     "hours": "{{count}} hora",
@@ -626,6 +686,13 @@
     "watchFolderRemoved": "Carpeta vigilada eliminada",
     "watchFolderError": "No se pudo crear la carpeta vigilada",
     "watchFolderVariableWarning": "Esta etiqueta está configurada como carpeta vigilada y el prompt contiene variables de marcador de posición. Las grabaciones procesadas a través del directorio de auto-procesamiento no tienen interfaz para que los usuarios completen esos valores, así que los marcadores se sustituirán por cadenas vacías en el primer resumen. Elimina los marcadores o completa los valores mediante reprocesamiento tras la subida."
+  },
+  "emptyState": {
+    "readyToCapture": "Listo para grabar",
+    "readyBody": "Arrastre un archivo de audio, grabe desde el micrófono o capture el audio del sistema. Speakr lo convierte en una transcripción con resumen y chat.",
+    "newRecording": "Nueva grabación",
+    "selectRecording": "Seleccione una grabación",
+    "selectBody": "Elija una en la barra lateral o inicie una nueva grabación."
   },
   "errors": {
     "audioExtractionFailed": "Falló la extracción de audio",
@@ -789,6 +856,11 @@
     "gigabytes": "{{count}} GB",
     "kilobytes": "{{count}} KB",
     "megabytes": "{{count}} MB"
+  },
+  "floatingChat": {
+    "dockLeft": "Anclar a la izquierda",
+    "dockRight": "Anclar a la derecha",
+    "dockFull": "Pantalla completa"
   },
   "folderManagement": {
     "allFolders": "Todas las carpetas",
@@ -1084,6 +1156,29 @@
     "sessionOnly": "Solo sesión",
     "uploadingFile": "Subiendo archivo para procesamiento incógnito…"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Indicaciones de transcripción",
+    "title": "Indicaciones de transcripción guardadas",
+    "description": "Guarda plantillas reutilizables que combinan un prompt inicial y hotwords para orientar el motor de transcripción. Elige una al subir un archivo o úsala como predeterminada de una etiqueta, carpeta o cuenta.",
+    "createNew": "Crear plantilla",
+    "availableTemplates": "Plantillas guardadas",
+    "createDefaults": "Crear plantillas iniciales",
+    "templateName": "Nombre",
+    "descriptionLabel": "Descripción",
+    "template": "Prompt inicial",
+    "help": "Una frase breve y sencilla que describa la grabación, p. ej. «Esta es una reunión de negocios sobre las ventas trimestrales.» Se envía al motor de transcripción para orientar el reconocimiento.",
+    "setDefault": "Establecer como plantilla predeterminada",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva",
+    "default": "Predeterminado",
+    "pickPlaceholder": "Insertar una plantilla guardada…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Palabras opcionales separadas por comas para mejorar el reconocimiento de términos específicos.",
+    "savedTemplate": "Plantilla guardada",
+    "savedTemplateHelp": "Rellena el prompt inicial y las palabras clave a continuación."
+  },
   "inquire": {
     "activeFilters": "Filtros Activos:",
     "askQuestions": "Haga Preguntas Sobre Sus Transcripciones",
@@ -1156,6 +1251,40 @@
     "times": "veces",
     "title": "Gestionar Oradores",
     "used": "Usado"
+  },
+  "mergeRecordings": {
+    "title": "Combinar grabaciones",
+    "action": "Combinar",
+    "subtitle": "Unir en una sola grabación",
+    "orderHint": "Las grabaciones se unirán en este orden. Reordénalas para que coincidan con la secuencia de la conversación.",
+    "untitled": "Grabación sin título",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "titleLabel": "Título (opcional)",
+    "titlePlaceholder": "Déjalo en blanco para usar el título de la primera grabación",
+    "deleteOriginals": "Eliminar las grabaciones originales",
+    "deleteOriginalsHint": "Elimina las grabaciones de origen después de crear la combinada. Desactivado de forma predeterminada.",
+    "reprocessNote": "El audio combinado se transcribirá y resumirá de nuevo para producir una transcripción y un resumen continuos.",
+    "merging": "Combinando…",
+    "confirm": "Combinar",
+    "videoNote": "Estas grabaciones incluyen vídeo. La combinación une solo el audio; la grabación combinada no tendrá vídeo.",
+    "audioPreparing": "El audio aún se está preparando. Podrás reproducirlo en un momento.",
+    "remove": "Quitar",
+    "addRecording": "Añadir una grabación",
+    "searchRecordings": "Buscar grabaciones…",
+    "noCandidates": "No hay grabaciones disponibles para añadir",
+    "moreOptions": "Más opciones",
+    "mergeWithExisting": "Combinar con una grabación existente…",
+    "noClip": "No hay audio grabado para combinar.",
+    "uploadedMergeManually": "Tu clip se ha subido. Selecciónalo junto con otra grabación de la lista para combinarlos.",
+    "preparingClip": "Preparando tu clip: las opciones de combinación se abrirán cuando esté listo.",
+    "clipNotReady": "No se pudo preparar el clip para la combinación.",
+    "thisRecording": "Esta grabación",
+    "searching": "Buscando…",
+    "notesLabel": "Conservar notas de",
+    "notesNone": "No conservar notas",
+    "notesWarning": "Solo se pueden conservar las notas de una grabación. Los participantes y las etiquetas de todas las grabaciones se combinan.",
+    "notesHint": "Los participantes y las etiquetas de todas las grabaciones se combinan."
   },
   "messages": {
     "colorSchemeApplied": "Esquema de color aplicado",
@@ -1287,6 +1416,7 @@
     "language": "Idioma",
     "lightMode": "Modo Claro",
     "newRecording": "Nueva Grabación",
+    "notifications": "Notificaciones",
     "recording": "Grabación",
     "settings": "Configuración",
     "signOut": "Cerrar Sesión",
@@ -1303,6 +1433,66 @@
     "placeholder": "Añade tus notas aquí...",
     "saveNotes": "Guardar Notas",
     "title": "Notas"
+  },
+  "notifications": {
+    "dismiss": "Descartar",
+    "empty": "No hay nada que requiera su atención.",
+    "view": "Ver",
+    "voiceEmbeddingChanged": "El servicio de transcripción devuelve embeddings de voz distintos, por lo que los perfiles de voz existentes no coincidirán con las grabaciones nuevas. Restaure el backend anterior, o reconstruya los perfiles y restablezca la referencia."
+  },
+  "preferences": {
+    "description": "Preferencias de visualización y comportamiento del editor. Estos ajustes se guardan en tu cuenta y se aplican en todos los dispositivos.",
+    "editorAutosave": "Guardar automáticamente en el editor de transcripción",
+    "editorAutosaveHelp": "Cuando está activado, las ediciones en el editor de transcripción se guardan automáticamente un par de segundos después de dejar de escribir. Por defecto está desactivado, y guardas explícitamente con los botones Guardar o Ctrl+S.",
+    "filenameDatePattern": "Formato de fecha del nombre de archivo",
+    "filenameDatePatternAuto": "Automático (formatos comunes)",
+    "filenameDatePatternCustom": "Patrón personalizado",
+    "filenameDateRegex": "Patrón personalizado (expresión regular)",
+    "filenameDateRegexHelp": "Debe contener los grupos con nombre year, month y day; hour y minute son opcionales. Ejemplo: (?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
+    "filenameDatesSection": "Fecha de reunión desde el nombre de archivo",
+    "notifications": "Notificaciones",
+    "notifyEmailOnCompletion": "Enviarme un correo cuando termine una transcripción",
+    "notifyEmailOnCompletionHelp": "Envía un mensaje a la dirección de su cuenta cuando una grabación termina de transcribirse y cuando falla. No incluye los resúmenes. Resulta útil para grabaciones largas que no quiere esperar; menos si sube muchos archivos a la vez, ya que cada uno envía su propio mensaje.",
+    "parseFilenameDates": "Extraer la fecha de reunión del nombre de archivo",
+    "parseFilenameDatesHelp": "Cuando un nombre de archivo subido contiene una fecha (por ejemplo 20260716_meeting.mp3), se usa como fecha de reunión en lugar de las marcas de tiempo del archivo. Los archivos sin fecha coincidente mantienen el comportamiento actual.",
+    "showTimestampsSimpleView": "Mostrar marcas de tiempo en la vista simple",
+    "showTimestampsSimpleViewHelp": "Muestra una marca de tiempo compacta mm:ss junto a cada etiqueta de hablante en la vista simple. La vista de burbujas no se ve afectada.",
+    "transcriptDisplay": "Visualización de la transcripción",
+    "transcriptEditor": "Editor de transcripción"
+  },
+  "preview": {
+    "placeholderLegend": "Leyenda de marcadores:",
+    "systemReplaced": "reemplazado por el sistema (fecha actual, transcripción, nombres de etiquetas, etc.)",
+    "userSupplied": "proporcionado por el usuario al subir o reprocesar",
+    "userMessageHeading": "Mensaje del usuario:",
+    "liveUpdateNote": "La sección de instrucciones de resumen se actualiza mientras editas tu prompt personalizado arriba. Los marcadores se sustituyen por valores reales al procesar una grabación."
+  },
+  "progressQueue": {
+    "title": "Cola de procesamiento",
+    "clear": "Limpiar",
+    "uploading": "{{count}} subiendo",
+    "transcribing": "{{count}} transcribiendo",
+    "summarizing": "{{count}} resumiendo",
+    "queued": "{{count}} en cola",
+    "cancel": "Cancelar",
+    "failed": "Fallidos",
+    "completed": "Completados",
+    "done": "Hecho",
+    "empty": "No hay elementos en la cola",
+    "duplicateWarning": "Archivo duplicado detectado",
+    "retry": "Reintentar",
+    "delete": "Eliminar",
+    "uploadingShort": "subiendo",
+    "transcribingShort": "transcribiendo",
+    "summarizingShort": "resumiendo",
+    "queuedShort": "en cola"
+  },
+  "promptVariables": {
+    "title": "Variables del prompt",
+    "infoTooltip": "Acerca de las variables del prompt",
+    "hintUpload": "La etiqueta o carpeta seleccionada usa marcadores de posición. Complétalos y se sustituirán en el prompt de resumen para esta grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
+    "hintReprocess": "Estos valores se sustituyen en los marcadores de posición del prompt resuelto. Los cambios se guardan en la grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
+    "placeholderPrefix": "Introducir"
   },
   "pwa": {
     "installApp": "Instalar App",
@@ -1533,6 +1723,22 @@
     "voiceMatchSuggestions": "Sugerencias de coincidencia de voz",
     "voiceProfile": "Perfil de voz"
   },
+  "stats": {
+    "title": "Estadísticas",
+    "totalLength": "Duración total",
+    "speakers": "Hablantes",
+    "turns": "Turnos",
+    "words": "Palabras",
+    "perSpeaker": "Por hablante",
+    "sortedBySpeakingTime": "ordenado por tiempo de habla",
+    "speaker": "Hablante",
+    "time": "Tiempo",
+    "pctAudio": "% del audio",
+    "wpm": "PPM",
+    "silence": "Silencio",
+    "noStatsTitle": "Aún no hay estadísticas",
+    "noStatsBody": "Las estadísticas aparecen cuando la grabación se ha transcrito con identificación de hablantes y marcas de tiempo de los segmentos."
+  },
   "status": {
     "completed": "Completado",
     "failed": "Falló",
@@ -1560,6 +1766,13 @@
     "title": "Resumen",
     "customizePrompt": "Personalizar instrucción",
     "editingSaveHint": "Editando — guarda desde la barra de pestañas de arriba"
+  },
+  "summaryMode": {
+    "applyMode": "Modo de aplicación",
+    "append": "Añadir",
+    "appendHelp": "Usar el prompt por defecto y añadir esto como contexto adicional.",
+    "replace": "Reemplazar",
+    "replaceHelp": "Usar únicamente este texto como instrucciones de resumen."
   },
   "tagManagement": {
     "asrDefaults": "Configuraciones ASR Predeterminadas",
@@ -1607,6 +1820,32 @@
     "weeksAgo": "Hace {{count}} semanas",
     "yearAgo": "Hace 1 año",
     "yearsAgo": "Hace {{count}} años"
+  },
+  "timestamps": {
+    "title": "Disponibilidad de marcas de tiempo en la transcripción",
+    "description": "Elige si los agentes de resumen y de chat reciben marcas de tiempo en la transcripción, para que puedan indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
+    "summaryLabel": "Dar marcas de tiempo al agente de resumen",
+    "chatLabel": "Dar marcas de tiempo al agente de chat",
+    "defaultFormat": "Formato de marca de tiempo predeterminado"
+  },
+  "toasts": {
+    "processingCompleted": "¡Procesamiento completado!",
+    "processingFailed": "Error en el procesamiento",
+    "recordingFinalized": "Grabación subida para procesamiento",
+    "recordingPaused": "Grabación en pausa",
+    "recordingResumed": "Grabación reanudada",
+    "recordingMaxDurationApproaching": "La grabación se detendrá automáticamente en unos {{minutes}} minutos (duración máxima).",
+    "resumedRecordingNotIncognito": "El modo incógnito se desactivó: esta grabación reanudada ya se estaba transmitiendo al servidor.",
+    "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
+    "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?",
+    "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
+    "retryingPendingUploads": "Reintentando subidas pendientes…",
+    "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción",
+    "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
+    "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
+    "uploadFailedWillRetry": "Error en la subida — guardada y se reintentará automáticamente al reconectar.",
+    "uploadRetriesExhaustedDownloaded": "Se agotaron los reintentos automáticos de subida. El audio se guardó en tu carpeta de descargas.",
+    "videoRecordingUnsupported": "Este navegador no puede grabar vídeo; se capturará solo el audio."
   },
   "tooltips": {
     "assignFolder": "Asignar carpeta",
@@ -1693,40 +1932,6 @@
     "viewGuide": "Ver Guía de Plantillas",
     "format": "Formato"
   },
-  "initialPromptTemplates": {
-    "tabTitle": "Indicaciones de transcripción",
-    "title": "Indicaciones de transcripción guardadas",
-    "description": "Guarda plantillas reutilizables que combinan un prompt inicial y hotwords para orientar el motor de transcripción. Elige una al subir un archivo o úsala como predeterminada de una etiqueta, carpeta o cuenta.",
-    "createNew": "Crear plantilla",
-    "availableTemplates": "Plantillas guardadas",
-    "createDefaults": "Crear plantillas iniciales",
-    "templateName": "Nombre",
-    "descriptionLabel": "Descripción",
-    "template": "Prompt inicial",
-    "help": "Una frase breve y sencilla que describa la grabación, p. ej. «Esta es una reunión de negocios sobre las ventas trimestrales.» Se envía al motor de transcripción para orientar el reconocimiento.",
-    "setDefault": "Establecer como plantilla predeterminada",
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "delete": "Eliminar",
-    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva",
-    "default": "Predeterminado",
-    "pickPlaceholder": "Insertar una plantilla guardada…",
-    "hotwords": "Hotwords",
-    "hotwordsHelp": "Palabras opcionales separadas por comas para mejorar el reconocimiento de términos específicos.",
-    "savedTemplate": "Plantilla guardada",
-    "savedTemplateHelp": "Rellena el prompt inicial y las palabras clave a continuación."
-  },
-  "detail": {
-    "hints": "Indicaciones",
-    "hintsUsed": "Indicaciones de transcripción usadas en esta grabación"
-  },
-  "timestamps": {
-    "title": "Disponibilidad de marcas de tiempo en la transcripción",
-    "description": "Elige si los agentes de resumen y de chat reciben marcas de tiempo en la transcripción, para que puedan indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
-    "summaryLabel": "Dar marcas de tiempo al agente de resumen",
-    "chatLabel": "Dar marcas de tiempo al agente de chat",
-    "defaultFormat": "Formato de marca de tiempo predeterminado"
-  },
   "transcription": {
     "autoIdentifySpeakers": "Identificar Hablantes Automáticamente",
     "bubble": "Burbuja",
@@ -1748,6 +1953,12 @@
     "speakerLabels": "Etiquetas de Hablante",
     "title": "Transcripción",
     "unknownSpeaker": "Hablante Desconocido"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Aún no hay enlaces públicos",
+    "noUsersFound": "No se encontraron usuarios",
+    "add": "Añadir",
+    "notSharedYet": "Aún no compartido con nadie"
   },
   "upload": {
     "chunking": "Los archivos grandes se dividirán automáticamente para su procesamiento",
@@ -1788,83 +1999,6 @@
   "uploadProgress": {
     "title": "Progreso de Carga"
   },
-  "promptVariables": {
-    "title": "Variables del prompt",
-    "infoTooltip": "Acerca de las variables del prompt",
-    "hintUpload": "La etiqueta o carpeta seleccionada usa marcadores de posición. Complétalos y se sustituirán en el prompt de resumen para esta grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
-    "hintReprocess": "Estos valores se sustituyen en los marcadores de posición del prompt resuelto. Los cambios se guardan en la grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
-    "placeholderPrefix": "Introducir"
-  },
-  "summaryMode": {
-    "applyMode": "Modo de aplicación",
-    "append": "Añadir",
-    "appendHelp": "Usar el prompt por defecto y añadir esto como contexto adicional.",
-    "replace": "Reemplazar",
-    "replaceHelp": "Usar únicamente este texto como instrucciones de resumen."
-  },
-  "customizeSummary": {
-    "title": "Personalizar prompt de resumen",
-    "body": "Añade contexto puntual para este resumen o reemplaza por completo el prompt resuelto.",
-    "additionalContext": "Contexto adicional",
-    "customPrompt": "Prompt personalizado",
-    "appendPlaceholder": "p. ej. El orden del día es: ...",
-    "replacePlaceholder": "Introduce un prompt de resumen completo...",
-    "generateSummary": "Generar resumen"
-  },
-  "asrEditor": {
-    "saved": "Guardado",
-    "ctrlSHint": "Ctrl+S para guardar",
-    "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
-  },
-  "preview": {
-    "placeholderLegend": "Leyenda de marcadores:",
-    "systemReplaced": "reemplazado por el sistema (fecha actual, transcripción, nombres de etiquetas, etc.)",
-    "userSupplied": "proporcionado por el usuario al subir o reprocesar",
-    "userMessageHeading": "Mensaje del usuario:",
-    "liveUpdateNote": "La sección de instrucciones de resumen se actualiza mientras editas tu prompt personalizado arriba. Los marcadores se sustituyen por valores reales al procesar una grabación."
-  },
-  "preferences": {
-    "description": "Preferencias de visualización y comportamiento del editor. Estos ajustes se guardan en tu cuenta y se aplican en todos los dispositivos.",
-    "editorAutosave": "Guardar automáticamente en el editor de transcripción",
-    "editorAutosaveHelp": "Cuando está activado, las ediciones en el editor de transcripción se guardan automáticamente un par de segundos después de dejar de escribir. Por defecto está desactivado, y guardas explícitamente con los botones Guardar o Ctrl+S.",
-    "filenameDatePattern": "Formato de fecha del nombre de archivo",
-    "filenameDatePatternAuto": "Automático (formatos comunes)",
-    "filenameDatePatternCustom": "Patrón personalizado",
-    "filenameDateRegex": "Patrón personalizado (expresión regular)",
-    "filenameDateRegexHelp": "Debe contener los grupos con nombre year, month y day; hour y minute son opcionales. Ejemplo: (?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})",
-    "filenameDatesSection": "Fecha de reunión desde el nombre de archivo",
-    "notifications": "Notificaciones",
-    "notifyEmailOnCompletion": "Enviarme un correo cuando termine una transcripción",
-    "notifyEmailOnCompletionHelp": "Envía un mensaje a la dirección de su cuenta cuando una grabación termina de transcribirse y cuando falla. No incluye los resúmenes. Resulta útil para grabaciones largas que no quiere esperar; menos si sube muchos archivos a la vez, ya que cada uno envía su propio mensaje.",
-    "parseFilenameDates": "Extraer la fecha de reunión del nombre de archivo",
-    "parseFilenameDatesHelp": "Cuando un nombre de archivo subido contiene una fecha (por ejemplo 20260716_meeting.mp3), se usa como fecha de reunión en lugar de las marcas de tiempo del archivo. Los archivos sin fecha coincidente mantienen el comportamiento actual.",
-    "showTimestampsSimpleView": "Mostrar marcas de tiempo en la vista simple",
-    "showTimestampsSimpleViewHelp": "Muestra una marca de tiempo compacta mm:ss junto a cada etiqueta de hablante en la vista simple. La vista de burbujas no se ve afectada.",
-    "transcriptDisplay": "Visualización de la transcripción",
-    "transcriptEditor": "Editor de transcripción"
-  },
-  "confirms": {
-    "discardUnsavedRecording": "Tiene una grabación sin guardar. Si sale, se descartará. ¿Continuar?"
-  },
-  "toasts": {
-    "processingCompleted": "¡Procesamiento completado!",
-    "processingFailed": "Error en el procesamiento",
-    "recordingFinalized": "Grabación subida para procesamiento",
-    "recordingPaused": "Grabación en pausa",
-    "recordingResumed": "Grabación reanudada",
-    "recordingMaxDurationApproaching": "La grabación se detendrá automáticamente en unos {{minutes}} minutos (duración máxima).",
-    "resumedRecordingNotIncognito": "El modo incógnito se desactivó: esta grabación reanudada ya se estaba transmitiendo al servidor.",
-    "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
-    "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?",
-    "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
-    "retryingPendingUploads": "Reintentando subidas pendientes…",
-    "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción",
-    "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
-    "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
-    "uploadFailedWillRetry": "Error en la subida — guardada y se reintentará automáticamente al reconectar.",
-    "uploadRetriesExhaustedDownloaded": "Se agotaron los reintentos automáticos de subida. El audio se guardó en tu carpeta de descargas.",
-    "videoRecordingUnsupported": "Este navegador no puede grabar vídeo; se capturará solo el audio."
-  },
   "webhooks": {
     "title": "Webhooks",
     "subtitle": "Reciba notificaciones HTTP cuando cambien las grabaciones. Cada endpoint está firmado con HMAC-SHA256 para que los receptores puedan verificar la autenticidad.",
@@ -1881,132 +2015,5 @@
     "secretBannerTitle": "Copie este secreto ahora — no se mostrará otra vez",
     "secretBannerHint": "Firme cada solicitud del receptor: HMAC-SHA256 del cuerpo crudo usando este secreto. Cabecera: Speakr-Signature: sha256=<hex>",
     "copy": "Copiar"
-  },
-  "display": {
-    "audioPlayerSection": "Reproductor de audio",
-    "audioPlayerPositionLabel": "Posición del reproductor en la pantalla de detalle de la grabación",
-    "audioPlayerPositionHelp": "Elige si el reproductor de audio se sitúa en la parte inferior de la pantalla (predeterminado) o en la parte superior, justo debajo del título y los metadatos de la grabación.",
-    "playerPositionBottom": "Inferior",
-    "playerPositionBottomHelp": "Reproductor anclado debajo de las columnas de transcripción y resumen. Predeterminado.",
-    "playerPositionTop": "Superior",
-    "playerPositionTopHelp": "El reproductor se sitúa encima de las columnas, justo debajo del título y la barra de metadatos."
-  },
-  "stats": {
-    "title": "Estadísticas",
-    "totalLength": "Duración total",
-    "speakers": "Hablantes",
-    "turns": "Turnos",
-    "words": "Palabras",
-    "perSpeaker": "Por hablante",
-    "sortedBySpeakingTime": "ordenado por tiempo de habla",
-    "speaker": "Hablante",
-    "time": "Tiempo",
-    "pctAudio": "% del audio",
-    "wpm": "PPM",
-    "silence": "Silencio",
-    "noStatsTitle": "Aún no hay estadísticas",
-    "noStatsBody": "Las estadísticas aparecen cuando la grabación se ha transcrito con identificación de hablantes y marcas de tiempo de los segmentos."
-  },
-  "progressQueue": {
-    "title": "Cola de procesamiento",
-    "clear": "Limpiar",
-    "uploading": "{{count}} subiendo",
-    "transcribing": "{{count}} transcribiendo",
-    "summarizing": "{{count}} resumiendo",
-    "queued": "{{count}} en cola",
-    "cancel": "Cancelar",
-    "failed": "Fallidos",
-    "completed": "Completados",
-    "done": "Hecho",
-    "empty": "No hay elementos en la cola",
-    "duplicateWarning": "Archivo duplicado detectado",
-    "retry": "Reintentar",
-    "delete": "Eliminar",
-    "uploadingShort": "subiendo",
-    "transcribingShort": "transcribiendo",
-    "summarizingShort": "resumiendo",
-    "queuedShort": "en cola"
-  },
-  "floatingChat": {
-    "dockLeft": "Anclar a la izquierda",
-    "dockRight": "Anclar a la derecha",
-    "dockFull": "Pantalla completa"
-  },
-  "bulkActions": {
-    "addOrRemoveTags": "Añadir o quitar etiquetas",
-    "deleteSelected": "Eliminar seleccionados",
-    "exitSelection": "Salir del modo de selección",
-    "reprocess": "Reprocesar",
-    "selectedCount": "{{count}} seleccionados",
-    "star": "Destacar"
-  },
-  "unifiedShareModal": {
-    "noPublicLinks": "Aún no hay enlaces públicos",
-    "noUsersFound": "No se encontraron usuarios",
-    "add": "Añadir",
-    "notSharedYet": "Aún no compartido con nadie"
-  },
-  "mergeRecordings": {
-    "title": "Combinar grabaciones",
-    "action": "Combinar",
-    "subtitle": "Unir en una sola grabación",
-    "orderHint": "Las grabaciones se unirán en este orden. Reordénalas para que coincidan con la secuencia de la conversación.",
-    "untitled": "Grabación sin título",
-    "moveUp": "Subir",
-    "moveDown": "Bajar",
-    "titleLabel": "Título (opcional)",
-    "titlePlaceholder": "Déjalo en blanco para usar el título de la primera grabación",
-    "deleteOriginals": "Eliminar las grabaciones originales",
-    "deleteOriginalsHint": "Elimina las grabaciones de origen después de crear la combinada. Desactivado de forma predeterminada.",
-    "reprocessNote": "El audio combinado se transcribirá y resumirá de nuevo para producir una transcripción y un resumen continuos.",
-    "merging": "Combinando…",
-    "confirm": "Combinar",
-    "videoNote": "Estas grabaciones incluyen vídeo. La combinación une solo el audio; la grabación combinada no tendrá vídeo.",
-    "audioPreparing": "El audio aún se está preparando. Podrás reproducirlo en un momento.",
-    "remove": "Quitar",
-    "addRecording": "Añadir una grabación",
-    "searchRecordings": "Buscar grabaciones…",
-    "noCandidates": "No hay grabaciones disponibles para añadir",
-    "moreOptions": "Más opciones",
-    "mergeWithExisting": "Combinar con una grabación existente…",
-    "noClip": "No hay audio grabado para combinar.",
-    "uploadedMergeManually": "Tu clip se ha subido. Selecciónalo junto con otra grabación de la lista para combinarlos.",
-    "preparingClip": "Preparando tu clip: las opciones de combinación se abrirán cuando esté listo.",
-    "clipNotReady": "No se pudo preparar el clip para la combinación.",
-    "thisRecording": "Esta grabación",
-    "searching": "Buscando…",
-    "notesLabel": "Conservar notas de",
-    "notesNone": "No conservar notas",
-    "notesWarning": "Solo se pueden conservar las notas de una grabación. Los participantes y las etiquetas de todas las grabaciones se combinan.",
-    "notesHint": "Los participantes y las etiquetas de todas las grabaciones se combinan."
-  },
-  "bulkReprocessModal": {
-    "fullTranscription": "Transcripción completa",
-    "fullTranscriptionDesc": "Volver a transcribir el audio y regenerar todo. Tarda más.",
-    "note": "Nota",
-    "queuedSummary": "{{count}} grabación se pondrá en cola para regenerar el resumen.",
-    "queuedSummaryPlural": "{{count}} grabaciones se pondrán en cola para regenerar el resumen.",
-    "queuedSummaryToast": "{{count}} grabación en cola para regenerar el resumen",
-    "queuedSummaryToastPlural": "{{count}} grabaciones en cola para regenerar el resumen",
-    "queuedTranscription": "{{count}} grabación se pondrá en cola para el reprocesamiento completo.",
-    "queuedTranscriptionPlural": "{{count}} grabaciones se pondrán en cola para el reprocesamiento completo.",
-    "queuedTranscriptionToast": "{{count}} grabación en cola para reprocesamiento completo",
-    "queuedTranscriptionToastPlural": "{{count}} grabaciones en cola para reprocesamiento completo",
-    "recordingsSelected": "{{count}} grabación seleccionada",
-    "recordingsSelectedPlural": "{{count}} grabaciones seleccionadas",
-    "startReprocessing": "Iniciar reprocesamiento",
-    "summaryOnly": "Solo resumen",
-    "summaryOnlyDesc": "Regenerar el título y el resumen a partir de la transcripción existente. Opción más rápida.",
-    "title": "Reprocesamiento masivo",
-    "warningSummary": "Esto sobrescribirá cualquier edición manual de títulos y resúmenes.",
-    "warningTranscription": "Esto sobrescribirá todas las transcripciones, títulos y resúmenes. Las ediciones manuales se perderán.",
-    "whatToReprocess": "¿Qué desea reprocesar?"
-  },
-  "emptyState": {
-    "readyToCapture": "Listo para grabar",
-    "readyBody": "Arrastre un archivo de audio, grabe desde el micrófono o capture el audio del sistema. Speakr lo convierte en una transcripción con resumen y chat.",
-    "newRecording": "Nueva grabación",
-    "selectRecording": "Seleccione una grabación",
-    "selectBody": "Elija una en la barra lateral o inicie una nueva grabación."
   }
 }

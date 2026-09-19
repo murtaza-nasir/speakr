@@ -13,6 +13,7 @@ import { useSpeakers } from './modules/composables/speakers.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
+import { useNotifications } from './modules/composables/notifications.js';
 import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtualScroll.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
@@ -2588,6 +2589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const transcriptionComposable = useTranscription(state, utils);
             const chatComposable = useChat(state, utils);
             const pwaComposable = usePWA(state, utils);
+            const notificationsComposable = useNotifications(state, utils);
             const tagsComposable = useTags({
                 recordings,
                 availableTags,
@@ -3865,6 +3867,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uiComposable.initializeDarkMode();
                 uiComposable.initializeColorScheme();
                 uiComposable.initializeSidebar();
+                // Start the notification badge poll. Cheap and slow; see the
+                // composable for why this is polled rather than pushed.
+                notificationsComposable.startNotificationPolling();
 
                 // PWA Web Share Target feedback (issue #285). When the user
                 // shares audio from the native share sheet, the backend
@@ -4504,6 +4509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...uploadComposable,
                 ...audioComposable,
                 ...uiComposable,
+                ...notificationsComposable,
                 ...modalsComposable,
                 ...sharingComposable,
                 ...reprocessComposable,

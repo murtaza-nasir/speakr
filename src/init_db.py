@@ -662,6 +662,17 @@ def _run_migrations(app, engine):
             app.logger.warning(f"Error during meeting_date migration: {e}")
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
+    with _migration_section(app, failures, "notifications"):
+        # The table itself comes from create_all(); these cover a database
+        # that already had an earlier version of it. Columns are added
+        # individually so a partial table is completed rather than rebuilt.
+        if create_index_if_not_exists(engine, 'ix_notification_user_id', 'notification', 'user_id'):
+            app.logger.info("Added index on notification.user_id")
+        if create_index_if_not_exists(engine, 'ix_notification_dedupe_key', 'notification', 'dedupe_key'):
+            app.logger.info("Added index on notification.dedupe_key")
+        if create_index_if_not_exists(engine, 'ix_notification_resolved_at', 'notification', 'resolved_at'):
+            app.logger.info("Added index on notification.resolved_at")
+
     with _migration_section(app, failures, "sliced file upload sessions"):
         # The model declares kind as NOT NULL with index=True, but both of
         # those only reach a database that create_all() built. An upgraded

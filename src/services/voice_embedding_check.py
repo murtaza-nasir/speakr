@@ -274,14 +274,78 @@ def check_voice_embeddings(app, force=False):
     save_reference(reference)
 
     if changed:
-        logger.error(
-            'Voice embedding model appears to have changed: %s. Existing voice profiles '
-            'will not match new recordings until either the previous transcription '
-            'backend is restored or the profiles are rebuilt.', detail)
+        _log_change_banner(app, detail)
+        _raise_notification(app, detail)
     else:
         logger.info('Voice embedding check passed (similarity %.6f)', similarity)
+        _clear_notification(app)
 
     return get_status(app)
+
+
+def _log_change_banner(app, detail):
+    """Say it loudly in the startup output.
+
+    An admin who restarts after repointing their ASR endpoint is reading the
+    container log at exactly that moment, and a single ERROR line among the
+    ordinary startup chatter is easy to scroll past. This is the one place
+    where a banner earns its width.
+    """
+    logger_ = getattr(app, 'logger', logger)
+    width = 78
+    lines = [
+        '',
+        '=' * width,
+        'VOICE EMBEDDING MODEL CHANGED'.center(width),
+        '=' * width,
+        detail or 'the transcription backend returned an unexpected embedding',
+        '',
+        'Existing voice profiles were built by a different model and will not',
+        'match new recordings. Voice matching will silently find nothing until',
+        'one of the following is true:',
+        '',
+        '  * the previous transcription backend is restored, which clears this',
+        '    by itself on the next check, or',
+        '  * the affected voice profiles are rebuilt and the reference is reset',
+        '    from the admin area.',
+        '',
+        'Set DISABLE_VOICE_EMBEDDING_CHECK=true to stop checking.',
+        '=' * width,
+        '',
+    ]
+    for line in lines:
+        logger_.error(line)
+
+
+def _raise_notification(app, detail):
+    """Put the warning in front of every admin, not only in the logs."""
+    try:
+        from src.models import KIND_VOICE_EMBEDDING_CHANGED
+        from src.services.notifications import notify
+        notify(
+            KIND_VOICE_EMBEDDING_CHANGED,
+            'notifications.voiceEmbeddingChanged',
+            admins=True,
+            level='error',
+            params={'detail': detail or ''},
+            link='/admin',
+        )
+    except Exception as e:
+        logger.warning('Could not raise the voice embedding notification: %s', e)
+
+
+def _clear_notification(app):
+    """The condition ended, so the notice goes away on its own.
+
+    This is what makes restoring the previous backend a complete fix rather
+    than something the admin also has to acknowledge.
+    """
+    try:
+        from src.models import KIND_VOICE_EMBEDDING_CHANGED
+        from src.services.notifications import resolve
+        resolve(KIND_VOICE_EMBEDDING_CHANGED)
+    except Exception as e:
+        logger.warning('Could not clear the voice embedding notification: %s', e)
 
 
 def rebaseline(app):

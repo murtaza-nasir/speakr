@@ -204,15 +204,59 @@
         <div class="relative">
             <button @click="isUserMenuOpen = !isUserMenuOpen"
                     data-user-menu-toggle
-                    class="btn btn--icon"
+                    class="btn btn--icon relative"
                     :title="t('admin.userMenu')">
                 <i class="fas fa-user-circle text-lg"></i>
+                <!-- Unread badge. The menu is the only always-visible anchor
+                     in the header, so the count rides on it rather than on the
+                     admin link, which lives inside the dropdown. -->
+                <span v-if="unreadCount > 0"
+                      data-notification-badge
+                      class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-semibold leading-[18px] text-center"
+                      v-text="unreadCount > 9 ? '9+' : unreadCount"></span>
             </button>
 
             <!-- User dropdown -->
             <div v-if="isUserMenuOpen"
                  data-user-menu-dropdown
                  class="absolute right-0 mt-2 w-56 surface-raised z-50">
+                <!-- Notifications. Opening the section marks them read; the
+                     individual X dismisses one. Notices that describe a
+                     condition disappear on their own when it ends, so most
+                     people never need either control. -->
+                <button @click="toggleNotifications"
+                        data-notifications-toggle
+                        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between">
+                    <span>
+                        <i class="fas fa-bell mr-2 w-4 text-center"></i><span v-text="t('nav.notifications')"></span>
+                    </span>
+                    <span v-if="unreadCount > 0"
+                          class="ml-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-semibold leading-[18px] text-center"
+                          v-text="unreadCount > 9 ? '9+' : unreadCount"></span>
+                </button>
+                <div v-if="isNotificationsOpen" data-notifications-panel
+                     class="max-h-64 overflow-y-auto border-y border-[var(--border-secondary)] bg-[var(--bg-tertiary)]">
+                    <p v-if="notifications.length === 0"
+                       class="px-4 py-3 text-xs text-[var(--text-muted)]"
+                       v-text="t('notifications.empty')"></p>
+                    <div v-for="n in notifications" :key="n.id"
+                         class="px-4 py-3 border-b border-[var(--border-secondary)] last:border-b-0 flex items-start gap-2">
+                        <i class="fas mt-0.5 w-4 text-center"
+                           :class="n.level === 'error' ? 'fa-circle-exclamation text-red-500' : (n.level === 'warning' ? 'fa-triangle-exclamation text-amber-500' : 'fa-circle-info text-[var(--text-accent)]')"></i>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-[var(--text-primary)] break-words" v-text="notificationText(n)"></p>
+                            <a v-if="n.link" :href="n.link"
+                               class="text-[11px] text-[var(--text-accent)] hover:underline"
+                               v-text="t('notifications.view')"></a>
+                        </div>
+                        <button @click.stop="dismissNotification(n.id)"
+                                class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                                :title="t('notifications.dismiss')">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
                     <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
                 </a>

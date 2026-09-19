@@ -29,6 +29,11 @@ from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
 from .push_subscription import PushSubscription
+from .notification import (
+    Notification,
+    NOTIFICATION_LEVELS,
+    KIND_VOICE_EMBEDDING_CHANGED,
+)
 from .processing_job import ProcessingJob
 from .recording_session import RecordingSession, RECORDING_SESSION_KINDS, RECORDING_SESSION_STATUSES
 from .token_usage import TokenUsage
@@ -73,6 +78,9 @@ __all__ = [
     'InquireSession',
     'SystemSetting',
     'PushSubscription',
+    'Notification',
+    'NOTIFICATION_LEVELS',
+    'KIND_VOICE_EMBEDDING_CHANGED',
     'ProcessingJob',
     'RecordingSession',
     'RECORDING_SESSION_KINDS',
