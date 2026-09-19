@@ -1517,6 +1517,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
 
+            // Collapse the sidebar when the window becomes narrow enough that
+            // it turns into an overlay. Below the lg breakpoint an expanded
+            // sidebar draws a backdrop over the whole app, so a desktop window
+            // dragged narrow -- or, far more often, an iPad turned to portrait
+            // -- would otherwise grey itself out with no hint as to why.
+            // Only the crossing matters, so someone who opens the sidebar on a
+            // narrow screen keeps it open.
+            watch(isMobileScreen, (narrow) => {
+                if (narrow) isSidebarCollapsed.value = true;
+            });
+
             // Word-count meta surfaced in the right-rail tab labels. We
             // strip HTML and collapse whitespace before counting so
             // markdown-rendered summary HTML doesn't inflate the count.
