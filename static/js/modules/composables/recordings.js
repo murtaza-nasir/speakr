@@ -4,6 +4,7 @@
  */
 
 import * as IncognitoStorage from '../db/incognito-storage.js';
+import { matchTagsByLabelName } from '../utils/label-links.js';
 
 export function useRecordings(state, utils, reprocessComposable) {
     const {
@@ -14,7 +15,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
         filterFolder, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
-        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending,
+        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
         speakerColorMap,
         // Incognito mode
@@ -89,11 +90,20 @@ export function useRecordings(state, utils, reprocessComposable) {
                 recordings.value = [...recordings.value, ...recordingsList];
             } else {
                 recordings.value = recordingsList;
-                const lastRecordingId = localStorage.getItem('lastSelectedRecordingId');
-                if (lastRecordingId && recordingsList.length > 0) {
-                    const recordingToSelect = recordingsList.find(r => r.id == lastRecordingId);
-                    if (recordingToSelect) {
-                        selectRecording(recordingToSelect);
+                // Arriving via /label/<name> means the user asked for the
+                // list of that label, not for a recording. Auto-selecting the
+                // last viewed one here would open the detail view and rewrite
+                // the address bar to /recordings/<id>, losing the label link.
+                // Consume the one-shot flag so later loads behave normally.
+                if (labelDeepLinkPending && labelDeepLinkPending.value) {
+                    labelDeepLinkPending.value = false;
+                } else {
+                    const lastRecordingId = localStorage.getItem('lastSelectedRecordingId');
+                    if (lastRecordingId && recordingsList.length > 0) {
+                        const recordingToSelect = recordingsList.find(r => r.id == lastRecordingId);
+                        if (recordingToSelect) {
+                            selectRecording(recordingToSelect);
+                        }
                     }
                 }
             }
@@ -383,6 +393,19 @@ export function useRecordings(state, utils, reprocessComposable) {
         applyAdvancedFilters();
     };
 
+    // Filter by a label given only its name, used by the /label/<name> deep
+    // link. Every accessible tag with that name is included, so the result is
+    // their union (see utils/label-links.js on why one name can be several
+    // tags). Returns false when the viewer has no such label, so the caller
+    // can say so instead of silently showing them everything.
+    const filterByLabelName = (name) => {
+        const matches = matchTagsByLabelName(name, availableTags.value);
+        if (matches.length === 0) return false;
+        filterTags.value = matches.map(tag => tag.id);
+        applyAdvancedFilters();
+        return true;
+    };
+
     const buildSearchQuery = () => {
         let query = [];
 
@@ -514,6 +537,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         getRecordingTags,
         getAvailableTagsForRecording,
         filterByTag,
+        filterByLabelName,
         buildSearchQuery,
         applyAdvancedFilters,
         clearAllFilters,
