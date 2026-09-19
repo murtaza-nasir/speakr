@@ -165,22 +165,29 @@ def _run_workers(count, timeout=120):
         p for p in (repo_root, env.get('PYTHONPATH')) if p)
     procs, out_paths = [], []
     with tempfile.TemporaryDirectory() as tmp:
+        logs = []
         for i in range(count):
             out = os.path.join(tmp, f'worker-{i}.json')
             out_paths.append(out)
+            # Both streams go to one file per worker so a child that dies
+            # before reporting can be diagnosed from the assertion message.
+            logs.append(open(os.path.join(tmp, f'worker-{i}.log'), 'w+'))
             procs.append(subprocess.Popen(
                 [sys.executable, os.path.abspath(__file__), run_id, out],
-                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+                stdout=logs[-1], stderr=subprocess.STDOUT, text=True,
                 cwd=repo_root, env=env))
         try:
             deadline = time.time() + timeout
             while time.time() < deadline:
                 if all(os.path.exists(p) and os.path.getsize(p) > 0 for p in out_paths):
                     break
-                dead = [p for p in procs if p.poll() is not None]
+                dead = [(i, p) for i, p in enumerate(procs) if p.poll() is not None]
                 if dead:
+                    i, p = dead[0]
+                    logs[i].seek(0)
                     raise AssertionError(
-                        f'a worker exited before reporting: {dead[0].stderr.read()[-2000:]}')
+                        f'worker {i} exited with code {p.returncode} before '
+                        f'reporting; output tail:\n{logs[i].read()[-3000:]}')
                 time.sleep(0.2)
             else:
                 raise AssertionError(f'workers did not all report within {timeout}s')
@@ -193,6 +200,8 @@ def _run_workers(count, timeout=120):
                     p.wait(timeout=15)
                 except subprocess.TimeoutExpired:  # pragma: no cover
                     p.kill()
+            for f in logs:
+                f.close()
 
 
 def test_three_workers_booting_together_start_each_task_exactly_once():
