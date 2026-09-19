@@ -55,6 +55,12 @@ os.environ["SUMMARY_QUEUE_WORKERS"] = "0"
 # silently route to the agent if the host .env enables the beta. The agent's
 # own tests call run_inquire_agent directly and manage their env explicitly.
 os.environ["ENABLE_INQUIRE_AGENT"] = "false"
+# The voice-embedding canary sends a real clip to the configured transcription
+# backend to check it still produces compatible embeddings. Left on, importing
+# src.app in a test run POSTs audio to whatever ASR endpoint the host .env
+# points at: slow, noisy in the logs, and it bills somebody for a transcription
+# nobody asked for. The check has its own tests, which drive it explicitly.
+os.environ["DISABLE_VOICE_EMBEDDING_CHECK"] = "true"
 # NB: do NOT force WEBHOOK_GLOBAL_ENABLED=false here — the webhook suite needs
 # delivery enabled (it mocks the actual HTTP POST), so leave the default (true).
 

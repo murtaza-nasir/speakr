@@ -444,16 +444,33 @@ def admin_get_stats():
     total_storage = db.session.query(db.func.sum(Recording.file_size)) \
         .filter(Recording.audio_deleted_at.is_(None)).scalar() or 0
 
-    # Get top users by storage
+    # Get top users by storage.
+    #
+    # Two things here are deliberate and were both wrong before (#393).
+    #
+    # The audio_deleted_at test belongs in the JOIN condition, not in WHERE.
+    # On the right side of an outer join, WHERE ... IS NULL is also true for
+    # the all-NULL row produced when a user has no recordings at all, so those
+    # users were being selected as if they qualified.
+    #
+    # And the sum is coalesced before ordering. PostgreSQL sorts NULLs FIRST
+    # on DESC, so a user with no recordings (sum NULL) outranked everyone with
+    # data and the whole top five came back as "0 bytes (0 recordings)".
+    # SQLite sorts them last, which is why this only ever showed up on
+    # PostgreSQL deployments.
+    storage_used = db.func.coalesce(db.func.sum(Recording.file_size), 0)
     top_users_query = db.session.query(
         User.id,
         User.username,
         db.func.count(Recording.id).label('recordings_count'),
-        db.func.sum(Recording.file_size).label('storage_used')
-    ).join(Recording, User.id == Recording.user_id, isouter=True) \
-     .filter(Recording.audio_deleted_at.is_(None)) \
-     .group_by(User.id) \
-     .order_by(db.func.sum(Recording.file_size).desc()) \
+        storage_used.label('storage_used')
+    ).join(
+        Recording,
+        db.and_(User.id == Recording.user_id, Recording.audio_deleted_at.is_(None)),
+        isouter=True,
+    ) \
+     .group_by(User.id, User.username) \
+     .order_by(storage_used.desc()) \
      .limit(5)
     
     top_users = []
