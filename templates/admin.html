@@ -431,6 +431,35 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Voice embedding compatibility (#380). The admin
+                             notification's link lands on this anchor. -->
+                        <div id="voice-embeddings" v-if="voiceEmbedding.supported !== false"
+                             class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.voiceEmbedding.title')}</h4>
+                            <p class="text-xs text-[var(--text-muted)] mb-3">${t('adminDashboard.voiceEmbedding.help')}</p>
+                            <div class="flex flex-wrap items-center gap-3 mb-3">
+                                <span class="px-2 py-1 rounded text-xs font-semibold"
+                                      :class="voiceEmbedding.status === 'ok' ? 'bg-[var(--bg-success)] text-[var(--text-success-strong)]' : (voiceEmbedding.status === 'changed' ? 'bg-[var(--bg-danger)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]')"
+                                      v-text="voiceEmbedding.status === 'ok' ? t('adminDashboard.voiceEmbedding.statusOk') : (voiceEmbedding.status === 'changed' ? t('adminDashboard.voiceEmbedding.statusChanged') : t('adminDashboard.voiceEmbedding.statusUnknown'))"></span>
+                                <span v-if="voiceEmbedding.dimension" class="text-sm text-[var(--text-secondary)]">
+                                    ${t('adminDashboard.voiceEmbedding.dimension')}: <span class="font-medium" v-text="voiceEmbedding.dimension"></span>
+                                </span>
+                                <span v-if="voiceEmbedding.checked_at" class="text-sm text-[var(--text-muted)]">
+                                    ${t('adminDashboard.voiceEmbedding.lastChecked')}: <span v-text="formatDate(voiceEmbedding.checked_at)"></span>
+                                </span>
+                            </div>
+                            <!-- Diagnostic string from the checker, shown as-is like a log line. -->
+                            <p v-if="voiceEmbedding.detail" class="text-xs text-[var(--text-muted)] mb-3 font-mono break-words" v-text="voiceEmbedding.detail"></p>
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="checkVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--ghost">
+                                    <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': voiceEmbeddingBusy }"></i>${t('adminDashboard.voiceEmbedding.checkNow')}
+                                </button>
+                                <button @click="rebaselineVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--danger">
+                                    <i class="fas fa-redo mr-1"></i>${t('adminDashboard.voiceEmbedding.rebaseline')}
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Token Usage Section -->
@@ -2088,6 +2117,10 @@ Summarization Instructions:
                     users_at_100_percent: 0
                 });
                 const tokenUserStats = ref([]);
+                // Voice embedding compatibility (#380). Reads the stored verdict;
+                // a probe costs a real transcription so it only runs on the button.
+                const voiceEmbedding = ref({ status: 'unknown', supported: null, dimension: null, checked_at: null, detail: null });
+                const voiceEmbeddingBusy = ref(false);
                 const transcriptionStats = ref({
                     today: { seconds: 0, minutes: 0, cost: 0 },
                     current_month: { seconds: 0, minutes: 0, cost: 0 },
@@ -2418,6 +2451,36 @@ Summarization Instructions:
                     }
                 };
                 
+                const loadVoiceEmbedding = async () => {
+                    try {
+                        const r = await fetch('/admin/voice-embeddings/status');
+                        if (r.ok) voiceEmbedding.value = await r.json();
+                    } catch (e) { /* card just keeps its last state */ }
+                };
+                const _voiceEmbeddingPost = async (path) => {
+                    voiceEmbeddingBusy.value = true;
+                    try {
+                        const r = await fetch(path, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+                        });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+                        voiceEmbedding.value = data;
+                    } catch (e) {
+                        alert(e.message);   // how every other action on this page reports failure
+                    } finally {
+                        voiceEmbeddingBusy.value = false;
+                    }
+                };
+                const checkVoiceEmbedding = () => _voiceEmbeddingPost('/admin/voice-embeddings/check');
+                const rebaselineVoiceEmbedding = () => {
+                    // Discards the reference the existing profiles were built
+                    // against; restoring the old backend cannot undo it.
+                    if (!confirm(t('adminDashboard.voiceEmbedding.rebaselineConfirm'))) return;
+                    return _voiceEmbeddingPost('/admin/voice-embeddings/rebaseline');
+                };
+
                 const loadStats = async () => {
                     try {
                         const response = await fetch('/admin/stats');
@@ -3764,6 +3827,7 @@ Summarization Instructions:
                     if (!isTeamAdminOnly.value) {
                         loadUsers();
                         loadStats();
+                        loadVoiceEmbedding();
                         loadTokenStats();
                         loadTranscriptionStats();
 
@@ -3864,6 +3928,7 @@ Summarization Instructions:
                     activeTab,
                     users,
                     stats,
+                    voiceEmbedding, voiceEmbeddingBusy, checkVoiceEmbedding, rebaselineVoiceEmbedding,
                     tokenStats,
                     tokenUserStats,
                     transcriptionStats,

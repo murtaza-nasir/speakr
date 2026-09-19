@@ -336,7 +336,7 @@ def _raise_notification(app, detail):
             admins=True,
             level='error',
             params={'detail': detail or ''},
-            link='/admin',
+            link='/admin#voice-embeddings',
         )
     except Exception as e:
         logger.warning('Could not raise the voice embedding notification: %s', e)
