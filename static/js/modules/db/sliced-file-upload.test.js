@@ -209,6 +209,73 @@ describe('uploadFileInSlices', () => {
         ]);
     });
 
+    it('advances past a slice the server already holds when only the response was lost', async () => {
+        // Seen against a real NPM/HTTP2 proxy: the server accepted slice 2
+        // and answered, but the answer never reached the client as a
+        // readable response (an early 409 resets the stream; the browser
+        // reports a protocol error). The client used to re-send the same
+        // slice until MAX_SLICE_ATTEMPTS and then fail an upload the server
+        // had accepted in full. It must instead ask the server what it holds.
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);        // 3 slices
+        sliceResponses = [
+            { status: 204 },                  // slice 1
+            { networkError: true },           // slice 2: sent, but the answer is lost
+            { status: 204 },                  // slice 3
+        ];
+        // The status read after the failure shows the server already has 2.
+        sessionStatus = { kind: 'sliced_upload', status: 'recording', chunk_count: 2, upload_total_bytes: 40 * MB };
+
+        const upload = uploadFileInSlices(file, new Map(), {});
+        await vi.advanceTimersByTimeAsync(5000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        const chunk2Posts = slicePosts().filter(c => c.url.endsWith('/chunks/2'));
+        expect(chunk2Posts).toHaveLength(1);   // never re-sent
+        expect(slicePosts().map(c => c.url.slice(-1))).toEqual(['1', '2', '3']);
+    });
+
+    it('re-sends a slice after a transport failure when the server really does not have it', async () => {
+        // The converse, so the resync cannot turn a genuine loss into a skip.
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);
+        sliceResponses = [
+            { status: 204 },                  // slice 1
+            { networkError: true },           // slice 2 genuinely lost
+            { status: 204 },                  // slice 2 again
+            { status: 204 },                  // slice 3
+        ];
+        sessionStatus = { kind: 'sliced_upload', status: 'recording', chunk_count: 1, upload_total_bytes: 40 * MB };
+
+        const upload = uploadFileInSlices(file, new Map(), {});
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        expect(slicePosts().map(c => c.url.slice(-1))).toEqual(['1', '2', '2', '3']);
+    });
+
+    it('falls back to a plain retry when the status read itself fails', async () => {
+        // A failed status read is "unknown", never "the server has nothing";
+        // treating it as zero would re-send everything after any blip.
+        // httpStatus makes the mocked GET answer 502, which readSessionStatus
+        // throws on (only 404/403 mean "no such session").
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);
+        sliceResponses = [
+            { status: 204 },
+            { networkError: true },
+            { status: 204 },
+            { status: 204 },
+        ];
+        sessionStatus = { httpStatus: 502 };
+
+        const upload = uploadFileInSlices(file, new Map(), {});
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        expect(slicePosts().map(c => c.url.slice(-1))).toEqual(['1', '2', '2', '3']);
+    });
+
     it('gives up on a rejected slice and deletes the half-uploaded session', async () => {
         sliceResponses = [
             { status: 204, text: '' },

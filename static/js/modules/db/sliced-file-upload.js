@@ -262,6 +262,21 @@ async function deleteFileSession(sessionId, token) {
  * about them says the next attempt would fail too: the transport, and
  * the statuses a gateway returns while something behind it restarts.
  */
+/**
+ * How many slices the server already holds for a session, or null when the
+ * status could not be read. Null is deliberately not zero: a failed read must
+ * fall back to a retry, not be mistaken for "the server has nothing".
+ */
+async function slicesHeldByServer(sessionId, token) {
+    try {
+        const status = await readSessionStatus(sessionId, token);
+        const n = status && status.chunk_count;
+        return Number.isInteger(n) ? n : null;
+    } catch (_) {
+        return null;
+    }
+}
+
 async function sendSlice(sessionId, index, blob, tokenRef, options) {
     const url = `${SESSION_BASE}/${encodeURIComponent(sessionId)}/chunks/${index}`;
     for (let attempt = 1; ; attempt++) {
@@ -275,6 +290,19 @@ async function sendSlice(sessionId, index, blob, tokenRef, options) {
                 onXhr: options.onXhr,
             });
         } catch (transportError) {
+            // A transport failure does not mean the slice was lost. The
+            // common case is the opposite: the server took it and answered,
+            // and the answer never arrived. That includes a 409 the server
+            // sends before it has read the whole body: under HTTP/2 that
+            // resets the stream, and the browser reports a protocol error
+            // instead of a response we could read `expected_chunk_index`
+            // from. Blindly re-sending then draws the same 409 every time
+            // until the attempt cap and fails an upload the server has
+            // already accepted in full. So ask the server what it holds; a
+            // GET has no body to cut short.
+            const held = await slicesHeldByServer(sessionId, tokenRef.token);
+            if (held !== null && held >= index) return held + 1;
+
             if (attempt >= MAX_SLICE_ATTEMPTS) {
                 transportError.resumable = true;
                 throw transportError;

@@ -458,6 +458,18 @@ def upload_chunk(session_id, chunk_index):
 
     expected_index = session.chunk_count + 1
     if chunk_index != expected_index:
+        # Read the body before answering. This 409 carries the index the
+        # client should continue from, and the usual reason a client sends
+        # the wrong index is that it never saw our previous answer. Replying
+        # while megabytes of its body are still in flight makes an HTTP/2
+        # front end reset the stream, and the browser then reports a
+        # protocol error instead of this response, so the hint is lost and
+        # the client keeps re-sending the same slice. Draining costs one
+        # slice of bandwidth on a rare path; losing the hint costs the upload.
+        try:
+            request.get_data(cache=False)
+        except Exception:
+            pass
         return jsonify({
             'error': 'Out-of-order chunk',
             'expected_chunk_index': expected_index,
