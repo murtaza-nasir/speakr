@@ -147,7 +147,16 @@ def test_label_url_serves_the_spa_shell(owner):
     resp = c.get(f"/label/{_PREFIX}shell")
     assert resp.status_code == 200
     # Same shell the '/' route serves — the label is resolved client-side.
-    assert resp.data == c.get("/").data
+    #
+    # Compared with the CSRF meta token blanked out. Flask-WTF signs that
+    # token with a timed serializer, so its bytes embed the current second;
+    # two renders that straddle a second boundary differ there and nowhere
+    # else. That made a raw byte comparison flake in the full suite while
+    # passing every time this file ran alone.
+    import re
+    def _shell(body):
+        return re.sub(rb'(name="csrf-token"\s+content=")[^"]*(")', rb'\1\2', body)
+    assert _shell(resp.data) == _shell(c.get("/").data)
 
 
 def test_label_url_accepts_spaces_and_mixed_case(owner):

@@ -270,3 +270,28 @@ def test_a_bad_ids_payload_is_rejected(api):
     client, login, users = api
     login(users['admin1'])
     assert client.post('/api/notifications/read', json={'ids': 'not-a-list'}).status_code == 400
+
+
+# --- the link is rendered as an href ------------------------------------
+
+@pytest.mark.parametrize('bad', [
+    'javascript:alert(1)',
+    'https://evil.example/login',
+    '//evil.example/login',          # protocol-relative, still off-site
+    'data:text/html,<script>',
+])
+def test_a_link_that_is_not_a_same_origin_path_is_dropped(users, bad):
+    """The link is the one thing in a notice a user is told to click.
+    Only a same-origin path is accepted, so a future producer cannot put
+    a javascript: or off-site URL there."""
+    with app.app_context():
+        ns.notify('test.kind', 'notifications.test', user_ids=[users['admin1']], link=bad)
+        n = Notification.query.filter_by(user_id=users['admin1']).one()
+    assert n.link is None, f'{bad!r} was stored as a link'
+
+
+def test_a_same_origin_path_is_kept(users):
+    with app.app_context():
+        ns.notify('test.kind', 'notifications.test', user_ids=[users['admin1']], link='/admin?tab=voice')
+        n = Notification.query.filter_by(user_id=users['admin1']).one()
+    assert n.link == '/admin?tab=voice'

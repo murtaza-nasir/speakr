@@ -46,6 +46,21 @@ describe('readJsonResponse', () => {
             .rejects.toThrow('No valid transcription available');
     });
 
+    it('lets a real 403 from the app through instead of calling it an expired session', async () => {
+        // Found in review: reprocess and summary return a JSON 403 such as
+        // "You do not have permission to reprocess this recording". The
+        // status-code heuristic ran first and told the user their session
+        // had expired and to reload, which changes nothing.
+        const body = '{"error":"You do not have permission to reprocess this recording"}';
+        await expect(readJsonResponse(res({ ok: false, status: 403, body }), t))
+            .rejects.toThrow('You do not have permission to reprocess this recording');
+    });
+
+    it('still reads a 401 with a JSON body as the app message, not the login page', async () => {
+        await expect(readJsonResponse(res({ ok: false, status: 401, body: '{"error":"Token revoked"}' }), t))
+            .rejects.toThrow('Token revoked');
+    });
+
     it('treats a 401 as an expired session', async () => {
         await expect(readJsonResponse(res({ ok: false, status: 401, body: '' }), t))
             .rejects.toThrow('errors.sessionExpiredReload');

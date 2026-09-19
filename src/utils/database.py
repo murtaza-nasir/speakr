@@ -67,7 +67,10 @@ def migration_lock(engine, logger=None, timeout=120):
             # host do not serialise against each other.
             digest = hashlib.sha256(str(engine.url).encode()).hexdigest()[:16]
             lock_path = os.path.join(tempfile.gettempdir(), f'speakr_migration_{digest}.lock')
-            handle = open(lock_path, 'w')
+            # O_NOFOLLOW: the path is predictable and under a shared temp dir, so a
+            # symlink planted there must not be followed and truncated. 0o600 keeps
+            # other local users from pre-creating or reading it.
+            handle = os.fdopen(os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), 'r+')
             deadline = time.monotonic() + timeout
             while True:
                 try:
@@ -138,7 +141,10 @@ def acquire_singleton_lock(engine, name, logger=None):
     lock_path = os.path.join(tempfile.gettempdir(), f'speakr_singleton_{digest}.lock')
     handle = None
     try:
-        handle = open(lock_path, 'w')
+        # O_NOFOLLOW: the path is predictable and under a shared temp dir, so a
+        # symlink planted there must not be followed and truncated. 0o600 keeps
+        # other local users from pre-creating or reading it.
+        handle = os.fdopen(os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), 'r+')
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         acquired = True
     except BlockingIOError:

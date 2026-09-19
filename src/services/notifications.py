@@ -38,6 +38,14 @@ def notify(kind, message_key, *, user_ids=None, admins=False, level='info',
     if not user_ids:
         return 0
 
+    # The link is rendered as an href. Only a same-origin path is accepted,
+    # so a future producer cannot put a javascript: or off-site URL into
+    # the one place users are told to click. Today's single producer is
+    # server-internal; this is for the next one.
+    if link is not None and not (link.startswith('/') and not link.startswith('//')):
+        logger.warning("Dropping non-relative notification link %r for %s", link, kind)
+        link = None
+
     key = dedupe_key or kind
     now = datetime.utcnow()
     touched = 0

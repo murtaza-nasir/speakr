@@ -49,6 +49,22 @@ const INCONCLUSIVE_STATUSES = new Set([408, 429, 502, 503, 504, 520, 521, 522, 5
 
 const INGEST_POLL_MS = 3000;
 const INGEST_WAIT_MS = 10 * 60 * 1000;
+// A `finalizing` session whose heartbeat is this stale has no ingest behind
+// it (the worker died, usually a container recreate). The server lets a new
+// finalize take it over after three missed beats, 90 s by default; this sits
+// past that so the takeover is attempted rather than waited out. If the
+// server's window is longer it answers 409, which is resumable, and the
+// loop simply keeps waiting. The server stays the authority either way.
+const STALE_INGEST_MS = 120 * 1000;
+
+// Session timestamps are naive UTC ISO strings with no zone suffix, which
+// Date.parse would read as local time. Pin them to UTC before comparing.
+function ageMs(isoTimestamp) {
+    if (!isoTimestamp) return 0;
+    const pinned = /[zZ]|[+-]\d\d:?\d\d$/.test(isoTimestamp) ? isoTimestamp : isoTimestamp + 'Z';
+    const t = Date.parse(pinned);
+    return Number.isFinite(t) ? Date.now() - t : 0;
+}
 const MAX_FINALIZE_ATTEMPTS = 3;
 
 const RESUME_KEY = 'speakr.slicedUploads';
@@ -389,11 +405,16 @@ async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, 
         }
 
         if (status === null) throw firstError;
-        if (status.status === 'finalizing') {
+        if (status.status === 'finalizing' && ageMs(status.last_seen_at) < STALE_INGEST_MS) {
+            // A live ingest is still stamping the row. Wait for it.
             await sleep(INGEST_POLL_MS);
             continue;
         }
-        if (!['recording', 'finalized'].includes(status.status)) throw firstError;
+        // Either the ingest finished, or it went quiet long enough that the
+        // server will hand the session to a fresh finalize. Fall through and
+        // try; a 409 means it was not ours to take yet. `finalizing` reaches
+        // here only when stale, so it is a legitimate state to retry from.
+        if (!['recording', 'finalized', 'finalizing'].includes(status.status)) throw firstError;
         if (finalizeAttempts >= MAX_FINALIZE_ATTEMPTS) throw firstError;
 
         finalizeAttempts += 1;

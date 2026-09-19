@@ -349,3 +349,15 @@ def test_an_unreadable_logo_still_sends_a_valid_message():
     parts = {p.get_content_type() for p in msg.walk()}
     assert 'text/plain' in parts and 'text/html' in parts
     assert 'image/png' not in parts
+
+
+def test_a_whitespace_only_error_still_sends_the_failure_email(user_factory, smtp_configured):
+    """Found in review: `(error or '').strip().splitlines()[0]` raised
+    IndexError on an error like "\\n" (truthy, strips to nothing), and the
+    worker's except swallowed it, so exactly the failure email was lost."""
+    user = user_factory(notify_email_on_completion=True)
+    with app.app_context(), patch.object(email_service, '_send_email', return_value=True) as send:
+        rec = _recording(user.id)
+        rec.id = 12
+        assert email_service.send_transcription_failed_email(user, rec, '\n  \n') is True
+        send.assert_called_once()

@@ -660,7 +660,9 @@ def send_transcription_failed_email(user, recording, error: str = None) -> bool:
 
     # The worker's error text can carry an upstream URL or key, so it is
     # summarised rather than forwarded in full.
-    reason = (error or '').strip().splitlines()[0][:200] if error else ''
+    # next(iter(...), '') rather than [0]: a whitespace-only error is truthy
+    # but strips to nothing, and ''.splitlines() is an empty list.
+    reason = next(iter((error or '').strip().splitlines()), '')[:200]
     reason_html = f"""
 <p style="color: #6b7280; font-size: 14px; margin: 0 0 24px 0; padding: 12px 16px; background-color: #f8f9fa; border-left: 3px solid #d1d5db; border-radius: 4px;">{_h(reason)}</p>
 """ if reason else ''

@@ -203,6 +203,10 @@ def check_voice_embeddings(app, force=False):
     """
     if not embeddings_supported():
         logger.debug('Active connector returns no speaker embeddings; skipping the canary')
+        # Whatever was wrong with the old backend's embeddings no longer
+        # applies: this one has none. Leaving the notice up would tell the
+        # admin to fix something that cannot be fixed from here.
+        _clear_notification(app)
         return {'status': STATUS_UNKNOWN, 'supported': False,
                 'detail': 'the active connector does not return speaker embeddings'}
 
@@ -245,6 +249,10 @@ def check_voice_embeddings(app, force=False):
             'detail': 'baseline recorded',
         })
         logger.info(f'Recorded a voice embedding baseline ({len(vector)} dimensions)')
+        # A fresh baseline is by definition a good state. This is also the
+        # path rebaseline() lands on, so without this the admin who did what
+        # the banner told them to do would keep seeing the warning.
+        _clear_notification(app)
         return get_status(app)
 
     stored = reference.get('embedding') or []

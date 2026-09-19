@@ -422,6 +422,53 @@ describe('resuming an interrupted upload', () => {
         expect(rememberedSessions()[`talk.mp4|${40 * MB}|0`]).toMatchObject({ sessionId: 'sess-1' });
     });
 
+    it('takes over a finalizing session whose ingest went quiet instead of waiting ten minutes', async () => {
+        // Found in review: a container recreated mid-ingest leaves the session
+        // `finalizing` with nobody behind it. The server hands it to a fresh
+        // finalize after three missed heartbeats (90 s), but this loop only
+        // re-finalized once the status left `finalizing`, which a dead ingest
+        // never does on its own. The user waited the full INGEST_WAIT_MS.
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);
+        // First finalize is cut off by the edge; the row then shows a
+        // heartbeat three minutes old, i.e. no ingest is stamping it.
+        finalizeResponse = [TIMED_OUT, INGESTED];
+        const stale = new Date(Date.now() - 3 * 60 * 1000).toISOString().replace('Z', '');
+        sessionStatus = { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3,
+                          upload_total_bytes: 40 * MB, last_seen_at: stale };
+
+        const upload = uploadFileInSlices(file, new Map(), {});
+        // Well under the ten-minute ceiling: it should retry on the first poll.
+        await vi.advanceTimersByTimeAsync(30 * 1000);
+
+        expect(await upload).toMatchObject({ id: 42 });
+        expect(finalizePosts()).toHaveLength(2);
+    });
+
+    it('keeps waiting while the ingest is still stamping the row', async () => {
+        // The converse: a fresh heartbeat means a live ingest, and re-finalizing
+        // would get a 409 for nothing. Same shape as the existing timeout test
+        // but with an explicit recent stamp, so a naive-UTC timestamp is not
+        // misread as local time and mistaken for stale.
+        vi.useFakeTimers();
+        finalizeResponse = TIMED_OUT;
+        // A getter, so every poll sees a stamp five seconds old relative to
+        // the (fake) clock at that moment, the way a live ingest's heartbeat
+        // would look. A static string would silently age past the stale
+        // threshold as the timers advance and turn this into the other test.
+        sessionStatus = { kind: 'sliced_upload', status: 'finalizing', chunk_count: 3,
+                          upload_total_bytes: 40 * MB,
+                          get last_seen_at() { return new Date(Date.now() - 5 * 1000).toISOString().replace('Z', ''); } };
+        const file = fakeFile(40 * MB);
+
+        const upload = uploadFileInSlices(file, new Map(), {});
+        const assertion = expect(upload).rejects.toThrow('HTTP 524');
+        await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
+        await assertion;
+
+        expect(finalizePosts()).toHaveLength(1);
+    });
+
     it('waits out an ingest that was already running when the file was added again', async () => {
         vi.useFakeTimers();
         const file = fakeFile(40 * MB);

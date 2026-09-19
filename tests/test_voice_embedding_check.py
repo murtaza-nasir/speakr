@@ -423,3 +423,80 @@ def test_the_check_endpoint_forces_a_probe(admin_client):
     assert resp.status_code == 200
     assert resp.get_json()['status'] == vec.STATUS_OK
     probe.assert_called_once()
+
+
+# --- the notification must follow the verdict -----------------------------
+#
+# Found in review: every path that ends in a known-good state has to clear
+# the admin notice, or the person who did what the banner told them to do
+# keeps seeing the banner.
+
+def _notice_active():
+    from src.models import Notification, KIND_VOICE_EMBEDDING_CHANGED
+    return Notification.query.filter_by(
+        kind=KIND_VOICE_EMBEDDING_CHANGED, resolved_at=None).count()
+
+
+@pytest.fixture
+def an_admin():
+    import os
+    from src.models import User, Notification
+    with app.app_context():
+        u = User(username=f'vec_adm_{os.getpid()}', email=f'vec_adm_{os.getpid()}@example.com',
+                 password='x', is_admin=True)
+        db.session.add(u); db.session.commit(); uid = u.id
+    yield uid
+    with app.app_context():
+        Notification.query.filter_by(user_id=uid).delete()
+        User.query.filter_by(id=uid).delete(); db.session.commit()
+
+
+def test_rebaselining_clears_the_admin_notification(an_admin):
+    """rebaseline() deletes the reference and re-checks, landing on the
+    fresh-baseline path. That path used to return without resolving the
+    notice, so clicking the button the banner points at left the banner up."""
+    with app.app_context():
+        _baseline()
+        with _supported(), patch.object(vec, 'probe_backend', return_value=DIFFERENT), \
+                patch.object(vec, 'backend_fingerprint', return_value='backend-b'):
+            vec.check_voice_embeddings(app)
+        assert _notice_active() == 1, 'precondition: the change raised a notice'
+
+        with _supported(), patch.object(vec, 'probe_backend', return_value=DIFFERENT), \
+                patch.object(vec, 'backend_fingerprint', return_value='backend-b'):
+            result = vec.rebaseline(app)
+
+        assert result['status'] == vec.STATUS_OK
+        assert _notice_active() == 0, 'rebaselining left the warning in place'
+
+
+def test_a_new_clip_version_clears_a_stale_notification(an_admin):
+    with app.app_context():
+        _baseline()
+        with _supported(), patch.object(vec, 'probe_backend', return_value=DIFFERENT), \
+                patch.object(vec, 'backend_fingerprint', return_value='backend-b'):
+            vec.check_voice_embeddings(app)
+        stored = json.loads(SystemSetting.get_setting(vec.SETTING_KEY))
+        stored['clip_version'] = 'v0'
+        SystemSetting.set_setting(vec.SETTING_KEY, json.dumps(stored))
+
+        with _supported(), patch.object(vec, 'probe_backend', return_value=DIFFERENT), \
+                patch.object(vec, 'backend_fingerprint', return_value='backend-b'):
+            vec.check_voice_embeddings(app)
+        assert _notice_active() == 0
+
+
+def test_switching_to_a_connector_without_embeddings_clears_the_notification(an_admin):
+    """The old backend's embedding problem cannot be fixed from a backend
+    that has no embeddings; the notice would be telling the admin to act on
+    something that no longer exists."""
+    with app.app_context():
+        _baseline()
+        with _supported(), patch.object(vec, 'probe_backend', return_value=DIFFERENT), \
+                patch.object(vec, 'backend_fingerprint', return_value='backend-b'):
+            vec.check_voice_embeddings(app)
+        assert _notice_active() == 1
+
+        with patch.object(vec, 'embeddings_supported', return_value=False):
+            vec.check_voice_embeddings(app)
+        assert _notice_active() == 0

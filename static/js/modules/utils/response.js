@@ -48,11 +48,15 @@ export async function readJsonResponse(response, t, fallbackKey = 'errors.reques
         err.isCsrfRejection = true;
         throw err;
     }
+    // A JSON error body is proof this is the app answering, not the login
+    // page, so it wins over the status-code heuristics below. Otherwise a
+    // real 403 such as "you do not have permission to reprocess this
+    // recording" would be reported as an expired session.
+    if (data && data.error) {
+        throw new Error(data.error);
+    }
     if (response.status === 401 || response.status === 403 || response.redirected) {
         throw new Error(_t('errors.sessionExpiredReload'));
-    }
-    if (data && data.error) {
-        throw new Error(data.error);        // A real JSON error from the app.
     }
     if (response.status >= 500) {
         throw new Error(_t('errors.serverErrorWithStatus', { status: response.status }));

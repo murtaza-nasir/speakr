@@ -232,3 +232,31 @@ def test_the_election_never_opens_a_database_connection():
     assert acquire_singleton_lock(
         _EngineThatRefusesConnections(), "speakr.test_no_connection"
     ) is True
+
+
+def test_the_lock_file_does_not_follow_a_planted_symlink(tmp_path):
+    """The lock path is predictable and lives in the shared temp dir. On a
+    bare-metal host another local user could plant a symlink there pointing
+    at, say, the SQLite database; a plain open(..., 'w') would follow it and
+    truncate the target on the next startup. O_NOFOLLOW refuses the symlink."""
+    import hashlib, os, tempfile
+    from unittest.mock import patch
+    from src.utils import database as db_utils
+
+    class _Engine:
+        url = 'sqlite:///symlink-probe'
+    name = 'speakr.test_symlink'
+    digest = hashlib.sha256(f'{_Engine.url}|{name}'.encode()).hexdigest()[:16]
+
+    victim = tmp_path / 'precious.db'
+    victim.write_bytes(b'do not truncate me')
+    lock_path = tmp_path / f'speakr_singleton_{digest}.lock'
+    os.symlink(victim, lock_path)
+
+    with patch.object(tempfile, 'gettempdir', return_value=str(tmp_path)):
+        db_utils._held_singleton_locks.pop(name, None)
+        # Failing open is the documented behaviour when the lock cannot be
+        # taken; what matters here is that the victim file is untouched.
+        acquire_singleton_lock(_Engine(), name)
+
+    assert victim.read_bytes() == b'do not truncate me', 'the symlink was followed and the target truncated'
