@@ -4,6 +4,7 @@
  */
 
 import * as IncognitoStorage from '../db/incognito-storage.js';
+import { readJsonResponse } from '../utils/response.js';
 
 export function useReprocess(state, utils) {
     const { nextTick } = Vue;
@@ -20,6 +21,7 @@ export function useReprocess(state, utils) {
     } = state;
 
     const { showToast, setGlobalError, onChatComplete } = utils;
+    const t = (key, params) => (utils.t ? utils.t(key, params) : key);
 
     // Store for active polling intervals
     const reprocessingPolls = new Map();
@@ -102,8 +104,7 @@ export function useReprocess(state, utils) {
                 }
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to reset recording status');
+            const data = await readJsonResponse(response, t, 'errors.resetStatusFailed');
 
             // Update recording status in list
             const index = recordings.value.findIndex(r => r.id === recordingId);
@@ -181,8 +182,7 @@ export function useReprocess(state, utils) {
                 body: JSON.stringify(requestBody)
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to start transcription reprocessing');
+            const data = await readJsonResponse(response, t, 'errors.reprocessTranscriptionFailed');
 
             // Update recording status in list
             const index = recordings.value.findIndex(r => r.id === recordingId);
@@ -254,8 +254,7 @@ export function useReprocess(state, utils) {
                 body: JSON.stringify(requestBody)
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to start summary reprocessing');
+            const data = await readJsonResponse(response, t, 'errors.reprocessSummaryFailed');
 
             // Update recording status in list
             const index = recordings.value.findIndex(r => r.id === recordingId);
@@ -327,8 +326,7 @@ export function useReprocess(state, utils) {
                     })
                 });
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Failed to generate summary');
+                const data = await readJsonResponse(response, t, 'errors.generateSummaryFailed');
 
                 // Update the incognito recording with the new summary
                 selectedRecording.value.summary = data.summary;
@@ -360,8 +358,7 @@ export function useReprocess(state, utils) {
                 body: JSON.stringify(body),
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to start summary generation');
+            const data = await readJsonResponse(response, t, 'errors.generateSummaryFailed');
 
             selectedRecording.value.status = 'SUMMARIZING';
 
@@ -398,9 +395,9 @@ export function useReprocess(state, utils) {
             try {
                 // Use lightweight status-only endpoint
                 const response = await fetch(`/recording/${recordingId}/status`);
-                if (!response.ok) throw new Error('Status check failed');
-
-                const statusData = await response.json();
+                // Polls every few seconds, so a raw parse error here would
+                // repeat until the poll gives up. Same reader as the rest.
+                const statusData = await readJsonResponse(response, t, 'errors.statusCheckFailed');
 
                 // Update status (and audio_ready, when the endpoint reports it)
                 // in the recordings list.
