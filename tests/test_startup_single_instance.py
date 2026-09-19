@@ -163,6 +163,17 @@ def _run_workers(count, timeout=120):
     env = dict(os.environ)
     env['PYTHONPATH'] = os.pathsep.join(
         p for p in (repo_root, env.get('PYTHONPATH')) if p)
+    # The child boots the real app, which exits 1 at import without a
+    # transcription service. conftest supplies these defaults to the suite, but
+    # an earlier test may have cleared or blanked them by the time this one
+    # runs, and only a developer's .env would then rescue the child. Give the
+    # child the same harmless defaults directly so it does not depend on either.
+    for key, value in (('TRANSCRIPTION_API_KEY', 'test-key'),
+                       ('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
+                       ('TEXT_MODEL_API_KEY', 'test-key'),
+                       ('SECRET_KEY', 'pytest-secret-key')):
+        if not env.get(key):
+            env[key] = value
     procs, out_paths = [], []
     with tempfile.TemporaryDirectory() as tmp:
         logs = []
