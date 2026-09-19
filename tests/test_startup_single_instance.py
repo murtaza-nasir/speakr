@@ -156,6 +156,13 @@ def _run_workers(count, timeout=120):
     """
     run_id = f'speakr_test_{os.getpid()}_{uuid.uuid4().hex[:8]}'
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # A script run as `python tests/x.py` gets tests/ as sys.path[0], not the
+    # repo root, so `import src` fails in the child unless it inherits an
+    # explicit path. Locally something on PYTHONPATH tends to hide this; CI
+    # has nothing there and fails with ModuleNotFoundError.
+    env = dict(os.environ)
+    env['PYTHONPATH'] = os.pathsep.join(
+        p for p in (repo_root, env.get('PYTHONPATH')) if p)
     procs, out_paths = [], []
     with tempfile.TemporaryDirectory() as tmp:
         for i in range(count):
@@ -164,7 +171,7 @@ def _run_workers(count, timeout=120):
             procs.append(subprocess.Popen(
                 [sys.executable, os.path.abspath(__file__), run_id, out],
                 stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
-                cwd=repo_root))
+                cwd=repo_root, env=env))
         try:
             deadline = time.time() + timeout
             while time.time() < deadline:

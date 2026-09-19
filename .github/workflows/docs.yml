@@ -23,7 +23,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        
+        with:
+          # git-revision-date-localized needs full history for page dates;
+          # since plugin 1.6 a shallow clone is a warning, which --strict
+          # turns into a failed build.
+          fetch-depth: 0
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
