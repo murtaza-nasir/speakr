@@ -220,3 +220,84 @@ def test_no_speakers_param_without_diarize():
         _connector().transcribe(_request(min_speakers=3, max_speakers=3))
     _, kwargs = client.calls[0]
     assert 'speakers' not in kwargs['files']
+
+
+# --- Speaker embeddings (#380) ---------------------------------------------
+#
+# OpenASR (openasr#379) mirrors the WhisperX contract: request with
+# return_speaker_embeddings=true, receive a speaker_embeddings map keyed by
+# speaker label. Off by default because older servers reject unknown fields.
+
+EMBEDDINGS = {'SPEAKER_2': [0.1] * 192, 'SPEAKER_10': [0.2] * 192}
+
+
+def test_embeddings_are_not_requested_by_default():
+    connector = _connector(diarize=True)
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        response = connector.transcribe(_request(diarize=True))
+    _, kwargs = client.calls[0]
+    assert 'return_speaker_embeddings' not in kwargs['files']
+    assert response.speaker_embeddings is None
+    assert TranscriptionCapability.SPEAKER_EMBEDDINGS not in connector.CAPABILITIES
+
+
+def test_enabling_embeddings_declares_the_capability():
+    assert TranscriptionCapability.SPEAKER_EMBEDDINGS in _connector(return_speaker_embeddings=True).CAPABILITIES
+    # The class attribute must not be mutated by one enabled instance.
+    assert TranscriptionCapability.SPEAKER_EMBEDDINGS not in OpenASRTranscriptionConnector.CAPABILITIES
+
+
+def test_embeddings_requested_and_parsed_when_enabled_with_diarization():
+    connector = _connector(diarize=True, return_speaker_embeddings=True)
+    payload = dict(VERBOSE_JSON, speaker_embeddings=EMBEDDINGS)
+    client = _Client(response=_Response(payload=payload))
+    with patch('httpx.Client', return_value=client):
+        response = connector.transcribe(_request(diarize=True))
+    _, kwargs = client.calls[0]
+    assert kwargs['files']['return_speaker_embeddings'] == (None, 'true')
+    assert response.speaker_embeddings == EMBEDDINGS
+    assert len(response.speaker_embeddings['SPEAKER_2']) == 192
+    # The rest of the response is unaffected.
+    assert response.speakers == ['SPEAKER_2', 'SPEAKER_10']
+
+
+def test_embeddings_not_requested_without_diarization():
+    connector = _connector(diarize=False, return_speaker_embeddings=True)
+    payload = dict(VERBOSE_JSON, speaker_embeddings=EMBEDDINGS)
+    client = _Client(response=_Response(payload=payload))
+    with patch('httpx.Client', return_value=client):
+        response = connector.transcribe(_request(diarize=False))
+    _, kwargs = client.calls[0]
+    assert 'return_speaker_embeddings' not in kwargs['files']
+    # A map without speaker labels to key on is dropped rather than stored.
+    assert response.speaker_embeddings is None
+
+
+def test_server_without_embedding_support_still_transcribes():
+    connector = _connector(diarize=True, return_speaker_embeddings=True)
+    client = _Client(response=_Response(payload=VERBOSE_JSON))
+    with patch('httpx.Client', return_value=client):
+        response = connector.transcribe(_request(diarize=True))
+    assert response.speaker_embeddings is None
+    assert response.text == 'hello world'
+
+
+def test_empty_embedding_map_is_stored_as_none():
+    connector = _connector(diarize=True, return_speaker_embeddings=True)
+    client = _Client(response=_Response(payload=dict(VERBOSE_JSON, speaker_embeddings={})))
+    with patch('httpx.Client', return_value=client):
+        response = connector.transcribe(_request(diarize=True))
+    assert response.speaker_embeddings is None
+
+
+def test_registry_reads_the_shared_env_flag(monkeypatch):
+    from src.services.transcription.registry import ConnectorRegistry
+    registry = ConnectorRegistry()
+    monkeypatch.setenv('TRANSCRIPTION_BASE_URL', 'http://127.0.0.1:8080')
+    monkeypatch.setenv('ASR_RETURN_SPEAKER_EMBEDDINGS', 'true')
+    assert registry._build_config_from_env('openasr')['return_speaker_embeddings'] is True
+    monkeypatch.setenv('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false')
+    assert registry._build_config_from_env('openasr')['return_speaker_embeddings'] is False
+    monkeypatch.delenv('ASR_RETURN_SPEAKER_EMBEDDINGS')
+    assert registry._build_config_from_env('openasr')['return_speaker_embeddings'] is False

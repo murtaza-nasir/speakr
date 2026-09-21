@@ -53,8 +53,16 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
         self.api_key = config.get('api_key', '')
         self.model = config.get('model', '')
         self.default_diarize = config.get('diarize', False)
+        # Per-speaker voice embeddings (#380). OpenASR mirrors the WhisperX
+        # contract: `return_speaker_embeddings=true` on the request, a
+        # `speaker_embeddings` map keyed by speaker label in the verbose_json
+        # response. Off by default so servers older than openasr#379, which
+        # reject unknown fields, keep working.
+        self.return_embeddings = bool(config.get('return_speaker_embeddings', False))
         self._config_timeout = config.get('timeout', 1800)
         super().__init__(config)
+        if self.return_embeddings:
+            self.CAPABILITIES = self.CAPABILITIES | {TranscriptionCapability.SPEAKER_EMBEDDINGS}
 
     def _validate_config(self) -> None:
         if not self.config.get('base_url'):
@@ -85,6 +93,8 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
                 exact_speakers = request.max_speakers or request.min_speakers
                 if exact_speakers:
                     files['speakers'] = (None, str(int(exact_speakers)))
+                if self.return_embeddings:
+                    files['return_speaker_embeddings'] = (None, 'true')
 
             if request.language:
                 files['language'] = (None, request.language)
@@ -162,10 +172,17 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
             head, _, tail = name.rpartition('_')
             return (head, int(tail)) if tail.isdigit() else (name, -1)
 
+        # Only meaningful alongside diarization; a server that did not
+        # diarize has no speaker labels for the map to key on.
+        speaker_embeddings = data.get('speaker_embeddings') if diarize else None
+        if speaker_embeddings:
+            logger.info(f"Received speaker embeddings for speakers: {sorted(speaker_embeddings)}")
+
         return TranscriptionResponse(
             text=full_text,
             segments=segments or None,
             speakers=sorted(speakers, key=_speaker_key) if speakers else None,
+            speaker_embeddings=speaker_embeddings or None,
             language=data.get('language'),
             provider=self.PROVIDER_NAME,
             model=model,

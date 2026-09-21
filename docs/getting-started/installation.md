@@ -142,7 +142,7 @@ For the best transcription and diarization quality, self-hosting an ASR service 
     - Repository: [murtaza-nasir/whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service)
     - Uses `pyannote/speaker-diarization-community-1` model with exclusive diarization
     - **Superior transcription and diarization quality** with large models (large-v3, distil-large-v3)
-    - Supports 256-dimensional speaker embeddings for voice profile identification
+    - Returns speaker embeddings for voice profile identification
     - Better timestamp alignment between speakers and words
     - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
     - **Environment file:** `config/env.whisperx.example`
@@ -156,6 +156,12 @@ For the best transcription and diarization quality, self-hosting an ASR service 
     - **Does not support:** Voice profiles, speaker embeddings, automatic speaker recognition
     - **Environment file:** `config/env.asr.example`
     - **Note:** Do not set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` with this service as it will cause errors
+
+3. **OpenASR** - Local server with diarization and, from openasr#379 onward, speaker embeddings
+    - Website: [openasr.org](https://openasr.org)
+    - **Supports:** Speaker diarization with an exact speaker count, voice profiles when embeddings are enabled
+    - **Environment file:** `config/env.transcription.example` (OpenASR section)
+    - **Setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features on a server that supports it
 
 > **Important:** Before proceeding with this configuration, you'll need to set up one of the ASR service containers. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
 

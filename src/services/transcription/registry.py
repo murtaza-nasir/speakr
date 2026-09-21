@@ -384,6 +384,9 @@ class ConnectorRegistry:
                 'model': model,
                 'diarize': diarize,
                 'timeout': timeout,
+                # Same flag as the WhisperX connector: OpenASR >= openasr#379
+                # returns per-speaker embeddings on request (#380).
+                'return_speaker_embeddings': (os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS') or 'false').lower() == 'true',
             }
 
         else:  # openai_whisper (default)
