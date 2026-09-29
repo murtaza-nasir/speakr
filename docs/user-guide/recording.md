@@ -260,6 +260,16 @@ If a selected tag, folder, or your account default summary prompt contains `{{na
 
 The sticky modal footer holds **Cancel** (dismisses without uploading) and **Upload N files** (begins transcription immediately with your selected settings). The recording appears in your library with a processing indicator while transcription runs in the background. If you started a recording from inside the modal and the upload completes, Speakr auto-navigates to the new recording's detail view; bulk drag-drop uploads of multiple files leave you on whatever you were viewing.
 
+### Joining Several Files into One Recording
+
+A recorder or phone often splits a long meeting into several files. When two or more files are in the upload list, a switch above the list offers **Separate recordings** (the default, one recording per file) or **One recording**. With **One recording** selected:
+
+- The files are numbered in the order they are joined. Speakr sorts them by each file's modified time, then by name with numbers compared as numbers, so `part2` comes before `part10`. Drag a file, or use its up and down arrows, to change the order.
+- The total length is shown once every file's duration is known, and an optional title field names the joined recording. Left blank, the title is generated as for any upload.
+- The upload button reads **Upload and join N files**. Folder, tags, language, speaker counts, hotwords and prompt variables apply to the joined recording.
+
+Each file is uploaded and checked as usual. Once the last one arrives, Speakr joins the audio in order and transcribes the result once, so you get one continuous transcript and summary without transcribing the pieces separately. The meeting date is the earliest of the files' dates. As with merging, if any file is a video, the joined recording keeps the audio only. If one file fails to upload, the others are discarded and a message names the file, so you can add the files again and retry. Up to 20 files can be joined, and joining is not available in incognito mode.
+
 If incognito mode is enabled at the server, a toggle in the upload modal lets you process recordings without saving them to your account. Incognito uploads accept one file at a time. In-app recordings made with incognito on are captured entirely in the browser — even when server-side chunk streaming is enabled, no audio reaches the server until you explicitly process the recording — so the 200 MB in-browser recording cap applies to them.
 
 ### Mobile Upload Experience
@@ -316,7 +326,7 @@ This is an opt-in feature that is off by default. If you don't see it, ask your 
 
 When a call drops or a meeting freezes, you can end up with two separate recordings of what was really one session. Merging combines several recordings, in the order you choose, into a single new recording that is transcribed, diarized, and summarized from scratch — so you get one continuous transcript and summary instead of several partial ones. The audio is combined; if any source is a video, the merged recording keeps the audio only.
 
-There are two ways to start a merge:
+If the pieces are still files on your computer, join them while uploading instead (see [Joining Several Files into One Recording](#joining-several-files-into-one-recording)): the upload transcribes them once, where merging transcribes each recording first and then the merged one. There are two ways to start a merge of existing recordings:
 
 - **From the sidebar.** Use the "select multiple" button, tick two or more recordings, and choose **Merge**. A dialog opens where you can reorder the sources with the up and down arrows, add more recordings from a searchable list, set a title, and optionally delete the originals once the merged recording is created.
 - **From the recording view.** After you finish an in-app recording, the **Upload Recording & Notes** button has a small arrow on its right edge. Its menu offers **Merge with an existing recording**, which lets you append the recording you just made onto one or more existing recordings — the common case being an interrupted recording you had to restart. The new recording is added to the end by default, since it continues the earlier one.

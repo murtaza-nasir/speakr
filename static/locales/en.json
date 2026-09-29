@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "Large video file. Upload will proceed; transcription may take longer and uses chunking on the server.",
     "options": "Options",
     "transcriptionOptions": "Transcription Options",
-    "uploadAndAddMore": "Upload & Add More"
+    "uploadAndAddMore": "Upload & Add More",
+    "joinModeLabel": "How to add these files",
+    "joinSeparate": "Separate recordings",
+    "joinOne": "One recording",
+    "joinMoveUp": "Move up",
+    "joinMoveDown": "Move down",
+    "joinSummary": "{{count}} files are joined in this order, {{duration}} in total. Drag a file or use the arrows to change the order.",
+    "joinSummaryNoDuration": "{{count}} files are joined in this order. Drag a file or use the arrows to change the order.",
+    "joinTitle": "Title of the joined recording",
+    "joinTitlePlaceholder": "Leave blank to generate a title",
+    "joinVideoHint": "The joined recording keeps the audio only.",
+    "uploadAndJoin": "Upload and join {{count}} files",
+    "joinFailed": "Joining stopped because {{name}} did not upload. Add the files again to retry."
   },
   "uploadProgress": {
     "title": "Upload Progress"

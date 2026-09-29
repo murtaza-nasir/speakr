@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "视频文件较大。上传将继续；转录可能耗时更长，并依赖服务器端的分块处理。",
     "options": "选项",
     "transcriptionOptions": "转录选项",
-    "uploadAndAddMore": "上传并继续添加"
+    "uploadAndAddMore": "上传并继续添加",
+    "joinModeLabel": "如何添加这些文件",
+    "joinSeparate": "分别作为录音",
+    "joinOne": "合并为一个录音",
+    "joinMoveUp": "上移",
+    "joinMoveDown": "下移",
+    "joinSummary": "{{count}} 个文件将按此顺序合并，共 {{duration}}。拖动文件或使用箭头可调整顺序。",
+    "joinSummaryNoDuration": "{{count}} 个文件将按此顺序合并。拖动文件或使用箭头可调整顺序。",
+    "joinTitle": "合并后录音的标题",
+    "joinTitlePlaceholder": "留空将自动生成标题",
+    "joinVideoHint": "合并后的录音仅保留音频。",
+    "uploadAndJoin": "上传并合并 {{count}} 个文件",
+    "joinFailed": "由于 {{name}} 未能上传，合并已停止。请重新添加这些文件后再试。"
   },
   "uploadProgress": {
     "title": "上传进度"

@@ -39,17 +39,42 @@
 
             <!-- Queued Files Display -->
             <div v-if="pendingQueueFiles.length > 0" class="mt-3">
-                <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                     <h4 class="text-xs font-medium text-[var(--text-secondary)]">
                         <i class="fas fa-list mr-1"></i>
                         ${ t('upload.filesToUpload') } (${pendingQueueFiles.length})
                     </h4>
+                    <!-- Join switch: shown once two or more files are queued.
+                         Separate recordings is the default. -->
+                    <div v-if="joinAvailable" class="inline-flex rounded-md border border-[var(--border-secondary)] overflow-hidden text-[11px]"
+                         role="radiogroup" :aria-label="t('upload.joinModeLabel')">
+                        <button type="button" role="radio" :aria-checked="!joinActive"
+                                @click="setJoinMode(false)"
+                                :class="['px-2 py-1 transition-colors', !joinActive ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)]']">
+                            <i class="fas fa-clone mr-1"></i><span v-text="t('upload.joinSeparate')"></span>
+                        </button>
+                        <button type="button" role="radio" :aria-checked="joinActive"
+                                @click="setJoinMode(true)"
+                                :class="['px-2 py-1 border-l border-[var(--border-secondary)] transition-colors', joinActive ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] font-medium' : 'text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)]']">
+                            <i class="fas fa-object-group mr-1"></i><span v-text="t('upload.joinOne')"></span>
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-1 max-h-32 overflow-y-auto">
-                    <div v-for="item in pendingQueueFiles" :key="item.clientId"
-                         class="flex flex-col gap-0.5 px-2 py-1.5 bg-[var(--bg-tertiary)] rounded border border-[var(--border-secondary)]">
+                <div :class="['space-y-1 overflow-y-auto', joinActive ? 'max-h-56' : 'max-h-32']">
+                    <div v-for="(item, index) in pendingQueueFiles" :key="item.clientId"
+                         :draggable="joinActive"
+                         @dragstart="joinActive && handleJoinDragStart(item.clientId, $event)"
+                         @dragover.prevent
+                         @drop.prevent="joinActive && handleJoinDrop(index)"
+                         @dragend="handleJoinDragEnd"
+                         :class="['flex flex-col gap-0.5 px-2 py-1.5 bg-[var(--bg-tertiary)] rounded border border-[var(--border-secondary)]',
+                                  joinActive && joinDragClientId === item.clientId ? 'opacity-50' : '']">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                <template v-if="joinActive">
+                                    <i class="fas fa-grip-vertical text-[10px] text-[var(--text-muted)] cursor-grab flex-shrink-0" aria-hidden="true"></i>
+                                    <span class="text-[10px] font-semibold text-[var(--text-accent)] w-4 text-right flex-shrink-0" v-text="index + 1"></span>
+                                </template>
                                 <!-- File-type icon: video files get a
                                      video glyph so users instantly see
                                      which queue items are video at a
@@ -71,6 +96,18 @@
                                     (${ formatFileSize(item.file.size) }<span v-if="item.duration">, ${ formatDuration(item.duration) }</span>)
                                 </span>
                             </div>
+                            <template v-if="joinActive">
+                                <button type="button" @click="moveJoinItem(item.clientId, -1)" :disabled="index === 0"
+                                        class="ml-1 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-accent)] disabled:opacity-30 transition-colors flex-shrink-0"
+                                        :title="t('upload.joinMoveUp')" :aria-label="t('upload.joinMoveUp')">
+                                    <i class="fas fa-arrow-up text-[10px]"></i>
+                                </button>
+                                <button type="button" @click="moveJoinItem(item.clientId, 1)" :disabled="index === pendingQueueFiles.length - 1"
+                                        class="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-accent)] disabled:opacity-30 transition-colors flex-shrink-0"
+                                        :title="t('upload.joinMoveDown')" :aria-label="t('upload.joinMoveDown')">
+                                    <i class="fas fa-arrow-down text-[10px]"></i>
+                                </button>
+                            </template>
                             <button @click="removeFromQueue(item.clientId)"
                                     class="ml-1.5 p-0.5 text-[var(--text-muted)] hover:text-red-500 transition-colors flex-shrink-0"
                                     title="Remove from queue">
@@ -104,6 +141,25 @@
                             <span>${ t('upload.largeVideoNotice') }</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Join summary: order, total length, title of the joined recording -->
+                <div v-if="joinActive" class="mt-2 space-y-1.5">
+                    <p class="text-[11px] text-[var(--text-muted)]">
+                        <i class="fas fa-object-group mr-1"></i>
+                        <span v-if="joinTotalDuration" v-text="t('upload.joinSummary', { count: pendingQueueFiles.length, duration: formatDuration(joinTotalDuration) })"></span>
+                        <span v-else v-text="t('upload.joinSummaryNoDuration', { count: pendingQueueFiles.length })"></span>
+                    </p>
+                    <label class="block">
+                        <span class="text-[11px] font-medium text-[var(--text-secondary)]" v-text="t('upload.joinTitle')"></span>
+                        <input type="text" v-model="joinTitle" maxlength="200"
+                               :placeholder="t('upload.joinTitlePlaceholder')"
+                               class="mt-0.5 w-full px-2 py-1 text-xs rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                    </label>
+                    <p v-if="joinHasVideo" class="flex items-start gap-1.5 text-[11px] leading-snug text-sky-700 dark:text-sky-400">
+                        <i class="fas fa-video-slash text-xs mt-0.5 flex-shrink-0"></i>
+                        <span v-text="t('upload.joinVideoHint')"></span>
+                    </p>
                 </div>
 
                 <!-- Incognito Mode Toggle (only shown if feature is enabled via ENABLE_INCOGNITO_MODE env var) -->
@@ -639,7 +695,7 @@
             <!-- Normal Upload Buttons (when not in incognito mode or feature disabled) -->
             <div v-if="!incognitoMode || !enableIncognitoMode" class="flex items-center gap-2">
                 <!-- Queue the files but keep the modal open for more -->
-                <button @click="startUpload"
+                <button v-if="!joinActive" @click="startUpload"
                         :disabled="pendingQueueFiles.length === 0"
                         class="btn btn--ghost">
                     <i class="fas fa-plus"></i>
@@ -651,6 +707,7 @@
                         class="btn btn--primary">
                     <i class="fas fa-cloud-upload-alt"></i>
                     <span v-if="pendingQueueFiles.length === 0">${ t('upload.title') || 'Upload' }</span>
+                    <span v-else-if="joinActive" v-text="t('upload.uploadAndJoin', { count: pendingQueueFiles.length })"></span>
                     <span v-else v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
                 </button>
             </div>

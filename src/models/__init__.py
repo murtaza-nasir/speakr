@@ -37,6 +37,7 @@ from .notification import (
 )
 from .processing_job import ProcessingJob
 from .recording_session import RecordingSession, RECORDING_SESSION_KINDS, RECORDING_SESSION_STATUSES
+from .upload_join import UploadJoinPart
 from .token_usage import TokenUsage
 from .transcription_usage import TranscriptionUsage
 from .webhook import (
@@ -86,6 +87,7 @@ __all__ = [
     'KIND_VOICE_EMBEDDING_CHANGED',
     'ProcessingJob',
     'RecordingSession',
+    'UploadJoinPart',
     'RECORDING_SESSION_KINDS',
     'RECORDING_SESSION_STATUSES',
     'TokenUsage',

@@ -256,6 +256,12 @@ def initialize_recording_session_cleanup(app):
                 reaped = cleanup_expired_sessions(app=app)
                 if reaped:
                     app.logger.info(f"Recording-session cleanup reaped {reaped} session(s)")
+                # Parts of an upload join that never completed.
+                with app.app_context():
+                    from src.services.upload_join import cleanup_stale_parts
+                    removed = cleanup_stale_parts()
+                if removed:
+                    app.logger.info(f"Upload-join cleanup removed {removed} stale part(s)")
             except Exception as e:
                 app.logger.error(f"Recording-session cleanup error: {e}", exc_info=True)
                 # Don't tight-loop on failure

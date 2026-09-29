@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "Fichier vidéo volumineux. L’envoi va se poursuivre ; la transcription peut être plus longue et utilise le découpage côté serveur.",
     "options": "Options",
     "transcriptionOptions": "Options de transcription",
-    "uploadAndAddMore": "Téléverser et ajouter plus"
+    "uploadAndAddMore": "Téléverser et ajouter plus",
+    "joinModeLabel": "Comment ajouter ces fichiers",
+    "joinSeparate": "Enregistrements séparés",
+    "joinOne": "Un seul enregistrement",
+    "joinMoveUp": "Monter",
+    "joinMoveDown": "Descendre",
+    "joinSummary": "Les {{count}} fichiers sont assemblés dans cet ordre, {{duration}} au total. Faites glisser un fichier ou utilisez les flèches pour changer l’ordre.",
+    "joinSummaryNoDuration": "Les {{count}} fichiers sont assemblés dans cet ordre. Faites glisser un fichier ou utilisez les flèches pour changer l’ordre.",
+    "joinTitle": "Titre de l’enregistrement assemblé",
+    "joinTitlePlaceholder": "Laissez vide pour générer un titre",
+    "joinVideoHint": "L’enregistrement assemblé ne conserve que l’audio.",
+    "uploadAndJoin": "Téléverser et assembler {{count}} fichiers",
+    "joinFailed": "L’assemblage a été interrompu, car {{name}} n’a pas été téléversé. Ajoutez de nouveau les fichiers pour réessayer."
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
