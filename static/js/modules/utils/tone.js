@@ -56,7 +56,7 @@ export function buildBadge(window, tone) {
         strength: s.strength,
         range,
         rows: topStates(window, tone.model && tone.model.states),
-        aria: `${label}, ${s.strength}, ${range}. Estimated from the voice; can be wrong.`
+        aria: `${label}, ${s.strength}, ${range}`
     };
 }
 

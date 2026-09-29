@@ -46,11 +46,11 @@ describe('annotateTone', () => {
 });
 
 describe('buildBadge', () => {
-    it('ranks rows against each state floor and words the aria label honestly', () => {
+    it('ranks rows against each state floor and labels the badge for screen readers', () => {
         const badge = buildBadge(tone.windows[1], tone);
         expect(badge.rows[0].head).toBe('Thankfulness');
         expect(badge.range).toBe('0:10–0:20');
-        expect(badge.aria).toContain('Estimated from the voice');
+        expect(badge.aria).toBe('Thankful, strong, 0:10–0:20');
     });
 
     it('has no rows when the model gave no states', () => {
