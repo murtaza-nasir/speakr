@@ -923,6 +923,36 @@
                                 </details>
                             </div>
 
+                            <!-- Title Generation Section (#400) -->
+                            <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
+                                <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
+                                    <i class="fas fa-heading mr-2 text-[var(--text-accent)]"></i>
+                                    <span data-i18n="customPrompts.titleGeneration">Title Generation Prompt</span>
+                                </h3>
+                                <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="customPrompts.titleGenerationDesc">
+                                    Instructions for the titles generated for your recordings. Tag and folder title prompts take priority over this one.
+                                </p>
+                                <label for="title_prompt_custom" class="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                                    <span data-i18n="customPrompts.yourTitlePrompt">Your Title Instructions</span>
+                                </label>
+                                <textarea name="title_prompt" id="title_prompt_custom" rows="4"
+                                    placeholder="e.g. Name the institution and the main speaker, then the topic. Leave blank to use the default."
+                                    data-i18n-placeholder="customPrompts.titlePromptPlaceholder"
+                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.title_prompt or '' }}</textarea>
+                                <p class="text-xs text-[var(--text-light)] mt-2" data-i18n="customPrompts.titlePromptNote">
+                                    The transcript, your output language and the rule to reply with the title alone are added automatically.
+                                </p>
+                                <div class="mt-4 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
+                                    <h4 class="text-sm font-semibold text-[var(--text-accent)] mb-2">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span data-i18n="customPrompts.currentDefaultTitlePrompt">Current default (used if you leave the field blank)</span>
+                                    </h4>
+                                    <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
+                                        <pre class="text-xs text-[var(--text-muted)] whitespace-pre-wrap font-mono">{{ default_title_prompt_text }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Transcription Hints Section -->
                             <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
                                 <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
@@ -4563,12 +4593,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         // are only meaningful once a group is chosen).
         const TAG_TAB_FIELDS = {
             tagTabTranscription: ['tagLanguage','tagMinSpeakers','tagMaxSpeakers','tagHotwords','tagInitialPrompt','tagTranscriptionModel','tagRetentionDays','tagProtectFromDeletion'],
-            tagTabSummary: ['tagCustomPrompt','tagNamingTemplate','tagExportTemplate'],
+            tagTabSummary: ['tagCustomPrompt','tagTitlePrompt','tagNamingTemplate','tagExportTemplate'],
             tagTabSharing: ['tagGroupId'],
         };
         const FOLDER_TAB_FIELDS = {
             folderTabTranscription: ['folderLanguage','folderMinSpeakers','folderMaxSpeakers','folderHotwords','folderInitialPrompt','folderTranscriptionModel','folderRetentionDays','folderProtectFromDeletion'],
-            folderTabSummary: ['folderCustomPrompt','folderNamingTemplate','folderExportTemplate'],
+            folderTabSummary: ['folderCustomPrompt','folderTitlePrompt','folderNamingTemplate','folderExportTemplate'],
             folderTabSharing: ['folderGroupId'],
         };
 
@@ -4995,6 +5025,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('tagName').value = tag.name;
                 document.getElementById('tagColor').value = tag.color;
                 document.getElementById('tagCustomPrompt').value = tag.custom_prompt || '';
+                document.getElementById('tagTitlePrompt').value = tag.title_prompt || '';
 
                 // Populate group selection
                 const groupIdSelect = document.getElementById('tagGroupId');
@@ -5536,6 +5567,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('folderName').value = folder.name;
                 document.getElementById('folderColor').value = folder.color;
                 document.getElementById('folderCustomPrompt').value = folder.custom_prompt || '';
+                document.getElementById('folderTitlePrompt').value = folder.title_prompt || '';
                 window.SpeakrOrganizer.setLanguageValue('folderLanguage', folder.default_language);
                 var minField = document.getElementById('folderMinSpeakers');
                 if (minField) minField.value = folder.default_min_speakers || '';

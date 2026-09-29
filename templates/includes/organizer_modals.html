@@ -173,6 +173,11 @@
                         </div>
                     </div>
                     <div>
+                        <label for="tagTitlePrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.titlePrompt">Title Prompt</label>
+                        <textarea id="tagTitlePrompt" name="title_prompt" rows="3" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: instructions for the AI titles of recordings with this tag" data-i18n-placeholder="editTagModal.titlePromptPlaceholder"></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.titlePromptHelp">Leave blank to use the folder, personal or default title instructions</p>
+                    </div>
+                    <div>
                         <label for="tagNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.namingTemplate">Naming Template</label>
                         <select id="tagNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                             <option value="" data-i18n="editTagModal.noNamingTemplate">No template (use user default or AI title)</option>
@@ -398,6 +403,11 @@
                         <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.customPrompt">Custom Summary Prompt</label>
                         <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder" data-i18n-placeholder="folderManagement.summaryPromptPlaceholder"></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.summaryPromptHelp">Leave blank to use your default summary prompt. Tag prompts take priority over folder prompts.</p>
+                    </div>
+                    <div>
+                        <label for="folderTitlePrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.titlePrompt">Title Prompt</label>
+                        <textarea id="folderTitlePrompt" name="title_prompt" rows="3" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: instructions for the AI titles of recordings in this folder" data-i18n-placeholder="folderManagement.titlePromptPlaceholder"></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.titlePromptHelp">Leave blank to use your personal or default title instructions. Tag title prompts take priority over folder title prompts.</p>
                     </div>
                     <div>
                         <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.namingTemplate">Naming Template</label>

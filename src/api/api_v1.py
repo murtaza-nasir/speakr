@@ -155,6 +155,7 @@ OPENAPI_SPEC = {
                     "name": {"type": "string"},
                     "color": {"type": "string"},
                     "custom_prompt": {"type": "string"},
+                    "title_prompt": {"type": "string"},
                     "default_language": {"type": "string"},
                     "default_min_speakers": {"type": "integer"},
                     "default_max_speakers": {"type": "integer"},
@@ -172,6 +173,7 @@ OPENAPI_SPEC = {
                     "group_id": {"type": "integer", "nullable": True},
                     "is_group_folder": {"type": "boolean"},
                     "custom_prompt": {"type": "string"},
+                    "title_prompt": {"type": "string"},
                     "default_language": {"type": "string"},
                     "default_min_speakers": {"type": "integer"},
                     "default_max_speakers": {"type": "integer"},
@@ -412,19 +414,19 @@ OPENAPI_SPEC = {
         },
         "/tags": {
             "get": {"tags": ["Tags"], "summary": "List tags", "responses": {"200": {"description": "List of tags"}}},
-            "post": {"tags": ["Tags"], "summary": "Create tag", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Tag created"}}}
+            "post": {"tags": ["Tags"], "summary": "Create tag", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Tag created"}}}
         },
         "/tags/{id}": {
-            "put": {"tags": ["Tags"], "summary": "Update tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Tag updated"}}},
+            "put": {"tags": ["Tags"], "summary": "Update tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Tag updated"}}},
             "delete": {"tags": ["Tags"], "summary": "Delete tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag deleted"}}}
         },
         "/folders": {
             "get": {"tags": ["Folders"], "summary": "List folders", "responses": {"200": {"description": "Array of folders the user can access", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Folder"}}}}}}},
-            "post": {"tags": ["Folders"], "summary": "Create folder", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "group_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Folder created"}}}
+            "post": {"tags": ["Folders"], "summary": "Create folder", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "group_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Folder created"}}}
         },
         "/folders/{id}": {
             "get": {"tags": ["Folders"], "summary": "Get folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Folder"}}}}}},
-            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
+            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
             "delete": {"tags": ["Folders"], "summary": "Delete folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder deleted"}}}
         },
         "/transcription": {
@@ -1468,6 +1470,7 @@ def list_tags():
             'is_group_tag': False,
             'group_id': None,
             'custom_prompt': tag.custom_prompt,
+            'title_prompt': tag.title_prompt,
             'default_language': tag.default_language,
             'default_min_speakers': tag.default_min_speakers,
             'default_max_speakers': tag.default_max_speakers,
@@ -1485,6 +1488,7 @@ def list_tags():
             'is_group_tag': True,
             'group_id': tag.group_id,
             'custom_prompt': tag.custom_prompt,
+            'title_prompt': tag.title_prompt,
             'default_language': tag.default_language,
             'default_min_speakers': tag.default_min_speakers,
             'default_max_speakers': tag.default_max_speakers,
@@ -1532,6 +1536,7 @@ def create_tag():
         group_id=group_id,
         color=data.get('color', '#3B82F6'),
         custom_prompt=data.get('custom_prompt'),
+        title_prompt=data.get('title_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
         default_max_speakers=data.get('default_max_speakers'),
@@ -1548,6 +1553,7 @@ def create_tag():
         'is_group_tag': tag.group_id is not None,
         'group_id': tag.group_id,
         'custom_prompt': tag.custom_prompt,
+        'title_prompt': tag.title_prompt,
         'default_language': tag.default_language,
         'default_min_speakers': tag.default_min_speakers,
         'default_max_speakers': tag.default_max_speakers,
@@ -1587,6 +1593,8 @@ def update_tag(tag_id):
         tag.color = data['color']
     if 'custom_prompt' in data:
         tag.custom_prompt = data['custom_prompt']
+    if 'title_prompt' in data:
+        tag.title_prompt = data['title_prompt'] or None
     if 'default_language' in data:
         tag.default_language = data['default_language']
     if 'default_min_speakers' in data:
@@ -1603,6 +1611,7 @@ def update_tag(tag_id):
         'name': tag.name,
         'color': tag.color,
         'custom_prompt': tag.custom_prompt,
+        'title_prompt': tag.title_prompt,
         'default_language': tag.default_language,
         'default_min_speakers': tag.default_min_speakers,
         'default_max_speakers': tag.default_max_speakers,

@@ -985,6 +985,39 @@
                         </div>
                     </div>
 
+                    <!-- Default title instructions (#400): the admin level of the title
+                         precedence (tag > folder > user > admin > shipped default). Only the
+                         instructions are editable; the transcript, the language directive and
+                         the "reply with the title alone" rule are added in code, after the
+                         transcript, so editing this never disturbs prefix caching. -->
+                    <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1" v-text="t('adminDashboard.defaultTitlePromptTitle')"></h4>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" v-text="t('adminDashboard.defaultTitlePromptDesc')"></p>
+                        <div class="mb-4">
+                            <textarea
+                                v-model="defaultTitlePrompt"
+                                rows="4"
+                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                :placeholder="t('adminDashboard.defaultTitlePromptPlaceholder')">
+                            </textarea>
+                        </div>
+                        <div class="flex justify-end items-center">
+                            <button @click="saveDefaultTitlePrompt"
+                                    :disabled="isSavingTitlePrompt"
+                                    class="btn btn--primary">
+                                <i v-if="isSavingTitlePrompt" class="fas fa-spinner fa-spin mr-2"></i>
+                                <i v-else class="fas fa-save mr-2"></i>
+                                ${ isSavingTitlePrompt ? t('adminDashboard.saving') : t('buttons.saveChanges') }
+                            </button>
+                        </div>
+                        <div v-if="titlePromptSaveMessage" class="mt-4">
+                            <div :class="titlePromptSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'"
+                                 class="p-3 rounded-md text-sm">
+                                ${ titlePromptSaveMessage }
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Contextual speaker labelling: guidance used when a recording has
                          no voice embeddings and speakers are named from the transcript,
                          constrained to the user's saved profiles. Only this guidance is
@@ -1944,6 +1977,14 @@ Summarization Instructions:
                                 Recordings with this tag will use this prompt for AI summaries and chat.
                             </p>
                         </div>
+                        <!-- Title Prompt (#400) -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('editTagModal.titlePrompt')"></label>
+                            <textarea v-model="newTeamTag.title_prompt" rows="2"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   :placeholder="t('editTagModal.titlePromptPlaceholder')"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('editTagModal.titlePromptHelp')"></p>
+                        </div>
 
                         <!-- Transcription Settings -->
                         <div class="grid grid-cols-3 gap-3">
@@ -2156,6 +2197,9 @@ Summarization Instructions:
                     // raw card isn't a redundant second editor.
                     'admin_default_initial_prompt',
                     'admin_default_hotwords',
+                    // Managed by the dedicated title prompt editor in the
+                    // Default Prompts tab (#400).
+                    'admin_default_title_prompt',
                     // Managed by the dedicated contextual-speaker-prompt editor
                     // in the Default Prompts tab.
                     'admin_default_contextual_speaker_prompt',
@@ -2360,6 +2404,7 @@ Summarization Instructions:
                     name: '',
                     color: '#3B82F6',
                     custom_prompt: '',
+                    title_prompt: '',
                     default_language: '',
                     default_min_speakers: null,
                     default_max_speakers: null,
@@ -2385,6 +2430,10 @@ Summarization Instructions:
                 const hintsSaveError = ref(false);
                 // Contextual speaker-labelling guidance (managed in this tab)
                 const contextualSpeakerPrompt = ref('');
+                const defaultTitlePrompt = ref('');
+                const isSavingTitlePrompt = ref(false);
+                const titlePromptSaveMessage = ref('');
+                const titlePromptSaveError = ref(false);
                 const isSavingContextualPrompt = ref(false);
                 const contextualPromptSaveMessage = ref('');
                 const contextualPromptSaveError = ref(false);
@@ -3318,6 +3367,7 @@ Summarization Instructions:
                         name: '',
                         color: '#3B82F6',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -3346,6 +3396,7 @@ Summarization Instructions:
                         name: tag.name,
                         color: tag.color,
                         custom_prompt: tag.custom_prompt || '',
+                        title_prompt: tag.title_prompt || '',
                         default_language: tag.default_language || '',
                         default_min_speakers: tag.default_min_speakers,
                         default_max_speakers: tag.default_max_speakers,
@@ -3364,6 +3415,7 @@ Summarization Instructions:
                         name: '',
                         color: '#3B82F6',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -3394,6 +3446,8 @@ Summarization Instructions:
                         if (newTeamTag.value.custom_prompt && newTeamTag.value.custom_prompt.trim()) {
                             payload.custom_prompt = newTeamTag.value.custom_prompt.trim();
                         }
+                        // Title instructions are always sent so clearing the field clears them (#400)
+                        payload.title_prompt = (newTeamTag.value.title_prompt || '').trim() || null;
 
                         // Add language if selected
                         if (newTeamTag.value.default_language) {
@@ -3441,6 +3495,7 @@ Summarization Instructions:
                             name: '',
                             color: '#3B82F6',
                             custom_prompt: '',
+                            title_prompt: '',
                             default_language: '',
                             default_min_speakers: null,
                             default_max_speakers: null,
@@ -3564,6 +3619,8 @@ Summarization Instructions:
                         defaultHotwords.value = hwSetting ? (hwSetting.value || '') : '';
                         const cspSetting = settingsData.find(s => s.key === 'admin_default_contextual_speaker_prompt');
                         contextualSpeakerPrompt.value = cspSetting ? (cspSetting.value || '') : '';
+                        const titleSetting = settingsData.find(s => s.key === 'admin_default_title_prompt');
+                        defaultTitlePrompt.value = titleSetting ? (titleSetting.value || '') : '';
                     } catch (error) {
                         console.error('Error loading default prompt:', error);
                         promptSaveMessage.value = t('adminDashboard.errors.failedToLoadPrompt');
@@ -3661,6 +3718,39 @@ Summarization Instructions:
                     defaultSummaryPrompt.value = originalDefaultPrompt;
                     promptSaveMessage.value = t('adminDashboard.promptResetMessage');
                     promptSaveError.value = false;
+                };
+
+                const saveDefaultTitlePrompt = async () => {
+                    isSavingTitlePrompt.value = true;
+                    titlePromptSaveMessage.value = '';
+                    titlePromptSaveError.value = false;
+                    try {
+                        const response = await fetch('/admin/settings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                key: 'admin_default_title_prompt',
+                                value: defaultTitlePrompt.value,
+                                description: 'Default instructions for AI-generated recording titles, used when no tag, folder or user title prompt is set.',
+                                setting_type: 'string'
+                            })
+                        });
+                        if (!response.ok) throw new Error('Failed to save prompt');
+                        const row = (settings.value || []).find(s => s.key === 'admin_default_title_prompt');
+                        if (row) row.value = defaultTitlePrompt.value;
+                        titlePromptSaveMessage.value = t('adminDashboard.promptSavedSuccessfully');
+                        titlePromptSaveError.value = false;
+                        setTimeout(() => { titlePromptSaveMessage.value = ''; }, 3000);
+                    } catch (error) {
+                        console.error('Error saving default title prompt:', error);
+                        titlePromptSaveMessage.value = t('adminDashboard.errors.failedToSavePrompt');
+                        titlePromptSaveError.value = true;
+                    } finally {
+                        isSavingTitlePrompt.value = false;
+                    }
                 };
 
                 const saveContextualSpeakerPrompt = async () => {
@@ -4004,6 +4094,7 @@ Summarization Instructions:
                     hintsSaveMessage,
                     hintsSaveError,
                     contextualSpeakerPrompt,
+                    defaultTitlePrompt, isSavingTitlePrompt, titlePromptSaveMessage, titlePromptSaveError,
                     isSavingContextualPrompt,
                     contextualPromptSaveMessage,
                     contextualPromptSaveError,
@@ -4088,7 +4179,8 @@ Summarization Instructions:
                     saveDefaultPrompt,
                     resetDefaultPrompt,
                     saveDefaultHints,
-                    saveContextualSpeakerPrompt
+                    saveContextualSpeakerPrompt,
+                    saveDefaultTitlePrompt
                 };
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2

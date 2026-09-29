@@ -91,6 +91,7 @@ class Folder(db.Model):
 
     # Custom settings for this folder
     custom_prompt = db.Column(db.Text, nullable=True)  # Custom summarization prompt
+    title_prompt = db.Column(db.Text, nullable=True)  # Instructions for AI titles (#400)
     default_language = db.Column(db.String(10), nullable=True)  # Default transcription language
     default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
     default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
@@ -143,6 +144,7 @@ class Folder(db.Model):
             'is_group_folder': self.is_group_folder,
             'group_name': self.group.name if self.group else None,
             'custom_prompt': self.custom_prompt,
+            'title_prompt': self.title_prompt,
             'default_language': self.default_language,
             'default_min_speakers': self.default_min_speakers,
             'default_max_speakers': self.default_max_speakers,
@@ -173,6 +175,7 @@ class Tag(db.Model):
 
     # Custom settings for this tag
     custom_prompt = db.Column(db.Text, nullable=True)  # Custom summarization prompt
+    title_prompt = db.Column(db.Text, nullable=True)  # Instructions for AI titles (#400)
     default_language = db.Column(db.String(10), nullable=True)  # Default transcription language
     default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
     default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
@@ -229,6 +232,7 @@ class Tag(db.Model):
             'is_group_tag': self.is_group_tag,
             'group_name': self.group.name if self.group else None,
             'custom_prompt': self.custom_prompt,
+            'title_prompt': self.title_prompt,
             'default_language': self.default_language,
             'default_min_speakers': self.default_min_speakers,
             'default_max_speakers': self.default_max_speakers,
