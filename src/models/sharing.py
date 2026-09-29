@@ -211,6 +211,7 @@ class SharedRecordingState(db.Model):
     personal_notes = db.Column(db.Text, nullable=True)  # Private notes only this user can see
     is_inbox = db.Column(db.Boolean, default=True)  # User's personal inbox status
     is_highlighted = db.Column(db.Boolean, default=False)  # User's personal highlight/favorite status
+    is_archived = db.Column(db.Boolean, default=False)  # User's personal archive status (#394)
     last_viewed = db.Column(db.DateTime, default=datetime.utcnow)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

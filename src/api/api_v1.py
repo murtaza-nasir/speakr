@@ -139,6 +139,7 @@ OPENAPI_SPEC = {
                     "participants": {"type": "string"},
                     "is_inbox": {"type": "boolean"},
                     "is_highlighted": {"type": "boolean"},
+                    "is_archived": {"type": "boolean", "description": "Hidden from the main list in the web app; nothing is deleted"},
                     "deletion_exempt": {"type": "boolean", "description": "If true, recording is exempt from auto-deletion"},
                     "prompt_variables": {"type": "object", "description": "Per-recording {{name}} substitutions used when summarising"},
                     "folder_id": {"type": "integer", "nullable": True},
@@ -230,6 +231,7 @@ OPENAPI_SPEC = {
                     {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size"]}},
                     {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
+                    {"name": "archived", "in": "query", "schema": {"type": "boolean"}, "description": "true: only archived recordings; false: only unarchived. Omitted: both, as before."},
                     {"name": "folder_id", "in": "query", "schema": {"type": "string"}, "description": "Filter by folder. Pass an integer folder id to list recordings in that folder, or the literal 'none' to list recordings not in any folder. Omit for no filter."},
                     {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Search query"}
                 ],
@@ -251,7 +253,7 @@ OPENAPI_SPEC = {
                 "tags": ["Recordings"],
                 "summary": "Update recording",
                 "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
-                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"title": {"type": "string"}, "participants": {"type": "string"}, "notes": {"type": "string"}, "summary": {"type": "string"}, "meeting_date": {"type": "string"}, "is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "folder_id": {"type": "integer", "nullable": True, "description": "Move recording to this folder, or null to remove from any folder. Caller must have access to the target folder."}}}}}},
+                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"title": {"type": "string"}, "participants": {"type": "string"}, "notes": {"type": "string"}, "summary": {"type": "string"}, "meeting_date": {"type": "string"}, "is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "is_archived": {"type": "boolean"}, "folder_id": {"type": "integer", "nullable": True, "description": "Move recording to this folder, or null to remove from any folder. Caller must have access to the target folder."}}}}}},
                 "responses": {"200": {"description": "Updated recording"}, "403": {"description": "No access to target folder"}, "404": {"description": "Recording or folder not found"}}
             },
             "delete": {
@@ -279,6 +281,9 @@ OPENAPI_SPEC = {
         "/recordings/{id}/notes": {
             "get": {"tags": ["Recordings"], "summary": "Get notes", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Notes markdown"}}},
             "put": {"tags": ["Recordings"], "summary": "Replace notes", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["notes"], "properties": {"notes": {"type": "string"}}}}}}, "responses": {"200": {"description": "Updated"}}}
+        },
+        "/recordings/{id}/delete-audio": {
+            "post": {"tags": ["Recordings"], "summary": "Delete audio, keep transcript", "description": "Deletes the media file and keeps the transcript, summary and notes. Same permission as deleting the recording. 409 if the audio is already removed or the recording is still processing.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Audio removed"}, "403": {"description": "Permission denied"}, "404": {"description": "Recording not found"}, "409": {"description": "Already removed or still processing"}}}
         },
         "/recordings/{id}/status": {
             "get": {"tags": ["Recordings"], "summary": "Get processing status", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position"}}}
@@ -329,7 +334,7 @@ OPENAPI_SPEC = {
             }
         },
         "/recordings/batch": {
-            "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "description": "Apply the same set of updates to multiple recordings in one call. Supported fields inside `updates`: `is_inbox`, `is_highlighted`, `add_tag_ids` (array of tag ids to add), `remove_tag_ids` (array of tag ids to remove), `folder_id` (move all to this folder, or null to remove from any folder).", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object", "properties": {"is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "add_tag_ids": {"type": "array", "items": {"type": "integer"}}, "remove_tag_ids": {"type": "array", "items": {"type": "integer"}}, "folder_id": {"type": "integer", "nullable": True, "description": "Target folder id, or null to remove all selected recordings from their folders. Caller must have access."}}}}}}}}, "responses": {"200": {"description": "Batch results"}, "403": {"description": "No access to target folder"}, "404": {"description": "Target folder not found"}}},
+            "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "description": "Apply the same set of updates to multiple recordings in one call. Supported fields inside `updates`: `is_inbox`, `is_highlighted`, `is_archived`, `add_tag_ids` (array of tag ids to add), `remove_tag_ids` (array of tag ids to remove), `folder_id` (move all to this folder, or null to remove from any folder).", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object", "properties": {"is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "is_archived": {"type": "boolean"}, "add_tag_ids": {"type": "array", "items": {"type": "integer"}}, "remove_tag_ids": {"type": "array", "items": {"type": "integer"}}, "folder_id": {"type": "integer", "nullable": True, "description": "Target folder id, or null to remove all selected recordings from their folders. Caller must have access."}}}}}}}}, "responses": {"200": {"description": "Batch results"}, "403": {"description": "No access to target folder"}, "404": {"description": "Target folder not found"}}},
             "delete": {"tags": ["Batch"], "summary": "Batch delete recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
         },
         "/recordings/batch/transcribe": {
@@ -817,6 +822,7 @@ def list_recordings():
         q: Search query (title, participants)
         inbox: Filter by inbox status (true/false)
         starred: Filter by starred status (true/false)
+        archived: Filter by archive status (true/false); omitted returns both
     """
     # Parse query parameters
     page = request.args.get('page', 1, type=int)
@@ -831,6 +837,7 @@ def list_recordings():
     search_query = request.args.get('q', '').strip()
     inbox_filter = request.args.get('inbox')
     starred_filter = request.args.get('starred')
+    archived_filter = request.args.get('archived')
 
     # Base query - user's recordings.
     # Eager-load folder and tag-association+Tag so the list builder
@@ -911,6 +918,12 @@ def list_recordings():
         is_starred = starred_filter.lower() == 'true'
         query = query.filter(Recording.is_highlighted == is_starred)
 
+    # Archive filter (#394). The API keeps returning archived recordings by
+    # default so existing integrations see no change.
+    if archived_filter is not None:
+        is_archived = archived_filter.lower() == 'true'
+        query = query.filter(db.func.coalesce(Recording.is_archived, False) == is_archived)
+
     # Sorting
     sort_columns = {
         'created_at': Recording.created_at,
@@ -944,6 +957,7 @@ def list_recordings():
             'participants': r.participants,
             'is_inbox': r.is_inbox,
             'is_highlighted': r.is_highlighted,
+            'is_archived': bool(r.is_archived),
             'audio_available': r.audio_deleted_at is None,
             'audio_duration': r.get_audio_duration(),
             'has_transcription': bool(r.transcription),
@@ -1011,6 +1025,7 @@ def get_recording(recording_id):
         'mime_type': recording.mime_type,
         'is_inbox': recording.is_inbox,
         'is_highlighted': recording.is_highlighted,
+        'is_archived': bool(recording.is_archived),
         'audio_available': recording.audio_deleted_at is None,
         'audio_duration': recording.get_audio_duration(),
         'processing_time_seconds': recording.processing_time_seconds,
@@ -1247,6 +1262,9 @@ def update_recording(recording_id):
     if 'is_highlighted' in data:
         recording.is_highlighted = bool(data['is_highlighted'])
         changed_fields.append('is_highlighted')
+    if 'is_archived' in data:
+        recording.is_archived = bool(data['is_archived'])
+        changed_fields.append('is_archived')
     if 'folder_id' in data:
         new_folder_id = data['folder_id']
         if new_folder_id is None:
@@ -1301,6 +1319,7 @@ def update_recording(recording_id):
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
             'is_inbox': recording.is_inbox,
             'is_highlighted': recording.is_highlighted,
+            'is_archived': bool(recording.is_archived),
             'folder_id': recording.folder_id
         }
     })
@@ -1383,6 +1402,28 @@ def delete_recording(recording_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': 'Recording deleted'})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/delete-audio', methods=['POST'])
+@login_required
+def delete_recording_audio(recording_id):
+    """Delete a recording's media file and keep its transcript, summary and notes."""
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify({'error': 'Recording not found'}), 404
+    if recording.user_id != current_user.id:
+        return jsonify({'error': 'Permission denied - only owner can delete'}), 403
+    USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
+    if not USERS_CAN_DELETE and not current_user.is_admin:
+        return jsonify({'error': 'Deletion not allowed'}), 403
+    if recording.audio_deleted_at:
+        return jsonify({'error': 'The audio has already been removed'}), 409
+    if recording.status not in ('COMPLETED', 'FAILED'):
+        return jsonify({'error': 'Wait until processing has finished before removing the audio'}), 409
+
+    from src.services.retention import remove_recording_audio
+    remove_recording_audio(recording)
+    return jsonify({'success': True, 'audio_deleted_at': recording.audio_deleted_at.isoformat()})
 
 
 # =============================================================================
@@ -2703,6 +2744,8 @@ def batch_update_recordings():
                 recording.is_inbox = bool(updates['is_inbox'])
             if 'is_highlighted' in updates:
                 recording.is_highlighted = bool(updates['is_highlighted'])
+            if 'is_archived' in updates:
+                recording.is_archived = bool(updates['is_archived'])
             if 'folder_id' in updates:
                 # `target_folder_id` already validated above (None to remove,
                 # or a valid folder id the caller has access to).

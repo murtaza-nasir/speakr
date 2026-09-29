@@ -440,6 +440,13 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'folder', 'default_initial_prompt', 'TEXT'):
             app.logger.info("Added default_initial_prompt column to folder table")
 
+        # Archive hides a recording from the main list without deleting
+        # anything. Per user, like inbox and star (#394).
+        if add_column_if_not_exists(engine, 'recording', 'is_archived', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added is_archived column to recording table")
+        if add_column_if_not_exists(engine, 'shared_recording_state', 'is_archived', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added is_archived column to shared_recording_state table")
+
         # Configurable AI title instructions at every level (#400)
         for table in ('user', 'tag', 'folder'):
             if add_column_if_not_exists(engine, table, 'title_prompt', 'TEXT'):

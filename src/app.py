@@ -351,6 +351,8 @@ def enrich_recording_dict_with_user_status(recording_dict, recording, user):
     user_inbox, user_highlighted = get_user_recording_status(recording, user)
     recording_dict['is_inbox'] = user_inbox
     recording_dict['is_highlighted'] = user_highlighted
+    from src.services.recording_state import get_user_archived
+    recording_dict['is_archived'] = get_user_archived(recording, user)
     return recording_dict
 
 
