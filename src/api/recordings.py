@@ -40,9 +40,9 @@ from src.tasks.processing import format_transcription_for_llm, _resolve_timestam
 from src.utils.dates import to_utc_naive
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.titles import resolve_upload_title
-from src.services.speaker import update_speaker_usage
-from src.services.speaker_embedding_matcher import update_speaker_embedding
-from src.services.speaker_snippets import create_speaker_snippets
+from src.services.speaker import (
+    update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
+)
 
 # Incognito mode - disabled by default, enable via environment variable
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
@@ -944,34 +944,11 @@ def update_speakers(recording_id):
 
         speaker_names_used = []
 
+        label_to_name = {}
         if is_json:
-            # Handle new simplified JSON transcript (list of segments)
-            for segment in transcription_data:
-                original_speaker_label = segment.get('speaker')
-                if original_speaker_label in speaker_map:
-                    new_name_info = speaker_map[original_speaker_label]
-                    new_name = new_name_info.get('name', '').strip()
-                    # If isMe is checked but no name provided, use current user's name
-                    if new_name_info.get('isMe') and not new_name:
-                        new_name = current_user.name or 'Me'
-
-                    if new_name:
-                        segment['speaker'] = new_name
-                        if new_name not in speaker_names_used:
-                            speaker_names_used.append(new_name)
-
+            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
             recording.transcription = json.dumps(transcription_data)
-
-            # Update participants only from speakers that were actually given names (not default labels)
-            final_speakers = set()
-            for seg in transcription_data:
-                speaker = seg.get('speaker')
-                if speaker and str(speaker).strip():
-                    # Only include speakers that have been given actual names (not default labels like "SPEAKER_01", "SPEAKER_09", etc.)
-                    # Check if this speaker was updated with a real name (not a default label)
-                    if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
-                        final_speakers.add(speaker)
-            recording.participants = ', '.join(sorted(list(final_speakers)))
+            recording.participants = participants_from_segments(transcription_data)
 
         else:
             # Handle plain text transcript
@@ -996,61 +973,8 @@ def update_speakers(recording_id):
         if speaker_names_used:
             update_speaker_usage(speaker_names_used)
 
-        # Update speaker voice embeddings if available
-        embeddings_updated = 0
-        snippets_created = 0
-        if recording.speaker_embeddings and speaker_map:
-            try:
-                # Parse embeddings from recording
-                embeddings_data = json.loads(recording.speaker_embeddings) if isinstance(recording.speaker_embeddings, str) else recording.speaker_embeddings
-
-                # Build reverse map: SPEAKER_XX -> actual name assigned
-                speaker_label_to_name = {}
-                for speaker_label, speaker_info in speaker_map.items():
-                    name = speaker_info.get('name', '').strip()
-                    # Handle isMe checkbox
-                    if speaker_info.get('isMe') and not name:
-                        name = current_user.name or 'Me'
-
-                    # Only include speakers that were given real names (not SPEAKER_XX)
-                    if name and not re.match(r'^SPEAKER_\d+$', name, re.IGNORECASE):
-                        speaker_label_to_name[speaker_label] = name
-
-                # Update embeddings for each identified speaker
-                for speaker_label, embedding in embeddings_data.items():
-                    if speaker_label in speaker_label_to_name and embedding and len(embedding) == 256:
-                        speaker_name = speaker_label_to_name[speaker_label]
-
-                        # Find or create the speaker
-                        speaker = Speaker.query.filter_by(
-                            user_id=current_user.id,
-                            name=speaker_name
-                        ).first()
-
-                        if speaker:
-                            # Update the speaker's voice embedding
-                            similarity = update_speaker_embedding(speaker, embedding, recording.id)
-                            embeddings_updated += 1
-
-                            if similarity is not None:
-                                current_app.logger.info(
-                                    f"Updated voice profile for '{speaker_name}' "
-                                    f"(similarity: {similarity*100:.1f}%)"
-                                )
-                            else:
-                                current_app.logger.info(
-                                    f"Created initial voice profile for '{speaker_name}'"
-                                )
-
-                # Create snippets for identified speakers
-                if speaker_label_to_name:
-                    snippets_created = create_speaker_snippets(recording.id, speaker_map)
-                    if snippets_created > 0:
-                        current_app.logger.info(f"Created {snippets_created} speaker snippets")
-
-            except Exception as e:
-                current_app.logger.error(f"Error updating speaker embeddings: {e}", exc_info=True)
-                # Don't fail the whole request if embedding update fails
+        # Update speaker voice embeddings and snippets if available
+        update_voice_profiles(recording, label_to_name, current_user)
 
         db.session.commit()
 
@@ -1107,39 +1031,20 @@ def update_transcript(recording_id):
         if not transcript_data or not isinstance(transcript_data, list):
             return jsonify({'error': 'Invalid transcript data provided'}), 400
 
-        # Update speaker names in the transcript data
-        speaker_names_used = []
-        for segment in transcript_data:
-            original_speaker_label = segment.get('speaker')
-
-            # Apply speaker name mapping if provided
-            if original_speaker_label in speaker_map:
-                new_name_info = speaker_map[original_speaker_label]
-                new_name = new_name_info.get('name', '').strip()
-                if new_name_info.get('isMe'):
-                    new_name = current_user.name or 'Me'
-
-                if new_name:
-                    segment['speaker'] = new_name
-                    if new_name not in speaker_names_used:
-                        speaker_names_used.append(new_name)
+        # Apply the names exactly as update_speakers does, including the voice
+        # profiles and snippets: this route saves the names whenever the user
+        # also staged a line edit in the speaker modal.
+        speaker_names_used, label_to_name = apply_speaker_map(transcript_data, speaker_map, current_user)
 
         # Save the updated transcript
         recording.transcription = json.dumps(transcript_data)
-
-        # Update participants
-        final_speakers = set()
-        for seg in transcript_data:
-            speaker = seg.get('speaker')
-            if speaker and str(speaker).strip():
-                # Only include speakers with real names (not default labels)
-                if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
-                    final_speakers.add(speaker)
-        recording.participants = ', '.join(sorted(list(final_speakers)))
+        recording.participants = participants_from_segments(transcript_data)
 
         # Update speaker usage statistics
         if speaker_names_used:
             update_speaker_usage(speaker_names_used)
+
+        update_voice_profiles(recording, label_to_name, current_user)
 
         db.session.commit()
 
