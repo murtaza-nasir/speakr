@@ -154,8 +154,10 @@ def test_label_url_serves_the_spa_shell(owner):
     # else. That made a raw byte comparison flake in the full suite while
     # passing every time this file ran alone.
     import re
+    # The logout form carries the same token as a hidden input.
     def _shell(body):
-        return re.sub(rb'(name="csrf-token"\s+content=")[^"]*(")', rb'\1\2', body)
+        body = re.sub(rb'(name="csrf-token"\s+content=")[^"]*(")', rb'\1\2', body)
+        return re.sub(rb'(name="csrf_token"\s+value=")[^"]*(")', rb'\1\2', body)
     assert _shell(resp.data) == _shell(c.get("/").data)
 
 

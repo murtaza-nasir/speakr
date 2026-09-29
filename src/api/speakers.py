@@ -66,17 +66,23 @@ def get_speakers():
 @speakers_bp.route('/speakers/search', methods=['GET'])
 @login_required
 def search_speakers():
-    """Search speakers by name for autocomplete functionality."""
+    """Search speakers by name for autocomplete functionality.
+
+    With an empty ``q`` and ``top=1`` it returns the most-used speakers, so a
+    name field can offer suggestions before anything is typed (#395).
+    """
     try:
         query = request.args.get('q', '').strip()
-        if not query:
+        top = request.args.get('top', '').lower() in ('1', 'true')
+        if not query and not top:
             return jsonify([])
-        
-        speakers = Speaker.query.filter_by(user_id=current_user.id)\
-                               .filter(Speaker.name.ilike(f'%{query}%'))\
-                               .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
-                               .limit(10)\
-                               .all()
+
+        stmt = Speaker.query.filter_by(user_id=current_user.id)
+        if query:
+            stmt = stmt.filter(Speaker.name.ilike(f'%{query}%'))
+        speakers = stmt.order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
+                       .limit(10)\
+                       .all()
         
         return jsonify([speaker.to_dict() for speaker in speakers])
     except Exception as e:
