@@ -389,7 +389,7 @@ async function finalize(sessionId, formData, tokenRef, options) {
             throw transportError;
         }
         const body = parseJson(result.text);
-        if (result.status >= 200 && result.status < 300 && body?.id) return body;
+        if (result.status >= 200 && result.status < 300 && (body?.id || body?.join_pending)) return body;
         if (isCsrfRejection(result.status, result.text) && attempt === 1) {
             tokenRef.token = await getUploadCsrfToken();
             continue;

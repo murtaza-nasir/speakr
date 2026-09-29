@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "Arquivo de vídeo grande. O envio será concluído; a transcrição pode demorar mais e usa o particionamento no servidor.",
     "options": "Opções",
     "transcriptionOptions": "Opções de transcrição",
-    "uploadAndAddMore": "Enviar e adicionar mais"
+    "uploadAndAddMore": "Enviar e adicionar mais",
+    "joinModeLabel": "Como adicionar estes arquivos",
+    "joinSeparate": "Gravações separadas",
+    "joinOne": "Uma gravação",
+    "joinMoveUp": "Mover para cima",
+    "joinMoveDown": "Mover para baixo",
+    "joinSummary": "Os {{count}} arquivos são unidos nesta ordem, {{duration}} no total. Arraste um arquivo ou use as setas para mudar a ordem.",
+    "joinSummaryNoDuration": "Os {{count}} arquivos são unidos nesta ordem. Arraste um arquivo ou use as setas para mudar a ordem.",
+    "joinTitle": "Título da gravação unida",
+    "joinTitlePlaceholder": "Deixe em branco para gerar um título",
+    "joinVideoHint": "A gravação unida mantém apenas o áudio.",
+    "uploadAndJoin": "Enviar e unir {{count}} arquivos",
+    "joinFailed": "A união foi interrompida porque {{name}} não foi enviado. Adicione os arquivos novamente para tentar outra vez."
   },
   "uploadProgress": {
     "title": "Progresso do Envio"

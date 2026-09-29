@@ -289,23 +289,37 @@ def run_merge_job(recording, params):
     Raises MergeError on failure so the worker can flip the recording to FAILED.
     """
     source_ids = (params or {}).get('source_ids') or []
+    part_ids = (params or {}).get('part_ids') or []
     delete_originals = bool((params or {}).get('delete_originals', False))
 
-    if len(source_ids) < 2:
+    if len(source_ids) < 2 and len(part_ids) < 2:
         raise MergeError("Merge job is missing its source recordings.")
 
     storage = get_storage_service()
 
     # Re-fetch and re-validate sources at run time (they may have changed since
-    # the request was made).
+    # the request was made). Files joined at upload arrive as UploadJoinParts
+    # claimed for this recording, not as recordings.
     sources = []
-    for rid in source_ids:
-        rec = db.session.get(Recording, rid)
-        if not rec or rec.user_id != recording.user_id:
-            raise MergeError("A source recording is no longer available.")
-        if not rec.audio_path or not storage.exists(rec.audio_path):
-            raise MergeError("Audio for a source recording is unavailable.")
-        sources.append(rec)
+    parts = []
+    if part_ids:
+        from src.models.upload_join import UploadJoinPart
+        for pid in part_ids:
+            part = db.session.get(UploadJoinPart, pid)
+            if not part or part.user_id != recording.user_id or part.recording_id != recording.id:
+                raise MergeError("An uploaded file to join is no longer available.")
+            if not part.audio_path or not storage.exists(part.audio_path):
+                raise MergeError("Audio for an uploaded file to join is unavailable.")
+            parts.append(part)
+    else:
+        for rid in source_ids:
+            rec = db.session.get(Recording, rid)
+            if not rec or rec.user_id != recording.user_id:
+                raise MergeError("A source recording is no longer available.")
+            if not rec.audio_path or not storage.exists(rec.audio_path):
+                raise MergeError("Audio for a source recording is unavailable.")
+            sources.append(rec)
+    locators = [p.audio_path for p in parts] or [r.audio_path for r in sources]
 
     now = datetime.utcnow()
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -317,8 +331,8 @@ def run_merge_job(recording, params):
     try:
         with ExitStack() as stack:
             local_paths = []
-            for rec in sources:
-                materialized = stack.enter_context(storage.materialize(rec.audio_path))
+            for locator in locators:
+                materialized = stack.enter_context(storage.materialize(locator))
                 local_paths.append(materialized.local_path)
             _concat_audio(local_paths, staging_path)
 
@@ -360,6 +374,9 @@ def run_merge_job(recording, params):
         raise MergeError("Failed to store the merged recording.")
 
     # Delete originals only after the merged audio is safely stored.
+    if parts:
+        from src.services.upload_join import release_parts_media
+        release_parts_media(parts, storage)
     if delete_originals:
         for rec in sources:
             try:
@@ -372,8 +389,10 @@ def run_merge_job(recording, params):
     # the merged file honors all of the owner's tag/folder/account preferences
     # (speaker-count hints, hotwords, initial prompt, transcription model) and
     # therefore diarization + auto speaker labelling behave identically (#323).
+    # A join at upload carries the params its upload resolved, which include
+    # the dialog's language, speaker count, hotwords and model.
     from src.services.transcription_defaults import resolve_transcription_params
-    job_params = resolve_transcription_params(recording)
+    job_params = (params or {}).get('transcribe_params') or resolve_transcription_params(recording)
     job_queue.enqueue(
         user_id=recording.user_id,
         recording_id=recording.id,

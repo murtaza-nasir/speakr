@@ -794,6 +794,21 @@ def _replay_sliced_upload_response(session):
     """
     existing = (db.session.get(Recording, session.finalized_recording_id)
                 if session.finalized_recording_id else None)
+    if existing is None and not session.finalized_recording_id:
+        # A file uploaded as part of a join finalizes without a recording of
+        # its own; the retry carries the same join fields.
+        from src.services.upload_join import parse_join_fields, joined_recording, received_count, JoinError
+        try:
+            join = parse_join_fields(request.form)
+        except JoinError:
+            join = None
+        if join:
+            group, index, count = join
+            existing = joined_recording(current_user.id, group)
+            if existing is None:
+                return jsonify({'join_pending': True, 'join_group': group, 'join_index': index,
+                                'received': received_count(current_user.id, group),
+                                'total': count, 'idempotent_replay': True}), 202
     if existing is None or existing.user_id != current_user.id:
         return jsonify({
             'error': 'Session was already finalized and its recording no longer exists',

@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "Archivo de vídeo grande. La subida continuará; la transcripción puede tardar más y usa el troceado en el servidor.",
     "options": "Opciones",
     "transcriptionOptions": "Opciones de transcripción",
-    "uploadAndAddMore": "Subir y añadir más"
+    "uploadAndAddMore": "Subir y añadir más",
+    "joinModeLabel": "Cómo añadir estos archivos",
+    "joinSeparate": "Grabaciones separadas",
+    "joinOne": "Una grabación",
+    "joinMoveUp": "Subir",
+    "joinMoveDown": "Bajar",
+    "joinSummary": "Los {{count}} archivos se unen en este orden, {{duration}} en total. Arrastre un archivo o use las flechas para cambiar el orden.",
+    "joinSummaryNoDuration": "Los {{count}} archivos se unen en este orden. Arrastre un archivo o use las flechas para cambiar el orden.",
+    "joinTitle": "Título de la grabación unida",
+    "joinTitlePlaceholder": "Déjelo en blanco para generar un título",
+    "joinVideoHint": "La grabación unida conserva solo el audio.",
+    "uploadAndJoin": "Subir y unir {{count}} archivos",
+    "joinFailed": "La unión se detuvo porque {{name}} no se subió. Vuelva a añadir los archivos para intentarlo de nuevo."
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

@@ -2408,6 +2408,20 @@ def ingest_uploaded_recording(
         if not original_filename:
             return jsonify({'error': 'No file selected'}), 400
 
+        # Joining several files into one recording (upload dialog). A retry
+        # of a part whose group was already joined gets that recording.
+        from src.services.upload_join import parse_join_fields, joined_recording, JoinError
+        try:
+            join = parse_join_fields(form)
+        except JoinError as e:
+            return jsonify({'error': str(e)}), 400
+        if join:
+            already = joined_recording(owner.id, join[0])
+            if already is not None:
+                response_data = already.to_dict(viewer_user=owner)
+                response_data['idempotent_replay'] = True
+                return jsonify(response_data), success_status
+
         safe_filename = secure_filename(original_filename)
         storage = get_storage_service()
         staging_dir = storage.get_staging_dir()
@@ -2925,6 +2939,16 @@ def ingest_uploaded_recording(
             meeting_date = now
             current_app.logger.debug("No file date available, using current time")
 
+        if join:
+            return _ingest_join_part(
+                owner, join, filepath, storage, now,
+                original_filename=original_filename, file_size=final_file_size,
+                mime_type=mime_type, duration=audio_duration_seconds, meeting_date=meeting_date,
+                title=user_title, notes=notes, folder=selected_folder, tags=selected_tags,
+                prompt_variables=prompt_variables, transcribe_params=resolved_params,
+                duplicate_warning=duplicate_warning, success_status=success_status,
+            )
+
         recording = Recording(
             audio_path=None,
             original_filename=original_filename,
@@ -3049,6 +3073,59 @@ def ingest_uploaded_recording(
         db.session.rollback()
         current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
+
+
+def _ingest_join_part(owner, join, filepath, storage, now, *, original_filename, file_size,
+                      mime_type, duration, meeting_date, title, notes, folder, tags,
+                      prompt_variables, transcribe_params, duplicate_warning, success_status):
+    """Store one file of a join; the file that completes the group creates the recording."""
+    from src.services.upload_join import (
+        store_part, claim_group, create_joined_recording, joined_recording, received_count)
+    group, index, count = join
+    store_part(owner, join, filepath, original_filename=original_filename, file_size=file_size,
+               mime_type=mime_type, duration=duration, meeting_date=meeting_date,
+               storage=storage, now=now)
+
+    parts = claim_group(owner.id, group, count)
+    if parts is None:
+        recording = joined_recording(owner.id, group)
+        if recording is not None:
+            response_data = recording.to_dict(viewer_user=owner)
+        else:
+            response_data = {'join_pending': True, 'join_group': group, 'join_index': index,
+                             'received': received_count(owner.id, group), 'total': count}
+        if duplicate_warning:
+            response_data['duplicate_warning'] = duplicate_warning
+        return jsonify(response_data), success_status
+
+    recording = create_joined_recording(
+        owner, parts, title=title, notes=notes, folder=folder, tags=tags,
+        prompt_variables=prompt_variables, transcribe_params=transcribe_params)
+    current_app.logger.info(f"Joined {count} uploaded files into recording {recording.id}")
+    try:
+        from src.services.webhook_dispatch import emit_webhook_event
+        emit_webhook_event(
+            user_id=owner.id,
+            event_type='recording.created',
+            data={'recording_id': recording.id, 'title': recording.title,
+                  'file_size': recording.file_size, 'original_filename': recording.original_filename},
+        )
+    except Exception as e:
+        current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+    response_data = recording.to_dict(viewer_user=owner)
+    response_data['joined_parts'] = count
+    if duplicate_warning:
+        response_data['duplicate_warning'] = duplicate_warning
+    return jsonify(response_data), success_status
+
+
+@recordings_bp.route('/upload/join/<string:group>', methods=['DELETE'])
+@login_required
+def discard_upload_join(group):
+    """Discard the uploaded parts of a join the dialog gave up on."""
+    from src.services.upload_join import discard_group
+    removed = discard_group(current_user.id, group)
+    return jsonify({'success': True, 'removed': removed})
 
 
 @recordings_bp.route('/api/recordings/incognito', methods=['POST'])

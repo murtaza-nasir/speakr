@@ -2111,7 +2111,19 @@
     "largeVideoNotice": "Großes Videodatei. Upload wird fortgesetzt; Transkription dauert ggf. länger und nutzt das Chunking auf dem Server.",
     "options": "Optionen",
     "transcriptionOptions": "Transkriptionsoptionen",
-    "uploadAndAddMore": "Hochladen & weitere hinzufügen"
+    "uploadAndAddMore": "Hochladen & weitere hinzufügen",
+    "joinModeLabel": "Wie diese Dateien hinzugefügt werden",
+    "joinSeparate": "Einzelne Aufnahmen",
+    "joinOne": "Eine Aufnahme",
+    "joinMoveUp": "Nach oben",
+    "joinMoveDown": "Nach unten",
+    "joinSummary": "{{count}} Dateien werden in dieser Reihenfolge zusammengefügt, insgesamt {{duration}}. Ziehen Sie eine Datei oder nutzen Sie die Pfeile, um die Reihenfolge zu ändern.",
+    "joinSummaryNoDuration": "{{count}} Dateien werden in dieser Reihenfolge zusammengefügt. Ziehen Sie eine Datei oder nutzen Sie die Pfeile, um die Reihenfolge zu ändern.",
+    "joinTitle": "Titel der zusammengefügten Aufnahme",
+    "joinTitlePlaceholder": "Leer lassen, um einen Titel zu erzeugen",
+    "joinVideoHint": "Die zusammengefügte Aufnahme behält nur den Ton.",
+    "uploadAndJoin": "{{count}} Dateien hochladen und zusammenfügen",
+    "joinFailed": "Das Zusammenfügen wurde abgebrochen, weil {{name}} nicht hochgeladen wurde. Fügen Sie die Dateien erneut hinzu, um es noch einmal zu versuchen."
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
