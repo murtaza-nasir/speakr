@@ -468,6 +468,14 @@
                                 Recordings with this tag will use this prompt for AI summaries and chat.
                             </p>
                         </div>
+                        <!-- Title Prompt (#400) -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('editTagModal.titlePrompt')"></label>
+                            <textarea v-model="newTeamTag.title_prompt" rows="2"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   :placeholder="t('editTagModal.titlePromptPlaceholder')"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('editTagModal.titlePromptHelp')"></p>
+                        </div>
 
                         <!-- Transcription Settings -->
                         <div class="grid grid-cols-3 gap-3">
@@ -653,6 +661,14 @@
                             <p class="text-xs text-[var(--text-muted)] mt-1">
                                 Recordings in this folder will use this prompt (unless overridden by a tag).
                             </p>
+                        </div>
+                        <!-- Title Prompt (#400) -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('folderManagement.titlePrompt')"></label>
+                            <textarea v-model="newTeamFolder.title_prompt" rows="2"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   :placeholder="t('folderManagement.titlePromptPlaceholder')"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('folderManagement.titlePromptHelp')"></p>
                         </div>
 
                         <!-- Transcription Settings -->
@@ -846,6 +862,7 @@
                     name: '',
                     color: '#3B82F6',
                     custom_prompt: '',
+                    title_prompt: '',
                     default_language: '',
                     default_min_speakers: null,
                     default_max_speakers: null,
@@ -865,6 +882,7 @@
                     name: '',
                     color: '#10B981',
                     custom_prompt: '',
+                    title_prompt: '',
                     default_language: '',
                     default_min_speakers: null,
                     default_max_speakers: null,
@@ -1131,6 +1149,7 @@
                         name: '',
                         color: '#3B82F6',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -1159,6 +1178,7 @@
                         name: tag.name,
                         color: tag.color,
                         custom_prompt: tag.custom_prompt || '',
+                        title_prompt: tag.title_prompt || '',
                         default_language: tag.default_language || '',
                         default_min_speakers: tag.default_min_speakers,
                         default_max_speakers: tag.default_max_speakers,
@@ -1177,6 +1197,7 @@
                         name: '',
                         color: '#3B82F6',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -1207,6 +1228,8 @@
                         if (newTeamTag.value.custom_prompt && newTeamTag.value.custom_prompt.trim()) {
                             payload.custom_prompt = newTeamTag.value.custom_prompt.trim();
                         }
+                        // Title instructions are always sent so clearing the field clears them (#400)
+                        payload.title_prompt = (newTeamTag.value.title_prompt || '').trim() || null;
 
                         // Add language if selected
                         if (newTeamTag.value.default_language) {
@@ -1254,6 +1277,7 @@
                             name: '',
                             color: '#3B82F6',
                             custom_prompt: '',
+                            title_prompt: '',
                             default_language: '',
                             default_min_speakers: null,
                             default_max_speakers: null,
@@ -1310,6 +1334,7 @@
                         name: '',
                         color: '#10B981',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -1338,6 +1363,7 @@
                         name: folder.name,
                         color: folder.color || '#10B981',
                         custom_prompt: folder.custom_prompt || '',
+                        title_prompt: folder.title_prompt || '',
                         default_language: folder.default_language || '',
                         default_min_speakers: folder.default_min_speakers,
                         default_max_speakers: folder.default_max_speakers,
@@ -1355,6 +1381,7 @@
                         name: '',
                         color: '#10B981',
                         custom_prompt: '',
+                        title_prompt: '',
                         default_language: '',
                         default_min_speakers: null,
                         default_max_speakers: null,
@@ -1384,6 +1411,10 @@
                         if (newTeamFolder.value.custom_prompt && newTeamFolder.value.custom_prompt.trim()) {
                             payload.custom_prompt = newTeamFolder.value.custom_prompt.trim();
                         }
+
+                        // Title instructions are always sent so clearing the field clears them (#400)
+
+                        payload.title_prompt = (newTeamFolder.value.title_prompt || '').trim() || null;
                         if (newTeamFolder.value.default_language) {
                             payload.default_language = newTeamFolder.value.default_language;
                         }
@@ -1422,6 +1453,7 @@
                             name: '',
                             color: '#10B981',
                             custom_prompt: '',
+                            title_prompt: '',
                             default_language: '',
                             default_min_speakers: null,
                             default_max_speakers: null,

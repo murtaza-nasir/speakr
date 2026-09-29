@@ -71,6 +71,12 @@ Understanding prompt precedence helps you use this feature effectively. Tag prom
 
 Multiple tag prompts combine intelligently when applied together. A recording tagged with both "Client" and "Technical" receives both sets of instructions, creating comprehensive summaries without needing complex single prompts trying to cover every scenario.
 
+### Title Prompt
+
+The **Title Generation Prompt** field sets the instructions for the titles Speakr generates for your recordings. Leave it blank to use the current default, which is shown below the field. Only the instructions are yours to change: the transcript, your output language and the rule that the model replies with the title alone are added automatically.
+
+Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title Prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
+
 ### Transcription Hints
 
 Below the summary prompt, you'll find the **Transcription Hints** section with two fields that help improve transcription accuracy:
