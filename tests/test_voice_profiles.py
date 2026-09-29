@@ -423,3 +423,53 @@ def test_existing_reference_becomes_the_legacy_space(ctx):
     VoiceEmbeddingSpace.query.delete()
     db.session.commit()
     assert not before or True
+
+
+# ------------------------------------------------------------ endpoints
+
+def test_sample_list_and_removal_rebuild_the_profile(ctx):
+    user = _user()
+    ana = person()
+    recs = [_recording(user, {"SPEAKER_00": near(ana, 0.05)}) for _ in range(2)]
+    for rec in recs:
+        _save_names(user, rec, {"SPEAKER_00": "Ana"})
+    sp = Speaker.query.filter_by(user_id=user.id, name="Ana").first()
+    c = _client(user)
+    body = c.get(f"/speakers/{sp.id}/voice_samples").get_json()
+    assert body["summary"]["sample_count"] == 2 and len(body["samples"]) == 2
+    assert {s["recording_id"] for s in body["samples"]} == {r.id for r in recs}
+    r = c.delete(f"/speakers/{sp.id}/voice_samples/{body['samples'][0]['id']}")
+    assert r.status_code == 200 and r.get_json()["summary"]["sample_count"] == 1
+    db.session.expire_all()
+    assert db.session.get(Speaker, sp.id).embedding_count == 1
+    # Another user cannot touch it.
+    assert _client(_user()).delete(f"/speakers/{sp.id}/voice_samples/{body['samples'][1]['id']}").status_code == 404
+
+
+def test_pre_sample_profile_is_listed(ctx):
+    user = _user()
+    sp = _speaker(user, "Old", average=person(), count=3)
+    body = _client(user).get(f"/speakers/{sp.id}/voice_samples").get_json()
+    assert [(s["id"], s["source"], s["weight"]) for s in body["samples"]] == [(None, "legacy", 3.0)]
+
+
+def test_speaker_list_carries_voice_counts(ctx):
+    user = _user()
+    _save_names(user, _recording(user, {"SPEAKER_00": person()}), {"SPEAKER_00": "Ana"})
+    rows = _client(user).get("/speakers").get_json()
+    ana = next(r for r in rows if r["name"] == "Ana")
+    assert ana["voice"]["sample_count"] == 1 and ana["voice"]["variant_count"] == 1
+
+
+def test_admin_space_status_counts_old_profiles_in_the_legacy_space(ctx):
+    from src.services import voice_embedding_check as check
+    _fresh_spaces()
+    with patch.dict(os.environ, {"DISABLE_VOICE_EMBEDDING_CHECK": "false"}):
+        space = vp.register_space(person())
+        user = _user()
+        _speaker(user, "Old", average=person(), count=2)
+        status = {s["id"]: s for s in check.spaces_status()}
+        assert status[space]["current"] and status[space]["legacy"]
+        assert status[space]["sample_count"] >= 1
+    VoiceEmbeddingSpace.query.filter_by(id=space).delete()
+    db.session.commit()
