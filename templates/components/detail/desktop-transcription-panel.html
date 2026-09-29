@@ -255,7 +255,7 @@
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <div class="speaker-text">
-                                ${segment.sentence}{{ tone_badge('segment.toneBadge') }}
+                                {{ tone_badge('segment.toneBadge') }}${segment.sentence}
                             </div>
                         </div>
                     </div>
@@ -273,7 +273,7 @@
                             <span v-if="showTimestampsSimpleView"
                                   class="speaker-segment-timestamp speaker-segment-timestamp--inline">
                                 ${ formatTimestamp(segment.startTime) }
-                            </span>${segment.sentence}{{ tone_badge('segment.toneBadge') }}
+                            </span>{{ tone_badge('segment.toneBadge') }}${segment.sentence}
                         </div>
                     </div>
                     <div v-else class="whitespace-pre-wrap">
@@ -294,7 +294,7 @@
                              :data-start-time="bubble.startTime"
                              :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
                             <div class="speaker-bubble-content">
-                                ${bubble.sentence}{{ tone_badge('bubble.toneBadge') }}
+                                {{ tone_badge('bubble.toneBadge') }}${bubble.sentence}
                             </div>
                         </div>
                     </div>

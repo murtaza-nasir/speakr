@@ -8,15 +8,15 @@
 .tone-badge {
     position: relative;
     display: inline-block;
-    margin-left: 0.5em;
-    padding: 1px 6px;
-    font-size: 0.95em;
-    line-height: 1.35;
+    margin-right: 0.5em;
+    padding: 1px 7px;
+    font-size: 1.35em;
+    line-height: 1.25;
     vertical-align: baseline;
     cursor: help;
     /* same recipe as the speaker chips: tinted token background, token border, 6px radius */
     background: var(--bg-accent);
-    border: 1px solid var(--border-accent);
+    border: 1px solid var(--text-accent);
     border-radius: 6px;
     transition: background-color 120ms ease-out;
 }
