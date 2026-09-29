@@ -1347,6 +1347,48 @@ def replace_summary(recording_id):
 
 
 # =============================================================================
+# Recording Tone (supplied by an external scorer)
+# =============================================================================
+
+@api_v1_bp.route('/recordings/<int:recording_id>/tone', methods=['PUT'])
+@login_required
+def replace_tone(recording_id):
+    """Store the voice-tone record for a recording (replaces any existing one)."""
+    from src.services.tone import ToneError, validate_tone
+
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify({'error': 'Recording not found'}), 404
+
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    try:
+        recording.tone = validate_tone(request.get_json(silent=True))
+    except ToneError as error:
+        return jsonify({'error': str(error)}), 400
+    db.session.commit()
+
+    return jsonify({'success': True, 'windows': len(recording.tone.get('windows') or [])})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/tone', methods=['DELETE'])
+@login_required
+def delete_tone(recording_id):
+    """Remove the voice-tone record from a recording."""
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify({'error': 'Recording not found'}), 404
+
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    recording.tone = None
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# =============================================================================
 # Recording Delete
 # =============================================================================
 

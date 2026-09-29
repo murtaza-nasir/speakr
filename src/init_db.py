@@ -277,6 +277,10 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'resolved_initial_prompt', 'TEXT'):
             app.logger.info("Added resolved_initial_prompt column to recording table")
 
+        # Voice-tone record supplied by an external scorer (see src/services/tone.py)
+        if add_column_if_not_exists(engine, 'recording', 'tone', 'JSON'):
+            app.logger.info("Added tone column to recording table")
+
         # Transcription templates now bundle hotwords alongside the prompt (#309)
         if add_column_if_not_exists(engine, 'initial_prompt_template', 'hotwords', 'TEXT'):
             app.logger.info("Added hotwords column to initial_prompt_template table")

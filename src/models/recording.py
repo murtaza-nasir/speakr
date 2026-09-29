@@ -80,6 +80,10 @@ class Recording(db.Model):
     resolved_hotwords = db.Column(db.Text, nullable=True)
     resolved_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # Voice-tone record from an external scorer (windows scored from the audio plus a call
+    # summary), stored as received after validation. Null = none; see src/services/tone.py.
+    tone = db.Column(db.JSON, nullable=True)
+
     # Rendered auto-export filename WITHOUT the .md extension (#348). Set on
     # first export and authoritative from then on: re-exports overwrite this
     # file and deletion renames it. Null = legacy "recording_{id}" naming, so
@@ -466,6 +470,11 @@ class Recording(db.Model):
             'public_share_count': public_share_count,
             'keep_audio_only': self.keep_audio_only,
         }
+
+        # Present only when an external scorer has supplied it, so payloads for
+        # recordings without tone data are unchanged.
+        if self.tone:
+            data['tone'] = self.tone
 
         # Only compute expensive HTML conversions when explicitly requested
         if include_html:
