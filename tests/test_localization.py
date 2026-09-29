@@ -143,6 +143,30 @@ def test_no_value_is_empty(lang):
     assert not blank, f'{lang}.json has empty values: {blank[:15]}'
 
 
+# i18n.interpolate() only fills {{name}}. A single-brace {name} is shown to the
+# user verbatim, as "(HTTP {status})" was in #388. The one allowed exception
+# quotes the literal prompt text the backend appends, where {language} is the
+# point.
+SINGLE_BRACE = re.compile(r'(?<!\{)\{[A-Za-z_]\w*\}(?!\})')
+LITERAL_BRACE_KEYS = {'languagePreferenceNote'}
+
+
+@pytest.mark.parametrize('lang', _languages())
+def test_placeholders_use_the_double_brace_syntax_interpolate_fills(lang):
+    def offenders(d, prefix=''):
+        out = []
+        for k, v in d.items():
+            key = f'{prefix}{k}'
+            if isinstance(v, dict):
+                out += offenders(v, key + '.')
+            elif isinstance(v, str) and k not in LITERAL_BRACE_KEYS and SINGLE_BRACE.search(v):
+                out.append(f'{key}: {v}')
+        return out
+
+    bad = offenders(_load(lang))
+    assert not bad, f'{lang}.json uses single-brace placeholders that never get filled: {bad[:15]}'
+
+
 def test_every_recording_status_the_backend_can_set_has_a_label():
     """The specific gap that motivated this file. PENDING is the column
     default, so every recording passes through it, and it had no label."""
