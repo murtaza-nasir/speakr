@@ -12,7 +12,7 @@ window.AppLoader = {
      * Initialize the loading system
      */
     init() {
-        if (this.initialized) return;
+        if (this.initialized || window.__appLoaderHidden) return;
         this.initialized = true;
         this.initTime = Date.now();
 
@@ -103,6 +103,9 @@ window.AppLoader = {
      * Hide the loading overlay
      */
     hide() {
+        // Remembered so a late init (either overlay script) cannot bring the
+        // overlay back after the page has shown itself.
+        window.__appLoaderHidden = true;
         try {
             // Remove app-loading class immediately to show content
             document.body.classList.remove('app-loading');

@@ -52,6 +52,11 @@
     // Immediate loading overlay initialization
     (function() {
         function initLoadingOverlay() {
+            // If the page already finished initialising and hid the loader,
+            // adding the overlay now would cover the page for good. This
+            // happens when the timer below fires after a fast page init
+            // (seen on /account), since that page has no timeout fallback.
+            if (window.__appLoaderHidden) return;
             if (!document.body) {
                 // Body not ready yet, wait a bit
                 setTimeout(initLoadingOverlay, 10);
