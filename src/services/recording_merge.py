@@ -38,6 +38,7 @@ from datetime import datetime
 from flask import current_app
 
 from src.database import db
+from src.services.recording_deletion import delete_recording_completely
 from src.models import Recording, RecordingTag
 from src.services.job_queue import job_queue
 from src.services.storage.service import get_storage_service
@@ -362,10 +363,10 @@ def run_merge_job(recording, params):
     if delete_originals:
         for rec in sources:
             try:
-                _delete_recording(rec, storage)
+                delete_recording_completely(rec, storage=storage)
             except Exception as e:
+                db.session.rollback()
                 current_app.logger.warning(f"Failed to delete source recording {rec.id} after merge: {e}")
-        db.session.commit()
 
     # Queue transcription with the SAME resolved params a normal upload gets, so
     # the merged file honors all of the owner's tag/folder/account preferences
@@ -380,16 +381,6 @@ def run_merge_job(recording, params):
         params=job_params,
         is_new_upload=True,
     )
-
-
-def _delete_recording(recording, storage):
-    """Delete a source recording's audio and row. Best-effort on the file."""
-    if recording.audio_path:
-        try:
-            storage.delete(recording.audio_path, missing_ok=True)
-        except Exception as e:
-            current_app.logger.warning(f"Could not delete audio for recording {recording.id}: {e}")
-    db.session.delete(recording)
 
 
 def _safe_unlink(path):

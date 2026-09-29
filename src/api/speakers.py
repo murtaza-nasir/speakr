@@ -216,6 +216,14 @@ def update_speaker(speaker_id):
                     # Not JSON or invalid format, skip
                     pass
 
+            # The label map records which name each diarization label shows;
+            # without this the next save would think the voice was removed.
+            if recording.speaker_label_map and old_name in recording.speaker_label_map.values():
+                recording.speaker_label_map = {
+                    label: (new_name if name == old_name else name)
+                    for label, name in recording.speaker_label_map.items()}
+                updated = True
+
             if updated:
                 recordings_updated += 1
 
@@ -398,7 +406,8 @@ def list_voice_samples(speaker_id):
     rec_ids = [r.recording_id for r in rows if r.recording_id]
     if rec_ids:
         for rec in Recording.query.filter(Recording.id.in_(rec_ids)).all():
-            titles[rec.id] = rec.title
+            if has_recording_access(rec, current_user, require_edit=False):
+                titles[rec.id] = rec.title
     current = effective_space(current_space_id())
     samples = []
     if not rows and speaker.average_embedding:
@@ -412,6 +421,8 @@ def list_voice_samples(speaker_id):
     for r in sorted(rows, key=lambda r: r.updated_at or r.created_at, reverse=True):
         item = r.to_dict()
         item['recording_title'] = titles.get(r.recording_id)
+        if r.recording_id not in titles:
+            item['recording_id'] = None  # deleted, or no longer shared with this user
         item['in_current_space'] = effective_space(r.space_id) == current
         samples.append(item)
     return jsonify({'summary': voice_summary(speaker, rows), 'samples': samples})

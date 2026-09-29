@@ -23,6 +23,7 @@ from email.utils import encode_rfc2231
 from urllib.parse import quote
 
 from src.database import db
+from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
 from src.models import *
 from src.utils import *
 from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
@@ -3463,10 +3464,16 @@ def get_inbox_recordings():
         return jsonify({'error': str(e)}), 500
 
 
+@recordings_bp.route('/api/recordings/audio-removed', methods=['GET'])
 @recordings_bp.route('/api/recordings/archived', methods=['GET'])
 @login_required
 def get_archived_recordings():
-    """Get recordings where audio has been deleted but transcription remains."""
+    """Get recordings where audio has been deleted but transcription remains.
+
+    /api/recordings/archived is the name from before #394 and is kept for
+    existing callers; it does not list recordings archived by the user (use
+    GET /api/recordings?archived=true for those).
+    """
     from sqlalchemy import select
     try:
         search_query = request.args.get('q', '').strip()
@@ -4374,28 +4381,16 @@ def bulk_delete_recordings():
                     errors.append(f"No permission for recording {recording_id}")
                     continue
 
-                # Delete audio file
-                if recording.audio_path:
-                    try:
-                        get_storage_service().delete(recording.audio_path, missing_ok=True)
-                    except Exception as e:
-                        current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
-
-                # Delete associated records with NOT NULL recording_id constraints
-                from src.models import ProcessingJob
-                from src.models.speaker_snippet import SpeakerSnippet
-                SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
-                ProcessingJob.query.filter_by(recording_id=recording_id).delete()
-
-                # Delete the recording
-                db.session.delete(recording)
+                delete_recording_completely(recording, storage=get_storage_service())
                 deleted_ids.append(recording_id)
 
             except Exception as e:
+                db.session.rollback()
                 current_app.logger.error(f"Error deleting recording {recording_id}: {e}")
                 errors.append(f"Error with recording {recording_id}")
 
-        db.session.commit()
+        if deleted_ids:
+            cleanup_orphaned_speakers_quietly()
 
         return jsonify({
             'success': True,

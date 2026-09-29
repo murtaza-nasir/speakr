@@ -23,7 +23,7 @@ def get_user_archived(recording, user):
     return bool(state and state.is_archived)
 
 
-def set_user_archived(recording, user, value):
+def set_user_archived(recording, user, value, commit=True):
     value = bool(value)
     if recording.user_id == user.id:
         recording.is_archived = value
@@ -34,8 +34,23 @@ def set_user_archived(recording, user, value):
                                          is_inbox=True, is_highlighted=False)
             db.session.add(state)
         state.is_archived = value
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return value
+
+
+def parse_archived_flag(value):
+    """Strict boolean for an API is_archived field; None when it is not one.
+
+    bool("false") is True, so a string must be parsed, not cast.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str) and value.strip().lower() in ('true', '1', 'false', '0'):
+        return value.strip().lower() in ('true', '1')
+    return None
 
 
 def archived_condition(recording_model, user_id):

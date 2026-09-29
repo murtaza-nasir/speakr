@@ -336,7 +336,8 @@ def record_sample(speaker, recording, label, vector, speech_seconds=None, source
     if vec is None:
         return 'invalid'
     space = recording.speaker_embeddings_space_id
-    existing = SpeakerVoiceSample.query.filter_by(recording_id=recording.id, label=label).first()
+    existing = SpeakerVoiceSample.query.filter_by(
+        user_id=speaker.user_id, recording_id=recording.id, label=label).first()
 
     _materialize_legacy(speaker)
     others = [s for s in samples_for(speaker, space)
@@ -599,14 +600,27 @@ def calibrated_threshold(space_id):
             by_user.setdefault(row.user_id, {}).setdefault(row.speaker_id, []).append(vec)
     genuine, impostor = [], []
     for people in by_user.values():
+        # One similarity matrix per user and dimension; only equal-size
+        # vectors are ever compared.
+        by_dim = {}
         for pid, vecs in people.items():
-            for i, v in enumerate(vecs):
-                own = [float(np.dot(v, w)) for j, w in enumerate(vecs) if j != i and w.shape == v.shape]
-                if own:
-                    genuine.append(max(own))
-                other = [float(np.dot(v, w)) for qid, ws in people.items() if qid != pid for w in ws if w.shape == v.shape]
-                if other:
-                    impostor.append(max(other))
+            for v in vecs:
+                by_dim.setdefault(v.shape[0], ([], []))
+                by_dim[v.shape[0]][0].append(v)
+                by_dim[v.shape[0]][1].append(pid)
+        for vecs, pids in by_dim.values():
+            if len(vecs) < 2:
+                continue
+            m = np.vstack(vecs)
+            sims = m @ m.T
+            pids = np.asarray(pids)
+            same = pids[:, None] == pids[None, :]
+            np.fill_diagonal(same, False)
+            other = pids[:, None] != pids[None, :]
+            own_best = np.where(same, sims, -np.inf).max(axis=1)
+            other_best = np.where(other, sims, -np.inf).max(axis=1)
+            genuine.extend(float(x) for x in own_best[np.isfinite(own_best)])
+            impostor.extend(float(x) for x in other_best[np.isfinite(other_best)])
     value = None
     if len(genuine) >= MIN_CALIBRATION_PAIRS and len(impostor) >= MIN_CALIBRATION_PAIRS:
         g10 = float(np.percentile(genuine, 10))
@@ -639,7 +653,8 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
     Each key is traced back to its diarization label through the recording's
     label map, so a correction reaches the embedding even after the transcript
     shows names. Labels that no longer appear in the transcript (merged away)
-    lose their sample. Updates the label map and the affected people's summary
+    lose their sample. Only the saving user's samples are read or changed:
+    each user who can edit a recording keeps their own. Updates the label map and the affected people's summary
     columns. Does not commit.
 
     Returns {'stored': n, 'rejected': n, 'skipped_short': n}.
@@ -666,7 +681,7 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
             seconds = (seconds_by_key or {}).get(key) if seconds_by_key is not None else None
             if seconds_by_key is not None and (seconds or 0.0) < MIN_SPEECH_SECONDS:
                 stats['skipped_short'] += 1
-                old = SpeakerVoiceSample.query.filter_by(recording_id=recording.id, label=label).first()
+                old = SpeakerVoiceSample.query.filter_by(user_id=user.id, recording_id=recording.id, label=label).first()
                 if old is not None:
                     touched.add(old.speaker_id)
                     db.session.delete(old)
@@ -674,7 +689,7 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
             speaker = find_user_speaker(user.id, name)
             if speaker is None:
                 continue
-            old = SpeakerVoiceSample.query.filter_by(recording_id=recording.id, label=label).first()
+            old = SpeakerVoiceSample.query.filter_by(user_id=user.id, recording_id=recording.id, label=label).first()
             if old is not None and old.speaker_id != speaker.id:
                 touched.add(old.speaker_id)
             result = record_sample(speaker, recording, label, embeddings[label], seconds, source)
@@ -687,10 +702,14 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
         present = {s.get('speaker') for s in json.loads(recording.transcription or '[]') if isinstance(s, dict)}
     except (TypeError, ValueError):
         present = None
+    # A person renamed since the map was written still counts as present.
     if present is not None:
-        for row in SpeakerVoiceSample.query.filter_by(recording_id=recording.id).all():
+        from src.models import Speaker as _Speaker
+        for row in SpeakerVoiceSample.query.filter_by(user_id=user.id, recording_id=recording.id).all():
             shown = label_map.get(row.label, row.label)
-            if row.label not in present and shown not in present:
+            person = db.session.get(_Speaker, row.speaker_id) if row.speaker_id else None
+            if row.label not in present and shown not in present and \
+                    not (person is not None and person.name in present):
                 touched.add(row.speaker_id)
                 db.session.delete(row)
 
