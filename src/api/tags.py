@@ -247,6 +247,7 @@ def create_tag():
         group_id=group_id,
         color=color_val or _DEFAULT_TAG_COLOR,
         custom_prompt=data.get('custom_prompt'),
+        title_prompt=data.get('title_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
         default_max_speakers=data.get('default_max_speakers'),
@@ -347,6 +348,8 @@ def update_tag(tag_id):
         tag.color = color_val or _DEFAULT_TAG_COLOR
     if 'custom_prompt' in data:
         tag.custom_prompt = data['custom_prompt']
+    if 'title_prompt' in data:
+        tag.title_prompt = data['title_prompt'] or None
     if 'default_language' in data:
         tag.default_language = data['default_language']
     if 'default_min_speakers' in data:
@@ -538,6 +541,7 @@ def create_group_tag(group_id):
         group_id=group_id,
         color=color_val or _DEFAULT_TAG_COLOR,
         custom_prompt=data.get('custom_prompt'),
+        title_prompt=data.get('title_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
         default_max_speakers=data.get('default_max_speakers'),

@@ -440,6 +440,11 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'folder', 'default_initial_prompt', 'TEXT'):
             app.logger.info("Added default_initial_prompt column to folder table")
 
+        # Configurable AI title instructions at every level (#400)
+        for table in ('user', 'tag', 'folder'):
+            if add_column_if_not_exists(engine, table, 'title_prompt', 'TEXT'):
+                app.logger.info(f"Added title_prompt column to {table} table")
+
     with _migration_section(app, failures, "token indexes, export templates and sharing columns"):
         # Create indexes for token lookups (for faster token verification)
         try:
@@ -818,6 +823,16 @@ def _run_migrations(app, engine):
                 setting_type='string'
             )
             app.logger.info("Initialized admin_default_summary_prompt setting")
+
+        if not SystemSetting.query.filter_by(key='admin_default_title_prompt').first():
+            from src.config.prompts import DEFAULT_TITLE_PROMPT
+            SystemSetting.set_setting(
+                key='admin_default_title_prompt',
+                value=DEFAULT_TITLE_PROMPT,
+                description='Default instructions for AI-generated recording titles, used when no tag, folder or user title prompt is set.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized admin_default_title_prompt setting")
 
         if not SystemSetting.query.filter_by(key='admin_default_contextual_speaker_prompt').first():
             from src.config.prompts import DEFAULT_CONTEXTUAL_SPEAKER_PROMPT

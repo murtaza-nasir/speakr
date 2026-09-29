@@ -42,3 +42,13 @@ Example Format:
 # (see PREFIX_CACHE_OPTIMIZED_PROMPTS): the transcript is the stable prefix, this
 # guidance is the editable suffix.
 DEFAULT_CONTEXTUAL_SPEAKER_PROMPT = """Work out which of the known speaker profiles each speaker label most likely corresponds to, using clues in the conversation such as the names people are addressed by, self-introductions, and references to roles or relationships. Only assign a known profile when the conversation clearly supports it; if you are not confident about a speaker, leave that speaker unassigned with an empty string. Never invent a name that is not in the known profiles list."""
+
+
+# Instructions for AI-generated recording titles (#400), and the fallback when
+# no tag / folder / user / admin title prompt is set. Only the instructions are
+# editable: the transcript, the output-language directive and the rule to reply
+# with the title text alone are added in code, after the transcript, so an edit
+# here never disturbs prefix caching.
+DEFAULT_TITLE_PROMPT = """- Maximum 8 words
+- No phrases like "Discussion about" or "Meeting on"
+- Just the main topic"""

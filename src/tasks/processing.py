@@ -410,6 +410,47 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.info(f"Title generation complete, leaving status unchanged (auto-summarization will follow) for recording {recording_id}")
 
 
+def _user_title_instructions(user):
+    """The user, admin and shipped levels of the title precedence."""
+    from src.config.prompts import DEFAULT_TITLE_PROMPT
+
+    if user and user.title_prompt and user.title_prompt.strip():
+        return user.title_prompt.strip(), 'user'
+    admin_prompt = SystemSetting.get_setting('admin_default_title_prompt', None)
+    if admin_prompt and str(admin_prompt).strip():
+        return str(admin_prompt).strip(), 'admin'
+    return DEFAULT_TITLE_PROMPT, 'default'
+
+
+def resolve_title_instructions(recording, viewer=None):
+    """Instructions for a recording's AI title, and which level supplied them.
+
+    Same precedence as the summary prompt (#400): tag > folder > user > admin
+    default > shipped default. Every tag visible to the viewer that carries a
+    title prompt contributes, in the order the tags were added, joined the way
+    tag summary prompts are. The viewer defaults to the owner, who is the user
+    titles are generated for.
+
+    Returns (instructions, source); source is 'tag', 'folder', 'user',
+    'admin' or 'default'.
+    """
+    viewer = viewer or recording.owner
+    if viewer:
+        tag_prompts = [
+            tag.title_prompt.strip()
+            for tag in (recording.get_visible_tags(viewer) or [])
+            if tag.title_prompt and tag.title_prompt.strip()
+        ]
+        if tag_prompts:
+            return "\n\n".join(tag_prompts), 'tag'
+
+    folder = recording.folder
+    if folder and folder.title_prompt and folder.title_prompt.strip():
+        return folder.title_prompt.strip(), 'folder'
+
+    return _user_title_instructions(recording.owner)
+
+
 def _generate_ai_title(recording):
     """Generate an AI title for a recording using LLM.
 
@@ -451,6 +492,9 @@ def _generate_ai_title(recording):
 
     language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
 
+    title_instructions, title_source = resolve_title_instructions(recording)
+    current_app.logger.info(f"Using {title_source} title instructions for recording {recording.id}")
+
     if PREFIX_CACHE_OPTIMIZED_PROMPTS:
         # Shared-prefix layout: identical system message + identical user prefix
         # (including the transcript) between this call and the summary call, so
@@ -460,11 +504,9 @@ def _generate_ai_title(recording):
         system_message_content = _SHARED_LLM_SYSTEM_MSG
         prompt_text = (
             _shared_user_prefix(transcript_text)
-            + "Task: produce ONE short title for the conversation above.\n"
+            + "Task: produce ONE title for the conversation above.\n"
             + "Requirements:\n"
-            + "- Maximum 8 words\n"
-            + "- No phrases like \"Discussion about\" or \"Meeting on\"\n"
-            + "- Just the main topic\n"
+            + title_instructions + "\n"
             + "- Output ONLY the title text, nothing else (no quotes, no prefix)\n"
             + (f"- Respond in {user_output_language}\n" if user_output_language else "")
             + "\nTitle:"
@@ -475,9 +517,8 @@ def _generate_ai_title(recording):
 {transcript_text}
 
 Requirements:
-- Maximum 8 words
-- No phrases like "Discussion about" or "Meeting on"
-- Just the main topic
+{title_instructions}
+- Output ONLY the title text, nothing else
 
 {language_directive}
 
@@ -513,7 +554,7 @@ Title:"""
             # Look for the last line that might be the title
             for line in reversed(lines):
                 line = line.strip()
-                if line and not line.startswith('I') and len(line.split()) <= 8:
+                if line and not line.startswith('I') and len(line.split()) <= 20:
                     raw_response = line
                     break
 
@@ -2669,15 +2710,17 @@ def _generate_incognito_title(transcription_text, user=None):
         # Get user language preference
         user_output_language = user.output_language if user else None
         language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
+        # Incognito recordings have no tags or folder, so only the user,
+        # admin and shipped levels apply.
+        title_instructions, _ = _user_title_instructions(user)
 
         prompt_text = f"""Create a short title for this conversation:
 
 {limited_text}
 
 Requirements:
-- Maximum 8 words
-- No phrases like "Discussion about" or "Meeting on"
-- Just the main topic
+{title_instructions}
+- Output ONLY the title text, nothing else
 
 {language_directive}
 

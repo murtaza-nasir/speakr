@@ -147,6 +147,7 @@ def create_folder():
         group_id=group_id,
         color=data.get('color', '#10B981'),
         custom_prompt=data.get('custom_prompt'),
+        title_prompt=data.get('title_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
         default_max_speakers=data.get('default_max_speakers'),
@@ -234,6 +235,8 @@ def update_folder(folder_id):
         folder.color = data['color']
     if 'custom_prompt' in data:
         folder.custom_prompt = data['custom_prompt']
+    if 'title_prompt' in data:
+        folder.title_prompt = data['title_prompt'] or None
     if 'default_language' in data:
         folder.default_language = data['default_language']
     if 'default_min_speakers' in data:
@@ -391,6 +394,7 @@ def create_group_folder(group_id):
         group_id=group_id,
         color=data.get('color', '#10B981'),
         custom_prompt=data.get('custom_prompt'),
+        title_prompt=data.get('title_prompt'),
         default_language=data.get('default_language'),
         default_min_speakers=data.get('default_min_speakers'),
         default_max_speakers=data.get('default_max_speakers'),

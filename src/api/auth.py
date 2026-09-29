@@ -672,6 +672,10 @@ def account():
             # Handle custom prompt updates
             summary_prompt_text = request.form.get('summary_prompt')
             current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
+            # Gated on its own field so a form without it cannot clear it (#400).
+            if 'title_prompt' in request.form:
+                title_prompt_text = (request.form.get('title_prompt') or '').strip()
+                current_user.title_prompt = title_prompt_text or None
             # Handle event extraction setting
             current_user.extract_events = 'extract_events' in request.form
             # Inquire content availability (agentic inquire). Gated on the
@@ -743,6 +747,10 @@ def account():
         # Fallback to the shipped default if admin hasn't set one.
         from src.config.prompts import DEFAULT_SUMMARY_PROMPT
         default_summary_prompt_text = DEFAULT_SUMMARY_PROMPT
+
+    # The title instructions a user gets when they leave their own blank.
+    from src.tasks.processing import _user_title_instructions
+    default_title_prompt_text = _user_title_instructions(None)[0]
 
     asr_diarize_locked = 'ASR_DIARIZE' in os.environ
     ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'false').lower() == 'true'
@@ -825,6 +833,7 @@ def account():
     return render_template('account.html',
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
+                           default_title_prompt_text=default_title_prompt_text,
                            use_asr_endpoint=USE_ASR_ENDPOINT,
                            connector_supports_diarization=connector_supports_diarization,
                            connector_supports_hotwords=connector_supports_hotwords,
