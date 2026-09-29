@@ -328,14 +328,21 @@
     "viewFullPromptStructure": "View Full LLM Prompt Structure",
     "voiceEmbedding": {
       "checkNow": "Check now",
+      "current": "current",
       "dimension": "Dimensions",
       "help": "Checks that the transcription backend still produces voice embeddings compatible with the stored voice profiles, by sending a short bundled clip and comparing the result with a reference. Runs at startup; use Check now to run it again.",
       "lastChecked": "Last checked",
+      "lastSeen": "Last seen",
+      "notCalibrated": "default (not enough samples yet)",
       "rebaseline": "Re-baseline",
-      "rebaselineConfirm": "Re-baselining accepts the current backend as the new reference. Existing voice profiles built against the previous model will no longer be flagged, and restoring that backend will not undo this. Rebuild the affected profiles first. Continue?",
+      "rebaselineConfirm": "Re-baselining accepts the current backend as the reference and clears the warning. Voice profiles from the previous model are kept, and they match again if that backend is restored. Continue?",
+      "samples": "Samples",
+      "space": "Space",
+      "spacesTitle": "Voice spaces (one per embedding model)",
       "statusChanged": "Model changed",
       "statusOk": "Compatible",
       "statusUnknown": "Not checked",
+      "threshold": "Match threshold",
       "title": "Voice embedding compatibility"
     },
     "warning": "warning",
@@ -1499,7 +1506,7 @@
     "dismiss": "Dismiss",
     "empty": "Nothing needs your attention.",
     "view": "View",
-    "voiceEmbeddingChanged": "The transcription service is returning different voice embeddings, so existing voice profiles will not match new recordings. Restore the previous backend, or rebuild the profiles and reset the reference."
+    "voiceEmbeddingChanged": "The transcription service is returning voice embeddings from a different model. Voice profiles are kept separately for each model: profiles from the previous model will not match new recordings and come back if you restore the previous backend, and profiles for the new model are learned as you name speakers."
   },
   "preferences": {
     "description": "Display and editor behaviour preferences. These settings are saved to your account and apply across devices.",
@@ -2108,6 +2115,22 @@
   },
   "uploadProgress": {
     "title": "Upload Progress"
+  },
+  "voiceProfiles": {
+    "anotherModel": "another model",
+    "auto": "auto-labelled",
+    "confirmed": "confirmed",
+    "deletedRecording": "Deleted recording",
+    "empty": "No voice samples.",
+    "hint": "Voice matching compares new recordings with these samples. Remove one that belongs to someone else.",
+    "legacy": "Earlier voice profile",
+    "legacyWeight": "weight {{count}}",
+    "manage": "Voice profile",
+    "otherModel": "{{count}} from another model",
+    "remove": "Remove this sample",
+    "samples": "{{count}} sample",
+    "samplesPlural": "{{count}} samples",
+    "variantsPlural": "{{count}} voice variants"
   },
   "webhooks": {
     "title": "Webhooks",

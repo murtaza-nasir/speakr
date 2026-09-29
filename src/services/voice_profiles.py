@@ -421,10 +421,11 @@ def refresh_speaker_summary(speaker):
     speaker.embeddings_history = history
 
 
-def voice_summary(speaker):
+def voice_summary(speaker, rows=None):
     """Counts for the speakers list: samples and variants per space."""
     from src.models import SpeakerVoiceSample
-    rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+    if rows is None:
+        rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
     space = current_space_id()
     current = samples_for(speaker, space, rows)
     stored_current = len([s for s in current if s.row is not None])

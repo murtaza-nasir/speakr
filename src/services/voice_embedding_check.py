@@ -394,6 +394,14 @@ def spaces_status():
         for (space_id,) in SpeakerVoiceSample.query.with_entities(SpeakerVoiceSample.space_id).all():
             key = vp.effective_space(space_id)
             counts[key] = counts.get(key, 0) + 1
+        # Profiles from before samples existed count as one sample each in
+        # the legacy space until their next update writes them out.
+        from src.models import Speaker
+        with_samples = {sid for (sid,) in SpeakerVoiceSample.query.with_entities(SpeakerVoiceSample.speaker_id).distinct()}
+        legacy_only = sum(1 for (sid,) in Speaker.query.filter(Speaker.average_embedding.isnot(None))
+                          .with_entities(Speaker.id).all() if sid not in with_samples)
+        if legacy_only and legacy is not None:
+            counts[legacy] = counts.get(legacy, 0) + legacy_only
         out = []
         for space in VoiceEmbeddingSpace.query.order_by(VoiceEmbeddingSpace.id).all():
             item = space.to_dict()

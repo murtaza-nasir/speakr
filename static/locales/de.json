@@ -328,14 +328,21 @@
     "viewFullPromptStructure": "Vollständige LLM-Prompt-Struktur anzeigen",
     "voiceEmbedding": {
       "checkNow": "Jetzt prüfen",
+      "current": "aktuell",
       "dimension": "Dimensionen",
       "help": "Prüft, ob der Transkriptionsdienst weiterhin Stimm-Embeddings liefert, die zu den gespeicherten Stimmprofilen passen, indem ein kurzer mitgelieferter Clip gesendet und das Ergebnis mit einer Referenz verglichen wird. Läuft beim Start; mit „Jetzt prüfen“ erneut ausführen.",
       "lastChecked": "Zuletzt geprüft",
+      "lastSeen": "Zuletzt gesehen",
+      "notCalibrated": "Standard (noch zu wenige Proben)",
       "rebaseline": "Referenz neu setzen",
-      "rebaselineConfirm": "Das Neusetzen übernimmt das aktuelle Backend als neue Referenz. Vorhandene Stimmprofile aus dem vorherigen Modell werden nicht mehr gemeldet, und das Wiederherstellen dieses Backends macht dies nicht rückgängig. Erstellen Sie die betroffenen Profile zuerst neu. Fortfahren?",
+      "rebaselineConfirm": "Die Neufestlegung übernimmt das aktuelle Backend als Referenz und entfernt die Warnung. Stimmprofile des vorherigen Modells bleiben erhalten und passen wieder, wenn dieses Backend wiederhergestellt wird. Fortfahren?",
+      "samples": "Proben",
+      "space": "Raum",
+      "spacesTitle": "Stimmräume (einer je Embedding-Modell)",
       "statusChanged": "Modell geändert",
       "statusOk": "Kompatibel",
       "statusUnknown": "Nicht geprüft",
+      "threshold": "Schwellenwert",
       "title": "Kompatibilität der Stimm-Embeddings"
     },
     "warning": "Warnung",
@@ -1499,7 +1506,7 @@
     "dismiss": "Ausblenden",
     "empty": "Nichts erfordert Ihre Aufmerksamkeit.",
     "view": "Ansehen",
-    "voiceEmbeddingChanged": "Der Transkriptionsdienst liefert andere Stimm-Embeddings, daher passen vorhandene Stimmprofile nicht mehr zu neuen Aufnahmen. Stellen Sie das vorherige Backend wieder her oder erstellen Sie die Profile neu und setzen Sie die Referenz zurück."
+    "voiceEmbeddingChanged": "Der Transkriptionsdienst liefert Stimm-Embeddings eines anderen Modells. Stimmprofile werden je Modell getrennt geführt: Profile des vorherigen Modells passen nicht zu neuen Aufnahmen und kehren zurück, wenn Sie das vorherige Backend wiederherstellen; Profile für das neue Modell entstehen, sobald Sie Sprecher benennen."
   },
   "preferences": {
     "description": "Einstellungen zu Anzeige und Editor-Verhalten. Diese werden in deinem Konto gespeichert und gelten geräteübergreifend.",
@@ -2108,6 +2115,22 @@
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
+  },
+  "voiceProfiles": {
+    "anotherModel": "anderes Modell",
+    "auto": "automatisch zugeordnet",
+    "confirmed": "bestätigt",
+    "deletedRecording": "Gelöschte Aufnahme",
+    "empty": "Keine Stimmproben.",
+    "hint": "Der Stimmabgleich vergleicht neue Aufnahmen mit diesen Proben. Entfernen Sie eine Probe, die zu jemand anderem gehört.",
+    "legacy": "Früheres Stimmprofil",
+    "legacyWeight": "Gewicht {{count}}",
+    "manage": "Stimmprofil",
+    "otherModel": "{{count}} von einem anderen Modell",
+    "remove": "Diese Probe entfernen",
+    "samples": "{{count}} Probe",
+    "samplesPlural": "{{count}} Proben",
+    "variantsPlural": "{{count}} Stimmvarianten"
   },
   "webhooks": {
     "title": "Webhooks",

@@ -56,7 +56,18 @@ def get_speakers():
         speakers = Speaker.query.filter_by(user_id=current_user.id)\
                                .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
                                .all()
-        return jsonify([speaker.to_dict() for speaker in speakers])
+        # Voice profile counts (samples, variants) from one query for all.
+        from src.models import SpeakerVoiceSample
+        from src.services.voice_profiles import voice_summary
+        rows_by_speaker = {}
+        for row in SpeakerVoiceSample.query.filter_by(user_id=current_user.id).all():
+            rows_by_speaker.setdefault(row.speaker_id, []).append(row)
+        out = []
+        for speaker in speakers:
+            item = speaker.to_dict()
+            item['voice'] = voice_summary(speaker, rows_by_speaker.get(speaker.id, []))
+            out.append(item)
+        return jsonify(out)
     except Exception as e:
         current_app.logger.error(f"Error fetching speakers: {e}")
         return jsonify({'error': str(e)}), 500
@@ -371,6 +382,65 @@ def get_speaker_recordings(speaker_id):
     except Exception as e:
         current_app.logger.error(f"Error getting speaker recordings: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@speakers_bp.route('/speakers/<int:speaker_id>/voice_samples', methods=['GET'])
+@login_required
+def list_voice_samples(speaker_id):
+    """The samples a person's voice profile is built from, newest first."""
+    from src.models import SpeakerVoiceSample
+    from src.services.voice_profiles import voice_summary, effective_space, current_space_id
+    speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
+    if not speaker:
+        return jsonify({'error': 'Speaker not found'}), 404
+    rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+    titles = {}
+    rec_ids = [r.recording_id for r in rows if r.recording_id]
+    if rec_ids:
+        for rec in Recording.query.filter(Recording.id.in_(rec_ids)).all():
+            titles[rec.id] = rec.title
+    current = effective_space(current_space_id())
+    samples = []
+    if not rows and speaker.average_embedding:
+        # A profile from before samples existed: shown as one entry so it can
+        # be seen and removed like any sample (removing it clears the profile).
+        samples.append({'id': None, 'speaker_id': speaker.id, 'recording_id': None, 'label': None,
+                        'source': 'legacy', 'weight': float(min(max(speaker.embedding_count or 1, 1), 5)),
+                        'speech_seconds': None, 'space_id': None, 'recording_title': None,
+                        'in_current_space': effective_space(None) == current,
+                        'created_at': speaker.created_at.isoformat() if speaker.created_at else None})
+    for r in sorted(rows, key=lambda r: r.updated_at or r.created_at, reverse=True):
+        item = r.to_dict()
+        item['recording_title'] = titles.get(r.recording_id)
+        item['in_current_space'] = effective_space(r.space_id) == current
+        samples.append(item)
+    return jsonify({'summary': voice_summary(speaker, rows), 'samples': samples})
+
+
+@speakers_bp.route('/speakers/<int:speaker_id>/voice_samples/<int:sample_id>', methods=['DELETE'])
+@login_required
+def delete_voice_sample(speaker_id, sample_id):
+    """Remove one sample; the person's voice variants are rebuilt without it."""
+    from src.models import SpeakerVoiceSample
+    from src.services import voice_profiles as vp
+    speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
+    if not speaker:
+        return jsonify({'error': 'Speaker not found'}), 404
+    sample = SpeakerVoiceSample.query.filter_by(id=sample_id, speaker_id=speaker.id).first()
+    if not sample:
+        return jsonify({'error': 'Sample not found'}), 404
+    try:
+        db.session.delete(sample)
+        db.session.flush()
+        vp.refresh_speaker_summary(speaker)
+        vp._calibration_cache.clear()
+        db.session.commit()
+        return jsonify({'success': True, 'summary': vp.voice_summary(speaker),
+                        'speaker': speaker.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error removing voice sample {sample_id}: {e}")
+        return jsonify({'error': 'Could not remove the sample'}), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/clear_embeddings', methods=['POST'])

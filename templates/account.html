@@ -3211,8 +3211,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             ${hasVoiceProfile ? `
                             <div class="flex items-center justify-between gap-2 mb-2 px-2 py-1 bg-[var(--bg-secondary)] rounded">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <i class="fas fa-eraser text-[var(--text-accent)] text-[10px] flex-shrink-0"></i>
-                                    <span class="text-[10px] text-[var(--text-muted)] truncate">${speaker.embedding_count} sample${speaker.embedding_count !== 1 ? 's' : ''}</span>
+                                    <i class="fas fa-wave-square text-[var(--text-accent)] text-[10px] flex-shrink-0"></i>
+                                    <span class="voice-summary-text text-[10px] text-[var(--text-muted)] truncate">${escapeHtml(voiceSummaryText(speaker))}</span>
                                 </div>
                                 ${confidenceBadge}
                             </div>
@@ -3245,6 +3245,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                                 <div class="snippets-content"></div>
                             </div>
+
+                            ${hasVoiceProfile ? `
+                            <!-- Voice profile: the samples matching is built from -->
+                            <button class="view-voice-samples-btn w-full mt-1 px-2 py-1 text-[10px] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-colors"
+                                    data-speaker-id="${speaker.id}">
+                                <i class="fas fa-wave-square mr-1"></i>
+                                <span>${escapeHtml(vt('voiceProfiles.manage', 'Voice profile'))}</span>
+                                <i class="fas fa-chevron-down ml-1 transition-transform duration-200"></i>
+                            </button>
+                            <div class="voice-samples-container mt-2 hidden"></div>
+                            ` : ''}
                         </div>
                     `;
 
@@ -3260,6 +3271,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const viewSnippetsBtn = speakerCard.querySelector('.view-snippets-btn');
                     const snippetsContainer = speakerCard.querySelector('.snippets-container');
                     viewSnippetsBtn.addEventListener('click', () => toggleSpeakerSnippets(speaker.id, viewSnippetsBtn, snippetsContainer));
+
+                    const voiceBtn = speakerCard.querySelector('.view-voice-samples-btn');
+                    if (voiceBtn) {
+                        const voiceContainer = speakerCard.querySelector('.voice-samples-container');
+                        voiceBtn.addEventListener('click', () => toggleVoiceSamples(speaker, voiceBtn, voiceContainer, speakerCard));
+                    }
 
                     speakersTabGrid.appendChild(speakerCard);
                 });
@@ -3330,6 +3347,131 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             // Toggle speaker snippets
+            // ---- Voice profile samples ------------------------------------
+            function vt(key, fallback, params) {
+                if (window.i18n) {
+                    const value = window.i18n.t(key, params || {});
+                    if (value && value !== key) return value;
+                }
+                return fallback;
+            }
+
+            function voiceSummaryText(speaker) {
+                const v = speaker.voice || {};
+                const samples = v.current_space_samples != null ? v.current_space_samples : (speaker.embedding_count || 0);
+                const variants = v.variant_count || (samples ? 1 : 0);
+                let text = vt(samples === 1 ? 'voiceProfiles.samples' : 'voiceProfiles.samplesPlural',
+                              `${samples} sample${samples === 1 ? '' : 's'}`, { count: samples });
+                if (variants > 1) {
+                    text += ' · ' + vt('voiceProfiles.variantsPlural', `${variants} voice variants`, { count: variants });
+                }
+                if (v.other_space_samples) {
+                    text += ' · ' + vt('voiceProfiles.otherModel', `${v.other_space_samples} from another model`, { count: v.other_space_samples });
+                }
+                return text;
+            }
+
+            function formatSeconds(sec) {
+                if (sec == null) return '';
+                const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+                return `${m}:${String(s).padStart(2, '0')}`;
+            }
+
+            async function toggleVoiceSamples(speaker, button, container, card) {
+                const chevron = button.querySelector('.fa-chevron-down');
+                if (!container.classList.contains('hidden')) {
+                    container.classList.add('hidden');
+                    chevron.classList.remove('rotate-180');
+                    return;
+                }
+                container.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+                await renderVoiceSamples(speaker, container, card);
+            }
+
+            async function renderVoiceSamples(speaker, container, card) {
+                container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i></div>';
+                try {
+                    const response = await fetch(`/speakers/${speaker.id}/voice_samples`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    const samples = data.samples || [];
+                    container.innerHTML = '';
+                    const hint = document.createElement('p');
+                    hint.className = 'text-[10px] text-[var(--text-muted)] mb-1';
+                    hint.textContent = vt('voiceProfiles.hint', 'Voice matching compares new recordings with these samples. Remove one that belongs to someone else.');
+                    container.appendChild(hint);
+                    if (!samples.length) {
+                        const empty = document.createElement('p');
+                        empty.className = 'text-[10px] text-[var(--text-muted)] italic';
+                        empty.textContent = vt('voiceProfiles.empty', 'No voice samples.');
+                        container.appendChild(empty);
+                        return;
+                    }
+                    samples.forEach(sample => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center gap-2 py-1 border-t border-[var(--border-primary)] text-[10px]';
+                        const info = document.createElement('div');
+                        info.className = 'flex-1 min-w-0';
+                        const title = document.createElement(sample.recording_id ? 'a' : 'span');
+                        title.className = 'block truncate text-[var(--text-secondary)]' + (sample.recording_id ? ' hover:text-[var(--text-accent)]' : '');
+                        if (sample.recording_id) title.href = `/recordings/${sample.recording_id}`;
+                        title.textContent = sample.source === 'legacy'
+                            ? vt('voiceProfiles.legacy', 'Earlier voice profile')
+                            : (sample.recording_title || vt('voiceProfiles.deletedRecording', 'Deleted recording'));
+                        const meta = document.createElement('span');
+                        meta.className = 'block truncate text-[var(--text-muted)]';
+                        const parts = [];
+                        if (sample.label) parts.push(sample.label);
+                        if (sample.speech_seconds != null) parts.push(formatSeconds(sample.speech_seconds));
+                        parts.push(sample.source === 'auto' ? vt('voiceProfiles.auto', 'auto-labelled')
+                                 : sample.source === 'legacy' ? vt('voiceProfiles.legacyWeight', `weight ${sample.weight}`, { count: sample.weight })
+                                 : vt('voiceProfiles.confirmed', 'confirmed'));
+                        if (!sample.in_current_space) parts.push(vt('voiceProfiles.anotherModel', 'another model'));
+                        meta.textContent = parts.join(' · ');
+                        info.appendChild(title);
+                        info.appendChild(meta);
+                        const remove = document.createElement('button');
+                        remove.className = 'p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] rounded flex-shrink-0';
+                        remove.title = vt('voiceProfiles.remove', 'Remove this sample');
+                        remove.setAttribute('aria-label', remove.title);
+                        remove.innerHTML = '<i class="fas fa-times"></i>';
+                        remove.addEventListener('click', async () => {
+                            remove.disabled = true;
+                            try {
+                                const csrf = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                                // The pre-sample profile has no row of its own: removing it
+                                // clears the profile.
+                                const r = sample.id == null
+                                    ? await fetch(`/speakers/${speaker.id}/clear_embeddings`, {
+                                        method: 'POST', headers: csrf ? { 'X-CSRFToken': csrf } : {} })
+                                    : await fetch(`/speakers/${speaker.id}/voice_samples/${sample.id}`, {
+                                        method: 'DELETE', headers: csrf ? { 'X-CSRFToken': csrf } : {} });
+                                const body = await r.json();
+                                if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+                                const voice = body.summary || { sample_count: 0, current_space_samples: 0, variant_count: 0, other_space_samples: 0 };
+                                Object.assign(speaker, body.speaker || {}, { voice });
+                                const summaryEl = card.querySelector('.voice-summary-text');
+                                if (summaryEl) summaryEl.textContent = voiceSummaryText(speaker);
+                                await renderVoiceSamples(speaker, container, card);
+                            } catch (error) {
+                                remove.disabled = false;
+                                showToast(error.message, 'error');
+                            }
+                        });
+                        row.appendChild(info);
+                        row.appendChild(remove);
+                        container.appendChild(row);
+                    });
+                } catch (error) {
+                    container.innerHTML = '';
+                    const err = document.createElement('p');
+                    err.className = 'text-[10px] text-[var(--text-danger)]';
+                    err.textContent = error.message;
+                    container.appendChild(err);
+                }
+            }
+
             async function toggleSpeakerSnippets(speakerId, button, container) {
                 const isExpanded = !container.classList.contains('hidden');
                 const chevron = button.querySelector('.fa-chevron-down');
