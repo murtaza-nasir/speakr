@@ -77,6 +77,17 @@ curl -X PUT "$SPEAKR/api/v1/recordings/42/tone" \
 
 Keep the token on the machine that runs the scorer and out of source control.
 
+## Choosing a scorer
+
+Speakr ships no scorer, and any model that returns per-window scores can drive it. What to look for:
+
+- **Reads the audio, not the transcript.** Tone from words alone cannot tell a sincere thank-you from a flat one.
+- **Runs where your audio already is.** Sending recordings to a cloud service to score them is a privacy decision, not a default.
+- **Calibrate what counts as notable.** Raw scores are usually relative intensities. Pick a per-state level (`model.states`) and only mark a window as `standout` when it is unusual *for that recording* as well as above that level, and cap the share of windows you mark; otherwise nearly everything gets a chip.
+- **Keep unlikely alarming states rare.** A chip that says angry or distressed on a calm speaker is worse than no chip, so use a high level for those.
+
+One worked example, kept outside Speakr, is a local scorer built on the open [Empathic-Insight-Voice](https://huggingface.co/laion/Empathic-Insight-Voice-Small) heads (CC-BY-4.0) over a Whisper-small encoder. It scores a 48-minute recording in about a minute on a laptop, and marks about one window in ten. Its measured limits are listed in its own notes: scores are relative and were spot-checked, not validated against labelled data.
+
 ## Database
 
 Enabling the feature adds one nullable JSON column, `recording.tone`. It is added on startup the same way other columns are, and running it twice is harmless. Existing rows are untouched.
