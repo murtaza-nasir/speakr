@@ -8,14 +8,12 @@ export function useSpeakers(state, utils, processedTranscription) {
     const {
         showSpeakerModal, speakerModalTab, showAddSpeakerModal, showEditSpeakersModal,
         showEditTextModal, selectedRecording, recordings,
-        speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, speakerSuggestions, loadingSuggestions,
-        activeSpeakerInput, regenerateSummaryAfterSpeakerUpdate,
+        speakerMap, speakerColorMap, modalSpeakers, regenerateSummaryAfterSpeakerUpdate,
         editingSpeakersList, databaseSpeakers, editingSpeakerSuggestions,
         editSpeakerDropdownPositions, newSpeakerName, newSpeakerIsMe,
         newSpeakerSuggestions, loadingNewSpeakerSuggestions, showNewSpeakerSuggestions,
-        editingSegmentIndex, editingSpeakerIndex, editedText, editedTranscriptData, highlightedSpeaker,
-        isAutoIdentifying, availableSpeakers, editingSegments,
-        currentSpeakerGroupIndex, speakerGroups, currentUserName,
+        editingSegmentIndex, editingSpeakerIndex, editedText, editedTranscriptData,
+        isAutoIdentifying, availableSpeakers, editingSegments, currentUserName,
         voiceSuggestions, loadingVoiceSuggestions
     } = state;
 
@@ -24,9 +22,6 @@ export function useSpeakers(state, utils, processedTranscription) {
     // i18n helper — falls back to the provided fallback string if i18n is not loaded
     const t = (key, params, fallback) => window.i18n ? window.i18n.t(key, params) : (fallback || key);
     const tc = (key, count, params) => window.i18n ? window.i18n.tc(key, count, params) : (params && params.count != null ? `${params.count}` : key);
-
-    // Current speaker highlight state
-    let currentSpeakerId = null;
 
     // Snapshot of the recording's transcription taken when the modal opens.
     // Per-line speaker/text edits are now STAGED in memory (changeSpeaker /
@@ -67,6 +62,9 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Speaker Identification Modal
     // =========================================
 
+    // The modal's list, filter, name fields and player live in
+    // speaker-modal.js; this file keeps opening, saving, auto-identify and
+    // the per-line edits.
     const openSpeakerModal = () => {
         if (!selectedRecording.value) return;
 
@@ -77,10 +75,6 @@ export function useSpeakers(state, utils, processedTranscription) {
         // edits so this modal session starts from a clean, saved state.
         originalTranscriptionSnapshot = selectedRecording.value.transcription || null;
         editedTranscriptData.value = null;
-
-        // Clear any existing speaker map data first
-        speakerMap.value = {};
-        speakerDisplayMap.value = {};
 
         // Get the same speaker order used in processedTranscription
         const transcription = selectedRecording.value?.transcription;
@@ -102,34 +96,23 @@ export function useSpeakers(state, utils, processedTranscription) {
         // Initialize speaker map FIRST with colors from shared color map
         // Clear existing map and rebuild it
         speakerMap.value = {};
-        speakerDisplayMap.value = {};
         speakers.forEach(speaker => {
             speakerMap.value[speaker] = {
                 name: '',
                 isMe: false,
                 color: getSpeakerColor(speaker)
             };
-            speakerDisplayMap.value[speaker] = speaker;
         });
 
         // Set modalSpeakers AFTER speakerMap is populated (triggers render)
         modalSpeakers.value = speakers;
 
-        highlightedSpeaker.value = null;
-        speakerSuggestions.value = {};
-        loadingSuggestions.value = {};
-        activeSpeakerInput.value = null;
         isAutoIdentifying.value = false;
         regenerateSummaryAfterSpeakerUpdate.value = true;
         voiceSuggestions.value = {};
         speakerModalTab.value = 'speakers';  // Reset to speakers tab on mobile
 
         showSpeakerModal.value = true;
-
-        // Reset virtual scroll state for fresh modal render
-        if (utils.resetSpeakerModalScroll) {
-            utils.resetSpeakerModalScroll();
-        }
 
         // Load voice-based suggestions if embeddings are available
         loadVoiceSuggestions();
@@ -181,12 +164,8 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     const closeSpeakerModal = () => {
-        // Pause any playing modal audio before closing
-        const modalAudio = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
-        if (modalAudio) {
-            modalAudio.pause();
-        }
-        // Reset modal audio state (keep main player independent)
+        // The modal composable pauses its player when showSpeakerModal turns
+        // false. Reset modal audio state (keep main player independent)
         if (utils.resetModalAudioState) {
             utils.resetModalAudioState();
         }
@@ -203,12 +182,8 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         showSpeakerModal.value = false;
         showAutoIdDropdown.value = false;
-        highlightedSpeaker.value = null;
         // Clear the speaker map to prevent stale data from persisting
         speakerMap.value = {};
-        speakerSuggestions.value = {};
-        loadingSuggestions.value = {};
-        clearSpeakerHighlight();
     };
 
     const saveTranscriptImmediately = async (transcriptData) => {
@@ -519,259 +494,6 @@ export function useSpeakers(state, utils, processedTranscription) {
         }
     };
 
-    // Determine if voice suggestion pill should be shown inside the input field
-    const shouldShowVoiceSuggestionPill = (speakerId) => {
-        // Don't show if no suggestions available
-        if (!voiceSuggestions.value[speakerId] || voiceSuggestions.value[speakerId].length === 0) {
-            return false;
-        }
-
-        // Don't show if "This is Me" is checked
-        if (speakerMap.value[speakerId]?.isMe) {
-            return false;
-        }
-
-        // Only show when the input field is empty
-        const typedName = speakerMap.value[speakerId]?.name?.trim();
-        if (typedName && typedName.length > 0) {
-            return false;
-        }
-
-        return true;
-    };
-
-    const searchSpeakers = async (query, speakerId) => {
-        if (!query || query.length < 2) {
-            speakerSuggestions.value[speakerId] = [];
-            return;
-        }
-
-        loadingSuggestions.value[speakerId] = true;
-
-        try {
-            const response = await fetch(`/speakers/search?q=${encodeURIComponent(query)}`);
-            if (!response.ok) throw new Error('Failed to search speakers');
-
-            const speakers = await response.json();
-            speakerSuggestions.value[speakerId] = speakers;
-        } catch (error) {
-            console.error('Error searching speakers:', error);
-            speakerSuggestions.value[speakerId] = [];
-        } finally {
-            loadingSuggestions.value[speakerId] = false;
-        }
-    };
-
-    const selectSpeakerSuggestion = (speakerId, suggestion) => {
-        if (speakerMap.value[speakerId]) {
-            speakerMap.value[speakerId].name = suggestion.name;
-            speakerSuggestions.value[speakerId] = [];
-            activeSpeakerInput.value = null;
-        }
-    };
-
-    const closeSpeakerSuggestionsOnClick = (event) => {
-        // Check if the click was on an input field or dropdown
-        const clickedInput = event.target.closest('input[type="text"]');
-        const clickedDropdown = event.target.closest('.absolute.z-10');
-
-        // If not clicking on input or dropdown, close all suggestions
-        if (!clickedInput && !clickedDropdown) {
-            Object.keys(speakerSuggestions.value).forEach(speakerId => {
-                speakerSuggestions.value[speakerId] = [];
-            });
-        }
-    };
-
-    // =========================================
-    // Speaker Navigation (Index-Based for Virtual Scroll)
-    // =========================================
-
-    /**
-     * Find speaker groups by analyzing segment data (not DOM).
-     * Returns groups with startIndex instead of startElement for virtual scroll compatibility.
-     */
-    const findSpeakerGroups = (speakerId) => {
-        if (!speakerId) return [];
-
-        // Get segments from processedTranscription
-        const segments = processedTranscription.value?.simpleSegments || [];
-        if (segments.length === 0) return [];
-
-        const groups = [];
-        let currentGroup = null;
-        let lastSpeakerId = null;
-
-        segments.forEach((segment, index) => {
-            const segmentSpeakerId = segment.speakerId;
-
-            if (segmentSpeakerId === speakerId) {
-                // If this is a new group (not consecutive with previous)
-                if (lastSpeakerId !== speakerId) {
-                    currentGroup = {
-                        startIndex: index,
-                        indices: [index]
-                    };
-                    groups.push(currentGroup);
-                } else if (currentGroup) {
-                    // Add to existing group
-                    currentGroup.indices.push(index);
-                }
-            }
-            lastSpeakerId = segmentSpeakerId;
-        });
-
-        return groups;
-    };
-
-    const highlightSpeakerInTranscript = (speakerId) => {
-        highlightedSpeaker.value = speakerId;
-
-        if (speakerId) {
-            // Find all speaker groups for navigation (index-based, no DOM queries)
-            speakerGroups.value = findSpeakerGroups(speakerId);
-
-            if (speakerGroups.value.length > 0) {
-                // Get the current visible range from the virtual scroll
-                const visibleRange = utils.getSpeakerModalVisibleRange ? utils.getSpeakerModalVisibleRange() : null;
-
-                if (visibleRange) {
-                    const { start: visibleStart, end: visibleEnd } = visibleRange;
-                    const visibleCenter = Math.floor((visibleStart + visibleEnd) / 2);
-
-                    // Check if any group is already visible
-                    const visibleGroupIndex = speakerGroups.value.findIndex(group =>
-                        group.startIndex >= visibleStart && group.startIndex < visibleEnd
-                    );
-
-                    if (visibleGroupIndex !== -1) {
-                        // A group is already visible, just set it as current (no scroll needed)
-                        currentSpeakerGroupIndex.value = visibleGroupIndex;
-                    } else {
-                        // No group visible - find the nearest group to the visible center
-                        let nearestIndex = 0;
-                        let nearestDistance = Infinity;
-
-                        speakerGroups.value.forEach((group, index) => {
-                            const distance = Math.abs(group.startIndex - visibleCenter);
-                            if (distance < nearestDistance) {
-                                nearestDistance = distance;
-                                nearestIndex = index;
-                            }
-                        });
-
-                        currentSpeakerGroupIndex.value = nearestIndex;
-
-                        // Scroll to the nearest group
-                        const nearestGroup = speakerGroups.value[nearestIndex];
-                        if (nearestGroup && typeof nearestGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
-                            utils.scrollToSegmentIndex(nearestGroup.startIndex);
-                        }
-                    }
-                } else {
-                    // Fallback: no visible range available, scroll to first group
-                    currentSpeakerGroupIndex.value = 0;
-                    const firstGroup = speakerGroups.value[0];
-                    if (firstGroup && typeof firstGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
-                        utils.scrollToSegmentIndex(firstGroup.startIndex);
-                    }
-                }
-            } else {
-                currentSpeakerGroupIndex.value = -1;
-            }
-        } else {
-            speakerGroups.value = [];
-            currentSpeakerGroupIndex.value = -1;
-        }
-    };
-
-    /**
-     * Select a speaker for navigation from the dropdown.
-     * Uses index-based navigation compatible with virtual scrolling.
-     */
-    const selectSpeakerForNavigation = (speakerId) => {
-        if (!speakerId) {
-            highlightedSpeaker.value = null;
-            speakerGroups.value = [];
-            currentSpeakerGroupIndex.value = -1;
-            return;
-        }
-
-        highlightedSpeaker.value = speakerId;
-
-        // Find groups immediately (no DOM dependency)
-        speakerGroups.value = findSpeakerGroups(speakerId);
-        currentSpeakerGroupIndex.value = 0;
-
-        // Scroll to first occurrence
-        if (speakerGroups.value.length > 0) {
-            const firstGroup = speakerGroups.value[0];
-            if (firstGroup && typeof firstGroup.startIndex === 'number') {
-                if (utils.scrollToSegmentIndex) {
-                    utils.scrollToSegmentIndex(firstGroup.startIndex);
-                }
-            }
-        }
-    };
-
-    const navigateToNextSpeakerGroup = () => {
-        if (speakerGroups.value.length === 0) return;
-
-        // Update the index
-        currentSpeakerGroupIndex.value = (currentSpeakerGroupIndex.value + 1) % speakerGroups.value.length;
-        const group = speakerGroups.value[currentSpeakerGroupIndex.value];
-        if (group && typeof group.startIndex === 'number') {
-            if (utils.scrollToSegmentIndex) {
-                utils.scrollToSegmentIndex(group.startIndex);
-            }
-        }
-    };
-
-    const navigateToPrevSpeakerGroup = () => {
-        if (speakerGroups.value.length === 0) return;
-
-        // Update the index
-        currentSpeakerGroupIndex.value = currentSpeakerGroupIndex.value <= 0
-            ? speakerGroups.value.length - 1
-            : currentSpeakerGroupIndex.value - 1;
-        const group = speakerGroups.value[currentSpeakerGroupIndex.value];
-        if (group && typeof group.startIndex === 'number') {
-            if (utils.scrollToSegmentIndex) {
-                utils.scrollToSegmentIndex(group.startIndex);
-            }
-        }
-    };
-
-    const focusSpeaker = (speakerId) => {
-        // Set this as the active speaker input
-        activeSpeakerInput.value = speakerId;
-        // Only highlight if not already highlighted (to preserve navigation state)
-        if (highlightedSpeaker.value !== speakerId) {
-            highlightSpeakerInTranscript(speakerId);
-        }
-    };
-
-    const blurSpeaker = () => {
-        // Clear the active speaker input after a delay to allow clicking
-        // on suggestions before the dropdown collapses.
-        setTimeout(() => {
-            activeSpeakerInput.value = null;
-            speakerSuggestions.value = {};
-        }, 200);
-        // DO NOT clear the speaker highlight here. The highlight + the
-        // prev/next nav buttons should remain usable while the user
-        // walks through the speaker's segments — clicking Prev/Next
-        // moves focus off the input and would otherwise clear the
-        // navigation state mid-action. Highlight is now released only
-        // when a DIFFERENT speaker is focused (focusSpeaker overwrites
-        // highlightedSpeaker), the user picks the default "Navigate
-        // to speaker…" option, or the modal closes.
-    };
-
-    const clearSpeakerHighlight = () => {
-        highlightedSpeaker.value = null;
-    };
-
     // =========================================
     // Auto-Identify Speakers
     // =========================================
@@ -868,25 +590,20 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Apply Suggested Names
     // =========================================
 
-    /** True when any unnamed, non-isMe speaker has voice or autocomplete suggestions */
+    /** True when any unnamed, non-isMe speaker has a voice-match suggestion */
     const hasAnySuggestions = Vue.computed(() => {
         for (const speakerId of modalSpeakers.value) {
             const data = speakerMap.value[speakerId];
             if (!data || data.isMe) continue;
             if (data.name && data.name.trim() !== '') continue;
-            // Check voice suggestions
             if (voiceSuggestions.value[speakerId] && voiceSuggestions.value[speakerId].length > 0) {
-                return true;
-            }
-            // Check autocomplete suggestions
-            if (speakerSuggestions.value[speakerId] && speakerSuggestions.value[speakerId].length > 0) {
                 return true;
             }
         }
         return false;
     });
 
-    /** Bulk-apply voice suggestions (priority) then autocomplete suggestions to empty names only */
+    /** Apply the best voice match to every speaker whose name is still empty */
     const applySuggestedNames = () => {
         let appliedCount = 0;
         for (const speakerId of modalSpeakers.value) {
@@ -894,18 +611,9 @@ export function useSpeakers(state, utils, processedTranscription) {
             if (!data || data.isMe) continue;
             if (data.name && data.name.trim() !== '') continue;
 
-            // Priority 1: voice suggestions
             const voice = voiceSuggestions.value[speakerId];
             if (voice && voice.length > 0) {
                 data.name = voice[0].name;
-                appliedCount++;
-                continue;
-            }
-
-            // Priority 2: autocomplete suggestions
-            const auto = speakerSuggestions.value[speakerId];
-            if (auto && auto.length > 0) {
-                data.name = auto[0].name;
                 appliedCount++;
             }
         }
@@ -1002,9 +710,6 @@ export function useSpeakers(state, utils, processedTranscription) {
             isMe: newSpeakerIsMe.value,
             color: getSpeakerColor(newSpeakerId)
         };
-
-        // Add to speakerDisplayMap
-        speakerDisplayMap.value[newSpeakerId] = newSpeakerId;
 
         // Add to modalSpeakers LAST (triggers re-render, but speakerMap is already populated)
         modalSpeakers.value.push(newSpeakerId);
@@ -1239,20 +944,6 @@ export function useSpeakers(state, utils, processedTranscription) {
         loadVoiceSuggestions,
         applyVoiceSuggestion,
         handleIsMeChange,
-        shouldShowVoiceSuggestionPill,
-        searchSpeakers,
-        selectSpeakerSuggestion,
-        closeSpeakerSuggestionsOnClick,
-
-        // Navigation
-        findSpeakerGroups,
-        highlightSpeakerInTranscript,
-        selectSpeakerForNavigation,
-        navigateToNextSpeakerGroup,
-        navigateToPrevSpeakerGroup,
-        focusSpeaker,
-        blurSpeaker,
-        clearSpeakerHighlight,
 
         // Auto-identify
         autoIdentifySpeakers,

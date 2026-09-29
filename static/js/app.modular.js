@@ -10,6 +10,7 @@ import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
 import { useSpeakers } from './modules/composables/speakers.js';
+import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
@@ -742,7 +743,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // declared). Declared here so the rest of this state block
             // can reference them without temporal-dead-zone errors.
             const asrEditorHydratedRows = ref(new Set());
-            const speakerModalHydratedRows = ref(new Set());
             const showCustomizeSummaryModal = ref(false);
             const customizeSummaryPrompt = ref('');
             const customizeSummaryMode = ref('append');  // 'append' | 'replace'
@@ -794,11 +794,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speakerMap = ref({});
             const speakerColorMap = ref({}); // Stable mapping of speaker ID → color class
             const modalSpeakers = ref([]);
-            const speakerDisplayMap = ref({});
             const regenerateSummaryAfterSpeakerUpdate = ref(true);
-            const speakerSuggestions = ref({});
-            const loadingSuggestions = ref({});
-            const activeSpeakerInput = ref(null);
             const voiceSuggestions = ref({});
             const loadingVoiceSuggestions = ref(false);
 
@@ -1360,7 +1356,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
             const speedMenuPosition = ref({});
             const showVolumeSlider = ref(false);
-            const showModalVolumeSlider = ref(false);
             const showDuplicatesModal = ref(false);
             const videoCollapsed = ref(false);
             // Desktop docked-video panel: shows the video in a strip across
@@ -1497,10 +1492,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Reprocessing Polls ---
             const reprocessingPolls = ref(new Map());
 
-            // --- Speaker Groups State ---
-            const currentSpeakerGroupIndex = ref(0);
-            const speakerGroups = ref([]);
-
             // --- Virtual Scroll Container Refs ---
             const speakerModalTranscriptRef = ref(null);
             const mainTranscriptRef = ref(null);
@@ -1520,7 +1511,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // win is preserved. Keep the hydrate stubs as no-ops in case
             // any leftover template reference still calls them.
             const hydrateAsrEditorRow = () => {};
-            const hydrateSpeakerModalRow = () => {};
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
@@ -1854,7 +1844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, speakerModalHydratedRows, hydrateSpeakerModalRow, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
                 editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
@@ -1864,8 +1854,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 shareToDelete, showShareDeleteModal, recordingToDelete, recordingToReset,
                 reprocessType, reprocessRecording, reprocessPromptVariables, isAutoIdentifying, asrReprocessOptions,
                 summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt, summaryReprocessPromptMode,
-                speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
-                loadingSuggestions, activeSpeakerInput, voiceSuggestions, loadingVoiceSuggestions,
+                speakerMap, speakerColorMap, modalSpeakers, regenerateSummaryAfterSpeakerUpdate,
+                voiceSuggestions, loadingVoiceSuggestions,
 
                 // DateTime Picker
                 showDateTimePicker, pickerMonth, pickerYear, pickerHour, pickerMinute,
@@ -1902,7 +1892,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
                 modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
-                playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
+                playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider,
                 videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
                 videoDockEnabled, isVideoRecording, toggleVideoDock,
                 videoDockPosition, cycleVideoDockColumn, cycleVideoDockVertical,
@@ -1925,9 +1915,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Reprocessing
                 reprocessingPolls,
-
-                // Speaker Groups
-                currentSpeakerGroupIndex, speakerGroups,
 
                 // Virtual Scroll
                 speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef, asrEditorSaveFlash, asrEditorHighlightIndex
@@ -2284,7 +2271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const simpleSegments = transcriptionData.map(segment => ({
                         speakerId: segment.speaker,
-                        speaker: speakerMap.value[segment.speaker]?.name || segment.speaker,
+                        speaker: segment.speaker,
                         sentence: segment.sentence,
                         // Use nullish coalescing so a real 0 (recording's first segment)
                         // is preserved rather than falling through to segment.startTime.
@@ -2359,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         simpleSegmentRuns: simpleSegmentRuns,
                         bubbleRows: bubbleRows,
                         speakers: speakers.map(speaker => ({
-                            name: speakerMap.value[speaker]?.name || speaker,
+                            name: speaker,
                             color: speakerColors[speaker]
                         }))
                     };
@@ -2411,7 +2398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if (currentSpeakerId && currentText.trim()) {
                                 segments.push({
                                     speakerId: currentSpeakerId,
-                                    speaker: speakerMap.value[currentSpeakerId]?.name || currentSpeakerId,
+                                    speaker: currentSpeakerId,
                                     sentence: currentText.trim(),
                                     color: speakerColors[currentSpeakerId] || 'speaker-color-1'
                                 });
@@ -2433,7 +2420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (currentSpeakerId && currentText.trim()) {
                         segments.push({
                             speakerId: currentSpeakerId,
-                            speaker: speakerMap.value[currentSpeakerId]?.name || currentSpeakerId,
+                            speaker: currentSpeakerId,
                             sentence: currentText.trim(),
                             color: speakerColors[currentSpeakerId] || 'speaker-color-1'
                         });
@@ -2477,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         simpleSegments: simpleSegments,
                         bubbleRows: bubbleRows,
                         speakers: speakerList.map(speaker => ({
-                            name: speakerMap.value[speaker]?.name || speaker,
+                            name: speaker,
                             color: speakerColors[speaker] || 'speaker-color-1'
                         }))
                     };
@@ -2651,14 +2638,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Create a computed ref for the segments array
             const transcriptSegments = computed(() => processedTranscription.value.simpleSegments || []);
 
-            // Virtual scroll for speaker modal transcript (main performance bottleneck)
-            const speakerModalVirtualScroll = useVirtualScroll({
-                items: transcriptSegments,
-                itemHeight: 52,  // Approximate height of each segment row
-                containerRef: speakerModalTranscriptRef,
-                overscan: 8
-            });
-
             // Virtual scroll for main transcription panel
             const mainTranscriptVirtualScroll = useVirtualScroll({
                 items: transcriptSegments,
@@ -2748,42 +2727,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     asrEditorRef.value.scrollTop = scrollTop;
                 }
             };
-            utils.resetSpeakerModalScroll = () => {
-                if (speakerModalTranscriptRef.value) {
-                    speakerModalTranscriptRef.value.scrollTop = 0;
-                }
-            };
-            // Compute the visible segment range from the DOM rather than
-            // from a virtual scroller. Walks the rendered segments inside
-            // the speaker modal's transcript container, comparing each
-            // element's bounding rect to the container's; returns the
-            // [start, end) range of segment indices currently in view.
-            // Used by speakers.js to decide whether the highlighted
-            // speaker's nearest group is already visible (and we can skip
-            // the scroll). O(n) walk; only called when the user picks a
-            // new speaker to highlight, not on every scroll event.
-            utils.getSpeakerModalVisibleRange = () => {
-                const container = speakerModalTranscriptRef.value;
-                if (!container) return null;
-                const segments = container.querySelectorAll('[data-segment-index]');
-                if (!segments.length) return { start: 0, end: 0 };
-                const cTop = container.getBoundingClientRect().top;
-                const cBottom = cTop + container.clientHeight;
-                let start = -1, end = 0;
-                for (const el of segments) {
-                    const r = el.getBoundingClientRect();
-                    if (r.bottom < cTop) continue;          // above viewport
-                    if (r.top > cBottom) break;             // below viewport (segments are in document order)
-                    const idx = parseInt(el.dataset.segmentIndex, 10);
-                    if (Number.isNaN(idx)) continue;
-                    if (start === -1) start = idx;
-                    end = idx + 1;
-                }
-                return start === -1 ? { start: 0, end: 0 } : { start, end };
-            };
-
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
+            const speakerModalComposable = useSpeakerModal(state, utils);
 
             const groupedRecordings = computed(() => {
                 const groups = {};
@@ -4479,10 +4425,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mainTranscriptRef,
                 asrEditorRef,
                 asrEditorSaveFlash,
-                speakerModalVisibleSegments: speakerModalVirtualScroll.visibleItems,
-                speakerModalSpacerBefore: speakerModalVirtualScroll.spacerBefore,
-                speakerModalSpacerAfter: speakerModalVirtualScroll.spacerAfter,
-                onSpeakerModalScroll: speakerModalVirtualScroll.onScroll,
                 mainTranscriptVisibleSegments: mainTranscriptVirtualScroll.visibleItems,
                 mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
                 mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
@@ -4515,6 +4457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...reprocessComposable,
                 ...transcriptionComposable,
                 ...speakersComposable,
+                ...speakerModalComposable,
                 ...chatComposable,
                 ...tagsComposable,
                 ...foldersComposable,
