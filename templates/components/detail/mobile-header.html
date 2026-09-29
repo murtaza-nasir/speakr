@@ -97,6 +97,14 @@
                         :title="transcriptionViewMode === 'simple' ? (t('tooltips.bubbleView') || 'Bubble view') : (t('tooltips.simpleView') || 'Simple view')">
                     <i :class="transcriptionViewMode === 'simple' ? 'fas fa-comments' : 'fas fa-list'"></i>
                 </button>
+                <button v-if="selectedRecording.tone"
+                        @click.stop="showTone = !showTone"
+                        class="btn btn--icon btn--sm"
+                        :style="showTone ? 'color: var(--text-accent);' : ''"
+                        :aria-pressed="showTone ? 'true' : 'false'"
+                        title="Show or hide voice tone badges">
+                    <i class="far fa-smile"></i>
+                </button>
                 <button @click.stop="copyTranscription" class="btn btn--icon btn--sm" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
                 <button v-if="selectedRecording.transcription" @click.stop="downloadTranscript" class="btn btn--icon btn--sm" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
                 <button v-if="selectedRecording.transcription" @click.stop="openTranscriptionEditor" class="btn btn--icon btn--sm" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>

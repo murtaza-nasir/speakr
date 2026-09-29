@@ -203,3 +203,20 @@ def test_cleared_tone_is_sql_null_not_json_null():
         db.session.commit()
         raw = db.session.execute(text("SELECT tone IS NULL FROM recording WHERE id = :i"), {"i": rec.id}).scalar()
         assert raw == 1
+
+
+def test_v1_get_returns_tone_only_when_asked_for():
+    with app.app_context():
+        user = _user("getv1")
+        rec = _recording(user)
+        rec.tone = copy.deepcopy(GOOD)
+        db.session.commit()
+        client = app.test_client()
+        _login(client, user)
+        default = client.get(f"/api/v1/recordings/{rec.id}").get_json()
+        asked = client.get(f"/api/v1/recordings/{rec.id}?include=tone").get_json()
+        assert "tone" not in default
+        assert asked["tone"]["windows"][0]["standout"]["label"] == "thankful"
+        rec.tone = None
+        db.session.commit()
+        assert "tone" not in client.get(f"/api/v1/recordings/{rec.id}?include=tone").get_json()

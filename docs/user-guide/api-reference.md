@@ -577,6 +577,15 @@ PUT /api/v1/recordings/{id}/summary
 }
 ```
 
+### Replace Voice Tone
+
+```http
+PUT /api/v1/recordings/{id}/tone
+DELETE /api/v1/recordings/{id}/tone
+```
+
+Stores (or removes) an optional voice-tone record supplied by an external scorer. Recordings without one are unaffected. See [Voice Tone](../advanced/voice-tone.md) for the payload.
+
 ### Delete Recording
 
 ```http

@@ -1035,6 +1035,9 @@ def get_recording(recording_id):
             response['summary'] = recording.summary
         if 'notes' in include_fields:
             response['notes'] = recording.notes
+    # Opt-in only (?include=tone), so the default response is unchanged.
+    if 'tone' in include_fields and recording.tone:
+        response['tone'] = recording.tone
 
     return jsonify(response)
 

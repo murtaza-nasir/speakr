@@ -193,6 +193,7 @@ nav:
   - Advanced:
     - Custom Connectors: advanced/custom-connectors.md
     - Job Queue System: advanced/job-queue-system.md
+    - Voice Tone: advanced/voice-tone.md
 
   - Troubleshooting: troubleshooting.md
   - FAQ: faq.md
