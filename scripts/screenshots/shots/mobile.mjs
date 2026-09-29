@@ -231,9 +231,11 @@ export default [
         mobile: true,
         run: async (page) => {
             await go(page, '/');
-            // Open a recording and leave the list drawer CLOSED: the main
-            // mobile shot is the detail screen, not the drawer.
+            // The main mobile shot: a recording's transcript view, drawer
+            // closed. (mobile-summary shows the summary tab; the separate
+            // mobile-transcript shot shows BUBBLE view of another recording.)
             await openRecording(page, 'Attempting a Michelin Star Dish Challenge');
+            await selectTab(page, 'transcript');
         },
     },
     {

@@ -6,7 +6,7 @@
 // (transcription defaults, summary prompt + title template, a real recipe
 // prompt, and the group auto-share options).
 
-import { go, settle, clickVisible, anchorSidebar } from '../helpers.mjs';
+import { go, settle, clickVisible, anchorSidebar, blurEmails, blurUrls } from '../helpers.mjs';
 
 /**
  * Recordings are addressed by id via the /recordings/<id> deep link rather
@@ -230,6 +230,9 @@ export default [
             }
             await page.waitForSelector('.modal-panel:has-text("Share Recording")', { state: 'visible' });
             await settle(page, 1200);
+            // Privacy: the modal shows the live share URL and user emails.
+            await blurEmails(page);
+            await blurUrls(page);
         },
     },
     {

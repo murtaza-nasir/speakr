@@ -209,7 +209,9 @@ export default [
             await useLanguage(page, 'de');
             await go(page, '/');
             await assertLocale(page, 'de');
-            await openRecordingByTitle(page, TAGGED_RECORDING);
+            // A German-content demo recording so the title, transcript and
+            // summary match the interface language.
+            await openRecordingByTitle(page, 'Wöchentliches Team-Meeting: Produktplanung');
         },
     },
     {
@@ -220,7 +222,7 @@ export default [
             await useLanguage(page, 'zh');
             await go(page, '/');
             await assertLocale(page, 'zh');
-            await openRecordingByTitle(page, TAGGED_RECORDING);
+            await openRecordingByTitle(page, '产品发布计划周会');
         },
     },
 ];

@@ -185,3 +185,27 @@ export async function blurEmails(page) {
     });
     await page.waitForTimeout(200);
 }
+
+/**
+ * Blur every visible absolute URL on the page (share links carry the real
+ * deployment domain). Covers text nodes and inputs whose value is a URL.
+ */
+export async function blurUrls(page) {
+    await page.evaluate(() => {
+        const urlRe = /https?:\/\/[^\s"']+/;
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const seen = new Set();
+        let n;
+        while ((n = walker.nextNode())) {
+            if (!urlRe.test(n.nodeValue)) continue;
+            const el = n.parentElement;
+            if (!el || seen.has(el)) continue;
+            seen.add(el);
+            el.style.filter = 'blur(5px)';
+        }
+        document.querySelectorAll('input').forEach((inp) => {
+            if (urlRe.test(inp.value)) inp.style.filter = 'blur(5px)';
+        });
+    });
+    await page.waitForTimeout(200);
+}
