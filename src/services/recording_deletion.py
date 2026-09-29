@@ -44,6 +44,11 @@ def delete_recording_completely(recording, storage=None, strict_media=False):
                 raise
             current_app.logger.error(f"Error deleting media {recording.audio_path}: {e}")
 
+    # Voice samples outlive the recording, as the averaged profile always
+    # did; they only lose the reference (SQLite does not apply SET NULL).
+    from src.models import SpeakerVoiceSample
+    SpeakerVoiceSample.query.filter_by(recording_id=recording_id).update({'recording_id': None})
+
     snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
     jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
     if snippets or jobs:

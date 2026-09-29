@@ -253,6 +253,9 @@ def delete_speaker(speaker_id):
 def delete_all_speakers():
     """Delete all speakers for the current user."""
     try:
+        # Bulk delete skips ORM cascades, so the voice samples go first.
+        from src.models import SpeakerVoiceSample
+        SpeakerVoiceSample.query.filter_by(user_id=current_user.id).delete()
         deleted_count = Speaker.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
         return jsonify({'success': True, 'deleted_count': deleted_count})
@@ -294,29 +297,13 @@ def get_speaker_suggestions(recording_id):
         if not recording.speaker_embeddings:
             return jsonify({'suggestions': {}, 'message': 'No speaker embeddings available'}), 200
 
-        try:
-            embeddings_data = json.loads(recording.speaker_embeddings) if isinstance(recording.speaker_embeddings, str) else recording.speaker_embeddings
-        except (json.JSONDecodeError, TypeError):
-            return jsonify({'error': 'Invalid speaker embeddings data'}), 500
-
-        # Similarity floor for showing a voice-match suggestion. Default
-        # 60% (was 70%). Rationale: when auto-labelling is on, confident
-        # matches are already applied automatically, so the suggestion pill
-        # is most useful for the BORDERLINE matches that auto-label didn't
-        # take. A 0.70 floor hid exactly those (e.g. a 0.69 match), making
-        # the pill rarely appear. 0.60 surfaces them for one-click manual
-        # acceptance while still filtering out weak/noise matches. Callers
-        # can still override via ?threshold=.
-        threshold = float(request.args.get('threshold', 0.60))
-
-        # Find matches for each speaker
-        suggestions = {}
-        for speaker_label, embedding in embeddings_data.items():
-            if embedding and len(embedding) == 256:  # Validate embedding dimension
-                matches = find_matching_speakers(embedding, current_user.id, threshold)
-                suggestions[speaker_label] = matches
-            else:
-                suggestions[speaker_label] = []
+        # Matching compares each voice with every voice variant of each
+        # person, within the recording's embedding space. The threshold is
+        # calibrated from the space's own samples once there are enough; a
+        # ?threshold= query parameter still overrides it.
+        from src.services.voice_profiles import suggestions_for_recording
+        threshold = request.args.get('threshold', type=float)
+        suggestions = suggestions_for_recording(recording, current_user.id, threshold=threshold)
 
         return jsonify({
             'success': True,
@@ -407,6 +394,8 @@ def clear_speaker_embeddings(speaker_id):
         # phantom `voice_embeddings` attribute that never persisted, so the
         # real average_embedding survived and voice matching kept working
         # after a "clear". Null out the actual columns.
+        from src.models import SpeakerVoiceSample
+        SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).delete()
         speaker.average_embedding = None
         speaker.embeddings_history = None
         speaker.embedding_count = 0

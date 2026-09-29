@@ -61,8 +61,10 @@ def merge_speakers(target_id, source_ids, user_id):
     if target_id in source_ids:
         raise ValueError("Cannot merge a speaker with itself")
 
-    # Combine embeddings
-    _combine_embeddings(target, sources)
+    # Move the voice samples. The target's variants are rebuilt from the
+    # combined samples below, so the merge keeps every voice condition the
+    # people had instead of averaging them into one vector.
+    _merge_voice_samples(target, sources)
 
     # Transfer snippets
     for source in sources:
@@ -92,8 +94,10 @@ def merge_speakers(target_id, source_ids, user_id):
                 # If sorting fails, just concatenate and truncate
                 target.embeddings_history = (target_history + source_history)[-10:]
 
-    # Recalculate confidence score
-    target.confidence_score = calculate_confidence(target)
+    # Summary columns (average, count, history, confidence) from the samples
+    from src.services.voice_profiles import refresh_speaker_summary
+    db.session.flush()
+    refresh_speaker_summary(target)
 
     # Delete source speakers
     for source in sources:
@@ -103,6 +107,21 @@ def merge_speakers(target_id, source_ids, user_id):
     db.session.commit()
 
     return target
+
+
+def _merge_voice_samples(target, sources):
+    """Give the target every voice sample of the sources.
+
+    Profiles from before samples existed are written out as samples first,
+    so nothing they learned is lost.
+    """
+    from src.models import SpeakerVoiceSample
+    from src.services.voice_profiles import _materialize_legacy
+    for speaker in [target] + list(sources):
+        _materialize_legacy(speaker)
+    for source in sources:
+        SpeakerVoiceSample.query.filter_by(speaker_id=source.id).update({'speaker_id': target.id})
+    db.session.flush()
 
 
 def _combine_embeddings(target, sources):

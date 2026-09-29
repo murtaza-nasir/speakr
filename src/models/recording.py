@@ -69,6 +69,11 @@ class Recording(db.Model):
 
     # Speaker embeddings from diarization (JSON dict mapping speaker IDs to 256-dimensional vectors)
     speaker_embeddings = db.Column(db.JSON, nullable=True)
+    # Voice embedding space the embeddings above came from (NULL: legacy space)
+    speaker_embeddings_space_id = db.Column(db.Integer, nullable=True)
+    # Diarization label -> the name it was assigned, so a later rename can
+    # still find the label's embedding after the transcript shows names.
+    speaker_label_map = db.Column(db.JSON, nullable=True)
 
     # Per-recording prompt-template variables (e.g. {"agenda": "...", "attendees": "..."}).
     # Substituted into {{name}} placeholders in the resolved summary prompt at summarisation time.

@@ -440,6 +440,15 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'folder', 'default_initial_prompt', 'TEXT'):
             app.logger.info("Added default_initial_prompt column to folder table")
 
+        # Voice matching: embedding space of a recording's embeddings, and the
+        # label -> name map that lets renames reach the voice samples. The
+        # voice_embedding_space and speaker_voice_sample tables come from
+        # create_all().
+        if add_column_if_not_exists(engine, 'recording', 'speaker_embeddings_space_id', 'INTEGER'):
+            app.logger.info("Added speaker_embeddings_space_id column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'speaker_label_map', 'JSON'):
+            app.logger.info("Added speaker_label_map column to recording table")
+
         # Archive hides a recording from the main list without deleting
         # anything. Per user, like inbox and star (#394).
         if add_column_if_not_exists(engine, 'recording', 'is_archived', 'BOOLEAN DEFAULT 0'):

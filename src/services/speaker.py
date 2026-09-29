@@ -80,49 +80,42 @@ def participants_from_segments(segments):
     return ', '.join(sorted(names))
 
 
-def update_voice_profiles(recording, label_to_name, user):
-    """Fold this recording's per-label voice embeddings into the named profiles
-    and refresh the recording's speaker snippets.
+def update_voice_profiles(recording, label_to_name, user, seconds_by_key=None):
+    """Train voice profiles from the names given in one save, and refresh the
+    recording's speaker snippets.
 
-    Both save routes call this. update_transcript used to skip it, so saving
-    names alongside any line edit left voice profiles and snippets untouched.
-    Returns (embeddings_updated, snippets_created). Never raises.
+    label_to_name maps the speaker values the transcript showed before the
+    save to the names now assigned; seconds_by_key is the speech per value,
+    measured before the rename (None when the transcript has no timing).
+    Both save routes and API v1 call this. Returns
+    (samples_stored, snippets_created). Never raises.
     """
-    from src.services.speaker_embedding_matcher import update_speaker_embedding
     from src.services.speaker_snippets import create_speaker_snippets
-    import json
+    from src.services.voice_profiles import apply_names_to_profiles
 
-    if not recording.speaker_embeddings or not label_to_name:
-        return 0, 0
-
-    embeddings_updated = 0
+    stored = 0
     snippets_created = 0
     try:
-        embeddings_data = (json.loads(recording.speaker_embeddings)
-                           if isinstance(recording.speaker_embeddings, str)
-                           else recording.speaker_embeddings)
-        for label, embedding in (embeddings_data or {}).items():
-            name = label_to_name.get(label)
-            if not name or not embedding or len(embedding) != 256:
-                continue
-            speaker = find_user_speaker(user.id, name)
-            if not speaker:
-                continue
-            similarity = update_speaker_embedding(speaker, embedding, recording.id)
-            embeddings_updated += 1
-            if similarity is not None:
-                current_app.logger.info(f"Updated voice profile for '{name}' (similarity: {similarity*100:.1f}%)")
-            else:
-                current_app.logger.info(f"Created initial voice profile for '{name}'")
-
+        # Runs even when nothing was named: a save that only merged speakers
+        # away must still drop the merged labels' samples.
+        if recording.speaker_embeddings:
+            stats = apply_names_to_profiles(recording, label_to_name or {}, seconds_by_key, user)
+            stored = stats['stored']
+            if stats['rejected'] or stats['skipped_short']:
+                current_app.logger.info(
+                    f"Recording {recording.id}: {stats['rejected']} voice samples kept out as unlike "
+                    f"the named person, {stats['skipped_short']} skipped for too little speech")
+            db.session.flush()
+        if not label_to_name:
+            return stored, 0
         snippets_created = create_speaker_snippets(
             recording.id, {label: {'name': name} for label, name in label_to_name.items()})
         if snippets_created > 0:
             current_app.logger.info(f"Created {snippets_created} speaker snippets")
     except Exception as e:
-        current_app.logger.error(f"Error updating speaker embeddings: {e}", exc_info=True)
+        current_app.logger.error(f"Error updating voice profiles: {e}", exc_info=True)
 
-    return embeddings_updated, snippets_created
+    return stored, snippets_created
 
 
 def update_speaker_usage(speaker_names):

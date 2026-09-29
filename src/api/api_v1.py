@@ -2138,9 +2138,10 @@ def get_recording_speakers(recording_id):
         })
 
     # Get voice-based suggestions. speaker_embeddings maps each SPEAKER_XX
-    # label to one 256-dim embedding; find_matching_speakers takes a single
-    # embedding (plus user_id) and returns a sorted match list with
-    # similarity already expressed as a percentage.
+    # label to one embedding (any dimension); find_matching_speakers takes a
+    # single embedding (plus user_id), compares it within the recording's
+    # embedding space and returns a sorted match list with similarity
+    # already expressed as a percentage.
     suggestions = {}
     if recording.speaker_embeddings:
         try:
@@ -2149,10 +2150,13 @@ def get_recording_speakers(recording_id):
                 if isinstance(recording.speaker_embeddings, str)
                 else recording.speaker_embeddings
             )
+            from src.services.voice_profiles import suggestion_threshold
+            space_id = recording.speaker_embeddings_space_id
             for label, embedding in embeddings_data.items():
-                if not embedding or len(embedding) != 256:
+                if not embedding:
                     continue
-                matches = find_matching_speakers(embedding, current_user.id)
+                matches = find_matching_speakers(embedding, current_user.id,
+                                                 threshold=suggestion_threshold(space_id), space_id=space_id)
                 suggestions[label] = [{
                     'speaker_id': m['speaker_id'],
                     'name': m['name'],
@@ -2186,8 +2190,6 @@ def assign_speakers(recording_id):
     }
     """
     from src.services.speaker import update_speaker_usage
-    from src.services.speaker_embedding_matcher import update_speaker_embedding
-    from src.services.speaker_snippets import create_speaker_snippets
     from src.services.job_queue import job_queue
 
     try:
@@ -2221,40 +2223,28 @@ def assign_speakers(recording_id):
             else:
                 return jsonify({'error': f'Invalid value type for speaker "{label}"'}), 400
 
-        # --- Apply names to transcription (same logic as update_speakers in recordings.py) ---
+        # --- Apply names exactly as the web app's update_speakers does ---
+        from src.services.speaker import apply_speaker_map, participants_from_segments, update_voice_profiles
+        from src.services.voice_profiles import speech_seconds_by_label
+
         transcription_text = recording.transcription or ''
-        is_json = False
         try:
             transcription_data = json.loads(transcription_text)
             is_json = isinstance(transcription_data, list)
         except (json.JSONDecodeError, TypeError):
             is_json = False
 
-        speaker_names_used = []
-
+        embeddings_updated = 0
+        snippets_created = 0
         if is_json:
-            for segment in transcription_data:
-                original_speaker_label = segment.get('speaker')
-                if original_speaker_label in speaker_map:
-                    new_name_info = speaker_map[original_speaker_label]
-                    new_name = new_name_info.get('name', '').strip()
-                    if new_name_info.get('isMe') and not new_name:
-                        new_name = current_user.name or 'Me'
-                    if new_name:
-                        segment['speaker'] = new_name
-                        if new_name not in speaker_names_used:
-                            speaker_names_used.append(new_name)
-
+            seconds_by_key = speech_seconds_by_label(transcription_data)
+            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
             recording.transcription = json.dumps(transcription_data)
-
-            # Update participants - exclude unresolved SPEAKER_XX labels
-            final_speakers = set()
-            for seg in transcription_data:
-                speaker = seg.get('speaker')
-                if speaker and str(speaker).strip():
-                    if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
-                        final_speakers.add(speaker)
-            recording.participants = ', '.join(sorted(list(final_speakers)))
+            recording.participants = participants_from_segments(transcription_data)
+            if speaker_names_used:
+                update_speaker_usage(speaker_names_used)
+            embeddings_updated, snippets_created = update_voice_profiles(
+                recording, label_to_name, current_user, seconds_by_key)
         else:
             # Plain text transcript
             new_participants = []
@@ -2271,45 +2261,10 @@ def assign_speakers(recording_id):
                     )
                     if new_name not in new_participants:
                         new_participants.append(new_name)
-
             recording.transcription = transcription_text
             recording.participants = ', '.join(new_participants)
-            speaker_names_used = new_participants
-
-        # Update speaker usage statistics
-        if speaker_names_used:
-            update_speaker_usage(speaker_names_used)
-
-        # Update speaker voice embeddings if available
-        embeddings_updated = 0
-        snippets_created = 0
-        if recording.speaker_embeddings and speaker_map:
-            try:
-                embeddings_data = json.loads(recording.speaker_embeddings) if isinstance(recording.speaker_embeddings, str) else recording.speaker_embeddings
-
-                speaker_label_to_name = {}
-                for speaker_label, speaker_info in speaker_map.items():
-                    name = speaker_info.get('name', '').strip()
-                    if speaker_info.get('isMe') and not name:
-                        name = current_user.name or 'Me'
-                    if name and not re.match(r'^SPEAKER_\d+$', name, re.IGNORECASE):
-                        speaker_label_to_name[speaker_label] = name
-
-                for speaker_label, embedding in embeddings_data.items():
-                    if speaker_label in speaker_label_to_name and embedding and len(embedding) == 256:
-                        speaker_name = speaker_label_to_name[speaker_label]
-                        speaker_obj = Speaker.query.filter_by(
-                            user_id=current_user.id,
-                            name=speaker_name
-                        ).first()
-                        if speaker_obj:
-                            update_speaker_embedding(speaker_obj, embedding, recording.id)
-                            embeddings_updated += 1
-
-                if speaker_label_to_name:
-                    snippets_created = create_speaker_snippets(recording.id, speaker_map)
-            except Exception as e:
-                current_app.logger.error(f"Error updating speaker embeddings: {e}", exc_info=True)
+            if new_participants:
+                update_speaker_usage(new_participants)
 
         db.session.commit()
 

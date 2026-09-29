@@ -192,6 +192,7 @@ def get_status(app=None):
         'similarity': reference.get('last_similarity'),
         'detail': reference.get('detail'),
         'supported': embeddings_supported(),
+        'spaces': spaces_status(),
     }
 
 
@@ -207,6 +208,7 @@ def check_voice_embeddings(app, force=False):
         # applies: this one has none. Leaving the notice up would tell the
         # admin to fix something that cannot be fixed from here.
         _clear_notification(app)
+        _spaces(lambda vp: vp.clear_current_space())
         return {'status': STATUS_UNKNOWN, 'supported': False,
                 'detail': 'the active connector does not return speaker embeddings'}
 
@@ -218,6 +220,12 @@ def check_voice_embeddings(app, force=False):
     if reference and reference.get('clip_version') != CANARY_CLIP_VERSION:
         logger.info('Canary clip changed since the reference was taken; re-baselining')
         reference = None
+
+    # First start with embedding spaces: the model the existing profiles were
+    # built with is the one the reference was taken from. It becomes the
+    # legacy space, which every profile stored without a space belongs to.
+    if reference and reference.get('embedding'):
+        _spaces(lambda vp: _initialize_spaces(vp, reference))
 
     if reference and not force and reference.get('backend_fingerprint') == fingerprint:
         # Nothing about the configuration moved. The probe costs a real
@@ -236,6 +244,10 @@ def check_voice_embeddings(app, force=False):
         return status
 
     now = datetime.utcnow().isoformat()
+
+    # Each model gets its own voice space; recognising one seen before brings
+    # its profiles back, a new one starts empty.
+    _spaces(lambda vp: vp.register_space(vector, fingerprint))
 
     if reference is None:
         save_reference({
@@ -308,14 +320,14 @@ def _log_change_banner(app, detail):
         '=' * width,
         detail or 'the transcription backend returned an unexpected embedding',
         '',
-        'Existing voice profiles were built by a different model and will not',
-        'match new recordings. Voice matching will silently find nothing until',
-        'one of the following is true:',
+        'Voice profiles are kept separately for each embedding model. Profiles',
+        'built with the previous model will not match new recordings; profiles',
+        'for this model are learned as speakers are named. Either:',
         '',
-        '  * the previous transcription backend is restored, which clears this',
-        '    by itself on the next check, or',
-        '  * the affected voice profiles are rebuilt and the reference is reset',
-        '    from the admin area.',
+        '  * restore the previous transcription backend, which brings its',
+        '    profiles back and clears this on the next check, or',
+        '  * accept the change: reset the reference from the admin area once',
+        '    the profiles have been rebuilt for the new model.',
         '',
         'Set DISABLE_VOICE_EMBEDDING_CHECK=true to stop checking.',
         '=' * width,
@@ -354,6 +366,46 @@ def _clear_notification(app):
         resolve(KIND_VOICE_EMBEDDING_CHANGED)
     except Exception as e:
         logger.warning('Could not clear the voice embedding notification: %s', e)
+
+
+def _spaces(fn):
+    """Run a voice-space update without ever failing the check."""
+    try:
+        from src.services import voice_profiles
+        return fn(voice_profiles)
+    except Exception as e:
+        logger.warning(f"Voice embedding space bookkeeping failed: {e}")
+        return None
+
+
+def _initialize_spaces(vp, reference):
+    from src.models import VoiceEmbeddingSpace
+    if VoiceEmbeddingSpace.query.count() == 0:
+        vp.register_space(reference['embedding'], reference.get('backend_fingerprint'))
+
+
+def spaces_status():
+    """Voice spaces for the admin card: which is current, samples, threshold."""
+    try:
+        from src.models import SpeakerVoiceSample, VoiceEmbeddingSpace
+        from src.services import voice_profiles as vp
+        current, legacy = vp.current_space_id(), vp.legacy_space_id()
+        counts = {}
+        for (space_id,) in SpeakerVoiceSample.query.with_entities(SpeakerVoiceSample.space_id).all():
+            key = vp.effective_space(space_id)
+            counts[key] = counts.get(key, 0) + 1
+        out = []
+        for space in VoiceEmbeddingSpace.query.order_by(VoiceEmbeddingSpace.id).all():
+            item = space.to_dict()
+            item['current'] = space.id == current
+            item['legacy'] = space.id == legacy
+            item['sample_count'] = counts.get(space.id, 0)
+            item['calibrated_threshold'] = vp.calibrated_threshold(space.id)
+            out.append(item)
+        return out
+    except Exception as e:
+        logger.debug(f"Could not read voice spaces: {e}")
+        return []
 
 
 def rebaseline(app):

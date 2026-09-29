@@ -72,80 +72,20 @@ def calculate_similarity(embedding1, embedding2):
     return float(cosine_similarity(e1, e2)[0][0])
 
 
-def find_matching_speakers(target_embedding, user_id, threshold=0.70):
+def find_matching_speakers(target_embedding, user_id, threshold=0.70, space_id=None):
     """
     Find speakers matching a target voice embedding for a specific user.
 
-    Args:
-        target_embedding: The voice embedding to match against (256-dim array/list)
-        user_id: User ID to search within
-        threshold: Minimum similarity score (0-1, default 0.70 = 70%)
+    Kept for callers of the original API. Matching itself lives in
+    services/voice_profiles.py: each person is compared through their voice
+    variants (the closest counts), only within one embedding space.
 
     Returns:
-        list: Sorted list of matching speakers with scores
-              [{'speaker_id': 5, 'name': 'John', 'similarity': 85.3, 'confidence': 0.92}, ...]
+        list: [{'speaker_id', 'name', 'similarity' (percent), 'confidence',
+                'embedding_count', 'variant_count'}], best first
     """
-    # Get all speakers with embeddings for this user
-    speakers = Speaker.query.filter_by(user_id=user_id).filter(
-        Speaker.average_embedding.isnot(None)
-    ).all()
-
-    if not speakers:
-        return []
-
-    target_dims = len(target_embedding) if target_embedding is not None else 0
-
-    matches = []
-    dimension_mismatches = 0
-    mismatched_dims = set()
-    for speaker in speakers:
-        try:
-            # Deserialize and compare
-            speaker_emb = deserialize_embedding(speaker.average_embedding)
-
-            # Checked explicitly rather than left to raise below. A stored
-            # profile of a different length is not a corrupt profile: it is a
-            # profile built by a different embedding model, and treating it as
-            # corruption is what made a backend change look like voice
-            # matching quietly ceasing to work, with nothing in the log to say
-            # why (#380).
-            if target_dims and len(speaker_emb) != target_dims:
-                dimension_mismatches += 1
-                mismatched_dims.add(len(speaker_emb))
-                continue
-
-            similarity = calculate_similarity(target_embedding, speaker_emb)
-
-            if similarity >= threshold:
-                matches.append({
-                    'speaker_id': speaker.id,
-                    'name': speaker.name,
-                    'similarity': round(similarity * 100, 1),  # Convert to percentage
-                    'confidence': speaker.confidence_score or 0.5,
-                    'embedding_count': speaker.embedding_count or 0
-                })
-        except Exception as e:
-            # Genuinely unreadable stored bytes. Logged rather than swallowed,
-            # so a systematic problem is visible instead of showing up only as
-            # an empty match list.
-            logger.warning(
-                "Skipping speaker %s: its stored embedding could not be compared: %s",
-                getattr(speaker, 'id', '?'), e)
-            continue
-
-    if dimension_mismatches:
-        # One line per call rather than per speaker, so this stays readable
-        # when a whole library is affected, which is the usual case.
-        sizes = ', '.join(str(d) for d in sorted(mismatched_dims))
-        logger.error(
-            "%d of %d stored voice profiles have %s dimensions and cannot be compared "
-            "with the %d-dimensional embeddings this backend now returns. Voice matching "
-            "will find nothing until the previous transcription backend is restored or "
-            "the profiles are rebuilt.",
-            dimension_mismatches, len(speakers), sizes, target_dims)
-
-    # Sort by similarity (highest first)
-    return sorted(matches, key=lambda x: x['similarity'], reverse=True)
+    from src.services.voice_profiles import find_matches
+    return find_matches(target_embedding, user_id, space_id=space_id, threshold=threshold)
 
 
 def update_speaker_embedding(speaker, new_embedding, recording_id):
@@ -308,70 +248,20 @@ AMBIGUITY_MARGIN = 0.05
 
 def apply_auto_speaker_labels(recording, user):
     """
-    Automatically label speakers in a recording based on voice profile matching.
+    Match a new recording's speakers against the user's voice profiles.
 
-    This function matches speaker embeddings from the recording against the user's
-    saved speaker profiles and returns a mapping of generic labels to speaker names.
-
-    Args:
-        recording: Recording model instance with speaker_embeddings
-        user: User model instance with auto_speaker_labelling settings
-
-    Returns:
-        dict: Mapping of {SPEAKER_XX: speaker_name} for matched speakers,
-              or empty dict if auto-labelling is disabled or no matches found
+    Returns {SPEAKER_XX: name}. One person per label and one label per
+    person; labels with too little speech, and labels whose two best
+    candidates are nearly tied, are left alone. The threshold is the user's
+    low / medium / high setting, calibrated to the embedding space once it
+    has enough samples (services/voice_profiles.py).
     """
-    # Check if user has auto-labelling enabled
-    if not user.auto_speaker_labelling:
+    if not user.auto_speaker_labelling or not recording.speaker_embeddings:
         return {}
-
-    # Check if recording has speaker embeddings
-    if not recording.speaker_embeddings:
-        return {}
-
-    # Get the user's threshold setting
-    threshold_setting = user.auto_speaker_labelling_threshold or 'medium'
-    confidence_threshold = AUTO_LABEL_THRESHOLDS.get(threshold_setting, AUTO_LABEL_THRESHOLDS['medium'])
-
-    speaker_map = {}
-    embeddings = recording.speaker_embeddings
-
-    for speaker_label, embedding_data in embeddings.items():
-        # embedding_data should be a list of floats (256 dimensions)
-        if not embedding_data or not isinstance(embedding_data, list):
-            continue
-
-        # Find matching speakers using the USER'S chosen threshold as the
-        # filter. Previously this filtered with the hardcoded 0.70
-        # BASE_SIMILARITY_THRESHOLD and only then applied the user's
-        # confidence_threshold — which meant 'low' (0.3) and 'medium' (0.6)
-        # were both effectively 0.70 (nothing under 0.70 ever reached the
-        # second check), so those settings did nothing. Filtering at
-        # confidence_threshold directly makes the setting actually take
-        # effect: low=0.30, medium=0.60, high=0.80.
-        matches = find_matching_speakers(
-            target_embedding=embedding_data,
-            user_id=user.id,
-            threshold=confidence_threshold
-        )
-
-        if not matches:
-            continue
-
-        best_match = matches[0]
-        best_similarity = best_match['similarity'] / 100.0  # Convert from percentage
-
-        # Check for ambiguity: if top 2 matches are within 5% similarity, skip
-        if len(matches) >= 2:
-            second_similarity = matches[1]['similarity'] / 100.0
-            if (best_similarity - second_similarity) <= AMBIGUITY_MARGIN:
-                # Ambiguous - top 2 matches too close
-                continue
-
-        # We have a clear winner - add to speaker map
-        speaker_map[speaker_label] = best_match['name']
-
-    return speaker_map
+    from src.services.voice_profiles import auto_label_map, auto_label_threshold
+    threshold = auto_label_threshold(user.auto_speaker_labelling_threshold or 'medium',
+                                     recording.speaker_embeddings_space_id)
+    return auto_label_map(recording, user, threshold)
 
 
 def apply_speaker_names_to_transcription(recording, speaker_map):
@@ -422,10 +312,9 @@ def apply_speaker_names_to_transcription(recording, speaker_map):
 
     logger.info(f"Auto-label: Applied names to {len(renamed_speakers)} speakers: {renamed_speakers}")
 
-    # Update participants field
-    all_speakers = set(s.get('speaker') for s in segments if 'speaker' in s)
-    if all_speakers:
-        recording.participants = ', '.join(sorted(all_speakers))
+    # Participants: real names only, never leftover SPEAKER_XX labels
+    from src.services.speaker import participants_from_segments
+    recording.participants = participants_from_segments(segments)
 
     # Save updated transcription
     recording.transcription = json.dumps(segments)
@@ -436,56 +325,23 @@ def apply_speaker_names_to_transcription(recording, speaker_map):
 
 def update_speaker_profiles_from_recording(recording, speaker_map, user):
     """
-    Update speaker voice profiles with new embeddings from a recording.
+    Train voice profiles from auto-applied labels.
 
-    For each successfully matched speaker, this function updates their
-    average embedding and increments their usage count.
-
-    Args:
-        recording: Recording model instance with speaker_embeddings
-        speaker_map: Dict mapping {SPEAKER_XX: speaker_name} that was applied
-        user: User model instance
+    Samples from auto-labelling carry half the weight of names a person
+    confirmed, and confirming or correcting the name later in the speaker
+    dialog replaces them.
 
     Returns:
         int: Number of speaker profiles updated
     """
     if not speaker_map or not recording.speaker_embeddings:
         return 0
-
-    updated_count = 0
-    embeddings = recording.speaker_embeddings
-
-    for speaker_label, speaker_name in speaker_map.items():
-        if speaker_label not in embeddings:
-            continue
-
-        embedding_data = embeddings[speaker_label]
-        if not embedding_data or not isinstance(embedding_data, list):
-            continue
-
-        # Find the speaker profile
-        speaker = Speaker.query.filter_by(
-            user_id=user.id,
-            name=speaker_name
-        ).first()
-
-        if not speaker:
-            continue
-
-        try:
-            # Update the speaker's embedding with the new sample
-            update_speaker_embedding(speaker, embedding_data, recording.id)
-
-            # Update usage tracking
+    from src.services.voice_profiles import apply_names_to_profiles
+    stats = apply_names_to_profiles(recording, dict(speaker_map), None, user, source='auto')
+    for name in set(speaker_map.values()):
+        speaker = Speaker.query.filter_by(user_id=user.id, name=name).first()
+        if speaker:
             speaker.use_count = (speaker.use_count or 0) + 1
             speaker.last_used = datetime.utcnow()
-
-            updated_count += 1
-        except Exception:
-            # Skip if embedding update fails
-            continue
-
-    if updated_count > 0:
-        db.session.commit()
-
-    return updated_count
+    db.session.commit()
+    return stats['stored']
