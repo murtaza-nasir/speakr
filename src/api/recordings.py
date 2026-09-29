@@ -3420,74 +3420,15 @@ def delete_recording(recording_id):
         if not USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify({'error': 'Only administrators can delete recordings'}), 403
 
-        # Delete the audio file first
-        try:
-            if recording.audio_path:
-                storage = get_storage_service()
-                storage.delete(recording.audio_path, missing_ok=True)
-                current_app.logger.info(f"Deleted audio file via storage backend: {recording.audio_path}")
-        except Exception as e:
-            current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
-
         # Log embeddings cleanup for Inquire Mode if enabled
         if ENABLE_INQUIRE_MODE:
             chunk_count = TranscriptChunk.query.filter_by(recording_id=recording_id).count()
             if chunk_count > 0:
                 current_app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
 
-        # Delete associated records with NOT NULL recording_id constraints
-        from src.models.speaker_snippet import SpeakerSnippet
-        deleted_snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
-        if deleted_snippets > 0:
-            current_app.logger.info(f"Deleted {deleted_snippets} speaker snippets for recording {recording_id}")
-
-        from src.models.processing_job import ProcessingJob
-        deleted_jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
-        if deleted_jobs > 0:
-            current_app.logger.info(f"Deleted {deleted_jobs} processing jobs for recording {recording_id}")
-
-        # Capture identity for the webhook event before deletion drops the row.
-        _deleted_recording_id = recording.id
-        _deleted_recording_title = recording.title
-        _deleted_user_id = recording.user_id
-
-        # Delete the database record (cascade will handle chunks/embeddings)
-        db.session.delete(recording)
-        db.session.commit()
-        current_app.logger.info(f"Deleted recording record ID: {recording_id}")
-
-        # Webhook event (#275)
-        try:
-            from src.services.webhook_dispatch import emit_webhook_event
-            emit_webhook_event(
-                user_id=_deleted_user_id,
-                event_type='recording.deleted',
-                data={
-                    'recording_id': _deleted_recording_id,
-                    'title': _deleted_recording_title,
-                },
-            )
-        except Exception as e:
-            current_app.logger.warning(f"Webhook emit (recording.deleted) failed: {e}")
-
-        if ENABLE_INQUIRE_MODE and chunk_count > 0:
-            current_app.logger.info(f"Successfully deleted embeddings and chunks for recording {recording_id}")
-
-        # Mark the export file as deleted
-        mark_export_as_deleted(recording_id)
-
-        # Clean up orphaned speakers (run after successful deletion)
-        # This is a best-effort cleanup; failures are logged but don't affect the delete operation
-        try:
-            from src.services.speaker_cleanup import cleanup_orphaned_speakers
-            speaker_stats = cleanup_orphaned_speakers()
-            if speaker_stats.get('speakers_deleted', 0) > 0:
-                current_app.logger.info(
-                    f"Cleaned up {speaker_stats['speakers_deleted']} orphaned speakers after recording deletion"
-                )
-        except Exception as cleanup_error:
-            # Log the error but don't fail the deletion
-            current_app.logger.warning(f"Speaker cleanup after recording deletion failed: {cleanup_error}")
+        from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
+        delete_recording_completely(recording)
+        cleanup_orphaned_speakers_quietly()
 
         return jsonify({'success': True})
     except Exception as e:
