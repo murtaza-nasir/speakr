@@ -1,0 +1,81 @@
+/* Voice-tone badges on transcript lines (see static/js/modules/utils/tone.js).
+ *
+ * Quiet by design: a small emoji at the end of the few lines that begin a standout window,
+ * slightly faded until hovered or focused. Details appear in a popover; the same text is on the
+ * badge's aria-label. The popover opens downward: the transcript pane scrolls, so overflow below
+ * is reachable but overflow above the first line is clipped. Colors come from the app's own tokens so both themes work. */
+
+.tone-badge {
+    position: relative;
+    display: inline-block;
+    margin-left: 0.45em;
+    font-size: 0.82em;
+    line-height: 1;
+    vertical-align: baseline;
+    cursor: help;
+    opacity: 0.7;
+    border-radius: 4px;
+    transition: opacity 120ms ease-out;
+}
+.tone-badge:hover,
+.tone-badge:focus-visible { opacity: 1; }
+.tone-badge:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
+
+.tone-pop {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 0.45rem);
+    z-index: 40;
+    display: block;
+    width: max-content;
+    min-width: 13rem;
+    max-width: min(18rem, 80vw);
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-secondary);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+    font-size: 0.75rem;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-2px);
+    pointer-events: none;
+    transition: opacity 120ms ease-out, transform 120ms ease-out, visibility 0s linear 120ms;
+}
+.tone-badge.tone-flip .tone-pop { left: auto; right: 0; }
+.tone-badge:hover .tone-pop,
+.tone-badge:focus-visible .tone-pop {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+}
+
+.tone-pop-title { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.8rem; }
+.tone-pop-strength { font-weight: 400; color: var(--text-muted); }
+
+.tone-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+.tone-row-label { flex: 0 0 5.5rem; color: var(--text-secondary); }
+.tone-row-track { position: relative; flex: 1; height: 4px; border-radius: 2px; background: var(--border-primary); }
+.tone-row-fill { display: block; height: 100%; border-radius: 2px; background: var(--text-light); }
+.tone-row:first-of-type .tone-row-fill { background: var(--text-accent); }
+/* the tick marks the level that counts as notable for that state */
+.tone-row-track::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--text-muted); opacity: 0.6; }
+
+.tone-pop-foot { display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.7rem; }
+
+/* Lines that carry a badge must not clip the popover: content-visibility on .speaker-segment
+ * applies paint containment. Only the few badge-bearing lines opt out. */
+.speaker-segment:has(.tone-badge),
+.speaker-bubble:has(.tone-badge) { content-visibility: visible; overflow: visible; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tone-badge,
+    .tone-pop { transition: none; transform: none; }
+}

@@ -190,3 +190,16 @@ def test_the_column_is_added_once_to_an_existing_database_and_existing_rows_are_
         with engine.connect() as conn:
             assert [r[1] for r in conn.execute(text("PRAGMA table_info(recording)"))] == ["id", "title", "summary", "tone"]
             assert conn.execute(text("SELECT id, title, summary, tone FROM recording")).fetchall() == [(1, "kept", "kept too", None)]
+
+
+def test_cleared_tone_is_sql_null_not_json_null():
+    """A backfill finds recordings without tone with `tone IS NULL`; a stored JSON `null` would hide them."""
+    with app.app_context():
+        user = _user("nulltone")
+        rec = _recording(user)
+        rec.tone = copy.deepcopy(GOOD)
+        db.session.commit()
+        rec.tone = None
+        db.session.commit()
+        raw = db.session.execute(text("SELECT tone IS NULL FROM recording WHERE id = :i"), {"i": rec.id}).scalar()
+        assert raw == 1

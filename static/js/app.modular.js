@@ -9,6 +9,7 @@ import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
+import { annotateTone, loadShowTone, saveShowTone } from './modules/utils/tone.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
@@ -1473,6 +1474,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
             const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
             const showTimestampsSimpleView = ref(false);     // User pref: display timestamps in simple view
+            const showTone = ref(loadShowTone());             // Per-browser: show voice-tone badges (only when a recording has tone data)
+            watch(showTone, saveShowTone);
             const editorAutosave = ref(false);                // User pref: autosave transcript editor
             const audioPlayerPosition = ref('bottom');        // User pref: 'bottom' or 'top' for desktop player placement
             const currentUserName = ref('');
@@ -1915,6 +1918,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dropdownPositions,
                 openAsrDropdownIndex,
 
+                // Voice tone
+                showTone,
+
                 // App Config
                 useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
@@ -2292,6 +2298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         endTime: segment.end_time ?? segment.endTime,
                         color: speakerColors[segment.speaker] || 'speaker-color-1'
                     }));
+                    annotateTone(simpleSegments, selectedRecording.value?.tone);
 
                     const processedSimpleSegments = [];
                     // Group consecutive same-speaker segments into runs
@@ -2347,7 +2354,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         bubbleRows[bubbleRows.length - 1].bubbles.push({
                             sentence: segment.sentence,
                             startTime: segment.startTime ?? segment.start_time,
-                            color: segment.color
+                            color: segment.color,
+                            toneBadge: segment.toneBadge
                         });
                     });
 

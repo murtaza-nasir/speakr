@@ -1,0 +1,18 @@
+{#- Voice-tone badge for one transcript line. `expr` is the Vue expression holding the badge
+    (segment.toneBadge / bubble.toneBadge), built by static/js/modules/utils/tone.js. The badge
+    exists only when an external scorer supplied tone for the recording AND this line begins a
+    standout window, so recordings without tone data render exactly as before. Vue's delimiters
+    here are ${ } (Jinja keeps {{ }}). -#}
+{% macro tone_badge(expr) -%}
+<span v-if="showTone && {{ expr }}" class="tone-badge" tabindex="0" role="img" :aria-label="{{ expr }}.aria">
+    <span class="tone-emoji" aria-hidden="true">${ {{ expr }}.emoji }</span>
+    <span class="tone-pop" aria-hidden="true">
+        <span class="tone-pop-title">${ {{ expr }}.emoji } ${ {{ expr }}.label }<span class="tone-pop-strength"> &middot; ${ {{ expr }}.strength }</span></span>
+        <span v-for="row in {{ expr }}.rows" :key="row.head" class="tone-row">
+            <span class="tone-row-label">${ row.label }</span>
+            <span class="tone-row-track"><span class="tone-row-fill" :style="{ width: (row.bar * 100) + '%' }"></span></span>
+        </span>
+        <span class="tone-pop-foot">${ {{ expr }}.range } &middot; estimated from the voice; can be wrong</span>
+    </span>
+</span>
+{%- endmacro %}

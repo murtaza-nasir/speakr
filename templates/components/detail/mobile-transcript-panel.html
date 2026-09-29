@@ -1,3 +1,4 @@
+{% from 'components/detail/_tone.html' import tone_badge %}
 <!-- Mobile Transcript Panel. The toolbar (follow-player, view-mode,
      copy / download / edit) now lives in the chevron row of
      mobile-header.html instead of taking a whole separate row here. -->
@@ -109,7 +110,7 @@
                              @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
-                            <div class="speaker-text">${segment.sentence}</div>
+                            <div class="speaker-text">${segment.sentence}{{ tone_badge('segment.toneBadge') }}</div>
                         </div>
                     </div>
                 </div>
@@ -145,7 +146,7 @@
                 <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
                     <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
                         <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
-                            <div class="speaker-bubble-content">${bubble.sentence}</div>
+                            <div class="speaker-bubble-content">${bubble.sentence}{{ tone_badge('bubble.toneBadge') }}</div>
                         </div>
                     </div>
                 </template>

@@ -1,3 +1,4 @@
+{% from 'components/detail/_tone.html' import tone_badge %}
 <!-- Desktop Transcription Panel (Left Column) -->
 <div id="leftMainColumn" class="flex flex-col overflow-hidden" :style="{width: leftColumnWidth + '%'}">
     <!-- Docked video, top-of-left-column slot (see _video-dock.html). -->
@@ -32,6 +33,17 @@
                     :title="transcriptionViewMode === 'bubble' ? 'Switch to simple view' : 'Switch to bubble view'">
                 <i class="fas fa-comments" style="font-size: 11px;"></i>
                 <span v-text="t('transcription.bubble')"></span>
+            </button>
+
+            <!-- Voice tone badges: shown only for recordings that have tone data; remembered per browser -->
+            <button v-if="selectedRecording && selectedRecording.tone"
+                    @click="showTone = !showTone"
+                    class="toggle"
+                    :class="{ 'is-on': showTone }"
+                    :aria-pressed="showTone ? 'true' : 'false'"
+                    title="Show or hide voice tone badges">
+                <i class="far fa-smile" style="font-size: 11px;"></i>
+                <span>Tone</span>
             </button>
 
             <!-- Copy -->
@@ -243,7 +255,7 @@
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <div class="speaker-text">
-                                ${segment.sentence}
+                                ${segment.sentence}{{ tone_badge('segment.toneBadge') }}
                             </div>
                         </div>
                     </div>
@@ -261,7 +273,7 @@
                             <span v-if="showTimestampsSimpleView"
                                   class="speaker-segment-timestamp speaker-segment-timestamp--inline">
                                 ${ formatTimestamp(segment.startTime) }
-                            </span>${segment.sentence}
+                            </span>${segment.sentence}{{ tone_badge('segment.toneBadge') }}
                         </div>
                     </div>
                     <div v-else class="whitespace-pre-wrap">
@@ -282,7 +294,7 @@
                              :data-start-time="bubble.startTime"
                              :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
                             <div class="speaker-bubble-content">
-                                ${bubble.sentence}
+                                ${bubble.sentence}{{ tone_badge('bubble.toneBadge') }}
                             </div>
                         </div>
                     </div>

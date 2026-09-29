@@ -82,7 +82,7 @@ class Recording(db.Model):
 
     # Voice-tone record from an external scorer (windows scored from the audio plus a call
     # summary), stored as received after validation. Null = none; see src/services/tone.py.
-    tone = db.Column(db.JSON, nullable=True)
+    tone = db.Column(db.JSON(none_as_null=True), nullable=True)
 
     # Rendered auto-export filename WITHOUT the .md extension (#348). Set on
     # first export and authoritative from then on: re-exports overwrite this
