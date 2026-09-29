@@ -1,24 +1,27 @@
 /* Voice-tone badges on transcript lines (see static/js/modules/utils/tone.js).
  *
- * Quiet by design: a small emoji at the end of the few lines that begin a standout window,
- * slightly faded until hovered or focused. Details appear in a popover; the same text is on the
+ * Quiet by count, not by contrast: only the few lines that begin a standout window carry a chip,
+ * styled like the speaker chips so it reads as part of the page. Details appear in a popover; the same text is on the
  * badge's aria-label. The popover opens downward: the transcript pane scrolls, so overflow below
  * is reachable but overflow above the first line is clipped. Colors come from the app's own tokens so both themes work. */
 
 .tone-badge {
     position: relative;
     display: inline-block;
-    margin-left: 0.45em;
-    font-size: 0.82em;
-    line-height: 1;
+    margin-left: 0.5em;
+    padding: 1px 6px;
+    font-size: 0.95em;
+    line-height: 1.35;
     vertical-align: baseline;
     cursor: help;
-    opacity: 0.7;
-    border-radius: 4px;
-    transition: opacity 120ms ease-out;
+    /* same recipe as the speaker chips: tinted token background, token border, 6px radius */
+    background: var(--bg-accent);
+    border: 1px solid var(--border-accent);
+    border-radius: 6px;
+    transition: background-color 120ms ease-out;
 }
 .tone-badge:hover,
-.tone-badge:focus-visible { opacity: 1; }
+.tone-badge:focus-visible { background: var(--bg-accent-hover); }
 .tone-badge:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
 
 .tone-pop {
