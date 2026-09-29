@@ -165,19 +165,11 @@ def process_auto_deletion():
                     else:
                         current_app.logger.info(f"Recording {recording.id} is past retention ({retention_days} days), deleting fully")
 
-                    # Delete audio file if it exists
-                    if recording.audio_path:
-                        get_storage_service().delete(recording.audio_path, missing_ok=True)
-
-                    # Delete associated processing jobs (required due to NOT NULL constraint)
-                    from src.models.processing_job import ProcessingJob
-                    ProcessingJob.query.filter_by(recording_id=recording.id).delete()
-
-                    # Delete the database record (cascades to chunks, shares, etc.)
-                    db.session.delete(recording)
-                    db.session.commit()
+                    from src.services.recording_deletion import delete_recording_completely
+                    deleted_id = recording.id
+                    delete_recording_completely(recording, storage=get_storage_service(), strict_media=True)
                     stats['deleted_full'] += 1
-                    current_app.logger.info(f"Auto-deleted full recording ID: {recording.id}")
+                    current_app.logger.info(f"Auto-deleted full recording ID: {deleted_id}")
 
             except Exception as e:
                 stats['errors'] += 1

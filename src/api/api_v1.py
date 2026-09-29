@@ -1388,18 +1388,16 @@ def delete_recording(recording_id):
     if not USERS_CAN_DELETE and not current_user.is_admin:
         return jsonify({'error': 'Deletion not allowed'}), 403
 
-    # Delete associated files
-    if recording.audio_path:
-        try:
-            audio_path = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), recording.audio_path)
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-        except Exception:
-            pass  # Continue with DB deletion even if file deletion fails
-
-    # Delete from database
-    db.session.delete(recording)
-    db.session.commit()
+    # Same deletion as the web app: storage-aware media removal, snippets and
+    # jobs first (NOT NULL recording_id), webhook, export and speaker cleanup.
+    from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
+    try:
+        delete_recording_completely(recording)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"API v1 delete failed for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'Could not delete the recording'}), 500
+    cleanup_orphaned_speakers_quietly()
 
     return jsonify({'success': True, 'message': 'Recording deleted'})
 
