@@ -28,18 +28,33 @@ os.environ["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{_TEST_DB_PATH}"
 # which isn't writable in CI / outside Docker. Point it at the temp dir.
 os.environ["UPLOAD_FOLDER"] = os.path.join(_TEST_DIR, "uploads")
 
+# --- No real external services ----------------------------------------------
+# A developer's container or .env points at real services (an LLM, an
+# embeddings API, an ASR server, a mail server). The suite must not call them:
+# they bill, send mail, and make results depend on the host (with an
+# embeddings API configured, the tests expecting embeddings to be unavailable
+# fail). Every such setting is forced to what a clean CI checkout has. An
+# empty value, not a removed one, because load_dotenv() never overrides a
+# variable that is already set, but would fill a removed one from .env.
+for _var in (
+    "TEXT_MODEL_BASE_URL", "TEXT_MODEL_NAME",
+    "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY", "EMBEDDING_MODEL", "EMBEDDING_DIMENSIONS",
+    "ASR_BASE_URL", "TRANSCRIPTION_MODEL", "TRANSCRIPTION_CONNECTOR",
+    "SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD",
+    "SSO_CLIENT_SECRET", "SSO_DISCOVERY_URL",
+):
+    os.environ[_var] = ""
+os.environ["USE_ASR_ENDPOINT"] = "false"
+# initialize_config() hard-exits at import if no text or transcription
+# service is set; these are harmless placeholders that are never reached.
+os.environ["TEXT_MODEL_API_KEY"] = "test-key"
+os.environ["TRANSCRIPTION_API_KEY"] = "test-key"
+os.environ["TRANSCRIPTION_BASE_URL"] = "https://api.openai.com/v1"
+
 # --- Quiet, deterministic defaults for tests --------------------------------
 # Only set if the caller hasn't already chosen a value.
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key")
 os.environ.setdefault("ENABLE_AUTO_PROCESSING", "false")   # no black-hole file monitor
-os.environ.setdefault("TEXT_MODEL_API_KEY", "test-key")    # avoid config hard-fails
-# initialize_config() hard-exits at import if no transcription service is set.
-# The app loads .env via load_dotenv(), so a developer with a populated .env
-# passes, but a clean checkout / CI has none. Supply harmless defaults so the
-# suite is self-contained (mirrors TEXT_MODEL_API_KEY above); tests exercising
-# real transcription behaviour override these.
-os.environ.setdefault("TRANSCRIPTION_API_KEY", "test-key")
-os.environ.setdefault("TRANSCRIPTION_BASE_URL", "https://api.openai.com/v1")
 
 # Run ZERO background job-queue workers during tests. These counts are read at
 # job_queue import time, so they must be set before src.app is imported. With
