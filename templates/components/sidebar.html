@@ -301,10 +301,11 @@
                             :title="t('archive.showArchived')">
                         <i class="fas fa-box-archive"></i>
                         <span class="hidden sm:inline truncate min-w-0" v-text="t('archive.archived')"></span>
-                        <i :class="['fas text-[10px]', showArchivedRecordings ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
-                    <!-- Shared Toggle -->
+                    <!-- Shared Toggle. The highlighted background shows the state;
+                         the on/off icon was dropped so the labels fit (#394). -->
                     <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
+                            :aria-pressed="showSharedWithMe"
                             :class="[
                                 'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showSharedWithMe
@@ -314,7 +315,6 @@
                             :title="t('sidebar.sharedWithMe')">
                         <i class="fas fa-users"></i>
                         <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.shared')"></span>
-                        <i :class="['fas text-[10px]', showSharedWithMe ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
                 </div>
             </div>
