@@ -357,10 +357,27 @@
     "title": "Tokens de API",
     "usageExamples": "Ejemplos de uso"
   },
+  "archive": {
+    "archive": "Archivar",
+    "archived": "Archivadas",
+    "archivedToast": "Grabación archivada",
+    "bulkArchived": "{{count}} grabación archivada",
+    "bulkArchivedPlural": "{{count}} grabaciones archivadas",
+    "bulkUnarchived": "{{count}} grabación sacada del archivo",
+    "bulkUnarchivedPlural": "{{count}} grabaciones sacadas del archivo",
+    "showArchived": "Mostrar grabaciones archivadas",
+    "toggleSelected": "Archivar o sacar del archivo las grabaciones seleccionadas",
+    "unarchive": "Sacar del archivo",
+    "unarchivedToast": "Grabación sacada del archivo"
+  },
   "asrEditor": {
     "saved": "Guardado",
     "ctrlSHint": "Ctrl+S para guardar",
     "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
+  },
+  "audioRemoved": {
+    "filterHint": "Grabaciones cuyo archivo de audio se eliminó; la transcripción se conserva",
+    "label": "Audio eliminado"
   },
   "bulkActions": {
     "addOrRemoveTags": "Añadir o quitar etiquetas",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "¿Estás seguro de que quieres eliminar todos los oradores guardados? Esta acción no se puede deshacer.",
     "title": "Eliminar Todos los Oradores"
+  },
+  "deleteAudio": {
+    "action": "Eliminar audio, conservar transcripción",
+    "actionVideo": "Eliminar vídeo, conservar transcripción",
+    "body": "Se eliminará el archivo de audio de «{{title}}». La transcripción, el resumen, las notas y las etiquetas se conservan, pero la grabación ya no podrá reproducirse ni volver a transcribirse.",
+    "bodyVideo": "Se eliminará el archivo de vídeo de «{{title}}», incluido su audio. La transcripción, el resumen, las notas y las etiquetas se conservan, pero la grabación ya no podrá reproducirse ni volver a transcribirse.",
+    "confirm": "Eliminar audio",
+    "confirmVideo": "Eliminar vídeo",
+    "done": "Audio eliminado. La transcripción se conserva.",
+    "doneVideo": "Vídeo eliminado. La transcripción se conserva.",
+    "title": "¿Eliminar el audio?",
+    "titleVideo": "¿Eliminar el vídeo?"
   },
   "detail": {
     "hints": "Indicaciones",
@@ -1043,6 +1072,11 @@
     "title": "Gestión de Grupos",
     "updateTeam": "Actualizar Equipo"
   },
+  "headerActions": {
+    "deleteRecording": "Eliminar grabación",
+    "more": "Más acciones",
+    "reprocess": "Reprocesar"
+  },
   "help": {
     "actions": "Acciones",
     "activeFilters": "Filtros activos",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "Acercándose al límite de {{limit}}MB",
     "askAboutTranscription": "Haz preguntas sobre esta transcripción",
     "audioDeletedDescription": "El archivo de audio de esta grabación ha sido eliminado, pero la transcripción sigue disponible.",
-    "audioDeletedMessage": "El archivo de audio ha sido archivado y ya no está disponible para reproducción.",
+    "audioDeletedMessage": "El archivo de audio se eliminó. La transcripción, el resumen y las notas siguen disponibles.",
     "audioDeletedTitle": "Archivo de audio eliminado",
     "audioPlayer": "Reproductor de Audio",
     "autoIdentify": "Identificar Automáticamente",

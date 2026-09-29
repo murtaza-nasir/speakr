@@ -357,10 +357,27 @@
     "title": "API-Token",
     "usageExamples": "Verwendungsbeispiele"
   },
+  "archive": {
+    "archive": "Archivieren",
+    "archived": "Archiviert",
+    "archivedToast": "Aufnahme archiviert",
+    "bulkArchived": "{{count}} Aufnahme archiviert",
+    "bulkArchivedPlural": "{{count}} Aufnahmen archiviert",
+    "bulkUnarchived": "{{count}} Aufnahme aus dem Archiv geholt",
+    "bulkUnarchivedPlural": "{{count}} Aufnahmen aus dem Archiv geholt",
+    "showArchived": "Archivierte Aufnahmen anzeigen",
+    "toggleSelected": "Ausgewählte Aufnahmen archivieren oder aus dem Archiv holen",
+    "unarchive": "Aus dem Archiv holen",
+    "unarchivedToast": "Aufnahme aus dem Archiv geholt"
+  },
   "asrEditor": {
     "saved": "Gespeichert",
     "ctrlSHint": "Strg+S zum Speichern",
     "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)"
+  },
+  "audioRemoved": {
+    "filterHint": "Aufnahmen, deren Audiodatei entfernt wurde; das Transkript bleibt erhalten",
+    "label": "Audio entfernt"
   },
   "bulkActions": {
     "addOrRemoveTags": "Tags hinzufügen oder entfernen",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "Sind Sie sicher, dass Sie alle gespeicherten Sprecher löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "title": "Alle Sprecher Löschen"
+  },
+  "deleteAudio": {
+    "action": "Audio löschen, Transkript behalten",
+    "actionVideo": "Video löschen, Transkript behalten",
+    "body": "Die Audiodatei von „{{title}}“ wird gelöscht. Transkript, Zusammenfassung, Notizen und Tags bleiben erhalten, aber die Aufnahme kann nicht mehr abgespielt oder neu transkribiert werden.",
+    "bodyVideo": "Die Videodatei von „{{title}}“ wird einschließlich Ton gelöscht. Transkript, Zusammenfassung, Notizen und Tags bleiben erhalten, aber die Aufnahme kann nicht mehr abgespielt oder neu transkribiert werden.",
+    "confirm": "Audio löschen",
+    "confirmVideo": "Video löschen",
+    "done": "Audio entfernt. Das Transkript bleibt erhalten.",
+    "doneVideo": "Video entfernt. Das Transkript bleibt erhalten.",
+    "title": "Audio löschen?",
+    "titleVideo": "Video löschen?"
   },
   "detail": {
     "hints": "Hinweise",
@@ -1043,6 +1072,11 @@
     "title": "Gruppenverwaltung",
     "updateTeam": "Team aktualisieren"
   },
+  "headerActions": {
+    "deleteRecording": "Aufnahme löschen",
+    "more": "Weitere Aktionen",
+    "reprocess": "Neu verarbeiten"
+  },
   "help": {
     "actions": "Aktionen",
     "activeFilters": "Aktive Filter",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "Nähert sich {{limit}}MB-Limit",
     "askAboutTranscription": "Fragen zu dieser Transkription stellen",
     "audioDeletedDescription": "Die Audiodatei für diese Aufnahme wurde gelöscht, aber die Transkription ist weiterhin verfügbar.",
-    "audioDeletedMessage": "Audiodatei wurde archiviert und ist nicht mehr zur Wiedergabe verfügbar.",
+    "audioDeletedMessage": "Die Audiodatei wurde entfernt. Transkript, Zusammenfassung und Notizen bleiben verfügbar.",
     "audioDeletedTitle": "Audiodatei gelöscht",
     "audioPlayer": "Audio-Player",
     "autoIdentify": "Automatisch identifizieren",

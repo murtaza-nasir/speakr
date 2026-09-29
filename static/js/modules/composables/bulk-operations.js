@@ -19,7 +19,9 @@ export function useBulkOperations({
     startReprocessingPoll,
     t,
     finalizeRecordingMerge,
-    fetchRecordingsPage
+    fetchRecordingsPage,
+    searchQuery,
+    showArchivedRecordings
 }) {
     const _t = (k, fallback) => (typeof t === 'function' ? t(k) : (fallback || k));
     // Modal state
@@ -597,6 +599,44 @@ export function useBulkOperations({
         }
     };
 
+    // Archive for many recordings at once (#394). Archiving a majority
+    // unarchived selection archives it; otherwise it unarchives.
+    const bulkToggleArchive = async (value = null) => {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return;
+        const tc = (key, n, params) => (window.i18n ? window.i18n.tc(key, n, params) : key);
+        if (value === null) {
+            const archivedCount = selectedRecordings.value.filter(r => r.is_archived).length;
+            value = archivedCount < ids.length / 2;
+        }
+        bulkActionInProgress.value = true;
+        try {
+            const response = await fetch('/api/recordings/bulk-toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify({ recording_ids: ids, field: 'archive', value })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to change the archive status');
+            const affected = new Set(data.affected_ids || ids);
+            // They leave the current view unless a search is showing both.
+            if (!searchQuery.value && value !== showArchivedRecordings.value) {
+                recordings.value = recordings.value.filter(r => !affected.has(r.id));
+            } else {
+                recordings.value.forEach(r => { if (affected.has(r.id)) r.is_archived = value; });
+            }
+            if (selectedRecording.value && affected.has(selectedRecording.value.id)) {
+                selectedRecording.value.is_archived = value;
+            }
+            showToast(tc(value ? 'archive.bulkArchived' : 'archive.bulkUnarchived', affected.size, { count: affected.size }), 'fa-box-archive', 3000, 'success');
+        } catch (error) {
+            console.error('Bulk archive error:', error);
+            setGlobalError(error.message);
+        } finally {
+            bulkActionInProgress.value = false;
+        }
+    };
+
     const bulkToggleHighlight = async (value = null) => {
         const ids = getSelectedIds();
         if (ids.length === 0) return;
@@ -771,6 +811,7 @@ export function useBulkOperations({
         // Bulk Toggle
         bulkToggleInbox,
         bulkToggleHighlight,
+        bulkToggleArchive,
 
         // Bulk Folder
         bulkAssignFolder

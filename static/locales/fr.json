@@ -357,10 +357,27 @@
     "title": "Jetons API",
     "usageExamples": "Exemples d'utilisation"
   },
+  "archive": {
+    "archive": "Archiver",
+    "archived": "Archivés",
+    "archivedToast": "Enregistrement archivé",
+    "bulkArchived": "{{count}} enregistrement archivé",
+    "bulkArchivedPlural": "{{count}} enregistrements archivés",
+    "bulkUnarchived": "{{count}} enregistrement sorti de l’archive",
+    "bulkUnarchivedPlural": "{{count}} enregistrements sortis de l’archive",
+    "showArchived": "Afficher les enregistrements archivés",
+    "toggleSelected": "Archiver ou sortir de l’archive les enregistrements sélectionnés",
+    "unarchive": "Sortir de l’archive",
+    "unarchivedToast": "Enregistrement sorti de l’archive"
+  },
   "asrEditor": {
     "saved": "Enregistré",
     "ctrlSHint": "Ctrl+S pour enregistrer",
     "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
+  },
+  "audioRemoved": {
+    "filterHint": "Enregistrements dont le fichier audio a été supprimé ; la transcription est conservée",
+    "label": "Audio supprimé"
   },
   "bulkActions": {
     "addOrRemoveTags": "Ajouter ou retirer des étiquettes",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "Êtes-vous sûr de vouloir supprimer tous les intervenants sauvegardés ? Cette action ne peut pas être annulée.",
     "title": "Supprimer Tous les Intervenants"
+  },
+  "deleteAudio": {
+    "action": "Supprimer l’audio, garder la transcription",
+    "actionVideo": "Supprimer la vidéo, garder la transcription",
+    "body": "Le fichier audio de « {{title}} » sera supprimé. La transcription, le résumé, les notes et les étiquettes sont conservés, mais l’enregistrement ne pourra plus être lu ni retranscrit.",
+    "bodyVideo": "Le fichier vidéo de « {{title}} », son audio compris, sera supprimé. La transcription, le résumé, les notes et les étiquettes sont conservés, mais l’enregistrement ne pourra plus être lu ni retranscrit.",
+    "confirm": "Supprimer l’audio",
+    "confirmVideo": "Supprimer la vidéo",
+    "done": "Audio supprimé. La transcription est conservée.",
+    "doneVideo": "Vidéo supprimée. La transcription est conservée.",
+    "title": "Supprimer l’audio ?",
+    "titleVideo": "Supprimer la vidéo ?"
   },
   "detail": {
     "hints": "Indices",
@@ -1043,6 +1072,11 @@
     "title": "Gestion de Groupe",
     "updateTeam": "Mettre à jour l'Équipe"
   },
+  "headerActions": {
+    "deleteRecording": "Supprimer l’enregistrement",
+    "more": "Autres actions",
+    "reprocess": "Retraiter"
+  },
   "help": {
     "actions": "Actions",
     "activeFilters": "Filtres actifs",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "Approche de la limite de {{limit}}MB",
     "askAboutTranscription": "Posez des questions sur cette transcription",
     "audioDeletedDescription": "Le fichier audio de cet enregistrement a été supprimé, mais la transcription reste disponible.",
-    "audioDeletedMessage": "Le fichier audio a été archivé et n'est plus disponible pour la lecture.",
+    "audioDeletedMessage": "Le fichier audio a été supprimé. La transcription, le résumé et les notes restent disponibles.",
     "audioDeletedTitle": "Fichier audio supprimé",
     "audioPlayer": "Lecteur Audio",
     "autoIdentify": "Identifier Automatiquement",

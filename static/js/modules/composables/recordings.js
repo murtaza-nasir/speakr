@@ -10,7 +10,7 @@ export function useRecordings(state, utils, reprocessComposable) {
     const {
         recordings, selectedRecording, isLoadingRecordings, isLoadingMore,
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
-        showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
+        showSharedWithMe, filterAudioRemoved, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
         filterFolder, sortBy,
@@ -55,6 +55,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 q: searchQueryParam.trim(),
                 sort_by: sortBy.value || '',
                 archived: showArchivedRecordings.value ? 'true' : '',
+                audio_removed: filterAudioRemoved.value ? 'true' : '',
                 shared: showSharedWithMe.value ? 'true' : '',
                 starred: filterStarred.value ? 'true' : '',
                 inbox: filterInbox.value ? 'true' : '',
@@ -377,6 +378,41 @@ export function useRecordings(state, utils, reprocessComposable) {
         }
     };
 
+    // Archive (#394): personal, like inbox and star. An archived recording
+    // leaves the main list (search still finds it), and an unarchived one
+    // leaves the archive view; the open recording stays open either way.
+    const toggleArchive = async (recording) => {
+        if (!recording || !recording.id) return;
+        const t = (key) => (window.i18n ? window.i18n.t(key) : key);
+        try {
+            const response = await fetch(`/recording/${recording.id}/toggle_archive`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to change the archive status');
+
+            recording.is_archived = data.is_archived;
+            if (selectedRecording.value && selectedRecording.value.id === recording.id) {
+                selectedRecording.value.is_archived = data.is_archived;
+            }
+            const leavesView = !searchQuery.value && (data.is_archived !== showArchivedRecordings.value);
+            const index = recordings.value.findIndex(r => r.id === recording.id);
+            if (index !== -1) {
+                if (leavesView) {
+                    recordings.value.splice(index, 1);
+                    totalRecordings.value = Math.max(0, (totalRecordings.value || 1) - 1);
+                } else {
+                    recordings.value[index].is_archived = data.is_archived;
+                }
+            }
+            showToast(t(data.is_archived ? 'archive.archivedToast' : 'archive.unarchivedToast'), 'fa-box-archive');
+        } catch (error) {
+            console.error('Toggle Archive Error:', error);
+            setGlobalError(error.message);
+        }
+    };
+
     const getRecordingTags = (recording) => {
         if (!recording || !recording.tags) return [];
         return recording.tags || [];
@@ -454,6 +490,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterTextQuery.value = '';
         filterStarred.value = false;
         filterInbox.value = false;
+        filterAudioRemoved.value = false;
         filterNeedsTranscription.value = false;
         filterNeedsSummary.value = false;
         filterNeedsSpeakers.value = false;
@@ -534,6 +571,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         hasUnsavedRecording,
         toggleInbox,
         toggleHighlight,
+        toggleArchive,
         getRecordingTags,
         getAvailableTagsForRecording,
         filterByTag,

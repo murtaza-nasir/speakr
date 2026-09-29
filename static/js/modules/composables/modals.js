@@ -155,37 +155,51 @@ export function useModals(state, utils) {
         }
     };
 
-    // =========================================
-    // Archive Recording
-    // =========================================
+    // Delete audio, keep transcript. Same right as deleting the recording;
+    // the recording stays in every list and shows as "Audio removed".
+    const showDeleteAudioModal = Vue.ref(false);
+    const recordingToDeleteAudio = Vue.ref(null);
+    const isDeletingAudio = Vue.ref(false);
 
-    const archiveRecording = async (recording) => {
-        if (!recording) return;
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch(`/api/recordings/${recording.id}/archive`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken }
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to archive recording');
-
-            recording.is_archived = true;
-            recording.audio_deleted_at = data.audio_deleted_at;
-
-            // Update in recordings list
-            const index = recordings.value.findIndex(r => r.id === recording.id);
-            if (index !== -1) {
-                recordings.value[index].is_archived = true;
-                recordings.value[index].audio_deleted_at = data.audio_deleted_at;
-            }
-
-            showToast('Recording archived (audio deleted)', 'fa-archive');
-        } catch (error) {
-            setGlobalError(`Failed to archive recording: ${error.message}`);
-        }
+    const confirmDeleteAudio = (recording) => {
+        recordingToDeleteAudio.value = recording;
+        showDeleteAudioModal.value = true;
     };
 
+    const cancelDeleteAudio = () => {
+        showDeleteAudioModal.value = false;
+        recordingToDeleteAudio.value = null;
+    };
+
+    const deleteRecordingAudio = async () => {
+        const recording = recordingToDeleteAudio.value;
+        if (!recording) return;
+        const t = (key) => (window.i18n ? window.i18n.t(key) : key);
+        isDeletingAudio.value = true;
+        try {
+            const response = await fetch(`/recording/${recording.id}/delete_audio`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to remove the audio');
+
+            const removedAt = data.recording && data.recording.audio_deleted_at;
+            recording.audio_deleted_at = removedAt;
+            const index = recordings.value.findIndex(r => r.id === recording.id);
+            if (index !== -1) recordings.value[index].audio_deleted_at = removedAt;
+            if (selectedRecording.value && selectedRecording.value.id === recording.id) {
+                selectedRecording.value.audio_deleted_at = removedAt;
+            }
+            const isVideo = !!(recording.mime_type && recording.mime_type.startsWith('video/'));
+            showToast(t(isVideo ? 'deleteAudio.doneVideo' : 'deleteAudio.done'), 'fa-volume-xmark');
+            cancelDeleteAudio();
+        } catch (error) {
+            setGlobalError(error.message);
+        } finally {
+            isDeletingAudio.value = false;
+        }
+    };
     // =========================================
     // Edit Tags Modal
     // =========================================
@@ -660,8 +674,9 @@ export function useModals(state, utils) {
         cancelDelete,
         deleteRecording,
 
-        // Archive
-        archiveRecording,
+        // Delete audio
+        showDeleteAudioModal, recordingToDeleteAudio, isDeletingAudio,
+        confirmDeleteAudio, cancelDeleteAudio, deleteRecordingAudio,
 
         // Tags modal
         openEditTagsModal,

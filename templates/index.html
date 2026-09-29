@@ -108,7 +108,7 @@
          data-speaker-count-mode="{{ current_user.speaker_count_mode or 'range' if current_user.is_authenticated else 'range' }}"
          data-connector-supports-hotwords="{{ connector_supports_hotwords }}"
          data-connector-supports-initial-prompt="{{ connector_supports_initial_prompt }}"
-         data-enable-archive-toggle="{{ enable_archive_toggle }}"
+         data-enable-audio-removed-filter="{{ enable_audio_removed_filter }}"
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
          data-user-language="{{ user_language }}"
@@ -153,6 +153,7 @@
         <!-- Modals -->
         {% include 'modals/edit-modal.html' %}
         {% include 'modals/delete-modal.html' %}
+        {% include 'modals/delete-audio-modal.html' %}
         {% include 'modals/edit-tags-modal.html' %}
         {% include 'modals/datetime-picker-modal.html' %}
         {% include 'modals/shares-list-modal.html' %}

@@ -178,6 +178,26 @@
         <div class="rounded-md overflow-hidden" style="background: var(--bg-tertiary);">
             <div class="flex items-center gap-0.5 overflow-x-auto px-1 py-1">
                 <template v-if="!selectedRecording.incognito">
+                    <!-- Inbox / highlight active state uses :style not
+                         :class because primitives.css's
+                         .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet)
+                         rule for default colour has higher specificity
+                         than a single Tailwind text-* utility, so the
+                         conditional text-blue-500 / text-yellow-500
+                         classes never won — inline style sidesteps the
+                         specificity contest. -->
+                    <button @click.stop="toggleInbox(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
+                            :title="t('sidebar.inbox')"><i class="fas fa-inbox"></i></button>
+                    <button @click.stop="toggleHighlight(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
+                            :title="t('tooltips.highlight')"><i class="fas fa-star"></i></button>
+                    <button @click.stop="toggleArchive(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :style="selectedRecording.is_archived ? 'color: var(--text-accent);' : ''"
+                            :title="selectedRecording.is_archived ? t('archive.unarchive') : t('archive.archive')"><i class="fas fa-box-archive"></i></button>
                     <!-- Folder picker: the wrapper uses display: block
                          + position: relative so the native <select>'s
                          absolute-positioned dropdown anchors to the
@@ -202,22 +222,6 @@
                         <i class="fas fa-folder"
                            :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
                     </label>
-                    <!-- Inbox / highlight active state uses :style not
-                         :class because primitives.css's
-                         .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet)
-                         rule for default colour has higher specificity
-                         than a single Tailwind text-* utility, so the
-                         conditional text-blue-500 / text-yellow-500
-                         classes never won — inline style sidesteps the
-                         specificity contest. -->
-                    <button @click.stop="toggleInbox(selectedRecording)"
-                            class="btn btn--icon btn--sm flex-shrink-0"
-                            :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
-                            :title="t('sidebar.inbox')"><i class="fas fa-inbox"></i></button>
-                    <button @click.stop="toggleHighlight(selectedRecording)"
-                            class="btn btn--icon btn--sm flex-shrink-0"
-                            :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
-                            :title="t('tooltips.highlight')"><i class="fas fa-star"></i></button>
                     <button @click.stop="editRecordingTags(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('buttons.editTags')"><i class="fas fa-tags"></i></button>
@@ -226,7 +230,7 @@
                          everyday actions. -->
                     <span class="flex-shrink-0 mx-0.5" style="width: 1px; height: 18px; background: var(--border-primary);"></span>
                     <button @click.stop="confirmReprocess('transcription', selectedRecording)"
-                            v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED') && !selectedRecording.audio_deleted_at"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('tooltips.reprocessTranscription')"><i class="fas fa-redo-alt"></i></button>
                     <button @click.stop="confirmReprocess('summary', selectedRecording)"
@@ -250,6 +254,10 @@
                          visually separate from the everyday actions
                          and harder to mis-tap. -->
                     <span class="flex-1"></span>
+                    <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false && !selectedRecording.audio_deleted_at && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            @click.stop="confirmDeleteAudio(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :title="((selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')) ? t('deleteAudio.actionVideo') : t('deleteAudio.action'))"><i class="fas fa-volume-xmark"></i></button>
                     <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false"
                             @click.stop="confirmDelete(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"

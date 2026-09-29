@@ -254,3 +254,20 @@ def test_api_v1_archive_and_delete_audio(ctx):
     with patch("src.services.retention.get_storage_service", return_value=_fake_storage()):
         r = c.post(f'/api/v1/recordings/{rec.id}/delete-audio', headers=h)
     assert r.status_code == 200 and r.get_json()['audio_deleted_at']
+
+
+
+def test_delete_audio_removes_a_retained_video(ctx):
+    """With video retention the stored media file IS the video; it goes too."""
+    user = _user()
+    rec = _rec(user)
+    rec.audio_path = "local://recordings/meeting.mp4"
+    rec.mime_type = "video/mp4"
+    db.session.commit()
+    storage = _fake_storage()
+    with patch("src.services.retention.get_storage_service", return_value=storage):
+        r = _client(user).post(f'/recording/{rec.id}/delete_audio')
+    assert r.status_code == 200
+    storage.delete.assert_called_once_with("local://recordings/meeting.mp4", missing_ok=True)
+    db.session.expire_all()
+    assert db.session.get(Recording, rec.id).audio_deleted_at is not None

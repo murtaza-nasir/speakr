@@ -357,10 +357,27 @@
     "title": "Tokens de API",
     "usageExamples": "Exemplos de Uso"
   },
+  "archive": {
+    "archive": "Arquivar",
+    "archived": "Arquivadas",
+    "archivedToast": "Gravação arquivada",
+    "bulkArchived": "{{count}} gravação arquivada",
+    "bulkArchivedPlural": "{{count}} gravações arquivadas",
+    "bulkUnarchived": "{{count}} gravação tirada do arquivo",
+    "bulkUnarchivedPlural": "{{count}} gravações tiradas do arquivo",
+    "showArchived": "Mostrar gravações arquivadas",
+    "toggleSelected": "Arquivar ou tirar do arquivo as gravações selecionadas",
+    "unarchive": "Tirar do arquivo",
+    "unarchivedToast": "Gravação tirada do arquivo"
+  },
   "asrEditor": {
     "ctrlSHint": "Ctrl+S para salvar",
     "saveWithoutClosing": "Salvar sem fechar (Ctrl+S)",
     "saved": "Salvo"
+  },
+  "audioRemoved": {
+    "filterHint": "Gravações cujo arquivo de áudio foi removido; a transcrição é mantida",
+    "label": "Áudio removido"
   },
   "bulkActions": {
     "addOrRemoveTags": "Adicionar ou remover tags",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "Tem certeza de que deseja deletar todos os oradores salvos? Esta ação não pode ser desfeita.",
     "title": "Deletar Todos os Oradores"
+  },
+  "deleteAudio": {
+    "action": "Excluir áudio, manter transcrição",
+    "actionVideo": "Excluir vídeo, manter transcrição",
+    "body": "O arquivo de áudio de \"{{title}}\" será excluído. A transcrição, o resumo, as notas e as etiquetas permanecem, mas a gravação não poderá mais ser reproduzida nem transcrita novamente.",
+    "bodyVideo": "O arquivo de vídeo de \"{{title}}\", incluindo o áudio, será excluído. A transcrição, o resumo, as notas e as etiquetas permanecem, mas a gravação não poderá mais ser reproduzida nem transcrita novamente.",
+    "confirm": "Excluir áudio",
+    "confirmVideo": "Excluir vídeo",
+    "done": "Áudio removido. A transcrição foi mantida.",
+    "doneVideo": "Vídeo removido. A transcrição foi mantida.",
+    "title": "Excluir o áudio?",
+    "titleVideo": "Excluir o vídeo?"
   },
   "detail": {
     "hints": "Dicas",
@@ -1043,6 +1072,11 @@
     "title": "Gerenciamento de Grupos",
     "updateTeam": "Atualizar Grupo"
   },
+  "headerActions": {
+    "deleteRecording": "Excluir gravação",
+    "more": "Mais ações",
+    "reprocess": "Reprocessar"
+  },
   "help": {
     "actions": "Ações",
     "activeFilters": "Filtros ativos",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "Aproximando limite de {{limit}}MB",
     "askAboutTranscription": "Faça perguntas sobre esta transcrição",
     "audioDeletedDescription": "O arquivo de áudio para esta gravação foi deletado, mas a transcrição permanece disponível.",
-    "audioDeletedMessage": "O arquivo de áudio foi arquivado e não está mais disponível para reprodução.",
+    "audioDeletedMessage": "O arquivo de áudio foi removido. A transcrição, o resumo e as notas continuam disponíveis.",
     "audioDeletedTitle": "Arquivo de áudio deletado",
     "audioPlayer": "Reprodutor de Áudio",
     "autoIdentify": "Identificar Automaticamente",

@@ -357,10 +357,27 @@
     "title": "API 令牌",
     "usageExamples": "使用示例"
   },
+  "archive": {
+    "archive": "归档",
+    "archived": "已归档",
+    "archivedToast": "录音已归档",
+    "bulkArchived": "已归档 {{count}} 条录音",
+    "bulkArchivedPlural": "已归档 {{count}} 条录音",
+    "bulkUnarchived": "已移出归档 {{count}} 条录音",
+    "bulkUnarchivedPlural": "已移出归档 {{count}} 条录音",
+    "showArchived": "显示已归档的录音",
+    "toggleSelected": "归档或移出归档所选录音",
+    "unarchive": "移出归档",
+    "unarchivedToast": "录音已移出归档"
+  },
   "asrEditor": {
     "saved": "已保存",
     "ctrlSHint": "Ctrl+S 保存",
     "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
+  },
+  "audioRemoved": {
+    "filterHint": "音频文件已删除的录音；转录文本保留",
+    "label": "音频已删除"
   },
   "bulkActions": {
     "addOrRemoveTags": "添加或移除标签",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "您确定要删除所有保存的发言人吗？此操作无法撤销。",
     "title": "删除所有发言人"
+  },
+  "deleteAudio": {
+    "action": "删除音频，保留转录",
+    "actionVideo": "删除视频，保留转录",
+    "body": "“{{title}}”的音频文件将被删除。转录文本、摘要、笔记和标签会保留，但该录音将无法再播放或重新转录。",
+    "bodyVideo": "“{{title}}”的视频文件（包括其音频）将被删除。转录文本、摘要、笔记和标签会保留，但该录音将无法再播放或重新转录。",
+    "confirm": "删除音频",
+    "confirmVideo": "删除视频",
+    "done": "音频已删除，转录文本已保留。",
+    "doneVideo": "视频已删除，转录文本已保留。",
+    "title": "删除音频？",
+    "titleVideo": "删除视频？"
   },
   "detail": {
     "hints": "提示",
@@ -1043,6 +1072,11 @@
     "title": "群组管理",
     "updateTeam": "更新团队"
   },
+  "headerActions": {
+    "deleteRecording": "删除录音",
+    "more": "更多操作",
+    "reprocess": "重新处理"
+  },
   "help": {
     "actions": "操作",
     "activeFilters": "活动筛选器",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "接近 {{limit}}MB 限制",
     "askAboutTranscription": "询问有关此转录的问题",
     "audioDeletedDescription": "此录音的音频文件已被删除，但转录内容仍然可用。",
-    "audioDeletedMessage": "音频文件已归档，无法播放。",
+    "audioDeletedMessage": "音频文件已删除。转录文本、摘要和笔记仍可查看。",
     "audioDeletedTitle": "音频文件已删除",
     "audioPlayer": "音频播放器",
     "autoIdentify": "自动识别",
