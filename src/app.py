@@ -33,7 +33,7 @@ mimetypes.add_type('audio/ogg', '.ogg')
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_limiter import Limiter
@@ -631,6 +631,58 @@ def csrf_token_aware_check():
     # fails, csrf.protect() raises a CSRFError which Flask-WTF's error
     # handler turns into a 400 response.
     csrf.protect()
+
+
+
+def _csrf_rejection_message(reason):
+    """Turn a Flask-WTF CSRFError description into something an admin can act on.
+
+    Token failures (missing, expired, mismatched) are fixed by reloading the
+    page. The two referrer failures are not: Flask-WTF checks the Referer
+    header on every HTTPS request, so a proxy that strips it or rewrites the
+    Host header makes every POST fail, however often the token is refreshed
+    (issue #388). Those get a message that names the proxy setting.
+    """
+    if 'referrer header is missing' in reason:
+        return False, ('The request was rejected because the browser sent no Referer header, '
+                       'which HTTPS requests require. A reverse proxy, browser extension or '
+                       'Referrer-Policy header that removes it causes this.')
+    if 'referrer does not match' in reason:
+        referrer_host = urlparse(request.referrer or '').netloc or 'unknown'
+        return False, (f'The request was rejected because this page was loaded from '
+                       f'{referrer_host}, but the server received the request for {request.host}. '
+                       f'The reverse proxy must forward the original Host header (or '
+                       f'X-Forwarded-Host), and TRUSTED_PROXY_HOPS must match the number of proxies.')
+    return True, 'Your session has expired. Please reload the page and try again.'
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    """Answer fetch/XHR callers with JSON that says why CSRF validation failed.
+
+    Flask-WTF's default is an HTML 400 page. The frontend cannot tell a
+    referrer failure from an expired token in that page, so it refreshes the
+    token, retries, fails again and shows a generic error, while the server
+    logs nothing. Browser form posts still get the HTML page.
+    """
+    reason = error.description or ''
+    retryable, message = _csrf_rejection_message(reason.lower())
+    app.logger.warning(
+        'CSRF validation failed for %s %s: %s (Referer host: %s, request host: %s, scheme: %s)',
+        request.method, request.path, reason,
+        urlparse(request.referrer or '').netloc or '-', request.host, request.scheme,
+    )
+    is_form_navigation = (
+        request.mimetype in ('application/x-www-form-urlencoded', 'multipart/form-data')
+        and 'text/html' in request.headers.get('Accept', '')
+    )
+    if is_form_navigation:
+        return error
+    return jsonify({
+        'error': message,
+        'csrf_reason': reason,
+        'csrf_retryable': retryable,
+    }), 400
 
 
 @app.errorhandler(RequestEntityTooLarge)

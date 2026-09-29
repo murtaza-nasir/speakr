@@ -30,6 +30,16 @@ describe('readJsonResponse', () => {
             .rejects.toMatchObject({ isCsrfRejection: true });
     });
 
+    it('shows the server explanation for a referrer rejection, not an expired session (#388)', async () => {
+        const body = JSON.stringify({
+            error: 'The request was rejected because the browser sent no Referer header.',
+            csrf_reason: 'The referrer header is missing.',
+            csrf_retryable: false,
+        });
+        await expect(readJsonResponse(res({ ok: false, status: 400, body }), t, 'errors.reprocessSummaryFailed'))
+            .rejects.toThrow('The request was rejected because the browser sent no Referer header.');
+    });
+
     it('never surfaces a raw JSON parse error', async () => {
         const html = '<!doctype html><h1>500 Internal Server Error</h1>';
         try {

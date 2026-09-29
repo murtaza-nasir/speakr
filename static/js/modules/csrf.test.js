@@ -125,5 +125,23 @@ describe('csrf helpers', () => {
             expect(isCsrfRejection(400, '')).toBe(false);
             expect(isCsrfRejection(400, null)).toBe(false);
         });
+
+        it('trusts the server when it says a fresh token will not help (#388)', () => {
+            const body = JSON.stringify({
+                error: 'The request was rejected because the browser sent no Referer header.',
+                csrf_reason: 'The referrer header is missing.',
+                csrf_retryable: false,
+            });
+            expect(isCsrfRejection(400, body)).toBe(false);
+        });
+
+        it('trusts the server when it says a fresh token will help', () => {
+            const body = JSON.stringify({
+                error: 'Your session has expired. Please reload the page and try again.',
+                csrf_reason: 'The CSRF token has expired.',
+                csrf_retryable: true,
+            });
+            expect(isCsrfRejection(400, body)).toBe(true);
+        });
     });
 });

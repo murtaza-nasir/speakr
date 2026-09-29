@@ -76,9 +76,20 @@ export async function getUploadCsrfToken() {
  * Heuristic for "the server rejected our CSRF token", mirroring the
  * detection in csrf-refresh.js's fetch interceptor: a 400/403 whose
  * body (JSON error message or HTML error page) mentions csrf/token.
+ *
+ * The server's CSRF handler says explicitly whether a fresh token can
+ * help (`csrf_retryable`). A referrer failure cannot: the proxy strips or
+ * rewrites the header on every request, so it is not treated as a token
+ * rejection and the server's explanation reaches the user (#388).
  */
 export function isCsrfRejection(status, responseText) {
     if (status !== 400 && status !== 403) return false;
+    try {
+        const data = JSON.parse(responseText || '');
+        if (data && typeof data.csrf_retryable === 'boolean') return data.csrf_retryable;
+    } catch (e) {
+        // Not JSON; fall through to the text heuristic.
+    }
     const text = (responseText || '').toLowerCase();
     return text.includes('csrf') || text.includes('token');
 }

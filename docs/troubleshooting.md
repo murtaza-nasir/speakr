@@ -24,6 +24,12 @@ When Speakr starts successfully but you can't reach the web interface, network c
 
 Firewall rules often block access, especially on cloud servers. Ensure port 8899 is open in your firewall, security groups (AWS), or network policies. If accessing from another machine, remember that `localhost` won't work - use the server's actual IP address or hostname.
 
+### Actions Fail Behind a Reverse Proxy with a Referer or Host Error
+
+Over HTTPS, Speakr's CSRF protection requires the browser's Referer header to match the host the server receives. If every action that changes something (reprocessing, resetting a status, saving) fails with HTTP 400 and a message naming the Referer header or two different host names, the reverse proxy is the cause. The server log shows a matching `CSRF validation failed` warning with both hosts.
+
+Two proxy settings produce this. The proxy may strip the Referer header, either directly or through a `Referrer-Policy: no-referrer` header it adds; use `strict-origin-when-cross-origin` or leave the header to Speakr. Alternatively, the proxy may forward a different Host header than the address in the browser (for example the container name); forward the original Host (in Nginx, `proxy_set_header Host $host;`) or set `X-Forwarded-Host`, and set `TRUSTED_PROXY_HOPS` to the number of proxies in front of Speakr. Reloading the page does not help with either, because every request fails the same check.
+
 ### Admin Login Fails
 
 If you can't log in with your [admin credentials](getting-started.md#step-4-configure-admin-account), first verify you're using the exact username and password from your environment file. For user management issues, see the [admin guide](admin-guide/user-management.md). These are case-sensitive and must match exactly. Check the Docker logs for admin user creation messages - you should see "Admin user created successfully" during first startup.

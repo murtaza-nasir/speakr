@@ -111,16 +111,22 @@ class CSRFManager {
                     
                     try {
                         const errorData = await responseClone.json();
-                        const errorMessage = errorData.error || '';
-                        isCSRFError = errorMessage.toLowerCase().includes('csrf') || 
-                                     errorMessage.toLowerCase().includes('token');
+                        if (typeof errorData.csrf_retryable === 'boolean') {
+                            // The server's CSRF handler says whether a fresh token
+                            // can help. Referrer failures cannot (#388).
+                            isCSRFError = errorData.csrf_retryable;
+                        } else {
+                            const errorMessage = errorData.error || '';
+                            isCSRFError = errorMessage.toLowerCase().includes('csrf') ||
+                                         errorMessage.toLowerCase().includes('token');
+                        }
                     } catch (jsonError) {
-                        // If JSON parsing fails, check if it's an HTML error page
+                        // Not JSON: only an error page that mentions the token
+                        // is worth a refresh. Any other HTML page (a proxy's own
+                        // 400/403) fails the same way on retry.
                         const textResponse = await response.clone().text();
-                        isCSRFError = textResponse.toLowerCase().includes('csrf') || 
-                                     textResponse.toLowerCase().includes('token') ||
-                                     textResponse.includes('<!doctype') || // HTML error page
-                                     textResponse.includes('<html');
+                        isCSRFError = textResponse.toLowerCase().includes('csrf') ||
+                                     textResponse.toLowerCase().includes('token');
                     }
                     
                     if (isCSRFError) {
