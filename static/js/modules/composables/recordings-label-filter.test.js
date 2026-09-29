@@ -34,6 +34,7 @@ function makeState(overrides = {}) {
         hasPrevPage: ref(false),
         showSharedWithMe: ref(false),
         showArchivedRecordings: ref(false),
+        filterAudioRemoved: ref(false),
         searchQuery: ref(''),
         searchDebounceTimer: ref(null),
         filterTags: ref([]),

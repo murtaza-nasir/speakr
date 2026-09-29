@@ -33,7 +33,7 @@ export function resolveSidebarCollapsed(saved, isMobileScreen) {
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
-        showColorSchemeModal, isUserMenuOpen, showHeaderFolderMenu, currentView, showUploadModal, selectedRecording,
+        showColorSchemeModal, isUserMenuOpen, showHeaderFolderMenu, showHeaderReprocessMenu, showHeaderMoreMenu, currentView, showUploadModal, selectedRecording,
         windowWidth, isMobileScreen, showAdvancedFilters, showSortOptions,
         searchTipsExpanded, isMetadataExpanded, editingParticipants, editingMeetingDate,
         editingSummary, tempSummaryContent, summaryMarkdownEditorInstance,
@@ -1938,6 +1938,14 @@ export function useUI(state, utils, processedTranscription) {
                 if (!folderToggle && !folderDropdown) {
                     showHeaderFolderMenu.value = false;
                 }
+            }
+
+            // Close the detail-header Reprocess and More menus if clicking outside
+            if (showHeaderReprocessMenu.value && !target.closest('[data-header-reprocess-menu]')) {
+                showHeaderReprocessMenu.value = false;
+            }
+            if (showHeaderMoreMenu.value && !target.closest('[data-header-more-menu]')) {
+                showHeaderMoreMenu.value = false;
             }
 
             // Close sort options if clicking outside

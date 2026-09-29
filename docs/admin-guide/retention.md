@@ -41,7 +41,7 @@ DELETION_MODE=full_recording  # Options: 'audio_only' or 'full_recording'
 - **Deletes**: The media file only
 - **Keeps**: Transcription, summary, notes, metadata
 - **Use case**: Long-term record keeping with storage optimization
-- **Result**: Recordings appear in "Archived" view, transcription remains searchable
+- **Result**: Recordings are marked "Audio removed" and stay in the list; the transcription remains searchable
 
 #### Full Recording Mode (`DELETION_MODE=full_recording`)
 - **Deletes**: Complete recording including the media file, transcription, summary, notes
@@ -97,17 +97,21 @@ Individual tags can protect recordings from auto-deletion entirely.
 - ✅ Works regardless of age or retention period
 - ✅ Applies to all recordings with that tag
 
-## Archived Recordings
+## Audio Removed Recordings
 
-When `DELETION_MODE=audio_only`, recordings become "archived" after audio deletion.
+When `DELETION_MODE=audio_only` removes a recording's media file, the recording stays in the list, marked "Audio removed". Users who can delete recordings can also remove the media of a single recording by hand with **Delete audio, keep transcript** (or **Delete video, keep transcript** for a video) in the recording's **⋯** menu. Both paths leave the recording in the same state. For a retained video, the video file is the recording's only stored media, so removing it removes the video and its audio together.
 
-### Accessing Archived Recordings
+Earlier versions called this state "Archived". "Archived" now means something else: a recording the user has hidden from the main list without deleting anything (see [Recording list](../user-guide/first-steps.md#archiving-recordings)).
+
+### Finding Recordings with Removed Audio
 
 1. Open the **Recordings** sidebar
-2. Click **Advanced Filters**
-3. Toggle **"Archived Recordings"** ON
+2. Expand the filters
+3. Turn on the **Audio removed** quick filter, next to Starred and Inbox
 
-### What You Can Do with Archived Recordings
+The filter appears when audio-only retention is active or when the user is allowed to delete recordings.
+
+### What You Can Do with Audio Removed Recordings
 
 | Feature | Available | Notes |
 |---------|-----------|-------|
@@ -115,16 +119,17 @@ When `DELETION_MODE=audio_only`, recordings become "archived" after audio deleti
 | Search content | ✅ | Text search still works |
 | Read summary | ✅ | AI summary preserved |
 | View/edit notes | ✅ | All metadata accessible |
-| Play audio | ❌ | Audio file deleted |
-| Re-process | ❌ | Source audio unavailable |
+| Play audio or video | ❌ | Media file deleted |
+| Reprocess transcription | ❌ | Source audio unavailable |
+| Reprocess summary | ✅ | Uses the kept transcript |
 | Share | ✅ | Can share transcription |
 | Export | ✅ | Download transcript, summary, notes |
 
-### Archived Recording Indicators
+### Indicators
 
-- **Sidebar**: Gray "Archived" badge next to recording title
-- **Player**: Info banner: "Audio file has been deleted, but the transcription remains available"
-- **Filter**: Separate "Archived" view toggle in advanced filters
+- **Sidebar**: grey muted-speaker badge next to the recording title
+- **Player**: "The audio file was removed. The transcript, summary and notes remain available."
+- **Filter**: **Audio removed** quick filter in the sidebar filters
 
 ## Admin Controls
 
@@ -436,13 +441,13 @@ Get statistics about eligible recordings and current configuration.
 3. Check tag assignments on recordings
 4. Review exemption status via stats endpoint
 
-### Archived Recordings Not Showing
+### Recordings with Removed Audio Not Showing
 
 **Check:**
 
-1. Toggle "Archived Recordings" filter in sidebar
-2. Verify `DELETION_MODE=audio_only` (full_recording doesn't archive)
-3. Check `audio_deleted_at` field in database
+1. Turn on the **Audio removed** quick filter in the sidebar filters
+2. Verify `DELETION_MODE=audio_only` (`full_recording` deletes the whole recording instead)
+3. Check the `audio_deleted_at` field in the database
 
 ## Security Considerations
 

@@ -357,10 +357,27 @@
     "title": "API Tokens",
     "usageExamples": "Usage Examples"
   },
+  "archive": {
+    "archive": "Archive",
+    "archived": "Archived",
+    "archivedToast": "Recording archived",
+    "bulkArchived": "{{count}} recording archived",
+    "bulkArchivedPlural": "{{count}} recordings archived",
+    "bulkUnarchived": "{{count}} recording moved out of the archive",
+    "bulkUnarchivedPlural": "{{count}} recordings moved out of the archive",
+    "showArchived": "Show archived recordings",
+    "toggleSelected": "Archive or unarchive the selected recordings",
+    "unarchive": "Move out of the archive",
+    "unarchivedToast": "Recording moved out of the archive"
+  },
   "asrEditor": {
     "saved": "Saved",
     "ctrlSHint": "Ctrl+S to save",
     "saveWithoutClosing": "Save without closing (Ctrl+S)"
+  },
+  "audioRemoved": {
+    "filterHint": "Recordings whose audio file was removed; the transcript is kept",
+    "label": "Audio removed"
   },
   "bulkActions": {
     "addOrRemoveTags": "Add or remove tags",
@@ -628,6 +645,18 @@
   "deleteAllSpeakersModal": {
     "confirmMessage": "Are you sure you want to delete all saved speakers? This action cannot be undone.",
     "title": "Delete All Speakers"
+  },
+  "deleteAudio": {
+    "action": "Delete audio, keep transcript",
+    "actionVideo": "Delete video, keep transcript",
+    "body": "The audio file of \"{{title}}\" will be deleted. The transcript, summary, notes and tags stay, but the recording can no longer be played or transcribed again.",
+    "bodyVideo": "The video file of \"{{title}}\", including its audio, will be deleted. The transcript, summary, notes and tags stay, but the recording can no longer be played or transcribed again.",
+    "confirm": "Delete audio",
+    "confirmVideo": "Delete video",
+    "done": "Audio removed. The transcript is kept.",
+    "doneVideo": "Video removed. The transcript is kept.",
+    "title": "Delete the audio?",
+    "titleVideo": "Delete the video?"
   },
   "detail": {
     "hints": "Hints",
@@ -1043,6 +1072,11 @@
     "title": "Group Management",
     "updateTeam": "Update Group"
   },
+  "headerActions": {
+    "deleteRecording": "Delete recording",
+    "more": "More actions",
+    "reprocess": "Reprocess"
+  },
   "help": {
     "actions": "Actions",
     "activeFilters": "Active filters",
@@ -1057,7 +1091,7 @@
     "approachingLimit": "Approaching {{limit}}MB limit",
     "askAboutTranscription": "Ask questions about this transcription",
     "audioDeletedDescription": "The audio file for this recording has been deleted, but the transcription remains available.",
-    "audioDeletedMessage": "Audio file has been archived and is no longer available for playback.",
+    "audioDeletedMessage": "The audio file was removed. The transcript, summary and notes remain available.",
     "audioDeletedTitle": "Audio file deleted",
     "audioPlayer": "Audio Player",
     "autoIdentify": "Auto Identify",

@@ -24,6 +24,12 @@ The left sidebar is your command center for organizing and finding recordings. A
 
 The filter system in Speakr is designed to be both powerful and intuitive. Click on "Active filters" to expand the filtering panel. You can filter by tags, which appear as colored pills that you can click to select or deselect. The date range filter offers convenient presets like "Today", "Yesterday", "This Week", and "Last Week", or you can set a custom date range using the date pickers. When filters are active, their count appears next to the filter label, and a clear button lets you reset all filters at once.
 
+### Archiving Recordings
+
+Archive a recording to take it out of the main list without deleting anything: click the archive icon next to the inbox and star icons at the top of an open recording, or select several recordings and use the archive button in the selection bar. The transcript, summary, notes, audio, tags and shares all stay. Search still finds archived recordings (they carry a small archive badge), and the **Archived** toggle below the search bar shows only archived recordings, where the same icon moves one back.
+
+Archiving is personal, like inbox and star: archiving a recording someone shared with you hides it only from your list.
+
 ### Recording List
 
 Below the filters, your recordings are displayed as cards showing essential information at a glance. Each recording card displays the title prominently, followed by metadata including the participants (if speaker diarization was used), the recording date, and the duration. Colored tag pills show which categories have been assigned to each recording. The small icons on the right indicate the recording's processing status, with different colors for completed, processing, or failed transcriptions.
@@ -48,7 +54,7 @@ If your recording was processed with speaker diarization, you'll also see a Simp
 
 ## Recording Metadata Bar
 
-Spanning across the top of both the center and right panels, the metadata bar displays important recording information and provides quick access to actions. From left to right, you'll see the recording title, participant names (if identified), recording date and time, file size, and duration. The action buttons (folder, inbox, star, tags, reprocess, regenerate summary, identify speakers, share, delete) are now consolidated into the global header alongside the title — same icons, one row.
+Spanning across the top of both the center and right panels, the metadata bar displays important recording information and provides quick access to actions. From left to right, you'll see the recording title, participant names (if identified), recording date and time, file size, and duration. The action buttons sit in the global header alongside the title, in groups: inbox, star and archive; folder and tags; a **Reprocess** menu (transcription, summary, and reset for a stuck recording) and identify speakers; then share and a **⋯** menu with **Delete audio, keep transcript** and **Delete recording**. Deleting the audio keeps the transcript, summary and notes; for a video recording it deletes the video file.
 
 ## Right Rail Tabs (Desktop)
 

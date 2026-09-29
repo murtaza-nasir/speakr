@@ -243,8 +243,9 @@ def get_config():
         except:
             pass  # If not authenticated, use default
 
-        # Calculate if archive toggle should be shown (only when audio-only deletion mode is active)
-        enable_archive_toggle = ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only'
+        # The "Audio removed" filter matters when retention removes audio, or
+        # when the user can remove audio by hand (same right as deleting).
+        enable_audio_removed_filter = (ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only') or can_delete
 
         # Get connector capabilities (new architecture)
         # Defaults to USE_ASR_ENDPOINT for backwards compatibility
@@ -302,7 +303,7 @@ def get_config():
             'connector_supports_hotwords': connector_supports_hotwords,
             'connector_supports_initial_prompt': connector_supports_initial_prompt,
             'enable_internal_sharing': ENABLE_INTERNAL_SHARING,
-            'enable_archive_toggle': enable_archive_toggle,
+            'enable_audio_removed_filter': enable_audio_removed_filter,
             'show_usernames_in_ui': SHOW_USERNAMES_IN_UI,
             'can_delete_recordings': can_delete,
             'users_can_delete_enabled': USERS_CAN_DELETE,

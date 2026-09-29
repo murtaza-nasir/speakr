@@ -1406,8 +1406,9 @@ def index(recording_id=None, label_name=None):
     # Pass the ASR config, inquire mode config, and user language preference to the template
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
 
-    # Calculate if archive toggle should be shown (only when audio-only deletion mode is active)
-    enable_archive_toggle = ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only'
+    # The "Audio removed" filter matters when retention removes audio; users
+    # who can delete recordings can also remove audio by hand.
+    enable_audio_removed_filter = (ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only') or USERS_CAN_DELETE or current_user.is_admin
 
     # Get connector capabilities (new architecture)
     # Defaults to USE_ASR_ENDPOINT for backwards compatibility
@@ -1476,7 +1477,7 @@ def index(recording_id=None, label_name=None):
                          connector_supports_hotwords=connector_supports_hotwords,
                          connector_supports_initial_prompt=connector_supports_initial_prompt,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
-                         enable_archive_toggle=enable_archive_toggle,
+                         enable_audio_removed_filter=enable_audio_removed_filter,
                          enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
                          is_team_admin=is_team_admin,
@@ -1551,7 +1552,10 @@ def get_recordings_paginated():
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 25, type=int), 100)  # Cap at 100 per page
         search_query = request.args.get('q', '').strip()
+        # 'archived' is the user's own archive (#394); 'audio_removed' is the
+        # state left when the media file was deleted and the transcript kept.
         show_archived = request.args.get('archived', '').lower() == 'true'
+        show_audio_removed = request.args.get('audio_removed', '').lower() == 'true'
         show_shared = request.args.get('shared', '').lower() == 'true'
         show_starred = request.args.get('starred', '').lower() == 'true'
         show_inbox = request.args.get('inbox', '').lower() == 'true'
@@ -1586,10 +1590,18 @@ def get_recordings_paginated():
         if status_filter:
             stmt = stmt.where(Recording.status == status_filter)
 
-        # Apply archived filter (AND with other filters)
-        if show_archived:
-            # Only show recordings where audio has been deleted
+        # Audio removed filter (AND with other filters)
+        if show_audio_removed:
             stmt = stmt.where(Recording.audio_deleted_at.is_not(None))
+
+        # Archive: the archived view shows only archived recordings; the main
+        # list hides them, except in search results, so archiving never makes
+        # a recording unfindable.
+        from src.services.recording_state import archived_condition
+        if show_archived:
+            stmt = stmt.where(archived_condition(Recording, current_user.id))
+        elif not search_query:
+            stmt = stmt.where(db.not_(archived_condition(Recording, current_user.id)))
 
         # Apply shared filter (AND with other filters)
         if show_shared:
@@ -1933,6 +1945,8 @@ def get_recordings_paginated():
             user_inbox, user_highlighted = get_user_recording_status(recording, current_user)
             rec_dict['is_inbox'] = user_inbox
             rec_dict['is_highlighted'] = user_highlighted
+            from src.services.recording_state import get_user_archived
+            rec_dict['is_archived'] = get_user_archived(recording, current_user)
 
             # Add edit permission info (uses has_recording_access which checks group admin status)
             rec_dict['can_edit'] = has_recording_access(recording, current_user, require_edit=True)
@@ -2091,6 +2105,9 @@ def save_metadata():
                 is_inbox=data.get('is_inbox'),
                 is_highlighted=data.get('is_highlighted')
             )
+        if 'is_archived' in data:
+            from src.services.recording_state import set_user_archived
+            set_user_archived(recording, current_user, data.get('is_archived'))
 
         db.session.commit()
 
@@ -2200,6 +2217,60 @@ def toggle_highlight(recording_id):
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
+
+
+@recordings_bp.route('/recording/<int:recording_id>/toggle_archive', methods=['POST'])
+@login_required
+def toggle_archive(recording_id):
+    """Archive or unarchive a recording for the current user (#394)."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+        # Like inbox and star, archiving is personal and needs only view access.
+        if not has_recording_access(recording, current_user, require_edit=False):
+            return jsonify({'error': 'You do not have permission to view this recording'}), 403
+        from src.services.recording_state import get_user_archived, set_user_archived
+        new_value = set_user_archived(recording, current_user, not get_user_archived(recording, current_user))
+        return jsonify({'success': True, 'is_archived': new_value})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error toggling archive for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/recording/<int:recording_id>/delete_audio', methods=['POST'])
+@login_required
+def delete_recording_audio(recording_id):
+    """Delete a recording's media file and keep the transcript, summary and notes.
+
+    Same permission as deleting the recording. The recording then shows as
+    "Audio removed", exactly like audio-only retention leaves it.
+    """
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to delete this recording'}), 403
+        if not USERS_CAN_DELETE and not current_user.is_admin:
+            return jsonify({'error': 'Only administrators can delete recordings'}), 403
+        if recording.audio_deleted_at:
+            return jsonify({'error': 'The audio has already been removed.'}), 409
+        if recording.status not in ('COMPLETED', 'FAILED'):
+            return jsonify({'error': 'Wait until processing has finished before removing the audio.'}), 409
+
+        from src.services.retention import remove_recording_audio
+        remove_recording_audio(recording)
+        current_app.logger.info(f"User {current_user.id} removed the audio of recording {recording_id}")
+
+        recording_dict = recording.to_dict(viewer_user=current_user)
+        enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
+        return jsonify({'success': True, 'recording': recording_dict})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error removing audio for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
 @recordings_bp.route('/share-target', methods=['POST', 'GET'])
@@ -4577,14 +4648,14 @@ def bulk_toggle():
             return jsonify({'error': 'Missing request body'}), 400
 
         recording_ids = data.get('recording_ids', [])
-        field = data.get('field')  # 'inbox' or 'highlight'
+        field = data.get('field')  # 'inbox', 'highlight' or 'archive'
         value = data.get('value')  # True or False
 
         if not recording_ids or field is None or value is None:
             return jsonify({'error': 'Missing recording_ids, field, or value'}), 400
 
-        if field not in ['inbox', 'highlight']:
-            return jsonify({'error': 'Field must be "inbox" or "highlight"'}), 400
+        if field not in ['inbox', 'highlight', 'archive']:
+            return jsonify({'error': 'Field must be "inbox", "highlight" or "archive"'}), 400
 
         if len(recording_ids) > 100:
             return jsonify({'error': 'Cannot update more than 100 recordings at once'}), 400
@@ -4609,6 +4680,9 @@ def bulk_toggle():
                 # Use set_user_recording_status which handles both owners and shared users
                 if field == 'inbox':
                     set_user_recording_status(recording, current_user, is_inbox=value)
+                elif field == 'archive':
+                    from src.services.recording_state import set_user_archived
+                    set_user_archived(recording, current_user, value)
                 else:
                     set_user_recording_status(recording, current_user, is_highlighted=value)
 

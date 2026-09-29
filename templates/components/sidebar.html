@@ -62,16 +62,16 @@
                             class="flex-1 h-7 flex items-center justify-between pl-2 pr-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] transition-colors">
                         <span class="flex items-center">
                             <i class="fas fa-filter mr-1.5 text-[var(--text-muted)] text-[10px]"></i>
-                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox && !filterNeedsTranscription && !filterNeedsSummary && !filterNeedsSpeakers"
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox && !filterAudioRemoved && !filterNeedsTranscription && !filterNeedsSummary && !filterNeedsSpeakers"
                                   v-text="t('sidebar.searchRecordings')">
                             </span>
                             <span v-else class="text-[var(--text-accent)]">
-                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) })
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) })
                             </span>
                         </span>
                         <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)] text-[10px]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                     </button>
-                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterAudioRemoved || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
                             @click="clearAllFilters"
                             class="w-7 h-7 flex items-center justify-center bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                             :title="t('buttons.clearAllFilters')">
@@ -99,8 +99,9 @@
                         </div>
                     </div>
 
-                    <!-- Quick Filters (Starred/Inbox) -->
-                    <div class="flex gap-2">
+                    <!-- Quick Filters (Starred/Inbox/Audio removed). Wraps when the
+                         sidebar is too narrow for all three labels. -->
+                    <div class="flex flex-wrap gap-2">
                         <button @click="filterStarred = !filterStarred"
                                 :class="[
                                     'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
@@ -120,6 +121,18 @@
                                 ]">
                             <i class="fas fa-inbox" style="font-size: 10px;"></i>
                             <span v-text="t('sidebar.inbox')"></span>
+                        </button>
+                        <button v-if="enableAudioRemovedFilter" @click="filterAudioRemoved = !filterAudioRemoved"
+                                :aria-pressed="filterAudioRemoved"
+                                :title="t('audioRemoved.filterHint')"
+                                :class="[
+                                    'flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterAudioRemoved
+                                        ? 'bg-slate-500/20 border-slate-500/50 text-slate-300'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-slate-500/30 hover:text-slate-300'
+                                ]">
+                            <i class="fas fa-volume-xmark" style="font-size: 10px;"></i>
+                            <span class="whitespace-nowrap" v-text="t('audioRemoved.label')"></span>
                         </button>
                     </div>
 
@@ -276,20 +289,20 @@
                         <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
                     </button>
 
-                    <!-- Archived Toggle (only show when audio-only deletion mode is active) -->
-                    <button v-if="enableArchiveToggle" @click="showArchivedRecordings = !showArchivedRecordings"
+                    <!-- Archived view (#394): the user's archive, always available -->
+                    <button @click="showArchivedRecordings = !showArchivedRecordings"
+                            :aria-pressed="showArchivedRecordings"
                             :class="[
                                 'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showArchivedRecordings
                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
                                     : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
                             ]"
-                            :title="t('sidebar.archivedRecordings')">
-                        <i class="fas fa-archive"></i>
-                        <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.archived')"></span>
+                            :title="t('archive.showArchived')">
+                        <i class="fas fa-box-archive"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('archive.archived')"></span>
                         <i :class="['fas text-[10px]', showArchivedRecordings ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
-
                     <!-- Shared Toggle -->
                     <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
                             :class="[
@@ -446,11 +459,18 @@
                                         <i v-if="!recording.is_shared && recording.public_share_count > 0" class="fas fa-globe text-teal-600 dark:text-teal-400"></i>
                                     </span>
 
-                                    <!-- Show Audio Deleted badge -->
+                                    <!-- Audio removed badge -->
                                     <span v-if="recording.audio_deleted_at"
                                           class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                                          :title="t('sidebar.archived')">
-                                        <i class="fas fa-file-audio text-gray-600 dark:text-gray-400"></i>
+                                          :title="t('audioRemoved.label')">
+                                        <i class="fas fa-volume-xmark text-gray-600 dark:text-gray-400"></i>
+                                    </span>
+
+                                    <!-- Archived badge, seen in search results and the archive view -->
+                                    <span v-if="recording.is_archived"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                                          :title="t('archive.archived')">
+                                        <i class="fas fa-box-archive text-gray-600 dark:text-gray-400"></i>
                                     </span>
 
                                     <!-- Show Failed status for failed recordings -->
@@ -619,6 +639,12 @@
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
                 title="Toggle highlight">
             <i class="fas fa-star text-amber-500"></i>
+        </button>
+
+        <button @click="bulkToggleArchive()"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                :title="t('archive.toggleSelected')">
+            <i class="fas fa-box-archive text-[var(--text-muted)]"></i>
         </button>
 
         <button @click="openBulkReprocessModal"

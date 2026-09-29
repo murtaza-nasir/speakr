@@ -1,0 +1,22 @@
+<!-- Delete audio, keep transcript (#394). Same permission as deleting the
+     recording; the recording stays and shows as "Audio removed". -->
+<div v-if="showDeleteAudioModal" @click.self="cancelDeleteAudio" class="modal-overlay">
+    <div class="modal-panel modal-panel--sm modal-panel--danger">
+        <div class="modal-header">
+            <i class="fas fa-volume-xmark text-2xl text-[var(--text-danger)]"></i>
+            <div class="flex-1">
+                <h3 class="modal-title" v-text="(recordingToDeleteAudio && recordingToDeleteAudio.mime_type && recordingToDeleteAudio.mime_type.startsWith('video/')) ? t('deleteAudio.titleVideo') : t('deleteAudio.title')"></h3>
+                <div class="modal-subtitle" v-text="t('help.thisActionCannotBeUndone')"></div>
+            </div>
+            <button @click="cancelDeleteAudio" class="modal-close" :title="t('buttons.close')" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" v-text="t((recordingToDeleteAudio && recordingToDeleteAudio.mime_type && recordingToDeleteAudio.mime_type.startsWith('video/')) ? 'deleteAudio.bodyVideo' : 'deleteAudio.body', { title: (recordingToDeleteAudio && recordingToDeleteAudio.title) || '' })"></div>
+        <div class="modal-footer">
+            <button @click="cancelDeleteAudio" class="btn btn--ghost" v-text="t('buttons.cancel')"></button>
+            <button @click="deleteRecordingAudio" :disabled="isDeletingAudio" class="btn btn--danger">
+                <i v-if="isDeletingAudio" class="fas fa-spinner fa-spin"></i>
+                <span v-text="(recordingToDeleteAudio && recordingToDeleteAudio.mime_type && recordingToDeleteAudio.mime_type.startsWith('video/')) ? t('deleteAudio.confirmVideo') : t('deleteAudio.confirm')"></span>
+            </button>
+        </div>
+    </div>
+</div>

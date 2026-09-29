@@ -307,6 +307,7 @@ GET /api/v1/recordings
 | `q` | string | - | Search query (title, participants) |
 | `inbox` | boolean | - | Filter by inbox status |
 | `starred` | boolean | - | Filter by starred status |
+| `archived` | boolean | - | Filter by archive status. Omitted returns archived and unarchived recordings, as before. |
 | `folder_id` | string | - | Filter by folder. Pass an integer folder ID to list recordings in that folder, or the literal `none` to list recordings not in any folder. Requires folders to be enabled. |
 
 **Response:**
@@ -543,6 +544,7 @@ PATCH /api/v1/recordings/{id}
   "meeting_date": "2024-01-15T09:00:00Z",
   "is_inbox": false,
   "is_highlighted": true,
+  "is_archived": false,
   "folder_id": 5
 }
 ```
@@ -574,6 +576,23 @@ PUT /api/v1/recordings/{id}/summary
 ```json
 {
   "summary": "## New Summary\n- Point 1..."
+}
+```
+
+### Delete Audio, Keep Transcript
+
+```http
+POST /api/v1/recordings/{id}/delete-audio
+```
+
+Deletes the recording's media file (the video, for a recording with retained video) and keeps the transcript, summary and notes. Requires the same permission as deleting the recording. Returns `409` when the audio is already removed or the recording is still processing.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "audio_deleted_at": "2026-09-29T06:50:17.968177"
 }
 ```
 

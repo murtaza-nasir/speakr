@@ -309,7 +309,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterNeedsTranscription = ref(false);
             const filterNeedsSummary = ref(false);
             const filterNeedsSpeakers = ref(false);
-            const showArchivedRecordings = ref(false);
+            const filterAudioRemoved = ref(false);  // recordings whose media file was removed
+            const showArchivedRecordings = ref(false);  // the user's archive view (#394)
             const showSharedWithMe = ref(false);
 
             // --- Pagination State ---
@@ -341,6 +342,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Detail-header "assign folder" dropdown (replaces a raw <select>
             // whose OS-rendered option list ignored the app theme).
             const showHeaderFolderMenu = ref(false);
+            const showHeaderReprocessMenu = ref(false);
+            const showHeaderMoreMenu = ref(false);
             const tokenBudget = ref({
                 has_budget: false,
                 budget: null,
@@ -1473,7 +1476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentUserName = ref('');
             const canDeleteRecordings = ref(true);
             const enableInternalSharing = ref(false);
-            const enableArchiveToggle = ref(false);
+            const enableAudioRemovedFilter = ref(false);
             const showUsernamesInUI = ref(false);
 
             // --- Internal Sharing State ---
@@ -1790,14 +1793,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showAdvancedFilters, filterTags, filterSpeakers, filterTagSearch, filterSpeakerSearch,
                 filterDateRange, filterDatePreset, filterTextQuery, filterStarred, filterInbox,
                 filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
-                showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
+                filterAudioRemoved, showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
 
                 // Pagination
                 currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
                 isLoadingMore, searchDebounceTimer,
 
                 // UI
-                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, showHeaderFolderMenu, tokenBudget, isDarkMode,
+                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, showHeaderFolderMenu, showHeaderReprocessMenu, showHeaderMoreMenu, tokenBudget, isDarkMode,
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
@@ -1906,7 +1909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -2621,7 +2624,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startReprocessingPoll: reprocessComposable.startReprocessingPoll,
                 t,
                 finalizeRecordingMerge: audioComposable.finalizeRecordingMerge,
-                fetchRecordingsPage: recordingsComposable.fetchRecordingsPage
+                fetchRecordingsPage: recordingsComposable.fetchRecordingsPage,
+                searchQuery,
+                showArchivedRecordings
             });
 
             // Bridge merge-modal openers to the audio composable so the
@@ -3630,13 +3635,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             watch(showArchivedRecordings, (newValue, oldValue) => {
-                // Prevent unnecessary reloads when being set by the other watcher
                 if (newValue === oldValue) return;
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
 
-                // Reload recordings when switching between archived/normal view
-                if (showArchivedRecordings.value) {
-                    showSharedWithMe.value = false;  // Can't show both at once
-                }
+            watch(filterAudioRemoved, (newValue, oldValue) => {
+                if (newValue === oldValue) return;
+                // A filter like starred or inbox, so it combines with Shared.
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
@@ -3645,9 +3650,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (newValue === oldValue) return;
 
                 // Reload recordings when switching to/from shared view
-                if (showSharedWithMe.value) {
-                    showArchivedRecordings.value = false;  // Can't show both at once
-                }
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
@@ -4048,7 +4050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         customBanner.value = config.custom_banner || '';
                         canDeleteRecordings.value = config.can_delete_recordings !== false;
                         enableInternalSharing.value = config.enable_internal_sharing === true;
-                        enableArchiveToggle.value = config.enable_archive_toggle === true;
+                        enableAudioRemovedFilter.value = config.enable_audio_removed_filter === true;
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
