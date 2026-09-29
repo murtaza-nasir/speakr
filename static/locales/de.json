@@ -177,7 +177,7 @@
     "defaultPrompts": "Standard-Prompts",
     "defaultSummarizationPrompt": "Standard-Zusammenfassungsprompt",
     "defaultTitlePromptDesc": "Anweisungen für KI-generierte Aufnahmetitel, die gelten, wenn kein Titel-Prompt von Tag, Ordner oder Benutzer greift. Transkript, Ausgabesprache und die Vorgabe, nur den Titel auszugeben, werden automatisch ergänzt. Leer lassen, um die eingebaute Standardvorgabe zu verwenden.",
-    "defaultTitlePromptPlaceholder": "- Höchstens 8 Wörter\n- Keine Wendungen wie „Besprechung über“\n- Nur das Hauptthema",
+    "defaultTitlePromptPlaceholder": "- Höchstens 8 Wörter\n- Keine Wendungen wie „Diskussion über“ oder „Meeting zu“\n- Nur das Hauptthema",
     "defaultTitlePromptTitle": "Standard-Titel-Prompt",
     "defaultTranscriptionHints": "Standard-Transkriptionshinweise",
     "defaultTranscriptionHintsInfo": "Globaler Initial-Prompt und Hotwords, die bei jeder Transkription angewendet werden, wenn ein Benutzer keine eigenen festgelegt hat. Persönliche Werte der Benutzer haben immer Vorrang.",

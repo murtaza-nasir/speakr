@@ -177,7 +177,7 @@
     "defaultPrompts": "Prompts por Defecto",
     "defaultSummarizationPrompt": "Prompt de Resumen Predeterminado",
     "defaultTitlePromptDesc": "Instrucciones para los títulos de grabación generados por IA, usadas cuando no se aplica ningún prompt de título de etiqueta, carpeta o usuario. La transcripción, el idioma de salida y la regla de responder solo con el título se añaden automáticamente. Déjelo en blanco para usar el valor integrado.",
-    "defaultTitlePromptPlaceholder": "- Máximo 8 palabras\n- Sin frases como «Debate sobre»\n- Solo el tema principal",
+    "defaultTitlePromptPlaceholder": "- Máximo 8 palabras\n- Sin frases como «Debate sobre» o «Reunión sobre»\n- Solo el tema principal",
     "defaultTitlePromptTitle": "Prompt de título predeterminado",
     "defaultTranscriptionHints": "Sugerencias de transcripción predeterminadas",
     "defaultTranscriptionHintsInfo": "Prompt inicial y palabras clave globales aplicados a cada transcripción cuando un usuario no ha definido los suyos. Los valores personales de los usuarios siempre tienen prioridad.",
@@ -370,12 +370,12 @@
     "archivedToast": "Grabación archivada",
     "bulkArchived": "{{count}} grabación archivada",
     "bulkArchivedPlural": "{{count}} grabaciones archivadas",
-    "bulkUnarchived": "{{count}} grabación sacada del archivo",
-    "bulkUnarchivedPlural": "{{count}} grabaciones sacadas del archivo",
+    "bulkUnarchived": "{{count}} grabación desarchivada",
+    "bulkUnarchivedPlural": "{{count}} grabaciones desarchivadas",
     "showArchived": "Mostrar grabaciones archivadas",
-    "toggleSelected": "Archivar o sacar del archivo las grabaciones seleccionadas",
-    "unarchive": "Sacar del archivo",
-    "unarchivedToast": "Grabación sacada del archivo"
+    "toggleSelected": "Archivar o desarchivar las grabaciones seleccionadas",
+    "unarchive": "Desarchivar",
+    "unarchivedToast": "Grabación desarchivada"
   },
   "asrEditor": {
     "saved": "Guardado",
