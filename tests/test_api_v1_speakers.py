@@ -443,9 +443,10 @@ def test_assign_embeddings_updated():
         speaker = _create_test_speaker(user, "Alice")
         client = app.test_client()
         try:
-            mock_update = MagicMock()
+            from src.models import SpeakerVoiceSample
             mock_snippets = MagicMock(return_value=2)
-            with patch("src.services.speaker_embedding_matcher.update_speaker_embedding", mock_update), \
+            # Fixture segments are short; the speech minimum is not under test.
+            with patch("src.services.voice_profiles.MIN_SPEECH_SECONDS", 0.0), \
                  patch("src.services.speaker_snippets.create_speaker_snippets", mock_snippets):
                 resp = client.put(f"/api/v1/recordings/{rec.id}/speakers/assign",
                                   headers={"X-API-Token": token},
@@ -453,7 +454,10 @@ def test_assign_embeddings_updated():
             assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
             body = resp.get_json()
             assert body.get("embeddings_updated") >= 1, f"embeddings_updated: {body}"
-            mock_update.assert_called()
+            sample = SpeakerVoiceSample.query.filter_by(recording_id=rec.id, label="SPEAKER_00").first()
+            assert sample is not None and sample.speaker_id == speaker.id
+            SpeakerVoiceSample.query.filter_by(recording_id=rec.id).delete()
+            db.session.commit()
         finally:
             _cleanup(rec, speaker, token_rec)
             if cu:

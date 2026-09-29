@@ -100,7 +100,7 @@ def test_web_delete_still_works(ctx):
         sess["_user_id"] = str(user.id)
         sess["_fresh"] = True
     storage = _storage()
-    with patch("src.services.storage.get_storage_service", return_value=storage):
+    with patch("src.api.recordings.get_storage_service", return_value=storage):
         r = c.delete(f'/recording/{rec.id}')
     assert r.status_code == 200, r.get_data(as_text=True)
     storage.delete.assert_called_once()

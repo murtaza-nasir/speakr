@@ -328,14 +328,21 @@
     "viewFullPromptStructure": "Voir la Structure Complète de l'Invite LLM",
     "voiceEmbedding": {
       "checkNow": "Vérifier maintenant",
+      "current": "actuel",
       "dimension": "Dimensions",
       "help": "Vérifie que le service de transcription produit toujours des empreintes vocales compatibles avec les profils vocaux enregistrés, en envoyant un court extrait fourni et en comparant le résultat à une référence. S'exécute au démarrage ; utilisez Vérifier maintenant pour relancer.",
       "lastChecked": "Dernière vérification",
+      "lastSeen": "Vu pour la dernière fois",
+      "notCalibrated": "par défaut (pas encore assez d’échantillons)",
       "rebaseline": "Réinitialiser la référence",
-      "rebaselineConfirm": "La réinitialisation adopte le service actuel comme nouvelle référence. Les profils vocaux créés avec l'ancien modèle ne seront plus signalés, et rétablir ce service ne l'annulera pas. Reconstruisez d'abord les profils concernés. Continuer ?",
+      "rebaselineConfirm": "La nouvelle référence accepte le backend actuel et supprime l’avertissement. Les profils vocaux du modèle précédent sont conservés et correspondent de nouveau si ce backend est rétabli. Continuer ?",
+      "samples": "Échantillons",
+      "space": "Espace",
+      "spacesTitle": "Espaces vocaux (un par modèle d’embeddings)",
       "statusChanged": "Modèle modifié",
       "statusOk": "Compatible",
       "statusUnknown": "Non vérifié",
+      "threshold": "Seuil",
       "title": "Compatibilité des empreintes vocales"
     },
     "warning": "avertissement",
@@ -1499,7 +1506,7 @@
     "dismiss": "Masquer",
     "empty": "Rien ne requiert votre attention.",
     "view": "Afficher",
-    "voiceEmbeddingChanged": "Le service de transcription renvoie des empreintes vocales différentes : les profils vocaux existants ne correspondront donc pas aux nouveaux enregistrements. Rétablissez le service précédent, ou reconstruisez les profils et réinitialisez la référence."
+    "voiceEmbeddingChanged": "Le service de transcription renvoie des embeddings vocaux d’un autre modèle. Les profils vocaux sont conservés séparément pour chaque modèle : ceux du modèle précédent ne correspondront pas aux nouveaux enregistrements et reviennent si vous rétablissez le backend précédent, et ceux du nouveau modèle se construisent à mesure que vous nommez les intervenants."
   },
   "preferences": {
     "description": "Préférences d'affichage et de comportement de l'éditeur. Ces paramètres sont enregistrés sur votre compte et s'appliquent à tous les appareils.",
@@ -2108,6 +2115,22 @@
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
+  },
+  "voiceProfiles": {
+    "anotherModel": "autre modèle",
+    "auto": "attribué automatiquement",
+    "confirmed": "confirmé",
+    "deletedRecording": "Enregistrement supprimé",
+    "empty": "Aucun échantillon vocal.",
+    "hint": "La reconnaissance vocale compare les nouveaux enregistrements à ces échantillons. Supprimez celui qui appartient à quelqu’un d’autre.",
+    "legacy": "Profil vocal antérieur",
+    "legacyWeight": "poids {{count}}",
+    "manage": "Profil vocal",
+    "otherModel": "{{count}} d’un autre modèle",
+    "remove": "Supprimer cet échantillon",
+    "samples": "{{count}} échantillon",
+    "samplesPlural": "{{count}} échantillons",
+    "variantsPlural": "{{count}} variantes de voix"
   },
   "webhooks": {
     "title": "Webhooks",

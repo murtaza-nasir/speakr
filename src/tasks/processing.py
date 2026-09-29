@@ -2156,6 +2156,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         recording.speaker_embeddings = response.speaker_embeddings or None
                         if recording.speaker_embeddings:
                             current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
+                        # The new labels are a new diarization: voice samples and
+                        # the label -> name map of the previous run no longer
+                        # apply, and the embeddings carry the backend's space.
+                        try:
+                            from src.services.voice_profiles import current_space_id, forget_recording_samples
+                            forget_recording_samples(recording)
+                            recording.speaker_embeddings_space_id = current_space_id() if recording.speaker_embeddings else None
+                        except Exception as vp_err:
+                            current_app.logger.warning(f"Could not reset voice samples for recording {recording.id}: {vp_err}")
 
                     # If we reach here, transcription succeeded
                     break

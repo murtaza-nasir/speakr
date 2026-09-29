@@ -97,6 +97,7 @@ def test_two_labels_with_one_name_merge_into_one_speaker(ctx):
 
 @pytest.mark.parametrize("route", ["update_speakers", "update_transcript"])
 def test_both_routes_update_voice_profiles_and_snippets(ctx, route):
+    from src.models import SpeakerVoiceSample
     user = _user()
     rec = _recording(user, SEGMENTS, embeddings={"SPEAKER_00": EMB, "SPEAKER_01": EMB})
     body = {"speaker_map": {"SPEAKER_00": {"name": "Ana"}}}
@@ -105,14 +106,17 @@ def test_both_routes_update_voice_profiles_and_snippets(ctx, route):
         staged[2]["speaker"] = "SPEAKER_00"   # a staged per-line reassignment
         body["transcript_data"] = staged
 
-    with patch("src.services.speaker_embedding_matcher.update_speaker_embedding", return_value=None) as upd, \
+    # The fixture segments are seconds long; the speech minimum is not what
+    # this test is about.
+    with patch("src.services.voice_profiles.MIN_SPEECH_SECONDS", 0.0), \
          patch("src.services.speaker_snippets.create_speaker_snippets", return_value=2) as snip:
         r = _client(user).post(f"/recording/{rec.id}/{route}", json=body)
 
     assert r.status_code == 200
-    assert upd.call_count == 1
-    speaker, embedding, rec_id = upd.call_args.args
-    assert speaker.name == "Ana" and rec_id == rec.id and len(embedding) == 256
+    ana = Speaker.query.filter_by(user_id=user.id, name="Ana").first()
+    samples = SpeakerVoiceSample.query.filter_by(recording_id=rec.id).all()
+    assert [(s.speaker_id, s.label, s.source) for s in samples] == [(ana.id, "SPEAKER_00", "confirmed")]
+    assert ana.average_embedding is not None and ana.embedding_count == 1
     snip.assert_called_once()
     assert snip.call_args.args[1] == {"SPEAKER_00": {"name": "Ana"}}
     saved = json.loads(db.session.get(Recording, rec.id).transcription)

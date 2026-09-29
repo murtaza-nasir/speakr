@@ -328,14 +328,21 @@
     "viewFullPromptStructure": "Ver Estructura Completa del Prompt LLM",
     "voiceEmbedding": {
       "checkNow": "Comprobar ahora",
+      "current": "actual",
       "dimension": "Dimensiones",
       "help": "Comprueba que el servicio de transcripción sigue produciendo incrustaciones de voz compatibles con los perfiles de voz guardados, enviando un clip breve incluido y comparando el resultado con una referencia. Se ejecuta al iniciar; use Comprobar ahora para repetirlo.",
       "lastChecked": "Última comprobación",
+      "lastSeen": "Visto por última vez",
+      "notCalibrated": "predeterminado (aún pocas muestras)",
       "rebaseline": "Restablecer referencia",
-      "rebaselineConfirm": "Restablecer la referencia acepta el backend actual como nueva referencia. Los perfiles de voz creados con el modelo anterior dejarán de señalarse, y restaurar ese backend no lo deshará. Reconstruya primero los perfiles afectados. ¿Continuar?",
+      "rebaselineConfirm": "Restablecer la referencia acepta el backend actual y elimina la advertencia. Los perfiles de voz del modelo anterior se conservan y vuelven a coincidir si se restaura ese backend. ¿Continuar?",
+      "samples": "Muestras",
+      "space": "Espacio",
+      "spacesTitle": "Espacios de voz (uno por modelo de embeddings)",
       "statusChanged": "Modelo cambiado",
       "statusOk": "Compatible",
       "statusUnknown": "Sin comprobar",
+      "threshold": "Umbral",
       "title": "Compatibilidad de las incrustaciones de voz"
     },
     "warning": "advertencia",
@@ -1499,7 +1506,7 @@
     "dismiss": "Descartar",
     "empty": "No hay nada que requiera su atención.",
     "view": "Ver",
-    "voiceEmbeddingChanged": "El servicio de transcripción devuelve embeddings de voz distintos, por lo que los perfiles de voz existentes no coincidirán con las grabaciones nuevas. Restaure el backend anterior, o reconstruya los perfiles y restablezca la referencia."
+    "voiceEmbeddingChanged": "El servicio de transcripción devuelve embeddings de voz de otro modelo. Los perfiles de voz se guardan por separado para cada modelo: los del modelo anterior no coincidirán con las grabaciones nuevas y vuelven si restaura el backend anterior, y los del modelo nuevo se aprenden a medida que nombra a los hablantes."
   },
   "preferences": {
     "description": "Preferencias de visualización y comportamiento del editor. Estos ajustes se guardan en tu cuenta y se aplican en todos los dispositivos.",
@@ -2108,6 +2115,22 @@
   },
   "uploadProgress": {
     "title": "Progreso de Carga"
+  },
+  "voiceProfiles": {
+    "anotherModel": "otro modelo",
+    "auto": "asignada automáticamente",
+    "confirmed": "confirmada",
+    "deletedRecording": "Grabación eliminada",
+    "empty": "No hay muestras de voz.",
+    "hint": "La comparación de voz contrasta las grabaciones nuevas con estas muestras. Elimine una que pertenezca a otra persona.",
+    "legacy": "Perfil de voz anterior",
+    "legacyWeight": "peso {{count}}",
+    "manage": "Perfil de voz",
+    "otherModel": "{{count}} de otro modelo",
+    "remove": "Eliminar esta muestra",
+    "samples": "{{count}} muestra",
+    "samplesPlural": "{{count}} muestras",
+    "variantsPlural": "{{count}} variantes de voz"
   },
   "webhooks": {
     "title": "Webhooks",

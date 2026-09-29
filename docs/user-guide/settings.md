@@ -199,7 +199,8 @@ Each speaker card displays essential information in a clean, scannable format. T
 For speakers with voice recognition data, each card displays additional information:
 
 - **Voice Profile Badge**: Shows confidence level (high/medium/low) based on the number and quality of voice samples collected
-- **Sample Count**: Number of voice embeddings collected from different recordings, helping assess profile strength
+- **Sample Count**: Number of voice samples the profile is built from, and how many voice variants they form (for example the same person on a phone and in a room)
+- **Voice Profile**: Lists every sample with its recording, speaker label, speech time and whether it was confirmed or auto-labelled. Remove a sample that belongs to someone else and the profile is rebuilt without it
 - **Voice Samples Button**: Click to hear representative audio clips of this speaker's voice for verification
 - **Profile Strength Indicator**: Visual feedback showing how well the system can recognize this speaker in future recordings
 

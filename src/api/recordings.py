@@ -945,7 +945,10 @@ def update_speakers(recording_id):
         speaker_names_used = []
 
         label_to_name = {}
+        seconds_by_key = None
         if is_json:
+            from src.services.voice_profiles import speech_seconds_by_label
+            seconds_by_key = speech_seconds_by_label(transcription_data)
             speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
             recording.transcription = json.dumps(transcription_data)
             recording.participants = participants_from_segments(transcription_data)
@@ -974,7 +977,7 @@ def update_speakers(recording_id):
             update_speaker_usage(speaker_names_used)
 
         # Update speaker voice embeddings and snippets if available
-        update_voice_profiles(recording, label_to_name, current_user)
+        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
 
         db.session.commit()
 
@@ -1034,6 +1037,8 @@ def update_transcript(recording_id):
         # Apply the names exactly as update_speakers does, including the voice
         # profiles and snippets: this route saves the names whenever the user
         # also staged a line edit in the speaker modal.
+        from src.services.voice_profiles import speech_seconds_by_label
+        seconds_by_key = speech_seconds_by_label(transcript_data)
         speaker_names_used, label_to_name = apply_speaker_map(transcript_data, speaker_map, current_user)
 
         # Save the updated transcript
@@ -1044,7 +1049,7 @@ def update_transcript(recording_id):
         if speaker_names_used:
             update_speaker_usage(speaker_names_used)
 
-        update_voice_profiles(recording, label_to_name, current_user)
+        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
 
         db.session.commit()
 
@@ -3427,7 +3432,7 @@ def delete_recording(recording_id):
                 current_app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
 
         from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
-        delete_recording_completely(recording)
+        delete_recording_completely(recording, storage=get_storage_service())
         cleanup_orphaned_speakers_quietly()
 
         return jsonify({'success': True})

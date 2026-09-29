@@ -56,7 +56,18 @@ def get_speakers():
         speakers = Speaker.query.filter_by(user_id=current_user.id)\
                                .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
                                .all()
-        return jsonify([speaker.to_dict() for speaker in speakers])
+        # Voice profile counts (samples, variants) from one query for all.
+        from src.models import SpeakerVoiceSample
+        from src.services.voice_profiles import voice_summary
+        rows_by_speaker = {}
+        for row in SpeakerVoiceSample.query.filter_by(user_id=current_user.id).all():
+            rows_by_speaker.setdefault(row.speaker_id, []).append(row)
+        out = []
+        for speaker in speakers:
+            item = speaker.to_dict()
+            item['voice'] = voice_summary(speaker, rows_by_speaker.get(speaker.id, []))
+            out.append(item)
+        return jsonify(out)
     except Exception as e:
         current_app.logger.error(f"Error fetching speakers: {e}")
         return jsonify({'error': str(e)}), 500
@@ -253,6 +264,9 @@ def delete_speaker(speaker_id):
 def delete_all_speakers():
     """Delete all speakers for the current user."""
     try:
+        # Bulk delete skips ORM cascades, so the voice samples go first.
+        from src.models import SpeakerVoiceSample
+        SpeakerVoiceSample.query.filter_by(user_id=current_user.id).delete()
         deleted_count = Speaker.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
         return jsonify({'success': True, 'deleted_count': deleted_count})
@@ -294,29 +308,13 @@ def get_speaker_suggestions(recording_id):
         if not recording.speaker_embeddings:
             return jsonify({'suggestions': {}, 'message': 'No speaker embeddings available'}), 200
 
-        try:
-            embeddings_data = json.loads(recording.speaker_embeddings) if isinstance(recording.speaker_embeddings, str) else recording.speaker_embeddings
-        except (json.JSONDecodeError, TypeError):
-            return jsonify({'error': 'Invalid speaker embeddings data'}), 500
-
-        # Similarity floor for showing a voice-match suggestion. Default
-        # 60% (was 70%). Rationale: when auto-labelling is on, confident
-        # matches are already applied automatically, so the suggestion pill
-        # is most useful for the BORDERLINE matches that auto-label didn't
-        # take. A 0.70 floor hid exactly those (e.g. a 0.69 match), making
-        # the pill rarely appear. 0.60 surfaces them for one-click manual
-        # acceptance while still filtering out weak/noise matches. Callers
-        # can still override via ?threshold=.
-        threshold = float(request.args.get('threshold', 0.60))
-
-        # Find matches for each speaker
-        suggestions = {}
-        for speaker_label, embedding in embeddings_data.items():
-            if embedding and len(embedding) == 256:  # Validate embedding dimension
-                matches = find_matching_speakers(embedding, current_user.id, threshold)
-                suggestions[speaker_label] = matches
-            else:
-                suggestions[speaker_label] = []
+        # Matching compares each voice with every voice variant of each
+        # person, within the recording's embedding space. The threshold is
+        # calibrated from the space's own samples once there are enough; a
+        # ?threshold= query parameter still overrides it.
+        from src.services.voice_profiles import suggestions_for_recording
+        threshold = request.args.get('threshold', type=float)
+        suggestions = suggestions_for_recording(recording, current_user.id, threshold=threshold)
 
         return jsonify({
             'success': True,
@@ -386,6 +384,65 @@ def get_speaker_recordings(speaker_id):
         return jsonify({'error': str(e)}), 500
 
 
+@speakers_bp.route('/speakers/<int:speaker_id>/voice_samples', methods=['GET'])
+@login_required
+def list_voice_samples(speaker_id):
+    """The samples a person's voice profile is built from, newest first."""
+    from src.models import SpeakerVoiceSample
+    from src.services.voice_profiles import voice_summary, effective_space, current_space_id
+    speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
+    if not speaker:
+        return jsonify({'error': 'Speaker not found'}), 404
+    rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+    titles = {}
+    rec_ids = [r.recording_id for r in rows if r.recording_id]
+    if rec_ids:
+        for rec in Recording.query.filter(Recording.id.in_(rec_ids)).all():
+            titles[rec.id] = rec.title
+    current = effective_space(current_space_id())
+    samples = []
+    if not rows and speaker.average_embedding:
+        # A profile from before samples existed: shown as one entry so it can
+        # be seen and removed like any sample (removing it clears the profile).
+        samples.append({'id': None, 'speaker_id': speaker.id, 'recording_id': None, 'label': None,
+                        'source': 'legacy', 'weight': float(min(max(speaker.embedding_count or 1, 1), 5)),
+                        'speech_seconds': None, 'space_id': None, 'recording_title': None,
+                        'in_current_space': effective_space(None) == current,
+                        'created_at': speaker.created_at.isoformat() if speaker.created_at else None})
+    for r in sorted(rows, key=lambda r: r.updated_at or r.created_at, reverse=True):
+        item = r.to_dict()
+        item['recording_title'] = titles.get(r.recording_id)
+        item['in_current_space'] = effective_space(r.space_id) == current
+        samples.append(item)
+    return jsonify({'summary': voice_summary(speaker, rows), 'samples': samples})
+
+
+@speakers_bp.route('/speakers/<int:speaker_id>/voice_samples/<int:sample_id>', methods=['DELETE'])
+@login_required
+def delete_voice_sample(speaker_id, sample_id):
+    """Remove one sample; the person's voice variants are rebuilt without it."""
+    from src.models import SpeakerVoiceSample
+    from src.services import voice_profiles as vp
+    speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
+    if not speaker:
+        return jsonify({'error': 'Speaker not found'}), 404
+    sample = SpeakerVoiceSample.query.filter_by(id=sample_id, speaker_id=speaker.id).first()
+    if not sample:
+        return jsonify({'error': 'Sample not found'}), 404
+    try:
+        db.session.delete(sample)
+        db.session.flush()
+        vp.refresh_speaker_summary(speaker)
+        vp._calibration_cache.clear()
+        db.session.commit()
+        return jsonify({'success': True, 'summary': vp.voice_summary(speaker),
+                        'speaker': speaker.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error removing voice sample {sample_id}: {e}")
+        return jsonify({'error': 'Could not remove the sample'}), 500
+
+
 @speakers_bp.route('/speakers/<int:speaker_id>/clear_embeddings', methods=['POST'])
 @login_required
 def clear_speaker_embeddings(speaker_id):
@@ -407,6 +464,8 @@ def clear_speaker_embeddings(speaker_id):
         # phantom `voice_embeddings` attribute that never persisted, so the
         # real average_embedding survived and voice matching kept working
         # after a "clear". Null out the actual columns.
+        from src.models import SpeakerVoiceSample
+        SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).delete()
         speaker.average_embedding = None
         speaker.embeddings_history = None
         speaker.embedding_count = 0

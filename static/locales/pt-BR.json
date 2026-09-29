@@ -328,14 +328,21 @@
     "viewFullPromptStructure": "Ver Estrutura Completa da Instrução do LLM",
     "voiceEmbedding": {
       "checkNow": "Verificar agora",
+      "current": "atual",
       "dimension": "Dimensões",
       "help": "Verifica se o serviço de transcrição continua produzindo embeddings de voz compatíveis com os perfis de voz salvos, enviando um clipe curto incluído e comparando o resultado com uma referência. Executa na inicialização; use Verificar agora para repetir.",
       "lastChecked": "Última verificação",
+      "lastSeen": "Visto por último",
+      "notCalibrated": "padrão (ainda poucas amostras)",
       "rebaseline": "Redefinir referência",
-      "rebaselineConfirm": "Redefinir a referência aceita o backend atual como nova referência. Os perfis de voz criados com o modelo anterior deixarão de ser sinalizados, e restaurar aquele backend não desfará isso. Reconstrua primeiro os perfis afetados. Continuar?",
+      "rebaselineConfirm": "Redefinir a referência aceita o backend atual e remove o aviso. Os perfis de voz do modelo anterior são mantidos e voltam a corresponder se esse backend for restaurado. Continuar?",
+      "samples": "Amostras",
+      "space": "Espaço",
+      "spacesTitle": "Espaços de voz (um por modelo de embeddings)",
       "statusChanged": "Modelo alterado",
       "statusOk": "Compatível",
       "statusUnknown": "Não verificado",
+      "threshold": "Limite",
       "title": "Compatibilidade das embeddings de voz"
     },
     "warning": "aviso",
@@ -1499,7 +1506,7 @@
     "dismiss": "Dispensar",
     "empty": "Nada requer sua atenção.",
     "view": "Ver",
-    "voiceEmbeddingChanged": "O serviço de transcrição está retornando embeddings de voz diferentes, portanto os perfis de voz existentes não corresponderão às novas gravações. Restaure o backend anterior, ou reconstrua os perfis e redefina a referência."
+    "voiceEmbeddingChanged": "O serviço de transcrição está retornando embeddings de voz de outro modelo. Os perfis de voz são mantidos separadamente para cada modelo: os do modelo anterior não corresponderão às novas gravações e voltam se você restaurar o backend anterior, e os do novo modelo são aprendidos conforme você nomeia os locutores."
   },
   "preferences": {
     "description": "Preferências de exibição e comportamento do editor. Estas configurações ficam salvas em sua conta e se aplicam a todos os dispositivos.",
@@ -2108,6 +2115,22 @@
   },
   "uploadProgress": {
     "title": "Progresso do Envio"
+  },
+  "voiceProfiles": {
+    "anotherModel": "outro modelo",
+    "auto": "atribuída automaticamente",
+    "confirmed": "confirmada",
+    "deletedRecording": "Gravação excluída",
+    "empty": "Nenhuma amostra de voz.",
+    "hint": "A correspondência de voz compara as novas gravações com estas amostras. Remova uma que pertença a outra pessoa.",
+    "legacy": "Perfil de voz anterior",
+    "legacyWeight": "peso {{count}}",
+    "manage": "Perfil de voz",
+    "otherModel": "{{count}} de outro modelo",
+    "remove": "Remover esta amostra",
+    "samples": "{{count}} amostra",
+    "samplesPlural": "{{count}} amostras",
+    "variantsPlural": "{{count}} variantes de voz"
   },
   "webhooks": {
     "title": "Webhooks",

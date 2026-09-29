@@ -451,6 +451,35 @@
                             </div>
                             <!-- Diagnostic string from the checker, shown as-is like a log line. -->
                             <p v-if="voiceEmbedding.detail" class="text-xs text-[var(--text-muted)] mb-3 font-mono break-words" v-text="voiceEmbedding.detail"></p>
+                            <!-- Voice spaces: one per embedding model seen. Profiles are only
+                                 compared within their space, so switching back to a previous
+                                 backend brings its profiles back. -->
+                            <div v-if="voiceEmbedding.spaces && voiceEmbedding.spaces.length" class="mb-3">
+                                <div class="text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('adminDashboard.voiceEmbedding.spacesTitle')"></div>
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="text-left text-[var(--text-muted)]">
+                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.space')"></th>
+                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.dimension')"></th>
+                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.samples')"></th>
+                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.threshold')"></th>
+                                            <th class="py-1 font-normal" v-text="t('adminDashboard.voiceEmbedding.lastSeen')"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="space in voiceEmbedding.spaces" :key="space.id" class="border-t border-[var(--border-primary)]">
+                                            <td class="py-1 pr-2">
+                                                #${ space.id }
+                                                <span v-if="space.current" class="ml-1 px-1.5 rounded bg-[var(--bg-success)] text-[var(--text-success-strong)]" v-text="t('adminDashboard.voiceEmbedding.current')"></span>
+                                            </td>
+                                            <td class="py-1 pr-2">${ space.dimension || '' }</td>
+                                            <td class="py-1 pr-2">${ space.sample_count }</td>
+                                            <td class="py-1 pr-2" v-text="space.calibrated_threshold != null ? space.calibrated_threshold : t('adminDashboard.voiceEmbedding.notCalibrated')"></td>
+                                            <td class="py-1" v-text="space.last_seen_at ? formatDate(space.last_seen_at) : ''"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                             <div class="flex flex-wrap gap-2">
                                 <button @click="checkVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--ghost">
                                     <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': voiceEmbeddingBusy }"></i>${t('adminDashboard.voiceEmbedding.checkNow')}
