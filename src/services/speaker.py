@@ -89,23 +89,39 @@ def update_voice_profiles(recording, label_to_name, user, seconds_by_key=None):
     measured before the rename (None when the transcript has no timing).
     Both save routes and API v1 call this. Returns
     (samples_stored, snippets_created). Never raises.
+
+    Commits: the caller's changes first, so they stand on their own, then the
+    training, which is rolled back as a whole if it fails partway.
+    (A savepoint would hold SQLite's write lock through the training and
+    collide with background writers.)
     """
     from src.services.speaker_snippets import create_speaker_snippets
-    from src.services.voice_profiles import apply_names_to_profiles
+    from src.services.voice_profiles import apply_names_to_profiles, record_label_names
 
     stored = 0
     snippets_created = 0
-    try:
-        # Runs even when nothing was named: a save that only merged speakers
-        # away must still drop the merged labels' samples.
-        if recording.speaker_embeddings:
+    # Runs even when nothing was named: a save that only merged speakers
+    # away must still drop the merged labels' samples.
+    if recording.speaker_embeddings:
+        db.session.commit()
+        try:
             stats = apply_names_to_profiles(recording, label_to_name or {}, seconds_by_key, user)
+            db.session.commit()
             stored = stats['stored']
             if stats['rejected'] or stats['skipped_short']:
                 current_app.logger.info(
                     f"Recording {recording.id}: {stats['rejected']} voice samples kept out as unlike "
                     f"the named person, {stats['skipped_short']} skipped for too little speech")
-            db.session.flush()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating voice profiles: {e}", exc_info=True)
+            try:
+                record_label_names(recording, label_to_name or {})
+                db.session.commit()
+            except Exception as e2:
+                db.session.rollback()
+                current_app.logger.error(f"Error saving the speaker label map: {e2}", exc_info=True)
+    try:
         if not label_to_name:
             return stored, 0
         snippets_created = create_speaker_snippets(
@@ -113,7 +129,7 @@ def update_voice_profiles(recording, label_to_name, user, seconds_by_key=None):
         if snippets_created > 0:
             current_app.logger.info(f"Created {snippets_created} speaker snippets")
     except Exception as e:
-        current_app.logger.error(f"Error updating voice profiles: {e}", exc_info=True)
+        current_app.logger.error(f"Error creating speaker snippets: {e}", exc_info=True)
 
     return stored, snippets_created
 

@@ -76,10 +76,13 @@ def _restore_env(saved):
 
 @pytest.fixture
 def local_emb():
-    """Reload embeddings in default (local) mode and force EMBEDDINGS_AVAILABLE
-    on so the storage gating in serialize/deserialize is exercised even though
-    sentence-transformers is not installed in the test image."""
-    emb, saved = _reload_embeddings()
+    """Reload embeddings in default (local) mode without sentence-transformers.
+
+    CI installs requirements.txt only, where the library is absent; the full
+    image and a developer venv have it. Hiding it during the reload gives
+    every environment the CI behaviour these tests describe."""
+    with patch.dict(sys.modules, {"sentence_transformers": None}):
+        emb, saved = _reload_embeddings()
     yield emb
     _restore_env(saved)
 
