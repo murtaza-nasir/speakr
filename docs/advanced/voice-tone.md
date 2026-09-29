@@ -6,6 +6,10 @@ Speakr does not analyse audio itself. An external scorer of your choice computes
 
 ## What you see
 
+![Tone chips on transcript lines, light theme](../assets/images/screenshots/voice-tone-light.png)
+
+![Tone chips on transcript lines, dark theme](../assets/images/screenshots/voice-tone-dark.png)
+
 - A chip with an emoji on the first line of each *standout* window. Only windows the scorer marks with `standout` get one.
 - Hover or focus (Tab) a chip to see the state, its strength, the top few states in that window, and the time range.
 - The **Tone** button (desktop toolbar, mobile header) shows or hides the chips. The choice is remembered per browser.
