@@ -30,6 +30,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from src.database import db
+from src.services.recording_state import get_user_archived, set_user_archived, parse_archived_flag
 from src.models import Recording, User, Tag, RecordingTag, Speaker, Event
 from src.models.processing_job import ProcessingJob
 from src.models.token_usage import TokenUsage
@@ -1025,7 +1026,7 @@ def get_recording(recording_id):
         'mime_type': recording.mime_type,
         'is_inbox': recording.is_inbox,
         'is_highlighted': recording.is_highlighted,
-        'is_archived': bool(recording.is_archived),
+        'is_archived': get_user_archived(recording, current_user),
         'audio_available': recording.audio_deleted_at is None,
         'audio_duration': recording.get_audio_duration(),
         'processing_time_seconds': recording.processing_time_seconds,
@@ -1263,7 +1264,12 @@ def update_recording(recording_id):
         recording.is_highlighted = bool(data['is_highlighted'])
         changed_fields.append('is_highlighted')
     if 'is_archived' in data:
-        recording.is_archived = bool(data['is_archived'])
+        archived = parse_archived_flag(data['is_archived'])
+        if archived is None:
+            return jsonify({'error': 'is_archived must be a boolean'}), 400
+        # Per user, like the web app: a shared editor archives it for
+        # themselves only (#394).
+        set_user_archived(recording, current_user, archived, commit=False)
         changed_fields.append('is_archived')
     if 'folder_id' in data:
         new_folder_id = data['folder_id']
@@ -1319,7 +1325,7 @@ def update_recording(recording_id):
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
             'is_inbox': recording.is_inbox,
             'is_highlighted': recording.is_highlighted,
-            'is_archived': bool(recording.is_archived),
+            'is_archived': get_user_archived(recording, current_user),
             'folder_id': recording.folder_id
         }
     })
@@ -2681,6 +2687,12 @@ def batch_update_recordings():
                     return jsonify({'error': 'No access to target folder'}), 403
             target_folder_id = new_folder_id
 
+    batch_archived = None
+    if 'is_archived' in updates:
+        batch_archived = parse_archived_flag(updates['is_archived'])
+        if batch_archived is None:
+            return jsonify({'error': 'is_archived must be a boolean'}), 400
+
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
@@ -2698,7 +2710,7 @@ def batch_update_recordings():
             if 'is_highlighted' in updates:
                 recording.is_highlighted = bool(updates['is_highlighted'])
             if 'is_archived' in updates:
-                recording.is_archived = bool(updates['is_archived'])
+                set_user_archived(recording, current_user, batch_archived, commit=False)
             if 'folder_id' in updates:
                 # `target_folder_id` already validated above (None to remove,
                 # or a valid folder id the caller has access to).
@@ -2807,18 +2819,17 @@ def batch_delete_recordings():
             continue
 
         try:
-            # Delete audio file
-            if recording.audio_path:
-                audio_path = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), recording.audio_path)
-                if os.path.exists(audio_path):
-                    os.remove(audio_path)
-
-            db.session.delete(recording)
+            from src.services.recording_deletion import delete_recording_completely
+            delete_recording_completely(recording)
             results.append({'id': recording_id, 'success': True})
         except Exception as e:
-            results.append({'id': recording_id, 'success': False, 'error': str(e)})
+            db.session.rollback()
+            current_app.logger.error(f"Error deleting recording {recording_id}: {e}")
+            results.append({'id': recording_id, 'success': False, 'error': 'Delete failed'})
 
-    db.session.commit()
+    if any(r['success'] for r in results):
+        from src.services.recording_deletion import cleanup_orphaned_speakers_quietly
+        cleanup_orphaned_speakers_quietly()
 
     success_count = sum(1 for r in results if r['success'])
     return jsonify({
