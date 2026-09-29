@@ -346,3 +346,31 @@ def test_vectorised_calibration_matches_the_pairwise_definition(ctx):
     finally:
         db.session.query(SpeakerVoiceSample).filter_by(user_id=user.id).delete()
         db.session.commit()
+
+
+# ------------------------------------------------ 7. failed training is undone
+
+def test_failed_training_is_rolled_back_and_the_rename_still_saves(ctx):
+    user = _user()
+    rec = _recording(user, {"SPEAKER_00": person(), "SPEAKER_01": person()})
+    real_record = vp.record_sample
+    calls = []
+
+    def fail_second(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError("simulated failure after the first sample was flushed")
+        return real_record(*args, **kwargs)
+
+    with patch.object(vp, "record_sample", side_effect=fail_second):
+        _save_names(user, rec, {"SPEAKER_00": "Fay", "SPEAKER_01": "Gus"})
+
+    assert len(calls) == 2
+    rec = db.session.get(Recording, rec.id)
+    assert {s["speaker"] for s in json.loads(rec.transcription)} == {"Fay", "Gus"}
+    assert _samples(user, rec) == {}
+    # The map still follows the transcript, so the next save can train.
+    assert rec.speaker_label_map == {"SPEAKER_00": "Fay", "SPEAKER_01": "Gus"}
+
+    _save_names(user, rec, {"Fay": "Fay", "Gus": "Gus"})
+    assert set(_samples(user, rec)) == {"SPEAKER_00", "SPEAKER_01"}

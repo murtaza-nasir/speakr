@@ -645,6 +645,27 @@ def auto_label_threshold(setting, space_id):
 
 # ------------------------------------------------------ applying names
 
+def _labels_for(key, embeddings, label_map):
+    """The diarization labels a speaker value in the transcript stands for."""
+    if key in embeddings:
+        return [key]
+    return [lab for lab, name in label_map.items() if name == key and lab in embeddings]
+
+
+def record_label_names(recording, key_to_name):
+    """Update only the recording's label map with the names given in a save.
+
+    Used when training fails, so the map still follows the transcript and a
+    later correction can reach the embedding. Does not commit.
+    """
+    embeddings = load_embeddings(recording)
+    label_map = dict(recording.speaker_label_map or {})
+    for key, name in key_to_name.items():
+        for label in _labels_for(key, embeddings, label_map):
+            label_map[label] = name
+    recording.speaker_label_map = label_map or None
+
+
 def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source='confirmed'):
     """Train voice profiles from the names given in one save.
 
@@ -667,14 +688,9 @@ def apply_names_to_profiles(recording, key_to_name, seconds_by_key, user, source
     embeddings = load_embeddings(recording)
     label_map = dict(recording.speaker_label_map or {})
 
-    def labels_for(key):
-        if key in embeddings:
-            return [key]
-        return [lab for lab, name in label_map.items() if name == key and lab in embeddings]
-
     touched = set()
     for key, name in key_to_name.items():
-        for label in labels_for(key):
+        for label in _labels_for(key, embeddings, label_map):
             label_map[label] = name
             if not embeddings.get(label):
                 continue
