@@ -408,4 +408,32 @@ describe('recording-persistence', () => {
             expect(await mod.getDatabaseSize()).toBeNull();
         });
     });
+
+    describe('clearRecordingSessionIfStartedAt (#407)', () => {
+        it('clears the session that started at the given time', async () => {
+            const session = await mod.startRecordingSession({ mode: 'meeting' });
+            expect(await mod.clearRecordingSessionIfStartedAt(session.startTime)).toBe(true);
+            expect(mock.stores.get(STORE_NAME).get('current')).toBeUndefined();
+        });
+
+        it('keeps a newer recording that started after the uploaded one', async () => {
+            vi.useFakeTimers();
+            try {
+                vi.setSystemTime(new Date('2026-09-30T10:00:00Z'));
+                const first = await mod.startRecordingSession({ mode: 'meeting' });
+                vi.setSystemTime(new Date('2026-09-30T10:05:00Z'));
+                const second = await mod.startRecordingSession({ mode: 'meeting' });
+                expect(await mod.clearRecordingSessionIfStartedAt(first.startTime)).toBe(false);
+                expect(mock.stores.get(STORE_NAME).get('current').startTime).toBe(second.startTime);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('does nothing without a start time', async () => {
+            await mod.startRecordingSession({ mode: 'meeting' });
+            expect(await mod.clearRecordingSessionIfStartedAt(null)).toBe(false);
+            expect(mock.stores.get(STORE_NAME).get('current')).toBeDefined();
+        });
+    });
 });

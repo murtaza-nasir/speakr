@@ -9,6 +9,7 @@ import * as RecordingDB from '../db/recording-persistence.js';
 import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
 import { shouldSliceUpload, uploadFileInSlices } from '../db/sliced-file-upload.js';
 import { computeUploadTimeout } from '../utils/upload-timeout.js';
+import { recorderInUse } from '../utils/recorder-state.js';
 import {
     sortQueuedForJoin, moveQueuedItem, placeQueuedItem, totalJoinDuration,
     newJoinGroupId, isVideoFileName, MAX_JOIN_FILES,
@@ -59,7 +60,8 @@ export function useUpload(state, utils) {
         // View state
         currentView, showUploadModal,
         // Upload disclaimer state
-        uploadDisclaimer, showUploadDisclaimerModal
+        uploadDisclaimer, showUploadDisclaimerModal,
+        isRecording
     } = state;
 
     const { computed, nextTick, ref, markRaw } = Vue;
@@ -820,9 +822,13 @@ export function useUpload(state, utils) {
             // #287(b)): the audio is on the server. Only do this for queue
             // items that came from an in-app recording, to avoid touching the
             // session for file-drag-drop uploads that never wrote one.
+            //
+            // Only the session this recording was saved under is cleared: the
+            // upload can finish after the user has started the next recording,
+            // whose crash-recovery copy must survive (#407).
             if (fileItem.fromInProgressRecording) {
                 try {
-                    await RecordingDB.clearRecordingSession();
+                    await RecordingDB.clearRecordingSessionIfStartedAt(fileItem.recordingSessionStartTime);
                 } catch (dbError) {
                     console.warn('[Upload] Failed to clear recording session after successful upload:', dbError);
                 }
@@ -858,7 +864,11 @@ export function useUpload(state, utils) {
             // audio.js's recording-stop path) so bulk drag-drop
             // uploads of many files still leave the user wherever
             // they were.
-            if (fileItem.fromInProgressRecording) {
+            //
+            // Not while the next recording is under way (#407): the upload can
+            // finish minutes after the user started recording again, and
+            // switching views then took them off the recorder.
+            if (fileItem.fromInProgressRecording && !recorderInUse(isRecording, currentView)) {
                 selectedRecording.value = data;
                 currentView.value = 'detail';
                 if (showUploadModal) showUploadModal.value = false;
@@ -1198,9 +1208,13 @@ export function useUpload(state, utils) {
             processingProgress.value = 100;
             processingMessage.value = t('incognito.recordingReady');
 
-            // Auto-select the incognito recording and switch to detail view
-            selectedRecording.value = incognitoData;
-            currentView.value = 'detail';
+            // Auto-select the incognito recording and switch to detail view,
+            // unless the next recording is already under way (#407); it stays
+            // available from the incognito entry in the sidebar.
+            if (!recorderInUse(isRecording, currentView)) {
+                selectedRecording.value = incognitoData;
+                currentView.value = 'detail';
+            }
             // Dismiss the upload modal if it was still open behind the
             // success transition.
             if (showUploadModal) showUploadModal.value = false;
