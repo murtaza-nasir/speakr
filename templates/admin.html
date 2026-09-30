@@ -113,45 +113,8 @@
         }
         applyTheme();
 
-        // Wire up the shared page-header's controls (dark mode toggle
-        // + user dropdown). Has to run after DOMContentLoaded because
-        // the header partial includes its own script that registers
-        // an outside-click handler for the dropdown.
+        // The header's controls are driven by static/js/global-header.js.
         document.addEventListener('DOMContentLoaded', () => {
-            const darkBtn = document.getElementById('darkModeToggle');
-            const darkIcon = document.getElementById('darkModeIcon');
-            const userBtn = document.getElementById('userDropdownButton');
-            const userMenu = document.getElementById('userDropdownMenu');
-
-            // Sync the icon to the current mode on first load.
-            if (darkIcon) {
-                const isDark = document.documentElement.classList.contains('dark');
-                darkIcon.classList.toggle('fa-moon', !isDark);
-                darkIcon.classList.toggle('fa-sun', isDark);
-            }
-
-            if (darkBtn) {
-                darkBtn.addEventListener('click', () => {
-                    const isDark = document.documentElement.classList.toggle('dark');
-                    localStorage.setItem('darkMode', isDark);
-                    if (darkIcon) {
-                        darkIcon.classList.toggle('fa-moon', !isDark);
-                        darkIcon.classList.toggle('fa-sun', isDark);
-                    }
-                    // Re-apply the saved color scheme for the new mode
-                    // so the theme-{light|dark}-* prefix flips with the
-                    // .dark class (same bug fixed on the account page).
-                    if (typeof applyTheme === 'function') applyTheme();
-                });
-            }
-
-            if (userBtn && userMenu) {
-                userBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    userMenu.classList.toggle('hidden');
-                });
-            }
-
             // Update the tab-footer version string by writing to the
             // --footer-version-text CSS variable that .tab-footer::before
             // reads. Same pattern as the account page.
@@ -175,6 +138,7 @@
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
     {% set page_label = ('Team Management' if is_team_admin and not current_user.is_admin else 'Admin') %}
+    {% set page_label_key = ('nav.groupManagement' if is_team_admin and not current_user.is_admin else 'admin.title') %}
     {% include 'components/page-header.html' %}
     <!-- inline min-height: 0 beats the global #app { min-height: 100% }
          rule in styles.css (ID selector has higher specificity than the

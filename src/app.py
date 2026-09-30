@@ -714,6 +714,12 @@ def inject_app_version():
     return {'app_version': _app_version}
 
 @app.context_processor
+def inject_inquire_mode_flag():
+    """The shared header shows the Inquire button on every page."""
+    return {'inquire_mode_enabled': ENABLE_INQUIRE_MODE}
+
+
+@app.context_processor
 def inject_help_center_link():
     """Optional custom help link in the user menu (#371).
 

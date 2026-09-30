@@ -3942,6 +3942,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
 
+                // ?open=shares|appearance: the header on the other pages opens
+                // these main-app dialogs by linking here.
+                let openDialogDeepLink = null;
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const wanted = params.get('open');
+                    if (wanted === 'shares' || wanted === 'appearance') {
+                        openDialogDeepLink = wanted;
+                        params.delete('open');
+                        const qs = params.toString();
+                        window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+                    }
+                } catch (_) { /* best-effort */ }
+
                 // Deep link to a specific recording: /recordings/<id> (#301).
                 // Captured before load; selected once recordings are in.
                 let deepLinkRecordingId = null;
@@ -4024,6 +4038,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Now open the upload modal. The pending flag (set above)
                 // prevents the auto-selected recording's selectRecording() from
                 // closing it once its fetch resolves.
+                if (openDialogDeepLink === 'shares') {
+                    sharingComposable.openSharesList();
+                } else if (openDialogDeepLink === 'appearance') {
+                    uiComposable.openColorSchemeModal();
+                }
                 if (wantUploadDeepLink) {
                     await nextTick();
                     uiComposable.switchToUploadView();
