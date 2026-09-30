@@ -299,6 +299,61 @@ ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 
 # not at module level (matching original pre-refactor behavior)
 
 
+EMPTY_TRANSCRIPT_MESSAGE = (
+    "The transcription service returned no text. The recording may contain no "
+    "speech, or the service failed without reporting an error."
+)
+
+
+def _has_transcript_content(transcription):
+    """True when a stored transcript holds at least some text (#406).
+
+    Accepts the plain-text form and the JSON segment list the diarized form
+    is stored as.
+    """
+    if not transcription:
+        return False
+    if not isinstance(transcription, str):
+        return True
+    text = transcription.strip()
+    if not text:
+        return False
+    if text.startswith('['):
+        try:
+            segments = json.loads(text)
+        except ValueError:
+            return True
+        if isinstance(segments, list):
+            return any(
+                isinstance(seg, dict) and str(seg.get('sentence') or seg.get('text') or '').strip()
+                for seg in segments
+            )
+    return True
+
+
+def _end_transaction_before_external_call(*instances):
+    """End the open database transaction before a long outside call (#405).
+
+    Commits pending work, reloads the given instances, then ends that short
+    read transaction as well, so no connection sits idle in a transaction
+    while a transcription or LLM call runs. PostgreSQL's
+    idle_in_transaction_session_timeout would otherwise drop the worker's
+    connection during a long job. The instances keep their loaded values, and
+    anything changed on them afterwards is written by the next commit.
+    """
+    session = db.session()
+    session.commit()
+    for instance in instances:
+        if instance is not None:
+            session.refresh(instance)
+    previous = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = previous
+
+
 def generate_title_task(app_context, recording_id, will_auto_summarize=False):
     """Generates only a title for a recording based on transcription.
 
@@ -529,6 +584,7 @@ Title:"""
             system_message_content += f" Ensure your response is in {user_output_language}."
 
     try:
+        _end_transaction_before_external_call(recording)
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
@@ -856,6 +912,7 @@ Summarization Instructions:
         current_app.logger.debug(f"=== END SUMMARIZATION DEBUG for recording {recording_id} ===")
 
         try:
+            _end_transaction_before_external_call(recording)
             completion = call_llm_completion(
                 messages=[
                     {"role": "system", "content": system_message_content},
@@ -1125,6 +1182,7 @@ You must respond with valid JSON format only."""
         if user_output_language:
             system_message_content += f"\n\nLanguage Requirement: You MUST generate ALL event titles, descriptions, and locations in {user_output_language}. This is mandatory."
 
+        _end_transaction_before_external_call(recording)
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
@@ -2059,6 +2117,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         # Use chunking for large files
                         file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
                         current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
+                        _end_transaction_before_external_call(recording)
                         chunk_result = transcribe_chunks_with_connector(
                             connector, actual_filepath, actual_filename, actual_content_type, language,
                             diarize=should_diarize,  # Pass diarization setting for speaker reference tracking
@@ -2118,6 +2177,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 should_diarize,
                                 language,
                             )
+                            _end_transaction_before_external_call(recording)
                             try:
                                 response = connector.transcribe(request)
                             finally:
@@ -2240,6 +2300,18 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         current_app.logger.info(f"Cleaned up temp audio extracted from video: {audio_filepath}")
                 except OSError:
                     pass  # Best effort cleanup
+
+            # A transcription that came back empty is a failure, not a finished
+            # recording (#406): marked COMPLETED it would pass unnoticed in a
+            # batch. Not retried, since silence would come back empty again.
+            if not _has_transcript_content(recording.transcription):
+                current_app.logger.warning(
+                    f"Transcription for recording {recording_id} returned no text; marking it failed")
+                recording.transcription = None
+                recording.status = 'FAILED'
+                recording.error_message = EMPTY_TRANSCRIPT_MESSAGE
+                db.session.commit()
+                return
 
             # Calculate and save transcription duration
             transcription_end_time = time.time()
@@ -2677,6 +2749,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 result['transcription'] = response.text
 
         result['processing_time_seconds'] = int(time.time() - start_time)
+        if not _has_transcript_content(result['transcription']):
+            result['transcription'] = None
+            result['error'] = EMPTY_TRANSCRIPT_MESSAGE
+            return result
         current_app.logger.info(f"[Incognito] Transcription completed in {result['processing_time_seconds']}s")
 
         # Generate a title if we have transcription
