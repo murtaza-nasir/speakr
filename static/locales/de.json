@@ -1553,7 +1553,13 @@
     "uploadingShort": "werden hochgeladen",
     "transcribingShort": "werden transkribiert",
     "summarizingShort": "werden zusammengefasst",
-    "queuedShort": "in der Warteschlange"
+    "queuedShort": "in der Warteschlange",
+    "joiningShort": "zusammengefügt",
+    "joining": "Zusammenfügen",
+    "joiningMessage": "Audiodateien werden zusammengefügt...",
+    "processingOnServer": "Wird auf dem Server verarbeitet...",
+    "waitingForJoin": "Hochgeladen, wartet auf {{count}} weitere Datei zum Zusammenfügen",
+    "waitingForJoinPlural": "Hochgeladen, wartet auf {{count}} weitere Dateien zum Zusammenfügen"
   },
   "promptVariables": {
     "title": "Prompt-Variablen",

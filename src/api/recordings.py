@@ -2668,8 +2668,16 @@ def ingest_uploaded_recording(
             ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
             and has_video
         )
+        # An audio file uploaded to be joined is decoded and re-encoded by the
+        # merge job anyway, so converting it here would only delay the upload
+        # response (minutes for a long recording). Video parts still have their
+        # audio extracted, which is a fast stream copy and keeps a large video
+        # from being stored whole until the join.
+        skip_conversion_for_join = bool(join) and codec_info is not None and not has_video
         if keep_video_for_this_upload:
             current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
+        elif skip_conversion_for_join:
+            current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
         else:
             # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
             try:

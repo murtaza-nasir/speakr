@@ -60,8 +60,11 @@
                 <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
-                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing').length > 0">
-                    ${ activeProgressItems.filter(i => i.status === 'transcribing').length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                <span v-if="activeProgressItems.filter(i => i.statusLabel).length > 0">
+                    ${ activeProgressItems.filter(i => i.statusLabel).length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && !i.statusLabel).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing' && !i.statusLabel).length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.statusLabel).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
@@ -103,7 +106,7 @@
                             item.status === 'transcribing' ? 'bg-purple-500/20 text-purple-500' :
                             item.status === 'summarizing' ? 'bg-green-500/20 text-green-500' :
                             'bg-yellow-500/20 text-yellow-500'
-                        ]">${getStatusDisplay(item.status).label}</span>
+                        ]">${item.statusLabel || getStatusDisplay(item.status).label}</span>
                     </div>
                     <!-- Progress bar for uploads -->
                     <div v-if="item.status === 'uploading' && item.progress !== null"
