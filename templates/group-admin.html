@@ -113,49 +113,10 @@
     </script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    {% set page_label = 'Group Management' %}
+    {% set page_label_key = 'nav.groupManagement' %}
+    {% include 'components/page-header.html' %}
     <div id="app" v-cloak class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
-        <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
-            <h1 class="text-3xl font-bold text-[var(--text-primary)]">
-                <a href="{{ url_for('recordings.index') }}" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="app-logo h-9 w-9 mr-2">
-                    Speakr
-                </a>
-            </h1>
-            <div class="flex items-center space-x-2">
-                <button @click="toggleDarkMode" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
-                    <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
-                </button>
-                <div class="relative">
-                    <button @click="isUserMenuOpen = !isUserMenuOpen"
-                            data-user-menu-toggle
-                            class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
-                        <i class="fas fa-users-cog mr-2"></i>
-                        <span>{{ current_user.username }}</span>
-                        <i class="fas fa-chevron-down ml-2"></i>
-                    </button>
-                    <div v-if="isUserMenuOpen"
-                         data-user-menu-dropdown
-                         class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
-                        <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-home mr-2"></i> Home
-                        </a>
-                        <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-user mr-2"></i> Account
-                        </a>
-                        <a href="{{ url_for('admin.group_management') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
-                            <i class="fas fa-users-cog mr-2"></i>
-                            Group Management
-                        </a>
-                        <form method="POST" action="{{ url_for('auth.logout') }}" class="m-0">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="w-full text-left block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
-                                <i class="fas fa-sign-out-alt mr-2"></i> Sign Out
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </header>
 
         <main class="flex-grow">
             <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">

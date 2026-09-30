@@ -464,6 +464,7 @@
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
     {% set page_label = 'Account' %}
+    {% set page_label_key = 'nav.account' %}
     {% include 'components/page-header.html' %}
     <div class="main-container flex-1 flex flex-col min-h-0 overflow-hidden">
 
@@ -4283,67 +4284,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // Update footer on page load
             updateFooter();
         
-        // Dark mode toggle functionality
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const darkModeIcon = document.getElementById('darkModeIcon');
-        
-        // Initialize dark mode based on localStorage or system preference
-        function initializeDarkMode() {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const savedMode = localStorage.getItem('darkMode');
-            
-            if (savedMode === 'true' || (savedMode === null && prefersDark)) {
-                document.documentElement.classList.add('dark');
-                darkModeIcon.classList.remove('fa-moon');
-                darkModeIcon.classList.add('fa-sun');
-            } else {
-                document.documentElement.classList.remove('dark');
-                darkModeIcon.classList.remove('fa-sun');
-                darkModeIcon.classList.add('fa-moon');
-            }
-        }
-        
-        // Toggle dark mode. Re-applies the saved color scheme so the
-        // mode-prefix (theme-light-* vs theme-dark-*) flips along with
-        // the dark class — otherwise switching from dark→light leaves
-        // the previous theme-dark-{amber|emerald|etc.} class on
-        // documentElement and the page falls back to the default blue
-        // light palette because no theme-light-* class was added.
-        darkModeToggle.addEventListener('click', () => {
-            const isDarkMode = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', isDarkMode);
-
-            if (isDarkMode) {
-                darkModeIcon.classList.remove('fa-moon');
-                darkModeIcon.classList.add('fa-sun');
-            } else {
-                darkModeIcon.classList.remove('fa-sun');
-                darkModeIcon.classList.add('fa-moon');
-            }
-
-            // Re-apply the color scheme for the new mode.
-            if (typeof applyTheme === 'function') {
-                applyTheme();
-            }
-        });
-        
-        // User dropdown functionality
-        const userDropdownButton = document.getElementById('userDropdownButton');
-        const userDropdownMenu = document.getElementById('userDropdownMenu');
-        
-        userDropdownButton.addEventListener('click', () => {
-            userDropdownMenu.classList.toggle('hidden');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (event) => {
-            if (!userDropdownButton.contains(event.target) && !userDropdownMenu.contains(event.target)) {
-                userDropdownMenu.classList.add('hidden');
-            }
-        });
-        
-        // Initialize dark mode on page load
-        initializeDarkMode();
+        // The header's dark mode switch and user menu live in the shared
+        // header (components/header-controls.html, static/js/global-header.js).
         
         // Change Password Modal functionality
         const changePasswordBtn = document.getElementById('changePasswordBtn');

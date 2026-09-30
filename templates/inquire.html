@@ -219,7 +219,7 @@
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}">
         
         <!-- Header -->
-        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
+        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3" style="min-height: 56px;">
             <!-- Left side: Menu and logo -->
             <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
                 <!-- Mobile Sidebar Toggle — uses the design system
@@ -234,96 +234,15 @@
                 <a href="/" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
                     <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
                     <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
-                    <span class="text-xs sm:text-sm text-[var(--text-muted)] hidden sm:inline">• Inquire Mode</span>
                 </a>
+                <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
+                <span class="t-meta hidden sm:inline" v-text="t('inquire.title')"></span>
             </div>
 
-            <!-- Right side: User menu -->
-            <div class="flex items-center gap-2 sm:gap-3">
-                {% include 'components/token_budget_indicator.html' %}
-
-                <!-- New Recording Button.
-                     Inquire mode is a separate Vue app that can't
-                     embed the main app's upload modal directly. We
-                     redirect to "/" with ?upload=1 — the main app
-                     reads that query param on mount and opens the
-                     upload modal automatically (then clears the
-                     param via history.replaceState so a refresh
-                     doesn't re-trigger). Click is the same single
-                     action the user expected. -->
-                <a href="/?upload=1"
-                   class="btn btn--sm btn--primary">
-                    <i class="fas fa-plus"></i>
-                    <span class="hidden sm:inline">${ t('nav.newRecording') }</span>
-                </a>
-
-                <!-- User menu -->
-                {% if current_user.is_authenticated %}
-                <div class="relative">
-                    <button @click="isUserMenuOpen = !isUserMenuOpen"
-                            data-user-menu-toggle
-                            class="btn btn--ghost btn--sm flex-shrink-0"
-                            :title="t('admin.userMenu')">
-                        <i class="fas fa-user-circle"></i>
-                        <span class="hidden lg:inline">{{ (current_user.name or current_user.username) if current_user.is_authenticated else 'User' }}</span>
-                        <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
-                    </button>
-
-                    <!-- User dropdown -->
-                    <div v-if="isUserMenuOpen"
-                         data-user-menu-dropdown
-                         class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
-                        <a href="/" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-home mr-2 w-4 text-center"></i><span v-text="t('nav.home')"></span>
-                        </a>
-                        <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
-                        </a>
-                        <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-tags mr-2 w-4 text-center"></i><span v-text="t('accountTabs.tagsAndFolders')"></span>
-                        </a>
-                        <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
-                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
-                        </button>
-                        {% if current_user.is_admin or is_group_admin %}
-                        <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-{% if current_user.is_admin %}user-shield{% else %}users-cog{% endif %} mr-2 w-4 text-center"></i>
-                            <span v-text="{% if current_user.is_admin %}t('admin.title'){% else %}t('nav.groupManagement'){% endif %}"></span>
-                        </a>
-                        {% endif %}
-                        <div class="border-t border-[var(--border-primary)] my-1"></div>
-                        <!-- Combined appearance row: the row opens the color
-                             scheme modal, the sun/moon pill toggles light/dark
-                             in place (click.stop keeps the menu open). -->
-                        <div @click="openColorSchemeModal"
-                             class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between cursor-pointer">
-                            <span class="flex items-center whitespace-nowrap">
-                                <i class="fas fa-palette mr-2 w-4 text-center"></i>
-                                <span v-text="t('modal.colorScheme')"></span>
-                            </span>
-                            <button @click.stop="toggleDarkMode"
-                                    class="flex items-center rounded-full border border-[var(--border-secondary)] bg-[var(--bg-secondary)] p-0.5 ml-3 flex-shrink-0"
-                                    :title="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')">
-                                <span :class="!isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
-                                      class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
-                                    <i class="fas fa-sun"></i>
-                                </span>
-                                <span :class="isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
-                                      class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
-                                    <i class="fas fa-moon"></i>
-                                </span>
-                            </button>
-                        </div>
-                        <div class="border-t border-[var(--border-primary)] my-1"></div>
-                        <form method="POST" action="/logout" class="m-0">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="w-full text-left block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                                <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                {% endif %}
+            <!-- Right side: the same controls as every other page
+                 (components/header-controls.html). -->
+            <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {% include 'components/header-controls.html' %}
             </div>
         </header>
 
@@ -815,6 +734,8 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await initializeI18n();
+            // Notifications for the shared header's user menu.
+            const { useNotifications } = await import('/static/js/modules/composables/notifications.js');
             
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
             const i18nInstance = window.i18n;
@@ -1377,9 +1298,21 @@
                         }
                     });
 
+                    const headerNotifications = useNotifications({}, {
+                        t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                    });
+                    onMounted(() => headerNotifications.startNotificationPolling());
+
                     return {
                         // i18n - bind to i18n instance to maintain context
                         t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+
+                        // Shared header controls (components/header-controls.html)
+                        ...headerNotifications,
+                        switchToUploadView: () => { window.location.href = '/?upload=1'; },
+                        showInstallButton: false,
+                        isPWAInstalled: true,
+                        promptInstall: () => {},
                         
                         // State
                         inquireFilters,

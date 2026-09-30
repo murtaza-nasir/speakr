@@ -1,14 +1,15 @@
-{# Shared page header for non-Vue tab-driven pages (account, admin,
-   inquire-when-needed). Visually identical to the main app's Vue header:
-   56px min-height, compact px-3/4 py-2, btn--icon primitives, single
-   adaptive bar. Vanilla HTML + tiny inline JS for the dropdown.
+{# Page header for the pages outside the main app (account, admin, group
+   management). The right side is components/header-controls.html, the same
+   template the main app's header uses, driven here by the small Vue app in
+   static/js/global-header.js, so every page has the same controls and menu.
 
    Usage:
-       set page_label = 'Account'  (optional small label after logo)
+       set page_label = 'Account'            (fallback text)
+       set page_label_key = 'nav.account'    (i18n key for the label)
        include 'components/page-header.html'
 #}
-<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3 sticky top-0" style="min-height: 56px;">
-    <!-- Left: Speakr logo + name + optional page label -->
+<header id="global-header" class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3 sticky top-0" style="min-height: 56px;">
+    <!-- Left: Speakr logo + name + page label -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <a href="{{ url_for('recordings.index') }}" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
             <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
@@ -16,77 +17,27 @@
         </a>
         {% if page_label %}
         <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
+        {% if page_label_key %}
+        <span class="t-meta hidden sm:inline" v-text="t('{{ page_label_key }}')"></span>
+        {% else %}
         <span class="t-meta hidden sm:inline">{{ page_label }}</span>
         {% endif %}
-    </div>
-
-    <!-- Right: theme toggle + user menu -->
-    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-        <!-- Dark mode toggle (id preserved so existing JS still works) -->
-        <button id="darkModeToggle" class="btn btn--icon" title="Toggle dark mode">
-            <i id="darkModeIcon" class="fas fa-moon"></i>
-        </button>
-
-        {% if current_user.is_authenticated %}
-        <!-- User menu -->
-        <div class="relative" id="userDropdown">
-            <button id="userDropdownButton" class="btn btn--icon" title="User menu" data-user-menu-toggle>
-                <i class="fas fa-user-circle text-lg"></i>
-            </button>
-            <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-56 surface-raised z-50" data-user-menu-dropdown>
-                <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <i class="fas fa-home mr-2 w-4 text-center"></i><span data-i18n="nav.home">Home</span>
-                </a>
-                <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors {% if request.endpoint == 'auth.account' %}text-[var(--text-accent)] bg-[var(--bg-accent)]{% endif %}">
-                    <i class="fas fa-user-circle mr-2 w-4 text-center"></i><span data-i18n="nav.account">Account</span>
-                </a>
-                {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors {% if request.endpoint == 'admin.admin' %}text-[var(--text-accent)] bg-[var(--bg-accent)]{% endif %}">
-                    <i class="fas fa-user-shield mr-2 w-4 text-center"></i><span data-i18n="nav.admin">Admin</span>
-                </a>
-                {% elif is_team_admin %}
-                <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <i class="fas fa-users-cog mr-2 w-4 text-center"></i><span data-i18n="nav.groupManagement">Team Management</span>
-                </a>
-                {% endif %}
-                {% if help_center_url %}
-                <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer"
-                   class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <i class="fas fa-question-circle mr-2 w-4 text-center"></i>
-                    {% if help_center_label %}
-                    <span>{{ help_center_label }}</span>
-                    {% else %}
-                    <span data-i18n="nav.helpCenter">Help Center</span>
-                    {% endif %}
-                </a>
-                {% endif %}
-                <div class="border-t border-[var(--border-primary)] my-1"></div>
-                <form method="POST" action="{{ url_for('auth.logout') }}" class="m-0">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="w-full text-left block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                        <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span data-i18n="nav.signOut">Sign out</span>
-                    </button>
-                </form>
-            </div>
-        </div>
         {% endif %}
     </div>
+
+    <!-- Right: the same controls as the main app's header -->
+    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0 global-header-controls">
+        {% include 'components/header-controls.html' %}
+    </div>
 </header>
+<style>
+    /* Until the header app mounts, the controls hold their space but stay
+       invisible, so raw template markup never shows. */
+    #global-header:not([data-v-app]) .global-header-controls { visibility: hidden; }
+</style>
+<script type="module" src="{{ url_for('static', filename='js/global-header.js') }}"></script>
 
 <script>
-// Tiny vanilla JS: close the user dropdown on outside click. The dark
-// mode toggle and dropdown open/close are owned by the page's existing
-// JS (account.js / admin.js / inquire.html inline) — we just preserve
-// the IDs they expect.
-document.addEventListener('click', function(e) {
-    var dd = document.getElementById('userDropdownMenu');
-    var btn = document.getElementById('userDropdownButton');
-    if (!dd || !btn) return;
-    if (!dd.contains(e.target) && !btn.contains(e.target)) {
-        dd.classList.add('hidden');
-    }
-});
-
 // Tabs scroller — attaches to any element marked [data-tabs-scroller]
 // that wraps a .tabs container. Shows/hides left/right chevron buttons
 // based on whether the tab strip can scroll further in that direction;

@@ -1,0 +1,157 @@
+{#- The controls on the right of every page header: token budget, Inquire,
+    New Recording and the user menu. The main app renders them inside its own
+    Vue app; the other pages mount static/js/global-header.js on
+    page-header.html, which provides the same state and methods, so every
+    page shows the same header. Vue delimiters are ${ }. -#}
+    {% include 'components/token_budget_indicator.html' %}
+
+    <!-- Inquire / Install PWA / New Recording header buttons.
+         All three use the .btn .btn--sm primitive so their height
+         + padding + font size are identical; only the colour
+         intent differs (Inquire = quiet/highlighted, PWA Install
+         = primary-success, New Recording = primary). -->
+    <!-- Inquire Mode Button -->
+    {% if inquire_mode_enabled %}
+    <a href="/inquire" class="btn btn--sm" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
+        <i class="fas fa-search"></i>
+        <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
+    </a>
+    {% endif %}
+
+    <!-- Install PWA Button -->
+    <button v-if="showInstallButton && !isPWAInstalled"
+            @click="promptInstall"
+            class="btn btn--sm"
+            style="background: #16a34a; color: #fff; border-color: transparent;"
+            :title="t('pwa.installApp')">
+        <i class="fas fa-download"></i>
+        <span class="hidden sm:inline" v-text="t('pwa.installApp')"></span>
+    </button>
+
+    <!-- New Recording Button -->
+    <button @click="switchToUploadView" class="btn btn--sm btn--primary">
+        <i class="fas fa-plus"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
+    </button>
+
+    <!-- User menu -->
+    {% if current_user.is_authenticated %}
+    <div class="relative">
+        <button @click="isUserMenuOpen = !isUserMenuOpen"
+                data-user-menu-toggle
+                class="btn btn--icon relative"
+                :title="t('admin.userMenu')">
+            <i class="fas fa-user-circle text-lg"></i>
+            <!-- Unread badge. The menu is the only always-visible anchor
+                 in the header, so the count rides on it rather than on the
+                 admin link, which lives inside the dropdown. -->
+            <span v-if="unreadCount > 0"
+                  data-notification-badge
+                  class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-semibold leading-[18px] text-center"
+                  v-text="unreadCount > 9 ? '9+' : unreadCount"></span>
+        </button>
+
+        <!-- User dropdown -->
+        <div v-if="isUserMenuOpen"
+             data-user-menu-dropdown
+             class="absolute right-0 mt-2 w-56 surface-raised z-50">
+            <!-- Notifications. Opening the section marks them read; the
+                 individual X dismisses one. Notices that describe a
+                 condition disappear on their own when it ends, so most
+                 people never need either control. -->
+            <button @click="toggleNotifications"
+                    data-notifications-toggle
+                    class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between">
+                <span>
+                    <i class="fas fa-bell mr-2 w-4 text-center"></i><span v-text="t('nav.notifications')"></span>
+                </span>
+                <span v-if="unreadCount > 0"
+                      class="ml-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-semibold leading-[18px] text-center"
+                      v-text="unreadCount > 9 ? '9+' : unreadCount"></span>
+            </button>
+            <div v-if="isNotificationsOpen" data-notifications-panel
+                 class="max-h-64 overflow-y-auto border-y border-[var(--border-secondary)] bg-[var(--bg-tertiary)]">
+                <p v-if="notifications.length === 0"
+                   class="px-4 py-3 text-xs text-[var(--text-muted)]"
+                   v-text="t('notifications.empty')"></p>
+                <div v-for="n in notifications" :key="n.id"
+                     class="px-4 py-3 border-b border-[var(--border-secondary)] last:border-b-0 flex items-start gap-2">
+                    <i class="fas mt-0.5 w-4 text-center"
+                       :class="n.level === 'error' ? 'fa-circle-exclamation text-red-500' : (n.level === 'warning' ? 'fa-triangle-exclamation text-amber-500' : 'fa-circle-info text-[var(--text-accent)]')"></i>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs text-[var(--text-primary)] break-words" v-text="notificationText(n)"></p>
+                        <a v-if="n.link" :href="n.link"
+                           class="text-[11px] text-[var(--text-accent)] hover:underline"
+                           v-text="t('notifications.view')"></a>
+                    </div>
+                    <button @click.stop="dismissNotification(n.id)"
+                            class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                            :title="t('notifications.dismiss')">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
+            </a>
+            <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-tags mr-2 w-4 text-center"></i><span v-text="t('accountTabs.tagsAndFolders')"></span>
+            </a>
+            <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
+            </button>
+            {% if current_user.is_admin %}
+            <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-user-shield mr-2 w-4 text-center"></i>
+                <span v-text="t('admin.title')"></span>
+            </a>
+            {% elif is_group_admin %}
+            <a href="/group-management" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-users-cog mr-2 w-4 text-center"></i>
+                <span v-text="t('nav.groupManagement')"></span>
+            </a>
+            {% endif %}
+            {% if help_center_url %}
+            <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer"
+               class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-question-circle mr-2 w-4 text-center"></i>
+                {% if help_center_label %}
+                <span>{{ help_center_label }}</span>
+                {% else %}
+                <span v-text="t('nav.helpCenter')"></span>
+                {% endif %}
+            </a>
+            {% endif %}
+            <div class="border-t border-[var(--border-primary)] my-1"></div>
+            <!-- Combined appearance row: the row opens the color scheme
+                 modal, the sun/moon pill toggles light/dark in place
+                 (click.stop keeps the menu open for instant feedback). -->
+            <div @click="openColorSchemeModal"
+                 class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between cursor-pointer">
+                <span class="flex items-center whitespace-nowrap">
+                    <i class="fas fa-palette mr-2 w-4 text-center"></i>
+                    <span v-text="t('modal.colorScheme')"></span>
+                </span>
+                <button @click.stop="toggleDarkMode"
+                        class="flex items-center rounded-full border border-[var(--border-secondary)] bg-[var(--bg-secondary)] p-0.5 ml-3 flex-shrink-0"
+                        :title="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')">
+                    <span :class="!isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
+                          class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
+                        <i class="fas fa-sun"></i>
+                    </span>
+                    <span :class="isDarkMode ? 'bg-[var(--bg-accent)] text-white' : 'text-[var(--text-muted)]'"
+                          class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-colors">
+                        <i class="fas fa-moon"></i>
+                    </span>
+                </button>
+            </div>
+            <div class="border-t border-[var(--border-primary)] my-1"></div>
+            <form method="POST" action="/logout" class="m-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="w-full text-left block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
