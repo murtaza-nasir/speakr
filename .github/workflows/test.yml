@@ -118,6 +118,49 @@ jobs:
         if: always()
         run: tail -n 200 /tmp/whisperx.log || true
 
+  browser-smoke:
+    # Opens every page in headless Chromium and fails on failed requests,
+    # JavaScript errors, leftover template text, or a header whose user menu
+    # does not open (tests/e2e/test_browser_smoke.py). Vendor files are
+    # downloaded exactly as the Dockerfile does it, in production mode, so a
+    # reference to a file the image lacks fails here.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest playwright
+
+      - name: Download vendor files as the image build does
+        run: PRODUCTION=1 python scripts/download_offline_deps.py
+
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Start Speakr (config/env.whisperx.example)
+        run: |
+          python tests/e2e/run_speakr.py --port 8899 --workdir /tmp/speakr-smoke > /tmp/speakr.log 2>&1 &
+          for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
+          curl -fs -o /dev/null http://127.0.0.1:8899/login
+
+      - name: Browser smoke test
+        env:
+          SPEAKR_BROWSER_SMOKE: '1'
+          SPEAKR_BASE_URL: http://127.0.0.1:8899
+        run: pytest tests/e2e/test_browser_smoke.py -q -p no:cacheprovider --noconftest -rs
+
+      - name: Speakr log
+        if: always()
+        run: tail -n 200 /tmp/speakr.log || true
+
   js-tests:
     runs-on: ubuntu-latest
 

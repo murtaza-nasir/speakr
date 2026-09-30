@@ -27,3 +27,24 @@ To test the service setup behind #409 (no `PRELOAD_MODEL` in the service's
 `.env`), start the stub server with `--set PRELOAD_MODEL=`.
 
 `KEEP_E2E_LOGS=1` keeps Speakr's log and database after the run.
+
+## Browser smoke test
+
+`test_browser_smoke.py` logs in through the login form and opens `/`, `/account`, `/admin`, `/inquire` and a recording (when one exists) in headless Chromium. It fails on any same-origin response of 400 or higher, any JavaScript error, template text left in the page (`${` or `{{`), or a header whose user menu does not open with its entries. The API-level tests never render a page; this is the check for regressions such as a missing vendor file or a template that Vue cannot compile.
+
+It runs in two places:
+
+- `test.yml`, job `browser-smoke`: Speakr from source via `run_speakr.py`, after `PRODUCTION=1 python scripts/download_offline_deps.py`, exactly as the image build downloads the vendor files.
+- `docker-publish.yml`, job `smoke-lite`: the lite image, built for amd64 and started with `smoke_env.py`'s settings, before either image is pushed.
+
+By hand (Speakr running at the URL, with Playwright installed):
+
+```bash
+python tests/e2e/smoke_env.py > smoke.env                      # for docker run --env-file
+python tests/e2e/run_speakr.py --port 8899 &                   # or: from source
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
+  pytest tests/e2e/test_browser_smoke.py -q --noconftest -rs
+```
+
+`--noconftest` keeps the repository's `conftest.py`, which imports the app, out of a run that only needs Playwright.
+
