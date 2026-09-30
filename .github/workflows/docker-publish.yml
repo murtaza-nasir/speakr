@@ -60,8 +60,70 @@ jobs:
           TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
         run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
 
-  build:
+  smoke-lite:
+    # Build the lite image for amd64 into the local daemon and open every page
+    # of it in a browser (tests/e2e/test_browser_smoke.py) before anything is
+    # pushed. The build jobs below wait for this job, so a broken image is
+    # never published. It shares the GitHub Actions build cache with them.
     needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo docker image prune -af
+          df -h /
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build lite image (amd64, local)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: speakr:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PRODUCTION=1
+            LIGHTWEIGHT=1
+
+      - name: Start the image with the example settings
+        run: |
+          python3 tests/e2e/smoke_env.py > smoke.env
+          docker run -d --name speakr-smoke -p 8899:8899 --env-file smoke.env speakr:smoke
+          for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
+          curl -fs -o /dev/null http://127.0.0.1:8899/login
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install Playwright
+        run: |
+          pip install pytest playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Browser smoke test against the image
+        env:
+          SPEAKR_BROWSER_SMOKE: '1'
+          SPEAKR_BASE_URL: http://127.0.0.1:8899
+        run: pytest tests/e2e/test_browser_smoke.py -q -p no:cacheprovider --noconftest -rs
+
+      - name: Container log
+        if: always()
+        run: docker logs speakr-smoke 2>&1 | tail -n 200 || true
+
+  build:
+    needs: [test, smoke-lite]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -125,7 +187,7 @@ jobs:
             PRODUCTION=1
 
   build-lite:
-    needs: test
+    needs: [test, smoke-lite]
     runs-on: ubuntu-latest
     permissions:
       contents: read
