@@ -3207,6 +3207,7 @@ def upload_incognito():
         max_speakers = request.form.get('max_speakers')
         hotwords = request.form.get('hotwords', '').strip() or None
         initial_prompt = request.form.get('initial_prompt', '').strip() or None
+        transcription_model = request.form.get('transcription_model', '').strip() or None
         auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
 
         # Convert to int if provided
@@ -3237,7 +3238,8 @@ def upload_incognito():
             max_speakers=max_speakers,
             hotwords=hotwords,
             initial_prompt=initial_prompt,
-            user=current_user
+            user=current_user,
+            transcription_model=transcription_model
         )
 
         if result.get('error'):
@@ -4637,12 +4639,17 @@ def bulk_reprocess():
                         continue
                     job_type = 'reprocess_summary'
 
-                # Queue the job
+                # Queue the job. A transcription reprocess gets the recording's
+                # resolved model, hotwords and speaker hints, as a single
+                # reprocess and API v1 batch transcribe do.
+                params = {'user_id': current_user.id}
+                if job_type == 'reprocess_transcription':
+                    params = {**resolve_transcription_params(recording), **params}
                 job_queue.enqueue(
                     user_id=current_user.id,
                     recording_id=recording.id,
                     job_type=job_type,
-                    params={'user_id': current_user.id}
+                    params=params
                 )
 
                 queued_ids.append(recording_id)

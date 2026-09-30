@@ -79,6 +79,20 @@ def cosine_similarity(a, b):
     return dot / (na * nb)
 
 
+def default_transcription_model():
+    """The model an upload gets with no tag, folder or per-upload choice.
+
+    The probe sends the same one, so it tests the configuration recordings
+    actually use and never depends on the service's own default (#409).
+    """
+    try:
+        from src.services.transcription_defaults import resolve_transcription_model
+        return resolve_transcription_model(None)
+    except Exception as e:
+        logger.debug(f"Could not resolve the default transcription model: {e}")
+        return None
+
+
 def backend_fingerprint():
     """Identify the configured backend well enough to notice reconfiguration.
 
@@ -94,7 +108,10 @@ def backend_fingerprint():
         parts = [
             registry.get_active_connector_name() or '',
             str(getattr(connector, 'base_url', '') or ''),
-            str(getattr(connector, 'model', '') or ''),
+            # The model the probe sends. Without an admin default this is the
+            # connector's own model, as before, so stored fingerprints stay
+            # valid; choosing a default model triggers one fresh probe.
+            str(default_transcription_model() or getattr(connector, 'model', '') or ''),
         ]
     except Exception as e:
         logger.debug(f"Could not fingerprint the transcription backend: {e}")
@@ -142,6 +159,7 @@ def probe_backend():
                 diarize=True,
                 min_speakers=1,
                 max_speakers=1,
+                model=default_transcription_model(),
             ))
     except Exception as e:
         raise CanaryUnavailable(f'transcription of the canary failed: {e}')
@@ -236,7 +254,7 @@ def check_voice_embeddings(app, force=False):
     try:
         vector = probe_backend()
     except CanaryUnavailable as e:
-        logger.warning(f'Voice embedding check could not run: {e}')
+        logger.warning(canary_failure_message(e))
         # Leave any existing reference and its status untouched. A backend
         # that is down is not a backend that changed.
         status = get_status(app)
@@ -366,6 +384,30 @@ def _clear_notification(app):
         resolve(KIND_VOICE_EMBEDDING_CHANGED)
     except Exception as e:
         logger.warning('Could not clear the voice embedding notification: %s', e)
+
+
+def canary_failure_message(error):
+    """Log text for a check that could not run: what it was, and what to do.
+
+    The connector logs the failed request as an error on its own; without
+    this the line reads like a failed recording.
+    """
+    detail = str(error)
+    message = (
+        f"Voice embedding check could not run: {detail}. This came from the "
+        f"voice embedding check, which sends the bundled test clip "
+        f"{CANARY_FILENAME} to the transcription service; no recording was "
+        f"affected and nothing was changed."
+    )
+    lowered = detail.lower()
+    if 'invalid model size' in lowered or ("model" in lowered and "''" in detail):
+        message += (
+            " The service has no default model: set PRELOAD_MODEL (or "
+            "DEFAULT_MODEL on whisperx-asr-service 0.4.2 and later) on the ASR "
+            "service, or choose a default transcription model in Speakr's admin "
+            "settings."
+        )
+    return message
 
 
 def _spaces(fn):

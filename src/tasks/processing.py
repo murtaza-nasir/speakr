@@ -2561,7 +2561,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             db.session.commit()
 
 
-def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, hotwords=None, initial_prompt=None, user=None):
+def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, hotwords=None, initial_prompt=None, user=None, transcription_model=None):
     """
     Perform transcription without any database operations.
     Used for Incognito Mode where no data is persisted.
@@ -2575,6 +2575,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         hotwords: Optional comma-separated hotwords to bias recognition
         initial_prompt: Optional initial prompt to steer transcription
         user: Optional user object for language/diarization preferences
+        transcription_model: Optional model choice; validated and defaulted the
+            same way as for an upload (the admin default applies when empty)
 
     Returns:
         dict with transcription, title, processing_time, etc.
@@ -2713,13 +2715,19 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             should_chunk = (chunking_service and
                            chunking_service.needs_chunking(actual_filepath, False, connector_specs))
 
+        # Same model an upload would get, so a service without its own default
+        # model works in incognito mode too (#409).
+        from src.services.transcription_defaults import resolve_transcription_model
+        transcription_model = resolve_transcription_model(transcription_model)
+
         current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
 
         if should_chunk:
             # Use chunking for large files
             chunk_result = transcribe_chunks_with_connector(
                 connector, actual_filepath, actual_filename, actual_content_type, language,
-                diarize=should_diarize, hotwords=hotwords, initial_prompt=initial_prompt
+                diarize=should_diarize, hotwords=hotwords, initial_prompt=initial_prompt,
+                transcription_model=transcription_model
             )
 
             if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
@@ -2738,7 +2746,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                     min_speakers=min_speakers,
                     max_speakers=max_speakers,
                     prompt=initial_prompt,
-                    hotwords=hotwords
+                    hotwords=hotwords,
+                    model=transcription_model
                 )
 
                 response = connector.transcribe(request)
