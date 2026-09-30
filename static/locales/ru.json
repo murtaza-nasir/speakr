@@ -1553,7 +1553,13 @@
     "uploadingShort": "загружается",
     "transcribingShort": "расшифровывается",
     "summarizingShort": "резюмируется",
-    "queuedShort": "в очереди"
+    "queuedShort": "в очереди",
+    "joiningShort": "объединяется",
+    "joining": "Объединение",
+    "joiningMessage": "Объединение аудиофайлов...",
+    "processingOnServer": "Обработка на сервере...",
+    "waitingForJoin": "Загружено, ожидание файлов для объединения: {{count}}",
+    "waitingForJoinPlural": "Загружено, ожидание файлов для объединения: {{count}}"
   },
   "promptVariables": {
     "title": "Переменные подсказки",

@@ -109,7 +109,7 @@ export function useUpload(state, utils) {
         const group = failedItem.join.group;
         for (const item of uploadQueue.value) {
             if (item === failedItem || !item.join || item.join.group !== group) continue;
-            if (['ready', 'uploading', 'completed'].includes(item.status)) {
+            if (['ready', 'uploading', 'pending', 'completed'].includes(item.status)) {
                 item.joinCancelled = true;
                 item.status = 'failed';
                 item.error = message;
@@ -684,12 +684,16 @@ export function useUpload(state, utils) {
             const sendUpload = (csrfToken) => new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
 
+                fileItem.serverProcessing = false;
                 xhr.upload.onprogress = (e) => {
                     if (e.lengthComputable) {
                         // Map upload progress to 5-90% range
                         fileItem.progress = Math.round(5 + (e.loaded / e.total) * 85);
                     }
                 };
+                // Every byte is sent; the server now checks and converts the
+                // file before answering, which can take minutes.
+                xhr.upload.onload = () => { fileItem.serverProcessing = true; };
 
                 xhr.onload = () => {
                     const contentType = xhr.getResponseHeader('content-type') || '';
@@ -756,6 +760,7 @@ export function useUpload(state, utils) {
                 data = await uploadFileInSlices(fileItem.file, formData, {
                     onProgress: (fraction) => {
                         fileItem.progress = Math.round(5 + fraction * 85);
+                        fileItem.serverProcessing = fraction >= 1;
                     },
                     onXhr: (xhr) => { fileItem._xhr = xhr; },
                 });
@@ -777,8 +782,11 @@ export function useUpload(state, utils) {
             // One part of a join is stored; the part that completes the group
             // gets the recording back.
             if (data.join_pending) {
-                fileItem.status = 'completed';
+                // Stays active until the rest of its join arrives.
+                fileItem.status = 'pending';
                 fileItem.progress = 100;
+                fileItem.serverProcessing = false;
+                fileItem.joinWaiting = { received: data.received, total: data.total };
                 return;
             }
             if (fileItem.join) {

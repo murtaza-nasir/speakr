@@ -3267,6 +3267,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     // Prefer active jobs over completed/failed
+                    // A merge job (joining uploaded files, or merging recordings)
+                    // runs in the transcription queue but is not transcribing yet.
+                    const isJoining = job.job_type === 'merge' && unifiedStatus === 'transcribing';
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
                         items.set(key, {
                             id: key,
@@ -3275,8 +3278,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             clientId: null,
                             title: job.recording_title || 'Untitled',
                             status: unifiedStatus,
-                            progress: unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null),
+                            statusLabel: isJoining ? t('progressQueue.joining') : null,
+                            progress: isJoining ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
                             progressMessage: unifiedStatus === 'queued' ? `#${job.position || '?'} in queue` :
+                                             isJoining ? t('progressQueue.joiningMessage') :
                                              unifiedStatus === 'transcribing' ? 'Transcribing audio...' :
                                              unifiedStatus === 'summarizing' ? 'Generating summary...' :
                                              unifiedStatus === 'completed' ? 'Done' : 'Failed',
@@ -3304,7 +3309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if (upload.status === 'uploading') {
                                 existing.status = 'uploading';
                                 existing.progress = upload.progress || 0;
-                                existing.progressMessage = 'Uploading...';
+                                existing.progressMessage = upload.serverProcessing ? t('progressQueue.processingOnServer') : 'Uploading...';
                                 existing.title = upload.displayName || upload.file?.name || existing.title;
                             }
                             continue;
@@ -3318,7 +3323,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     if (upload.status === 'uploading') {
                         unifiedStatus = 'uploading';
-                        progressMsg = 'Uploading...';
+                        // The bytes are sent; the server is checking and
+                        // converting the file before it answers.
+                        progressMsg = upload.serverProcessing ? t('progressQueue.processingOnServer') : 'Uploading...';
+                    } else if (upload.status === 'pending' && upload.joinWaiting) {
+                        unifiedStatus = 'queued';
+                        progressVal = 100;
+                        const waitingFor = upload.joinWaiting.total - upload.joinWaiting.received;
+                        progressMsg = waitingFor > 0
+                            ? t(waitingFor === 1 ? 'progressQueue.waitingForJoin' : 'progressQueue.waitingForJoinPlural', { count: waitingFor })
+                            : t('progressQueue.joiningMessage');
                     } else if (upload.status === 'pending') {
                         unifiedStatus = 'queued';
                         progressVal = 100;

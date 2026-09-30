@@ -1553,7 +1553,13 @@
     "uploadingShort": "uploading",
     "transcribingShort": "transcribing",
     "summarizingShort": "summarizing",
-    "queuedShort": "queued"
+    "queuedShort": "queued",
+    "joiningShort": "joining",
+    "joining": "Joining",
+    "joiningMessage": "Joining audio files...",
+    "processingOnServer": "Processing on server...",
+    "waitingForJoin": "Uploaded, waiting for {{count}} more file to join",
+    "waitingForJoinPlural": "Uploaded, waiting for {{count}} more files to join"
   },
   "promptVariables": {
     "title": "Prompt variables",

@@ -1553,7 +1553,13 @@
     "uploadingShort": "subiendo",
     "transcribingShort": "transcribiendo",
     "summarizingShort": "resumiendo",
-    "queuedShort": "en cola"
+    "queuedShort": "en cola",
+    "joiningShort": "uniendo",
+    "joining": "Uniendo",
+    "joiningMessage": "Uniendo los archivos de audio...",
+    "processingOnServer": "Procesando en el servidor...",
+    "waitingForJoin": "Subido, esperando {{count}} archivo más para unir",
+    "waitingForJoinPlural": "Subido, esperando {{count}} archivos más para unir"
   },
   "promptVariables": {
     "title": "Variables del prompt",

@@ -1553,7 +1553,13 @@
     "uploadingShort": "个正在上传",
     "transcribingShort": "个正在转录",
     "summarizingShort": "个正在生成摘要",
-    "queuedShort": "个排队中"
+    "queuedShort": "个排队中",
+    "joiningShort": "合并中",
+    "joining": "合并中",
+    "joiningMessage": "正在合并音频文件...",
+    "processingOnServer": "正在服务器上处理...",
+    "waitingForJoin": "已上传，等待另外 {{count}} 个文件以便合并",
+    "waitingForJoinPlural": "已上传，等待另外 {{count}} 个文件以便合并"
   },
   "promptVariables": {
     "title": "提示变量",

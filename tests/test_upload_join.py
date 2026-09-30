@@ -440,3 +440,39 @@ def test_a_lost_response_for_a_sliced_part_is_answered_on_retry(ctx):
     finally:
         db.session.delete(db.session.get(RecordingSession, session.id))
         db.session.commit()
+
+
+# ------------------------------------------------------------ conversion
+
+def test_audio_parts_skip_conversion_but_video_parts_do_not(ctx):
+    """The merge re-encodes every part, so converting an audio part at upload
+    only delays the response; a video part still has its audio extracted."""
+    user = _user()
+    c = _client(user)
+
+    def _convert(filepath, **kwargs):
+        r = MagicMock()
+        r.output_path = filepath
+        r.was_converted = r.was_compressed = False
+        return r
+
+    def _probe(video):
+        return {"has_video": video, "audio_codec": "aac", "video_codec": "h264" if video else None, "duration": 60.0}
+
+    with _upload_mocks(ctx):
+        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.api.recordings.get_codec_info", return_value=_probe(False)):
+            _part(c, _group(), 0, 2, name="long.m4a")
+        assert convert.call_count == 0
+
+        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.api.recordings.get_codec_info", return_value=_probe(True)), \
+             patch("src.api.recordings.VIDEO_RETENTION", False):
+            _part(c, _group(), 0, 2, name="talk.mp4")
+        assert convert.call_count == 1
+
+        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.api.recordings.get_codec_info", return_value=_probe(False)):
+            data = {"file": (io.BytesIO(os.urandom(512)), "single.m4a")}
+            r = c.post("/upload", data=data, content_type="multipart/form-data")
+        assert r.status_code == 202 and convert.call_count == 1

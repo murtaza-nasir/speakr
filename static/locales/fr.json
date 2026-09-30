@@ -1553,7 +1553,13 @@
     "uploadingShort": "en cours d'envoi",
     "transcribingShort": "en transcription",
     "summarizingShort": "en résumé",
-    "queuedShort": "en attente"
+    "queuedShort": "en attente",
+    "joiningShort": "en assemblage",
+    "joining": "Assemblage",
+    "joiningMessage": "Assemblage des fichiers audio...",
+    "processingOnServer": "Traitement sur le serveur...",
+    "waitingForJoin": "Téléversé, en attente de {{count}} autre fichier à assembler",
+    "waitingForJoinPlural": "Téléversé, en attente de {{count}} autres fichiers à assembler"
   },
   "promptVariables": {
     "title": "Variables de l'invite",

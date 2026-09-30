@@ -1553,7 +1553,13 @@
     "uploadingShort": "enviando",
     "transcribingShort": "transcrevendo",
     "summarizingShort": "resumindo",
-    "queuedShort": "na fila"
+    "queuedShort": "na fila",
+    "joiningShort": "unindo",
+    "joining": "Unindo",
+    "joiningMessage": "Unindo os arquivos de áudio...",
+    "processingOnServer": "Processando no servidor...",
+    "waitingForJoin": "Enviado, aguardando mais {{count}} arquivo para unir",
+    "waitingForJoinPlural": "Enviado, aguardando mais {{count}} arquivos para unir"
   },
   "promptVariables": {
     "hintReprocess": "Estes valores são substituídos nos espaços reservados do prompt resolvido. As edições aqui são salvas na gravação. Valores vazios são substituídos por uma string vazia. Até 8.000 caracteres por valor, 32.000 no total entre todas as variáveis.",
