@@ -26,7 +26,7 @@ function ensureVue() {
     if (window.Vue) return Promise.resolve();
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = '/static/vendor/js/vue.global.prod.js';
+        script.src = '/static/vendor/js/vue.global.js'; // the build saves the production Vue under this name
         script.onload = resolve;
         script.onerror = reject;
         document.head.appendChild(script);
