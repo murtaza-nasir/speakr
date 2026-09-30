@@ -266,10 +266,12 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
             payload = response.json()
             status = (payload.get("status") or "").upper()
             if status in ("SUCCESS", "COMPLETED"):
-                return self._result(
-                    payload.get("text") or "", self._segments(payload.get("segments") or []),
-                    model, payload,
-                )
+                segments = self._segments(payload.get("segments") or [])
+                text = (payload.get("text") or "").strip()
+                if not text and not segments:
+                    # A finished task with nothing in it is not a transcript (#406).
+                    raise TranscriptionError(f"Mossland task {task_id} finished without any transcript text")
+                return self._result(text, segments, model, payload)
             if status in ("FAILED", "ERROR"):
                 detail = payload.get("error") or payload.get("message") or status
                 if isinstance(detail, dict):
