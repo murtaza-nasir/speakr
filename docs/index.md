@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.7-alpha: archive, joining files at upload, and rebuilt voice matching"
-    Archiving now hides a recording from the main list without deleting anything, and the state previously called "Archived" (audio removed by retention, transcript kept) is now **Audio removed**, which you can also apply to one recording by hand. Several files can be joined into one recording directly in the upload dialog. Voice profiles are rebuilt from per-recording samples, kept separately per embedding model, with self-calibrating thresholds. The Identify Speakers dialog is rebuilt, and AI title instructions are configurable per tag, folder, user and deployment. Database changes migrate automatically; no configuration changes are required.
+!!! success "Latest Release: v0.10.8-alpha: startup model fix for whisperx-asr-service"
+    Fixes "Invalid model size ''" at startup with whisperx-asr-service when `PRELOAD_MODEL` is not set (#409): the configured default transcription model is now sent with every request, including the voice embedding check. Incognito mode and bulk reprocessing use the configured model settings, and the admin account is created from the example configuration unchanged. No configuration changes are required.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.7-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.8-alpha) for details.
 
 ## Quick Navigation
 
@@ -127,6 +127,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.8-alpha - Startup model fix for whisperx-asr-service"
+    No database or configuration changes are required.
+
+    - **"Invalid model size ''" at startup (#409)** - The configured default transcription model is now sent with the voice embedding check, as with an upload.
+    - **Model settings** - Incognito mode and bulk reprocessing use the configured model, hotwords and speaker counts; empty model names are never sent.
+    - **Example admin address** - A container started from an unchanged example configuration no longer stops on `admin@example.com`.
+    - **Tests for the documented setup** - Speakr and whisperx-asr-service are tested from their documented settings in CI.
 
 !!! info "Version 0.10.7-alpha - Archive, joining files at upload, voice matching, and configurable titles"
     Database tables and columns are added automatically; no configuration changes are required.
