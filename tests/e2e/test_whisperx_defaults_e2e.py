@@ -108,10 +108,6 @@ def speakr():
             "TEXT_MODEL_BASE_URL": llm.url,
             "TEXT_MODEL_API_KEY": "e2e",
             "PYTHONUNBUFFERED": "1",
-            # The example's admin address is rejected by the domain check (see
-            # test_the_example_admin_account_is_created); skip the check so the
-            # rest of the documented setup can be tested.
-            "SKIP_EMAIL_DOMAIN_CHECK": "true",
         })
         for d in ("uploads", "exports", "auto-process"):
             os.makedirs(os.path.join(work, d), exist_ok=True)
@@ -246,10 +242,6 @@ def test_neither_service_logged_an_error(speakr, admin):
         assert not service_errors, "whisperx-asr-service logged errors:\n" + "\n".join(service_errors[:40])
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "config/env.whisperx.example sets ADMIN_EMAIL=admin@example.com; example.com publishes a null MX, so "
-    "scripts/docker_create_admin.py rejects it and docker-entrypoint.sh (set -e) stops. Remove this marker "
-    "once the example uses an address that passes, or sets SKIP_EMAIL_DOMAIN_CHECK."))
 def test_the_example_admin_account_is_created():
     """The example's admin settings, exactly as a user copies them."""
     work = tempfile.mkdtemp(prefix="speakr-e2e-admin-")

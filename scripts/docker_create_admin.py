@@ -50,10 +50,12 @@ def create_admin_user_from_env():
         print("Error: Username must be at least 3 characters long.")
         sys.exit(1)
     
-    # Validate email (skip DNS/MX check if SKIP_EMAIL_DOMAIN_CHECK=true)
-    skip_domain_check = os.environ.get('SKIP_EMAIL_DOMAIN_CHECK', 'false').lower() == 'true'
+    # Validate the address format only. The administrator chose this address
+    # in the environment, and a domain that does not receive mail (such as
+    # the example.com placeholder in the example configuration) must not stop
+    # the container from starting. Self-registration keeps the full check.
     try:
-        validate_email(email, check_deliverability=not skip_domain_check)
+        validate_email(email, check_deliverability=False)
     except EmailNotValidError as e:
         print(f"Error: Invalid email: {str(e)}")
         sys.exit(1)
