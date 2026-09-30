@@ -30,7 +30,7 @@
                     <button v-if="!selectionMode && recordings.length > 0"
                             @click="enterSelectionMode"
                             class="w-9 h-9 flex items-center justify-center bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:opacity-80 transition-opacity"
-                            title="Select multiple">
+                            :title="t('bulkActions.selectMultipleHint')">
                         <i class="fas fa-list-check"></i>
                     </button>
                     <button v-if="selectionMode"
@@ -416,7 +416,8 @@
                     <div class="recording-group">
                         <div v-for="recording in group.items"
                              :key="recording.id"
-                             @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
+                             @mousedown="$event.shiftKey && $event.preventDefault()"
+                             @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
                              :class="[
                                  'recording-row relative px-3 py-2.5 cursor-pointer transition-colors',
                                  selectionMode && isSelected(recording.id)
@@ -430,12 +431,12 @@
                                  the title or change card heights when the
                                  user toggles selection mode. -->
                             <div v-if="selectionMode"
-                                 @click.stop="toggleSelection(recording.id)"
+                                 @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)"
                                  class="absolute top-2 right-2 z-10">
                                 <input type="checkbox"
                                        :checked="isSelected(recording.id)"
                                        class="selection-checkbox"
-                                       @click.stop="toggleSelection(recording.id)">
+                                       @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)">
                             </div>
                             <!-- Title and Status Row -->
                             <div class="flex items-center justify-between mb-1"

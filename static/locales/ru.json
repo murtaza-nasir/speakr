@@ -392,7 +392,8 @@
     "exitSelection": "Выйти из режима выбора",
     "reprocess": "Повторить",
     "selectedCount": "Выбрано: {{count}}",
-    "star": "Избранное"
+    "star": "Избранное",
+    "selectMultipleHint": "Выбрать несколько (или Ctrl-щелчок / Shift-щелчок по записям в списке)"
   },
   "bulkReprocessModal": {
     "fullTranscription": "Полная транскрипция",

@@ -392,7 +392,8 @@
     "exitSelection": "退出选择模式",
     "reprocess": "重新处理",
     "selectedCount": "已选择 {{count}} 项",
-    "star": "加星标"
+    "star": "加星标",
+    "selectMultipleHint": "多选（或在列表中按住 Ctrl / Shift 点击录音）"
   },
   "bulkReprocessModal": {
     "fullTranscription": "完整转录",

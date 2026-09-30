@@ -392,7 +392,8 @@
     "exitSelection": "Quitter le mode sélection",
     "reprocess": "Retraiter",
     "selectedCount": "{{count}} sélectionnés",
-    "star": "Favoris"
+    "star": "Favoris",
+    "selectMultipleHint": "Sélection multiple (ou Ctrl-clic / Maj-clic sur les enregistrements de la liste)"
   },
   "bulkReprocessModal": {
     "fullTranscription": "Transcription complète",
