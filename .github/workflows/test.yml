@@ -57,6 +57,67 @@ jobs:
           TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
         run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
 
+  # Speakr and whisperx-asr-service set up exactly as their docs describe
+  # (config/env.whisperx.example; the service's docker-compose.yml plus its
+  # SETUP_GUIDE .env block), talking over HTTP. The service runs its real code
+  # on stand-in ML packages, so this needs no GPU, secrets or model downloads.
+  # It would have caught #409. Also checks that the model rules vendored in
+  # tests/contract still match the service's own code.
+  e2e-whisperx-defaults:
+    runs-on: ubuntu-latest
+    env:
+      WHISPERX_REF: ${{ vars.WHISPERX_REF || 'main' }}
+
+    steps:
+      - name: Checkout Speakr
+        uses: actions/checkout@v5
+
+      - name: Checkout whisperx-asr-service
+        uses: actions/checkout@v5
+        with:
+          repository: murtaza-nasir/whisperx-asr-service
+          ref: ${{ env.WHISPERX_REF }}
+          path: whisperx
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pytest
+          python -m venv /tmp/wxv
+          /tmp/wxv/bin/pip install -r whisperx/tests/requirements-ci.txt
+
+      - name: Start whisperx-asr-service (documented settings, stand-in models)
+        run: |
+          /tmp/wxv/bin/python whisperx/tests/e2e/stub_server.py --port 9000 \
+            --env-file whisperx/tests/defaults/minimal.env > /tmp/whisperx.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:9000/health && break; sleep 1; done
+          curl -fs http://127.0.0.1:9000/health
+
+      - name: Contract - vendored model rules match the service
+        env:
+          WHISPERX_REPO: whisperx
+          WHISPERX_PYTHON: /tmp/wxv/bin/python
+        run: pytest tests/contract -q -p no:cacheprovider
+
+      - name: End to end with the documented settings
+        env:
+          SPEAKR_E2E: '1'
+          WHISPERX_URL: http://127.0.0.1:9000
+          WHISPERX_LOG: /tmp/whisperx.log
+        run: pytest tests/e2e -q -p no:cacheprovider -rxs
+
+      - name: Service log
+        if: always()
+        run: tail -n 200 /tmp/whisperx.log || true
+
   js-tests:
     runs-on: ubuntu-latest
 
