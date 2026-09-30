@@ -2736,6 +2736,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
             const speakerModalComposable = useSpeakerModal(state, utils);
 
+            // Recording ids in the order the sidebar shows them, for
+            // Shift-click span selection.
+            const visibleRecordingIds = computed(() =>
+                groupedRecordings.value.flatMap(group => group.items.map(r => r.id)));
+
             const groupedRecordings = computed(() => {
                 const groups = {};
                 const groupDates = {}; // Track the most recent date in each group
@@ -4371,6 +4376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isMobileDevice,
                 processedTranscription,
                 groupedRecordings,
+                visibleRecordingIds,
                 filteredAvailableTags,
                 filteredTagsForFilter,
                 filteredSpeakersForFilter,

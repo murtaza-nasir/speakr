@@ -392,7 +392,8 @@
     "exitSelection": "Exit selection mode",
     "reprocess": "Reprocess",
     "selectedCount": "{{count}} selected",
-    "star": "Star"
+    "star": "Star",
+    "selectMultipleHint": "Select multiple (or Ctrl-click / Shift-click recordings in the list)"
   },
   "bulkReprocessModal": {
     "fullTranscription": "Full Transcription",

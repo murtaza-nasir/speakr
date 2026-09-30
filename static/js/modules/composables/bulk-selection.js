@@ -3,6 +3,8 @@
  * Handles multi-select functionality for recordings
  */
 
+import { applyListClick } from '../utils/selection-range.js';
+
 const { computed } = Vue;
 
 export function useBulkSelection({
@@ -29,14 +31,45 @@ export function useBulkSelection({
     };
 
     // Methods
+    // The last recording clicked in selection mode; Shift-click selects
+    // the span from here to the clicked recording.
+    let selectionAnchorId = null;
+
     const enterSelectionMode = () => {
         selectionMode.value = true;
         selectedRecordingIds.value = new Set();
+        selectionAnchorId = null;
     };
 
     const exitSelectionMode = () => {
         selectionMode.value = false;
         selectedRecordingIds.value = new Set();
+        selectionAnchorId = null;
+    };
+
+    /**
+     * A click on a recording in the sidebar list. Ctrl/Cmd-click toggles one
+     * recording and Shift-click selects a span, entering selection mode when
+     * needed; in selection mode a plain click toggles as before. Returns
+     * false when the click should open the recording instead.
+     * orderedIds: the recording ids in the order the list shows them.
+     */
+    const handleRecordingClick = (recording, event, orderedIds) => {
+        const result = applyListClick({
+            selected: selectedRecordingIds.value,
+            orderedIds: orderedIds || [],
+            anchorId: selectionAnchorId,
+            openId: selectedRecording.value ? selectedRecording.value.id : null,
+            id: recording.id,
+            ctrl: !!(event && (event.ctrlKey || event.metaKey)),
+            shift: !!(event && event.shiftKey),
+            selectionMode: selectionMode.value,
+        });
+        if (!result) return false;
+        if (result.enterMode) selectionMode.value = true;
+        selectedRecordingIds.value = result.selected;
+        selectionAnchorId = result.anchorId;
+        return true;
     };
 
     const toggleSelection = (id) => {
@@ -101,6 +134,7 @@ export function useBulkSelection({
         enterSelectionMode,
         exitSelectionMode,
         toggleSelection,
+        handleRecordingClick,
         selectAll,
         clearSelection,
 

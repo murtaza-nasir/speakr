@@ -392,7 +392,8 @@
     "exitSelection": "Auswahlmodus beenden",
     "reprocess": "Neu verarbeiten",
     "selectedCount": "{{count}} ausgewählt",
-    "star": "Markieren"
+    "star": "Markieren",
+    "selectMultipleHint": "Mehrere auswählen (oder Aufnahmen in der Liste mit Strg-Klick / Umschalt-Klick auswählen)"
   },
   "bulkReprocessModal": {
     "fullTranscription": "Vollständige Transkription",
