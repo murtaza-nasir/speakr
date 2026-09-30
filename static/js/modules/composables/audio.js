@@ -144,6 +144,9 @@ export function useAudio(state, utils) {
     //
     // None of this is exposed on the shared state surface yet; the UI to
     // monitor sync backlog lands in Phase C.
+    // startTime of the crash-recovery session this recording is saved under,
+    // handed to the upload so only that session is cleared afterwards (#407).
+    let currentRecordingSessionStartTime = null;
     let serverSessionId = null;
     let serverSessionUploader = null;
     let serverSessionMimeType = 'audio/webm';
@@ -905,8 +908,9 @@ export function useAudio(state, utils) {
             }
 
             // Start IndexedDB recording session - convert Vue reactive objects to plain objects
+            currentRecordingSessionStartTime = null;
             try {
-                await RecordingDB.startRecordingSession({
+                const savedSession = await RecordingDB.startRecordingSession({
                     mode,
                     notes: recordingNotes.value || '',
                     tags: selectedTagIds.value ? [...selectedTagIds.value] : [], // Convert reactive array to plain array
@@ -921,6 +925,7 @@ export function useAudio(state, utils) {
                     mimeType,
                     incognito: !!(incognitoMode && incognitoMode.value)
                 });
+                currentRecordingSessionStartTime = savedSession ? savedSession.startTime : null;
             } catch (dbError) {
                 console.warn('[Recording] IndexedDB persistence failed, continuing without persistence:', dbError);
             }
@@ -1344,6 +1349,7 @@ export function useAudio(state, utils) {
             recordingId: null,
             clientId: queueClientId,
             fromInProgressRecording: true,  // marker: upload-success handler clears RecordingDB session
+            recordingSessionStartTime: currentRecordingSessionStartTime,  // clear only this session (#407)
             error: null,
             willAutoSummarize: false // Server will tell us via SUMMARIZING status
         });
@@ -1827,6 +1833,7 @@ export function useAudio(state, utils) {
 
             // Restore chunks
             audioChunks.value = recovered.chunks;
+            currentRecordingSessionStartTime = recovered.metadata.startTime || null;
 
             // Create blob URL. Also restore the recording's mime type so the
             // legacy upload path builds the File with the right container

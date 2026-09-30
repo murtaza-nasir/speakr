@@ -287,6 +287,32 @@ export const recoverRecording = async () => {
 };
 
 /**
+ * Clear the saved session only if it is still the one that started at
+ * `startTime` (#407). An upload can finish after the next recording has
+ * started; clearing unconditionally then deleted the new recording's
+ * crash-recovery copy. Returns true when a session was cleared.
+ */
+export const clearRecordingSessionIfStartedAt = (startTime) => serializeSessionWrite(async () => {
+    if (!startTime) return false;
+    try {
+        const db = await initDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const session = await promisifyRequest(objectStore.get('current'));
+        if (!session || session.startTime !== startTime) {
+            console.log('[RecordingDB] Saved session belongs to a newer recording; kept');
+            return false;
+        }
+        await promisifyRequest(objectStore.delete('current'));
+        console.log('[RecordingDB] Recording session cleared');
+        return true;
+    } catch (error) {
+        console.error('[RecordingDB] Failed to clear session:', error);
+        return false;
+    }
+});
+
+/**
  * Clear recording session (after successful upload or discard)
  */
 export const clearRecordingSession = () => serializeSessionWrite(async () => {
