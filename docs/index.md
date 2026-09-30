@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.8-alpha: startup model fix for whisperx-asr-service"
-    Fixes "Invalid model size ''" at startup with whisperx-asr-service when `PRELOAD_MODEL` is not set (#409): the configured default transcription model is now sent with every request, including the voice embedding check. Incognito mode and bulk reprocessing use the configured model settings, and the admin account is created from the example configuration unchanged. No configuration changes are required.
+!!! success "Latest Release: v0.10.9-alpha: header fix for the settings pages"
+    Fixes the empty header on the Account, Admin and Group Management pages in the released image. No configuration changes are required.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.8-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.9-alpha) for details.
 
 ## Quick Navigation
 
@@ -127,6 +127,11 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.9-alpha - Header fix for the settings pages"
+    No database or configuration changes are required.
+
+    - **Settings page header** - The header controls and user menu are shown again on the Account, Admin and Group Management pages.
 
 !!! info "Version 0.10.8-alpha - Startup model fix for whisperx-asr-service"
     No database or configuration changes are required.

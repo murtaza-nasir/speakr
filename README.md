@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.8--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.9--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -212,11 +212,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.8-alpha)
+## Latest Release (v0.10.9-alpha)
+
+**A fix for the empty header on the Account, Admin and Group Management pages.** On pages that do not load Vue themselves, the header controls and user menu were not shown in the released image, because the production build of Vue was requested under a file name that the image does not include. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.9-alpha).**
+
+### v0.10.8-alpha (previous release)
 
 **A fix for "Invalid model size ''" at startup with whisperx-asr-service (#409).** At startup, a short bundled clip is transcribed to identify the voice embedding model, and no model name was sent with that request, so an ASR service without a default model rejected it. The configured default transcription model is now sent, as for an ordinary upload, and with whisperx-asr-service 0.4.2, `large-v3` is used when `PRELOAD_MODEL` is empty. Incognito mode and bulk reprocessing now use the configured model settings, and a container started from an unchanged example configuration no longer stops on the example admin address. New tests start Speakr and whisperx-asr-service from their documented settings, so problems of this kind are caught before a release. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.8-alpha).**
 
-### v0.10.7-alpha (previous release)
+### v0.10.7-alpha
 
 **"Archived" now means something you choose: an archived recording leaves the main list and nothing is deleted.** Archive a recording from the icon next to inbox and star, or several at once from the selection bar; search still finds archived recordings, and the Archived toggle below the search bar shows only them. Archiving is personal, so archiving a recording shared with you hides it from your list only (#394). The state Speakr previously called "Archived", where audio retention deleted the media and kept the transcript, is now called **Audio removed** and has its own quick filter. You can also put a single recording into that state yourself with **Delete audio, keep transcript** (for a video, **Delete video, keep transcript**). If you used the old Archived toggle to find recordings whose audio retention removed, use the Audio removed filter instead.
 
