@@ -224,7 +224,11 @@ COMPUTE_TYPE=int8
 
 ### Model Selection
 
-Models are selected per-recording in Speakr. Available options:
+Speakr sends a model with each request when one is configured: the model chosen at upload, a tag's or folder's default transcription model, or the default transcription model set by an administrator. When none of these is set, the request names no model and the service uses its own default.
+
+On whisperx-asr-service, that default is `PRELOAD_MODEL`, the model it also loads at startup. If `PRELOAD_MODEL` is empty, including when the service's `.env` omits it under Docker Compose, requests that name no model fail with `Invalid model size ''` on service versions before 0.4.2. Either set `PRELOAD_MODEL` (for example `large-v3`) in the service's `.env`, or choose a default transcription model in Speakr's admin settings. From 0.4.2 the service also accepts `DEFAULT_MODEL`, which sets the default without preloading anything, for a GPU shared with other applications.
+
+Available options:
 
 | Model | Quality | Speed | VRAM Required |
 |-------|---------|-------|---------------|

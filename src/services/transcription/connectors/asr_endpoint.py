@@ -169,9 +169,12 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             # distil-medium.en) and switches the loaded Whisper model
             # on demand. The upstream onerahmet/whisper-asr-webservice
             # ignores unknown params, so this is safe in both cases.
-            if request.model:
-                params['model'] = request.model
-                logger.info(f"Using per-request model override: {request.model}")
+            # Never an empty or whitespace name: the service would take it
+            # literally instead of using its own default model.
+            model = self._effective_model(request).strip()
+            if model:
+                params['model'] = model
+                logger.info(f"Using per-request model override: {model}")
 
             content_type = request.mime_type or 'application/octet-stream'
             files = {
@@ -228,7 +231,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             if len(body_excerpt) > 800:
                 body_excerpt = body_excerpt[:800] + '...'
             logger.error(
-                f"ASR request failed with status {e.response.status_code}: {body_excerpt}"
+                f"ASR request for {request.filename!r} failed with status "
+                f"{e.response.status_code}: {body_excerpt}"
             )
             detail = (
                 f"ASR request failed with status {e.response.status_code}: {body_excerpt}"

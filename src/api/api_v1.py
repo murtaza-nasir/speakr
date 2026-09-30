@@ -1925,6 +1925,7 @@ def get_transcription_info():
         'language_detection': True,
         'chunking': False,
     }
+    connector = None
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
@@ -1963,19 +1964,16 @@ def get_transcription_info():
         except Exception:
             models = []
     if not models:
-        from src.config.app_config import (
-            TRANSCRIPTION_MODELS_AVAILABLE,
-            TRANSCRIPTION_MODEL_LABELS,
-        )
-        if TRANSCRIPTION_MODELS_AVAILABLE:
-            labels = TRANSCRIPTION_MODEL_LABELS or []
-            for i, value in enumerate(TRANSCRIPTION_MODELS_AVAILABLE):
-                models.append({
-                    'value': value,
-                    'label': labels[i] if i < len(labels) else value,
-                })
+        # TRANSCRIPTION_MODELS_AVAILABLE paired with TRANSCRIPTION_MODEL_LABELS.
+        from src.config.app_config import TRANSCRIPTION_MODEL_OPTIONS
+        models = [dict(option) for option in TRANSCRIPTION_MODEL_OPTIONS]
 
-    default_model = SystemSetting.get_setting('transcription_default_model', None) or TRANSCRIPTION_MODEL or None
+    # The model a transcription with no tag, folder or request choice uses:
+    # the admin default, else the connector's own configured model.
+    from src.services.transcription_defaults import resolve_transcription_model
+    default_model = (resolve_transcription_model(None)
+                     or (getattr(connector, 'model', None) if connector else None)
+                     or None)
 
     return jsonify({
         'connector': connector_name,

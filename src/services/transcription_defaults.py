@@ -83,7 +83,7 @@ def resolve_transcription_model(value):
         return candidate
 
     default = SystemSetting.get_setting('transcription_default_model', None)
-    return default or None
+    return (default or '').strip() or None
 
 
 def resolve_transcription_params(recording=None, overrides=None, *, tags=None, folder=None, owner=None):
