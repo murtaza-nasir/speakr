@@ -13,6 +13,7 @@ SHARED-DB: every test uses its own users and removes its recordings.
 """
 
 import json
+from contextlib import ExitStack
 import os
 import sys
 import uuid
@@ -32,6 +33,19 @@ from src.services import voice_profiles as vp
 from src.services.recording_state import parse_archived_flag
 
 app.config["WTF_CSRF_ENABLED"] = False
+
+
+def _internal_sharing_on():
+    """Enable internal sharing for the test, whatever the environment says.
+
+    Each module copies ENABLE_INTERNAL_SHARING at import time; CI has no .env,
+    so sharing is off there unless the tests switch it on in every copy.
+    """
+    stack = ExitStack()
+    for name, module in list(sys.modules.items()):
+        if name.startswith("src") and module is not None and hasattr(module, "ENABLE_INTERNAL_SHARING"):
+            stack.enter_context(patch.object(module, "ENABLE_INTERNAL_SHARING", True))
+    return stack
 RNG = np.random.default_rng(11)
 DIM = 256
 _created = []
@@ -58,7 +72,7 @@ class _Client(FlaskClient):
 
 @pytest.fixture
 def ctx():
-    with app.app_context():
+    with app.app_context(), _internal_sharing_on():
         saved = {k: SystemSetting.get_setting(k, None) for k in (vp.SETTING_CURRENT_SPACE, vp.SETTING_LEGACY_SPACE)}
         vp._calibration_cache.clear()
         yield

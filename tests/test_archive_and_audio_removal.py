@@ -9,6 +9,7 @@ SHARED-DB: assertions are scoped to the recordings each test creates.
 """
 
 import json
+from contextlib import ExitStack
 import os
 import sys
 import uuid
@@ -27,6 +28,19 @@ from src.models.sharing import InternalShare, SharedRecordingState
 app.config["WTF_CSRF_ENABLED"] = False
 
 
+def _internal_sharing_on():
+    """Enable internal sharing for the test, whatever the environment says.
+
+    Each module copies ENABLE_INTERNAL_SHARING at import time; CI has no .env,
+    so sharing is off there unless the tests switch it on in every copy.
+    """
+    stack = ExitStack()
+    for name, module in list(sys.modules.items()):
+        if name.startswith("src") and module is not None and hasattr(module, "ENABLE_INTERNAL_SHARING"):
+            stack.enter_context(patch.object(module, "ENABLE_INTERNAL_SHARING", True))
+    return stack
+
+
 _created = []
 
 
@@ -34,7 +48,7 @@ _created = []
 def ctx():
     """App context, and removal of every recording the test created: later
     files (test_cov_admin) assume no eligible completed recordings exist."""
-    with app.app_context():
+    with app.app_context(), _internal_sharing_on():
         yield
         db.session.rollback()
         for rec_id in _created:
