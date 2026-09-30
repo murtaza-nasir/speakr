@@ -6,12 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.2-alpha — security fixes, Flask 3.1, and new features (recommended for all deployments)"
-    Resolves three coordinated security reports (stored XSS via tag color, webhook SSRF via DNS rebinding, and SSO account takeover via an unverified email claim) and moves to Flask 3.1 / Werkzeug 3.1, closing two Werkzeug denial-of-service issues. Adds contextual speaker labelling for engines without voice embeddings and pause/resume for in-app recording.
+!!! success "Latest Release: v0.10.7-alpha: archive, joining files at upload, and rebuilt voice matching"
+    Archiving now hides a recording from the main list without deleting anything, and the state previously called "Archived" (audio removed by retention, transcript kept) is now **Audio removed**, which you can also apply to one recording by hand. Several files can be joined into one recording directly in the upload dialog. Voice profiles are rebuilt from per-recording samples, kept separately per embedding model, with self-calibrating thresholds. The Identify Speakers dialog is rebuilt, and AI title instructions are configurable per tag, folder, user and deployment. Database changes migrate automatically; no configuration changes are required.
 
-    **Action required for some SSO setups:** verified-email enforcement is now on by default. If your identity provider does not send an `email_verified` claim, set `SSO_REQUIRE_VERIFIED_EMAIL=false` before upgrading. All other deployments need no configuration change.
-
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.2-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.7-alpha) for details.
 
 ## Quick Navigation
 
@@ -129,6 +127,15 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.7-alpha - Archive, joining files at upload, voice matching, and configurable titles"
+    Database tables and columns are added automatically; no configuration changes are required.
+
+    - **Archive and Audio removed (#394)** - Archive hides a recording from the main list and deletes nothing, per user like inbox and star. The retention state formerly called "Archived" is now **Audio removed**, with its own quick filter and a manual **Delete audio, keep transcript** action.
+    - **Join files at upload** - With two or more files queued, choose **One recording** to join them in order and transcribe the result once.
+    - **Voice matching rebuilt** - Profiles are built from per-recording samples forming one or more voice variants per person, kept separately per embedding model, with thresholds calibrated from your data.
+    - **Identify Speakers dialog rebuilt (#395)** and **configurable AI title prompts (#400)** at tag, folder, user and admin level.
+    - **Fixes** - SQLAlchemy capped below 2.1 for PostgreSQL (#401), the installed app is draggable again (#402), CSRF failures behind proxies explain themselves (#388), and API v1 deletes now remove media.
 
 !!! info "Version 0.10.0-alpha - JSON 401 for API auth, duplicate-upload fixes, and incognito hardening"
     Backwards compatible; no database changes.
