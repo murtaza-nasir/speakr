@@ -1,0 +1,15 @@
+{#- Applies the saved light/dark mode and color scheme before the first paint.
+    Without it, a page whose theme is applied by Vue after mounting is painted
+    in the light theme first and fades to dark (a white flash on load and
+    between pages). Same rules as initializeDarkMode / applyColorScheme in
+    static/js/modules/composables/ui.js. Include as early in <head> as possible. -#}
+<script>
+  (function () {
+    var root = document.documentElement, mode = null, scheme = null;
+    try { mode = localStorage.getItem('darkMode'); scheme = localStorage.getItem('colorScheme'); } catch (e) {}
+    var dark = mode !== null ? mode === 'true'
+      : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.toggle('dark', dark);
+    if (scheme && scheme !== 'blue') root.classList.add((dark ? 'theme-dark-' : 'theme-light-') + scheme);
+  })();
+</script>

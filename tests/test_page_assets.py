@@ -163,3 +163,22 @@ def test_rendered_pages_embed_the_users_language_before_i18n(german_client, path
     assert data["locale"] == "de" and set(data["translations"]) == {"de", "en"}, path
     # |tojson escapes markup characters, so no translation can end the script.
     assert "</" not in m.group(1), path
+
+
+THEME_INCLUDE = "{% include 'includes/theme_bootstrap.html' %}"
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_theme_is_applied_before_first_paint(page):
+    """Each page sets the dark/theme classes in <head>, before any stylesheet.
+
+    On a page whose theme was set only by Vue after mounting, the first paint
+    was light, and the body's color transition then faded it to dark.
+    """
+    html = _read(page)
+    head = html.split("</head>")[0]
+    applies = THEME_INCLUDE in head or re.search(r"classList\.(add|toggle)\('dark'", head)
+    assert applies, f"{page}: no theme script in <head>"
+    if THEME_INCLUDE in head:
+        first_css = head.find('rel="stylesheet"')
+        assert first_css == -1 or head.find(THEME_INCLUDE) < first_css, f"{page}: theme include after a stylesheet"
