@@ -13,6 +13,7 @@ import threading
 import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
+from src.services.llm_settings import get_temperature
 from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
@@ -3405,13 +3406,16 @@ Note: This is an incognito recording - no data is stored on the server.
 
         current_app.logger.info(f"[Incognito Chat] User {user_id} sending message")
 
+        # Resolved here, in the request context, before the response streams.
+        chat_temperature = get_temperature('chat')
+
         def generate():
             """Stream the chat response."""
             try:
                 response = chat_client.chat.completions.create(
                     model=chat_model,
                     messages=messages,
-                    temperature=0.7,
+                    temperature=chat_temperature,
                     stream=True
                 )
 
@@ -4097,6 +4101,9 @@ Additional context and notes about the meeting:
         user_id = current_user.id
         app = current_app._get_current_object()
 
+        # Resolved here, in the request context, before the response streams.
+        chat_temperature = get_temperature('chat')
+
         def generate():
             # Push app context for entire generator execution
             # This is needed because call_chat_completion checks budget which requires db access
@@ -4106,7 +4113,7 @@ Additional context and notes about the meeting:
                 # Enable streaming with user_id for budget enforcement
                 stream = call_chat_completion(
                     messages=messages,
-                    temperature=0.7,
+                    temperature=chat_temperature,
                     max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
                     stream=True,
                     user_id=user_id,

@@ -20,6 +20,7 @@ from datetime import datetime
 from flask import current_app
 from openai import OpenAI
 
+from src.services.llm_settings import get_temperature
 from src.database import db
 from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
 from src.services.embeddings import process_recording_chunks
@@ -584,13 +585,14 @@ Title:"""
             system_message_content += f" Ensure your response is in {user_output_language}."
 
     try:
+        llm_temperature = get_temperature('title')  # read before the transaction ends
         _end_transaction_before_external_call(recording)
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}
             ],
-            temperature=0.7,
+            temperature=llm_temperature,
             # TITLE_MAX_TOKENS lets reasoning-model users (e.g. Kimi K2) raise
             # the budget so the model has room for hidden thinking tokens
             # before producing the title itself.
@@ -912,13 +914,14 @@ Summarization Instructions:
         current_app.logger.debug(f"=== END SUMMARIZATION DEBUG for recording {recording_id} ===")
 
         try:
+            llm_temperature = get_temperature('summary')  # read before the transaction ends
             _end_transaction_before_external_call(recording)
             completion = call_llm_completion(
                 messages=[
                     {"role": "system", "content": system_message_content},
                     {"role": "user", "content": prompt_text}
                 ],
-                temperature=0.5,
+                temperature=llm_temperature,
                 max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
                 user_id=recording.user_id,
                 operation_type='summarization'
@@ -1182,13 +1185,14 @@ You must respond with valid JSON format only."""
         if user_output_language:
             system_message_content += f"\n\nLanguage Requirement: You MUST generate ALL event titles, descriptions, and locations in {user_output_language}. This is mandatory."
 
+        llm_temperature = get_temperature('event')  # read before the transaction ends
         _end_transaction_before_external_call(recording)
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": event_prompt}
             ],
-            temperature=0.2,
+            temperature=llm_temperature,
             response_format={"type": "json_object"},
             # EVENT_MAX_TOKENS gives reasoning-model users a knob to raise
             # the budget when hidden thinking tokens crowd out the JSON output.
@@ -2831,7 +2835,7 @@ Title:"""
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}
             ],
-            temperature=0.7,
+            temperature=get_temperature('title'),
             # Match the main title-generation path so reasoning-model users
             # have a single knob (TITLE_MAX_TOKENS) that covers both flows.
             max_tokens=int(os.environ.get("TITLE_MAX_TOKENS", "5000"))
@@ -2906,7 +2910,7 @@ Summarization Instructions:
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}
             ],
-            temperature=0.5,
+            temperature=get_temperature('summary'),
             max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
         )
 

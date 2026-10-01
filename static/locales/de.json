@@ -346,7 +346,20 @@
       "title": "Kompatibilität der Stimm-Embeddings"
     },
     "warning": "Warnung",
-    "yes": "Ja"
+    "yes": "Ja",
+    "temperatures": {
+      "heading": "Generierungstemperatur",
+      "description": "Sampling-Temperatur für jede Art von Anfrage an das Sprachmodell, zwischen 0 und 2. Niedrigere Werte ergeben gleichmäßigere Ergebnisse. Bleibt ein Feld leer, gilt der eingebaute Standardwert.",
+      "summary": "Zusammenfassungen",
+      "title": "Titel",
+      "chat": "Chat",
+      "event": "Termine",
+      "reset": "Admin-Wert entfernen",
+      "saved": "Temperaturen gespeichert.",
+      "invalid": "Geben Sie eine Zahl zwischen 0 und 2 ein.",
+      "sourceAdmin": "Aktiv: {{value}} (Admin-Einstellung; Standard {{default}})",
+      "sourceDefault": "Aktiv: {{value}} (Standard)"
+    }
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",

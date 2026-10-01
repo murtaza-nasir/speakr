@@ -750,6 +750,54 @@ def admin_get_user_transcription_stats():
 # --- Transcript Template Routes ---
 
 
+@admin_bp.route('/admin/llm-temperatures', methods=['GET'])
+@login_required
+def admin_get_llm_temperatures():
+    """Effective sampling temperatures, with their source (#411)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    from src.services.llm_settings import temperatures_status
+    return jsonify({'temperatures': temperatures_status()})
+
+
+@admin_bp.route('/admin/llm-temperatures', methods=['POST'])
+@login_required
+def admin_set_llm_temperatures():
+    """Save or clear admin temperatures. Body: {"values": {"summary": 0.2, "chat": null, ...}}.
+
+    A number between 0 and 2 is saved; null or an empty string clears the admin
+    value, so the built-in default applies again.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    from src.services.llm_settings import TEMPERATURES, parse_temperature, setting_key, temperatures_status
+    values = (request.get_json(silent=True) or {}).get('values')
+    if not isinstance(values, dict) or not values:
+        return jsonify({'error': 'values must be an object of temperatures'}), 400
+    unknown = [k for k in values if k not in TEMPERATURES]
+    if unknown:
+        return jsonify({'error': f"Unknown temperature: {', '.join(unknown)}"}), 400
+    parsed = {}
+    for kind, raw in values.items():
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            parsed[kind] = None
+            continue
+        value = parse_temperature(raw)
+        if value is None or isinstance(raw, bool):
+            return jsonify({'error': f'{kind} temperature must be a number between 0 and 2', 'field': kind}), 400
+        parsed[kind] = value
+    for kind, value in parsed.items():
+        key = setting_key(kind)
+        if value is None:
+            SystemSetting.query.filter_by(key=key).delete()
+        else:
+            SystemSetting.set_setting(key, str(value),
+                                      description=f'Sampling temperature for {kind} requests (#411)',
+                                      setting_type='string')
+    db.session.commit()
+    return jsonify({'success': True, 'temperatures': temperatures_status()})
+
+
 @admin_bp.route('/admin/settings', methods=['GET'])
 @login_required
 def admin_get_settings():
