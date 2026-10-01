@@ -18,7 +18,6 @@ DEPENDENCIES = {
         "swagger-ui.css": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css",
     },
     "js": {
-        "tailwind.min.js": "https://cdn.tailwindcss.com/3.4.0",
         "vue.global.js": "https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js",
         "marked.min.js": "https://cdn.jsdelivr.net/npm/marked/marked.min.js",
         "easymde.min.js": "https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js",

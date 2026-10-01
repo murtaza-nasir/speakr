@@ -61,7 +61,6 @@
     <title>Speakr - Audio Transcription & Summarization</title>
     {% include 'includes/loading_overlay.html' %}
     <!-- All dependencies bundled locally for offline support -->
-    <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
@@ -77,24 +76,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icon-180x180.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#2563eb">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    maxHeight: {
-                        '85vh': '85vh',
-                        '90vh': '90vh'
-                    },
-                    colors: {
-                        primary: 'var(--bg-primary)',
-                        secondary: 'var(--bg-secondary)',
-                        accent: 'var(--bg-accent)'
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind utilities, compiled at build time (scripts/build_css.sh). Last in
+         <head> so that, as with the former runtime build, they follow the page's
+         own stylesheets in the cascade. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="loader" class="fixed inset-0 bg-gray-800 flex items-center justify-center z-50">
@@ -192,6 +177,7 @@
     <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
 
     <!-- i18n System -->
+    {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 
     <!-- Initialize i18n immediately with fallback -->

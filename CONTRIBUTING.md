@@ -254,8 +254,12 @@ docker-compose -f docker-compose.dev.yml up -d --build
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+python scripts/download_offline_deps.py   # vendor JavaScript, CSS and fonts
+scripts/build_css.sh                      # static/css/tailwind.css (Linux x64/arm64)
 python src/app.py --debug
 ```
+
+The Tailwind stylesheet is compiled from the templates and scripts. After a change to the Tailwind classes in a template or script, run `scripts/build_css.sh` again, or keep `scripts/build_css.sh --watch` running. Only complete class names written out in the source are compiled; a class name assembled from parts at runtime (for example `bg-${color}-500`) is missing from the stylesheet.
 
 ## What Happens After You Submit a PR?
 

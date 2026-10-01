@@ -61,10 +61,14 @@ def inquire():
     ).first() is not None
 
     # Render the inquire page with user context for theming
+    # The interface language, as on the other pages (it was missing here, so
+    # Inquire always appeared in the browser language).
+    user_language = current_user.ui_language or 'en'
     return render_template('inquire.html',
                          use_asr_endpoint=USE_ASR_ENDPOINT,
                          current_user=current_user,
-                         is_team_admin=is_team_admin)
+                         is_team_admin=is_team_admin,
+                         user_language=user_language)
 
 
 

@@ -1,3 +1,24 @@
+/* Page-to-page navigation: a short cross-fade between same-origin pages in
+   browsers with cross-document View Transitions (Chrome and Edge 126+, Safari
+   18.2+); elsewhere this rule has no effect. styles.css is loaded on every page,
+   and both pages of a navigation have to opt in. In-page changes (modals,
+   the loading overlay) are not affected. */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 150ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+}
+
 body.unloaded {
     opacity: 0;
     transition: opacity 0.5s ease-in-out;

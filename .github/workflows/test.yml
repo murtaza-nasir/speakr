@@ -49,6 +49,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pytest pytest-cov
 
+      - name: Build the Tailwind stylesheet as the image build does
+        run: scripts/build_css.sh
+
       - name: Run test suite
         env:
           # The app tests run against an isolated SQLite DB (see conftest.py).
@@ -123,7 +126,8 @@ jobs:
     # JavaScript errors, leftover template text, or a header whose user menu
     # does not open (tests/e2e/test_browser_smoke.py). Vendor files are
     # downloaded exactly as the Dockerfile does it, in production mode, so a
-    # reference to a file the image lacks fails here.
+    # reference to a file the image lacks fails here. The Tailwind stylesheet
+    # is compiled with the same pinned CLI as the Dockerfile css-stage.
     runs-on: ubuntu-latest
 
     steps:
@@ -141,6 +145,9 @@ jobs:
 
       - name: Download vendor files as the image build does
         run: PRODUCTION=1 python scripts/download_offline_deps.py
+
+      - name: Build the Tailwind stylesheet as the image build does
+        run: scripts/build_css.sh
 
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
