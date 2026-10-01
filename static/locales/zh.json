@@ -346,7 +346,20 @@
       "title": "声纹特征兼容性"
     },
     "warning": "警告",
-    "yes": "是"
+    "yes": "是",
+    "temperatures": {
+      "heading": "生成温度",
+      "description": "向语言模型发送各类请求时使用的采样温度，范围为 0 到 2。数值越低，输出越稳定。留空则使用内置默认值。",
+      "summary": "摘要",
+      "title": "标题",
+      "chat": "聊天",
+      "event": "事件",
+      "reset": "清除管理员设置值",
+      "saved": "温度已保存。",
+      "invalid": "请输入 0 到 2 之间的数字。",
+      "sourceAdmin": "当前：{{value}}（管理员设置；默认 {{default}}）",
+      "sourceDefault": "当前：{{value}}（默认）"
+    }
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",

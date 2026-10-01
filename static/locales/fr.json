@@ -346,7 +346,20 @@
       "title": "Compatibilité des empreintes vocales"
     },
     "warning": "avertissement",
-    "yes": "Oui"
+    "yes": "Oui",
+    "temperatures": {
+      "heading": "Température de génération",
+      "description": "Température d’échantillonnage pour chaque type de requête au modèle de langage, entre 0 et 2. Des valeurs plus basses donnent des résultats plus constants. Laissez un champ vide pour utiliser la valeur par défaut intégrée.",
+      "summary": "Résumés",
+      "title": "Titres",
+      "chat": "Chat",
+      "event": "Événements",
+      "reset": "Effacer la valeur de l’administrateur",
+      "saved": "Températures enregistrées.",
+      "invalid": "Saisissez un nombre entre 0 et 2.",
+      "sourceAdmin": "Utilisée : {{value}} (réglage administrateur ; par défaut {{default}})",
+      "sourceDefault": "Utilisée : {{value}} (par défaut)"
+    }
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",

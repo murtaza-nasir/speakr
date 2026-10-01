@@ -346,7 +346,20 @@
       "title": "Compatibilidad de las incrustaciones de voz"
     },
     "warning": "advertencia",
-    "yes": "Sí"
+    "yes": "Sí",
+    "temperatures": {
+      "heading": "Temperatura de generación",
+      "description": "Temperatura de muestreo para cada tipo de solicitud al modelo de lenguaje, entre 0 y 2. Los valores bajos dan resultados más consistentes. Deje un campo vacío para usar el valor predeterminado integrado.",
+      "summary": "Resúmenes",
+      "title": "Títulos",
+      "chat": "Chat",
+      "event": "Eventos",
+      "reset": "Quitar el valor del administrador",
+      "saved": "Temperaturas guardadas.",
+      "invalid": "Introduzca un número entre 0 y 2.",
+      "sourceAdmin": "En uso: {{value}} (ajuste del administrador; predeterminado {{default}})",
+      "sourceDefault": "En uso: {{value}} (predeterminado)"
+    }
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",

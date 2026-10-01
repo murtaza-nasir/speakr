@@ -346,7 +346,20 @@
       "title": "Voice embedding compatibility"
     },
     "warning": "warning",
-    "yes": "Yes"
+    "yes": "Yes",
+    "temperatures": {
+      "heading": "Generation temperature",
+      "description": "Sampling temperature for each kind of request to the language model, between 0 and 2. Lower values give more consistent output. Leave a field empty to use the built-in default.",
+      "summary": "Summaries",
+      "title": "Titles",
+      "chat": "Chat",
+      "event": "Events",
+      "reset": "Clear the admin value",
+      "saved": "Temperatures saved.",
+      "invalid": "Enter a number between 0 and 2.",
+      "sourceAdmin": "In use: {{value}} (admin setting; default {{default}})",
+      "sourceDefault": "In use: {{value}} (default)"
+    }
   },
   "apiTokens": {
     "activeTokens": "Active Tokens",

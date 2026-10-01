@@ -1011,6 +1011,42 @@
                         </div>
                     </div>
 
+                    <!-- Generation temperatures (#411): admin value, else the built-in
+                         default, per kind of request. -->
+                    <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1" v-text="t('adminDashboard.temperatures.heading')"></h4>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" v-text="t('adminDashboard.temperatures.description')"></p>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div v-for="kind in temperatureKinds" :key="kind">
+                                <label :for="'temperature-' + kind" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" v-text="t('adminDashboard.temperatures.' + kind)"></label>
+                                <div class="flex items-center gap-1">
+                                    <input :id="'temperature-' + kind" type="number" min="0" max="2" step="0.1"
+                                           v-model="temperatureInputs[kind]"
+                                           :placeholder="temperatureStatus[kind] ? String(temperatureStatus[kind].value) : ''"
+                                           class="w-full px-2 py-1 text-sm border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
+                                    <button v-if="temperatureStatus[kind] && temperatureStatus[kind].source === 'admin'"
+                                            type="button" @click="resetTemperature(kind)"
+                                            class="btn btn--icon btn--sm" :title="t('adminDashboard.temperatures.reset')" :aria-label="t('adminDashboard.temperatures.reset')">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                </div>
+                                <p v-if="temperatureStatus[kind]" class="mt-1 text-xs text-[var(--text-muted)]"
+                                   v-text="temperatureSourceText(kind)"></p>
+                            </div>
+                        </div>
+                        <div class="flex justify-end items-center mt-4">
+                            <button @click="saveTemperatures" :disabled="isSavingTemperatures" class="btn btn--primary">
+                                <i v-if="isSavingTemperatures" class="fas fa-spinner fa-spin mr-2"></i>
+                                <i v-else class="fas fa-save mr-2"></i>
+                                ${ isSavingTemperatures ? t('adminDashboard.saving') : t('buttons.saveChanges') }
+                            </button>
+                        </div>
+                        <div v-if="temperatureSaveMessage" class="mt-4">
+                            <div :class="temperatureSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'"
+                                 class="p-3 rounded-md text-sm" v-text="temperatureSaveMessage"></div>
+                        </div>
+                    </div>
+
                     <!-- Contextual speaker labelling: guidance used when a recording has
                          no voice embeddings and speakers are named from the transcript,
                          constrained to the user's saved profiles. Only this guidance is
@@ -2196,6 +2232,10 @@ Summarization Instructions:
                     // Managed by the dedicated contextual-speaker-prompt editor
                     // in the Default Prompts tab.
                     'admin_default_contextual_speaker_prompt',
+                    // Managed by the generation temperature editor in the
+                    // Default Prompts tab (#411).
+                    'llm_temperature_summary', 'llm_temperature_title',
+                    'llm_temperature_chat', 'llm_temperature_event',
                 ]);
                 const displayedSettings = computed(() =>
                     (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key))
@@ -3614,6 +3654,7 @@ Summarization Instructions:
                         contextualSpeakerPrompt.value = cspSetting ? (cspSetting.value || '') : '';
                         const titleSetting = settingsData.find(s => s.key === 'admin_default_title_prompt');
                         defaultTitlePrompt.value = titleSetting ? (titleSetting.value || '') : '';
+                        loadTemperatures();
                     } catch (error) {
                         console.error('Error loading default prompt:', error);
                         promptSaveMessage.value = t('adminDashboard.errors.failedToLoadPrompt');
@@ -3711,6 +3752,84 @@ Summarization Instructions:
                     defaultSummaryPrompt.value = originalDefaultPrompt;
                     promptSaveMessage.value = t('adminDashboard.promptResetMessage');
                     promptSaveError.value = false;
+                };
+
+                // ---- Generation temperatures (#411) ----
+                const temperatureKinds = ['summary', 'title', 'chat', 'event'];
+                const temperatureStatus = ref({});
+                const temperatureInputs = ref({ summary: '', title: '', chat: '', event: '' });
+                const isSavingTemperatures = ref(false);
+                const temperatureSaveMessage = ref('');
+                const temperatureSaveError = ref(false);
+
+                const applyTemperatureStatus = (status) => {
+                    temperatureStatus.value = status || {};
+                    const inputs = {};
+                    temperatureKinds.forEach(kind => {
+                        const st = temperatureStatus.value[kind];
+                        inputs[kind] = st && st.source === 'admin' ? String(st.value) : '';
+                    });
+                    temperatureInputs.value = inputs;
+                };
+
+                const loadTemperatures = async () => {
+                    try {
+                        const response = await fetch('/admin/llm-temperatures');
+                        if (!response.ok) return;
+                        const data = await response.json();
+                        applyTemperatureStatus(data.temperatures);
+                    } catch (error) {
+                        console.error('Error loading temperatures:', error);
+                    }
+                };
+
+                const temperatureSourceText = (kind) => {
+                    const st = temperatureStatus.value[kind];
+                    if (!st) return '';
+                    const key = 'adminDashboard.temperatures.source' + st.source.charAt(0).toUpperCase() + st.source.slice(1);
+                    return t(key, { value: st.value, default: st.default });
+                };
+
+                const postTemperatures = async (values) => {
+                    isSavingTemperatures.value = true;
+                    temperatureSaveMessage.value = '';
+                    temperatureSaveError.value = false;
+                    try {
+                        const response = await fetch('/admin/llm-temperatures', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({ values })
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || 'save failed');
+                        applyTemperatureStatus(data.temperatures);
+                        temperatureSaveMessage.value = t('adminDashboard.temperatures.saved');
+                        setTimeout(() => { temperatureSaveMessage.value = ''; }, 3000);
+                    } catch (error) {
+                        console.error('Error saving temperatures:', error);
+                        temperatureSaveMessage.value = t('adminDashboard.temperatures.invalid');
+                        temperatureSaveError.value = true;
+                    } finally {
+                        isSavingTemperatures.value = false;
+                    }
+                };
+
+                const saveTemperatures = () => {
+                    const values = {};
+                    temperatureKinds.forEach(kind => {
+                        const raw = temperatureInputs.value[kind];
+                        values[kind] = raw === '' || raw === null || raw === undefined ? null : raw;
+                    });
+                    return postTemperatures(values);
+                };
+
+                const resetTemperature = (kind) => {
+                    const values = {};
+                    values[kind] = null;
+                    return postTemperatures(values);
                 };
 
                 const saveDefaultTitlePrompt = async () => {
@@ -4088,6 +4207,8 @@ Summarization Instructions:
                     hintsSaveError,
                     contextualSpeakerPrompt,
                     defaultTitlePrompt, isSavingTitlePrompt, titlePromptSaveMessage, titlePromptSaveError,
+                    temperatureKinds, temperatureStatus, temperatureInputs, isSavingTemperatures, temperatureSaveMessage, temperatureSaveError,
+                    temperatureSourceText, saveTemperatures, resetTemperature,
                     isSavingContextualPrompt,
                     contextualPromptSaveMessage,
                     contextualPromptSaveError,
