@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.9-alpha: header fix for the settings pages"
-    Fixes the empty header on the Account, Admin and Group Management pages in the released image. No configuration changes are required.
+!!! success "Latest Release: v0.10.10-alpha: sidebar multi-select, configurable temperatures, no flicker"
+    Several recordings can be selected in the sidebar with Ctrl-click (Cmd-click) and Shift-click. Generation temperatures can be set in the admin dashboard (#411). A recording started during a previous upload is no longer lost (#407), and pages no longer flicker while they load. No configuration changes are required.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.9-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.10-alpha) for details.
 
 ## Quick Navigation
 
@@ -127,6 +127,15 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.10-alpha - Sidebar multi-select, configurable temperatures, no flicker"
+    No database or configuration changes are required. To run from source, build the stylesheet with `scripts/build_css.sh`.
+
+    - **Sidebar multi-select** - With Ctrl-click (Cmd-click on macOS), a recording is added to or removed from the selection, and with Shift-click, a range is selected.
+    - **Generation temperatures** - Set in the admin dashboard, in the Default Prompts tab (#411).
+    - **Recording safety** - A recording started during a previous upload is no longer lost when that upload finishes (#407).
+    - **No flicker** - Pages are shown styled and translated from the first paint, with a short cross-fade between pages.
+    - **Companion apps** - A new page lists unofficial community apps.
 
 !!! info "Version 0.10.9-alpha - Header fix for the settings pages"
     No database or configuration changes are required.
