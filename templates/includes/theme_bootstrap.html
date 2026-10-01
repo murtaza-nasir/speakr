@@ -11,5 +11,20 @@
       : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     root.classList.toggle('dark', dark);
     if (scheme && scheme !== 'blue') root.classList.add((dark ? 'theme-dark-' : 'theme-light-') + scheme);
+    // Until the stylesheets are loaded, the page background is the browser's
+    // default (white). The background last seen with this mode and scheme is
+    // used for that moment, and saved again once the page has loaded.
+    var key = 'themeBg:' + (dark ? 'dark' : 'light') + ':' + (scheme || 'blue');
+    try {
+      var bg = localStorage.getItem(key);
+      if (bg) {
+        var style = document.createElement('style');
+        style.textContent = 'html{background-color:' + bg.replace(/[^#(),.%\w\s]/g, '') + '}';
+        document.head.appendChild(style);
+      }
+    } catch (e) {}
+    window.addEventListener('load', function () {
+      try { localStorage.setItem(key, getComputedStyle(document.body).backgroundColor); } catch (e) {}
+    });
   })();
 </script>

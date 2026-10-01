@@ -182,3 +182,17 @@ def test_theme_is_applied_before_first_paint(page):
     if THEME_INCLUDE in head:
         first_css = head.find('rel="stylesheet"')
         assert first_css == -1 or head.find(THEME_INCLUDE) < first_css, f"{page}: theme include after a stylesheet"
+
+
+@pytest.mark.parametrize("page", ["index.html", "inquire.html"])
+def test_scripts_follow_the_stylesheets(page):
+    """No external script blocks the parser before the stylesheets are known.
+
+    While such a script was loading, some browsers painted the default white
+    canvas, which showed as a white flash before a dark page.
+    """
+    head = _read(page).split("</head>")[0]
+    last_css = max(m.start() for m in re.finditer(r'rel="stylesheet"', head))
+    early = [m.group(0) for m in re.finditer(r"<script src=[^>]*>|\{% include '[^']*' %\}", head)
+             if m.start() < last_css and "theme_bootstrap" not in m.group(0)]
+    assert not early, f"{page}: before the last stylesheet: {early}"

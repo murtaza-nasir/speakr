@@ -22,22 +22,15 @@
     <title>Inquire Mode - Speakr</title>
         <!-- All dependencies bundled locally for offline support -->
         <!-- All dependencies bundled locally for offline support -->
-<script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
-<script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
-    {% include 'includes/i18n_bootstrap.html' %}
-    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
 
     <!-- Loading overlay to prevent FOUC -->
-    {% include 'includes/loading_overlay.html' %}
 
     <style>
         /* Custom checkbox styling for better visual feedback */
@@ -204,6 +197,15 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <!-- Scripts after every stylesheet, so that no page is painted while a
+         script blocks the parser before the stylesheets are known. -->
+    <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
+    {% include 'includes/i18n_bootstrap.html' %}
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    {% include 'includes/loading_overlay.html' %}
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="inquire-app" v-cloak class="h-full flex flex-col"
