@@ -50,12 +50,19 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
-    body.app-loading { overflow: hidden; }
+    /* The class is set on <html> at once, in <head>, so the page is hidden
+       from the first paint. Set on <body> only, it was added by a timer once
+       <body> existed, and Firefox could paint the mounted page before that:
+       the content appeared for a frame, then disappeared until the page was
+       ready. */
+    html.app-loading body, body.app-loading { overflow: hidden; }
+    html.app-loading body > *:not(.app-loading-overlay),
     body.app-loading > *:not(.app-loading-overlay) { opacity: 0; }
 </style>
 <script>
     // Immediate loading overlay initialization
     (function() {
+        if (!window.__appLoaderHidden) document.documentElement.classList.add('app-loading');
         function initLoadingOverlay() {
             // If the page already finished initialising and hid the loader,
             // adding the overlay now would cover the page for good. This

@@ -196,3 +196,24 @@ def test_scripts_follow_the_stylesheets(page):
     early = [m.group(0) for m in re.finditer(r"<script src=[^>]*>|\{% include '[^']*' %\}", head)
              if m.start() < last_css and "theme_bootstrap" not in m.group(0)]
     assert not early, f"{page}: before the last stylesheet: {early}"
+
+
+def test_main_page_has_no_fixed_color_loading_screen():
+    """The main page had a second loading screen in Tailwind gray-800 (navy).
+
+    It was shown on every load until the app mounted, which showed as a blue
+    flash with any other color scheme. The theme-colored overlay in
+    includes/loading_overlay.html is the only loading screen.
+    """
+    html = _read("index.html")
+    assert 'id="loader"' not in html
+    assert "includes/loading_overlay.html" in html
+
+
+def test_loading_overlay_hides_the_page_from_the_first_paint():
+    """The hiding class is set on <html> in <head>, not by a timer on <body>."""
+    overlay = _read("includes/loading_overlay.html")
+    assert "document.documentElement.classList.add('app-loading')" in overlay
+    assert "html.app-loading body > *:not(.app-loading-overlay)" in overlay
+    loader_js = open(os.path.join(ROOT, "static", "js", "loading.js"), encoding="utf-8").read()
+    assert "document.documentElement.classList.remove('app-loading')" in loader_js
