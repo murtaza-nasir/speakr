@@ -225,111 +225,14 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Latest Release (v0.10.10-alpha)
 
-**Multi-select in the sidebar, configurable temperatures, and no flicker on page load.** With Ctrl-click (Cmd-click on macOS) or Shift-click, several recordings can be selected in the sidebar. The temperatures for summaries, titles, chat and event extraction can be set in the admin dashboard, in the Default Prompts tab (#411). A recording started during a previous upload is no longer lost when that upload finishes (#407). The stylesheet is now built with the image and translations are included in the page, so pages no longer appear unstyled or with translation keys while they load. If you run Speakr from source, build the stylesheet with `scripts/build_css.sh`. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.10-alpha).**
+- Select several recordings in the sidebar with Ctrl-click (Cmd-click on macOS) or Shift-click.
+- Set the temperatures for summaries, titles, chat and event extraction in the admin dashboard, Default Prompts tab (#411).
+- A recording started during an upload is no longer lost when that upload finishes (#407).
+- No flicker on page load: the stylesheet is built with the image, and translations are included in the page.
+- [Unofficial companion apps](#unofficial-companion-apps) for Android and Windows are now listed.
+- Running from source: build the stylesheet with `scripts/build_css.sh`.
 
-### v0.10.9-alpha (previous release)
-
-**A fix for the empty header on the Account, Admin and Group Management pages.** On pages that do not load Vue themselves, the header controls and user menu were not shown in the released image, because the production build of Vue was requested under a file name that the image does not include. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.9-alpha).**
-
-### v0.10.8-alpha
-
-**A fix for "Invalid model size ''" at startup with whisperx-asr-service (#409).** At startup, a short bundled clip is transcribed to identify the voice embedding model, and no model name was sent with that request, so an ASR service without a default model rejected it. The configured default transcription model is now sent, as for an ordinary upload, and with whisperx-asr-service 0.4.2, `large-v3` is used when `PRELOAD_MODEL` is empty. Incognito mode and bulk reprocessing now use the configured model settings, and a container started from an unchanged example configuration no longer stops on the example admin address. New tests start Speakr and whisperx-asr-service from their documented settings, so problems of this kind are caught before a release. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.8-alpha).**
-
-### v0.10.7-alpha
-
-**"Archived" now means something you choose: an archived recording leaves the main list and nothing is deleted.** Archive a recording from the icon next to inbox and star, or several at once from the selection bar; search still finds archived recordings, and the Archived toggle below the search bar shows only them. Archiving is personal, so archiving a recording shared with you hides it from your list only (#394). The state Speakr previously called "Archived", where audio retention deleted the media and kept the transcript, is now called **Audio removed** and has its own quick filter. You can also put a single recording into that state yourself with **Delete audio, keep transcript** (for a video, **Delete video, keep transcript**). If you used the old Archived toggle to find recordings whose audio retention removed, use the Audio removed filter instead.
-
-Several files can now be joined into one recording directly in the upload dialog: choose **One recording**, check the order, and the audio is joined and transcribed once. The recording header groups its actions: inbox, star and archive; folder and tags; a Reprocess menu and Identify Speakers; then share and a ⋯ menu with both deletes. The Identify Speakers dialog is rebuilt for recordings with many detected speakers: speakers sorted by speaking time, short fragments grouped and mergeable, a filter to one speaker's segments, name suggestions from your saved speakers, and a sample button per speaker (#395). AI title instructions are configurable per tag, folder, user and deployment, with the same precedence as the summary prompt (#400). Voice matching is rebuilt: a profile is now a set of samples forming one or more voice variants per person, corrections and removed samples undo themselves completely, profiles are kept separately for each embedding model, short or unlike samples are kept out, and match thresholds calibrate themselves from your data. OpenASR can now return speaker embeddings for voice profiles (#380). Also fixed: SQLAlchemy 2.1 would have broken every PostgreSQL connection on the next image build (#401, fixed by @jjsmackay), the installed desktop app could not be dragged (#402, @jjsmackay), actions behind a proxy that strips the Referer header now report why they fail (#388), and deleting a recording through API v1 now removes its media file. Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.7-alpha).**
-
-### v0.10.6-alpha
-
-**Background work now runs once per installation instead of once per worker, plus large uploads through restrictive proxies and opt-in email notifications.** Speakr's startup code runs in every process that imports the application, so with the three gunicorn workers the image ships, each of them started its own copy of the background machinery. For the job queue that meant a process booting while another was mid-transcription could un-claim that live job and send the same audio to the ASR service again, once per worker, with the transcript still arriving correctly so nothing looked wrong (#384, reported and fixed by @jagd700). The same pattern affected the webhook dispatcher, the watch-folder monitor and the retention and cleanup schedulers. One process is now elected to own each of these, the rest serve requests and enqueue normally, and raising `--workers` for request capacity is safe. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.6-alpha).**
-
-### v0.10.5-alpha
-
-**A database migration fix for long-running installations.** A migration added with SSO support rebuilt the whole user table to change one column, which on databases upgraded from very old versions could fail partway, strand a temporary table and repeat the same error on every startup (#379). Worse, had that rebuild ever completed it would have restored the table from a column list frozen years earlier, discarding later settings such as token budgets, verification state and transcription hints. It now alters only the column it needs, leaving every other column, index and value untouched, and clears the stranded table once it confirms the real one is intact. Startup migrations are additionally serialised across worker processes, grouped so one failure cannot skip the rest, and reported clearly instead of as a single warning line. Upgrading is routine and no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.5-alpha).**
-
-### v0.10.4-alpha
-
-**An agentic Inquire beta, reorganized tag and folder management, and upload workflow improvements.** Inquire gains an opt-in agent mode (`ENABLE_INQUIRE_AGENT=true`) that researches across your recordings with search, listing, and reading tools, shows a live activity timeline, and answers with numbered citations that click through to the exact moment in the recording; each user controls whether their summaries and notes are available to it. Search indexing now chunks along whole speaker turns with timestamps, which is what makes citation deep links land precisely. Tag and folder management merge into one account tab with a single shared card design, and both can now be created directly from the upload dialog with the full editor, including a proper localized language dropdown. The upload button now closes the dialog after queuing, with a new "Upload & Add More" button for the previous behaviour. A community-contributed OpenASR connector adds another local transcription option. Fixes cover the iOS locked-screen recording timer, merged-audio decoding on ASR pipelines, media playback through the service worker, SSO providers with minimal ID tokens, email deliverability headers, and the Identify Speakers save button. Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.4-alpha).**
-
-### v0.10.3-alpha
-
-**A features and fixes release shaped by community reports and contributions.** Meeting dates can now be parsed from filenames on upload, with preset patterns and an optional custom expression, which saves manual edits on batch uploads of older recordings. Auto-export filenames are configurable through a template, and existing exports can be renamed to a new scheme in one pass. Mobile recording gains an external microphone selector for USB and wireless receivers, and a new webhook endpoint accepts uploads directly from the ASR Voice Recorder Android app, both community contributions. The transcription language dropdown now offers the full Whisper language set. On the fixes side, chat responses that hit the output token limit are now flagged instead of being presented as complete, a database-lock failure when editing speakers with Inquire mode enabled is resolved, browser caches self-heal after image upgrades so stale interfaces no longer appear, audio files with non-UTF-8 metadata no longer crash processing, embedding provider compatibility is improved, and transcript downloads keep non-ASCII titles instead of saving as underscores (community contribution). Database columns migrate automatically; no configuration changes are required. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.3-alpha).**
-
-### v0.10.2-alpha (previous release)
-
-**A security and dependency release. Upgrading is recommended for all deployments.** This release resolves three coordinated security reports: a stored cross-site scripting issue reachable by a group administrator through a tag color or name, a webhook server-side request forgery via DNS rebinding, and an SSO account-takeover path through an unverified email claim. Verified-email enforcement for SSO is now on by default; deployments whose identity provider does not send an `email_verified` claim must set `SSO_REQUIRE_VERIFIED_EMAIL=false`. The web framework moves to the Flask 3.1 and Werkzeug 3.1 line, which also closes two Werkzeug multipart denial-of-service issues. New features include contextual speaker labelling for transcription engines that diarize without voice embeddings, and pause/resume for in-app recording. This release also fixes malformed browser recording uploads, restores the API documentation page under the default Content-Security-Policy, and improves transcription-failure error messages. A one-time migration lowercases existing stored email addresses. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.2-alpha).**
-
-### v0.10.1-alpha (previous release)
-
-A security-hardening release. The application refuses the insecure built-in secret key and, when `SECRET_KEY` is unset, generates and persists a strong per-deployment key automatically, so session cookies and password-reset tokens can no longer be forged on installs that never set one. Baseline security headers and a Content-Security-Policy are set by the application itself rather than relying on a hardening reverse proxy. Password-reset links are single-use and are invalidated when the password changes. Markdown-rendered content is sanitized before display, the admin user list no longer exposes the full directory to group administrators, bulk tagging enforces group membership, and logout is a CSRF-protected action.
-
-### v0.10.0-alpha (previous release)
-
-**Fixes API auth responses and duplicate uploads, and hardens incognito mode.** Unauthenticated API requests now return a proper JSON 401 instead of a redirect to the login page, so integrations with a bad token fail loudly rather than mistaking the login page for success (#333). The 200 MB size warning no longer fires when server-side chunk streaming is active; recordings instead warn at 80% of the duration ceiling before the automatic stop (#332). The upload button disables immediately while a recording finalizes and the finalize endpoint is idempotent, so double-clicking can no longer create duplicate recordings, and failed drag-and-drop uploads are no longer copied into the Downloads folder. Incognito recordings now stay entirely in the browser until explicitly processed, even with chunk streaming enabled, keep filenames out of server logs, and survive crash recovery as incognito. No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha).**
-
-### v0.9.7-alpha (previous release)
-
-**A bug fix release for MP3 playback, transcript interaction, and retention.** MP3 uploads missing a Xing/VBR header, which cause stuttering playback in Chromium-based browsers, are now detected and repaired with a lossless in-place remux, so the audio stays bit-identical while gaining a proper header (#325). A transcript segment starting at exactly 0 seconds can be clicked again for seeking and is included in playback highlighting, in the main app and on the public share page (#326). The auto-deletion retention sweep now includes failed recordings rather than keeping them forever, while recordings that are still queued or processing remain protected (#328). No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.7-alpha).**
-
-### v0.9.6-alpha (previous release)
-
-**Adds recording merge, Markdown transcript export, and a one-click backfill export, plus a large internal consolidation of how every ingestion path resolves its transcription settings.** Several recordings can now be combined into one that is re-processed from scratch through the full pipeline (transcription, diarization, summary, and automatic speaker labelling) — useful when a dropped call or an interrupted recording leaves two partial transcripts. You can merge from the sidebar by selecting recordings, reordering them, and choosing which notes and prompt variables to keep (participants and tags are combined), or from the recording view, where a new split button lets you append a just-finished recording onto an existing one directly. The transcript download menu gains a TXT / MD toggle, and when automatic export is enabled, Settings gains an "Export all to disk" button that backfills every processed recording. Under the hood, uploads, reprocessing, merges, recording-session finalization, the share target, and the auto-process folder now resolve language, speaker hints, hotwords, prompt, and model through one shared precedence chain, so a recording created by any path transcribes identically to a standard upload. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.6-alpha).**
-
-### v0.9.5-alpha (previous release)
-
-**Adds a cloud transcription provider, in-app video capture, and recording filters, with a round of security and reliability hardening.** AssemblyAI is now a built-in transcription connector that diarizes and handles multi-hour files in a single job. When video retention is enabled, the System Audio and Mic + System recording modes can also record the shared tab, window, or screen as video that plays back alongside the transcript. The sidebar gains filters for recordings that still need transcription, a summary, or speaker identification (contributed by @fxfitz), alongside fixes for speaker-page dates and voice samples, drifting meeting dates, and pre-upload review seeking, plus enforced auth rate limits, an access check on bulk toggle, webhook delivery re-validation, and bounded FFmpeg timeouts. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.5-alpha).**
-
-### v0.9.4-alpha (previous release)
-
-**A feature release focused on transcription control, sharing privacy, and upload reliability.** Transcription templates now bundle an initial prompt and hotwords that you save once and reuse from the upload modal, tags, folders, or your account default. Summarization and chat each gain an independent toggle for making per-line timestamps available to the model, so the AI can reference moments in long recordings. Recipients of a shared recording now see only the tag or folder that granted them access, never the owner's other labels. Failed uploads retry themselves automatically across all browsers, and any recording is reachable by a direct `/recordings/<id>` link. For self-hosted text backends with prefix caching, an opt-in option reshapes the title and summary prompts to reuse the transcript prefix, and the admin dashboard now reports prompt-cache reads so the saving is visible. This option stays off by default for now and may become the default in a future release. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.4-alpha).**
-
-### v0.9.3-alpha (previous release)
-
-**Security patch: updates bundled FFmpeg to fix CVE-2026-8461.** Speakr runs FFmpeg/ffprobe on uploaded media, and the previously bundled build (johnvansickle static 7.0.2) carried a MagicYUV decoder flaw ("PixelSmash") that a crafted file could use for a crash or remote code execution. FFmpeg now comes from the maintained BtbN builds, pinned to the 8.1 branch (8.1.2, which contains the fix). Recommended for all deployments, especially multi-user instances that accept untrusted uploads. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.3-alpha).**
-
-### v0.9.2-alpha (previous release)
-
-**Adds a pluggable local / S3 storage backend.** Recording audio can now live in S3-compatible object storage (AWS S3, MinIO, Backblaze B2, Cloudflare R2, Wasabi) instead of, or alongside, the local filesystem, with presigned-URL delivery and a migration script for existing recordings. Local storage stays the default, so existing deployments are unaffected until they opt in. Contributed by @Daabramov (#268). **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.2-alpha).**
-
-### v0.9.1-alpha (previous release)
-
-**A patch release hardening the v0.9.0 upload path.** Fixes uploads failing with an expired CSRF token after long sessions or sleep (#310), Inquire embeddings not being generated when auto-summarization is enabled (#305), and the Account page's API token modals not opening (#308); adds a timeout so stalled uploads fail into the recovery path and a warning before leaving the page mid-upload. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.1-alpha).**
-
-### v0.9.0-alpha highlights (the major feature release this patches)
-
-**The first non-patch release in the v0.8 line.** Three big user-facing themes: capturing audio is now multi-platform and properly documented, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.0-alpha).**
-
-**System Audio & Multi-Input Recording**
-- Per-OS help guide auto-opens for the right platform (macOS BlackHole + Multi-Output Device, Windows "Share system audio", Linux pavucontrol + `pactl module-virtual-source` one-liner)
-- New Input devices picker: pick a primary mic AND an optional "Also mix in" secondary device; Web Audio mixes both into one track for capturing both sides of a meeting
-- Toggle to disable Chrome's echo cancellation / noise suppression / auto-gain (needed for monitor-source capture)
-- Virtual audio device discovery (BlackHole, Loopback, VB-Cable, Voicemeeter, Stereo Mix, Pulse / PipeWire monitors)
-- Privacy notes section flags the trade-offs honestly with concrete mitigations
-
-**Stats Tab**
-- New per-recording tab: total length, speaker count, turns, words at the top; per-speaker time / % / turns / words / WPM table; silence row
-- Available on desktop right-rail tabs and mobile bottom-nav More overflow
-
-**Upload Modal Redesign**
-- Real modal overlay (not full-screen takeover), progressive disclosure of Options behind a chip summary, inline file preview with duration probe, sticky modal-footer Upload action, last-used tag/folder/language auto-restore with clearable chips, calmer recording buttons
-- Mobile: full-width bottom-sheet with drag-to-dismiss
-
-**Mobile UI**
-- Bottom navigation (Summary / Transcript / Chat / More), contextual icons in the chevron row, edge-to-edge content, sticky speaker pills, sticky editor Cancel/Save footer, audio player polish (volume slider rotation fix, popover anchored upward), progress queue as a bottom sheet anchored above the player
-
-**Inquire mode** "+ New Recording" now opens the upload modal directly via `?upload=1` instead of dumping you on the list.
-
-**Design system unification** brought 22 modals onto shared `.modal-*` primitives, `.btn` + `.field` everywhere, dark-mode select theming, header consolidation, sidebar redesign, floating dockable chat panel.
-
-**Backend & infra**: Webhooks Phase 1–3 with HMAC + retry + SSRF guard, server-side recording sessions (hours-long ceiling, resume-on-reload), IDOR fixes for folder / tag ownership, eager-loading and batch query performance work.
-
-**Localization** refreshed across en, fr, de, es, ru, zh, pt-BR.
-
----
-
-**Older releases:** see the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases) for tagged versions, or the [release history on the docs site](https://murtaza-nasir.github.io/speakr/#latest-updates) for narrative changelog entries going back to earlier v0.x lines.
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.10-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
