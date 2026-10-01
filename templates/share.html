@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Shared Recording - {{ recording.title }}</title>
-        <!-- All dependencies bundled locally for offline support -->
-<script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
@@ -19,23 +17,6 @@
     {% include 'includes/loading_overlay.html' %}
 
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    maxHeight: {
-                        '85vh': '85vh',
-                        '90vh': '90vh'
-                    },
-                    colors: {
-                        primary: 'var(--bg-primary)',
-                        secondary: 'var(--bg-secondary)',
-                        accent: 'var(--bg-accent)'
-                    }
-                }
-            }
-        }
-
         // Function to apply the theme based on localStorage and system preference
         function applyTheme() {
             // Guard against early execution
@@ -75,6 +56,10 @@
             applyTheme();
         }
     </script>
+    <!-- Tailwind utilities, compiled at build time (scripts/build_css.sh). Last in
+         <head> so that, as with the former runtime build, they follow the page's
+         own stylesheets in the cascade. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="app" class="h-full flex flex-col" data-recording='{{ recording|tojson|safe }}'>

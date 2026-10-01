@@ -1,0 +1,3 @@
+{# Translations for static/js/i18n.js, embedded so the first render is already
+   translated (src/utils/i18n_bootstrap.py). Include before i18n.js. #}
+<script>window.__I18N_BOOTSTRAP = {{ i18n_bootstrap(user_language|default(none))|tojson }};</script>

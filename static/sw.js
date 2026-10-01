@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   '/static/offline.html',
   '/static/manifest.json',
   '/static/css/styles.css',
+  '/static/css/tailwind.css',
   '/static/js/app.modular.js',
   '/static/js/i18n.js',
   '/static/js/csrf-refresh.js',
@@ -16,7 +17,6 @@ const ASSETS_TO_CACHE = [
   '/static/img/icon-512x512.png',
   '/static/img/favicon.ico',
   // Local vendor assets (no external CDN dependencies)
-  '/static/vendor/js/tailwind.min.js',
   '/static/vendor/js/vue.global.js',
   '/static/vendor/js/marked.min.js',
   '/static/vendor/js/easymde.min.js',

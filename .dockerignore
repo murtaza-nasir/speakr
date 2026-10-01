@@ -39,6 +39,8 @@ exports/
 auto-process/
 
 # Non-runtime directories
+.cache/
+node_modules/
 temp/
 docs/
 site/

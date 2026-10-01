@@ -713,6 +713,13 @@ _app_version = get_version()
 def inject_app_version():
     return {'app_version': _app_version}
 
+from src.utils.i18n_bootstrap import i18n_bootstrap as _i18n_bootstrap
+
+@app.context_processor
+def inject_i18n_bootstrap():
+    """Translations embedded in pages that load i18n.js (includes/i18n_bootstrap.html)."""
+    return {'i18n_bootstrap': _i18n_bootstrap}
+
 @app.context_processor
 def inject_inquire_mode_flag():
     """The shared header shows the Inquire button on every page."""

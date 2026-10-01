@@ -34,11 +34,47 @@ class I18n {
             await this.loadLocale(this.fallbackLocale);
         }
 
-        if (!this.isReady) {
-            this.isReady = true;
-            this._resolveReady();
-            window.dispatchEvent(new CustomEvent('i18nReady', { detail: { locale: this.currentLocale } }));
+        this._markReady();
+    }
+
+    _markReady() {
+        if (this.isReady) return;
+        this.isReady = true;
+        this._resolveReady();
+        window.dispatchEvent(new CustomEvent('i18nReady', { detail: { locale: this.currentLocale } }));
+    }
+
+    /**
+     * Use translations embedded in the page (window.__I18N_BOOTSTRAP, from
+     * templates/includes/i18n_bootstrap.html), so the first render is already
+     * translated and no locale file is fetched for it. The locale is chosen as
+     * in init(). When the chosen locale is not among the embedded ones, ready
+     * stays pending and the locale is fetched by init() as before.
+     * @param {{locale: string, translations: Object<string, Object>}} data
+     * @returns {boolean} true when the translations are ready
+     */
+    applyBootstrap(data) {
+        if (!data || typeof data !== 'object' || !data.translations || typeof data.translations !== 'object') {
+            return false;
         }
+        for (const [code, table] of Object.entries(data.translations)) {
+            if (table && typeof table === 'object') {
+                this.translations[code] = table;
+                this.loadedLocales.add(code);
+            }
+        }
+        let savedLocale = null;
+        try {
+            savedLocale = localStorage.getItem('preferredLanguage');
+        } catch (e) {
+            savedLocale = null;
+        }
+        this.currentLocale = savedLocale || data.locale || this.fallbackLocale;
+        if (!this.loadedLocales.has(this.currentLocale) || !this.loadedLocales.has(this.fallbackLocale)) {
+            return false;
+        }
+        this._markReady();
+        return true;
     }
 
     /**
@@ -319,6 +355,11 @@ const i18n = new I18n();
 if (typeof window !== 'undefined') {
     // Ensure window.i18n exists with at least a basic t function
     window.i18n = i18n;
+
+    // Translations embedded in the page are used at once (see applyBootstrap).
+    if (window.__I18N_BOOTSTRAP) {
+        i18n.applyBootstrap(window.__I18N_BOOTSTRAP);
+    }
     
     // Add a fallback t function if the class method isn't ready
     if (!window.i18n.t) {

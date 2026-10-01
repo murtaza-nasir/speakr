@@ -11,7 +11,12 @@ Chromium, and fails on:
 - any JavaScript error (uncaught exception or console error);
 - template text left in the page (``${`` or ``{{``);
 - a header that is not mounted, or a user menu that does not open with its
-  entries.
+  entries;
+- the Tailwind Play CDN build (vendor/js/tailwind.min.js or
+  cdn.tailwindcss.com) requested, or its "should not be used in production"
+  console warning; the stylesheet is compiled at build time instead;
+- Tailwind utilities from static/css/tailwind.css not applied;
+- translation keys (for example ``nav.account``) shown as text in the header.
 
 It runs only with SPEAKR_BROWSER_SMOKE=1 against a running Speakr at
 SPEAKR_BASE_URL (the test.yml browser-smoke job starts one from source with
@@ -48,25 +53,36 @@ PASSWORD = os.environ.get("SPEAKR_SMOKE_PASSWORD", _example.get("ADMIN_PASSWORD"
 
 MENU_ENTRIES = ("Notifications", "Settings", "Shared Transcripts", "Sign Out")
 IGNORED_CONSOLE = (re.compile(r"chrome-extension://"), re.compile(r"Failed to load resource"))
+PLAY_CDN = re.compile(r"tailwind\.min\.js|cdn\.tailwindcss\.com")
+# A translation key: two or more dot-separated identifiers, the first one
+# lower case (nav.account, inquire.title, tokenBudget.percentage).
+TRANSLATION_KEY = re.compile(r"\b[a-z][a-zA-Z]*(?:\.[a-zA-Z]+)+\b")
 
 
 class PageProblems:
     """Collects failed responses and JavaScript errors for the current page."""
 
     def __init__(self, page):
-        self.failed, self.errors = [], []
+        self.failed, self.errors, self.play_cdn = [], [], []
+        page.on("request", self._request)
         page.on("response", self._response)
         page.on("pageerror", lambda exc: self.errors.append(f"uncaught: {exc}"))
         page.on("console", self._console)
+
+    def _request(self, request):
+        if PLAY_CDN.search(request.url):
+            self.play_cdn.append(f"request: {request.url}")
 
     def _response(self, response):
         if response.url.startswith(BASE) and response.status >= 400:
             self.failed.append(f"{response.status} {response.url}")
 
     def _console(self, msg):
+        text = msg.text
+        if "cdn.tailwindcss.com" in text:
+            self.play_cdn.append(f"console {msg.type}: {text}")
         if msg.type != "error":
             return
-        text = msg.text
         location = (msg.location or {}).get("url", "")
         if any(p.search(text) or p.search(location) for p in IGNORED_CONSOLE):
             return
@@ -75,6 +91,7 @@ class PageProblems:
     def reset(self):
         self.failed.clear()
         self.errors.clear()
+        self.play_cdn.clear()
 
 
 @pytest.fixture(scope="module")
@@ -116,6 +133,26 @@ def _check_common(page, problems, path):
     assert not leftovers, f"{path}: template text left in the page: {leftovers}"
     assert not problems.failed, f"{path}: failed requests: {problems.failed}"
     assert not problems.errors, f"{path}: JavaScript errors: {problems.errors}"
+    assert not problems.play_cdn, f"{path}: Tailwind Play CDN in use: {problems.play_cdn}"
+    # Utilities from the compiled stylesheet apply (a probe element, so the
+    # check does not depend on any page's markup).
+    probe = page.evaluate("""() => {
+        const el = document.createElement('div');
+        el.className = 'rounded-lg px-4 hidden';
+        document.body.appendChild(el);
+        const s = getComputedStyle(el);
+        const out = {display: s.display, radius: s.borderTopLeftRadius, padding: s.paddingLeft};
+        el.remove();
+        return out;
+    }""")
+    assert probe == {"display": "none", "radius": "8px", "padding": "16px"}, f"{path}: Tailwind utilities not applied: {probe}"
+
+
+def _check_header_translated(page, path, selector):
+    header = page.locator(selector).first
+    assert header.count() == 1, f"{path}: no header ({selector})"
+    keys = TRANSLATION_KEY.findall(header.inner_text())
+    assert not keys, f"{path}: translation keys shown in the header: {keys}"
 
 
 def _check_user_menu(page, path):
@@ -135,6 +172,7 @@ def test_main_view(browser_page):
     page, problems = browser_page
     _open(page, problems, "/")
     assert page.locator("[data-v-app]").count() >= 1, "/: the app did not mount"
+    _check_header_translated(page, "/", "header")
     _check_user_menu(page, "/")
     _check_common(page, problems, "/")
 
@@ -149,6 +187,7 @@ def test_settings_pages(browser_page, path):
     assert header.get_attribute("data-v-app") is not None, f"{path}: the page header did not mount"
     label = header.locator(".t-meta").first.inner_text().strip()
     assert label, f"{path}: the page label in the header is empty"
+    _check_header_translated(page, path, "#global-header")
     _check_user_menu(page, path)
     if path == "/account":
         tabs = page.locator(".tabs button:visible, .tabs a:visible")
@@ -163,6 +202,7 @@ def test_inquire_page(browser_page):
         pytest.skip("Inquire mode is not enabled")
     problems.failed[:] = [f for f in problems.failed if "/inquire " not in f]
     assert page.locator("#inquire-app[data-v-app]").count() == 1, "/inquire: the app did not mount"
+    _check_header_translated(page, "/inquire", "#inquire-app header")
     _check_user_menu(page, "/inquire")
     _check_common(page, problems, "/inquire")
 

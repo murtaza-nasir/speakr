@@ -231,16 +231,32 @@ export function generateErrorHTML(error, showTechnical = false) {
         unknown: 'gray'
     };
 
+    // Full literal class names per color. The Tailwind stylesheet is compiled at
+    // build time from complete class strings in the source files; names assembled
+    // from a color variable are absent from it.
+    const colorClasses = {
+        amber: { box: 'bg-amber-500/10 border-amber-500/30', badge: 'bg-amber-500/20', icon: 'text-amber-500', title: 'text-amber-600 dark:text-amber-400' },
+        orange: { box: 'bg-orange-500/10 border-orange-500/30', badge: 'bg-orange-500/20', icon: 'text-orange-500', title: 'text-orange-600 dark:text-orange-400' },
+        red: { box: 'bg-red-500/10 border-red-500/30', badge: 'bg-red-500/20', icon: 'text-red-500', title: 'text-red-600 dark:text-red-400' },
+        yellow: { box: 'bg-yellow-500/10 border-yellow-500/30', badge: 'bg-yellow-500/20', icon: 'text-yellow-500', title: 'text-yellow-600 dark:text-yellow-400' },
+        blue: { box: 'bg-blue-500/10 border-blue-500/30', badge: 'bg-blue-500/20', icon: 'text-blue-500', title: 'text-blue-600 dark:text-blue-400' },
+        purple: { box: 'bg-purple-500/10 border-purple-500/30', badge: 'bg-purple-500/20', icon: 'text-purple-500', title: 'text-purple-600 dark:text-purple-400' },
+        pink: { box: 'bg-pink-500/10 border-pink-500/30', badge: 'bg-pink-500/20', icon: 'text-pink-500', title: 'text-pink-600 dark:text-pink-400' },
+        indigo: { box: 'bg-indigo-500/10 border-indigo-500/30', badge: 'bg-indigo-500/20', icon: 'text-indigo-500', title: 'text-indigo-600 dark:text-indigo-400' },
+        gray: { box: 'bg-gray-500/10 border-gray-500/30', badge: 'bg-gray-500/20', icon: 'text-gray-500', title: 'text-gray-600 dark:text-gray-400' }
+    };
+
     const color = typeColors[error.type] || 'gray';
+    const cls = colorClasses[color] || colorClasses.gray;
 
     let html = `
-        <div class="error-display bg-${color}-500/10 border border-${color}-500/30 rounded-lg p-4">
+        <div class="error-display border ${cls.box} rounded-lg p-4">
             <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-${color}-500/20 flex items-center justify-center">
-                    <i class="fas ${error.icon} text-${color}-500"></i>
+                <div class="flex-shrink-0 w-10 h-10 rounded-full ${cls.badge} flex items-center justify-center">
+                    <i class="fas ${error.icon} ${cls.icon}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="text-lg font-semibold text-${color}-600 dark:text-${color}-400 mb-1">
+                    <h3 class="text-lg font-semibold ${cls.title} mb-1">
                         ${escapeHtml(error.title)}
                     </h3>
                     <p class="text-[var(--text-primary)] mb-2">
