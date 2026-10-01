@@ -9,6 +9,10 @@ class I18n {
         this.currentLocale = 'en';
         this.fallbackLocale = 'en';
         this.loadedLocales = new Set();
+        // Resolved once init() has loaded the translations, so code that
+        // renders before then (the shared page header) can wait for them.
+        this.isReady = false;
+        this.ready = new Promise(resolve => { this._resolveReady = resolve; });
     }
 
     /**
@@ -28,6 +32,12 @@ class I18n {
         // Load fallback locale if different
         if (this.currentLocale !== this.fallbackLocale) {
             await this.loadLocale(this.fallbackLocale);
+        }
+
+        if (!this.isReady) {
+            this.isReady = true;
+            this._resolveReady();
+            window.dispatchEvent(new CustomEvent('i18nReady', { detail: { locale: this.currentLocale } }));
         }
     }
 

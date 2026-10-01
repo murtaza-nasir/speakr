@@ -71,6 +71,17 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 
 Speakr is also an installable Progressive Web App - mobile-first, offline-capable, with a phone share-target - and ships light/dark themes, an incognito mode, a configurable Help Center link for your own documentation, and a UI translated into seven languages.
 
+## Unofficial Companion Apps
+
+These apps were built by members of the community for use with your own Speakr server. They are maintained by their authors, not by this project, and I have not tested them myself.
+
+| App | Platform | Description |
+|---|---|---|
+| [Minutes for Speakr](https://github.com/Inrego/SpeakrApp) | Android, Windows | Recording on the device with upload to Speakr, including automatic recording and automatic folder uploads |
+| [MeetingRecorder](https://github.com/Feridoun/MeetingRecorder) | Windows | Tray app for recording both sides of a call, with upload to Speakr through an API token |
+
+See [Companion Apps](https://murtaza-nasir.github.io/speakr/user-guide/companion-apps) in the documentation.
+
 ## Real-World Use Cases
 
 Different people use Speakr's collaboration and retention features in different ways:
