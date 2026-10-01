@@ -106,7 +106,7 @@ See the [Folders Guide](user-guide/folders.md) for detailed usage instructions.
 
 ### Bulk Operations
 
-Select multiple recordings in the sidebar to perform batch operations efficiently. Enter multi-select mode by clicking the checkbox icon or using keyboard shortcuts, then select individual recordings or use Ctrl/Cmd+A to select all visible recordings.
+Select multiple recordings in the sidebar to perform batch operations efficiently. Enter multi-select mode by clicking the checkbox icon or using keyboard shortcuts, then select individual recordings or use Ctrl/Cmd+A to select all visible recordings. With Ctrl-click (Cmd-click on macOS), a recording is added to or removed from the selection, and with Shift-click, every recording between the last one clicked and the current one is selected. Either way, multi-select mode is turned on, and the open recording is the starting point for Shift-click.
 
 **Available bulk actions:**
 
