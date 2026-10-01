@@ -89,8 +89,8 @@ jobs:
           load: true
           push: false
           tags: speakr:smoke
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=lite-amd64
+          cache-to: type=gha,scope=lite-amd64,mode=max
           build-args: |
             PRODUCTION=1
             LIGHTWEIGHT=1
@@ -181,8 +181,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # No Actions cache for the full image. Its PyTorch layers for two
+          # architectures alone fill the 10 GB cache, and a layer evicted
+          # mid-build failed the v0.10.10 release build ("cache entry no longer
+          # exists"). It is built only for releases.
           build-args: |
             PRODUCTION=1
 
@@ -249,8 +251,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-lite.outputs.tags }}
           labels: ${{ steps.meta-lite.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=lite
+            type=gha,scope=lite-amd64
+          cache-to: type=gha,scope=lite,mode=max
           build-args: |
             PRODUCTION=1
             LIGHTWEIGHT=1
