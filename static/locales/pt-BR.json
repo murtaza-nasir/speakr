@@ -349,7 +349,7 @@
     "yes": "Sim",
     "temperatures": {
       "heading": "Temperatura de geração",
-      "description": "Temperatura de amostragem para cada tipo de solicitação ao modelo de linguagem, entre 0 e 2. Valores menores geram resultados mais consistentes. Deixe um campo vazio para usar o padrão integrado.",
+      "description": "Temperatura de amostragem para cada tipo de solicitação ao modelo de linguagem, entre 0 e 2. Com valores menores, os resultados são mais consistentes. Deixe um campo vazio para usar o padrão integrado.",
       "summary": "Resumos",
       "title": "Títulos",
       "chat": "Chat",

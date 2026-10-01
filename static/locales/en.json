@@ -349,7 +349,7 @@
     "yes": "Yes",
     "temperatures": {
       "heading": "Generation temperature",
-      "description": "Sampling temperature for each kind of request to the language model, between 0 and 2. Lower values give more consistent output. Leave a field empty to use the built-in default.",
+      "description": "Sampling temperature for each kind of request to the language model, between 0 and 2. With lower values, the output is more consistent. Leave a field empty to use the built-in default.",
       "summary": "Summaries",
       "title": "Titles",
       "chat": "Chat",

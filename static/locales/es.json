@@ -349,7 +349,7 @@
     "yes": "Sí",
     "temperatures": {
       "heading": "Temperatura de generación",
-      "description": "Temperatura de muestreo para cada tipo de solicitud al modelo de lenguaje, entre 0 y 2. Los valores bajos dan resultados más consistentes. Deje un campo vacío para usar el valor predeterminado integrado.",
+      "description": "Temperatura de muestreo para cada tipo de solicitud al modelo de lenguaje, entre 0 y 2. Con valores más bajos, los resultados son más consistentes. Deje un campo vacío para usar el valor predeterminado integrado.",
       "summary": "Resúmenes",
       "title": "Títulos",
       "chat": "Chat",

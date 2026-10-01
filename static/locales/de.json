@@ -349,7 +349,7 @@
     "yes": "Ja",
     "temperatures": {
       "heading": "Generierungstemperatur",
-      "description": "Sampling-Temperatur für jede Art von Anfrage an das Sprachmodell, zwischen 0 und 2. Niedrigere Werte ergeben gleichmäßigere Ergebnisse. Bleibt ein Feld leer, gilt der eingebaute Standardwert.",
+      "description": "Sampling-Temperatur für jede Art von Anfrage an das Sprachmodell, zwischen 0 und 2. Bei niedrigeren Werten sind die Ergebnisse gleichmäßiger. Bleibt ein Feld leer, gilt der eingebaute Standardwert.",
       "summary": "Zusammenfassungen",
       "title": "Titel",
       "chat": "Chat",

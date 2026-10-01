@@ -349,7 +349,7 @@
     "yes": "Oui",
     "temperatures": {
       "heading": "Température de génération",
-      "description": "Température d’échantillonnage pour chaque type de requête au modèle de langage, entre 0 et 2. Des valeurs plus basses donnent des résultats plus constants. Laissez un champ vide pour utiliser la valeur par défaut intégrée.",
+      "description": "Température d’échantillonnage pour chaque type de requête au modèle de langage, entre 0 et 2. Avec des valeurs plus basses, les résultats sont plus constants. Laissez un champ vide pour utiliser la valeur par défaut intégrée.",
       "summary": "Résumés",
       "title": "Titres",
       "chat": "Chat",
