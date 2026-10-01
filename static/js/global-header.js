@@ -33,6 +33,12 @@ function ensureVue() {
     });
 }
 
+function waitForTranslations(timeoutMs) {
+    const i18n = window.i18n;
+    if (!i18n || i18n.isReady || !i18n.ready) return Promise.resolve();
+    return Promise.race([i18n.ready, new Promise(resolve => setTimeout(resolve, timeoutMs))]);
+}
+
 async function mountGlobalHeader() {
     const el = document.getElementById('global-header');
     if (!el || el.dataset.mounted) return;
@@ -40,9 +46,13 @@ async function mountGlobalHeader() {
     await ensureVue();
     const { createApp, ref, onMounted } = window.Vue;
 
-    // Re-render the labels once the locale has loaded.
+    // Mount with the translations in place, so the labels appear once and
+    // already translated. A page that never initialises i18n still gets its
+    // header after a short wait; the labels then update when it does.
+    await waitForTranslations(1500);
     const localeVersion = ref(0);
     window.addEventListener('localeChanged', () => { localeVersion.value++; });
+    window.addEventListener('i18nReady', () => { localeVersion.value++; });
     const t = (key, params) => {
         localeVersion.value; // dependency, so labels follow the locale
         const i18n = window.i18n;
