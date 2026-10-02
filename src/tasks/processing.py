@@ -382,63 +382,10 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             db.session.commit()
             return
 
-        # Resolve naming template: first tag with template → user default → None
-        naming_template = None
-        for tag in recording.tags:
-            if tag.naming_template_id:
-                naming_template = tag.naming_template
-                current_app.logger.info(f"Using naming template '{naming_template.name}' from tag '{tag.name}' for recording {recording_id}")
-                break
-
-        if not naming_template and recording.owner and recording.owner.default_naming_template_id:
-            naming_template = recording.owner.default_naming_template
-            if naming_template:
-                current_app.logger.info(f"Using user's default naming template '{naming_template.name}' for recording {recording_id}")
-
-        # Check if we need to generate AI title
-        needs_ai_title = naming_template is None or naming_template.needs_ai_title()
-
-        # Early exit conditions
-        if not needs_ai_title:
-            # Template doesn't need AI - we can skip LLM call entirely
-            current_app.logger.info(f"Naming template doesn't require AI title for recording {recording_id}, skipping LLM call")
-            ai_title = None
-        elif client is None:
-            current_app.logger.warning(f"Skipping AI title generation for {recording_id}: OpenRouter client not configured.")
-            ai_title = None
-        elif not recording.transcription or len(recording.transcription.strip()) < 10:
-            current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping AI title generation.")
-            ai_title = None
-        else:
-            # Generate AI title via LLM. A budget-exceeded error is actionable
-            # by the user but must not fail the whole recording here — skip
-            # titling and continue (the interactive endpoint surfaces it).
-            try:
-                ai_title = _generate_ai_title(recording)
-            except TokenBudgetExceeded as e:
-                current_app.logger.warning(f"Skipping AI title for recording {recording_id}: {e}")
-                ai_title = None
-
-        # Apply naming template if we have one
-        final_title = None
-        if naming_template:
-            final_title = naming_template.apply(
-                original_filename=recording.original_filename,
-                meeting_date=recording.meeting_date,
-                ai_title=ai_title
-            )
-            if final_title:
-                current_app.logger.info(f"Applied naming template for recording {recording_id}: '{final_title}'")
-
-        # Fallback chain: template result → AI title → filename
-        if not final_title:
-            if ai_title:
-                final_title = ai_title
-            elif recording.original_filename:
-                # Use filename without extension as last resort
-                import os
-                final_title = os.path.splitext(recording.original_filename)[0]
-                current_app.logger.info(f"Using filename as title for recording {recording_id}: '{final_title}'")
+        # The title step (naming template, AI title, fallbacks) is shared with the
+        # regenerate-title endpoint so both produce the same title (#412).
+        from src.services.titling import compute_title
+        final_title = compute_title(recording)
 
         if final_title:
             recording.title = final_title

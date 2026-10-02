@@ -1327,23 +1327,31 @@ def regenerate_title(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to edit this recording'}), 403
 
-        if not recording.transcription or len(recording.transcription.strip()) < 10:
-            return jsonify({'error': 'No valid transcription available for title generation'}), 400
+        # Same title step as processing (naming template, AI title, fallbacks), so
+        # regenerating gives the title the pipeline would give (#412). The checks
+        # below apply only when the title needs an LLM call.
+        from src.services.titling import compute_title, needs_ai_title
+        if needs_ai_title(recording):
+            if not recording.transcription or len(recording.transcription.strip()) < 10:
+                return jsonify({'error': 'No valid transcription available for title generation'}), 400
 
-        if is_transcription_error(recording.transcription):
-            return jsonify({'error': 'Cannot generate title: transcription failed. Please reprocess the transcription first.'}), 400
+            if is_transcription_error(recording.transcription):
+                return jsonify({'error': 'Cannot generate title: transcription failed. Please reprocess the transcription first.'}), 400
 
-        if client is None:
-            return jsonify({'error': 'Title generation service is not available (OpenRouter client not configured)'}), 503
+            if client is None:
+                return jsonify({'error': 'Title generation service is not available (OpenRouter client not configured)'}), 503
 
-        from src.tasks.processing import _generate_ai_title
-
-        new_title = _generate_ai_title(recording)
+        new_title = compute_title(recording, raise_budget_errors=True)
         if not new_title:
             return jsonify({'error': 'Failed to generate a title'}), 500
 
         recording.title = new_title
         db.session.commit()
+        # Keep the exported file in step with the new title, as /save does.
+        try:
+            export_recording(recording.id)
+        except Exception as export_error:
+            current_app.logger.warning(f"Export after title regeneration failed for {recording.id}: {export_error}")
 
         recording_dict = recording.to_dict(viewer_user=current_user)
         enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
