@@ -17,7 +17,7 @@ EXPECTED = {
              "get_transcript", "get_summary", "get_notes", "get_recording_status", "list_tags", "list_folders",
              "get_folder", "get_transcription_info", "list_speakers", "get_recording_speakers",
              "get_recording_events", "download_events_ics", "download_audio"},
-    "write": {"add_external_ref", "replace_external_refs", "delete_external_ref", "update_recording", "replace_notes", "replace_summary", "create_tag", "update_tag",
+    "write": {"replace_recording_tags", "add_external_ref", "replace_external_refs", "delete_external_ref", "update_recording", "replace_notes", "replace_summary", "create_tag", "update_tag",
               "add_tags_to_recording", "remove_tag_from_recording", "create_folder", "update_folder",
               "create_speaker", "update_speaker", "assign_speakers", "batch_update_recordings"},
     "account": {"update_auto_summarization"},

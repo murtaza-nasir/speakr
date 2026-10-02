@@ -2030,6 +2030,9 @@ def list_tags():
             'can_edit': (user_role == 'admin')
         })
 
+    name = (request.args.get('name') or '').strip().lower()
+    if name:
+        result = [t for t in result if (t['name'] or '').strip().lower() == name]
     return jsonify({'tags': result})
 
 
@@ -2187,21 +2190,49 @@ def delete_tag(tag_id):
     return jsonify({'success': True, 'message': 'Tag deleted'})
 
 
+
+def _tag_problem(recording, tag):
+    """Why the caller may not apply tag to recording, or None."""
+    from src.models.organization import GroupMembership
+    if tag is None:
+        return 'not found'
+    if tag.group_id:
+        membership = GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first()
+        if not membership:
+            return 'no access'
+        if recording.user_id != current_user.id and membership.role != 'admin':
+            return 'only the recording owner or a group admin can apply group tags'
+        return None
+    return None if tag.user_id == current_user.id else 'no access'
+
+
+def _share_scope_refusal(recording, tags):
+    """403 when applying these tags would share the recording and the token
+    lacks the share scope (mailr spec section 8); nothing has changed yet."""
+    from src.services.tag_sharing import share_targets
+    from src.utils.token_auth import current_api_token, scope_error_response
+    token = current_api_token()
+    if token is None or token.scope_set is None or 'share' in token.scope_set:
+        return None
+    if any(share_targets(recording, tag) for tag in tags):
+        return scope_error_response({'share'}, token)
+    return None
+
+
 @api_v1_bp.route('/recordings/<int:recording_id>/tags', methods=['POST'])
 @require_scope('write')
 @login_required
 def add_tags_to_recording(recording_id):
-    """Add tag(s) to a recording."""
-    from src.models.organization import GroupMembership
-
+    """Add tag(s) to a recording. Needs edit access; a group tag that shares
+    the recording also needs the share scope on a scoped token."""
     recording = db.session.get(Recording, recording_id)
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    if not has_recording_access(recording, current_user):
+    if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    data = request.get_json()
+    data = request.get_json() or {}
     tag_ids = data.get('tag_ids', [])
     if not tag_ids:
         # Support single tag_id for backward compatibility
@@ -2211,48 +2242,29 @@ def add_tags_to_recording(recording_id):
         else:
             return jsonify({'error': 'tag_ids or tag_id required'}), 400
 
-    added_tags = []
     errors = []
-
+    to_add = []
+    present = {rt.tag_id for rt in RecordingTag.query.filter_by(recording_id=recording_id)}
     for tag_id in tag_ids:
         tag = db.session.get(Tag, tag_id)
-        if not tag:
+        problem = _tag_problem(recording, tag)
+        if problem == 'not found':
             errors.append(f'Tag {tag_id} not found')
-            continue
+        elif problem:
+            errors.append(f'No access to tag {tag_id}')
+        elif tag.id not in present and tag not in to_add:
+            to_add.append(tag)
 
-        # Check permission for this tag
-        if tag.group_id:
-            membership = GroupMembership.query.filter_by(
-                group_id=tag.group_id,
-                user_id=current_user.id
-            ).first()
-            if not membership:
-                errors.append(f'No access to tag {tag_id}')
-                continue
-        else:
-            if tag.user_id != current_user.id:
-                errors.append(f'No access to tag {tag_id}')
-                continue
+    refusal = _share_scope_refusal(recording, to_add)
+    if refusal is not None:
+        return refusal
 
-        # Check if already exists
-        existing = RecordingTag.query.filter_by(
-            recording_id=recording_id,
-            tag_id=tag_id
-        ).first()
-        if existing:
-            continue  # Skip, already added
-
-        # Get next order position
-        max_order = db.session.query(func.max(RecordingTag.order)).filter_by(
-            recording_id=recording_id
-        ).scalar() or 0
-
-        recording_tag = RecordingTag(
-            recording_id=recording_id,
-            tag_id=tag_id,
-            order=max_order + 1
-        )
-        db.session.add(recording_tag)
+    from src.services.tag_sharing import apply_tag_shares
+    max_order = db.session.query(func.max(RecordingTag.order)).filter_by(recording_id=recording_id).scalar() or 0
+    added_tags = []
+    for offset, tag in enumerate(to_add, 1):
+        db.session.add(RecordingTag(recording_id=recording_id, tag_id=tag.id, order=max_order + offset))
+        apply_tag_shares(recording, tag)
         added_tags.append({'id': tag.id, 'name': tag.name})
 
     db.session.commit()
@@ -2261,6 +2273,72 @@ def add_tags_to_recording(recording_id):
         'success': True,
         'added_tags': added_tags,
         'errors': errors if errors else None
+    })
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/tags', methods=['PUT'])
+@require_scope('write')
+@login_required
+def replace_recording_tags(recording_id):
+    """Set the recording's tags to exactly tag_ids, in that order.
+
+    Tags the caller cannot see (another user's personal tags) stay on the
+    recording. An unknown or forbidden id refuses the whole request.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify({'error': 'Permission denied'}), 403
+    data = request.get_json(silent=True) or {}
+    tag_ids = data.get('tag_ids')
+    if not isinstance(tag_ids, list) or not all(isinstance(t, int) and not isinstance(t, bool) for t in tag_ids):
+        return jsonify({'error': 'tag_ids must be a list of tag ids', 'code': 'invalid_parameter'}), 400
+    wanted, bad = [], []
+    for tag_id in dict.fromkeys(tag_ids):
+        tag = db.session.get(Tag, tag_id)
+        if _tag_problem(recording, tag):
+            bad.append(tag_id)
+        else:
+            wanted.append(tag)
+    if bad:
+        return jsonify({'error': 'Unknown or forbidden tag ids', 'code': 'invalid_parameter',
+                        'tag_ids': bad}), 400
+
+    visible = {t.id for t in recording.get_visible_tags(current_user)}
+    current = RecordingTag.query.filter_by(recording_id=recording_id).order_by(RecordingTag.order).all()
+    current_ids = [rt.tag_id for rt in current]
+    added = [t for t in wanted if t.id not in current_ids]
+    removed = [rt.tag_id for rt in current if rt.tag_id in visible and rt.tag_id not in {t.id for t in wanted}]
+
+    refusal = _share_scope_refusal(recording, added)
+    if refusal is not None:
+        return refusal
+
+    from src.services.tag_sharing import apply_tag_shares
+    for rt in current:
+        if rt.tag_id in removed:
+            db.session.delete(rt)
+    db.session.flush()
+    kept_hidden = [rt for rt in current if rt.tag_id not in visible]
+    by_id = {rt.tag_id: rt for rt in current if rt.tag_id not in removed}
+    order = 0
+    for tag in wanted:
+        order += 1
+        if tag.id in by_id:
+            if by_id[tag.id].order != order:
+                by_id[tag.id].order = order
+        else:
+            db.session.add(RecordingTag(recording_id=recording_id, tag_id=tag.id, order=order))
+            apply_tag_shares(recording, tag)
+    for rt in kept_hidden:
+        order += 1
+        rt.order = order
+    db.session.commit()
+    return jsonify({
+        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in wanted],
+        'added': [t.id for t in added],
+        'removed': removed,
     })
 
 

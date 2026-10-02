@@ -152,53 +152,11 @@ def apply_team_tag_auto_shares(recording_id):
     if not group_tags:
         return
 
+    from src.services.tag_sharing import apply_tag_shares
     shares_created = 0
-
     for tag in group_tags:
-        # Determine who to share with
-        if tag.auto_share_on_apply:
-            group_members = GroupMembership.query.filter_by(group_id=tag.group_id).all()
-        elif tag.share_with_group_lead:
-            group_members = GroupMembership.query.filter_by(group_id=tag.group_id, role='admin').all()
-        else:
-            continue
-
-        for membership in group_members:
-            # Skip the recording owner
-            if membership.user_id == recording.user_id:
-                continue
-
-            # Check if already shared
-            existing_share = InternalShare.query.filter_by(
-                recording_id=recording_id,
-                shared_with_user_id=membership.user_id
-            ).first()
-
-            if not existing_share:
-                # Create internal share with correct permissions
-                # Group admins get edit permission, regular members get read-only
-                share = InternalShare(
-                    recording_id=recording_id,
-                    owner_id=recording.user_id,
-                    shared_with_user_id=membership.user_id,
-                    can_edit=(membership.role == 'admin'),
-                    can_reshare=False,
-                    source_type='group_tag',
-                    source_tag_id=tag.id
-                )
-                db.session.add(share)
-
-                # Create SharedRecordingState with default values for the recipient
-                state = SharedRecordingState(
-                    recording_id=recording_id,
-                    user_id=membership.user_id,
-                    is_inbox=True,  # New shares appear in inbox by default
-                    is_highlighted=False  # Not favorited by default
-                )
-                db.session.add(state)
-
-                shares_created += 1
-                current_app.logger.info(f"Auto-shared recording {recording_id} with user {membership.user_id} (role={membership.role}) via group tag '{tag.name}'")
+        shares_created += apply_tag_shares(recording, tag, require_completed=False,
+                                           sharing_enabled=ENABLE_INTERNAL_SHARING)
 
     if shares_created > 0:
         db.session.commit()

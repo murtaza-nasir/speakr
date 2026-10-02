@@ -933,7 +933,7 @@ GET /api/v1/tags
 
 **Scope:** `read`
 
-Returns both personal tags and group tags you have access to.
+Returns both personal tags and group tags you have access to. `?name=` returns only the tag with that name (any case), so a client can find a tag by name.
 
 **Response:**
 
@@ -1020,6 +1020,36 @@ POST /api/v1/recordings/{id}/tags
   "tag_ids": [1, 2, 3]
 }
 ```
+
+Adds the tags after the ones already on the recording. Needs edit access to the recording. A group tag can be applied by the recording's owner or a group admin.
+
+**Tags that share.** A group tag with *auto-share on apply* (or *share with group lead*) shares a completed recording with the group, as in the web app: admins get edit access, members read access. A scoped token needs the `share` scope for such a tag; without it the request gets `403 insufficient_scope` and nothing changes.
+
+### Set Recording Tags
+
+```http
+PUT /api/v1/recordings/{id}/tags
+```
+
+**Scope:** `write`
+
+Sets the recording's tags to exactly this list, in this order. The access and sharing rules of Add Tags apply. Tags of other users that you cannot see stay on the recording.
+
+```json
+{"tag_ids": [3, 9]}
+```
+
+**Response:**
+
+```json
+{
+  "tags": [{"id": 3, "name": "Followed up", "color": "#10B981"}, {"id": 9, "name": "Client", "color": "#3B82F6"}],
+  "added": [9],
+  "removed": [4]
+}
+```
+
+An unknown tag, or one you cannot use, gives `400` with `"code": "invalid_parameter"` and the refused ids in `tag_ids`; nothing changes.
 
 ### Remove Tag from Recording
 
