@@ -2101,74 +2101,34 @@ def share_target():
     if not shared or not getattr(shared, 'filename', ''):
         return redirect(url_for('recordings.index') + '?share_target_error=missing_file')
 
-    original_filename = shared.filename
-    safe_filename = secure_filename(original_filename) or 'shared-recording.webm'
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{timestamp}_{safe_filename}")
+    # The file goes through the same ingestion as every upload (#412 audit
+    # P13): storage backend (local or S3), file hash and duplicate check,
+    # meeting date, MIME type, title placeholder, recording.created and the
+    # transcription job. A share sheet carries no tag or folder; its title,
+    # text and url become the title and notes.
+    from werkzeug.datastructures import MultiDict
+    form = MultiDict()
+    share_title = (request.form.get('title') or '').strip()
+    if share_title:
+        form['title'] = share_title
+    notes_parts = [(request.form.get(k) or '').strip() for k in ('title', 'text', 'url')]
+    notes_parts = [v for v in notes_parts if v]
+    if notes_parts:
+        form['notes'] = '\n\n'.join(notes_parts)
 
     try:
-        shared.save(filepath)
+        result = ingest_uploaded_recording(owner=current_user, uploaded_file=shared, form=form,
+                                           processing_source='share_target')
     except RequestEntityTooLarge:
         return redirect(url_for('recordings.index') + '?share_target_error=too_large')
-    except Exception as save_err:
-        current_app.logger.warning(f"share-target file save failed: {save_err}")
-        return redirect(url_for('recordings.index') + '?share_target_error=save_failed')
+    resp, status = result if isinstance(result, tuple) else (result, result.status_code)
+    data = resp.get_json(silent=True) or {}
+    if status >= 400 or not data.get('id'):
+        current_app.logger.warning(f"share-target ingest failed ({status}): {data.get('error')}")
+        error = 'too_large' if status == 413 else 'save_failed'
+        return redirect(url_for('recordings.index') + f'?share_target_error={error}')
 
-    file_size = os.path.getsize(filepath)
-
-    # Build the recording row. Tags and folder cannot be inferred from a
-    # share sheet, so we leave them empty; the user can adjust from the
-    # recording detail view. Title comes from the share sheet's title field
-    # if present; otherwise we use the SAME placeholder a normal upload gets
-    # (resolve_upload_title) so the AI title task recognises it and generates
-    # a title — previously the filename stem was used, which the title task
-    # treated as a user-chosen title and skipped, leaving shared files untitled.
-    from src.utils.titles import resolve_upload_title, upload_title_source
-    share_title = resolve_upload_title(request.form.get('title'), original_filename)
-
-    notes_parts = []
-    for key in ('title', 'text', 'url'):
-        val = (request.form.get(key) or '').strip()
-        if val:
-            notes_parts.append(val)
-    share_notes = '\n\n'.join(notes_parts) if notes_parts else None
-
-    recording = Recording(
-        audio_path=filepath,
-        original_filename=original_filename,
-        title=share_title,
-        title_source=upload_title_source(request.form.get('title')),
-        status='PENDING',
-        user_id=current_user.id,
-        notes=share_notes,
-        file_size=file_size,
-    )
-    db.session.add(recording)
-    db.session.commit()
-    from src.services.webhook_dispatch import emit_recording_created
-    emit_recording_created(recording)
-
-    # Enqueue transcription through the shared resolver so a shared file honors
-    # the same account defaults (and any future tag/folder context) as every
-    # other ingestion path. A share sheet carries no tag/folder, so this
-    # resolves to the owner's account-level defaults.
-    job_params = resolve_transcription_params(recording)
-    try:
-        job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='transcribe',
-            params=job_params,
-            is_new_upload=True,
-        )
-    except Exception as queue_err:
-        current_app.logger.warning(f"share-target enqueue failed for recording {recording.id}: {queue_err}")
-        recording.status = 'FAILED'
-        recording.transcription = f"Processing failed: {queue_err}"
-        db.session.commit()
-        return redirect(url_for('recordings.index') + '?share_target_error=queue_failed')
-
-    return redirect(url_for('recordings.index') + f'?share_target=ok&recording_id={recording.id}')
+    return redirect(url_for('recordings.index') + f"?share_target=ok&recording_id={data['id']}")
 
 
 @recordings_bp.route('/upload', methods=['POST'])
