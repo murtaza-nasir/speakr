@@ -355,18 +355,30 @@ def _end_transaction_before_external_call(*instances):
         session.expire_on_commit = previous
 
 
-def finish_processing(recording_id):
+def finish_processing(recording_id, events_transcript=None, events_summary=None):
     """The last step of every processing path (#412).
 
-    Marks the recording COMPLETED, then applies team-tag auto-shares, writes the
+    Extracts events (when the owner has event extraction on), marks the
+    recording COMPLETED, then applies team-tag auto-shares, writes the
     auto-export and builds the Inquire chunks. Every exit of the pipeline calls
     this (title only, summary, empty or skipped summary, short transcription),
-    so none of them can skip a step. The steps after COMPLETED are best-effort:
-    a failure is logged and the recording stays COMPLETED.
+    so none of them can skip a step. Events no longer depend on a summary: with
+    auto-summarization off they are extracted from the transcript. The steps
+    after COMPLETED are best-effort: a failure is logged and the recording
+    stays COMPLETED.
     """
     recording = db.session.get(Recording, recording_id)
     if not recording:
         return
+    from src.utils.error_formatting import is_transcription_error
+    owner = recording.owner
+    if (owner and owner.extract_events and client is not None and recording.transcription
+            and len(recording.transcription.strip()) >= 10 and not is_transcription_error(recording.transcription)):
+        transcript = events_transcript or format_transcription_for_llm(recording.transcription)
+        extract_events_from_transcript(recording_id, transcript, events_summary or "")
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return
     recording.status = 'COMPLETED'
     recording.completed_at = datetime.utcnow()
     db.session.commit()
@@ -906,11 +918,6 @@ Summarization Instructions:
                 db.session.commit()
                 current_app.logger.info(f"Summary generated successfully for recording {recording_id}")
 
-                # Extract events if enabled for this user BEFORE marking as completed
-                if recording.owner and recording.owner.extract_events:
-                    extract_events_from_transcript(recording_id, formatted_transcription, summary)
-
-                # Events are extracted before the recording is finished.
                 summarization_end_time = time.time()
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
@@ -922,11 +929,12 @@ Summarization Instructions:
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
 
-            # Status, auto-shares, export and Inquire chunks (#305, #412). The
-            # steps after COMPLETED are best-effort inside finish_processing, so
-            # a share/export hiccup cannot reach the except below and overwrite
-            # a good summary with an error.
-            finish_processing(recording_id)
+            # Events, status, auto-shares, export and Inquire chunks (#305, #412).
+            # The steps after COMPLETED are best-effort inside finish_processing,
+            # so a share/export hiccup cannot reach the except below and
+            # overwrite a good summary with an error.
+            finish_processing(recording_id, events_transcript=formatted_transcription,
+                              events_summary=summary or None)
 
         except Exception as e:
             error_msg = format_api_error_message(str(e))
@@ -963,6 +971,17 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
         user_output_language = None
         if recording.owner:
             user_output_language = recording.owner.output_language
+
+        # With a summary: the summary plus a transcript excerpt, as before. Without
+        # one (auto-summarization off, #412): the transcript itself, up to the
+        # admin transcript length limit.
+        if summary_text:
+            events_source = (f"Transcript Summary:\n{summary_text}\n\n"
+                             f"Transcript excerpt (for additional context):\n{transcript_text[:8000]}")
+        else:
+            limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+            body = transcript_text if limit == -1 else transcript_text[:limit]
+            events_source = f"Transcript:\n{body}"
 
         # Build comprehensive context information
         current_date = datetime.now()
@@ -1062,11 +1081,7 @@ For each event found, extract:
 - Attendees: List of people who should attend (if mentioned)
 - Reminder minutes: How how long before to remind (default 1 day)
 
-Transcript Summary:
-{summary_text}
-
-Transcript excerpt (for additional context):
-{transcript_text[:8000]}
+{events_source}
 
 RESPONSE FORMAT:
 Respond with a JSON object containing an "events" array. If no events are found, return a JSON object with an empty events array.
