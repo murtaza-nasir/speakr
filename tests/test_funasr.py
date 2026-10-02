@@ -18,6 +18,24 @@ from src.services.transcription.exceptions import ProviderError, TranscriptionEr
 import io
 
 
+
+def _own_sleeps():
+    """Patch time.sleep and record only the calls made by this thread.
+
+    time.sleep is process-wide, and background threads left by other tests
+    (Inquire reindex, webhook dispatcher) may sleep while a test runs; counting
+    their calls made these tests flaky.
+    """
+    import threading
+    me = threading.get_ident()
+    calls = []
+
+    def _sleep(seconds):
+        if threading.get_ident() == me:
+            calls.append(seconds)
+    return patch('time.sleep', side_effect=_sleep), calls
+
+
 def test_funasr_connector_reads_urls_from_extra_options():
     """AlibabaFunASRConnector reads funasr_file_urls from extra_options."""
     captured = {}
@@ -128,12 +146,13 @@ def test_terminal_provider_failure_is_not_retried():
         'poll_interval': 10,
     })
 
-    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+    sleep_patch, sleeps = _own_sleeps()
+    with patch('httpx.Client', return_value=client), sleep_patch:
         with pytest.raises(ProviderError, match='INVALID_PARAMETER'):
             connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
 
     assert client.get.call_count == 1
-    sleep.assert_not_called()
+    assert sleeps == []
 
 
 def test_transcribe_preserves_provider_error_type():
@@ -321,13 +340,14 @@ def test_poll_4xx_is_terminal_and_not_retried():
         'poll_interval': 10,
     })
 
-    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+    sleep_patch, sleeps = _own_sleeps()
+    with patch('httpx.Client', return_value=client), sleep_patch:
         with pytest.raises(ProviderError) as exc_info:
             connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
 
     assert exc_info.value.status_code == 401
     assert client.get.call_count == 1
-    sleep.assert_not_called()
+    assert sleeps == []
 
 
 def test_poll_5xx_is_retried():
@@ -353,14 +373,15 @@ def test_poll_5xx_is_retried():
         'poll_interval': 10,
     })
 
-    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+    sleep_patch, sleeps = _own_sleeps()
+    with patch('httpx.Client', return_value=client), sleep_patch:
         with pytest.raises(HTTPStatusError):
             connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
 
     assert client.get.call_count > 1
-    sleep.assert_called()
+    assert sleeps
     # 503 (non-429) retries with the normal poll interval, not doubled.
-    assert sleep.call_args.args[0] == 10
+    assert sleeps[-1] == 10
 
 
 def test_poll_429_is_retried_with_doubled_backoff():
@@ -386,14 +407,15 @@ def test_poll_429_is_retried_with_doubled_backoff():
         'poll_interval': 10,
     })
 
-    with patch('httpx.Client', return_value=client), patch('time.sleep') as sleep:
+    sleep_patch, sleeps = _own_sleeps()
+    with patch('httpx.Client', return_value=client), sleep_patch:
         with pytest.raises(HTTPStatusError):
             connector._poll_task_result('task-1', {'Authorization': 'Bearer sk-test'})
 
     assert client.get.call_count > 1
-    sleep.assert_called()
+    assert sleeps
     # 429 retries with a doubled backoff.
-    assert sleep.call_args.args[0] == 20
+    assert sleeps[-1] == 20
 
 
 def test_transcribe_diarize_false_overrides_config_default():
