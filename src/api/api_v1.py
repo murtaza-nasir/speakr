@@ -2609,28 +2609,74 @@ def get_transcription_info():
 @require_scope('read')
 @login_required
 def list_speakers():
-    """List all speakers for the current user."""
-    speakers = Speaker.query.filter_by(user_id=current_user.id)\
-                           .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
-                           .all()
+    """List all speakers for the current user. ?email= filters by address."""
+    query = Speaker.query.filter_by(user_id=current_user.id)
+    email = (request.args.get('email') or '').strip().lower()
+    if email:
+        query = query.filter(db.func.lower(Speaker.email) == email)
+    speakers = query.order_by(Speaker.use_count.desc(), Speaker.last_used.desc()).all()
+    return jsonify({'speakers': [_speaker_item(s) for s in speakers]})
 
-    return jsonify({
-        'speakers': [{
-            'id': s.id,
-            'name': s.name,
-            'use_count': s.use_count,
-            'last_used': s.last_used.isoformat() if s.last_used else None,
-            'confidence_score': s.confidence_score,
-            'has_voice_profile': s.average_embedding is not None
-        } for s in speakers]
-    })
+
+_EMAIL = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def _speaker_item(s):
+    try:
+        aliases = json.loads(s.aliases) if s.aliases else []
+    except (TypeError, ValueError):
+        aliases = []
+    changed = s.updated_at or s.created_at
+    return {
+        'id': s.id,
+        'name': s.name,
+        'use_count': s.use_count,
+        'last_used': s.last_used.isoformat() if s.last_used else None,
+        'confidence_score': s.confidence_score,
+        'has_voice_profile': s.average_embedding is not None,
+        'email': s.email,
+        'aliases': aliases if isinstance(aliases, list) else [],
+        'updated_at': changed.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if changed else None,
+    }
+
+
+def _speaker_contact_fields(data, speaker):
+    """Apply email and aliases from a request body; returns an error message or None."""
+    if 'email' in data:
+        email = data['email']
+        if email is None or (isinstance(email, str) and not email.strip()):
+            speaker.email = None
+        elif isinstance(email, str) and len(email.strip()) <= 320 and _EMAIL.match(email.strip()):
+            speaker.email = email.strip().lower()
+        else:
+            return 'email must be an email address'
+    if 'aliases' in data:
+        aliases = data['aliases']
+        if aliases is None:
+            aliases = []
+        if not isinstance(aliases, list) or not all(isinstance(a, str) for a in aliases):
+            return 'aliases must be a list of strings'
+        clean, seen = [], set()
+        for alias in aliases:
+            alias = alias.strip()
+            if not alias:
+                continue
+            if len(alias) > 100:
+                return 'each alias must be at most 100 characters'
+            if alias.lower() not in seen:
+                seen.add(alias.lower())
+                clean.append(alias)
+        if len(clean) > 20:
+            return 'at most 20 aliases'
+        speaker.aliases = json.dumps(clean) if clean else None
+    return None
 
 
 @api_v1_bp.route('/speakers', methods=['POST'])
 @require_scope('write')
 @login_required
 def create_speaker():
-    """Create a new speaker."""
+    """Create a new speaker (name, optional email and aliases)."""
     data = request.get_json()
     if not data or not data.get('name'):
         return jsonify({'error': 'Speaker name is required'}), 400
@@ -2648,22 +2694,23 @@ def create_speaker():
         use_count=0,
         created_at=datetime.utcnow()
     )
+    problem = _speaker_contact_fields(data, speaker)
+    if problem:
+        return jsonify({'error': problem, 'code': 'invalid_parameter'}), 400
     db.session.add(speaker)
     db.session.commit()
 
-    return jsonify({
-        'id': speaker.id,
-        'name': speaker.name,
-        'use_count': speaker.use_count,
-        'created_at': speaker.created_at.isoformat()
-    }), 201
+    item = _speaker_item(speaker)
+    item['created_at'] = speaker.created_at.isoformat()
+    return jsonify(item), 201
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['PUT'])
 @require_scope('write')
 @login_required
 def update_speaker(speaker_id):
-    """Update a speaker (cascades name changes to recordings)."""
+    """Update a speaker's name, email or aliases. A new name reaches every
+    recording the speaker appears in, as in Speaker Management."""
     speaker = db.session.get(Speaker, speaker_id)
     if not speaker:
         return jsonify({'error': 'Speaker not found'}), 404
@@ -2675,33 +2722,36 @@ def update_speaker(speaker_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
-    old_name = speaker.name
-    new_name = data.get('name', '').strip()
+    problem = _speaker_contact_fields(data, speaker)
+    if problem:
+        db.session.rollback()
+        return jsonify({'error': problem, 'code': 'invalid_parameter'}), 400
 
-    if not new_name:
-        return jsonify({'error': 'Speaker name is required'}), 400
-
-    if new_name != old_name:
-        # Update speaker name
-        speaker.name = new_name
-
-        # Update all recordings that have this speaker in their transcription
-        from src.services.speaker import update_speaker_in_recordings
-        try:
-            update_speaker_in_recordings(current_user.id, old_name, new_name)
-        except Exception as e:
-            current_app.logger.error(f"Error updating speaker in recordings: {e}")
+    renamed = {}
+    if 'name' in data:
+        new_name = (data.get('name') or '').strip()
+        if not new_name:
+            db.session.rollback()
+            return jsonify({'error': 'Speaker name cannot be empty', 'code': 'invalid_parameter'}), 400
+        if new_name != speaker.name:
+            clash = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
+            if clash and clash.id != speaker.id:
+                db.session.rollback()
+                return jsonify({'error': f'A speaker named "{new_name}" already exists', 'code': 'conflict'}), 409
+            from src.services.speaker_merge import rename_speaker_in_recordings
+            old_name = speaker.name
+            speaker.name = new_name
+            _, renamed = rename_speaker_in_recordings(current_user.id, old_name, new_name,
+                                                      speaker_id=speaker.id, new_speaker_id=speaker.id)
+    elif not any(k in data for k in ('email', 'aliases')):
+        return jsonify({'error': 'Nothing to change: give name, email or aliases', 'code': 'invalid_parameter'}), 400
 
     db.session.commit()
+    if renamed:
+        from src.services.speaker_merge import refresh_renamed_recordings
+        refresh_renamed_recordings(renamed)
 
-    return jsonify({
-        'success': True,
-        'speaker': {
-            'id': speaker.id,
-            'name': speaker.name,
-            'use_count': speaker.use_count
-        }
-    })
+    return jsonify({'success': True, 'speaker': _speaker_item(speaker)})
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['DELETE'])
@@ -2737,33 +2787,35 @@ def get_recording_speakers(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Parse transcription to get speakers
+    # One entry per person in the transcript: the diarization label (when
+    # known), the name it was given and the linked saved speaker. Email only
+    # for the speaker's owner (mailr spec G6).
+    from src.services.transcript_segments import canonical_segments
     speakers_in_recording = []
-    speaker_counts = {}
-
-    if recording.transcription:
-        try:
-            segments = json.loads(recording.transcription)
-            for seg in segments:
-                speaker = seg.get('speaker', 'Unknown')
-                speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # Build speaker list with identification info
-    for label, count in speaker_counts.items():
-        # Check if this speaker label has been identified
-        identified_name = None
-        speaker_id = None
-
-        # Look for speaker in user's speakers by checking recordings
-        # This is a simplified check - actual implementation would check speaker_embeddings
-        speakers_in_recording.append({
-            'label': label,
-            'identified_name': identified_name,
-            'speaker_id': speaker_id,
-            'segment_count': count
-        })
+    entries = {}
+    is_owner = recording.user_id == current_user.id
+    owned = {}
+    for seg in canonical_segments(recording) or []:
+        named = seg['speaker'] if seg['speaker'] and seg['speaker'] != seg['speaker_label'] else None
+        key = seg['speaker_id'] or seg['speaker_label'] or seg['speaker'] or 'Unknown'
+        entry = entries.get(key)
+        if entry is None:
+            entry = entries[key] = {
+                'label': seg['speaker_label'] or seg['speaker'] or 'Unknown',
+                'identified_name': named,
+                'speaker_id': seg['speaker_id'],
+                'email': None,
+                'segment_count': 0,
+            }
+            speakers_in_recording.append(entry)
+        entry['segment_count'] += 1
+    if is_owner:
+        ids = [e['speaker_id'] for e in speakers_in_recording if e['speaker_id']]
+        if ids:
+            owned = {sp.id: sp for sp in Speaker.query.filter(Speaker.id.in_(ids), Speaker.user_id == current_user.id)}
+        for entry in speakers_in_recording:
+            if entry['speaker_id'] in owned:
+                entry['email'] = owned[entry['speaker_id']].email
 
     # Get voice-based suggestions. speaker_embeddings maps each SPEAKER_XX
     # label to one embedding (any dimension); find_matching_speakers takes a

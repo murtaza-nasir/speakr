@@ -155,3 +155,23 @@ def test_upload_idempotency_and_external_refs(tmp_path, fixture):
     assert {"recording_id", "user_id", "system", "kind", "ref", "url", "label"} <= _columns(con, "recording_external_ref")
     con.close()
 
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])
+def test_speaker_contact_columns(tmp_path, fixture):
+    """G6: email, aliases and updated_at arrive empty; names stay."""
+    db_path, con = _load(tmp_path, fixture)
+    if "speaker" not in {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        con.close()
+        pytest.skip("speaker table not in this release")
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)', ("u", "u@example.test", "hash"))
+    con.execute("INSERT INTO speaker (id, name, user_id) VALUES (4, 'Dana', 1)")
+    con.commit()
+    con.close()
+    _upgrade(db_path)
+    _upgrade(db_path)
+    con = sqlite3.connect(db_path)
+    assert {"email", "aliases", "updated_at"} <= _columns(con, "speaker")
+    assert "ix_speaker_user_email" in {r[1] for r in con.execute("PRAGMA index_list('speaker')")}
+    assert con.execute("SELECT name, email, aliases FROM speaker WHERE id = 4").fetchone() == ("Dana", None, None)
+    con.close()
+

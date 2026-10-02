@@ -1096,6 +1096,8 @@ GET /api/v1/speakers
 
 **Scope:** `read`
 
+`?email=` returns the speaker with that address (any case).
+
 **Response:**
 
 ```json
@@ -1107,11 +1109,16 @@ GET /api/v1/speakers
       "use_count": 45,
       "last_used": "2024-01-15T14:30:00Z",
       "confidence_score": 0.87,
-      "has_voice_profile": true
+      "has_voice_profile": true,
+      "email": "john@example.com",
+      "aliases": ["Johnny"],
+      "updated_at": "2024-01-15T14:30:00.000000Z"
     }
   ]
 }
 ```
+
+`email` and `aliases` are contact details you give your speakers. Only you see them: they are not part of shared recordings, public shares, exports or webhooks, and they are deleted with the speaker.
 
 ### Create Speaker
 
@@ -1125,9 +1132,13 @@ POST /api/v1/speakers
 
 ```json
 {
-  "name": "Jane Smith"
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "aliases": ["J. Smith"]
 }
 ```
+
+`email` and `aliases` are optional.
 
 ### Update Speaker
 
@@ -1137,13 +1148,15 @@ PUT /api/v1/speakers/{id}
 
 **Scope:** `write`
 
-Updates the speaker name and cascades changes to all recordings.
+Changes the name, email or aliases; send only what changes. A new name appears in every recording the speaker is in (transcript, participants, search). `email` must be an address (stored in lower case); `null` or `""` removes it. `aliases`: at most 20 names of at most 100 characters, trimmed, duplicates (any case) dropped; `[]` removes them. A name another of your speakers has gives `409`.
 
 **Request Body:**
 
 ```json
 {
-  "name": "Jane Doe"
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "aliases": ["J. Doe"]
 }
 ```
 
@@ -1163,7 +1176,7 @@ GET /api/v1/recordings/{id}/speakers
 
 **Scope:** `read`
 
-Returns speakers in the recording with voice-based identification suggestions.
+Returns the people in the recording with voice-based identification suggestions. Each entry is one person: the diarization `label`, the name given to it (`null` while unnamed), the saved speaker it is linked to, and `email` when you own both the recording and the speaker (`null` for anyone else).
 
 **Response:**
 
@@ -1174,6 +1187,7 @@ Returns speakers in the recording with voice-based identification suggestions.
       "label": "SPEAKER_00",
       "identified_name": "John Doe",
       "speaker_id": 1,
+      "email": "john@example.com",
       "segment_count": 23
     }
   ],

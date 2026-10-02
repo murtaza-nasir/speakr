@@ -258,6 +258,14 @@ def _run_migrations(app, engine):
 
         run_once(engine, '0002_backfill_recording_updated_at', _backfill_recording_updated_at,
                  logger=app.logger)
+        # Speaker contact details (mailr spec G6).
+        if add_column_if_not_exists(engine, 'speaker', 'email', 'VARCHAR(320)'):
+            app.logger.info("Added email column to speaker table")
+        if add_column_if_not_exists(engine, 'speaker', 'aliases', 'TEXT'):
+            app.logger.info("Added aliases column to speaker table")
+        if add_column_if_not_exists(engine, 'speaker', 'updated_at', 'DATETIME'):
+            app.logger.info("Added updated_at column to speaker table")
+        create_index_if_not_exists(engine, 'ix_speaker_user_email', 'speaker', 'user_id, email')
         # Idempotent API uploads (mailr spec G8).
         if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
             app.logger.info("Added upload_idempotency_key column to recording table")

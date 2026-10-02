@@ -157,6 +157,11 @@ class Speaker(db.Model):
     embeddings_history = db.Column(db.JSON, nullable=True)  # List of metadata: [{recording_id, timestamp, similarity}, ...]
     embedding_count = db.Column(db.Integer, default=0)  # Number of embeddings collected
     confidence_score = db.Column(db.Float, nullable=True)  # 0-1 score based on embedding consistency
+    # Contact details the owner gives a speaker (mailr spec G6). Personal data
+    # of a third party: shown to the speaker's owner only.
+    email = db.Column(db.String(320), nullable=True)
+    aliases = db.Column(db.Text, nullable=True)  # JSON list of other names
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.utcnow)
 
     # Relationship to user
     user = db.relationship('User', backref=db.backref('speakers', lazy=True, cascade='all, delete-orphan'))
