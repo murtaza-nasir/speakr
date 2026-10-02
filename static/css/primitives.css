@@ -13,12 +13,10 @@
    border-radius: 22% matches the iOS-style rounded-square corner of the
    Speakr icon so the outline traces the icon's actual shape rather than
    cutting across it. */
+/* The paper-fold S has a transparent background and stands on its own:
+   no frame, no tint, the same apricot in every theme. */
 .app-logo {
-    border-radius: 22%;
-    box-shadow: 0 0 0 1px var(--border-secondary), 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-.dark .app-logo {
-    box-shadow: 0 0 0 1px var(--border-secondary), 0 1px 2px rgba(0, 0, 0, 0.3);
+    object-fit: contain;
 }
 
 /* ============================================================================

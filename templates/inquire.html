@@ -226,7 +226,7 @@
                 
                 <!-- Logo and Title (clickable to go back) -->
                 <a href="/" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
-                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+                    <img src="{{ url_for('static', filename='img/icon-64.png') }}" srcset="{{ url_for('static', filename='img/icon-64.png') }} 1x, {{ url_for('static', filename='img/icon-128.png') }} 2x" alt="Speakr" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
                     <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
                 </a>
                 <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
