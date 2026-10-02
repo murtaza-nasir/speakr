@@ -25,7 +25,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
-from src.utils.token_auth import require_scope
+from src.utils.token_auth import require_scope, token_rate_key
 from sqlalchemy import func, extract, or_, and_
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -251,6 +251,30 @@ OPENAPI_SPEC = {
                 "description": "Any valid token or session. Clients read features here, never from the version string.",
                 "responses": {"200": {"description": "Capabilities",
                                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Capabilities"}}}}}
+            }
+        },
+        "/search": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Search titles, participants, notes, summaries and transcripts",
+                "description": "Keyword search over every recording you own, or semantic search through the Inquire index (mode=semantic). Transcript hits carry segment_index, start_time, end_time and speaker.",
+                "parameters": [
+                    {"name": "q", "in": "query", "required": True, "schema": {"type": "string"}},
+                    {"name": "mode", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "fields", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "scope", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "recording_ids", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "tag_id", "in": "query", "required": False, "schema": {"type": "integer"}},
+                    {"name": "folder_id", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "speaker", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_from", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_to", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_field", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "limit", "in": "query", "required": False, "schema": {"type": "integer"}},
+                    {"name": "page", "in": "query", "required": False, "schema": {"type": "integer"}}
+                ],
+                "responses": {"200": {"description": "Hits"}, "400": {"description": "invalid_parameter"},
+                              "409": {"description": "semantic_unavailable"}}
             }
         },
         "/recordings/changes": {
@@ -892,6 +916,7 @@ CAPABILITY_FEATURES = {
     'etags': True,
     'webhook_signature_v2': True,
 }
+# search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
 
 
 @api_v1_bp.route('/capabilities', methods=['GET'])
@@ -904,6 +929,8 @@ def get_capabilities():
     features['internal_sharing'] = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
     features['public_sharing'] = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
     features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    from src.services.search_v1 import semantic_available
+    features['search'] = {'keyword': True, 'semantic': semantic_available()}
     features['inquire'] = {
         'enabled': os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true',
         'agent': os.environ.get('ENABLE_INQUIRE_AGENT', 'false').lower() == 'true',
@@ -1227,6 +1254,77 @@ def _conditional(prefix):
     return decorator
 
 
+@api_v1_bp.route('/search', methods=['GET'])
+@require_scope('read')
+@rate_limit(os.environ.get('API_SEARCH_RATE_LIMIT', '30 per minute'), key_func=token_rate_key)
+@login_required
+def search_recordings_v1():
+    """Search titles, participants, notes, summaries and transcripts (mailr spec G3).
+
+    Query params: q (2 to 500 characters), mode (keyword | semantic | auto),
+    fields, scope (own), recording_ids, tag_id, folder_id, speaker,
+    date_from, date_to, date_field (meeting_date | created_at), limit (1-50),
+    page (keyword mode).
+    """
+    from src.services import search_v1
+    args = request.args
+    q = (args.get('q') or '').strip()
+    if not 2 <= len(q) <= 500:
+        return jsonify({'error': 'q must be 2 to 500 characters', 'code': 'invalid_parameter'}), 400
+    mode = args.get('mode', 'keyword')
+    if mode not in ('keyword', 'semantic', 'auto'):
+        return jsonify({'error': 'mode must be keyword, semantic or auto', 'code': 'invalid_parameter'}), 400
+    if args.get('scope', 'own') != 'own':
+        return jsonify({'error': "scope must be 'own'", 'code': 'invalid_parameter'}), 400
+    fields = tuple(f.strip() for f in args.get('fields', ','.join(search_v1.FIELDS)).split(',') if f.strip())
+    unknown = [f for f in fields if f not in search_v1.FIELDS]
+    if unknown or not fields:
+        return jsonify({'error': f'Unknown field(s): {", ".join(unknown) or "none given"}',
+                        'code': 'invalid_parameter'}), 400
+    date_field = args.get('date_field', 'meeting_date')
+    if date_field not in ('meeting_date', 'created_at'):
+        return jsonify({'error': 'date_field must be meeting_date or created_at', 'code': 'invalid_parameter'}), 400
+    limit = args.get('limit', 20, type=int)
+    page = args.get('page', 1, type=int)
+    if limit is None or not 1 <= limit <= 50 or page is None or page < 1:
+        return jsonify({'error': 'limit must be 1 to 50 and page at least 1', 'code': 'invalid_parameter'}), 400
+    try:
+        recording_ids = [int(x) for x in args.get('recording_ids', '').split(',') if x.strip()] or None
+    except ValueError:
+        return jsonify({'error': 'recording_ids must be a comma list of ids', 'code': 'invalid_parameter'}), 400
+    folder = args.get('folder_id', '').strip()
+    folder_id = None
+    if folder:
+        if folder.lower() == 'none':
+            folder_id = 'none'
+        elif folder.isdigit():
+            folder_id = int(folder)
+        else:
+            return jsonify({'error': 'folder_id must be an id or none', 'code': 'invalid_parameter'}), 400
+    filters = dict(recording_ids=recording_ids, tag_id=args.get('tag_id', type=int), folder_id=folder_id,
+                   date_from=args.get('date_from') or None, date_to=args.get('date_to') or None,
+                   date_field=date_field)
+    speaker = (args.get('speaker') or '').strip() or None
+
+    use_semantic = mode == 'semantic' or (mode == 'auto' and search_v1.semantic_available())
+    if mode == 'semantic' and not search_v1.semantic_available():
+        return jsonify({'error': 'Semantic search is not available on this instance',
+                        'code': 'semantic_unavailable'}), 409
+    try:
+        if use_semantic:
+            # The dates are checked the same way in both modes.
+            search_v1.candidate_query(current_user, ['x'], ('title',), **filters)
+            results = search_v1.semantic_search(current_user, q, limit=limit, speaker=speaker, **filters)
+            has_more = False
+        else:
+            results, has_more = search_v1.keyword_search(current_user, q, fields=fields, speaker=speaker,
+                                                         limit=limit, page=page, **filters)
+    except search_v1.SearchError as e:
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    return jsonify({'query': q, 'mode_used': 'semantic' if use_semantic else 'keyword',
+                    'results': results, 'page': page if not use_semantic else 1, 'has_more': has_more})
+
+
 @api_v1_bp.route('/recordings/changes', methods=['GET'])
 @require_scope('read')
 @login_required
@@ -1332,7 +1430,7 @@ def get_recording(recording_id):
         if 'summary' in include_fields:
             response['summary'] = recording.summary
         if 'notes' in include_fields:
-            response['notes'] = recording.notes
+            response['notes'] = recording.get_user_notes(current_user)
 
     return jsonify(response)
 
@@ -1464,9 +1562,11 @@ def get_notes(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
+    # The owner's notes for the owner; a recipient's own personal notes otherwise.
+    notes = recording.get_user_notes(current_user)
     return jsonify({
-        'notes': recording.notes,
-        'has_notes': bool(recording.notes)
+        'notes': notes,
+        'has_notes': bool(notes)
     })
 
 
@@ -1522,7 +1622,8 @@ def update_recording(recording_id):
     if 'participants' in data:
         recording.participants = data['participants']
     if 'notes' in data:
-        recording.notes = data['notes']
+        from src.services.recording_state import set_user_notes
+        set_user_notes(recording, current_user, data['notes'])
     if 'summary' in data:
         recording.summary = data['summary']
     if 'meeting_date' in data:
@@ -1578,7 +1679,7 @@ def update_recording(recording_id):
             'id': recording.id,
             'title': recording.title,
             'participants': recording.participants,
-            'notes': recording.notes,
+            'notes': recording.get_user_notes(current_user),
             'summary': recording.summary,
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
             'is_inbox': recording.is_inbox,
@@ -1599,17 +1700,20 @@ def replace_notes(recording_id):
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    if not has_recording_access(recording, current_user, require_edit=True):
+    # Notes are per user, as in the web app: a recipient with view access
+    # writes their personal notes, never the owner's.
+    if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
     data = request.get_json()
     if not data or 'notes' not in data:
         return jsonify({'error': 'notes field required'}), 400
 
-    recording.notes = data['notes']
+    from src.services.recording_state import set_user_notes
+    set_user_notes(recording, current_user, data['notes'])
     db.session.commit()
 
-    return jsonify({'success': True, 'notes': recording.notes})
+    return jsonify({'success': True, 'notes': recording.get_user_notes(current_user)})
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['PUT'])

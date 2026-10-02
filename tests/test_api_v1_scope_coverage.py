@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.app import app
 
 EXPECTED = {
-    "read": {"get_openapi_spec", "get_docs", "get_stats", "get_current_user", "list_recordings", "list_recording_changes", "get_recording",
+    "read": {"get_openapi_spec", "get_docs", "get_stats", "get_current_user", "list_recordings", "list_recording_changes", "search_recordings_v1", "get_recording",
              "get_transcript", "get_summary", "get_notes", "get_recording_status", "list_tags", "list_folders",
              "get_folder", "get_transcription_info", "list_speakers", "get_recording_speakers",
              "get_recording_events", "download_events_ics", "download_audio"},

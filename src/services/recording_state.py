@@ -68,3 +68,18 @@ def archived_condition(recording_model, user_id):
                 db.func.coalesce(recording_model.is_archived, False) == True),  # noqa: E712
         recording_model.id.in_(shared_archived),
     )
+
+
+def set_user_notes(recording, user, notes):
+    """The owner writes the recording's notes; anyone else writes their own
+    personal notes and never sees or changes the owner's (mailr spec Q2)."""
+    if recording.user_id == user.id:
+        recording.notes = notes
+        return
+    state = _state(recording, user)
+    if not state:
+        state = SharedRecordingState(recording_id=recording.id, user_id=user.id,
+                                     is_inbox=True, is_highlighted=False)
+        db.session.add(state)
+    state.personal_notes = notes
+

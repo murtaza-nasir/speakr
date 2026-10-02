@@ -654,6 +654,8 @@ GET /api/v1/recordings/{id}/notes
 
 **Scope:** `read`
 
+Notes are per user. The owner gets the recording's notes. A user the recording is shared with gets only their own personal notes, never the owner's; the same holds for `notes` in the recording details and in search.
+
 **Response:**
 
 ```json
@@ -727,6 +729,8 @@ PUT /api/v1/recordings/{id}/notes
 
 **Scope:** `write`
 
+The owner replaces the recording's notes. A user the recording is shared with, even with view access only, replaces their own personal notes; the owner's notes do not change. `notes` in `PATCH /api/v1/recordings/{id}` follows the same rule.
+
 **Request Body:**
 
 ```json
@@ -788,6 +792,65 @@ DELETE /api/v1/recordings/{id}
 ```
 
 ---
+
+## Search
+
+### Search Recordings
+
+```http
+GET /api/v1/search
+```
+
+**Scope:** `read`
+
+Finds words in the titles, participants, notes, summaries and transcripts of your recordings, with the time and speaker of each transcript hit. Keyword search works on every installation; semantic search needs Inquire mode.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `q` | string | required | 2 to 500 characters. Words are matched separately; `"a quoted phrase"` stays together. Every word must appear in the recording. `%` and `_` are literal. |
+| `mode` | string | `keyword` | `keyword`, `semantic`, or `auto` (semantic when available, else keyword) |
+| `fields` | string | all | Comma list of `title`, `participants`, `notes`, `summary`, `transcript` (keyword mode) |
+| `scope` | string | `own` | `own` |
+| `recording_ids` | string | - | Comma list of recording ids |
+| `tag_id`, `folder_id` | - | - | As on [List Recordings](#list-recordings) |
+| `speaker` | string | - | Transcript hits of this speaker only (exact name, any case) |
+| `date_from`, `date_to` | string | - | ISO dates or date-times; a date alone includes that whole day |
+| `date_field` | string | `meeting_date` | `meeting_date` (the creation time where a recording has none) or `created_at` |
+| `limit` | integer | 20 | 1 to 50 hits |
+| `page` | integer | 1 | Keyword mode |
+
+**Response:**
+
+```json
+{
+  "query": "budget freeze",
+  "mode_used": "keyword",
+  "results": [
+    {
+      "recording_id": 412,
+      "title": "Weekly sync",
+      "meeting_date": "2026-09-29T15:00:00Z",
+      "field": "transcript",
+      "segment_index": 87,
+      "start_time": 754.2,
+      "end_time": 761.0,
+      "speaker": "Dana",
+      "text": "So the budget freeze applies to travel only.",
+      "match_spans": [[7, 13], [14, 20]],
+      "score": 0.7
+    }
+  ],
+  "page": 1,
+  "has_more": false
+}
+```
+
+- Keyword hits: the title and participants as a whole, notes and summaries per line, transcripts per segment. `text` is at most 400 characters around the first match; `match_spans` are character offsets into `text`. A transcript without speaker segments gives hits with `start_time` and `segment_index` set to `null`.
+- `score` is the share of the query words in the hit times a weight per field (title 1.0, summary 0.9, notes and participants 0.8, transcript 0.7). Ties go to the newer recording.
+- Keyword mode reads at most the 200 newest matching recordings per request.
+- Semantic hits come from the Inquire index: `field` is `transcript`, `segment_index` is `null`, `score` is the similarity. The query text is sent to the embedding model of the instance; `GET /api/v1/capabilities` reports `features.search.semantic` and `models_local`.
+- `mode=semantic` on an instance without Inquire mode: `409` with `"code": "semantic_unavailable"`.
+- Limit: 30 requests per minute per token (`API_SEARCH_RATE_LIMIT`).
 
 ## Tags
 
