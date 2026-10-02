@@ -467,8 +467,8 @@ off by default on most backends. The settings below are for vLLM; other servers
   hits in the API response when it is *also* started with
   `--enable-prompt-tokens-details`, which defaults to off. With that flag set,
   each response includes `usage.prompt_tokens_details.cached_tokens`, which
-  Speakr records and displays in the admin dashboard under **System Statistics →
-  Token Usage** as "Cache reads". Without it, caching still works, but the
+  Speakr records and shows in the admin dashboard under **System Statistics →
+  Usage and Cost**, in the prompt-cache line below the language-model chart. Without it, caching still works, but the
   dashboard shows zero cache reads because the server never reports them. You can
   confirm caching independently from vLLM's `/metrics` endpoint, which exposes
   `vllm:prefix_cache_hits_total` and `vllm:prompt_tokens_cached_total` regardless

@@ -426,7 +426,8 @@
         "llm": "Modelo de linguagem",
         "embedding": "Embedding",
         "transcription": "Transcrição"
-      }
+      },
+      "cacheLine": "Cache de prompts: {{reads}} tokens lidos do cache e {{writes}} gravados neste período"
     }
   },
   "apiTokens": {

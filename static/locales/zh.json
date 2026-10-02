@@ -426,7 +426,8 @@
         "llm": "语言模型",
         "embedding": "嵌入",
         "transcription": "转录"
-      }
+      },
+      "cacheLine": "提示缓存：本周期从缓存读取 {{reads}} 个令牌，写入 {{writes}} 个"
     }
   },
   "apiTokens": {

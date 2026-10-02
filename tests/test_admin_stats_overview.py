@@ -107,7 +107,7 @@ def test_tokens_split_by_task_with_embeddings_apart(world):
         before = build_overview(7, today)
         db.session.add_all([
             TokenUsage(user_id=world["admin"], date=today, operation_type="chat", total_tokens=500, cost=0.5,
-                       request_count=2, model_name="m-chat"),
+                       request_count=2, model_name="m-chat", cached_tokens=100, cache_write_tokens=40),
             TokenUsage(user_id=world["admin"], date=today, operation_type="embedding", total_tokens=9000, cost=0.1,
                        request_count=3, model_name="m-emb"),
             TranscriptionUsage(user_id=world["admin"], date=today, connector_type="asr_endpoint",
@@ -119,6 +119,8 @@ def test_tokens_split_by_task_with_embeddings_apart(world):
     assert u1["operations"].get("chat", 0) - u0["operations"].get("chat", 0) == 500
     assert "embedding" not in u1["operations"]
     assert u1["embedding_tokens"] - u0["embedding_tokens"] == 9000
+    assert after["usage"]["cache_reads"] - before["usage"]["cache_reads"] == 100
+    assert after["usage"]["cache_writes"] - before["usage"]["cache_writes"] == 40
     assert u1["minutes"] - u0["minutes"] == 20
     models = {(m["kind"], m["model"]): m for m in after["usage"]["by_model"]}
     assert models[("llm", "m-chat")]["requests"] == 2 and models[("embedding", "m-emb")]["tokens"] == 9000

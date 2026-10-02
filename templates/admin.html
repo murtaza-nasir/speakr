@@ -455,6 +455,9 @@
                         <div class="lg:col-span-2 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
                             <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.llmTokensPerDay')}</h5>
                             <div class="h-64"><canvas id="statsOperationsChart"></canvas></div>
+                            <p v-if="overview && overview.usage.cache_reads" class="text-xs text-[var(--text-muted)] mt-2">
+                                <i class="fas fa-bolt mr-1 text-[var(--text-accent)]"></i><span v-text="t('adminDashboard.statsPage.cacheLine', { reads: formatCompact(overview.usage.cache_reads), writes: formatCompact(overview.usage.cache_writes) })"></span>
+                            </p>
                         </div>
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
                             <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.minutesPerDay')}</h5>

@@ -328,7 +328,7 @@ Monitor and control LLM API consumption with per-user token tracking and budget 
 
 **Per-User Budgets**: Set monthly token limits for individual users to control costs. Users see their remaining budget in the interface and receive warnings at 80% consumption. Once a budget is exhausted, AI operations are blocked until the next month.
 
-**Admin Dashboard**: View detailed token statistics including daily trends, monthly totals, and per-user breakdowns. Cost tracking is available when using OpenRouter or other providers that return cost information. See the [admin guide](admin-guide/statistics.md#token-usage-statistics) for details.
+**Admin Dashboard**: System Statistics shows tokens per day by task, cost per month and per model, and each user's usage against the budget. Cost tracking is available when using OpenRouter or other providers that return cost information. See the [admin guide](admin-guide/statistics.md#usage-and-cost) for details.
 
 ### Transcription Usage Tracking & Budgets
 
@@ -338,7 +338,7 @@ Monitor and control speech-to-text API consumption separately from LLM tokens. T
 
 **Cost Estimation**: The system calculates estimated transcription costs based on the connector used - $0.006/minute for OpenAI Whisper, $0.003-$0.006/minute for OpenAI Transcribe models, and $0 for self-hosted ASR endpoints. This helps organizations forecast costs and identify heavy users.
 
-**Admin Dashboard**: View transcription statistics including today's usage, monthly totals, estimated costs, and per-user breakdowns with budget status indicators. See the [admin guide](admin-guide/statistics.md#transcription-usage-statistics) for details.
+**Admin Dashboard**: System Statistics shows minutes transcribed per day, estimated costs, and each user's minutes against the budget. See the [admin guide](admin-guide/statistics.md#usage-and-cost) for details.
 
 ### Flexible Configuration
 
