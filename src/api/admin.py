@@ -436,8 +436,22 @@ def admin_get_stats():
     # Get recordings by status
     completed_recordings = Recording.query.filter_by(status='COMPLETED').count()
     processing_recordings = Recording.query.filter(Recording.status.in_(['PROCESSING', 'SUMMARIZING'])).count()
+    transcribing_recordings = Recording.query.filter_by(status='PROCESSING').count()
+    summarizing_recordings = Recording.query.filter_by(status='SUMMARIZING').count()
     pending_recordings = Recording.query.filter_by(status='PENDING').count()
     failed_recordings = Recording.query.filter_by(status='FAILED').count()
+    audio_removed_recordings = Recording.query.filter(Recording.audio_deleted_at.isnot(None)).count()
+    archived_recordings = Recording.query.filter(Recording.is_archived.is_(True)).count()
+
+    # The job queue: what is waiting, running, and what failed this week.
+    from datetime import datetime as _dt, timedelta as _td
+    from src.models.processing_job import ProcessingJob
+    jobs_queued = ProcessingJob.query.filter_by(status='queued').count()
+    jobs_running = ProcessingJob.query.filter_by(status='processing').count()
+    jobs_failed_7d = ProcessingJob.query.filter(
+        ProcessingJob.status == 'failed',
+        db.func.coalesce(ProcessingJob.completed_at, ProcessingJob.created_at) >= _dt.utcnow() - _td(days=7),
+    ).count()
     
     # Get total storage used (exclude retention-removed audio — file gone but
     # file_size still recorded; see the user-list query above).
@@ -482,9 +496,17 @@ def admin_get_stats():
             'storage_used': storage_used or 0
         })
     
-    # Get total queries (chat requests)
-    # This is a placeholder - you would need to track this in your database
-    total_queries = 0
+    # AI requests this month: every model call except embeddings (chat,
+    # summaries, titles, events, speakers, Inquire). It replaces a "total
+    # queries" figure that was a hard-coded 0.
+    from datetime import date as _date
+    from src.models import TokenUsage
+    from src.services.token_tracking import token_tracker
+    month_start = _date.today().replace(day=1)
+    ai_requests_month = sum(
+        int(n or 0) for op, n in db.session.query(TokenUsage.operation_type, db.func.sum(TokenUsage.request_count))
+        .filter(TokenUsage.date >= month_start).group_by(TokenUsage.operation_type)
+        if not token_tracker.is_embedding_op(op))
     
     return jsonify({
         'total_users': total_users,
@@ -495,7 +517,12 @@ def admin_get_stats():
         'failed_recordings': failed_recordings,
         'total_storage': total_storage,
         'top_users': top_users,
-        'total_queries': total_queries
+        'ai_requests_month': ai_requests_month,
+        'transcribing_recordings': transcribing_recordings,
+        'summarizing_recordings': summarizing_recordings,
+        'audio_removed_recordings': audio_removed_recordings,
+        'archived_recordings': archived_recordings,
+        'jobs': {'queued': jobs_queued, 'running': jobs_running, 'failed_7d': jobs_failed_7d},
     })
 
 
@@ -554,8 +581,10 @@ def admin_get_token_stats():
             for r in op_rows
         ]
 
+        from src.services.embeddings import embeddings_are_local
         return jsonify({
             'today': today_usage,
+            'embeddings_local': embeddings_are_local(),
             'current_month': {
                 'tokens': current_month.get('tokens', 0),
                 'cost': current_month.get('cost', 0),

@@ -302,14 +302,14 @@
       "tokensByOperation": "Tokens nach Vorgang (diesen Monat)",
       "noUsage": "Diesen Monat noch keine Nutzung erfasst.",
       "requests": "Anf.",
-      "cached": "im Cache"
+      "cached": "im Cache",
+      "local": "Lokal"
     },
     "tokens": "Token",
     "topUsers": "Top-Benutzer",
     "topUsersByStorage": "Top-Benutzer nach Speicher",
     "total": "Gesamt",
     "totalChunks": "Gesamte Chunks",
-    "totalQueries": "Gesamte Abfragen",
     "totalRecordings": "Gesamte Aufnahmen",
     "totalStorage": "Gesamter Speicher",
     "totalUsers": "Gesamte Benutzer",
@@ -363,7 +363,14 @@
       "sourceAdmin": "Aktiv: {{value}} (Admin-Einstellung; Standard {{default}})",
       "sourceDefault": "Aktiv: {{value}} (Standard)"
     },
-    "defaultTimezoneHelp": "Wird für Datumsangaben in erzeugten Titeln verwendet, wenn der Browser eines Benutzers keine Zeitzone gemeldet und der Benutzer keine gewählt hat."
+    "defaultTimezoneHelp": "Wird für Datumsangaben in erzeugten Titeln verwendet, wenn der Browser eines Benutzers keine Zeitzone gemeldet und der Benutzer keine gewählt hat.",
+    "aiRequestsMonth": "KI-Anfragen in diesem Monat",
+    "transcribingRecordings": "Wird transkribiert",
+    "summarizingRecordings": "Wird zusammengefasst",
+    "audioRemovedRecordings": "Audio entfernt",
+    "archivedRecordings": "Archiviert",
+    "jobQueue": "Warteschlange: {{queued}} wartend, {{running}} laufend",
+    "jobsFailed7d": "{{count}} in den letzten 7 Tagen fehlgeschlagen"
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",

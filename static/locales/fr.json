@@ -302,14 +302,14 @@
       "tokensByOperation": "Jetons par opération (ce mois-ci)",
       "noUsage": "Aucune utilisation enregistrée ce mois-ci.",
       "requests": "req",
-      "cached": "en cache"
+      "cached": "en cache",
+      "local": "Local"
     },
     "tokens": "jetons",
     "topUsers": "Meilleurs Utilisateurs",
     "topUsersByStorage": "Principaux Utilisateurs par Stockage",
     "total": "Total",
     "totalChunks": "Total des Segments",
-    "totalQueries": "Total des Requêtes",
     "totalRecordings": "Total des Enregistrements",
     "totalStorage": "Stockage Total",
     "totalUsers": "Total des Utilisateurs",
@@ -363,7 +363,14 @@
       "sourceAdmin": "Utilisée : {{value}} (réglage administrateur ; par défaut {{default}})",
       "sourceDefault": "Utilisée : {{value}} (par défaut)"
     },
-    "defaultTimezoneHelp": "Utilisé pour les dates des titres générés lorsque le navigateur d'un utilisateur n'a pas indiqué de fuseau horaire et que l'utilisateur n'en a pas choisi."
+    "defaultTimezoneHelp": "Utilisé pour les dates des titres générés lorsque le navigateur d'un utilisateur n'a pas indiqué de fuseau horaire et que l'utilisateur n'en a pas choisi.",
+    "aiRequestsMonth": "Requêtes IA ce mois-ci",
+    "transcribingRecordings": "Transcription",
+    "summarizingRecordings": "Résumé en cours",
+    "audioRemovedRecordings": "Audio supprimé",
+    "archivedRecordings": "Archivés",
+    "jobQueue": "File d'attente : {{queued}} en attente, {{running}} en cours",
+    "jobsFailed7d": "{{count}} en échec ces 7 derniers jours"
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",

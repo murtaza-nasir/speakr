@@ -898,4 +898,20 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
 # --- Helper Functions for Document Processing ---
 
 
+def embeddings_are_local():
+    """True when embeddings are computed on machines the administrator runs:
+    the built-in local model, or an endpoint on a loopback or private address
+    or a .local/.lan/.internal host. Used to show "local" in place of $0."""
+    if not USE_API_EMBEDDINGS:
+        return True
+    import ipaddress
+    from urllib.parse import urlparse
+    host = (urlparse(EMBEDDING_BASE_URL).hostname or '').lower()
+    if host in ('localhost',) or host.endswith(('.local', '.lan', '.internal', '.localhost')):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return False
 
