@@ -167,7 +167,8 @@ def process_auto_deletion():
 
                     from src.services.recording_deletion import delete_recording_completely
                     deleted_id = recording.id
-                    delete_recording_completely(recording, storage=get_storage_service(), strict_media=True)
+                    delete_recording_completely(recording, storage=get_storage_service(), strict_media=True,
+                                                reason='retention')
                     stats['deleted_full'] += 1
                     current_app.logger.info(f"Auto-deleted full recording ID: {deleted_id}")
 

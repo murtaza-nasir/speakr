@@ -170,7 +170,8 @@ def update_speaker(speaker_id):
 
         # Cascade the new name to every recording of this user
         from src.services.speaker_merge import rename_speaker_in_recordings, refresh_renamed_recordings
-        chunks_updated, renamed = rename_speaker_in_recordings(current_user.id, old_name, new_name)
+        chunks_updated, renamed = rename_speaker_in_recordings(current_user.id, old_name, new_name,
+                                                               speaker_id=speaker.id, new_speaker_id=speaker.id)
         recordings_updated = len(renamed)
 
         db.session.commit()

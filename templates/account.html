@@ -2460,6 +2460,28 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <p class="text-xs text-[var(--text-light)] mt-1">When this token should expire</p>
                     </div>
 
+                    <div>
+                        <label for="tokenScopePreset" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Access</label>
+                        <select id="tokenScopePreset" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="read">Read only</option>
+                            <option value="read,write,upload">Integration (read, write, upload)</option>
+                            <option value="upload">Recorder (upload only)</option>
+                            <option value="full">Full access (everything this account can do)</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <div id="tokenScopeBoxes" class="hidden mt-2 grid gap-1">
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="read"> <span><span class="font-medium text-[var(--text-primary)]">read</span>: Read recordings, transcripts, summaries, notes, tags and folders</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="write"> <span><span class="font-medium text-[var(--text-primary)]">write</span>: Edit recordings, notes, summaries, tags, folders and speakers</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="upload"> <span><span class="font-medium text-[var(--text-primary)]">upload</span>: Upload recordings</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="process"> <span><span class="font-medium text-[var(--text-primary)]">process</span>: Transcribe, summarize, chat and other model calls</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="share"> <span><span class="font-medium text-[var(--text-primary)]">share</span>: Create and revoke share links</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="delete"> <span><span class="font-medium text-[var(--text-primary)]">delete</span>: Delete recordings, audio, tags, folders and speakers</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="webhooks"> <span><span class="font-medium text-[var(--text-primary)]">webhooks</span>: Manage webhooks</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="account"> <span><span class="font-medium text-[var(--text-primary)]">account</span>: Change account settings</span></label>
+                        </div>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Give an integration only the access it needs, and an expiry date. Scoped tokens work only in the Authorization header, and only on the API.</p>
+                    </div>
+
                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <div class="flex">
                             <i class="fas fa-info-circle text-amber-500 mr-2 mt-0.5"></i>
@@ -6158,6 +6180,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     </div>
                                 </div>
 
+                                <!-- Scopes -->
+                                <div class="mt-2 text-[10px] text-[var(--text-muted)]">
+                                    <i class="fas fa-shield-alt opacity-60"></i>
+                                    ${(token.scopes || ['full']).includes('full') ? 'Full access' : escapeHtml((token.scopes || []).join(', '))}
+                                </div>
+
                                 <!-- Expiration badge -->
                                 <div class="mt-2">
                                     ${token.expires_at ? `
@@ -6319,12 +6347,25 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
         });
 
+        document.getElementById('tokenScopePreset')?.addEventListener('change', (e) => {
+            document.getElementById('tokenScopeBoxes').classList.toggle('hidden', e.target.value !== 'custom');
+        });
+
         // Form submission handler
         createTokenForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const tokenName = document.getElementById('tokenNameInput').value.trim();
             const expiresInDays = parseInt(document.getElementById('tokenExpirationSelect').value);
+            // Scopes (mailr spec G1): a preset, or the ticked boxes for Custom.
+            const preset = document.getElementById('tokenScopePreset').value;
+            const scopes = preset === 'custom'
+                ? Array.from(document.querySelectorAll('.token-scope-box:checked')).map(b => b.value)
+                : preset.split(',');
+            if (!scopes.length) {
+                showToast('Choose at least one kind of access', 'error');
+                return;
+            }
 
             if (!tokenName) {
                 showToast('Please enter a token name', 'error');
@@ -6341,7 +6382,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     },
                     body: JSON.stringify({
                         name: tokenName,
-                        expires_in_days: expiresInDays
+                        expires_in_days: expiresInDays,
+                        scopes: scopes
                     })
                 });
 

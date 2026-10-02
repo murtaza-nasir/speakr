@@ -23,7 +23,7 @@ from flask.testing import FlaskClient
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
-from src.models import Recording, Speaker, TranscriptChunk, User
+from src.models import Recording, Speaker, TranscriptChunk, User, Webhook, WebhookDelivery
 
 app.config["WTF_CSRF_ENABLED"] = False
 
@@ -99,17 +99,28 @@ def _speakers(rid):
 
 
 def test_a_merge_renames_the_merged_speaker_in_every_recording(world):
+    with app.app_context():
+        hook = Webhook(user_id=world["me"], name="t", url="https://example.com/h", secret="s" * 32,
+                       events=json.dumps(["recording.updated"]))
+        db.session.add(hook)
+        db.session.commit()
+        hook_id = hook.id
     reindex, flag, export = _effects()
-    with reindex as m_reindex, flag, export as m_export, \
-            patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
+    with reindex as m_reindex, flag, export as m_export:
         resp = _client(world["me"]).post("/speakers/merge",
                                          json={"target_id": world["keep"], "source_ids": [world["old"]]})
     assert resp.status_code == 200, resp.get_json()
     assert resp.get_json()["recordings_updated"] == 2
-    updates = {c.kwargs["data"]["recording_id"]: c.kwargs["data"]["fields_changed"]
-               for c in emit.call_args_list if c.kwargs["event_type"] == "recording.updated"}
-    assert updates == {world["only_old"]: ["participants", "speaker_label_map", "transcription"],
-                       world["both"]: ["participants", "transcription"]}
+    with app.app_context():
+        updates = {}
+        for d in WebhookDelivery.query.filter_by(webhook_id=hook_id, event_type="recording.updated"):
+            data = json.loads(d.payload)["data"]
+            updates[data["recording_id"]] = data["fields_changed"]
+        WebhookDelivery.query.filter_by(webhook_id=hook_id).delete()
+        db.session.delete(db.session.get(Webhook, hook_id))
+        db.session.commit()
+    assert updates == {world["only_old"]: ["participants", "speakers", "transcript"],
+                       world["both"]: ["participants", "transcript"]}
     with app.app_context():
         segs, parts, label_map = _speakers(world["only_old"])
         assert segs == ["Murtaza", "Bob"] and parts == "Bob, Murtaza"

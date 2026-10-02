@@ -36,6 +36,7 @@ DEFAULT_TAGS = [
     'v0.8.21-alpha',
     'v0.9.7-alpha',
     'v0.10.3-alpha',   # the release before the migration was rewritten
+    'v0.10.10-alpha',  # last release before the mailr API work (scopes, change tracking)
 ]
 
 # import name -> pip package, where they differ

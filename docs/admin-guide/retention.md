@@ -131,6 +131,17 @@ The filter appears when audio-only retention is active or when the user is allow
 - **Player**: "The audio file was removed. The transcript, summary and notes remain available."
 - **Filter**: **Audio removed** quick filter in the sidebar filters
 
+## Deletion Records for API Clients
+
+When a recording is deleted, by a user or by auto-deletion, Speakr keeps a small record of the deletion: the recording id, the user, the time and the reason. No title or content is kept. API clients read these records from the [changes feed](../user-guide/api-reference.md#changes-feed) to remove their own copy of the recording.
+
+The records are removed after `RECORDING_TOMBSTONE_DAYS` days (default 90), checked every hour. A client whose last sync is older than that starts a full sync again.
+
+```bash
+# Days to keep deletion records for API clients (default 90)
+RECORDING_TOMBSTONE_DAYS=90
+```
+
 ## Admin Controls
 
 ### Running Auto-Deletion

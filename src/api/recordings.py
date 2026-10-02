@@ -987,13 +987,16 @@ def update_transcript(recording_id):
         seconds_by_key = speech_seconds_by_label(transcript_data)
         speaker_names_used, label_to_name = apply_speaker_map(transcript_data, speaker_map, current_user)
 
+        # Saved speakers first (update_speaker_usage commits on its own), so
+        # the segments link to them in the same commit as the names.
+        if speaker_names_used:
+            update_speaker_usage(speaker_names_used)
+        from src.services.speaker_links import link_list
+        link_list(transcript_data, recording)
+
         # Save the updated transcript
         recording.transcription = json.dumps(transcript_data)
         recording.participants = participants_from_segments(transcript_data)
-
-        # Update speaker usage statistics
-        if speaker_names_used:
-            update_speaker_usage(speaker_names_used)
 
         update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
 
@@ -2150,8 +2153,14 @@ def ingest_uploaded_recording(
     processing_source='upload',
     success_status=202,
     reuse_duplicate=False,
+    prepare=None,
 ):
-    """Run an uploaded file through Speakr's standard ingestion pipeline."""
+    """Run an uploaded file through Speakr's standard ingestion pipeline.
+
+    prepare(recording), when given, runs before the recording is first
+    committed, so fields it sets (API v1 participants, references, the
+    idempotency key) arrive with the recording itself.
+    """
     try:
         if uploaded_file is None:
             return jsonify({'error': 'No file provided'}), 400
@@ -2767,6 +2776,9 @@ def ingest_uploaded_recording(
             )
             db.session.add(new_association)
 
+        if prepare is not None:
+            prepare(recording)
+
         db.session.commit()
 
         if selected_tags:
@@ -3087,66 +3099,10 @@ def chat_incognito():
         if chat_client is None:
             return jsonify({'error': 'Chat service is not available (chat client not configured)'}), 503
 
-        # Prepare the system prompt with the transcription
-        user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
-
-        language_instruction = ""
-        if user_chat_output_language:
-            language_instruction = f"Please provide all your responses in {user_chat_output_language}."
-
-        user_name = current_user.name if current_user.is_authenticated and current_user.name else "User"
-        user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
-        user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
-
-        _chat_ts = bool(current_user.is_authenticated and current_user.chat_include_timestamps)
-        formatted_transcription = format_transcription_for_llm(
-            transcription,
-            include_timestamps=_chat_ts,
-            template_format=_resolve_timestamp_template_format(
-                current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
-        )
-
-        # Get configurable transcript length limit for chat
-        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-        if transcript_limit == -1:
-            chat_transcript = formatted_transcription
-        else:
-            chat_transcript = formatted_transcription[:transcript_limit]
-
-        # When timestamps are in the transcript, ask the model to cite them so
-        # the chat panel can render clickable seek chips (bracketed [h:mm:ss]).
-        timestamp_instruction = ""
-        if _chat_ts:
-            timestamp_instruction = (
-                "\nWhen you reference a specific moment in the recording, cite its "
-                "timestamp in square brackets exactly as it appears in the transcript "
-                "(for example [00:07:35]). The interface renders these as clickable "
-                "links that start playback at that moment, so cite them wherever they "
-                "support your answer. Never invent a timestamp that is not in the "
-                "transcript.\n"
-            )
-
-        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
-{timestamp_instruction}
-Following are the meeting participants and their roles:
-{participants or "No specific participants information provided."}
-
-Following is the meeting transcript:
-<<start transcript>>
-{chat_transcript or "No transcript available."}
-<<end transcript>>
-
-Additional context and notes about the meeting:
-{notes or "none"}
-
-Note: This is an incognito recording - no data is stored on the server.
-"""
-
-        # Prepare messages array with system prompt and conversation history
-        messages = [{"role": "system", "content": system_prompt}]
-        if message_history:
-            messages.extend(message_history)
-        messages.append({"role": "user", "content": user_message})
+        # Same prompt as API v1 chat (src/services/recording_chat.py); the notes
+        # are the ones this user can see.
+        from src.services.recording_chat import build_chat_messages
+        messages, _ = build_chat_messages(recording, current_user, user_message, message_history)
 
         # Get model info
         chat_model = os.environ.get('TEXT_MODEL_NAME', os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini'))
@@ -3966,64 +3922,12 @@ def add_tag_to_recording(recording_id):
         )
         db.session.add(recording_tag)
 
-        # If this is a group tag with sharing enabled, automatically share the recording
-        # Only auto-share if recording is completed (not during processing)
-        if tag.group_id and ENABLE_INTERNAL_SHARING and recording.status == 'COMPLETED' and (tag.auto_share_on_apply or tag.share_with_group_lead):
-            # Determine who to share with
-            if tag.auto_share_on_apply:
-                group_members = GroupMembership.query.filter_by(group_id=tag.group_id).all()
-            elif tag.share_with_group_lead:
-                group_members = GroupMembership.query.filter_by(group_id=tag.group_id, role='admin').all()
-            else:
-                group_members = []
-
-            shares_created = 0
-            for membership_to_share in group_members:
-                # Skip the recording owner
-                if membership_to_share.user_id == recording.user_id:
-                    continue
-
-                # Check if already shared
-                existing_share = InternalShare.query.filter_by(
-                    recording_id=recording_id,
-                    shared_with_user_id=membership_to_share.user_id
-                ).first()
-
-                if not existing_share:
-                    # Create internal share with correct permissions
-                    # Group admins get edit permission, regular members get read-only
-                    share = InternalShare(
-                        recording_id=recording_id,
-                        owner_id=recording.user_id,
-                        shared_with_user_id=membership_to_share.user_id,
-                        can_edit=(membership_to_share.role == 'admin'),
-                        can_reshare=False,
-                        source_type='group_tag',
-                        source_tag_id=tag.id
-                    )
-                    db.session.add(share)
-
-                    # Check if SharedRecordingState already exists (might exist from previous share)
-                    existing_state = SharedRecordingState.query.filter_by(
-                        recording_id=recording_id,
-                        user_id=membership_to_share.user_id
-                    ).first()
-
-                    if not existing_state:
-                        # Create SharedRecordingState with default values for the recipient
-                        state = SharedRecordingState(
-                            recording_id=recording_id,
-                            user_id=membership_to_share.user_id,
-                            is_inbox=True,  # New shares appear in inbox by default
-                            is_highlighted=False  # Not favorited by default
-                        )
-                        db.session.add(state)
-
-                    shares_created += 1
-                    current_app.logger.info(f"Auto-shared recording {recording_id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag '{tag.name}'")
-
-            if shares_created > 0:
-                current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag '{tag.name}'")
+        # A group tag with sharing shares the completed recording (same rule
+        # as API v1 and the end of processing: src/services/tag_sharing.py).
+        from src.services.tag_sharing import apply_tag_shares
+        shares_created = apply_tag_shares(recording, tag, sharing_enabled=ENABLE_INTERNAL_SHARING)
+        if shares_created > 0:
+            current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag '{tag.name}'")
 
         db.session.commit()
 

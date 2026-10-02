@@ -82,6 +82,10 @@ A note on changing embedding models: vectors from different models are not compa
 
 Performance scales well with proper setup. The initial indexing of recordings happens automatically after transcription, and subsequent searches leverage this pre-computed index. Response times typically range from a few seconds for focused searches to slightly longer for complex queries across large libraries.
 
+## Searching from Other Tools
+
+Semantic search is also available through the API: `GET /api/v1/search?mode=semantic` (see the [API Reference](api-reference.md#search)). The same request without `mode=semantic` runs a keyword search over every recording, which works without Inquire mode.
+
 ## Agentic Inquire (Beta)
 
 Administrators can enable an agentic mode with `ENABLE_INQUIRE_AGENT=true` (requires Inquire Mode to be enabled). Instead of a single retrieval pass, an AI agent works iteratively: it searches your transcripts, lists recordings, and reads transcripts, summaries, or notes as needed, thinking between steps until it can answer. The interface shows each step live (what was searched, what was read, how many matches), a Stop button to interrupt, and a collapsed activity line on every answer so you can always see how a conclusion was reached. Answers cite their sources as compact numbered markers such as "2 @ 14:05": clicking one opens that recording and starts playback at the cited moment, and a Sources list at the end of each answer maps every number to its recording. The numbering stays stable through the conversation, so a follow-up like "tell me more about 3" refers to exactly what you saw.

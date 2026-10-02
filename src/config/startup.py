@@ -262,6 +262,12 @@ def initialize_recording_session_cleanup(app):
                     removed = cleanup_stale_parts()
                 if removed:
                     app.logger.info(f"Upload-join cleanup removed {removed} stale part(s)")
+                # Changes-feed tombstones past RECORDING_TOMBSTONE_DAYS.
+                with app.app_context():
+                    from src.services.recording_changes import prune_tombstones
+                    pruned = prune_tombstones()
+                if pruned:
+                    app.logger.info(f"Pruned {pruned} recording tombstone(s)")
             except Exception as e:
                 app.logger.error(f"Recording-session cleanup error: {e}", exc_info=True)
                 # Don't tight-loop on failure

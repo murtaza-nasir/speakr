@@ -25,6 +25,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
+from src.utils.token_auth import require_scope, token_rate_key
 from sqlalchemy import func, extract, or_, and_
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -120,7 +121,12 @@ OPENAPI_SPEC = {
     "servers": [{"url": "/api/v1", "description": "API v1"}],
     "components": {
         "securitySchemes": {
-            "bearerAuth": {"type": "http", "scheme": "bearer"},
+            "bearerAuth": {"type": "http", "scheme": "bearer",
+                           "description": "A personal API token. Tokens may carry scopes: read, write, upload, "
+                                          "process, share, delete, webhooks, account. A token with no scopes "
+                                          "(reported as [\"full\"]) has every scope. Each operation lists the "
+                                          "scopes it needs in x-required-scopes; a scoped token without them "
+                                          "gets 403 insufficient_scope. Scoped tokens work only in a header."},
             "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
             "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token"}
         },
@@ -147,7 +153,12 @@ OPENAPI_SPEC = {
                     "folder": {"type": "object", "nullable": True, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
                     "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
                     "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}},
-                    "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."}
+                    "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."},
+                    "updated_at": {"type": "string", "format": "date-time", "description": "Last change a client can see; starts at created_at"},
+                    "is_shared": {"type": "boolean"},
+                    "owner": {"type": "object", "nullable": True},
+                    "share": {"type": "object", "nullable": True},
+                    "external_refs": {"type": "array", "items": {"type": "object"}}
                 }
             },
             "Tag": {
@@ -198,12 +209,105 @@ OPENAPI_SPEC = {
             },
             "Error": {
                 "type": "object",
-                "properties": {"error": {"type": "string"}}
+                "properties": {"error": {"type": "string"},
+                               "code": {"type": "string", "description": "Machine-readable error code, e.g. insufficient_scope"}}
+            },
+            "TokenInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "scopes": {"type": "array", "items": {"type": "string"}},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "expires_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "last_used_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "via": {"type": "string", "enum": ["header", "query"]}
+                }
+            },
+            "Capabilities": {
+                "type": "object",
+                "properties": {
+                    "speakr_version": {"type": "string"},
+                    "api_version": {"type": "string"},
+                    "features": {"type": "object", "additionalProperties": True,
+                                 "description": "Feature flags; a missing key means false"},
+                    "models_local": {"type": "boolean"}
+                }
             }
         }
     },
     "security": [{"bearerAuth": []}, {"apiKeyHeader": []}, {"apiKeyQuery": []}],
     "paths": {
+        "/tokens/current": {
+            "get": {
+                "tags": ["Tokens"],
+                "summary": "The API token used for this request",
+                "description": "Any valid token, no scope needed. A session request gets 404.",
+                "responses": {"200": {"description": "Token details",
+                                      "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenInfo"}}}},
+                              "404": {"description": "No API token in this request"}}
+            }
+        },
+        "/capabilities": {
+            "get": {
+                "tags": ["Tokens"],
+                "summary": "Features this instance supports",
+                "description": "Any valid token or session. Clients read features here, never from the version string.",
+                "responses": {"200": {"description": "Capabilities",
+                                      "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Capabilities"}}}}}
+            }
+        },
+        "/search": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Search titles, participants, notes, summaries and transcripts",
+                "description": "Keyword search over every recording you own, or semantic search through the Inquire index (mode=semantic). Transcript hits carry segment_index, start_time, end_time and speaker.",
+                "parameters": [
+                    {"name": "q", "in": "query", "required": True, "schema": {"type": "string"}},
+                    {"name": "mode", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "fields", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "scope", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "recording_ids", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "tag_id", "in": "query", "required": False, "schema": {"type": "integer"}},
+                    {"name": "folder_id", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "speaker", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_from", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_to", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "date_field", "in": "query", "required": False, "schema": {"type": "string"}},
+                    {"name": "limit", "in": "query", "required": False, "schema": {"type": "integer"}},
+                    {"name": "page", "in": "query", "required": False, "schema": {"type": "integer"}}
+                ],
+                "responses": {"200": {"description": "Hits"}, "400": {"description": "invalid_parameter"},
+                              "409": {"description": "semantic_unavailable"}}
+            }
+        },
+        "/recordings/changes": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Changes to your recordings since a cursor",
+                "description": "Each create, edit and delete once, in latest state. Store next_cursor after every answer. 410 cursor_expired: start again without a cursor.",
+                "parameters": [
+                    {"name": "cursor", "in": "query", "schema": {"type": "string"}},
+                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 100, "minimum": 1, "maximum": 500}},
+                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"}}
+                ],
+                "responses": {
+                    "200": {"description": "A page of changes", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "changes": {"type": "array", "items": {"type": "object", "properties": {
+                                "type": {"type": "string", "enum": ["upsert", "delete"]},
+                                "recording": {"$ref": "#/components/schemas/Recording"},
+                                "id": {"type": "integer"},
+                                "deleted_at": {"type": "string", "format": "date-time"},
+                                "reason": {"type": "string", "enum": ["deleted", "retention", "access_revoked"]}}}},
+                            "next_cursor": {"type": "string"},
+                            "has_more": {"type": "boolean"}}}}}},
+                    "400": {"description": "invalid_parameter"},
+                    "410": {"description": "cursor_expired"}
+                }
+            }
+        },
         "/stats": {
             "get": {
                 "tags": ["Stats"],
@@ -229,7 +333,11 @@ OPENAPI_SPEC = {
                     {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
                     {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 25, "maximum": 100}},
                     {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["all", "pending", "processing", "completed", "failed"]}},
-                    {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size"]}},
+                    {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size", "status", "updated_at"]}},
+                    {"name": "updated_since", "in": "query", "schema": {"type": "string", "format": "date-time"}, "description": "Only recordings changed after this time"},
+                    {"name": "date_field", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date"], "default": "created_at"}, "description": "What date_from and date_to filter"},
+                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"}},
+                    {"name": "owner_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "archived", "in": "query", "schema": {"type": "boolean"}, "description": "true: only archived recordings; false: only unarchived. Omitted: both, as before."},
@@ -512,18 +620,47 @@ OPENAPI_SPEC = {
         {"name": "Transcription", "description": "Transcription connector and model discovery"},
         {"name": "Speakers", "description": "Speaker management"},
         {"name": "Batch", "description": "Batch operations"},
-        {"name": "Settings", "description": "User settings"}
+        {"name": "Settings", "description": "User settings"},
+        {"name": "Tokens", "description": "Token introspection and instance capabilities"}
     ]
 }
 
 
+def _openapi_with_scopes():
+    """OPENAPI_SPEC with x-required-scopes on every operation, read from the
+    routes' require_scope marks so the document cannot drift from the code."""
+    import copy
+    import re
+    from flask import current_app
+    spec = copy.deepcopy(OPENAPI_SPEC)
+    norm = lambda path: re.sub(r'<[^>]+>|\{[^}]+\}', '{}', path)
+    by_route = {}
+    for rule in current_app.url_map.iter_rules():
+        if not rule.rule.startswith('/api/v1/'):
+            continue
+        view = current_app.view_functions.get(rule.endpoint)
+        scopes = getattr(view, '_required_scopes', None)
+        if scopes is None:
+            continue
+        for method in rule.methods - {'HEAD', 'OPTIONS'}:
+            by_route[(norm(rule.rule[len('/api/v1'):]), method.lower())] = sorted(scopes)
+    for path, operations in spec.get('paths', {}).items():
+        for method, operation in operations.items():
+            scopes = by_route.get((norm(path), method))
+            if scopes is not None and isinstance(operation, dict):
+                operation['x-required-scopes'] = scopes
+    return spec
+
+
 @api_v1_bp.route('/openapi.json', methods=['GET'])
+@require_scope('read')
 def get_openapi_spec():
     """Return OpenAPI specification."""
-    return jsonify(OPENAPI_SPEC)
+    return jsonify(_openapi_with_scopes())
 
 
 @api_v1_bp.route('/docs', methods=['GET'])
+@require_scope('read')
 def get_docs():
     """Serve Swagger UI documentation.
 
@@ -562,6 +699,7 @@ def get_docs():
 # =============================================================================
 
 @api_v1_bp.route('/stats', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_stats():
     """
@@ -752,7 +890,73 @@ def get_stats():
 # Current User
 # =============================================================================
 
+@api_v1_bp.route('/tokens/current', methods=['GET'])
+@require_scope()
+@login_required
+def get_current_token():
+    """The API token of this request: id, name, scopes and times (mailr spec G1)."""
+    from flask import g
+    from src.utils.token_auth import current_api_token
+    token = current_api_token()
+    if token is None:
+        return jsonify({'error': 'No API token in this request', 'code': 'not_found'}), 404
+
+    def _z(dt):
+        return dt.isoformat(timespec='microseconds') + 'Z' if dt else None
+    return jsonify({
+        'id': token.id,
+        'name': token.name,
+        'scopes': token.scope_list,
+        'created_at': _z(token.created_at),
+        'expires_at': _z(token.expires_at),
+        'last_used_at': _z(token.last_used_at),
+        'via': 'query' if g.get('api_token_via_query') else 'header',
+    })
+
+
+# Features this server supports (mailr spec G1). A key appears when the feature
+# ships; a missing key means false.
+CAPABILITY_FEATURES = {
+    'token_scopes': True,
+    'changes_feed': True,
+    'etags': True,
+    'webhook_signature_v2': True,
+    'external_refs': True,
+    'upload_idempotency': True,
+    'share_links': True,
+    'chat_sources': True,
+}
+# search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
+
+
+@api_v1_bp.route('/capabilities', methods=['GET'])
+@require_scope()
+@login_required
+def get_capabilities():
+    """Feature discovery for API clients; read this instead of the version string."""
+    from src.config.version import get_version
+    features = dict(CAPABILITY_FEATURES)
+    features['internal_sharing'] = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+    features['public_sharing'] = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
+    features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    from src.services.search_v1 import semantic_available
+    features['search'] = {'keyword': True, 'semantic': semantic_available()}
+    features['inquire'] = {
+        'enabled': os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true',
+        'agent': os.environ.get('ENABLE_INQUIRE_AGENT', 'false').lower() == 'true',
+    }
+    return jsonify({
+        'speakr_version': get_version(),
+        'api_version': '1.1',
+        'features': features,
+        # True only when the administrator states that the text, chat and
+        # embedding endpoints all run on machines they control.
+        'models_local': os.environ.get('MODELS_ARE_LOCAL', 'false').lower() == 'true',
+    })
+
+
 @api_v1_bp.route('/users/me', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_current_user():
     """
@@ -808,7 +1012,57 @@ def get_current_user():
 # Recordings List with Enhanced Filtering
 # =============================================================================
 
+def _updated_at_z(recording):
+    from src.services.recording_changes import effective_updated_at, iso_z
+    return iso_z(effective_updated_at(recording))
+
+
+def _recording_list_item(r, refs=None, shared=None):
+    """One recording as GET /recordings lists it; the changes feed uses the same shape.
+
+    refs: this caller's external references of the recording, when the caller
+    loaded them for a whole page (refs_map); otherwise read here.
+    """
+    if refs is None:
+        from src.services.external_refs import refs_for
+        refs = [x.to_dict() for x in refs_for(r.id, current_user.id)]
+    from src.services.recording_changes import effective_updated_at, iso_z
+    return {
+        'id': r.id,
+        'title': r.title,
+        'status': r.status,
+        'created_at': r.created_at.isoformat() if r.created_at else None,
+        'completed_at': r.completed_at.isoformat() if r.completed_at else None,
+        'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None,
+        'file_size': r.file_size,
+        'original_filename': r.original_filename,
+        'participants': r.participants,
+        'is_inbox': r.is_inbox,
+        'is_highlighted': r.is_highlighted,
+        'is_archived': bool(r.is_archived),
+        'audio_available': r.audio_deleted_at is None,
+        'audio_duration': r.get_audio_duration(),
+        'has_transcription': bool(r.transcription),
+        'has_summary': bool(r.summary),
+        'processing_time_seconds': r.processing_time_seconds,
+        'transcription_duration_seconds': r.transcription_duration_seconds,
+        'summarization_duration_seconds': r.summarization_duration_seconds,
+        'folder_id': r.folder_id,
+        'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
+        'deletion_exempt': r.deletion_exempt,
+        'error_message': r.error_message if r.status == 'FAILED' else None,
+        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
+        'keep_audio_only': r.keep_audio_only,
+        'updated_at': iso_z(effective_updated_at(r)),
+        'external_refs': refs,
+        'is_shared': False,
+        'owner': None,
+        'share': None,
+    } if shared is None else dict(_recording_list_item(r, refs), **shared)
+
+
 @api_v1_bp.route('/recordings', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_recordings():
     """
@@ -827,6 +1081,11 @@ def list_recordings():
         inbox: Filter by inbox status (true/false)
         starred: Filter by starred status (true/false)
         archived: Filter by archive status (true/false); omitted returns both
+        scope: own (default), shared or all
+        owner_id: Only recordings of this owner
+        updated_since: Only recordings changed after this time (ISO 8601)
+        date_field: What date_from and date_to filter: created_at (default)
+                    or meeting_date
     """
     # Parse query parameters
     page = request.args.get('page', 1, type=int)
@@ -842,6 +1101,16 @@ def list_recordings():
     inbox_filter = request.args.get('inbox')
     starred_filter = request.args.get('starred')
     archived_filter = request.args.get('archived')
+    updated_since = request.args.get('updated_since')
+    from src.services.recording_scope import SCOPES, join_personal_state, personal_flag, scope_condition
+    scope = request.args.get('scope', 'own')
+    if scope not in SCOPES:
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    owner_id = request.args.get('owner_id', type=int)
+    date_field = request.args.get('date_field', 'created_at')
+    if date_field not in ('created_at', 'meeting_date'):
+        return jsonify({'error': "date_field must be created_at or meeting_date",
+                        'code': 'invalid_parameter'}), 400
 
     # Base query - user's recordings.
     # Eager-load folder and tag-association+Tag so the list builder
@@ -857,8 +1126,12 @@ def list_recordings():
             joinedload(Recording.folder),
             joinedload(Recording.tag_associations).joinedload(RecordingTag.tag),
         )
-        .filter(Recording.user_id == current_user.id)
+        .filter(scope_condition(current_user.id, scope))
     )
+    if scope != 'own':
+        query = join_personal_state(query, current_user.id)
+    if owner_id is not None:
+        query = query.filter(Recording.user_id == owner_id)
 
     # Status filter
     if status_filter == 'pending':
@@ -875,10 +1148,11 @@ def list_recordings():
     # Aware values are converted to the naive-UTC storage convention; a bare
     # date_to includes that whole day (#412 B8).
     from src.utils.dates import to_utc_naive
+    date_column = Recording.meeting_date if date_field == 'meeting_date' else Recording.created_at
     if date_from:
         try:
             from_date = to_utc_naive(datetime.fromisoformat(date_from.replace('Z', '+00:00')))
-            query = query.filter(Recording.created_at >= from_date)
+            query = query.filter(date_column >= from_date)
         except ValueError:
             pass
 
@@ -886,11 +1160,36 @@ def list_recordings():
         try:
             to_date = to_utc_naive(datetime.fromisoformat(date_to.replace('Z', '+00:00')))
             if len(date_to.strip()) == 10:
-                query = query.filter(Recording.created_at < to_date + timedelta(days=1))
+                query = query.filter(date_column < to_date + timedelta(days=1))
             else:
-                query = query.filter(Recording.created_at <= to_date)
+                query = query.filter(date_column <= to_date)
         except ValueError:
             pass
+
+    # External references (mailr spec G8): only the caller's own.
+    external_system = request.args.get('external_system')
+    external_ref = request.args.get('external_ref')
+    if external_system or external_ref:
+        if not (external_system and external_ref):
+            return jsonify({'error': 'external_system and external_ref go together',
+                            'code': 'invalid_parameter'}), 400
+        from src.models import RecordingExternalRef
+        ref_query = db.session.query(RecordingExternalRef.recording_id).filter(
+            RecordingExternalRef.user_id == current_user.id,
+            RecordingExternalRef.system == external_system,
+            RecordingExternalRef.ref == external_ref)
+        if request.args.get('external_kind'):
+            ref_query = ref_query.filter(RecordingExternalRef.kind == request.args['external_kind'])
+        query = query.filter(Recording.id.in_(ref_query))
+
+    changed_column = db.func.coalesce(Recording.updated_at, Recording.created_at)
+    if updated_since:
+        try:
+            since = to_utc_naive(datetime.fromisoformat(updated_since.replace('Z', '+00:00')))
+        except ValueError:
+            return jsonify({'error': 'updated_since must be an ISO 8601 date-time',
+                            'code': 'invalid_parameter'}), 400
+        query = query.filter(changed_column > since)
 
     # Tag filter
     if tag_id:
@@ -918,21 +1217,24 @@ def list_recordings():
             )
         )
 
-    # Inbox filter
+    # Inbox and starred filters: the caller's own value (a recipient's is on
+    # SharedRecordingState).
     if inbox_filter is not None:
         is_inbox = inbox_filter.lower() == 'true'
-        query = query.filter(Recording.is_inbox == is_inbox)
+        query = query.filter((personal_flag(current_user.id, 'is_inbox', True) if scope != 'own'
+                              else Recording.is_inbox) == is_inbox)
 
-    # Starred filter
     if starred_filter is not None:
         is_starred = starred_filter.lower() == 'true'
-        query = query.filter(Recording.is_highlighted == is_starred)
+        query = query.filter((personal_flag(current_user.id, 'is_highlighted', False) if scope != 'own'
+                              else Recording.is_highlighted) == is_starred)
 
     # Archive filter (#394). The API keeps returning archived recordings by
     # default so existing integrations see no change.
     if archived_filter is not None:
         is_archived = archived_filter.lower() == 'true'
-        query = query.filter(db.func.coalesce(Recording.is_archived, False) == is_archived)
+        query = query.filter((personal_flag(current_user.id, 'is_archived', False) if scope != 'own'
+                              else db.func.coalesce(Recording.is_archived, False)) == is_archived)
 
     # Sorting
     sort_columns = {
@@ -940,7 +1242,8 @@ def list_recordings():
         'meeting_date': Recording.meeting_date,
         'title': Recording.title,
         'file_size': Recording.file_size,
-        'status': Recording.status
+        'status': Recording.status,
+        'updated_at': changed_column,
     }
     sort_column = sort_columns.get(sort_by, Recording.created_at)
 
@@ -953,35 +1256,12 @@ def list_recordings():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Build response
-    recordings = []
-    for r in pagination.items:
-        recordings.append({
-            'id': r.id,
-            'title': r.title,
-            'status': r.status,
-            'created_at': r.created_at.isoformat() if r.created_at else None,
-            'completed_at': r.completed_at.isoformat() if r.completed_at else None,
-            'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None,
-            'file_size': r.file_size,
-            'original_filename': r.original_filename,
-            'participants': r.participants,
-            'is_inbox': r.is_inbox,
-            'is_highlighted': r.is_highlighted,
-            'is_archived': bool(r.is_archived),
-            'audio_available': r.audio_deleted_at is None,
-            'audio_duration': r.get_audio_duration(),
-            'has_transcription': bool(r.transcription),
-            'has_summary': bool(r.summary),
-            'processing_time_seconds': r.processing_time_seconds,
-            'transcription_duration_seconds': r.transcription_duration_seconds,
-            'summarization_duration_seconds': r.summarization_duration_seconds,
-            'folder_id': r.folder_id,
-            'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
-            'deletion_exempt': r.deletion_exempt,
-            'error_message': r.error_message if r.status == 'FAILED' else None,
-            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
-            'keep_audio_only': r.keep_audio_only,
-        })
+    from src.services.external_refs import refs_map
+    from src.services.recording_scope import share_details
+    page_refs = refs_map([r.id for r in pagination.items], current_user.id)
+    page_shared = share_details(pagination.items, current_user)
+    recordings = [_recording_list_item(r, page_refs.get(r.id, []), page_shared.get(r.id))
+                  for r in pagination.items]
 
     return jsonify({
         'recordings': recordings,
@@ -1000,8 +1280,304 @@ def list_recordings():
 # Recording Detail
 # =============================================================================
 
-@api_v1_bp.route('/recordings/<int:recording_id>', methods=['GET'])
+def _conditional(prefix):
+    """Weak ETag and If-None-Match for a GET on one recording (mailr spec G11).
+
+    The tag holds the recording id, its updated_at and a hash of the body, so
+    it also changes when something outside the recording changes the answer
+    (a tag or folder name, the viewer's transcript template, voice
+    suggestions). It runs after the view, so the view's access check comes
+    first and a caller without access gets 403 or 404, never 304.
+    """
+    def decorator(view):
+        @wraps(view)
+        def wrapper(recording_id, *args, **kwargs):
+            import hashlib
+            from flask import make_response
+            from src.services.recording_changes import etag_matches, updated_at_us
+            response = make_response(view(recording_id, *args, **kwargs))
+            if response.status_code != 200 or response.direct_passthrough:
+                return response
+            recording = db.session.get(Recording, recording_id)
+            digest = hashlib.sha1(response.get_data()).hexdigest()[:16]
+            etag = f'W/"{prefix}{recording_id}-{updated_at_us(recording) if recording else 0}-{digest}"'
+            if etag_matches(request, etag):
+                response = make_response('', 304)
+            response.headers['ETag'] = etag
+            response.headers['Cache-Control'] = 'private, no-cache'
+            return response
+        return wrapper
+    return decorator
+
+
+@api_v1_bp.route('/search', methods=['GET'])
+@require_scope('read')
+@rate_limit(os.environ.get('API_SEARCH_RATE_LIMIT', '30 per minute'), key_func=token_rate_key)
 @login_required
+def search_recordings_v1():
+    """Search titles, participants, notes, summaries and transcripts (mailr spec G3).
+
+    Query params: q (2 to 500 characters), mode (keyword | semantic | auto),
+    fields, scope (own), recording_ids, tag_id, folder_id, speaker,
+    date_from, date_to, date_field (meeting_date | created_at), limit (1-50),
+    page (keyword mode).
+    """
+    from src.services import search_v1
+    args = request.args
+    q = (args.get('q') or '').strip()
+    if not 2 <= len(q) <= 500:
+        return jsonify({'error': 'q must be 2 to 500 characters', 'code': 'invalid_parameter'}), 400
+    mode = args.get('mode', 'keyword')
+    if mode not in ('keyword', 'semantic', 'auto'):
+        return jsonify({'error': 'mode must be keyword, semantic or auto', 'code': 'invalid_parameter'}), 400
+    scope = args.get('scope', 'own')
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    fields = tuple(f.strip() for f in args.get('fields', ','.join(search_v1.FIELDS)).split(',') if f.strip())
+    unknown = [f for f in fields if f not in search_v1.FIELDS]
+    if unknown or not fields:
+        return jsonify({'error': f'Unknown field(s): {", ".join(unknown) or "none given"}',
+                        'code': 'invalid_parameter'}), 400
+    date_field = args.get('date_field', 'meeting_date')
+    if date_field not in ('meeting_date', 'created_at'):
+        return jsonify({'error': 'date_field must be meeting_date or created_at', 'code': 'invalid_parameter'}), 400
+    limit = args.get('limit', 20, type=int)
+    page = args.get('page', 1, type=int)
+    if limit is None or not 1 <= limit <= 50 or page is None or page < 1:
+        return jsonify({'error': 'limit must be 1 to 50 and page at least 1', 'code': 'invalid_parameter'}), 400
+    try:
+        recording_ids = [int(x) for x in args.get('recording_ids', '').split(',') if x.strip()] or None
+    except ValueError:
+        return jsonify({'error': 'recording_ids must be a comma list of ids', 'code': 'invalid_parameter'}), 400
+    folder = args.get('folder_id', '').strip()
+    folder_id = None
+    if folder:
+        if folder.lower() == 'none':
+            folder_id = 'none'
+        elif folder.isdigit():
+            folder_id = int(folder)
+        else:
+            return jsonify({'error': 'folder_id must be an id or none', 'code': 'invalid_parameter'}), 400
+    filters = dict(recording_ids=recording_ids, tag_id=args.get('tag_id', type=int), folder_id=folder_id,
+                   date_from=args.get('date_from') or None, date_to=args.get('date_to') or None,
+                   date_field=date_field, scope=scope)
+    speaker = (args.get('speaker') or '').strip() or None
+
+    use_semantic = mode == 'semantic' or (mode == 'auto' and search_v1.semantic_available())
+    if mode == 'semantic' and not search_v1.semantic_available():
+        return jsonify({'error': 'Semantic search is not available on this instance',
+                        'code': 'semantic_unavailable'}), 409
+    try:
+        if use_semantic:
+            # The dates are checked the same way in both modes.
+            search_v1.candidate_query(current_user, ['x'], ('title',), **filters)
+            results = search_v1.semantic_search(current_user, q, limit=limit, speaker=speaker, **filters)
+            has_more = False
+        else:
+            results, has_more = search_v1.keyword_search(current_user, q, fields=fields, speaker=speaker,
+                                                         limit=limit, page=page, **filters)
+    except search_v1.SearchError as e:
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    return jsonify({'query': q, 'mode_used': 'semantic' if use_semantic else 'keyword',
+                    'results': results, 'page': page if not use_semantic else 1, 'has_more': has_more})
+
+
+def _ref_recording(recording_id, require_edit):
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return None, (jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404)
+    if not has_recording_access(recording, current_user, require_edit=require_edit):
+        return None, (jsonify({'error': 'Permission denied'}), 403)
+    return recording, None
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['GET'])
+@require_scope('read')
+@login_required
+def list_external_refs(recording_id):
+    """Your external references on a recording (mailr spec G8)."""
+    from src.services.external_refs import refs_for
+    recording, err = _ref_recording(recording_id, require_edit=False)
+    if err:
+        return err
+    return jsonify({'external_refs': [r.to_dict() for r in refs_for(recording.id, current_user.id)]})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['POST'])
+@require_scope('write')
+@login_required
+def add_external_ref(recording_id):
+    """Add one reference; an existing (system, kind, ref) answers 200 with it."""
+    from src.services import external_refs as xr
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    try:
+        row, created = xr.add(recording, current_user.id, xr.validate(request.get_json(silent=True)))
+    except xr.RefError as e:
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    db.session.commit()
+    return jsonify(row.to_dict()), 201 if created else 200
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['PUT'])
+@require_scope('write')
+@login_required
+def replace_external_refs(recording_id):
+    """Replace your references of one system (?system=) with the given list."""
+    from src.services import external_refs as xr
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    system = request.args.get('system', '')
+    body = request.get_json(silent=True) or {}
+    try:
+        if not xr._SLUG.match(system):
+            raise xr.RefError('?system= is required')
+        xr.replace_system(recording, current_user.id, system, xr.validate_list(body.get('external_refs')))
+    except xr.RefError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    db.session.commit()
+    return jsonify({'external_refs': [r.to_dict() for r in xr.refs_for(recording.id, current_user.id)]})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs/<int:ref_id>', methods=['DELETE'])
+@require_scope('write')
+@login_required
+def delete_external_ref(recording_id, ref_id):
+    from src.models import RecordingExternalRef
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    row = db.session.get(RecordingExternalRef, ref_id)
+    if row is None or row.recording_id != recording.id or row.user_id != current_user.id:
+        return jsonify({'error': 'Reference not found', 'code': 'not_found'}), 404
+    db.session.delete(row)
+    db.session.commit()
+    return '', 204
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/share', methods=['POST'])
+@require_scope('share')
+@login_required
+def create_public_share(recording_id):
+    """Create or reuse a public link (mailr spec G10). Notes are not shared
+    unless asked, and a reused link's flags change only with update_existing."""
+    from flask import url_for
+    from src.services.public_shares import get_or_create, share_dict
+    if os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() != 'true':
+        return jsonify({'error': 'Public sharing is turned off on this server', 'code': 'feature_disabled'}), 403
+    if not getattr(current_user, 'can_share_publicly', True):
+        return jsonify({'error': 'You may not create public links', 'code': 'not_permitted'}), 403
+    if not request.is_secure:
+        return jsonify({'error': 'Public links need an HTTPS connection', 'code': 'https_required'}), 403
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    data = request.get_json(silent=True) or {}
+    flags = {}
+    for key, default in (('share_summary', True), ('share_notes', False), ('force_new', False),
+                         ('update_existing', False)):
+        value = data.get(key, default)
+        if not isinstance(value, bool):
+            return jsonify({'error': f'{key} must be true or false', 'code': 'invalid_parameter'}), 400
+        flags[key] = value
+    days = data.get('expires_in_days')
+    if days is not None and (not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= 3650):
+        return jsonify({'error': 'expires_in_days must be 1 to 3650', 'code': 'invalid_parameter'}), 400
+    share, created, differ = get_or_create(recording, current_user, flags['share_summary'], flags['share_notes'],
+                                           force_new=flags['force_new'], update_existing=flags['update_existing'],
+                                           expires_in_days=days)
+    return jsonify({
+        'share_url': url_for('shares.view_shared_recording', public_id=share.public_id, _external=True),
+        'existing': not created,
+        'flags_differ': differ,
+        'share': share_dict(share),
+    }), 201 if created else 200
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/shares', methods=['GET'])
+@require_scope('share')
+@login_required
+def list_public_shares(recording_id):
+    """Your public links of a recording."""
+    from flask import url_for
+    from src.models import Share
+    from src.services.public_shares import share_dict
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    shares = (Share.query.filter_by(recording_id=recording.id, user_id=current_user.id)
+              .order_by(Share.created_at.desc()).all())
+    return jsonify({'shares': [dict(share_dict(s), share_url=url_for('shares.view_shared_recording',
+                                                                     public_id=s.public_id, _external=True))
+                               for s in shares]})
+
+
+@api_v1_bp.route('/shares/<int:share_id>', methods=['DELETE'])
+@require_scope('share')
+@login_required
+def revoke_public_share(share_id):
+    from src.models import Share
+    from src.services.public_shares import revoke
+    share = db.session.get(Share, share_id)
+    if share is None or share.user_id != current_user.id:
+        return jsonify({'error': 'Share not found', 'code': 'not_found'}), 404
+    revoke(share)
+    return '', 204
+
+
+@api_v1_bp.route('/recordings/changes', methods=['GET'])
+@require_scope('read')
+@login_required
+def list_recording_changes():
+    """Changes to the user's recordings since a cursor (mailr spec G2).
+
+    Query params:
+        cursor: from a previous answer; absent starts a full pass (every live
+                recording, no tombstones)
+        limit: 1 to 500 (default 100)
+        scope: own (default; shared and all arrive with G4)
+    """
+    from src.services.recording_changes import (CursorError, cursor_expired, decode_cursor,
+                                                iso_z, read_changes)
+    cursor = request.args.get('cursor') or None
+    limit = request.args.get('limit', 100, type=int)
+    if limit is None or not 1 <= limit <= 500:
+        return jsonify({'error': 'limit must be between 1 and 500', 'code': 'invalid_parameter'}), 400
+    scope = request.args.get('scope', 'own')
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    if cursor:
+        try:
+            changed_at, _, _, full_since = decode_cursor(cursor)
+        except CursorError:
+            return jsonify({'error': 'The cursor could not be read', 'code': 'invalid_parameter'}), 400
+        if cursor_expired(current_user.id, changed_at, full_since):
+            return jsonify({'error': 'The cursor is too old; start again without a cursor',
+                            'code': 'cursor_expired'}), 410
+    items, next_cursor, has_more = read_changes(current_user.id, cursor=cursor, limit=limit, scope=scope)
+    from src.services.external_refs import refs_map
+    from src.services.recording_scope import share_details
+    upserts = [obj for kind, obj in items if kind == 'upsert']
+    page_refs = refs_map([obj.id for obj in upserts], current_user.id)
+    page_shared = share_details(upserts, current_user)
+    changes = []
+    for kind, obj in items:
+        if kind == 'upsert':
+            changes.append({'type': 'upsert', 'recording': _recording_list_item(
+                obj, page_refs.get(obj.id, []), page_shared.get(obj.id))})
+        else:
+            changes.append({'type': 'delete', 'id': obj.recording_id,
+                            'deleted_at': iso_z(obj.deleted_at), 'reason': obj.reason})
+    return jsonify({'changes': changes, 'next_cursor': next_cursor, 'has_more': has_more})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>', methods=['GET'])
+@require_scope('read')
+@login_required
+@_conditional('r')
 def get_recording(recording_id):
     """
     Get full recording details.
@@ -1018,6 +1594,7 @@ def get_recording(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
+    from src.services.recording_changes import effective_updated_at, iso_z
     include = request.args.get('include', 'transcription,summary,notes')
     include_fields = [f.strip() for f in include.split(',')]
     format_type = request.args.get('format', 'full')
@@ -1044,11 +1621,14 @@ def get_recording(recording_id):
         'folder_id': recording.folder_id,
         'folder': {'id': recording.folder.id, 'name': recording.folder.name} if recording.folder else None,
         'deletion_exempt': recording.deletion_exempt,
-        'events': [e.to_dict() for e in recording.events] if hasattr(recording, 'events') else [],
+        'events': [e.api_dict() for e in recording.events] if hasattr(recording, 'events') else [],
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags],
         'duplicate_info': recording.get_duplicate_info(),
         'keep_audio_only': recording.keep_audio_only,
+        'updated_at': iso_z(effective_updated_at(recording)),
+        'external_refs': [x.to_dict() for x in __import__('src.services.external_refs', fromlist=['refs_for'])
+                          .refs_for(recording.id, current_user.id)],
     }
 
     # Include large text fields based on params
@@ -1061,7 +1641,7 @@ def get_recording(recording_id):
         if 'summary' in include_fields:
             response['summary'] = recording.summary
         if 'notes' in include_fields:
-            response['notes'] = recording.notes
+            response['notes'] = recording.get_user_notes(current_user)
 
     return jsonify(response)
 
@@ -1071,7 +1651,9 @@ def get_recording(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/transcript', methods=['GET'])
+@require_scope('read')
 @login_required
+@_conditional('t')
 def get_transcript(recording_id):
     """
     Get transcript in various formats.
@@ -1092,18 +1674,27 @@ def get_transcript(recording_id):
     format_type = request.args.get('format', 'json').lower()
 
     if format_type == 'json':
+        # One documented shape whatever key set the transcript was stored
+        # with (mailr spec G12); optional window: start, end, max_segments.
+        from src.services.transcript_segments import canonical_segments, window
+        segments = canonical_segments(recording)
+        if segments is None:
+            return jsonify({'format': 'json', 'kind': 'plain', 'segments': [], 'raw': recording.transcription})
         try:
-            segments = json.loads(recording.transcription)
-            return jsonify({
-                'format': 'json',
-                'segments': segments
-            })
-        except json.JSONDecodeError:
-            return jsonify({
-                'format': 'json',
-                'segments': [],
-                'raw': recording.transcription
-            })
+            start = request.args.get('start', type=float)
+            end = request.args.get('end', type=float)
+            max_segments = request.args.get('max_segments', type=int)
+        except ValueError:
+            start = end = max_segments = None
+        if max_segments is not None and max_segments < 1:
+            return jsonify({'error': 'max_segments must be at least 1', 'code': 'invalid_parameter'}), 400
+        body = {'format': 'json', 'kind': 'segments', 'duration': recording.get_audio_duration()}
+        if start is not None or end is not None or max_segments is not None:
+            segments, next_start = window(segments, start, end, max_segments)
+            if next_start is not None:
+                body['next_start'] = next_start
+        body['segments'] = segments
+        return jsonify(body)
 
     elif format_type == 'text':
         # Use user's default template for text format
@@ -1160,7 +1751,9 @@ def get_transcript(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['GET'])
+@require_scope('read')
 @login_required
+@_conditional('s')
 def get_summary(recording_id):
     """Get summary markdown."""
     recording = db.session.get(Recording, recording_id)
@@ -1177,7 +1770,9 @@ def get_summary(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['GET'])
+@require_scope('read')
 @login_required
+@_conditional('n')
 def get_notes(recording_id):
     """Get notes markdown."""
     recording = db.session.get(Recording, recording_id)
@@ -1187,9 +1782,11 @@ def get_notes(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
+    # The owner's notes for the owner; a recipient's own personal notes otherwise.
+    notes = recording.get_user_notes(current_user)
     return jsonify({
-        'notes': recording.notes,
-        'has_notes': bool(recording.notes)
+        'notes': notes,
+        'has_notes': bool(notes)
     })
 
 
@@ -1198,6 +1795,7 @@ def get_notes(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['PATCH'])
+@require_scope('write')
 @login_required
 def update_recording(recording_id):
     """
@@ -1236,27 +1834,18 @@ def update_recording(recording_id):
             'error': 'keep_audio_only is set at upload time and cannot be changed afterwards.'
         }), 400
 
-    # Track which fields actually changed so the webhook payload tells
-    # subscribers what was touched (recording.updated event, #275).
-    # Compared against the incoming key set, not the prior value, so an
-    # explicit no-op write still surfaces as an intentional update.
-    changed_fields = []
-
     # Update fields if provided
     if 'title' in data:
         if data['title'] != recording.title:
             recording.title_source = 'user'
         recording.title = data['title']
-        changed_fields.append('title')
     if 'participants' in data:
         recording.participants = data['participants']
-        changed_fields.append('participants')
     if 'notes' in data:
-        recording.notes = data['notes']
-        changed_fields.append('notes')
+        from src.services.recording_state import set_user_notes
+        set_user_notes(recording, current_user, data['notes'])
     if 'summary' in data:
         recording.summary = data['summary']
-        changed_fields.append('summary')
     if 'meeting_date' in data:
         try:
             if data['meeting_date']:
@@ -1265,15 +1854,12 @@ def update_recording(recording_id):
                 recording.meeting_date = to_utc_naive(datetime.fromisoformat(data['meeting_date'].replace('Z', '+00:00')))
             else:
                 recording.meeting_date = None
-            changed_fields.append('meeting_date')
         except ValueError:
             return jsonify({'error': 'Invalid meeting_date format'}), 400
     if 'is_inbox' in data:
         recording.is_inbox = bool(data['is_inbox'])
-        changed_fields.append('is_inbox')
     if 'is_highlighted' in data:
         recording.is_highlighted = bool(data['is_highlighted'])
-        changed_fields.append('is_highlighted')
     if 'is_archived' in data:
         archived = parse_archived_flag(data['is_archived'])
         if archived is None:
@@ -1281,7 +1867,6 @@ def update_recording(recording_id):
         # Per user, like the web app: a shared editor archives it for
         # themselves only (#394).
         set_user_archived(recording, current_user, archived, commit=False)
-        changed_fields.append('is_archived')
     if 'folder_id' in data:
         new_folder_id = data['folder_id']
         if new_folder_id is None:
@@ -1302,28 +1887,11 @@ def update_recording(recording_id):
                 if not membership:
                     return jsonify({'error': 'No access to target folder'}), 403
             recording.folder_id = new_folder_id
-        changed_fields.append('folder_id')
 
     db.session.commit()
 
-    # Webhook fan-out (#275) for `recording.updated`. Best-effort: a
-    # webhook failure must not roll back the legitimate mutation that
-    # already committed. Debouncing across rapid edits is a future
-    # improvement; for now every PATCH fires once.
-    if changed_fields:
-        try:
-            from src.services.webhook_dispatch import emit_webhook_event
-            emit_webhook_event(
-                user_id=recording.user_id,
-                event_type='recording.updated',
-                data={
-                    'recording_id': recording.id,
-                    'title': recording.title,
-                    'fields_changed': changed_fields,
-                },
-            )
-        except Exception as e:
-            current_app.logger.warning(f"Webhook emit (recording.updated) failed for recording {recording_id}: {e}")
+    # recording.updated goes out from the change listener after the commit
+    # (src/services/recording_changes.py), the same for every write path.
 
     return jsonify({
         'success': True,
@@ -1331,18 +1899,20 @@ def update_recording(recording_id):
             'id': recording.id,
             'title': recording.title,
             'participants': recording.participants,
-            'notes': recording.notes,
+            'notes': recording.get_user_notes(current_user),
             'summary': recording.summary,
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
             'is_inbox': recording.is_inbox,
             'is_highlighted': recording.is_highlighted,
             'is_archived': get_user_archived(recording, current_user),
-            'folder_id': recording.folder_id
+            'folder_id': recording.folder_id,
+            'updated_at': _updated_at_z(recording),
         }
     })
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['PUT'])
+@require_scope('write')
 @login_required
 def replace_notes(recording_id):
     """Replace notes entirely."""
@@ -1350,20 +1920,24 @@ def replace_notes(recording_id):
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    if not has_recording_access(recording, current_user, require_edit=True):
+    # Notes are per user, as in the web app: a recipient with view access
+    # writes their personal notes, never the owner's.
+    if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
     data = request.get_json()
     if not data or 'notes' not in data:
         return jsonify({'error': 'notes field required'}), 400
 
-    recording.notes = data['notes']
+    from src.services.recording_state import set_user_notes
+    set_user_notes(recording, current_user, data['notes'])
     db.session.commit()
 
-    return jsonify({'success': True, 'notes': recording.notes})
+    return jsonify({'success': True, 'notes': recording.get_user_notes(current_user)})
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['PUT'])
+@require_scope('write')
 @login_required
 def replace_summary(recording_id):
     """Replace summary entirely."""
@@ -1389,6 +1963,7 @@ def replace_summary(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_recording(recording_id):
     """Delete a recording."""
@@ -1420,6 +1995,7 @@ def delete_recording(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/delete-audio', methods=['POST'])
+@require_scope('delete')
 @login_required
 def delete_recording_audio(recording_id):
     """Delete a recording's media file and keep its transcript, summary and notes."""
@@ -1446,6 +2022,7 @@ def delete_recording_audio(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/status', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_recording_status(recording_id):
     """Get processing status of a recording."""
@@ -1496,6 +2073,7 @@ def _effective_diarize():
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
+@require_scope('process')
 @login_required
 def api_regenerate_title(recording_id):
     """Regenerate the AI title for a recording based on its existing transcription."""
@@ -1508,6 +2086,7 @@ def api_regenerate_title(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/tags', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_tags():
     """List available tags (personal + group tags user has access to)."""
@@ -1563,10 +2142,14 @@ def list_tags():
             'can_edit': (user_role == 'admin')
         })
 
+    name = (request.args.get('name') or '').strip().lower()
+    if name:
+        result = [t for t in result if (t['name'] or '').strip().lower() == name]
     return jsonify({'tags': result})
 
 
 @api_v1_bp.route('/tags', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_tag():
     """Create a new tag."""
@@ -1629,6 +2212,7 @@ def create_tag():
 
 
 @api_v1_bp.route('/tags/<int:tag_id>', methods=['PUT'])
+@require_scope('write')
 @login_required
 def update_tag(tag_id):
     """Update a tag."""
@@ -1687,6 +2271,7 @@ def update_tag(tag_id):
 
 
 @api_v1_bp.route('/tags/<int:tag_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_tag(tag_id):
     """Delete a tag."""
@@ -1717,20 +2302,49 @@ def delete_tag(tag_id):
     return jsonify({'success': True, 'message': 'Tag deleted'})
 
 
+
+def _tag_problem(recording, tag):
+    """Why the caller may not apply tag to recording, or None."""
+    from src.models.organization import GroupMembership
+    if tag is None:
+        return 'not found'
+    if tag.group_id:
+        membership = GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first()
+        if not membership:
+            return 'no access'
+        if recording.user_id != current_user.id and membership.role != 'admin':
+            return 'only the recording owner or a group admin can apply group tags'
+        return None
+    return None if tag.user_id == current_user.id else 'no access'
+
+
+def _share_scope_refusal(recording, tags):
+    """403 when applying these tags would share the recording and the token
+    lacks the share scope (mailr spec section 8); nothing has changed yet."""
+    from src.services.tag_sharing import share_targets
+    from src.utils.token_auth import current_api_token, scope_error_response
+    token = current_api_token()
+    if token is None or token.scope_set is None or 'share' in token.scope_set:
+        return None
+    if any(share_targets(recording, tag) for tag in tags):
+        return scope_error_response({'share'}, token)
+    return None
+
+
 @api_v1_bp.route('/recordings/<int:recording_id>/tags', methods=['POST'])
+@require_scope('write')
 @login_required
 def add_tags_to_recording(recording_id):
-    """Add tag(s) to a recording."""
-    from src.models.organization import GroupMembership
-
+    """Add tag(s) to a recording. Needs edit access; a group tag that shares
+    the recording also needs the share scope on a scoped token."""
     recording = db.session.get(Recording, recording_id)
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    if not has_recording_access(recording, current_user):
+    if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    data = request.get_json()
+    data = request.get_json() or {}
     tag_ids = data.get('tag_ids', [])
     if not tag_ids:
         # Support single tag_id for backward compatibility
@@ -1740,48 +2354,29 @@ def add_tags_to_recording(recording_id):
         else:
             return jsonify({'error': 'tag_ids or tag_id required'}), 400
 
-    added_tags = []
     errors = []
-
+    to_add = []
+    present = {rt.tag_id for rt in RecordingTag.query.filter_by(recording_id=recording_id)}
     for tag_id in tag_ids:
         tag = db.session.get(Tag, tag_id)
-        if not tag:
+        problem = _tag_problem(recording, tag)
+        if problem == 'not found':
             errors.append(f'Tag {tag_id} not found')
-            continue
+        elif problem:
+            errors.append(f'No access to tag {tag_id}')
+        elif tag.id not in present and tag not in to_add:
+            to_add.append(tag)
 
-        # Check permission for this tag
-        if tag.group_id:
-            membership = GroupMembership.query.filter_by(
-                group_id=tag.group_id,
-                user_id=current_user.id
-            ).first()
-            if not membership:
-                errors.append(f'No access to tag {tag_id}')
-                continue
-        else:
-            if tag.user_id != current_user.id:
-                errors.append(f'No access to tag {tag_id}')
-                continue
+    refusal = _share_scope_refusal(recording, to_add)
+    if refusal is not None:
+        return refusal
 
-        # Check if already exists
-        existing = RecordingTag.query.filter_by(
-            recording_id=recording_id,
-            tag_id=tag_id
-        ).first()
-        if existing:
-            continue  # Skip, already added
-
-        # Get next order position
-        max_order = db.session.query(func.max(RecordingTag.order)).filter_by(
-            recording_id=recording_id
-        ).scalar() or 0
-
-        recording_tag = RecordingTag(
-            recording_id=recording_id,
-            tag_id=tag_id,
-            order=max_order + 1
-        )
-        db.session.add(recording_tag)
+    from src.services.tag_sharing import apply_tag_shares
+    max_order = db.session.query(func.max(RecordingTag.order)).filter_by(recording_id=recording_id).scalar() or 0
+    added_tags = []
+    for offset, tag in enumerate(to_add, 1):
+        db.session.add(RecordingTag(recording_id=recording_id, tag_id=tag.id, order=max_order + offset))
+        apply_tag_shares(recording, tag)
         added_tags.append({'id': tag.id, 'name': tag.name})
 
     db.session.commit()
@@ -1793,7 +2388,74 @@ def add_tags_to_recording(recording_id):
     })
 
 
+@api_v1_bp.route('/recordings/<int:recording_id>/tags', methods=['PUT'])
+@require_scope('write')
+@login_required
+def replace_recording_tags(recording_id):
+    """Set the recording's tags to exactly tag_ids, in that order.
+
+    Tags the caller cannot see (another user's personal tags) stay on the
+    recording. An unknown or forbidden id refuses the whole request.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify({'error': 'Permission denied'}), 403
+    data = request.get_json(silent=True) or {}
+    tag_ids = data.get('tag_ids')
+    if not isinstance(tag_ids, list) or not all(isinstance(t, int) and not isinstance(t, bool) for t in tag_ids):
+        return jsonify({'error': 'tag_ids must be a list of tag ids', 'code': 'invalid_parameter'}), 400
+    wanted, bad = [], []
+    for tag_id in dict.fromkeys(tag_ids):
+        tag = db.session.get(Tag, tag_id)
+        if _tag_problem(recording, tag):
+            bad.append(tag_id)
+        else:
+            wanted.append(tag)
+    if bad:
+        return jsonify({'error': 'Unknown or forbidden tag ids', 'code': 'invalid_parameter',
+                        'tag_ids': bad}), 400
+
+    visible = {t.id for t in recording.get_visible_tags(current_user)}
+    current = RecordingTag.query.filter_by(recording_id=recording_id).order_by(RecordingTag.order).all()
+    current_ids = [rt.tag_id for rt in current]
+    added = [t for t in wanted if t.id not in current_ids]
+    removed = [rt.tag_id for rt in current if rt.tag_id in visible and rt.tag_id not in {t.id for t in wanted}]
+
+    refusal = _share_scope_refusal(recording, added)
+    if refusal is not None:
+        return refusal
+
+    from src.services.tag_sharing import apply_tag_shares
+    for rt in current:
+        if rt.tag_id in removed:
+            db.session.delete(rt)
+    db.session.flush()
+    kept_hidden = [rt for rt in current if rt.tag_id not in visible]
+    by_id = {rt.tag_id: rt for rt in current if rt.tag_id not in removed}
+    order = 0
+    for tag in wanted:
+        order += 1
+        if tag.id in by_id:
+            if by_id[tag.id].order != order:
+                by_id[tag.id].order = order
+        else:
+            db.session.add(RecordingTag(recording_id=recording_id, tag_id=tag.id, order=order))
+            apply_tag_shares(recording, tag)
+    for rt in kept_hidden:
+        order += 1
+        rt.order = order
+    db.session.commit()
+    return jsonify({
+        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in wanted],
+        'added': [t.id for t in added],
+        'removed': removed,
+    })
+
+
 @api_v1_bp.route('/recordings/<int:recording_id>/tags/<int:tag_id>', methods=['DELETE'])
+@require_scope('write')
 @login_required
 def remove_tag_from_recording(recording_id, tag_id):
     """Remove a tag from a recording."""
@@ -1836,6 +2498,7 @@ def remove_tag_from_recording(recording_id, tag_id):
 # =============================================================================
 
 @api_v1_bp.route('/folders', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_folders():
     """List folders the user can access (personal + group folders)."""
@@ -1844,6 +2507,7 @@ def list_folders():
 
 
 @api_v1_bp.route('/folders', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_folder():
     """Create a new folder. Accepts the same JSON body as the web endpoint."""
@@ -1852,6 +2516,7 @@ def create_folder():
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_folder(folder_id):
     """Get a single folder by id."""
@@ -1884,6 +2549,7 @@ def get_folder(folder_id):
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['PATCH', 'PUT'])
+@require_scope('write')
 @login_required
 def update_folder(folder_id):
     """Update a folder. Same JSON body as the web endpoint."""
@@ -1892,6 +2558,7 @@ def update_folder(folder_id):
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_folder(folder_id):
     """Delete a folder. Recordings in it are unassigned."""
@@ -1904,6 +2571,7 @@ def delete_folder(folder_id):
 # =============================================================================
 
 @api_v1_bp.route('/transcription', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_transcription_info():
     """
@@ -2010,29 +2678,77 @@ def get_transcription_info():
 # =============================================================================
 
 @api_v1_bp.route('/speakers', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_speakers():
-    """List all speakers for the current user."""
-    speakers = Speaker.query.filter_by(user_id=current_user.id)\
-                           .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
-                           .all()
+    """List all speakers for the current user. ?email= filters by address."""
+    query = Speaker.query.filter_by(user_id=current_user.id)
+    email = (request.args.get('email') or '').strip().lower()
+    if email:
+        query = query.filter(db.func.lower(Speaker.email) == email)
+    speakers = query.order_by(Speaker.use_count.desc(), Speaker.last_used.desc()).all()
+    return jsonify({'speakers': [_speaker_item(s) for s in speakers]})
 
-    return jsonify({
-        'speakers': [{
-            'id': s.id,
-            'name': s.name,
-            'use_count': s.use_count,
-            'last_used': s.last_used.isoformat() if s.last_used else None,
-            'confidence_score': s.confidence_score,
-            'has_voice_profile': s.average_embedding is not None
-        } for s in speakers]
-    })
+
+_EMAIL = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def _speaker_item(s):
+    try:
+        aliases = json.loads(s.aliases) if s.aliases else []
+    except (TypeError, ValueError):
+        aliases = []
+    changed = s.updated_at or s.created_at
+    return {
+        'id': s.id,
+        'name': s.name,
+        'use_count': s.use_count,
+        'last_used': s.last_used.isoformat() if s.last_used else None,
+        'confidence_score': s.confidence_score,
+        'has_voice_profile': s.average_embedding is not None,
+        'email': s.email,
+        'aliases': aliases if isinstance(aliases, list) else [],
+        'updated_at': changed.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if changed else None,
+    }
+
+
+def _speaker_contact_fields(data, speaker):
+    """Apply email and aliases from a request body; returns an error message or None."""
+    if 'email' in data:
+        email = data['email']
+        if email is None or (isinstance(email, str) and not email.strip()):
+            speaker.email = None
+        elif isinstance(email, str) and len(email.strip()) <= 320 and _EMAIL.match(email.strip()):
+            speaker.email = email.strip().lower()
+        else:
+            return 'email must be an email address'
+    if 'aliases' in data:
+        aliases = data['aliases']
+        if aliases is None:
+            aliases = []
+        if not isinstance(aliases, list) or not all(isinstance(a, str) for a in aliases):
+            return 'aliases must be a list of strings'
+        clean, seen = [], set()
+        for alias in aliases:
+            alias = alias.strip()
+            if not alias:
+                continue
+            if len(alias) > 100:
+                return 'each alias must be at most 100 characters'
+            if alias.lower() not in seen:
+                seen.add(alias.lower())
+                clean.append(alias)
+        if len(clean) > 20:
+            return 'at most 20 aliases'
+        speaker.aliases = json.dumps(clean) if clean else None
+    return None
 
 
 @api_v1_bp.route('/speakers', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_speaker():
-    """Create a new speaker."""
+    """Create a new speaker (name, optional email and aliases)."""
     data = request.get_json()
     if not data or not data.get('name'):
         return jsonify({'error': 'Speaker name is required'}), 400
@@ -2050,21 +2766,23 @@ def create_speaker():
         use_count=0,
         created_at=datetime.utcnow()
     )
+    problem = _speaker_contact_fields(data, speaker)
+    if problem:
+        return jsonify({'error': problem, 'code': 'invalid_parameter'}), 400
     db.session.add(speaker)
     db.session.commit()
 
-    return jsonify({
-        'id': speaker.id,
-        'name': speaker.name,
-        'use_count': speaker.use_count,
-        'created_at': speaker.created_at.isoformat()
-    }), 201
+    item = _speaker_item(speaker)
+    item['created_at'] = speaker.created_at.isoformat()
+    return jsonify(item), 201
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['PUT'])
+@require_scope('write')
 @login_required
 def update_speaker(speaker_id):
-    """Update a speaker (cascades name changes to recordings)."""
+    """Update a speaker's name, email or aliases. A new name reaches every
+    recording the speaker appears in, as in Speaker Management."""
     speaker = db.session.get(Speaker, speaker_id)
     if not speaker:
         return jsonify({'error': 'Speaker not found'}), 404
@@ -2076,36 +2794,40 @@ def update_speaker(speaker_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
-    old_name = speaker.name
-    new_name = data.get('name', '').strip()
+    problem = _speaker_contact_fields(data, speaker)
+    if problem:
+        db.session.rollback()
+        return jsonify({'error': problem, 'code': 'invalid_parameter'}), 400
 
-    if not new_name:
-        return jsonify({'error': 'Speaker name is required'}), 400
-
-    if new_name != old_name:
-        # Update speaker name
-        speaker.name = new_name
-
-        # Update all recordings that have this speaker in their transcription
-        from src.services.speaker import update_speaker_in_recordings
-        try:
-            update_speaker_in_recordings(current_user.id, old_name, new_name)
-        except Exception as e:
-            current_app.logger.error(f"Error updating speaker in recordings: {e}")
+    renamed = {}
+    if 'name' in data:
+        new_name = (data.get('name') or '').strip()
+        if not new_name:
+            db.session.rollback()
+            return jsonify({'error': 'Speaker name cannot be empty', 'code': 'invalid_parameter'}), 400
+        if new_name != speaker.name:
+            clash = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
+            if clash and clash.id != speaker.id:
+                db.session.rollback()
+                return jsonify({'error': f'A speaker named "{new_name}" already exists', 'code': 'conflict'}), 409
+            from src.services.speaker_merge import rename_speaker_in_recordings
+            old_name = speaker.name
+            speaker.name = new_name
+            _, renamed = rename_speaker_in_recordings(current_user.id, old_name, new_name,
+                                                      speaker_id=speaker.id, new_speaker_id=speaker.id)
+    elif not any(k in data for k in ('email', 'aliases')):
+        return jsonify({'error': 'Nothing to change: give name, email or aliases', 'code': 'invalid_parameter'}), 400
 
     db.session.commit()
+    if renamed:
+        from src.services.speaker_merge import refresh_renamed_recordings
+        refresh_renamed_recordings(renamed)
 
-    return jsonify({
-        'success': True,
-        'speaker': {
-            'id': speaker.id,
-            'name': speaker.name,
-            'use_count': speaker.use_count
-        }
-    })
+    return jsonify({'success': True, 'speaker': _speaker_item(speaker)})
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_speaker(speaker_id):
     """Delete a speaker."""
@@ -2123,7 +2845,9 @@ def delete_speaker(speaker_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers', methods=['GET'])
+@require_scope('read')
 @login_required
+@_conditional('k')
 def get_recording_speakers(recording_id):
     """Get speakers in a recording with suggestions."""
     from src.services.speaker_embedding_matcher import find_matching_speakers
@@ -2135,33 +2859,35 @@ def get_recording_speakers(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Parse transcription to get speakers
+    # One entry per person in the transcript: the diarization label (when
+    # known), the name it was given and the linked saved speaker. Email only
+    # for the speaker's owner (mailr spec G6).
+    from src.services.transcript_segments import canonical_segments
     speakers_in_recording = []
-    speaker_counts = {}
-
-    if recording.transcription:
-        try:
-            segments = json.loads(recording.transcription)
-            for seg in segments:
-                speaker = seg.get('speaker', 'Unknown')
-                speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # Build speaker list with identification info
-    for label, count in speaker_counts.items():
-        # Check if this speaker label has been identified
-        identified_name = None
-        speaker_id = None
-
-        # Look for speaker in user's speakers by checking recordings
-        # This is a simplified check - actual implementation would check speaker_embeddings
-        speakers_in_recording.append({
-            'label': label,
-            'identified_name': identified_name,
-            'speaker_id': speaker_id,
-            'segment_count': count
-        })
+    entries = {}
+    is_owner = recording.user_id == current_user.id
+    owned = {}
+    for seg in canonical_segments(recording) or []:
+        named = seg['speaker'] if seg['speaker'] and seg['speaker'] != seg['speaker_label'] else None
+        key = seg['speaker_id'] or seg['speaker_label'] or seg['speaker'] or 'Unknown'
+        entry = entries.get(key)
+        if entry is None:
+            entry = entries[key] = {
+                'label': seg['speaker_label'] or seg['speaker'] or 'Unknown',
+                'identified_name': named,
+                'speaker_id': seg['speaker_id'],
+                'email': None,
+                'segment_count': 0,
+            }
+            speakers_in_recording.append(entry)
+        entry['segment_count'] += 1
+    if is_owner:
+        ids = [e['speaker_id'] for e in speakers_in_recording if e['speaker_id']]
+        if ids:
+            owned = {sp.id: sp for sp in Speaker.query.filter(Speaker.id.in_(ids), Speaker.user_id == current_user.id)}
+        for entry in speakers_in_recording:
+            if entry['speaker_id'] in owned:
+                entry['email'] = owned[entry['speaker_id']].email
 
     # Get voice-based suggestions. speaker_embeddings maps each SPEAKER_XX
     # label to one embedding (any dimension); find_matching_speakers takes a
@@ -2198,6 +2924,7 @@ def get_recording_speakers(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers/assign', methods=['PUT'])
+@require_scope('write')
 @login_required
 def assign_speakers(recording_id):
     """
@@ -2277,6 +3004,7 @@ def assign_speakers(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers/identify', methods=['POST'])
+@require_scope('process')
 @login_required
 def identify_speakers(recording_id):
     """
@@ -2326,6 +3054,7 @@ def identify_speakers(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/transcribe', methods=['POST'])
+@require_scope('process')
 @login_required
 def start_transcription(recording_id):
     """Queue transcription for a recording."""
@@ -2364,6 +3093,7 @@ def start_transcription(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summarize', methods=['POST'])
+@require_scope('process')
 @login_required
 def start_summarization(recording_id):
     """Queue summarization for a recording with optional custom prompt."""
@@ -2401,12 +3131,13 @@ def start_summarization(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/chat', methods=['POST'])
+@require_scope('process')
 @login_required
 def chat_with_recording(recording_id):
-    """Chat about a recording's content."""
+    """Chat about a recording's content. with_sources: true returns numbered
+    sources with segment, time, speaker and a checked quote (mailr spec G9)."""
     from src.services.llm import chat_client, call_chat_completion
-    from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
-    from src.models import SystemSetting
+    from src.services.recording_chat import build_chat_messages, parse_sources
 
     recording = db.session.get(Recording, recording_id)
     if not recording:
@@ -2422,60 +3153,124 @@ def chat_with_recording(recording_id):
     if not data or not data.get('message'):
         return jsonify({'error': 'message is required'}), 400
 
-    user_message = data['message']
-    conversation_history = data.get('conversation_history', [])
+    with_sources = data.get('with_sources', False)
+    if not isinstance(with_sources, bool):
+        return jsonify({'error': 'with_sources must be true or false', 'code': 'invalid_parameter'}), 400
 
     # Check if chat client is available
     if chat_client is None:
         return jsonify({'error': 'Chat service not available'}), 503
 
-    # Format transcription (optionally with timestamps per the user's setting, #304)
-    _chat_ts = bool(current_user.chat_include_timestamps)
-    formatted_transcription = format_transcription_for_llm(
-        recording.transcription,
-        include_timestamps=_chat_ts,
-        template_format=_resolve_timestamp_template_format(
-            current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
-    )
-
-    # Get transcript limit
-    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-    if transcript_limit != -1:
-        formatted_transcription = formatted_transcription[:transcript_limit]
-
-    # Build system prompt
-    system_prompt = f"""You are a helpful assistant analyzing a recording. Answer questions based on the transcript below.
-
-Meeting: {recording.title}
-Participants: {recording.participants or 'Not specified'}
-
-Transcript:
-{formatted_transcription}
-
-Notes: {recording.notes or 'None'}
-"""
-    # Same output language as web chat (#412 audit S8).
-    if current_user.output_language:
-        system_prompt += f"\nPlease provide all your responses in {current_user.output_language}.\n"
-
-    # Build messages
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(conversation_history)
-    messages.append({"role": "user", "content": user_message})
-
+    messages, segments = build_chat_messages(recording, current_user, data['message'],
+                                             data.get('conversation_history', []), with_sources=with_sources)
     try:
-        # Same admin chat temperature as web chat (#412 audit S8).
         from src.services.llm_settings import get_temperature
         completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
         reply = completion.choices[0].message.content
-
-        return jsonify({
-            'response': reply,
-            'sources': []  # Could be enhanced to extract relevant segments
-        })
     except Exception as e:
         current_app.logger.error(f"Chat error: {e}")
         return jsonify({'error': 'Chat failed'}), 500
+
+    sources = []
+    if with_sources and segments:
+        reply, sources = parse_sources(reply, segments)
+    return jsonify({'response': reply, 'sources': sources})
+
+
+@api_v1_bp.route('/inquire', methods=['POST'])
+@require_scope('process')
+@login_required
+def inquire_v1():
+    """Ask a question across recordings (mailr spec G9).
+
+    Body: question, filters {recording_ids, tag_ids, speakers, date_from,
+    date_to}, scope (own|shared|all), mode (rag|agent|auto), stream, history.
+    """
+    import re as _re
+    from flask import Response, stream_with_context
+    from src.api.inquire import inquire_stream
+    from src.services.inquire_agent import agent_enabled
+    from src.services.recording_scope import scope_condition
+    if os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() != 'true':
+        return jsonify({'error': 'Inquire is turned off on this server', 'code': 'feature_disabled'}), 403
+    body = request.get_json(silent=True) or {}
+    question = (body.get('question') or '').strip()
+    if not question:
+        return jsonify({'error': 'question is required', 'code': 'invalid_parameter'}), 400
+    mode = body.get('mode', 'auto')
+    if mode not in ('rag', 'agent', 'auto'):
+        return jsonify({'error': 'mode must be rag, agent or auto', 'code': 'invalid_parameter'}), 400
+    if mode == 'agent' and not agent_enabled():
+        return jsonify({'error': 'The Inquire agent is turned off on this server', 'code': 'feature_disabled'}), 403
+    scope = body.get('scope', 'own')
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    filters = body.get('filters') or {}
+    if not isinstance(filters, dict):
+        return jsonify({'error': 'filters must be an object', 'code': 'invalid_parameter'}), 400
+
+    allowed = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(current_user.id, scope))]
+    if filters.get('recording_ids'):
+        wanted = {int(r) for r in filters['recording_ids'] if str(r).isdigit()}
+        allowed = [rid for rid in allowed if rid in wanted]
+    if not allowed:
+        return jsonify({'answer': 'There are no recordings to search with these filters.', 'citations': [],
+                        'mode_used': 'rag', 'steps': 0, 'usage': None})
+    data = {
+        'message': question,
+        'message_history': body.get('history') or [],
+        'filter_recording_ids': allowed,
+        'filter_tags': filters.get('tag_ids') or [],
+        'filter_speakers': filters.get('speakers') or [],
+        'filter_date_from': filters.get('date_from'),
+        'filter_date_to': filters.get('date_to'),
+    }
+    mode_used = 'agent' if (mode != 'rag' and agent_enabled()) else 'rag'
+    stream = inquire_stream(current_user, data, mode=mode)
+    if body.get('stream'):
+        return Response(stream_with_context(stream), mimetype='text/event-stream')
+
+    answer, steps, error = [], 0, None
+    for chunk in stream:
+        for line in str(chunk).splitlines():
+            if not line.startswith('data: '):
+                continue
+            try:
+                event = json.loads(line[6:])
+            except ValueError:
+                continue
+            if isinstance(event.get('delta'), str):
+                answer.append(event['delta'])
+            if 'error' in event:
+                error = event['error']
+            summary = event.get('agent_summary')
+            if isinstance(summary, dict) and isinstance(summary.get('steps'), int):
+                steps = summary['steps']
+    text = ''.join(answer)
+    if error and not text:
+        return jsonify({'error': error, 'code': 'inquire_failed'}), 502
+
+    # [Title @ 12:34](/recordings/412?t=754) -> [1], for recordings the caller can read.
+    readable = set(allowed)
+    citations, numbers = [], {}
+    link = _re.compile(r'\[([^\]]+)\]\(/recordings/(\d+)(?:\?t=(\d+(?:\.\d+)?))?\)')
+
+    def _cite(match):
+        rid = int(match.group(2))
+        if rid not in readable:
+            return match.group(1)
+        t = float(match.group(3)) if match.group(3) else None
+        key = (rid, t)
+        if key not in numbers:
+            rec = db.session.get(Recording, rid)
+            numbers[key] = len(citations) + 1
+            citations.append({'n': numbers[key], 'recording_id': rid, 'title': rec.title if rec else None,
+                              'start_time': t, 'quote': None,
+                              'url': f'/recordings/{rid}' + (f'?t={match.group(3)}' if match.group(3) else '')})
+        return f'[{numbers[key]}]'
+
+    text = link.sub(_cite, text)
+    return jsonify({'answer': text, 'citations': citations, 'mode_used': mode_used, 'steps': steps, 'usage': None})
 
 
 # =============================================================================
@@ -2483,7 +3278,9 @@ Notes: {recording.notes or 'None'}
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/events', methods=['GET'])
+@require_scope('read')
 @login_required
+@_conditional('e')
 def get_recording_events(recording_id):
     """Get calendar events extracted from a recording."""
     recording = db.session.get(Recording, recording_id)
@@ -2495,19 +3292,11 @@ def get_recording_events(recording_id):
 
     events = Event.query.filter_by(recording_id=recording_id).all()
 
-    return jsonify({
-        'events': [{
-            'id': e.id,
-            'title': e.title,
-            'start_datetime': e.start_datetime.isoformat() if e.start_datetime else None,
-            'end_datetime': e.end_datetime.isoformat() if e.end_datetime else None,
-            'description': e.description,
-            'location': e.location
-        } for e in events]
-    })
+    return jsonify({'events': [e.api_dict() for e in events]})
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/events/ics', methods=['GET'])
+@require_scope('read')
 @login_required
 def download_events_ics(recording_id):
     """Download all events as ICS file."""
@@ -2541,6 +3330,7 @@ def download_events_ics(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/audio', methods=['GET'])
+@require_scope('read')
 @login_required
 def download_audio(recording_id):
     """Download or stream audio file."""
@@ -2595,6 +3385,7 @@ def download_audio(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/batch', methods=['PATCH'])
+@require_scope('write')
 @login_required
 def batch_update_recordings():
     """Batch update multiple recordings."""
@@ -2735,6 +3526,7 @@ def batch_update_recordings():
 
 
 @api_v1_bp.route('/recordings/batch', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def batch_delete_recordings():
     """Batch delete multiple recordings."""
@@ -2784,6 +3576,7 @@ def batch_delete_recordings():
 
 
 @api_v1_bp.route('/recordings/batch/transcribe', methods=['POST'])
+@require_scope('process')
 @login_required
 def batch_transcribe_recordings():
     """Batch queue transcriptions for multiple recordings."""
@@ -2832,6 +3625,7 @@ def batch_transcribe_recordings():
 # =============================================================================
 
 @api_v1_bp.route('/settings/auto-summarization', methods=['PUT'])
+@require_scope('account')
 @login_required
 def update_auto_summarization():
     """Toggle auto-summarization for the current user."""
@@ -2895,6 +3689,7 @@ def _asr_upload_rate_cost():
 
 
 @api_v1_bp.route('/integrations/asr-voice-recorder/upload', methods=['POST'])
+@require_scope('upload')
 @rate_limit(f'{_ASR_RATE_UNITS_PER_MINUTE} per minute', cost=_asr_upload_rate_cost)
 def upload_from_asr_voice_recorder():
     """Accept an ASR Voice Recorder connection test or completed upload."""
@@ -2915,6 +3710,10 @@ def upload_from_asr_voice_recorder():
         secret = request.form.get('secret', '')
         owner = load_user_from_token_value(secret)
         if owner is None:
+            return jsonify({'error': 'Authentication failed'}), 401
+        # A scoped token must carry 'upload' (mailr spec G1); full tokens pass.
+        _token = request.environ.get('_speakr_secret_token')
+        if _token is not None and _token.scope_set is not None and 'upload' not in _token.scope_set:
             return jsonify({'error': 'Authentication failed'}), 401
 
         uploaded_file = request.files.get('file')
@@ -2950,6 +3749,7 @@ def upload_from_asr_voice_recorder():
 
 
 @api_v1_bp.route('/recordings/upload', methods=['POST'])
+@require_scope('upload')
 @login_required
 def upload_recording():
     """
@@ -2973,5 +3773,81 @@ def upload_recording():
       - folder_id (optional)
       - tag_ids[0], tag_ids[1], ... (optional)
       - tag_id (optional, legacy)
+      - participants (optional, comma-separated, at most 500 characters)
+      - external_refs (optional, JSON array of references)
+      - idempotency_key (optional, 1 to 100 characters)
+      - strict (optional, true: a tag or folder you cannot use is an error)
     """
-    return _upload_file_ui()
+    from src.api.recordings import ingest_uploaded_recording
+    from src.models import Folder, GroupMembership, Tag
+    from src.services import external_refs as xr
+    form = request.form
+
+    participants = form.get('participants')
+    if participants is not None and len(participants) > 500:
+        return jsonify({'error': 'participants must be at most 500 characters', 'code': 'invalid_parameter'}), 400
+    clean_refs = []
+    if form.get('external_refs'):
+        try:
+            clean_refs = xr.validate_list(json.loads(form['external_refs']))
+        except ValueError as e:
+            code = getattr(e, 'code', 'invalid_parameter')
+            status = getattr(e, 'status', 400)
+            return jsonify({'error': str(e) if isinstance(e, xr.RefError) else 'external_refs must be JSON',
+                            'code': code}), status
+    key = (form.get('idempotency_key') or '').strip() or None
+    if key is not None and len(key) > 100:
+        return jsonify({'error': 'idempotency_key must be 1 to 100 characters', 'code': 'invalid_parameter'}), 400
+    if key:
+        earlier = (Recording.query
+                   .filter(Recording.user_id == current_user.id, Recording.upload_idempotency_key == key,
+                           Recording.created_at >= datetime.utcnow() - timedelta(hours=24))
+                   .order_by(Recording.id.desc()).first())
+        if earlier is not None:
+            data = earlier.to_dict(viewer_user=current_user)
+            data['external_refs'] = [r.to_dict() for r in xr.refs_for(earlier.id, current_user.id)]
+            data['idempotent_replay'] = True
+            return jsonify(data), 200
+
+    # Report tags and folders the upload cannot use (the pipeline drops them).
+    def _usable(item):
+        return item is not None and (item.user_id == current_user.id or (
+            item.group_id and GroupMembership.query.filter_by(group_id=item.group_id,
+                                                              user_id=current_user.id).first()))
+    asked_tags = [form.get(f'tag_ids[{i}]') for i in range(100) if form.get(f'tag_ids[{i}]')] \
+        or ([form.get('tag_id')] if form.get('tag_id') else [])
+    ignored_tags = []
+    for raw in asked_tags:
+        tag = db.session.get(Tag, int(raw)) if str(raw).isdigit() else None
+        if not _usable(tag):
+            ignored_tags.append(int(raw) if str(raw).isdigit() else raw)
+    ignored_folder = None
+    if form.get('folder_id'):
+        raw = form.get('folder_id')
+        folder = db.session.get(Folder, int(raw)) if str(raw).isdigit() else None
+        if not _usable(folder):
+            ignored_folder = int(raw) if str(raw).isdigit() else raw
+    if (form.get('strict') or '').lower() == 'true' and (ignored_tags or ignored_folder is not None):
+        return jsonify({'error': 'A tag or folder in the upload is not one you can use',
+                        'code': 'invalid_parameter',
+                        'ignored': {'tag_ids': ignored_tags, 'folder_id': ignored_folder}}), 400
+
+    def _prepare(recording):
+        if participants is not None:
+            recording.participants = participants.strip() or None
+        if key:
+            recording.upload_idempotency_key = key
+        db.session.flush()
+        for clean in clean_refs:
+            xr.add(recording, current_user.id, clean)
+
+    response = ingest_uploaded_recording(owner=current_user, uploaded_file=request.files.get('file'),
+                                         form=form, prepare=_prepare)
+    body, status = (response if isinstance(response, tuple) else (response, response.status_code))
+    if status in (200, 201, 202):
+        data = body.get_json() or {}
+        if data.get('id'):
+            data['external_refs'] = [r.to_dict() for r in xr.refs_for(data['id'], current_user.id)]
+        data['ignored'] = {'tag_ids': ignored_tags, 'folder_id': ignored_folder}
+        return jsonify(data), status
+    return response

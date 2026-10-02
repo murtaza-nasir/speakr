@@ -29,6 +29,8 @@ WEBHOOK_EVENT_TYPES = (
     'recording.events.extracted',
     'recording.updated',
     'recording.deleted',
+    'recording.share.created',
+    'recording.share.revoked',
     'webhook.test',
 )
 
@@ -73,11 +75,18 @@ class Webhook(db.Model):
     # validates that the destination is not a private IP unless the
     # admin has explicitly allowlisted intranet hosts.
     allow_http = db.Column(db.Boolean, default=False, nullable=False)
+    # Also deliver recording.* events of recordings shared with the owner
+    # (mailr spec W6), with data.owner_user_id.
+    include_shared = db.Column(db.Boolean, default=False, nullable=False)
 
     # HMAC signing secret. Treat as a credential: redact in API
     # responses, surface to the user only on creation, allow rotation
     # via a dedicated endpoint.
     secret = db.Column(db.String(120), nullable=False, default=generate_webhook_secret)
+    # The secret before the last rotation, accepted until previous_secret_expires_at
+    # (WEBHOOK_SECRET_GRACE_HOURS). Never returned by the API.
+    previous_secret = db.Column(db.String(120), nullable=True)
+    previous_secret_expires_at = db.Column(db.DateTime, nullable=True)
 
     # JSON array of event type strings the endpoint is subscribed to.
     # Validated against WEBHOOK_EVENT_TYPES on write.
@@ -151,6 +160,7 @@ class Webhook(db.Model):
             'name': self.name,
             'url': self.url,
             'allow_http': bool(self.allow_http),
+            'include_shared': bool(self.include_shared),
             'events': self.event_list,
             'enabled': bool(self.enabled),
             'auto_paused': bool(self.auto_paused),
@@ -158,6 +168,10 @@ class Webhook(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'last_delivery_at': self.last_delivery_at.isoformat() if self.last_delivery_at else None,
+            'previous_secret_valid_until': (
+                self.previous_secret_expires_at.isoformat() + 'Z'
+                if self.previous_secret and self.previous_secret_expires_at
+                and self.previous_secret_expires_at > datetime.utcnow() else None),
         }
         if include_secret:
             payload['secret'] = self.secret

@@ -238,6 +238,41 @@ def _run_migrations(app, engine):
             app.logger.info("Added audio_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
             app.logger.info("Added completed_at column to recording table")
+        # Change tracking for API clients (mailr spec G2). Filled from
+        # completed_at or created_at once; the feed reads NULL as created_at,
+        # so a failed backfill is harmless and the next start retries it.
+        if add_column_if_not_exists(engine, 'recording', 'updated_at', 'DATETIME'):
+            app.logger.info("Added updated_at column to recording table")
+        create_index_if_not_exists(engine, 'ix_recording_updated_at', 'recording', 'updated_at')
+        create_index_if_not_exists(engine, 'ix_recording_user_updated', 'recording', 'user_id, updated_at')
+
+        def _backfill_recording_updated_at(engine):
+            from datetime import datetime as _dt
+            from src.services.recording_changes import FEED_SINCE_KEY, iso_z
+            with engine.begin() as conn:
+                conn.execute(text(
+                    'UPDATE recording SET updated_at = COALESCE(completed_at, created_at) '
+                    'WHERE updated_at IS NULL'))
+            SystemSetting.set_setting(FEED_SINCE_KEY, iso_z(_dt.utcnow()),
+                                      'Start of change tracking (changes feed)')
+
+        run_once(engine, '0002_backfill_recording_updated_at', _backfill_recording_updated_at,
+                 logger=app.logger)
+        # Public share link expiry (mailr spec G10).
+        if add_column_if_not_exists(engine, 'share', 'expires_at', 'DATETIME'):
+            app.logger.info("Added expires_at column to share table")
+        # Speaker contact details (mailr spec G6).
+        if add_column_if_not_exists(engine, 'speaker', 'email', 'VARCHAR(320)'):
+            app.logger.info("Added email column to speaker table")
+        if add_column_if_not_exists(engine, 'speaker', 'aliases', 'TEXT'):
+            app.logger.info("Added aliases column to speaker table")
+        if add_column_if_not_exists(engine, 'speaker', 'updated_at', 'DATETIME'):
+            app.logger.info("Added updated_at column to speaker table")
+        create_index_if_not_exists(engine, 'ix_speaker_user_email', 'speaker', 'user_id, email')
+        # Idempotent API uploads (mailr spec G8).
+        if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
+            app.logger.info("Added upload_idempotency_key column to recording table")
+        create_index_if_not_exists(engine, 'ix_recording_user_idem', 'recording', 'user_id, upload_idempotency_key')
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):
@@ -688,6 +723,16 @@ def _run_migrations(app, engine):
             app.logger.warning(f"Error during meeting_date migration: {e}")
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
+    with _migration_section(app, failures, "webhook secret rotation grace"):
+        # mailr spec W6: recipients' webhooks for shared recordings (opt-in).
+        if add_column_if_not_exists(engine, 'webhook', 'include_shared', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added include_shared column to webhook table")
+        # mailr spec W2: the previous secret signs a second V2 value for a while.
+        if add_column_if_not_exists(engine, 'webhook', 'previous_secret', 'VARCHAR(120)'):
+            app.logger.info("Added previous_secret column to webhook table")
+        if add_column_if_not_exists(engine, 'webhook', 'previous_secret_expires_at', 'DATETIME'):
+            app.logger.info("Added previous_secret_expires_at column to webhook table")
+
     with _migration_section(app, failures, "notifications"):
         # The table itself comes from create_all(); these cover a database
         # that already had an earlier version of it. Columns are added
@@ -758,6 +803,11 @@ def _run_migrations(app, engine):
         # kept on reprocess, generated ones are regenerated.
         if add_column_if_not_exists(engine, 'recording', 'title_source', 'VARCHAR(16)'):
             app.logger.info("Added title_source column to recording table")
+
+        # Token scopes (mailr spec G1). NULL = full access, so existing tokens
+        # keep working exactly as before; no backfill.
+        if add_column_if_not_exists(engine, 'api_token', 'scopes', 'TEXT'):
+            app.logger.info("Added scopes column to api_token table")
 
         # Add file_hash column for duplicate detection
         if add_column_if_not_exists(engine, 'recording', 'file_hash', 'VARCHAR(64)'):
@@ -1073,6 +1123,16 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"transcription_language normalization migration skipped: {e}")
+
+        # Link named transcript segments to saved speakers (speaker_id), once.
+        # Voice samples help where they exist; the name match covers the rest.
+        try:
+            from src.services.speaker_links import backfill_all
+            run_once(engine, '0003_link_transcript_speakers',
+                     lambda eng: backfill_all(eng, logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Transcript speaker linking skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
