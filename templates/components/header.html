@@ -7,15 +7,18 @@
     <!-- Left side: Menu toggle + (logo OR recording title+meta+actions) -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <!-- Menu Toggle Button -->
+        <!-- sm:-mr-1.5: the button is a 36 px box around a 16 px glyph, so its
+             padding reads as extra space before the logo when it is not
+             hovered. Pulling the logo in balances bars-logo-title. -->
         <button @click="toggleSidebar"
-                class="btn btn--icon flex-shrink-0"
+                class="btn btn--icon flex-shrink-0 sm:-mr-1.5"
                 :title="isSidebarCollapsed ? t('tooltips.showSidebar') : t('tooltips.hideSidebar')">
             <i class="fas fa-bars text-lg"></i>
         </button>
 
         <!-- LIST VIEW (or any non-detail screen): Speakr logo + name -->
         <div v-if="currentView !== 'detail' || !selectedRecording"
-             class="flex items-center gap-2 sm:gap-3 min-w-0">
+             class="flex items-center gap-2 sm:gap-3.5 min-w-0">
             <img src="{{ url_for('static', filename='img/icon-64.png') }}" srcset="{{ url_for('static', filename='img/icon-64.png') }} 1x, {{ url_for('static', filename='img/icon-128.png') }} 2x" alt="Speakr" class="app-logo w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
             <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
         </div>
@@ -32,7 +35,7 @@
                  content, which made the input collapse to a few dozen
                  pixels in edit mode. -->
             <div class="flex items-center gap-2 min-w-0 flex-1">
-                <a href="/" class="flex-shrink-0 hidden sm:block" :title="t('tooltips.backToHome')">
+                <a href="/" class="flex-shrink-0 hidden sm:block sm:mr-1.5" :title="t('tooltips.backToHome')">
                     <img src="{{ url_for('static', filename='img/icon-64.png') }}" srcset="{{ url_for('static', filename='img/icon-64.png') }} 1x, {{ url_for('static', filename='img/icon-128.png') }} 2x" alt="Speakr" class="app-logo w-7 h-7">
                 </a>
                 <h1 v-if="!editingTitle"
