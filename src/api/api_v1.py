@@ -121,7 +121,12 @@ OPENAPI_SPEC = {
     "servers": [{"url": "/api/v1", "description": "API v1"}],
     "components": {
         "securitySchemes": {
-            "bearerAuth": {"type": "http", "scheme": "bearer"},
+            "bearerAuth": {"type": "http", "scheme": "bearer",
+                           "description": "A personal API token. Tokens may carry scopes: read, write, upload, "
+                                          "process, share, delete, webhooks, account. A token with no scopes "
+                                          "(reported as [\"full\"]) has every scope. Each operation lists the "
+                                          "scopes it needs in x-required-scopes; a scoped token without them "
+                                          "gets 403 insufficient_scope. Scoped tokens work only in a header."},
             "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
             "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token"}
         },
@@ -199,12 +204,54 @@ OPENAPI_SPEC = {
             },
             "Error": {
                 "type": "object",
-                "properties": {"error": {"type": "string"}}
+                "properties": {"error": {"type": "string"},
+                               "code": {"type": "string", "description": "Machine-readable error code, e.g. insufficient_scope"}}
+            },
+            "TokenInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "scopes": {"type": "array", "items": {"type": "string"}},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "expires_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "last_used_at": {"type": "string", "format": "date-time", "nullable": True},
+                    "via": {"type": "string", "enum": ["header", "query"]}
+                }
+            },
+            "Capabilities": {
+                "type": "object",
+                "properties": {
+                    "speakr_version": {"type": "string"},
+                    "api_version": {"type": "string"},
+                    "features": {"type": "object", "additionalProperties": True,
+                                 "description": "Feature flags; a missing key means false"},
+                    "models_local": {"type": "boolean"}
+                }
             }
         }
     },
     "security": [{"bearerAuth": []}, {"apiKeyHeader": []}, {"apiKeyQuery": []}],
     "paths": {
+        "/tokens/current": {
+            "get": {
+                "tags": ["Tokens"],
+                "summary": "The API token used for this request",
+                "description": "Any valid token, no scope needed. A session request gets 404.",
+                "responses": {"200": {"description": "Token details",
+                                      "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenInfo"}}}},
+                              "404": {"description": "No API token in this request"}}
+            }
+        },
+        "/capabilities": {
+            "get": {
+                "tags": ["Tokens"],
+                "summary": "Features this instance supports",
+                "description": "Any valid token or session. Clients read features here, never from the version string.",
+                "responses": {"200": {"description": "Capabilities",
+                                      "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Capabilities"}}}}}
+            }
+        },
         "/stats": {
             "get": {
                 "tags": ["Stats"],
@@ -513,16 +560,43 @@ OPENAPI_SPEC = {
         {"name": "Transcription", "description": "Transcription connector and model discovery"},
         {"name": "Speakers", "description": "Speaker management"},
         {"name": "Batch", "description": "Batch operations"},
-        {"name": "Settings", "description": "User settings"}
+        {"name": "Settings", "description": "User settings"},
+        {"name": "Tokens", "description": "Token introspection and instance capabilities"}
     ]
 }
+
+
+def _openapi_with_scopes():
+    """OPENAPI_SPEC with x-required-scopes on every operation, read from the
+    routes' require_scope marks so the document cannot drift from the code."""
+    import copy
+    import re
+    from flask import current_app
+    spec = copy.deepcopy(OPENAPI_SPEC)
+    norm = lambda path: re.sub(r'<[^>]+>|\{[^}]+\}', '{}', path)
+    by_route = {}
+    for rule in current_app.url_map.iter_rules():
+        if not rule.rule.startswith('/api/v1/'):
+            continue
+        view = current_app.view_functions.get(rule.endpoint)
+        scopes = getattr(view, '_required_scopes', None)
+        if scopes is None:
+            continue
+        for method in rule.methods - {'HEAD', 'OPTIONS'}:
+            by_route[(norm(rule.rule[len('/api/v1'):]), method.lower())] = sorted(scopes)
+    for path, operations in spec.get('paths', {}).items():
+        for method, operation in operations.items():
+            scopes = by_route.get((norm(path), method))
+            if scopes is not None and isinstance(operation, dict):
+                operation['x-required-scopes'] = scopes
+    return spec
 
 
 @api_v1_bp.route('/openapi.json', methods=['GET'])
 @require_scope('read')
 def get_openapi_spec():
     """Return OpenAPI specification."""
-    return jsonify(OPENAPI_SPEC)
+    return jsonify(_openapi_with_scopes())
 
 
 @api_v1_bp.route('/docs', methods=['GET'])

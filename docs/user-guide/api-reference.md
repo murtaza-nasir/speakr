@@ -34,6 +34,79 @@ All endpoints require authentication. See [API Tokens](api-tokens.md) for detail
     curl "https://speakr.example.com/api/v1/stats?token=YOUR_TOKEN"
     ```
 
+The query parameter works only with full-access tokens.
+
+### Scopes
+
+A token has full access or a set of scopes. Each endpoint below lists the scope it needs; `/api/v1/openapi.json` gives the same as `x-required-scopes` per operation.
+
+| Scope | Allows |
+|-------|--------|
+| `read` | Every GET under `/api/v1` except webhook management: recordings, transcripts, summaries, notes, events, speakers, tags, folders, statistics, audio download |
+| `write` | Editing recordings, notes and summaries; adding and removing tags; creating and editing tags, folders and speakers; assigning speakers |
+| `upload` | `POST /recordings/upload` and the ASR Voice Recorder upload |
+| `process` | Requests that use model or GPU time: transcribe, summarize, regenerate title, identify speakers, chat |
+| `share` | Creating, listing and revoking shares |
+| `delete` | Deleting recordings, audio, tags, folders and speakers |
+| `webhooks` | Everything under `/api/v1/webhooks` |
+| `account` | Account settings under `/api/v1/settings` |
+
+A token with no scopes is a full-access token and is reported as `["full"]`. Every token created before scopes existed is a full-access token. Scoped tokens work only in a header and only on API v1 routes. A scoped token without a needed scope gets `403` before anything changes:
+
+```json
+{
+  "error": "This token does not have the 'write' scope",
+  "code": "insufficient_scope",
+  "required_scopes": ["write"],
+  "token_scopes": ["read"]
+}
+```
+
+with the header `WWW-Authenticate: Bearer error="insufficient_scope", scope="write"`.
+
+### Current Token
+
+```http
+GET /api/v1/tokens/current
+```
+
+**Scope:** none (any valid token)
+
+Returns the token used for the request. A request signed in through the web interface gets `404` with `"code": "not_found"`.
+
+```json
+{
+  "id": 14,
+  "name": "mailr",
+  "scopes": ["read", "write", "upload"],
+  "created_at": "2026-10-02T09:00:00.000000Z",
+  "expires_at": "2027-10-02T09:00:00.000000Z",
+  "last_used_at": "2026-10-02T09:05:11.000000Z",
+  "via": "header"
+}
+```
+
+### Capabilities
+
+```http
+GET /api/v1/capabilities
+```
+
+**Scope:** none (any valid token or a signed-in session)
+
+Lists the features this instance supports. Read features here, not from the version string; a feature missing from `features` is not supported.
+
+```json
+{
+  "speakr_version": "v0.10.11-alpha",
+  "api_version": "1.1",
+  "features": {"token_scopes": true},
+  "models_local": false
+}
+```
+
+`models_local` is `true` only when the administrator sets `MODELS_ARE_LOCAL=true`, which states that the text, chat and embedding models all run on machines the administrator controls.
+
 ## OpenAPI Specification
 
 | Endpoint | Description |
@@ -57,6 +130,8 @@ Dashboard-compatible statistics endpoint, designed for integration with homepage
 ```http
 GET /api/v1/stats
 ```
+
+**Scope:** `read`
 
 **Query Parameters:**
 
@@ -136,6 +211,8 @@ GET /api/v1/stats
 GET /api/v1/users/me
 ```
 
+**Scope:** `read`
+
 Returns the authenticated user's profile, preferences, and group memberships. Useful for companion apps and automation flows that need to display the current user's identity.
 
 **Response:**
@@ -184,6 +261,8 @@ Returns the authenticated user's profile, preferences, and group memberships. Us
 ```http
 POST /api/v1/recordings/upload
 ```
+
+**Scope:** `upload`
 
 Upload a recording as multipart form-data and immediately queue transcription.
 
@@ -234,6 +313,8 @@ curl -X POST \
 ```http
 POST /api/v1/integrations/asr-voice-recorder/upload
 ```
+
+**Scope:** `upload`
 
 This adapter accepts the multipart webhook format sent by the Android **ASR Voice Recorder** app and queues the completed recording through Speakr's normal upload and transcription pipeline. Unlike other API endpoints, authentication comes from the required multipart `secret` field because the recorder cannot set a custom Authorization header.
 
@@ -291,6 +372,8 @@ curl -X POST \
 ```http
 GET /api/v1/recordings
 ```
+
+**Scope:** `read`
 
 **Query Parameters:**
 
@@ -361,6 +444,8 @@ GET /api/v1/recordings
 GET /api/v1/recordings/{id}
 ```
 
+**Scope:** `read`
+
 **Query Parameters:**
 
 | Parameter | Type | Default | Description |
@@ -423,6 +508,8 @@ GET /api/v1/recordings/{id}
 GET /api/v1/recordings/{id}/transcript
 ```
 
+**Scope:** `read`
+
 **Query Parameters:**
 
 | Parameter | Type | Default | Description |
@@ -475,6 +562,8 @@ GET /api/v1/recordings/{id}/transcript
 GET /api/v1/recordings/{id}/summary
 ```
 
+**Scope:** `read`
+
 **Response:**
 
 ```json
@@ -490,6 +579,8 @@ GET /api/v1/recordings/{id}/summary
 GET /api/v1/recordings/{id}/notes
 ```
 
+**Scope:** `read`
+
 **Response:**
 
 ```json
@@ -504,6 +595,8 @@ GET /api/v1/recordings/{id}/notes
 ```http
 GET /api/v1/recordings/{id}/status
 ```
+
+**Scope:** `read`
 
 **Response:**
 
@@ -533,6 +626,8 @@ GET /api/v1/recordings/{id}/status
 PATCH /api/v1/recordings/{id}
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -557,6 +652,8 @@ All fields are optional. Set `folder_id` to an integer to move the recording int
 PUT /api/v1/recordings/{id}/notes
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -571,6 +668,8 @@ PUT /api/v1/recordings/{id}/notes
 PUT /api/v1/recordings/{id}/summary
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -584,6 +683,8 @@ PUT /api/v1/recordings/{id}/summary
 ```http
 POST /api/v1/recordings/{id}/delete-audio
 ```
+
+**Scope:** `delete`
 
 Deletes the recording's media file (the video, for a recording with retained video) and keeps the transcript, summary and notes. Requires the same permission as deleting the recording. Returns `409` when the audio is already removed or the recording is still processing.
 
@@ -601,6 +702,8 @@ Deletes the recording's media file (the video, for a recording with retained vid
 ```http
 DELETE /api/v1/recordings/{id}
 ```
+
+**Scope:** `delete`
 
 **Response:**
 
@@ -620,6 +723,8 @@ DELETE /api/v1/recordings/{id}
 ```http
 GET /api/v1/tags
 ```
+
+**Scope:** `read`
 
 Returns both personal tags and group tags you have access to.
 
@@ -651,6 +756,8 @@ Returns both personal tags and group tags you have access to.
 POST /api/v1/tags
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -671,6 +778,8 @@ POST /api/v1/tags
 PUT /api/v1/tags/{id}
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -687,11 +796,15 @@ PUT /api/v1/tags/{id}
 DELETE /api/v1/tags/{id}
 ```
 
+**Scope:** `delete`
+
 ### Add Tags to Recording
 
 ```http
 POST /api/v1/recordings/{id}/tags
 ```
+
+**Scope:** `write`
 
 **Request Body:**
 
@@ -707,6 +820,8 @@ POST /api/v1/recordings/{id}/tags
 DELETE /api/v1/recordings/{id}/tags/{tag_id}
 ```
 
+**Scope:** `write`
+
 ---
 
 ## Speakers
@@ -716,6 +831,8 @@ DELETE /api/v1/recordings/{id}/tags/{tag_id}
 ```http
 GET /api/v1/speakers
 ```
+
+**Scope:** `read`
 
 **Response:**
 
@@ -740,6 +857,8 @@ GET /api/v1/speakers
 POST /api/v1/speakers
 ```
 
+**Scope:** `write`
+
 **Request Body:**
 
 ```json
@@ -753,6 +872,8 @@ POST /api/v1/speakers
 ```http
 PUT /api/v1/speakers/{id}
 ```
+
+**Scope:** `write`
 
 Updates the speaker name and cascades changes to all recordings.
 
@@ -770,11 +891,15 @@ Updates the speaker name and cascades changes to all recordings.
 DELETE /api/v1/speakers/{id}
 ```
 
+**Scope:** `delete`
+
 ### Get Recording Speakers
 
 ```http
 GET /api/v1/recordings/{id}/speakers
 ```
+
+**Scope:** `read`
 
 Returns speakers in the recording with voice-based identification suggestions.
 
@@ -807,6 +932,8 @@ Returns speakers in the recording with voice-based identification suggestions.
 ```http
 POST /api/v1/recordings/{id}/transcribe
 ```
+
+**Scope:** `process`
 
 **Request Body:**
 
@@ -849,6 +976,8 @@ All parameters are optional.
 POST /api/v1/recordings/{id}/summarize
 ```
 
+**Scope:** `process`
+
 **Request Body:**
 
 ```json
@@ -868,6 +997,8 @@ The custom prompt overrides the recording's tag prompts and user defaults.
 ```http
 POST /api/v1/recordings/{id}/chat
 ```
+
+**Scope:** `process`
 
 Ask questions about a recording's content using AI.
 
@@ -902,6 +1033,8 @@ Ask questions about a recording's content using AI.
 GET /api/v1/recordings/{id}/events
 ```
 
+**Scope:** `read`
+
 Returns calendar events extracted from the recording.
 
 **Response:**
@@ -927,6 +1060,8 @@ Returns calendar events extracted from the recording.
 GET /api/v1/recordings/{id}/events/ics
 ```
 
+**Scope:** `read`
+
 Returns an ICS file containing all events from the recording.
 
 ---
@@ -938,6 +1073,8 @@ Returns an ICS file containing all events from the recording.
 ```http
 GET /api/v1/recordings/{id}/audio
 ```
+
+**Scope:** `read`
 
 **Query Parameters:**
 
@@ -954,6 +1091,8 @@ GET /api/v1/recordings/{id}/audio
 ```http
 PATCH /api/v1/recordings/batch
 ```
+
+**Scope:** `write`
 
 **Request Body:**
 
@@ -993,6 +1132,8 @@ Supported `updates` fields: `is_inbox`, `is_highlighted`, `add_tag_ids`, `remove
 DELETE /api/v1/recordings/batch
 ```
 
+**Scope:** `delete`
+
 **Request Body:**
 
 ```json
@@ -1006,6 +1147,8 @@ DELETE /api/v1/recordings/batch
 ```http
 POST /api/v1/recordings/batch/transcribe
 ```
+
+**Scope:** `process`
 
 **Request Body:**
 
@@ -1031,6 +1174,8 @@ Folders can be personal or group-scoped. Personal folders are editable only by t
 ```http
 GET /api/v1/folders
 ```
+
+**Scope:** `read`
 
 Returns personal folders plus any group folders you have access to.
 
@@ -1074,6 +1219,8 @@ Returns personal folders plus any group folders you have access to.
 GET /api/v1/folders/{id}
 ```
 
+**Scope:** `read`
+
 Returns a single folder. You must own a personal folder, or be a member of the group for a group folder. The response is the folder object above (with `can_edit`).
 
 ### Create Folder
@@ -1081,6 +1228,8 @@ Returns a single folder. You must own a personal folder, or be a member of the g
 ```http
 POST /api/v1/folders
 ```
+
+**Scope:** `write`
 
 **Request Body:**
 
@@ -1107,6 +1256,8 @@ Only `name` is required. Set `group_id` to create a group folder (you must be an
 ```http
 PATCH /api/v1/folders/{id}
 PUT   /api/v1/folders/{id}
+
+**Scope:** `write`
 ```
 
 Accepts the same fields as create; all are optional. Only the folder owner (personal) or a group admin (group folder) may update. Returns the updated folder.
@@ -1116,6 +1267,8 @@ Accepts the same fields as create; all are optional. Only the folder owner (pers
 ```http
 DELETE /api/v1/folders/{id}
 ```
+
+**Scope:** `delete`
 
 Recordings in the deleted folder are unassigned (their `folder_id` becomes `null`); they are not deleted. Only the folder owner (personal) or a group admin (group folder) may delete.
 
@@ -1137,6 +1290,8 @@ Recordings in the deleted folder are unassigned (their `folder_id` becomes `null
 ```http
 GET /api/v1/transcription
 ```
+
+**Scope:** `read`
 
 Returns the active transcription connector, the optional fields it accepts, the admin-curated list of selectable models, and the configured default model. Use this to drive client UIs and to know which values are valid for the `transcription_model` override on `/recordings/{id}/transcribe` and `/recordings/upload`.
 
@@ -1197,6 +1352,8 @@ These are the event types a webhook can subscribe to:
 GET /api/v1/webhooks
 ```
 
+**Scope:** `webhooks`
+
 **Response:**
 
 ```json
@@ -1241,6 +1398,8 @@ The webhook's HMAC `secret` is **never** returned by this endpoint. It is shown 
 POST /api/v1/webhooks
 ```
 
+**Scope:** `webhooks`
+
 **Request Body:**
 
 ```json
@@ -1281,6 +1440,8 @@ POST /api/v1/webhooks
 GET /api/v1/webhooks/{id}
 ```
 
+**Scope:** `webhooks`
+
 Returns the webhook object (without the secret).
 
 ### Update Webhook
@@ -1288,6 +1449,8 @@ Returns the webhook object (without the secret).
 ```http
 PATCH /api/v1/webhooks/{id}
 ```
+
+**Scope:** `webhooks`
 
 **Request Body** (all fields optional):
 
@@ -1309,6 +1472,8 @@ When provided, `events` must be a non-empty array of known event types. Setting 
 DELETE /api/v1/webhooks/{id}
 ```
 
+**Scope:** `webhooks`
+
 Returns `204 No Content`.
 
 ### Rotate Secret
@@ -1317,6 +1482,8 @@ Returns `204 No Content`.
 POST /api/v1/webhooks/{id}/rotate-secret
 ```
 
+**Scope:** `webhooks`
+
 Generates a fresh HMAC secret and returns the webhook object with the new `secret` included once. Existing deliveries already signed with the old secret are not re-signed.
 
 ### Test Webhook
@@ -1324,6 +1491,8 @@ Generates a fresh HMAC secret and returns the webhook object with the new `secre
 ```http
 POST /api/v1/webhooks/{id}/test
 ```
+
+**Scope:** `webhooks`
 
 Enqueues a synthetic `webhook.test` delivery against this single webhook so you can verify reachability before subscribing to production events. The webhook must be enabled (otherwise `409`).
 
@@ -1334,6 +1503,8 @@ Enqueues a synthetic `webhook.test` delivery against this single webhook so you 
 ```http
 GET /api/v1/webhooks/{id}/deliveries
 ```
+
+**Scope:** `webhooks`
 
 **Query Parameters:**
 
@@ -1373,6 +1544,8 @@ Delivery `status` is one of `pending`, `success`, `failed` (retryable), or `perm
 GET /api/v1/webhooks/{id}/deliveries/{delivery_id}
 ```
 
+**Scope:** `webhooks`
+
 Returns a single delivery. This response additionally includes the full serialized `payload` (the exact JSON body that was/will be POSTed) for debugging.
 
 ### Replay Delivery
@@ -1380,6 +1553,8 @@ Returns a single delivery. This response additionally includes the full serializ
 ```http
 POST /api/v1/webhooks/{id}/deliveries/{delivery_id}/replay
 ```
+
+**Scope:** `webhooks`
 
 Re-enqueues the delivery as a brand-new attempt with the same payload (with a fresh `event_id` and timestamp, plus a `replayed_from` reference to the original). Returns the new delivery object with `202`.
 
@@ -1391,9 +1566,12 @@ All endpoints return consistent error responses:
 
 ```json
 {
-  "error": "Error message description"
+  "error": "Error message description",
+  "code": "insufficient_scope"
 }
 ```
+
+`code` is a machine-readable value, present on newer errors (for example `insufficient_scope`, `invalid_parameter`, `not_found`).
 
 **Common HTTP Status Codes:**
 
@@ -1403,23 +1581,24 @@ All endpoints return consistent error responses:
 | `201` | Created |
 | `400` | Bad Request - Invalid parameters |
 | `401` | Unauthorized - Invalid or missing token |
-| `403` | Forbidden - No permission for this resource |
+| `403` | Forbidden - No permission for this resource, or the token lacks a scope (`insufficient_scope`) |
 | `404` | Not Found - Resource doesn't exist |
+| `429` | Too Many Requests - Rate limit reached; wait `Retry-After` seconds |
 | `500` | Internal Server Error |
 
 ---
 
 ## Rate Limits
 
-API endpoints are rate-limited to prevent abuse:
+Requests made with an API token are limited per token, so two integrations on the same machine do not share a limit. Each token has one budget per kind of request:
 
-| Endpoint Type | Limit |
-|---------------|-------|
-| Stats | 60 requests/minute |
-| GET endpoints | 100 requests/minute |
-| PATCH/DELETE | 30 requests/minute |
-| Processing operations | 10 requests/minute |
-| Batch operations | 10 requests/minute |
+| Kind | Endpoints | Default limit | Setting |
+|------|-----------|---------------|---------|
+| Read | Endpoints that need only `read` | 120 requests/minute | `API_TOKEN_RATE_LIMIT_READ` |
+| Write | Endpoints that need `write`, `upload`, `share`, `delete`, `webhooks` or `account` | 30 requests/minute | `API_TOKEN_RATE_LIMIT_WRITE` |
+| Process | Endpoints that need `process` | 10 requests/minute | `API_TOKEN_RATE_LIMIT_PROCESS` |
+
+The limits apply to full-access and scoped tokens alike. A request over the limit gets `429` with a `Retry-After` header in seconds, and responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. Requests from the web interface keep the per-address limits of the application.
 
 ---
 
