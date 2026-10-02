@@ -2944,7 +2944,8 @@ def upload_incognito():
             current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
 
         # Get optional parameters
-        # Note: Empty string '' means auto-detect, don't convert to None
+        # An empty language falls through to the user's default, as on upload;
+        # "auto" forces auto-detection (resolved in transcribe_incognito, #412).
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers')
         max_speakers = request.form.get('max_speakers')
@@ -2952,6 +2953,10 @@ def upload_incognito():
         initial_prompt = request.form.get('initial_prompt', '').strip() or None
         transcription_model = request.form.get('transcription_model', '').strip() or None
         auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
+        # The admin switch that disables automatic summaries applies here too (#412).
+        _admin_off = SystemSetting.get_setting('disable_auto_summarization', False)
+        if (_admin_off if isinstance(_admin_off, bool) else str(_admin_off).lower() == 'true'):
+            auto_summarize = False
 
         # Convert to int if provided
         if min_speakers:

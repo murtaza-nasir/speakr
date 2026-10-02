@@ -2617,9 +2617,21 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # Determine diarization settings (respects ASR_DIARIZE env var)
         should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
 
-        # Use user's language preference if not explicitly provided
-        if language is None and user:
-            language = user.transcription_language
+        # Same settings chain as an upload (#412 audit P14): request value, then
+        # ASR speaker-count env defaults, the user's defaults and the admin
+        # defaults. Incognito has no tags or folder. An empty language falls
+        # through to the user's language, as on upload ("auto" forces detection).
+        from src.services.transcription_defaults import resolve_transcription_params
+        _resolved = resolve_transcription_params(
+            None,
+            {'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers,
+             'hotwords': hotwords, 'initial_prompt': initial_prompt,
+             'transcription_model': transcription_model},
+            tags=[], folder=None, owner=user)
+        language = _resolved['language']
+        min_speakers, max_speakers = _resolved['min_speakers'], _resolved['max_speakers']
+        hotwords, initial_prompt = _resolved['hotwords'], _resolved['initial_prompt']
+        transcription_model = _resolved['transcription_model']
 
         # Normalize at the boundary — legacy values like "français" must
         # become "fr" before the connector receives them (issue #256).
@@ -2636,9 +2648,6 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
         # Same model an upload would get, so a service without its own default
         # model works in incognito mode too (#409).
-        from src.services.transcription_defaults import resolve_transcription_model
-        transcription_model = resolve_transcription_model(transcription_model)
-
         current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
 
         if should_chunk:
@@ -2718,7 +2727,9 @@ def _generate_incognito_title(transcription_text, user=None):
         # Get formatted text for LLM
         formatted_text = format_transcription_for_llm(transcription_text)
         # Limit text for title generation
-        limited_text = formatted_text[:5000]
+        # Same transcript limit as the stored title (admin setting, #412).
+        _limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        limited_text = formatted_text if _limit == -1 else formatted_text[:_limit]
 
         # Get user language preference
         user_output_language = user.output_language if user else None
