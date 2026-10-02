@@ -583,6 +583,13 @@ export function useUpload(state, utils) {
                 formData.append('client_tz_offset', new Date().getTimezoneOffset().toString());
             }
 
+            // The browser's IANA zone, so the title of this recording already
+            // uses the uploader's local time (#412).
+            try {
+                const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (zone) formData.append('client_timezone', zone);
+            } catch (e) { /* older browser: the account or admin default applies */ }
+
             if (fileItem.notes) {
                 formData.append('notes', fileItem.notes);
             }

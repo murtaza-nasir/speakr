@@ -108,7 +108,10 @@
     "signInSecurity": "Sign-in & Security",
     "password": "Password",
     "savedSuccess": "Settings saved",
-    "contextualSpeakerLabellingHelp": "Speakers are matched from the conversation context because your transcription engine does not provide voice fingerprints. This can be quite inaccurate, depending on how much the conversation reveals about who is speaking and how well your model separates speakers. For the most accurate, voice-based speaker matching, the WhisperX ASR container is recommended."
+    "contextualSpeakerLabellingHelp": "Speakers are matched from the conversation context because your transcription engine does not provide voice fingerprints. This can be quite inaccurate, depending on how much the conversation reveals about who is speaking and how well your model separates speakers. For the most accurate, voice-based speaker matching, the WhisperX ASR container is recommended.",
+    "timezone": "Timezone",
+    "timezoneAutomatic": "Automatic (this device)",
+    "timezoneHelp": "Used for dates in titles from naming templates. Dates shown on pages always follow this device."
   },
   "accountTabs": {
     "about": "About",
@@ -359,7 +362,8 @@
       "invalid": "Enter a number between 0 and 2.",
       "sourceAdmin": "In use: {{value}} (admin setting; default {{default}})",
       "sourceDefault": "In use: {{value}} (default)"
-    }
+    },
+    "defaultTimezoneHelp": "Used for dates in generated titles when a user's browser has not reported a timezone and the user has not chosen one."
   },
   "apiTokens": {
     "activeTokens": "Active Tokens",

@@ -2804,6 +2804,14 @@ def ingest_uploaded_recording(
         # local time to reach UTC). Used to convert filename wall-clock dates
         # to the naive-UTC storage convention.
         client_tz_offset = form.get('client_tz_offset')
+        # The browser's IANA zone (#412): saved for an uploader in 'auto' mode so
+        # the title of this very recording already uses it. Only for the
+        # uploader's own recordings, never for an owner uploaded on behalf of.
+        client_timezone = form.get('client_timezone')
+        if client_timezone and current_user.is_authenticated and owner.id == current_user.id:
+            from src.utils.timezones import record_browser_timezone
+            if record_browser_timezone(owner, client_timezone):
+                db.session.commit()
 
         # Get selected tags if provided (multiple tags support)
         selected_tags = []

@@ -160,6 +160,24 @@ def _email_notifications_available(user) -> bool:
 
 # --- Routes ---
 
+@auth_bp.route('/api/user/timezone', methods=['POST'])
+@login_required
+def record_timezone():
+    """Save the browser's timezone for a user in 'auto' mode (#412).
+
+    Sent by static/js/timezone-sync.js once per browser session. A user who
+    chose a zone in Account settings keeps it.
+    """
+    from src.utils.timezones import record_browser_timezone, user_timezone, MODE_AUTO
+    data = request.get_json(silent=True) or {}
+    if record_browser_timezone(current_user, data.get('timezone')):
+        db.session.commit()
+    return jsonify({
+        'timezone': user_timezone(current_user),
+        'mode': current_user.timezone_mode or MODE_AUTO,
+    })
+
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @rate_limit("10 per minute")
 def register():
@@ -645,6 +663,22 @@ def account():
             from src.utils.language import normalize_language_code
             current_user.transcription_language = normalize_language_code(transcription_lang)
             current_user.output_language = output_lang if output_lang else None
+
+            # Timezone for generated titles (#412). Gated on the field being
+            # present so tabs that submit 'preferences_form' without it leave the
+            # setting alone. 'auto' keeps the detected zone and resumes updating
+            # it from the browser; a zone name fixes it.
+            if 'timezone' in request.form:
+                from src.utils.timezones import is_valid_timezone, MODE_AUTO, MODE_FIXED
+                tz_value = (request.form.get('timezone') or '').strip()
+                if tz_value == MODE_AUTO or not tz_value:
+                    current_user.timezone_mode = MODE_AUTO
+                    detected = (request.form.get('detected_timezone') or '').strip()
+                    if is_valid_timezone(detected):
+                        current_user.timezone = detected
+                elif is_valid_timezone(tz_value):
+                    current_user.timezone_mode = MODE_FIXED
+                    current_user.timezone = tz_value
 
             # Filename date parsing (#342). Gated on the select being present
             # so other tabs that submit 'preferences_form' without this

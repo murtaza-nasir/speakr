@@ -80,9 +80,11 @@ def compute_title(recording, *, raise_budget_errors=False):
 
     title = None
     if template:
+        # Dates in the title are written in the owner's local time (#412).
+        from src.utils.timezones import to_user_local
         title = template.apply(
             original_filename=recording.original_filename,
-            meeting_date=recording.meeting_date,
+            meeting_date=to_user_local(recording.meeting_date, recording.owner),
             ai_title=ai_title,
         )
     if not title:

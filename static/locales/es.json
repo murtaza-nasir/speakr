@@ -108,7 +108,10 @@
     "signInSecurity": "Inicio de sesión y seguridad",
     "password": "Contraseña",
     "savedSuccess": "Configuración guardada",
-    "contextualSpeakerLabellingHelp": "Los hablantes se identifican a partir del contexto de la conversación porque su motor de transcripción no proporciona huellas de voz. Esto puede ser bastante impreciso, según cuánto revele la conversación sobre quién habla y con qué precisión su modelo separa a los hablantes. Para la coincidencia de hablantes más precisa, basada en la voz, se recomienda el contenedor WhisperX ASR."
+    "contextualSpeakerLabellingHelp": "Los hablantes se identifican a partir del contexto de la conversación porque su motor de transcripción no proporciona huellas de voz. Esto puede ser bastante impreciso, según cuánto revele la conversación sobre quién habla y con qué precisión su modelo separa a los hablantes. Para la coincidencia de hablantes más precisa, basada en la voz, se recomienda el contenedor WhisperX ASR.",
+    "timezone": "Zona horaria",
+    "timezoneAutomatic": "Automática (este dispositivo)",
+    "timezoneHelp": "Se usa para las fechas de los títulos creados con plantillas de nombres. Las fechas mostradas en las páginas siguen siempre este dispositivo."
   },
   "accountTabs": {
     "about": "Acerca de",
@@ -359,7 +362,8 @@
       "invalid": "Introduzca un número entre 0 y 2.",
       "sourceAdmin": "En uso: {{value}} (ajuste del administrador; predeterminado {{default}})",
       "sourceDefault": "En uso: {{value}} (predeterminado)"
-    }
+    },
+    "defaultTimezoneHelp": "Se usa para las fechas de los títulos generados cuando el navegador de un usuario no ha indicado una zona horaria y el usuario no ha elegido ninguna."
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
