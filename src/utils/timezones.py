@@ -70,6 +70,26 @@ def local_day_start_utc(day, zone_name):
     return start.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def local_date_bounds(date_from, date_to, zone_name):
+    """UTC bounds for an inclusive range of local calendar days.
+
+    Returns (start, end) as naive UTC: start of date_from, and the start of the
+    day after date_to (exclusive). Either may be None. Comparing a stored UTC
+    datetime with a bare date dropped the last day and used UTC days (#412).
+    """
+    from datetime import timedelta
+    start = local_day_start_utc(date_from, zone_name) if date_from else None
+    end = local_day_start_utc(date_to + timedelta(days=1), zone_name) if date_to else None
+    return start, end
+
+
+def user_timezone_by_id(user_id):
+    """user_timezone for a user id (the admin default when the user is unknown)."""
+    from src.database import db
+    from src.models import User
+    return user_timezone(db.session.get(User, user_id) if user_id else None)
+
+
 def request_timezone(value, user):
     """The zone for an interactive request: the browser's if valid, else the user's."""
     return value if is_valid_timezone(value) else user_timezone(user)
