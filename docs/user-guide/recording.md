@@ -220,7 +220,7 @@ After stopping a recording or dropping a file, the upload modal stays open so yo
 
 The tag system is one of Speakr's most powerful organizational features. Expand the **Options** group to see the tag picker. Tags appear as colored pills that you can select to categorize your recording. You can apply multiple tags to a single recording, making it easy to cross-reference content across different categories.
 
-![Tag Selection and Stacking](../assets/images/screenshots/tag selection and stacking.png)
+![Tag Selection and Stacking](../assets/images/screenshots/upload-tag-stacking.png)
 
 It's important to select relevant tags before uploading your file so that the appropriate summary prompts are applied during summarization. Each tag can have custom AI prompts associated with it, which influence how the summary is generated. For example, a "Meeting" tag might focus the summary on action items and decisions, while a "Lecture" tag might emphasize key concepts and learning points.
 

@@ -59,12 +59,29 @@ export async function settle(page, extraMs = 800) {
     await page.waitForTimeout(extraMs);
 }
 
-/** Log in and return a storageState the runner reuses for every shot. */
+/** Log in and return a storageState the runner reuses for every shot.
+ *
+ * SPEAKR_SESSION_COOKIE (name=value of a signed-in session) skips the login
+ * form, for instances where a session is easier to provide than a password.
+ */
 export async function login(browser) {
+    const sessionCookie = process.env.SPEAKR_SESSION_COOKIE;
+    if (sessionCookie) {
+        const at = sessionCookie.indexOf('=');
+        const url = new URL(BASE_URL);
+        return {
+            cookies: [{
+                name: sessionCookie.slice(0, at), value: sessionCookie.slice(at + 1),
+                domain: url.hostname, path: '/', httpOnly: true,
+                secure: url.protocol === 'https:', sameSite: 'Lax', expires: -1,
+            }],
+            origins: [],
+        };
+    }
     const email = process.env.SPEAKR_EMAIL;
     const password = process.env.SPEAKR_PASSWORD;
     if (!email || !password) {
-        throw new Error('Set SPEAKR_EMAIL and SPEAKR_PASSWORD in the environment');
+        throw new Error('Set SPEAKR_SESSION_COOKIE, or SPEAKR_EMAIL and SPEAKR_PASSWORD, in the environment');
     }
     const context = await browser.newContext({ viewport: VIEWPORT });
     const page = await context.newPage();

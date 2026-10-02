@@ -10,7 +10,7 @@ import { go, settle, clickVisible, openRecordingByTitle, blurEmails } from '../h
 const TAGGED_RECORDING = 'SEC/Data Science Team Updates and Announcements';
 
 /** Switch the /account page to a tab by its nav id ("prompts", "tokens", ...). */
-async function accountTab(page, name) {
+export async function accountTab(page, name) {
     await page.click(`#tab-${name}`);
     await settle(page, 900);
 }
@@ -37,7 +37,7 @@ async function scrollTabTo(page, selector, margin = 24, text = null) {
 }
 
 /** Switch the /admin Vue dashboard to one of its tabs by label text. */
-async function adminTab(page, label) {
+export async function adminTab(page, label) {
     const ok = await clickVisible(page, `nav.tabs button:has-text(${JSON.stringify(label)})`);
     if (!ok) throw new Error(`Admin tab ${label} not found`);
     await settle(page, 1500);

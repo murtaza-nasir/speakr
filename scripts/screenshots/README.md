@@ -20,6 +20,7 @@ cd scripts/screenshots
 npm install && npx playwright install chromium   # once
 export SPEAKR_URL=https://your-dev-instance      # defaults to spdev
 export SPEAKR_EMAIL=... SPEAKR_PASSWORD=...
+# or: export SPEAKR_SESSION_COOKIE='session=<signed session value>'
 node capture.mjs --list                          # see all defined shots
 node capture.mjs --file=shots/core.mjs           # one area
 node capture.mjs --only=main-view,upload-modal   # specific shots

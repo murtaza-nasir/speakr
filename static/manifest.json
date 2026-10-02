@@ -42,28 +42,28 @@
   "screenshots": [
     {
       "src": "/static/img/screenshots/main-view.png",
-      "sizes": "1920x1080",
+      "sizes": "1440x1080",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Main recording gallery view"
     },
     {
       "src": "/static/img/screenshots/recording-interface.png",
-      "sizes": "1920x1080",
+      "sizes": "1440x1080",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Live recording interface with notes"
     },
     {
       "src": "/static/img/screenshots/transcript-view.png",
-      "sizes": "1920x1080",
+      "sizes": "1440x1080",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Transcript view with speaker identification"
     },
     {
       "src": "/static/img/screenshots/mobile-view.png",
-      "sizes": "390x844",
+      "sizes": "1170x2532",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Mobile recording view"

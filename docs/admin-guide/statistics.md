@@ -2,7 +2,7 @@
 
 The System Statistics tab transforms raw data into actionable insights about your Speakr instance. At a glance, you can see how many users you're serving, how many recordings they've created, how much storage they're consuming, and whether everything is processing smoothly.
 
-![System Statistics](../assets/images/screenshots/Admin stats.png)
+![System Statistics](../assets/images/screenshots/admin-statistics.png)
 
 ## Key Metrics Overview
 

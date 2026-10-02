@@ -45,7 +45,7 @@ const LIVE_NOTES = `## Weekly product sync — 12 Aug
  * the visualiser all see a genuine live audio track. A slow LFO on the
  * gain keeps the visualiser bars moving instead of drawing a flat line.
  */
-async function installFakeMicrophone(page) {
+export async function installFakeMicrophone(page) {
     await page.addInitScript(() => {
         const makeStream = () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -86,7 +86,7 @@ async function installFakeMicrophone(page) {
  * empty until a microphone permission is granted, so without this the
  * input-device picker can only render its "grant permission" prompt.
  */
-async function installFakeInputDevices(page, devices) {
+export async function installFakeInputDevices(page, devices) {
     await page.addInitScript((list) => {
         Object.defineProperty(MediaDevices.prototype, 'enumerateDevices', {
             configurable: true,
@@ -116,7 +116,7 @@ async function spoofPlatform(page, platform) {
 }
 
 /** Seed a localStorage value before the app boots. */
-async function seedStorage(page, entries) {
+export async function seedStorage(page, entries) {
     await page.addInitScript((kv) => {
         try {
             for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v);
@@ -130,7 +130,7 @@ async function seedStorage(page, entries) {
  * sits on top of it has a real backdrop rather than the untagged test
  * recordings that happen to be newest.
  */
-async function openBackdrop(page) {
+export async function openBackdrop(page) {
     await go(page, '/');
     await openRecordingByTitle(page, BACKDROP_RECORDING);
     await parkSidebar(page, SIDEBAR_ANCHOR);
@@ -156,7 +156,7 @@ async function parkSidebar(page, title) {
 }
 
 /** Open the New Recording / Upload Audio modal from the header. */
-async function openUploadModal(page) {
+export async function openUploadModal(page) {
     if (!(await clickVisible(page, 'button:has-text("New Recording")'))) {
         throw new Error('New Recording button not found');
     }
@@ -177,7 +177,7 @@ async function queueFiles(page, files) {
 }
 
 /** Expand the collapsed "Options" progressive-disclosure group. */
-async function expandUploadOptions(page) {
+export async function expandUploadOptions(page) {
     await page.evaluate(() => {
         document.querySelectorAll('details.upload-options-group').forEach((d) => { d.open = true; });
     });
@@ -185,7 +185,7 @@ async function expandUploadOptions(page) {
 }
 
 /** Scroll an element inside the modal body into a comfortable position. */
-async function scrollModalTo(page, selector, pad = 24) {
+export async function scrollModalTo(page, selector, pad = 24) {
     await page.evaluate(([sel, p]) => {
         const target = document.querySelector(sel);
         const body = document.querySelector('.modal-body');
@@ -200,7 +200,7 @@ async function scrollModalTo(page, selector, pad = 24) {
  * Pick tags in the upload modal's tag grid by name. The grid holds one
  * button per unselected tag; clicking moves it into the selected strip.
  */
-async function selectUploadTags(page, names) {
+export async function selectUploadTags(page, names) {
     for (const name of names) {
         const ok = await page.evaluate((n) => {
             const grid = [...document.querySelectorAll('.upload-options-body .grid.grid-cols-2')]
@@ -287,7 +287,7 @@ async function openSystemAudioHelp(page, osTab) {
  * Recording row is ever created; that only happens on upload, which
  * this shot never performs.
  */
-async function abandonLiveRecording(page) {
+export async function abandonLiveRecording(page) {
     await page.evaluate(async () => {
         let id = null;
         try {
@@ -414,9 +414,11 @@ export default [
         theme: { dark: true, scheme: 'rose' },
         run: async (page) => {
             await openBackdrop(page);
-            if (!(await clickVisible(page, 'button:has(i.fa-redo-alt)'))) {
-                throw new Error('Reprocess transcription button not found');
+            // The header's Reprocess menu: the first item reprocesses the transcription.
+            if (!(await clickVisible(page, '[data-header-reprocess-menu] > button'))) {
+                throw new Error('Reprocess menu not found');
             }
+            await page.locator('[data-header-reprocess-menu] [role="menuitem"]:visible').first().click();
             await page.waitForSelector('.modal-panel:has-text("Advanced ASR Options")', { state: 'visible' });
             await settle(page, 600);
         },

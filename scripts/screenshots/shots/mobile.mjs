@@ -34,7 +34,7 @@ async function inViewport(locator) {
 }
 
 /** Tap the first element matching `selector` that is really on the phone screen. */
-async function tap(page, selector, { required = true } = {}) {
+export async function tap(page, selector, { required = true } = {}) {
     const cands = page.locator(selector);
     const n = await cands.count();
     for (let i = 0; i < n; i++) {
@@ -48,12 +48,25 @@ async function tap(page, selector, { required = true } = {}) {
     return false;
 }
 
+/** The phone layout can start with the recordings list closed; open it. */
+async function openListIfHidden(page) {
+    const hidden = await page.evaluate((sel) => {
+        const list = document.querySelector(sel);
+        return !list || list.getBoundingClientRect().right <= 0;
+    }, LIST_SCROLLER);
+    if (hidden) {
+        await tap(page, 'header button:has(.fa-bars)');
+        await settle(page, 600);
+    }
+}
+
 /**
  * Park the recordings list so the row titled `title` is the first one under
  * the search bar. Measured against the scroller's own box rather than
  * offsetTop, because the rows' offsetParent is not the scroller.
  */
 async function anchorList(page, title) {
+    await openListIfHidden(page);
     await loadSidebarUntil(page, title);
     const ok = await page.evaluate(([sel, wanted]) => {
         const list = document.querySelector(sel);
@@ -69,7 +82,7 @@ async function anchorList(page, title) {
 }
 
 /** Open a recording from the mobile list. */
-async function openRecording(page, title) {
+export async function openRecording(page, title) {
     await anchorList(page, title);
     const cands = page.locator(`h4:has-text(${JSON.stringify(title)})`);
     const n = await cands.count();
@@ -124,7 +137,7 @@ function drawerIsOpen(page) {
  * covers the app header while the list is showing, so the header's own +
  * is present but unclickable there.
  */
-async function openUploadSheet(page) {
+export async function openUploadSheet(page) {
     await tap(page, await drawerIsOpen(page)
         ? 'aside button:has(i.fa-plus)'
         : 'header button:has(i.fa-plus)');

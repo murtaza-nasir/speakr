@@ -160,7 +160,7 @@ Integrations can create, list and revoke share links through the API (see [Share
 
 ## What Recipients Experience
 
-![Shared Recording View](../assets/images/screenshots/Share link.png)
+![Shared Recording View](../assets/images/screenshots/share-link.png)
 
 When someone clicks your share link, they're taken to a streamlined view of your recording designed for easy consumption without distractions. The interface is clean and professional, branded with Speakr but showing only the content you've chosen to share.
 
@@ -174,7 +174,7 @@ At the bottom of the page, recipients see a subtle footer indicating the content
 
 ## Managing Your Shared Recordings
 
-![Shared Transcripts](../assets/images/screenshots/share-summary-view.png)
+![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
 
 All your shared recordings are centrally managed through the Shared Transcripts section in your account settings. This gives you a complete overview of everything you've shared and with whom.
 

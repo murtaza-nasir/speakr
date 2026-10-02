@@ -26,7 +26,7 @@ The speaker identification modal shows each detected speaker with a sample of th
 
 All speakers you identify are automatically saved to your speaker database. You can manage these saved speakers through the dedicated [Speakers Management tab](settings.md#speakers-management-tab) in your [account settings](settings.md). Navigate to Account > Speakers Management to view all your saved speakers.
 
-![Speakers Management](../assets/images/screenshots/settings speakr management.png)
+![Speakers Management](../assets/images/screenshots/settings-speakers-management.png)
 
 The Speakers Management interface displays all your saved speakers in a responsive grid layout. Each speaker card shows the speaker's name, usage statistics including how many times they've been identified, when they were last used in a recording, and when they were first added to your database. The interface includes internal scrolling to handle large numbers of speakers while keeping the header and action buttons always visible.
 
@@ -217,7 +217,7 @@ If the recording was uploaded with a tag, folder, or user-default prompt that us
 
 When event extraction is enabled in your account settings, calendar-worthy events in each recording are identified after it is processed. Events are extracted whether or not a summary is generated: with automatic summarization turned off, they are found in the transcript itself. This feature intelligently detects meetings, deadlines, appointments, and other time-sensitive items mentioned in your conversations.
 
-![Event Extraction](../assets/images/screenshots/event extraction.png)
+![Event Extraction](../assets/images/screenshots/event-extraction.png)
 
 ### Viewing Extracted Events
 

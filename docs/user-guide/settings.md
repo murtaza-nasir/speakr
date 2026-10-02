@@ -4,7 +4,7 @@ Your account settings are the control center for personalizing Speakr to work ex
 
 ## Account Information Tab
 
-![Account Information](../assets/images/screenshots/settings account info.png)
+![Account Information](../assets/images/screenshots/settings-account-info.png)
 
 The Account Information tab presents a comprehensive view of your profile, statistics, and account actions.
 
@@ -165,7 +165,7 @@ The setting only appears when your administrator has configured email delivery a
 
 ## Shared Transcripts Tab
 
-![Shared Transcripts](../assets/images/screenshots/settings shared transcripts.png)
+![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
 
 The Shared Transcripts tab provides complete visibility and control over every recording you've shared.
 
@@ -360,7 +360,7 @@ For the full event list, payload formats, and signature verification details, se
 
 ## About Tab
 
-![About](../assets/images/screenshots/settings about page.png)
+![About](../assets/images/screenshots/settings-about.png)
 
 The About tab presents a comprehensive overview of your Speakr installation, combining version information, system configuration, feature highlights, and quick access to resources.
 

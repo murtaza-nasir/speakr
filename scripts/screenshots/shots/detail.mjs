@@ -31,7 +31,7 @@ async function frameSidebar(page, title) {
 }
 
 /** Open a recording and park the sidebar so `anchor` is its first row. */
-async function openWithSidebar(page, title, anchor) {
+export async function openWithSidebar(page, title, anchor) {
     await openRecordingByTitle(page, title);
     await frameSidebar(page, anchor || title);
     await settle(page, 400);
@@ -236,7 +236,7 @@ async function withTokenBudget(page, fallbackBudget, body) {
 const R = {
     // Chromium ships without the proprietary H.264/AAC decoders, so the video
     // shot has to use one of the library's WebM recordings.
-    video: 'SEC/Data Science Team Updates and Announcements',
+    video: 'Ford Recalls Engineers to Train AI System',
     player: 'Attempting a Michelin Star Dish Challenge',
     follow: 'Job Cuts, Internet Regulations, and Apple Subscriptions',
     edit: 'Fortnightly Team Meeting at ABC Manufacturing',
@@ -246,7 +246,7 @@ const R = {
     reprocess: 'SEC Disgorgement Limits and Investor Harm',
 };
 
-const ANCHOR = {
+export const ANCHOR = {
     learning: 'German Listening Practice: Meeting New People',
     interviews: 'Art, Jiu-Jitsu, and Creative Processes',
     work: 'Collaborative Approaches in Team Management',
@@ -273,7 +273,7 @@ export default [
                 throw new Error('Show video button not found (not a video recording?)');
             }
             await settle(page, 600);
-            await playToTime(page, 620);
+            await playToTime(page, 30);
             // The docked video is a muted follower kept in step by
             // syncDockVideo(); wait until it actually has a frame decoded.
             await page.waitForFunction(() => {
@@ -412,9 +412,11 @@ export default [
             await openWithSidebar(page, R.reprocess, ANCHOR.sec);
             // Opens the confirmation dialog only — reprocessing is never
             // started, so no LLM call is made and no data changes.
-            if (!(await clickVisible(page, 'button[title="Reprocess summary"]'))) {
-                throw new Error('Reprocess summary button not found');
+            // The header's Reprocess menu: transcription, summary, reset.
+            if (!(await clickVisible(page, '[data-header-reprocess-menu] > button'))) {
+                throw new Error('Reprocess menu not found');
             }
+            await page.locator('[data-header-reprocess-menu] [role="menuitem"]:visible').nth(1).click();
             await page.waitForSelector('.modal-overlay', { state: 'visible' });
             await settle(page, 800);
         },
