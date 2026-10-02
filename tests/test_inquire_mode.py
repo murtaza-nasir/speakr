@@ -117,15 +117,26 @@ def test_chunking_functions():
         # not return None placeholders. sentence-transformers isn't a hard
         # dependency (it's absent in CI), so assert whichever applies here.
         from src.services.embeddings import USE_API_EMBEDDINGS, LOCAL_EMBEDDINGS_AVAILABLE
-        # In API mode the embedding server itself is stubbed: this test checks
-        # the helper's contract, not a live service (a busy or remote endpoint
-        # made it flaky; #412 F2).
+        # The backend itself is stubbed: this test checks the helper's
+        # contract, not a live service or a model download. A busy endpoint
+        # made the API path flaky (#412 F2); the local path loaded the real
+        # sentence-transformers model whenever an earlier test had reloaded
+        # the module without EMBEDDING_BASE_URL, and that load can fail.
         from contextlib import nullcontext
         from unittest.mock import patch as _patch
         import numpy as _np
-        stub = (_patch("src.services.embeddings._api_embed",
-                       side_effect=lambda texts, user_id=None: [_np.ones(8, dtype=_np.float32) for _ in texts])
-                if USE_API_EMBEDDINGS else nullcontext())
+
+        class _FakeModel:
+            def encode(self, texts):
+                return _np.ones((len(texts), 8), dtype=_np.float32)
+
+        if USE_API_EMBEDDINGS:
+            stub = _patch("src.services.embeddings._api_embed",
+                          side_effect=lambda texts, user_id=None: [_np.ones(8, dtype=_np.float32) for _ in texts])
+        elif LOCAL_EMBEDDINGS_AVAILABLE:
+            stub = _patch("src.services.embeddings.get_embedding_model", return_value=_FakeModel())
+        else:
+            stub = nullcontext()
         with stub:
             embeddings = generate_embeddings(["test sentence", "another test"])
         assert isinstance(embeddings, list)
