@@ -286,6 +286,7 @@ def test_bulk_reprocess_transcription_uses_the_resolved_params(ctx):
         storage = MagicMock()
         storage.exists.return_value = True
         with patch('src.api.recordings.get_storage_service', return_value=storage), \
+             patch('src.services.storage.get_storage_service', return_value=storage), \
              patch('src.api.recordings.job_queue.enqueue', return_value=1) as enqueue:
             r = _client(user).post('/api/recordings/bulk-reprocess',
                                    json={'recording_ids': [rec.id], 'type': 'transcription'})

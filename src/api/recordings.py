@@ -1150,38 +1150,9 @@ def reprocess_transcription(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
 
-        if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
-            return jsonify({'error': 'Audio file not found for reprocessing'}), 404
-
-        if recording.status in ['QUEUED', 'PROCESSING', 'SUMMARIZING']:
-            return jsonify({'error': 'Recording is already being processed'}), 400
-
-        # File path and name for processing (conversion handled in background task if needed)
-        filepath = recording.audio_path
-        filename_for_asr = recording.original_filename or os.path.basename(filepath)
-
-        # --- Proceed with reprocessing ---
-        recording.transcription = None
-        recording.summary = None
-        recording.status = 'QUEUED'  # Will change to PROCESSING when job starts
-
-        # Clear existing events since they depend on the transcription
-        Event.query.filter_by(recording_id=recording_id).delete()
-
-        db.session.commit()
-
-        current_app.logger.info(f"Queueing transcription reprocessing for recording {recording_id}")
-
-        # Prepare job parameters
+        # Checks, clearing and settings are shared with every reprocess path (#412).
+        from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
         data = request.json or {}
-        start_time = datetime.utcnow()
-        app_context = current_app._get_current_object().app_context()
-
-        # Resolve the full transcribe param set through the shared chain:
-        # per-request override > tag > folder > env > owner > admin default.
-        # The 'language' key is only forwarded when explicitly present so an
-        # empty string still means auto-detect and an absent key falls back to
-        # the owner's default (see resolve_transcription_params).
         overrides = {
             'min_speakers': data.get('min_speakers'),
             'max_speakers': data.get('max_speakers'),
@@ -1191,14 +1162,11 @@ def reprocess_transcription(recording_id):
         }
         if 'language' in data:
             overrides['language'] = data.get('language')
-        job_params = resolve_transcription_params(recording, overrides)
-
-        job_id = job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='reprocess_transcription',
-            params=job_params
-        )
+        try:
+            queue_transcription_reprocess(recording, current_user, overrides)
+        except ReprocessError as e:
+            return jsonify({'error': e.message}), e.status
+        current_app.logger.info(f"Queued transcription reprocessing for recording {recording_id}")
 
         # Get queue position for response
         queue_position = job_queue.get_position_in_queue(recording.id)
@@ -1235,69 +1203,18 @@ def reprocess_summary(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
 
-        # Check if transcription exists
-        if not recording.transcription or len(recording.transcription.strip()) < 10:
-            return jsonify({'error': 'No valid transcription available for summary generation'}), 400
-
-        # Check if transcription is an error message (not actual content)
-        if is_transcription_error(recording.transcription):
-            return jsonify({'error': 'Cannot generate summary: transcription failed. Please reprocess the transcription first.'}), 400
-
-        # Check if already processing
-        if recording.status in ['PROCESSING', 'SUMMARIZING']:
-            return jsonify({'error': 'Recording is already being processed'}), 400
-
-        # Check if OpenRouter client is available
-        if client is None:
-            return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
-
-        # Get custom prompt + mode from request if provided
+        # Checks, clearing and job parameters are shared with every reprocess
+        # path, including API v1 and the bulk action (#412).
+        from src.services.reprocessing import queue_summary_reprocess, ReprocessError
         data = request.get_json() or {}
-        custom_prompt = data.get('custom_prompt', '').strip() if data.get('custom_prompt') else None
-        prompt_mode = (data.get('prompt_mode') or 'replace').strip().lower()
-        if prompt_mode not in ('replace', 'append'):
-            prompt_mode = 'replace'
-        custom_prompt_append = bool(custom_prompt) and prompt_mode == 'append'
-
-        # Debug logging
-        if custom_prompt:
-            current_app.logger.info(
-                f"Received custom prompt override for recording {recording_id} "
-                f"(mode={prompt_mode}, length={len(custom_prompt)})"
-            )
-        else:
-            current_app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
-
-        # Per-recording prompt-template variables. Sanitised through the same
-        # helper used at upload time so reprocess can't bypass the caps.
-        from src.utils.prompt_variables import sanitize_variable_values
-        raw_prompt_variables = data.get('prompt_variables')
-        if raw_prompt_variables is not None:
-            recording.prompt_variables = sanitize_variable_values(raw_prompt_variables)
-
-        # Clear existing summary (status will be set to QUEUED by job_queue.enqueue)
-        recording.summary = None
-
-        # Clear existing events since they might be re-extracted during summary generation
-        Event.query.filter_by(recording_id=recording_id).delete()
-
-        db.session.commit()
-
-        current_app.logger.info(f"Queueing summary reprocessing for recording {recording_id}" +
-                       (f" with custom prompt (length: {len(custom_prompt)})" if custom_prompt else ""))
-
-        # Queue summary generation job
-        job_params = {
-            'custom_prompt': custom_prompt,
-            'custom_prompt_append': custom_prompt_append,
-            'user_id': current_user.id
-        }
-        job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='reprocess_summary',
-            params=job_params
-        )
+        try:
+            queue_summary_reprocess(recording, current_user,
+                                    custom_prompt=data.get('custom_prompt'),
+                                    prompt_mode=data.get('prompt_mode'),
+                                    prompt_variables=data.get('prompt_variables'))
+        except ReprocessError as e:
+            return jsonify({'error': e.message}), e.status
+        current_app.logger.info(f"Queued summary reprocessing for recording {recording_id}")
 
         # Refresh recording to get updated status
         db.session.refresh(recording)
@@ -4577,29 +4494,16 @@ def bulk_reprocess():
                 if recording.status not in ['COMPLETED', 'FAILED']:
                     continue
 
-                # For transcription reprocess, need audio file
-                if reprocess_type == 'transcription':
-                    if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
-                        continue
-                    job_type = 'reprocess_transcription'
-                else:
-                    # For summary, need transcription
-                    if not recording.transcription:
-                        continue
-                    job_type = 'reprocess_summary'
-
-                # Queue the job. A transcription reprocess gets the recording's
-                # resolved model, hotwords and speaker hints, as a single
-                # reprocess and API v1 batch transcribe do.
-                params = {'user_id': current_user.id}
-                if job_type == 'reprocess_transcription':
-                    params = {**resolve_transcription_params(recording), **params}
-                job_queue.enqueue(
-                    user_id=current_user.id,
-                    recording_id=recording.id,
-                    job_type=job_type,
-                    params=params
-                )
+                # Same checks, clearing and settings as a single reprocess (#412).
+                from src.services.reprocessing import (
+                    queue_transcription_reprocess, queue_summary_reprocess, ReprocessError)
+                try:
+                    if reprocess_type == 'transcription':
+                        queue_transcription_reprocess(recording, current_user)
+                    else:
+                        queue_summary_reprocess(recording, current_user)
+                except ReprocessError:
+                    continue
 
                 queued_ids.append(recording_id)
 

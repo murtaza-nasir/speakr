@@ -2386,16 +2386,9 @@ def start_transcription(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Check if audio is available
-    if recording.audio_deleted_at:
-        return jsonify({'error': 'Audio has been deleted'}), 400
-
+    # Same checks, clearing and settings as the web reprocess (#412).
+    from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
     data = request.get_json() or {}
-
-    # Resolve the full transcribe param set through the shared chain so the API
-    # applies the same tag/folder/env/account defaults + admin model validation
-    # as the web upload/reprocess endpoints (issue #266).
-    from src.services.transcription_defaults import resolve_transcription_params
     overrides = {
         'min_speakers': data.get('min_speakers'),
         'max_speakers': data.get('max_speakers'),
@@ -2405,15 +2398,10 @@ def start_transcription(recording_id):
     }
     if 'language' in data:
         overrides['language'] = data.get('language')
-    params = resolve_transcription_params(recording, overrides)
-
-    # Queue the job
-    job_id = job_queue.enqueue(
-        user_id=current_user.id,
-        recording_id=recording_id,
-        job_type='reprocess_transcription',
-        params=params
-    )
+    try:
+        job_id = queue_transcription_reprocess(recording, current_user, overrides)
+    except ReprocessError as e:
+        return jsonify({'error': e.message}), e.status
 
     return jsonify({
         'success': True,
@@ -2436,24 +2424,17 @@ def start_summarization(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Check if transcription exists
-    if not recording.transcription:
-        return jsonify({'error': 'No transcription available - transcribe first'}), 400
-
+    # Same checks, clearing and parameters as the web reprocess, including
+    # prompt_mode and prompt_variables (#412).
+    from src.services.reprocessing import queue_summary_reprocess, ReprocessError
     data = request.get_json() or {}
-
-    params = {
-        'custom_prompt': data.get('custom_prompt'),
-        'user_id': current_user.id
-    }
-
-    # Queue the job
-    job_id = job_queue.enqueue(
-        user_id=current_user.id,
-        recording_id=recording_id,
-        job_type='reprocess_summary',
-        params={k: v for k, v in params.items() if v is not None}
-    )
+    try:
+        job_id = queue_summary_reprocess(recording, current_user,
+                                         custom_prompt=data.get('custom_prompt'),
+                                         prompt_mode=data.get('prompt_mode'),
+                                         prompt_variables=data.get('prompt_variables'))
+    except ReprocessError as e:
+        return jsonify({'error': e.message}), e.status
 
     return jsonify({
         'success': True,
@@ -2875,19 +2856,13 @@ def batch_transcribe_recordings():
             results.append({'id': recording_id, 'success': False, 'error': 'Permission denied'})
             continue
 
-        if recording.audio_deleted_at:
-            results.append({'id': recording_id, 'success': False, 'error': 'Audio deleted'})
-            continue
-
+        # Same checks, clearing and settings as a single reprocess (#412).
+        from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
         try:
-            from src.services.transcription_defaults import resolve_transcription_params
-            job_id = job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording_id,
-                job_type='reprocess_transcription',
-                params=resolve_transcription_params(recording)
-            )
+            job_id = queue_transcription_reprocess(recording, current_user)
             results.append({'id': recording_id, 'success': True, 'job_id': job_id})
+        except ReprocessError as e:
+            results.append({'id': recording_id, 'success': False, 'error': e.message})
         except Exception as e:
             results.append({'id': recording_id, 'success': False, 'error': str(e)})
 
