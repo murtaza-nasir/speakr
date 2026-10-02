@@ -51,6 +51,9 @@ class Recording(db.Model):
     # Last change a client can see (mailr spec G2); set by the before_flush
     # listener in src/services/recording_changes.py, never by hand.
     updated_at = db.Column(db.DateTime, nullable=True, index=True)
+    # API upload retries (mailr spec G8): a repeat with the same key by the same
+    # user within 24 hours returns this recording.
+    upload_idempotency_key = db.Column(db.String(100), nullable=True)
     processing_time_seconds = db.Column(db.Integer, nullable=True)
     transcription_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for transcription
     # Cached audio duration in seconds, populated at transcription

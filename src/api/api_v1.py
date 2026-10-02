@@ -915,6 +915,8 @@ CAPABILITY_FEATURES = {
     'changes_feed': True,
     'etags': True,
     'webhook_signature_v2': True,
+    'external_refs': True,
+    'upload_idempotency': True,
 }
 # search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
 
@@ -1007,8 +1009,15 @@ def _updated_at_z(recording):
     return iso_z(effective_updated_at(recording))
 
 
-def _recording_list_item(r):
-    """One recording as GET /recordings lists it; the changes feed uses the same shape."""
+def _recording_list_item(r, refs=None):
+    """One recording as GET /recordings lists it; the changes feed uses the same shape.
+
+    refs: this caller's external references of the recording, when the caller
+    loaded them for a whole page (refs_map); otherwise read here.
+    """
+    if refs is None:
+        from src.services.external_refs import refs_for
+        refs = [x.to_dict() for x in refs_for(r.id, current_user.id)]
     from src.services.recording_changes import effective_updated_at, iso_z
     return {
         'id': r.id,
@@ -1037,6 +1046,7 @@ def _recording_list_item(r):
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
         'keep_audio_only': r.keep_audio_only,
         'updated_at': iso_z(effective_updated_at(r)),
+        'external_refs': refs,
     }
 
 
@@ -1134,6 +1144,22 @@ def list_recordings():
         except ValueError:
             pass
 
+    # External references (mailr spec G8): only the caller's own.
+    external_system = request.args.get('external_system')
+    external_ref = request.args.get('external_ref')
+    if external_system or external_ref:
+        if not (external_system and external_ref):
+            return jsonify({'error': 'external_system and external_ref go together',
+                            'code': 'invalid_parameter'}), 400
+        from src.models import RecordingExternalRef
+        ref_query = db.session.query(RecordingExternalRef.recording_id).filter(
+            RecordingExternalRef.user_id == current_user.id,
+            RecordingExternalRef.system == external_system,
+            RecordingExternalRef.ref == external_ref)
+        if request.args.get('external_kind'):
+            ref_query = ref_query.filter(RecordingExternalRef.kind == request.args['external_kind'])
+        query = query.filter(Recording.id.in_(ref_query))
+
     changed_column = db.func.coalesce(Recording.updated_at, Recording.created_at)
     if updated_since:
         try:
@@ -1205,7 +1231,9 @@ def list_recordings():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Build response
-    recordings = [_recording_list_item(r) for r in pagination.items]
+    from src.services.external_refs import refs_map
+    page_refs = refs_map([r.id for r in pagination.items], current_user.id)
+    recordings = [_recording_list_item(r, page_refs.get(r.id, [])) for r in pagination.items]
 
     return jsonify({
         'recordings': recordings,
@@ -1325,6 +1353,82 @@ def search_recordings_v1():
                     'results': results, 'page': page if not use_semantic else 1, 'has_more': has_more})
 
 
+def _ref_recording(recording_id, require_edit):
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return None, (jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404)
+    if not has_recording_access(recording, current_user, require_edit=require_edit):
+        return None, (jsonify({'error': 'Permission denied'}), 403)
+    return recording, None
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['GET'])
+@require_scope('read')
+@login_required
+def list_external_refs(recording_id):
+    """Your external references on a recording (mailr spec G8)."""
+    from src.services.external_refs import refs_for
+    recording, err = _ref_recording(recording_id, require_edit=False)
+    if err:
+        return err
+    return jsonify({'external_refs': [r.to_dict() for r in refs_for(recording.id, current_user.id)]})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['POST'])
+@require_scope('write')
+@login_required
+def add_external_ref(recording_id):
+    """Add one reference; an existing (system, kind, ref) answers 200 with it."""
+    from src.services import external_refs as xr
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    try:
+        row, created = xr.add(recording, current_user.id, xr.validate(request.get_json(silent=True)))
+    except xr.RefError as e:
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    db.session.commit()
+    return jsonify(row.to_dict()), 201 if created else 200
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs', methods=['PUT'])
+@require_scope('write')
+@login_required
+def replace_external_refs(recording_id):
+    """Replace your references of one system (?system=) with the given list."""
+    from src.services import external_refs as xr
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    system = request.args.get('system', '')
+    body = request.get_json(silent=True) or {}
+    try:
+        if not xr._SLUG.match(system):
+            raise xr.RefError('?system= is required')
+        xr.replace_system(recording, current_user.id, system, xr.validate_list(body.get('external_refs')))
+    except xr.RefError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e), 'code': e.code}), e.status
+    db.session.commit()
+    return jsonify({'external_refs': [r.to_dict() for r in xr.refs_for(recording.id, current_user.id)]})
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/external-refs/<int:ref_id>', methods=['DELETE'])
+@require_scope('write')
+@login_required
+def delete_external_ref(recording_id, ref_id):
+    from src.models import RecordingExternalRef
+    recording, err = _ref_recording(recording_id, require_edit=True)
+    if err:
+        return err
+    row = db.session.get(RecordingExternalRef, ref_id)
+    if row is None or row.recording_id != recording.id or row.user_id != current_user.id:
+        return jsonify({'error': 'Reference not found', 'code': 'not_found'}), 404
+    db.session.delete(row)
+    db.session.commit()
+    return '', 204
+
+
 @api_v1_bp.route('/recordings/changes', methods=['GET'])
 @require_scope('read')
 @login_required
@@ -1355,10 +1459,12 @@ def list_recording_changes():
             return jsonify({'error': 'The cursor is too old; start again without a cursor',
                             'code': 'cursor_expired'}), 410
     items, next_cursor, has_more = read_changes(current_user.id, cursor=cursor, limit=limit)
+    from src.services.external_refs import refs_map
+    page_refs = refs_map([obj.id for kind, obj in items if kind == 'upsert'], current_user.id)
     changes = []
     for kind, obj in items:
         if kind == 'upsert':
-            changes.append({'type': 'upsert', 'recording': _recording_list_item(obj)})
+            changes.append({'type': 'upsert', 'recording': _recording_list_item(obj, page_refs.get(obj.id, []))})
         else:
             changes.append({'type': 'delete', 'id': obj.recording_id,
                             'deleted_at': iso_z(obj.deleted_at), 'reason': obj.reason})
@@ -1418,6 +1524,8 @@ def get_recording(recording_id):
         'duplicate_info': recording.get_duplicate_info(),
         'keep_audio_only': recording.keep_audio_only,
         'updated_at': iso_z(effective_updated_at(recording)),
+        'external_refs': [x.to_dict() for x in __import__('src.services.external_refs', fromlist=['refs_for'])
+                          .refs_for(recording.id, current_user.id)],
     }
 
     # Include large text fields based on params
@@ -3368,5 +3476,81 @@ def upload_recording():
       - folder_id (optional)
       - tag_ids[0], tag_ids[1], ... (optional)
       - tag_id (optional, legacy)
+      - participants (optional, comma-separated, at most 500 characters)
+      - external_refs (optional, JSON array of references)
+      - idempotency_key (optional, 1 to 100 characters)
+      - strict (optional, true: a tag or folder you cannot use is an error)
     """
-    return _upload_file_ui()
+    from src.api.recordings import ingest_uploaded_recording
+    from src.models import Folder, GroupMembership, Tag
+    from src.services import external_refs as xr
+    form = request.form
+
+    participants = form.get('participants')
+    if participants is not None and len(participants) > 500:
+        return jsonify({'error': 'participants must be at most 500 characters', 'code': 'invalid_parameter'}), 400
+    clean_refs = []
+    if form.get('external_refs'):
+        try:
+            clean_refs = xr.validate_list(json.loads(form['external_refs']))
+        except ValueError as e:
+            code = getattr(e, 'code', 'invalid_parameter')
+            status = getattr(e, 'status', 400)
+            return jsonify({'error': str(e) if isinstance(e, xr.RefError) else 'external_refs must be JSON',
+                            'code': code}), status
+    key = (form.get('idempotency_key') or '').strip() or None
+    if key is not None and len(key) > 100:
+        return jsonify({'error': 'idempotency_key must be 1 to 100 characters', 'code': 'invalid_parameter'}), 400
+    if key:
+        earlier = (Recording.query
+                   .filter(Recording.user_id == current_user.id, Recording.upload_idempotency_key == key,
+                           Recording.created_at >= datetime.utcnow() - timedelta(hours=24))
+                   .order_by(Recording.id.desc()).first())
+        if earlier is not None:
+            data = earlier.to_dict(viewer_user=current_user)
+            data['external_refs'] = [r.to_dict() for r in xr.refs_for(earlier.id, current_user.id)]
+            data['idempotent_replay'] = True
+            return jsonify(data), 200
+
+    # Report tags and folders the upload cannot use (the pipeline drops them).
+    def _usable(item):
+        return item is not None and (item.user_id == current_user.id or (
+            item.group_id and GroupMembership.query.filter_by(group_id=item.group_id,
+                                                              user_id=current_user.id).first()))
+    asked_tags = [form.get(f'tag_ids[{i}]') for i in range(100) if form.get(f'tag_ids[{i}]')] \
+        or ([form.get('tag_id')] if form.get('tag_id') else [])
+    ignored_tags = []
+    for raw in asked_tags:
+        tag = db.session.get(Tag, int(raw)) if str(raw).isdigit() else None
+        if not _usable(tag):
+            ignored_tags.append(int(raw) if str(raw).isdigit() else raw)
+    ignored_folder = None
+    if form.get('folder_id'):
+        raw = form.get('folder_id')
+        folder = db.session.get(Folder, int(raw)) if str(raw).isdigit() else None
+        if not _usable(folder):
+            ignored_folder = int(raw) if str(raw).isdigit() else raw
+    if (form.get('strict') or '').lower() == 'true' and (ignored_tags or ignored_folder is not None):
+        return jsonify({'error': 'A tag or folder in the upload is not one you can use',
+                        'code': 'invalid_parameter',
+                        'ignored': {'tag_ids': ignored_tags, 'folder_id': ignored_folder}}), 400
+
+    def _prepare(recording):
+        if participants is not None:
+            recording.participants = participants.strip() or None
+        if key:
+            recording.upload_idempotency_key = key
+        db.session.flush()
+        for clean in clean_refs:
+            xr.add(recording, current_user.id, clean)
+
+    response = ingest_uploaded_recording(owner=current_user, uploaded_file=request.files.get('file'),
+                                         form=form, prepare=_prepare)
+    body, status = (response if isinstance(response, tuple) else (response, response.status_code))
+    if status in (200, 201, 202):
+        data = body.get_json() or {}
+        if data.get('id'):
+            data['external_refs'] = [r.to_dict() for r in xr.refs_for(data['id'], current_user.id)]
+        data['ignored'] = {'tag_ids': ignored_tags, 'folder_id': ignored_folder}
+        return jsonify(data), status
+    return response

@@ -407,7 +407,7 @@ def emit_webhook_event(user_id: int, event_type: str, data: dict, *, app=None) -
     return _do_enqueue()
 
 
-def _with_updated_at(session, event_type, data):
+def _with_updated_at(session, event_type, data, user_id=None):
     """data of a recording.* event carries the recording's updated_at (spec W4)."""
     data = dict(data or {})
     if event_type.startswith('recording.') and 'updated_at' not in data and data.get('recording_id'):
@@ -415,6 +415,11 @@ def _with_updated_at(session, event_type, data):
         rec = session.get(Recording, data['recording_id'])
         if rec is not None:
             data['updated_at'] = rec.updated_at_z()
+    if event_type.startswith('recording.') and event_type != 'recording.deleted' and data.get('recording_id') \
+            and 'external_refs' not in data:
+        from src.models import RecordingExternalRef
+        data['external_refs'] = [r.to_dict() for r in session.query(RecordingExternalRef).filter_by(
+            recording_id=data['recording_id'], user_id=user_id).order_by(RecordingExternalRef.id)]
     return data
 
 
@@ -447,7 +452,7 @@ def enqueue_event(session, user_id, event_type, data):
     matched = [w for w in subscriptions if event_type in w.event_list]
     if not matched:
         return 0
-    data = _with_updated_at(session, event_type, data)
+    data = _with_updated_at(session, event_type, data, user_id)
     event_id = str(uuid.uuid4())
     first_attempt_at = datetime.utcnow()
     created = 0

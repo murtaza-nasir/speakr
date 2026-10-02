@@ -38,6 +38,7 @@ app, through API v1 or by a speaker rename or merge. `fields_changed` uses these
 | `transcript` | the transcript text or its speaker names |
 | `speakers` | which name each diarization label shows |
 | `tags` | a tag was added, removed or reordered |
+| `external_refs` | the webhook owner's external references |
 | `events` | extracted calendar events changed |
 | `is_inbox`, `is_highlighted`, `is_archived` | the owner's flags |
 | `audio` | the audio was removed |
@@ -80,7 +81,8 @@ Every delivery is a `POST` with a JSON body shaped like:
 - `timestamp` and `occurred_at` are the time the event happened (UTC, microseconds). They do
   not change on retries: the body is stored once and every attempt sends the same bytes.
 - `data` of every `recording.*` event carries `updated_at`, the recording's last change as
-  in the API (absent for `recording.deleted`).
+  in the API, and `external_refs`, the webhook owner's references (both absent for
+  `recording.deleted`).
 - The body is `json.dumps(envelope, separators=(',', ':'), ensure_ascii=False)` in UTF-8.
   Verify the signature over the raw bytes you received, never over re-serialised JSON.
 

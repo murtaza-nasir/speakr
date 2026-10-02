@@ -270,15 +270,28 @@ Upload a recording as multipart form-data and immediately queue transcription.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `file` | file | yes | Audio file to upload |
-| `notes` | string | no | Optional notes |
-| `file_last_modified` | string | no | Client file lastModified (ms epoch) |
+| `file` | file | yes | Audio or video file |
+| `title` | string | no | Title. Without it, the title comes from your title settings once the transcript exists. |
+| `participants` | string | no | Comma-separated names, at most 500 characters |
+| `meeting_date` | string | no | ISO 8601. Takes precedence over every other date source. |
+| `file_last_modified` | string | no | The file's last-modified time in milliseconds since the epoch. Used when `meeting_date` is absent and no date is read from the file name. |
+| `notes` | string | no | Notes |
+| `folder_id` | integer | no | Folder (your own or a group folder you belong to) |
+| `tag_ids[0]`, `tag_ids[1]`, ... | integer | no | Tags, in order (your own or group tags you belong to) |
+| `tag_id` | integer | no | Single tag (legacy) |
+| `external_refs` | string | no | JSON array of [external references](#external-references) without `id` |
+| `idempotency_key` | string | no | 1 to 100 characters; see below |
+| `strict` | boolean | no | `true`: a tag or folder you cannot use is an error (`400`). Default `false`: it is dropped and reported in `ignored`. |
 | `language` | string | no | Language hint (ISO 639-1) |
-| `min_speakers` | integer | no | Min speaker count |
-| `max_speakers` | integer | no | Max speaker count |
-| `tag_ids[0]`, `tag_ids[1]`, ... | integer | no | Tag IDs (multi) |
-| `tag_id` | integer | no | Single tag ID (legacy) |
+| `min_speakers`, `max_speakers` | integer | no | Speaker count limits |
+| `hotwords`, `initial_prompt` | string | no | Transcription hints |
+| `transcription_model` | string | no | One of the models the administrator allows |
+| `prompt_variables` | string | no | JSON object of `{{name}}` values for the summary prompt |
 | `keep_audio_only` | boolean | no | If `true`, the server discards the video stream and stores only the extracted audio. Lets you upload videos larger than `max_file_size_mb`, up to `max_audio_only_video_size_mb`, as long as the extracted audio fits the regular limit. When `VIDEO_RETENTION` is off at the server, this is implicit for video uploads. |
+
+The meeting date is chosen in this order: `meeting_date`, a date in the file name (when you turned that on in your settings), `file_last_modified`, the date stored in the file, the upload time.
+
+**Idempotent uploads.** Send an `idempotency_key` (for example a message id and attachment number) when a client may retry. A repeat with the same key by the same user within 24 hours returns the recording the first call created, with `200` and `"idempotent_replay": true`; the file is not stored again and no second transcription is queued. Keys are per user.
 
 **Response:**
 
@@ -286,25 +299,32 @@ Upload a recording as multipart form-data and immediately queue transcription.
 // 202 Accepted
 {
   "id": 123,
-  "title": "Recording - meeting.mp3",
+  "title": "Weekly sync",
   "status": "PENDING",
   "created_at": "2024-01-15T10:00:00Z",
   "meeting_date": "2024-01-15T09:00:00Z",
+  "participants": "Dana, Omar",
   "file_size": 15728640,
   "original_filename": "meeting.mp3",
   "mime_type": "audio/mpeg",
-  "notes": "Quick test upload"
+  "notes": "Quick test upload",
+  "external_refs": [{"id": 77, "system": "mailr", "kind": "event", "ref": "5f1c@example.com", "url": null, "label": null, "created_at": "2024-01-15T10:00:00.000000Z"}],
+  "ignored": {"tag_ids": [], "folder_id": null}
 }
 ```
+
+`ignored` lists the tags and folder the upload dropped because you cannot use them.
 
 **Example:**
 
 ```bash
 curl -X POST \
-  -H "X-API-Token: YOUR_TOKEN" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@/path/to/audio.mp3" \
-  -F "notes=Quick test upload" \
-  -F "language=en" \
+  -F "title=Weekly sync" \
+  -F "participants=Dana, Omar" \
+  -F 'external_refs=[{"system":"mailr","kind":"event","ref":"5f1c@example.com"}]' \
+  -F "idempotency_key=msg-4411:part-2" \
   https://speakr.example.com/api/v1/recordings/upload
 ```
 
@@ -388,6 +408,7 @@ GET /api/v1/recordings
 | `date_to` | string | - | Filter to date (ISO format); a date alone includes that whole day |
 | `date_field` | string | `created_at` | What `date_from` and `date_to` filter: `created_at` or `meeting_date` |
 | `updated_since` | string | - | Only recordings changed after this time (ISO 8601). Deletions are not listed; use the [changes feed](#changes-feed) for those. |
+| `external_system`, `external_ref`, `external_kind` | string | - | Only recordings that carry this [external reference](#external-references) of yours (`external_kind` optional) |
 | `tag_id` | integer | - | Filter by tag ID |
 | `q` | string | - | Search query (title, participants) |
 | `inbox` | boolean | - | Filter by inbox status |
@@ -442,6 +463,56 @@ GET /api/v1/recordings
 ```
 
 `updated_at` is the time of the last change a client can see: title, participants, notes, summary, transcript, status, dates, folder, flags, tags, events or sharing. It is present on every recording in API v1 and starts at `created_at`.
+
+### External References
+
+A reference links a recording to an item in another system, such as a calendar event or a conversation in a mail client. References are private: you see only the ones you added, and a user a recording is shared with sees only their own. Every recording in the API carries your references in `external_refs`.
+
+```json
+{
+  "id": 77,
+  "system": "mailr",
+  "kind": "event",
+  "ref": "5f1c@example.com@2026-10-06T15:00:00Z",
+  "url": "https://mail.example.com/calendar/event/5f1c",
+  "label": "Weekly sync (6 Oct)",
+  "created_at": "2026-10-06T16:02:11.000000Z"
+}
+```
+
+`system` and `kind`: 1 to 40 characters of `a-z`, `0-9`, `_`, `.`, `-`. `ref`: 1 to 500 printable characters. `url`: optional, `http://` or `https://`, at most 1000 characters. `label`: optional, at most 200 characters. At most 50 references per user per recording (`409 conflict`).
+
+```http
+GET /api/v1/recordings/{id}/external-refs
+```
+
+**Scope:** `read`
+
+```http
+POST /api/v1/recordings/{id}/external-refs
+```
+
+**Scope:** `write`
+
+Adds one reference: `201` with the new reference, or `200` with the existing one when you already added the same `system`, `kind` and `ref`.
+
+```http
+PUT /api/v1/recordings/{id}/external-refs?system=mailr
+```
+
+**Scope:** `write`
+
+Replaces your references of that system with `{"external_refs": [...]}` and returns the new list. References of other systems stay.
+
+```http
+DELETE /api/v1/recordings/{id}/external-refs/{ref_id}
+```
+
+**Scope:** `write`
+
+`204`. The writes need edit access to the recording, and a reference change counts as a recording change (`updated_at`, `fields_changed: ["external_refs"]`).
+
+To find recordings by reference, filter the list: `GET /api/v1/recordings?external_system=mailr&external_ref=<ref>`, optionally with `&external_kind=event`.
 
 ### Changes Feed
 

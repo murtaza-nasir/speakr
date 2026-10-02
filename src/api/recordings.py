@@ -2150,8 +2150,14 @@ def ingest_uploaded_recording(
     processing_source='upload',
     success_status=202,
     reuse_duplicate=False,
+    prepare=None,
 ):
-    """Run an uploaded file through Speakr's standard ingestion pipeline."""
+    """Run an uploaded file through Speakr's standard ingestion pipeline.
+
+    prepare(recording), when given, runs before the recording is first
+    committed, so fields it sets (API v1 participants, references, the
+    idempotency key) arrive with the recording itself.
+    """
     try:
         if uploaded_file is None:
             return jsonify({'error': 'No file provided'}), 400
@@ -2766,6 +2772,9 @@ def ingest_uploaded_recording(
                 added_at=datetime.utcnow()
             )
             db.session.add(new_association)
+
+        if prepare is not None:
+            prepare(recording)
 
         db.session.commit()
 

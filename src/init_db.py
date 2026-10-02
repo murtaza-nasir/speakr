@@ -258,6 +258,10 @@ def _run_migrations(app, engine):
 
         run_once(engine, '0002_backfill_recording_updated_at', _backfill_recording_updated_at,
                  logger=app.logger)
+        # Idempotent API uploads (mailr spec G8).
+        if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
+            app.logger.info("Added upload_idempotency_key column to recording table")
+        create_index_if_not_exists(engine, 'ix_recording_user_idem', 'recording', 'user_id, upload_idempotency_key')
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):

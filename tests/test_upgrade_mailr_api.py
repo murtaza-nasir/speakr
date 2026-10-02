@@ -137,3 +137,17 @@ def test_webhook_rotation_grace_columns(tmp_path, fixture):
     con.close()
     assert row == ("s" * 40, None, None)
 
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])
+def test_upload_idempotency_and_external_refs(tmp_path, fixture):
+    """G8: the idempotency column and index, and the reference table."""
+    db_path, con = _load(tmp_path, fixture)
+    con.close()
+    _upgrade(db_path)
+    _upgrade(db_path)
+    con = sqlite3.connect(db_path)
+    assert "upload_idempotency_key" in _columns(con, "recording")
+    assert "ix_recording_user_idem" in {r[1] for r in con.execute("PRAGMA index_list('recording')")}
+    assert {"recording_id", "user_id", "system", "kind", "ref", "url", "label"} <= _columns(con, "recording_external_ref")
+    con.close()
+
