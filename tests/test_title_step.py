@@ -142,8 +142,7 @@ def test_no_template_and_no_llm_falls_back_to_the_filename(world):
 
 def _regenerate(ids):
     with app.app_context():
-        app.test_client_class = _Client
-        c = app.test_client()
+        c = _Client(app, app.response_class, use_cookies=True)
         with c.session_transaction() as sess:
             sess["_user_id"] = str(ids["user"])
         with patch.object(processing, "_generate_ai_title", return_value="Launch moved"), \
@@ -168,8 +167,7 @@ def test_regenerate_with_a_template_only_title_needs_no_llm(world):
         _setup(world, user=True)
         db.session.get(NamingTemplate, world["t_user"]).template = "{{date}} call"
         db.session.commit()
-        app.test_client_class = _Client
-        c = app.test_client()
+        c = _Client(app, app.response_class, use_cookies=True)
         with c.session_transaction() as sess:
             sess["_user_id"] = str(world["user"])
         with patch("src.api.recordings.client", None), patch.object(processing, "client", None), \
