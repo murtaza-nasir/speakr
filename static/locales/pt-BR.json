@@ -1343,7 +1343,7 @@
     "moveUp": "Mover para cima",
     "moveDown": "Mover para baixo",
     "titleLabel": "Título (opcional)",
-    "titlePlaceholder": "Deixe em branco para usar o título da primeira gravação",
+    "titlePlaceholder": "Deixe em branco para um título automático, como em um envio",
     "deleteOriginals": "Excluir gravações originais",
     "deleteOriginalsHint": "Remove as gravações de origem após a criação da mesclada. Desativado por padrão.",
     "reprocessNote": "O áudio combinado será transcrito e resumido novamente para produzir uma transcrição e um resumo contínuos.",

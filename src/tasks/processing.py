@@ -404,8 +404,8 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         # is_placeholder_title is the shared source of truth (also used by the
         # upload + share-target routes) so every entry point's title is
         # recognised here and gets an AI title unless the user chose one.
-        from src.utils.titles import is_placeholder_title
-        if not is_placeholder_title(recording.title, recording.original_filename):
+        from src.utils.titles import title_is_user_chosen
+        if title_is_user_chosen(recording):
             current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
             db.session.commit()
             if not will_auto_summarize:
@@ -419,6 +419,7 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
 
         if final_title:
             recording.title = final_title
+            recording.title_source = 'auto'
             current_app.logger.info(f"Title set for recording {recording_id}: {final_title}")
         else:
             current_app.logger.warning(f"Could not generate title for recording {recording_id}")

@@ -40,6 +40,27 @@ def resolve_upload_title(user_title, original_filename):
     return placeholder_title(original_filename)
 
 
+def upload_title_source(user_title):
+    """title_source for a recording created with this form value: 'user' when a
+    title was typed, else None (a placeholder the title step replaces)."""
+    return 'user' if user_title and user_title.strip() else None
+
+
+def title_is_user_chosen(recording):
+    """True when the title step must keep the recording's title (#412).
+
+    'user' titles are kept and 'auto' titles are regenerated, for example on a
+    transcription reprocess. Recordings from before title_source existed keep
+    the earlier rule: a placeholder gets a title, anything else is kept.
+    """
+    source = getattr(recording, 'title_source', None)
+    if source == 'user':
+        return True
+    if source == 'auto':
+        return False
+    return not is_placeholder_title(recording.title, recording.original_filename)
+
+
 def is_placeholder_title(title, original_filename):
     """True if `title` is empty or an auto-generated placeholder.
 

@@ -22,6 +22,10 @@ class Recording(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Title will now often be AI-generated, maybe start with filename?
     title = db.Column(db.String(200), nullable=True)  # Allow Null initially
+    # Where the title came from (#412): 'user' (typed in a form, edit or API),
+    # 'auto' (title step: AI, naming template or filename). NULL for recordings
+    # from before #412 and for placeholders; see utils.titles.title_is_user_chosen.
+    title_source = db.Column(db.String(16), nullable=True)
     participants = db.Column(db.String(500))
     notes = db.Column(db.Text)
     transcription = db.Column(db.Text, nullable=True)

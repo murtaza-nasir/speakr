@@ -1343,7 +1343,7 @@
     "moveUp": "上移",
     "moveDown": "下移",
     "titleLabel": "标题（可选）",
-    "titlePlaceholder": "留空则使用第一条录音的标题",
+    "titlePlaceholder": "留空则像上传一样自动生成标题",
     "deleteOriginals": "删除原始录音",
     "deleteOriginalsHint": "创建合并录音后删除源录音。默认关闭。",
     "reprocessNote": "合并后的音频将被重新转录和总结，以生成连续的转录文本和摘要。",

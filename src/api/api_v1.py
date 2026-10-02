@@ -1237,6 +1237,8 @@ def update_recording(recording_id):
 
     # Update fields if provided
     if 'title' in data:
+        if data['title'] != recording.title:
+            recording.title_source = 'user'
         recording.title = data['title']
         changed_fields.append('title')
     if 'participants' in data:

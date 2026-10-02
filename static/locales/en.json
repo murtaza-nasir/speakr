@@ -1343,7 +1343,7 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "titleLabel": "Title (optional)",
-    "titlePlaceholder": "Leave blank to use the first recording's title",
+    "titlePlaceholder": "Leave blank for an automatic title, as for an upload",
     "deleteOriginals": "Delete original recordings",
     "deleteOriginalsHint": "Remove the source recordings after the merged one is created. Off by default.",
     "reprocessNote": "The combined audio will be transcribed and summarized again to produce one continuous transcript and summary.",

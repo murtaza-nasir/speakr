@@ -1343,7 +1343,7 @@
     "moveUp": "Monter",
     "moveDown": "Descendre",
     "titleLabel": "Titre (facultatif)",
-    "titlePlaceholder": "Laissez vide pour utiliser le titre du premier enregistrement",
+    "titlePlaceholder": "Laissez vide pour un titre automatique, comme pour un import",
     "deleteOriginals": "Supprimer les enregistrements d'origine",
     "deleteOriginalsHint": "Supprime les enregistrements sources après la création de l'enregistrement fusionné. Désactivé par défaut.",
     "reprocessNote": "L'audio combiné sera de nouveau transcrit et résumé afin de produire une transcription et un résumé continus.",

@@ -749,6 +749,11 @@ def _run_migrations(app, engine):
         except Exception as e:
             app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
+        # Where a recording's title came from (#412): user-typed titles are
+        # kept on reprocess, generated ones are regenerated.
+        if add_column_if_not_exists(engine, 'recording', 'title_source', 'VARCHAR(16)'):
+            app.logger.info("Added title_source column to recording table")
+
         # Add file_hash column for duplicate detection
         if add_column_if_not_exists(engine, 'recording', 'file_hash', 'VARCHAR(64)'):
             app.logger.info("Added file_hash column to recording table")

@@ -41,7 +41,7 @@ from src.services.transcription_defaults import (
 from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
-from src.utils.titles import resolve_upload_title
+from src.utils.titles import resolve_upload_title, upload_title_source
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
 )
@@ -1346,6 +1346,7 @@ def regenerate_title(recording_id):
             return jsonify({'error': 'Failed to generate a title'}), 500
 
         recording.title = new_title
+        recording.title_source = 'auto'
         db.session.commit()
         # Keep the exported file in step with the new title, as /save does.
         try:
@@ -2083,6 +2084,8 @@ def save_metadata():
         # Update fields requiring edit permission
         if requires_edit:
             if 'title' in data:
+                if data['title'] != recording.title:
+                    recording.title_source = 'user'
                 recording.title = data['title']
             if 'participants' in data:
                 recording.participants = data['participants']
@@ -2341,7 +2344,7 @@ def share_target():
     # (resolve_upload_title) so the AI title task recognises it and generates
     # a title — previously the filename stem was used, which the title task
     # treated as a user-chosen title and skipped, leaving shared files untitled.
-    from src.utils.titles import resolve_upload_title
+    from src.utils.titles import resolve_upload_title, upload_title_source
     share_title = resolve_upload_title(request.form.get('title'), original_filename)
 
     notes_parts = []
@@ -2355,6 +2358,7 @@ def share_target():
         audio_path=filepath,
         original_filename=original_filename,
         title=share_title,
+        title_source=upload_title_source(request.form.get('title')),
         status='PENDING',
         user_id=current_user.id,
         notes=share_notes,
@@ -2970,6 +2974,7 @@ def ingest_uploaded_recording(
             audio_path=None,
             original_filename=original_filename,
             title=resolve_upload_title(user_title, original_filename),
+            title_source=upload_title_source(user_title),
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,

@@ -180,7 +180,13 @@ def create_merge_recording(user, recording_ids, title=None, delete_originals=Fal
     ordered_ids = [r.id for r in recordings]
 
     first = recordings[0]
-    merged_title = (title or '').strip() or f"{first.title or 'Recording'} (merged)"
+    # A typed title is kept. A blank title gets the upload placeholder, so the
+    # title step names the merged recording like an upload (AI title or naming
+    # template); without an LLM its fallback is the "<first title> (merged)"
+    # filename, the name merges had before (#412).
+    from src.utils.titles import resolve_upload_title, upload_title_source
+    user_title = (title or '').strip()
+    merged_name = user_title or f"{first.title or 'Recording'} (merged)"
 
     now = datetime.utcnow()
 
@@ -223,8 +229,9 @@ def create_merge_recording(user, recording_ids, title=None, delete_originals=Fal
 
     recording = Recording(
         audio_path=None,
-        original_filename=f"{merged_title}.m4a",
-        title=merged_title,
+        original_filename=f"{merged_name}.m4a",
+        title=resolve_upload_title(user_title, f"{merged_name}.m4a"),
+        title_source=upload_title_source(user_title),
         # 'QUEUED' matches what job_queue.enqueue() sets for a transcription-side
         # job; set it here too so the row is consistent even before enqueue.
         status='QUEUED',
