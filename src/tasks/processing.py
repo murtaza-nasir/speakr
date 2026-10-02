@@ -807,14 +807,16 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 summarization_instructions, prompt_variables
             )
 
-        # Build context information
-        current_date = datetime.now().strftime("%B %d, %Y")
+        # Build context information. Dates are in the owner's local time (#412).
+        from src.utils.timezones import now_local, to_local, user_timezone
+        _zone = user_timezone(recording.owner)
+        current_date = now_local(_zone).strftime("%B %d, %Y")
         context_parts = []
         context_parts.append(f"Current date: {current_date}")
 
         # Add recording metadata to context
         if recording.meeting_date:
-            context_parts.append(f"Recording date: {recording.meeting_date.strftime('%B %d, %Y')}")
+            context_parts.append(f"Recording date: {to_local(recording.meeting_date, _zone).strftime('%B %d, %Y')}")
         if recording.title:
             context_parts.append(f"Recording title: {recording.title}")
 
@@ -983,8 +985,14 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
             body = transcript_text if limit == -1 else transcript_text[:limit]
             events_source = f"Transcript:\n{body}"
 
-        # Build comprehensive context information
-        current_date = datetime.now()
+        # Build comprehensive context information. All dates are the owner's
+        # local calendar (#412): relative dates such as "tomorrow" are counted
+        # from the local day, and the event times returned are local wall-clock.
+        from src.utils.timezones import now_local, to_local, user_timezone
+        _zone = user_timezone(recording.owner)
+        current_date = now_local(_zone)
+        local_meeting = to_local(recording.meeting_date, _zone)
+        local_created = to_local(recording.created_at, _zone)
         context_parts = []
 
         # CRITICAL: Determine the reference date for relative date calculations
@@ -993,25 +1001,25 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
 
         if recording.meeting_date:
             # Prefer meeting date if available
-            reference_date = recording.meeting_date
+            reference_date = local_meeting
             reference_date_source = "Meeting Date"
-            context_parts.append(f"**MEETING DATE (use this for relative date calculations): {recording.meeting_date.strftime('%A, %B %d, %Y')}**")
+            context_parts.append(f"**MEETING DATE (use this for relative date calculations): {local_meeting.strftime('%A, %B %d, %Y')}**")
         elif recording.created_at:
             # Fall back to upload date
-            reference_date = recording.created_at.date()
+            reference_date = local_created.date()
             reference_date_source = "Upload Date (no meeting date available)"
-            context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {recording.created_at.strftime('%A, %B %d, %Y')}**")
+            context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {local_created.strftime('%A, %B %d, %Y')}**")
 
         context_parts.append(f"Today's actual date: {current_date.strftime('%A, %B %d, %Y')}")
         context_parts.append(f"Current time: {current_date.strftime('%I:%M %p')}")
 
         # Add additional recording context
         if recording.created_at:
-            context_parts.append(f"Recording uploaded on: {recording.created_at.strftime('%B %d, %Y at %I:%M %p')}")
+            context_parts.append(f"Recording uploaded on: {local_created.strftime('%B %d, %Y at %I:%M %p')}")
         if recording.meeting_date and reference_date_source == "Meeting Date":
             # Calculate days between meeting and today for context
             # Ensure both sides are date objects (meeting_date might be datetime or date)
-            meeting_date_obj = recording.meeting_date.date() if isinstance(recording.meeting_date, datetime) else recording.meeting_date
+            meeting_date_obj = local_meeting.date() if isinstance(local_meeting, datetime) else local_meeting
             days_since = (current_date.date() - meeting_date_obj).days
             if days_since == 0:
                 context_parts.append("This meeting happened today")

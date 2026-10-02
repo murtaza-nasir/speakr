@@ -17,6 +17,7 @@ SHARED-DB: every assertion is scoped to the user/recordings the test created.
 """
 
 import os
+import pytest
 import shutil
 import sys
 import tempfile
@@ -121,6 +122,15 @@ def test_custom_template_renders_variables():
         assert render_export_filename(rec, user) == (
             f"2025-03-14 Weekly Sync (audio file) [{rec.id}]"
         )
+
+
+@pytest.fixture(autouse=True)
+def _utc_default_timezone():
+    """Export dates use the owner's zone, else the admin default (#412). Pin
+    the default to UTC so these tests do not depend on the instance setting."""
+    from unittest.mock import patch
+    with patch("src.utils.timezones.deployment_timezone", return_value="UTC"):
+        yield
 
 
 def test_date_variables_fall_back_to_created_at():

@@ -181,7 +181,9 @@ def render_export_filename(recording, user):
     if not template:
         template = DEFAULT_EXPORT_FILENAME_TEMPLATE
 
-    dt = recording.meeting_date or recording.created_at
+    # Dates in export filenames are the owner's local time (#412).
+    from src.utils.timezones import to_user_local
+    dt = to_user_local(recording.meeting_date or recording.created_at, user)
     filename_stem = os.path.splitext(recording.original_filename)[0] if recording.original_filename else ''
 
     variables = {
@@ -582,12 +584,16 @@ def generate_from_template(recording, user, template_str, labels, user_language,
         Rendered markdown string
     """
     from src.utils.localization import format_date_localized, format_datetime_localized
+    # Dates in exported text are the owner's local time (#412).
+    from src.utils.timezones import to_user_local
+    def _local(dt):
+        return to_user_local(dt, recording.owner)
 
     # Build context with all available variables
     context = {
         'title': recording.title or f"Recording {recording.id}",
-        'meeting_date': format_date_localized(recording.meeting_date, user_language) if recording.meeting_date else '',
-        'created_at': format_datetime_localized(recording.created_at, user_language) if recording.created_at else '',
+        'meeting_date': format_date_localized(_local(recording.meeting_date), user_language) if recording.meeting_date else '',
+        'created_at': format_datetime_localized(_local(recording.created_at), user_language) if recording.created_at else '',
         'original_filename': recording.original_filename or '',
         'file_size': format_file_size(recording.file_size) if recording.file_size else '',
         'participants': recording.participants or '',
@@ -630,6 +636,10 @@ def generate_default_markdown(recording, user, labels, user_language,
         Rendered markdown string
     """
     from src.utils.localization import format_date_localized, format_datetime_localized
+    # Dates in exported text are the owner's local time (#412).
+    from src.utils.timezones import to_user_local
+    def _local(dt):
+        return to_user_local(dt, recording.owner)
 
     lines = []
 
@@ -643,11 +653,11 @@ def generate_default_markdown(recording, user, labels, user_language,
     lines.append("")
 
     if recording.meeting_date:
-        date_str = format_date_localized(recording.meeting_date, user_language)
+        date_str = format_date_localized(_local(recording.meeting_date), user_language)
         lines.append(f"- **{labels.get('date', 'Date')}:** {date_str}")
 
     if recording.created_at:
-        created_str = format_datetime_localized(recording.created_at, user_language)
+        created_str = format_datetime_localized(_local(recording.created_at), user_language)
         lines.append(f"- **{labels.get('created', 'Created')}:** {created_str}")
 
     if recording.original_filename:

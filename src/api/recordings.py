@@ -407,9 +407,10 @@ def download_summary_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
             add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
@@ -524,8 +525,9 @@ def download_chat_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
-        add_unicode_paragraph(doc, f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local, now_local, user_timezone  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date or recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Chat Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}')
         doc.add_paragraph('')  # Empty line
 
         # Add chat messages
@@ -658,9 +660,10 @@ def download_notes_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
             add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
