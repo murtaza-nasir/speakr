@@ -830,3 +830,27 @@ def test_cleanup_old_jobs_keeps_recent(track):
     job_queue.cleanup_old_jobs(max_age_hours=24)
 
     assert db.session.get(ProcessingJob, recent.id) is not None
+
+
+def test_a_failed_summary_job_keeps_the_transcript(track):
+    """A permanently failed summary job shows the error as the summary and
+    keeps the transcript; it used to overwrite the transcript (#412 audit P16)."""
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    rec = db.session.get(Recording, rid)
+    rec.transcription = "Speaker 1: the real transcript we must keep."
+    db.session.commit()
+    jid = job_queue.enqueue(uid, rid, "reprocess_summary", params={"user_id": uid})
+    track.job_ids.append(jid)
+    job = _claim(rid, SUMMARY_JOBS, "summary")
+
+    with patch("src.tasks.processing.generate_summary_only_task", side_effect=RuntimeError("model gone")), \
+         patch.object(job_queue, "_is_permanent_error", return_value=True), \
+         patch.object(job_queue, "_emit_failure_webhook"), patch.object(job_queue, "_emit_failure_email"):
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    rec = db.session.get(Recording, rid)
+    assert rec.status == "FAILED"
+    assert rec.transcription == "Speaker 1: the real transcript we must keep."
+    assert rec.summary and "model gone" in rec.summary
