@@ -6,7 +6,7 @@ endpoint (web and API v1). The title is therefore the same whichever path
 produced it, and a rule added here reaches all of them (#412).
 
 Order of the title rules:
-1. Naming template: the first tag on the recording with a template, then the
+1. Naming template: the first tag (as the owner sees them) with a template, then the
    recording's folder, then the owner's default template.
 2. A template without {{ai_title}} needs no LLM call.
 3. Otherwise the AI title is generated and passed through the template.
@@ -27,7 +27,9 @@ def resolve_naming_template(recording):
 
     Returns (template, source) where source is 'tag', 'folder', 'user' or None.
     """
-    for tag in recording.tags:
+    # The owner's view of the tags, as for prompts and transcription settings (#412 S3).
+    tags = recording.get_visible_tags(recording.owner) if recording.owner else []
+    for tag in tags or []:
         if tag.naming_template_id and tag.naming_template:
             return tag.naming_template, 'tag'
     if recording.folder_id:

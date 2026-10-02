@@ -119,12 +119,15 @@ def resolve_transcription_params(recording=None, overrides=None, *, tags=None, f
     # Derive context from the recording when given; otherwise the caller (upload,
     # which resolves before the row exists) supplies tags/folder/owner directly.
     if recording is not None:
-        if tags is None:
-            tags = recording.tags
-        if folder is None:
-            folder = recording.folder
         if owner is None:
             owner = recording.owner
+        if tags is None:
+            # The owner's view of the tags, as for prompts and naming templates
+            # (#412 S3): another user's personal tag on a shared recording does
+            # not change how it is transcribed.
+            tags = recording.get_visible_tags(owner) if owner else []
+        if folder is None:
+            folder = recording.folder
     tags = list(tags) if tags else []
 
     def _override_str(key):
