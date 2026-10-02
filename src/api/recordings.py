@@ -12,7 +12,7 @@ import time
 import threading
 import subprocess
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from src.services.llm_settings import get_temperature
 from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
@@ -1699,158 +1699,78 @@ def get_recordings_paginated():
             text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'speaker:\S+', '', text_query, flags=re.IGNORECASE).strip()
 
-            # Apply date filters
+            # Apply date filters (#412). Each filter is a range of local calendar
+            # days in the viewer's timezone (sent by the browser, else the account
+            # zone), converted to UTC because meeting_date / created_at are stored
+            # as naive UTC. Ranges are half-open [start, end): the last day is
+            # included up to midnight (date_to and lastmonth dropped it before).
+            from src.utils.timezones import local_day_start_utc, now_local, request_timezone
+            _zone = request_timezone(request.args.get('tz'), current_user)
+            _today = now_local(_zone).date()
+
+            def _days(first, after_last=None):
+                start_utc = local_day_start_utc(first, _zone)
+                end_utc = local_day_start_utc(after_last, _zone) if after_last else None
+                meeting = [Recording.meeting_date >= start_utc]
+                created = [Recording.created_at >= start_utc]
+                if end_utc is not None:
+                    meeting.append(Recording.meeting_date < end_utc)
+                    created.append(Recording.created_at < end_utc)
+                return db.or_(db.and_(*meeting),
+                              db.and_(Recording.meeting_date.is_(None), *created))
+
+            def _month_start(year, month):
+                return date(year, month, 1)
+
+            def _next_month(d):
+                return date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+
             for date_filter in date_filters:
                 if date_filter == 'today':
-                    today = datetime.now().date()
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == today,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == today
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today, _today + timedelta(days=1)))
                 elif date_filter == 'yesterday':
-                    yesterday = datetime.now().date() - timedelta(days=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == yesterday,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == yesterday
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today - timedelta(days=1), _today))
                 elif date_filter == 'thisweek':
-                    today = datetime.now().date()
-                    start_of_week = today - timedelta(days=today.weekday())
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= start_of_week,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_week
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today - timedelta(days=_today.weekday())))
                 elif date_filter == 'lastweek':
-                    today = datetime.now().date()
-                    end_of_last_week = today - timedelta(days=today.weekday())
-                    start_of_last_week = end_of_last_week - timedelta(days=7)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                Recording.meeting_date >= start_of_last_week,
-                                Recording.meeting_date < end_of_last_week
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_last_week,
-                                db.func.date(Recording.created_at) < end_of_last_week
-                            )
-                        )
-                    )
+                    this_week = _today - timedelta(days=_today.weekday())
+                    stmt = stmt.where(_days(this_week - timedelta(days=7), this_week))
                 elif date_filter == 'thismonth':
-                    today = datetime.now().date()
-                    start_of_month = today.replace(day=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= start_of_month,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_month
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today.replace(day=1)))
                 elif date_filter == 'lastmonth':
-                    today = datetime.now().date()
-                    first_day_this_month = today.replace(day=1)
-                    last_day_last_month = first_day_this_month - timedelta(days=1)
-                    first_day_last_month = last_day_last_month.replace(day=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                Recording.meeting_date >= first_day_last_month,
-                                Recording.meeting_date <= last_day_last_month
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= first_day_last_month,
-                                db.func.date(Recording.created_at) <= last_day_last_month
-                            )
-                        )
-                    )
+                    this_month = _today.replace(day=1)
+                    last_month = (this_month - timedelta(days=1)).replace(day=1)
+                    stmt = stmt.where(_days(last_month, this_month))
                 elif re.match(r'^\d{4}-\d{2}-\d{2}$', date_filter):
-                    # Specific date format YYYY-MM-DD
-                    target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == target_date,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == target_date
-                            )
-                        )
-                    )
+                    try:
+                        target = datetime.strptime(date_filter, '%Y-%m-%d').date()
+                        stmt = stmt.where(_days(target, target + timedelta(days=1)))
+                    except ValueError:
+                        pass
                 elif re.match(r'^\d{4}-\d{2}$', date_filter):
-                    # Month format YYYY-MM
                     year, month = map(int, date_filter.split('-'))
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                db.extract('year', Recording.meeting_date) == year,
-                                db.extract('month', Recording.meeting_date) == month
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.extract('year', Recording.created_at) == year,
-                                db.extract('month', Recording.created_at) == month
-                            )
-                        )
-                    )
+                    if 1 <= month <= 12:
+                        first = _month_start(year, month)
+                        stmt = stmt.where(_days(first, _next_month(first)))
                 elif re.match(r'^\d{4}$', date_filter):
-                    # Year format YYYY
                     year = int(date_filter)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.extract('year', Recording.meeting_date) == year,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.extract('year', Recording.created_at) == year
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(date(year, 1, 1), date(year + 1, 1, 1)))
 
-            # Apply date range filters
+            # Apply date range filters (date_to includes that whole day)
             if date_from_filters and date_from_filters[0]:
                 try:
                     date_from = datetime.strptime(date_from_filters[0], '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= date_from,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= date_from
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(date_from))
                 except ValueError:
                     pass  # Invalid date format, ignore
 
             if date_to_filters and date_to_filters[0]:
                 try:
                     date_to = datetime.strptime(date_to_filters[0], '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date <= date_to,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) <= date_to
-                            )
-                        )
-                    )
+                    end_utc = local_day_start_utc(date_to + timedelta(days=1), _zone)
+                    stmt = stmt.where(db.or_(
+                        Recording.meeting_date < end_utc,
+                        db.and_(Recording.meeting_date.is_(None), Recording.created_at < end_utc)))
                 except ValueError:
                     pass  # Invalid date format, ignore
 
@@ -2098,18 +2018,16 @@ def save_metadata():
                         # Try to parse as full ISO datetime first. meeting_date is
                         # stored as naive UTC (like created_at), so convert any
                         # zone-aware input to UTC before storing.
-                        try:
+                        if re.match(r'^\d{4}-\d{2}-\d{2}$', date_str.strip()):
+                            # Date only: keep the existing time of day, else noon UTC
+                            # so the calendar day reads the same in every timezone.
+                            # (Python 3.11 parses a bare date as midnight UTC, which
+                            # showed as the previous day west of UTC, #412 B5.)
+                            parsed_date = datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                            existing_time = recording.meeting_date.time() if recording.meeting_date else datetime.min.time().replace(hour=12)
+                            recording.meeting_date = datetime.combine(parsed_date.date(), existing_time)
+                        else:
                             recording.meeting_date = to_utc_naive(datetime.fromisoformat(date_str.replace('Z', '+00:00')))
-                        except (ValueError, AttributeError):
-                            # Fall back to date-only format, preserve existing time if available
-                            parsed_date = datetime.strptime(date_str, '%Y-%m-%d')
-                            if recording.meeting_date:
-                                # Preserve existing time
-                                existing_time = recording.meeting_date.time()
-                                recording.meeting_date = datetime.combine(parsed_date.date(), existing_time)
-                            else:
-                                # No existing time, use the parsed date with midnight time
-                                recording.meeting_date = parsed_date
                     else:
                         recording.meeting_date = None
                 except (ValueError, TypeError) as e:

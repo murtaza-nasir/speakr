@@ -63,6 +63,18 @@ def to_user_local(dt, user):
     return to_local(dt, user_timezone(user))
 
 
+def local_day_start_utc(day, zone_name):
+    """Midnight at the start of a local calendar day, as naive UTC (for queries)."""
+    from datetime import time as _time
+    start = datetime.combine(day, _time.min).replace(tzinfo=ZoneInfo(zone_name))
+    return start.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def request_timezone(value, user):
+    """The zone for an interactive request: the browser's if valid, else the user's."""
+    return value if is_valid_timezone(value) else user_timezone(user)
+
+
 def now_local(zone_name):
     """The current wall-clock time in zone_name (naive)."""
     return to_local(datetime.utcnow(), zone_name)

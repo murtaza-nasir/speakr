@@ -34,6 +34,12 @@ export function useRecordings(state, utils, reprocessComposable) {
         Object.entries(params).forEach(([k, v]) => {
             if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
         });
+        // Date searches ("date:today", date_from/date_to) use this browser's
+        // calendar days (#412).
+        try {
+            const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (zone) qs.set('tz', zone);
+        } catch (e) { /* the account timezone applies */ }
         const response = await fetch(`/api/recordings?${qs.toString()}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load recordings');

@@ -462,7 +462,9 @@ class FileMonitor:
 
                 # Try to extract creation date from file metadata, fall back to current time
                 if not meeting_date:
-                    meeting_date = get_creation_date(str(final_path))
+                    # Normalised to naive UTC like the upload path (#412 B6).
+                    from src.utils.dates import to_utc_naive
+                    meeting_date = to_utc_naive(get_creation_date(str(final_path)))
                     if meeting_date:
                         self.logger.info(f"Using file metadata creation date: {meeting_date}")
                     else:

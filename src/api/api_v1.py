@@ -872,17 +872,23 @@ def list_recordings():
     # 'all' = no status filter
 
     # Date filters
+    # Aware values are converted to the naive-UTC storage convention; a bare
+    # date_to includes that whole day (#412 B8).
+    from src.utils.dates import to_utc_naive
     if date_from:
         try:
-            from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+            from_date = to_utc_naive(datetime.fromisoformat(date_from.replace('Z', '+00:00')))
             query = query.filter(Recording.created_at >= from_date)
         except ValueError:
             pass
 
     if date_to:
         try:
-            to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-            query = query.filter(Recording.created_at <= to_date)
+            to_date = to_utc_naive(datetime.fromisoformat(date_to.replace('Z', '+00:00')))
+            if len(date_to.strip()) == 10:
+                query = query.filter(Recording.created_at < to_date + timedelta(days=1))
+            else:
+                query = query.filter(Recording.created_at <= to_date)
         except ValueError:
             pass
 
@@ -2585,28 +2591,13 @@ def download_events_ics(recording_id):
     if not events:
         return jsonify({'error': 'No events found'}), 404
 
-    # Generate combined ICS
-    ics_lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Speakr//Events//EN']
-
-    for event in events:
-        ics_lines.append('BEGIN:VEVENT')
-        ics_lines.append(f'UID:{event.id}@speakr')
-        ics_lines.append(f'SUMMARY:{event.title}')
-        if event.start_datetime:
-            ics_lines.append(f'DTSTART:{event.start_datetime.strftime("%Y%m%dT%H%M%S")}')
-        if event.end_datetime:
-            ics_lines.append(f'DTEND:{event.end_datetime.strftime("%Y%m%dT%H%M%S")}')
-        if event.description:
-            ics_lines.append(f'DESCRIPTION:{event.description}')
-        if event.location:
-            ics_lines.append(f'LOCATION:{event.location}')
-        ics_lines.append('END:VEVENT')
-
-    ics_lines.append('END:VCALENDAR')
+    # Same builder as the web download (#412).
+    from src.services.calendar import generate_combined_ics
+    ics_text = generate_combined_ics(events)
 
     from flask import Response
     return Response(
-        '\r\n'.join(ics_lines),
+        ics_text,
         mimetype='text/calendar',
         headers={'Content-Disposition': f'attachment; filename=events-{recording_id}.ics'}
     )
