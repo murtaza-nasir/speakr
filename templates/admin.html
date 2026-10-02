@@ -1706,6 +1706,15 @@ Summarization Instructions:
                                 <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">Recommended: 30000-50000 characters for most LLMs</small>
                             </div>
                             
+                            <!-- Zone picker for default_timezone (#412) -->
+                            <div v-else-if="editingSetting.key === 'default_timezone'" class="space-y-2">
+                                <select v-model="settingNewValue"
+                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option v-for="z in timezoneOptions" :key="z" :value="z">${ z.replace(/_/g, ' ') }</option>
+                                </select>
+                                <small class="text-[var(--text-muted)]" v-text="t('adminDashboard.defaultTimezoneHelp')"></small>
+                            </div>
+
                             <!-- Special input for max_file_size_mb -->
                             <div v-else-if="editingSetting.key === 'max_file_size_mb'" class="space-y-2">
                                 <input v-model.number="settingNewValue" type="number" min="1" max="10000" step="50"
@@ -2596,6 +2605,7 @@ Summarization Instructions:
                             'max_file_size_mb',
                             'max_audio_only_video_size_mb',
                             'asr_timeout_seconds',
+                            'default_timezone',
                             'admin_default_summary_prompt',
                             'recording_disclaimer',
                             'upload_disclaimer',
@@ -2768,6 +2778,12 @@ Summarization Instructions:
                 const showEditSettingModal = ref(false);
                 const editingSetting = ref(null);
                 const settingNewValue = ref('');
+                // IANA zones for the default_timezone picker (#412)
+                const timezoneOptions = (() => {
+                    let zones = [];
+                    try { zones = Intl.supportedValuesOf('timeZone'); } catch (e) { /* older browser */ }
+                    return zones.includes('UTC') ? zones : ['UTC', ...zones];
+                })();
                 const settingUseNoLimit = ref(false);
                 const settingTimeoutMinutes = ref(30);
                 const settingTimeoutSeconds = ref(0);
@@ -4159,6 +4175,7 @@ Summarization Instructions:
                     showEditSettingModal,
                     editingSetting,
                     settingNewValue,
+                    timezoneOptions,
                     settingUseNoLimit,
                     settingTimeoutMinutes,
                     settingTimeoutSeconds,

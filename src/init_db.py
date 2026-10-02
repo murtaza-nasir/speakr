@@ -193,6 +193,11 @@ def _run_migrations(app, engine):
             app.logger.info("Added extract_events column to user table")
         if add_column_if_not_exists(engine, 'user', 'output_language', 'VARCHAR(50)'):
             app.logger.info("Added output_language column to user table")
+        # Per-user timezone for generated text (#412)
+        if add_column_if_not_exists(engine, 'user', 'timezone', 'VARCHAR(64)'):
+            app.logger.info("Added timezone column to user table")
+        if add_column_if_not_exists(engine, 'user', 'timezone_mode', "VARCHAR(8) DEFAULT 'auto'"):
+            app.logger.info("Added timezone_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'summary_prompt', 'TEXT'):
             app.logger.info("Added summary_prompt column to user table")
         if add_column_if_not_exists(engine, 'user', 'name', 'VARCHAR(100)'):
@@ -749,6 +754,11 @@ def _run_migrations(app, engine):
         except Exception as e:
             app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
+        # Where a recording's title came from (#412): user-typed titles are
+        # kept on reprocess, generated ones are regenerated.
+        if add_column_if_not_exists(engine, 'recording', 'title_source', 'VARCHAR(16)'):
+            app.logger.info("Added title_source column to recording table")
+
         # Add file_hash column for duplicate detection
         if add_column_if_not_exists(engine, 'recording', 'file_hash', 'VARCHAR(64)'):
             app.logger.info("Added file_hash column to recording table")
@@ -922,6 +932,19 @@ def _run_migrations(app, engine):
                 setting_type='boolean'
             )
             app.logger.info("Initialized enable_folders setting")
+
+        if not SystemSetting.query.filter_by(key='default_timezone').first():
+            # Seeded from the legacy TIMEZONE variable (removed in v0.9.0, still in
+            # some setups, e.g. the Unraid template) so its intent carries over.
+            from src.utils.timezones import is_valid_timezone
+            legacy_tz = (os.environ.get('TIMEZONE') or '').strip()
+            SystemSetting.set_setting(
+                key='default_timezone',
+                value=legacy_tz if is_valid_timezone(legacy_tz) else 'UTC',
+                description='Timezone for dates in generated titles (naming templates, default titles) for users whose browser has not reported one and who have not chosen one in Account settings.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized default_timezone setting")
 
     with _migration_section(app, failures, "embedding identifier tracking"):
         # Track the embedding identifier (provider + model) in system_setting

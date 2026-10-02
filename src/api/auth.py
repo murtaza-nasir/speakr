@@ -160,6 +160,24 @@ def _email_notifications_available(user) -> bool:
 
 # --- Routes ---
 
+@auth_bp.route('/api/user/timezone', methods=['POST'])
+@login_required
+def record_timezone():
+    """Save the browser's timezone for a user in 'auto' mode (#412).
+
+    Sent by static/js/timezone-sync.js once per browser session. A user who
+    chose a zone in Account settings keeps it.
+    """
+    from src.utils.timezones import record_browser_timezone, user_timezone, MODE_AUTO
+    data = request.get_json(silent=True) or {}
+    if record_browser_timezone(current_user, data.get('timezone')):
+        db.session.commit()
+    return jsonify({
+        'timezone': user_timezone(current_user),
+        'mode': current_user.timezone_mode or MODE_AUTO,
+    })
+
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @rate_limit("10 per minute")
 def register():
@@ -646,6 +664,22 @@ def account():
             current_user.transcription_language = normalize_language_code(transcription_lang)
             current_user.output_language = output_lang if output_lang else None
 
+            # Timezone for generated titles (#412). Gated on the field being
+            # present so tabs that submit 'preferences_form' without it leave the
+            # setting alone. 'auto' keeps the detected zone and resumes updating
+            # it from the browser; a zone name fixes it.
+            if 'timezone' in request.form:
+                from src.utils.timezones import is_valid_timezone, MODE_AUTO, MODE_FIXED
+                tz_value = (request.form.get('timezone') or '').strip()
+                if tz_value == MODE_AUTO or not tz_value:
+                    current_user.timezone_mode = MODE_AUTO
+                    detected = (request.form.get('detected_timezone') or '').strip()
+                    if is_valid_timezone(detected):
+                        current_user.timezone = detected
+                elif is_valid_timezone(tz_value):
+                    current_user.timezone_mode = MODE_FIXED
+                    current_user.timezone = tz_value
+
             # Filename date parsing (#342). Gated on the select being present
             # so other tabs that submit 'preferences_form' without this
             # section cannot clobber the settings (same reasoning as
@@ -720,10 +754,6 @@ def account():
             # Empty string = use the default template (recording_{{id}})
             current_user.export_filename_template = template_value if template_value else None
 
-        # Only update diarize if it's not locked by env var
-        if 'ASR_DIARIZE' not in os.environ:
-            current_user.diarize = 'diarize' in request.form
-
         db.session.commit()
 
         # Return JSON response for AJAX requests
@@ -752,8 +782,6 @@ def account():
     from src.tasks.processing import _user_title_instructions
     default_title_prompt_text = _user_title_instructions(None)[0]
 
-    asr_diarize_locked = 'ASR_DIARIZE' in os.environ
-    ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'false').lower() == 'true'
     USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
     USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'
     ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
@@ -841,8 +869,6 @@ def account():
                            enable_auto_deletion=ENABLE_AUTO_DELETION,
                            enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                            user_admin_groups=user_admin_groups,
-                           asr_diarize_locked=asr_diarize_locked,
-                           asr_diarize_env_value=ASR_DIARIZE,
                            is_team_admin=is_team_admin,
                            sso_enabled=sso_enabled,
                            sso_provider_name=sso_config.get('provider_name', 'SSO'),

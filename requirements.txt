@@ -23,6 +23,8 @@ gunicorn==21.2.0
 python-dotenv==1.0.0
 markdown==3.5.1
 pytz==2024.1
+# IANA timezone data for zoneinfo when the OS has none (#412)
+tzdata==2025.2
 Babel==2.12.1
 bleach==6.1.0
 python-docx==1.1.0

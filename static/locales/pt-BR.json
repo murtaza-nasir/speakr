@@ -108,7 +108,10 @@
     "signInSecurity": "Acesso e segurança",
     "password": "Senha",
     "savedSuccess": "Configurações salvas",
-    "contextualSpeakerLabellingHelp": "Os falantes são identificados a partir do contexto da conversa porque o seu mecanismo de transcrição não fornece impressões de voz. Isso pode ser bastante impreciso, dependendo de quanto a conversa revela sobre quem está falando e de quão bem o seu modelo separa os falantes. Para a correspondência de falantes mais precisa, baseada em voz, recomenda-se o contêiner WhisperX ASR."
+    "contextualSpeakerLabellingHelp": "Os falantes são identificados a partir do contexto da conversa porque o seu mecanismo de transcrição não fornece impressões de voz. Isso pode ser bastante impreciso, dependendo de quanto a conversa revela sobre quem está falando e de quão bem o seu modelo separa os falantes. Para a correspondência de falantes mais precisa, baseada em voz, recomenda-se o contêiner WhisperX ASR.",
+    "timezone": "Fuso horário",
+    "timezoneAutomatic": "Automático (este dispositivo)",
+    "timezoneHelp": "Usado para as datas nos títulos criados por modelos de nome. As datas exibidas nas páginas sempre seguem este dispositivo."
   },
   "accountTabs": {
     "about": "Sobre",
@@ -359,7 +362,8 @@
       "invalid": "Informe um número entre 0 e 2.",
       "sourceAdmin": "Em uso: {{value}} (configuração do administrador; padrão {{default}})",
       "sourceDefault": "Em uso: {{value}} (padrão)"
-    }
+    },
+    "defaultTimezoneHelp": "Usado para as datas nos títulos gerados quando o navegador do usuário não informou um fuso horário e o usuário não escolheu nenhum."
   },
   "apiTokens": {
     "activeTokens": "Tokens Ativos",
@@ -1343,7 +1347,7 @@
     "moveUp": "Mover para cima",
     "moveDown": "Mover para baixo",
     "titleLabel": "Título (opcional)",
-    "titlePlaceholder": "Deixe em branco para usar o título da primeira gravação",
+    "titlePlaceholder": "Deixe em branco para um título automático, como em um envio",
     "deleteOriginals": "Excluir gravações originais",
     "deleteOriginalsHint": "Remove as gravações de origem após a criação da mesclada. Desativado por padrão.",
     "reprocessNote": "O áudio combinado será transcrito e resumido novamente para produzir uma transcrição e um resumo contínuos.",

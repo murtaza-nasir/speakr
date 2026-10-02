@@ -62,7 +62,7 @@ from flask_login import login_required, current_user
 from werkzeug.datastructures import FileStorage
 
 from src.database import db
-from src.models import RecordingSession, Recording, RECORDING_SESSION_STATUSES
+from src.models import RecordingSession, Recording, User, RECORDING_SESSION_STATUSES
 from src.services.job_queue import job_queue
 from src.services.recording_stitch import byte_join, session_chunk_paths
 
@@ -586,7 +586,9 @@ def finalize_session(session_id):
 
     # Create a placeholder Recording row. The stitch worker will fill in
     # audio_path and file_size after concat completes.
-    title = (metadata.get('title') or f"Recording {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}").strip() or "Recording"
+    from src.utils.timezones import now_local, user_timezone
+    _local_now = now_local(user_timezone(current_user))
+    title = (metadata.get('title') or f"Recording {_local_now.strftime('%Y-%m-%d %H:%M')}").strip() or "Recording"
     notes = metadata.get('notes') or None
     folder_id = metadata.get('folder_id')
     if folder_id in ('', 'none', 'null'):
@@ -907,7 +909,9 @@ def cleanup_expired_sessions(app=None):
         for s in candidates:
             try:
                 if s.status == 'recording' and (s.chunk_count or 0) > 0 and not s.is_sliced_upload:
-                    when = s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''
+                    from src.utils.timezones import to_user_local
+                    _owner = db.session.get(User, s.user_id)
+                    when = to_user_local(s.created_at, _owner).strftime('%Y-%m-%d %H:%M') if s.created_at else ''
                     title = f"Recovered recording {when}".strip()
                     recovered_rec, _enq_err = _finalize_session_into_stitch(
                         s, user_id=s.user_id, title=title,

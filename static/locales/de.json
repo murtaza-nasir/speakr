@@ -108,7 +108,10 @@
     "signInSecurity": "Anmeldung & Sicherheit",
     "password": "Passwort",
     "savedSuccess": "Einstellungen gespeichert",
-    "contextualSpeakerLabellingHelp": "Sprecher werden anhand des Gesprächskontexts zugeordnet, da Ihre Transkriptions-Engine keine Stimmprofile liefert. Das kann recht ungenau sein, abhängig davon, wie viel das Gespräch darüber verrät, wer spricht, und wie gut Ihr Modell die Sprecher trennt. Für die genaueste, stimmbasierte Sprecherzuordnung wird der WhisperX-ASR-Container empfohlen."
+    "contextualSpeakerLabellingHelp": "Sprecher werden anhand des Gesprächskontexts zugeordnet, da Ihre Transkriptions-Engine keine Stimmprofile liefert. Das kann recht ungenau sein, abhängig davon, wie viel das Gespräch darüber verrät, wer spricht, und wie gut Ihr Modell die Sprecher trennt. Für die genaueste, stimmbasierte Sprecherzuordnung wird der WhisperX-ASR-Container empfohlen.",
+    "timezone": "Zeitzone",
+    "timezoneAutomatic": "Automatisch (dieses Gerät)",
+    "timezoneHelp": "Wird für Datumsangaben in Titeln aus Namensvorlagen verwendet. Datumsangaben auf den Seiten folgen immer diesem Gerät."
   },
   "accountTabs": {
     "about": "Über",
@@ -359,7 +362,8 @@
       "invalid": "Geben Sie eine Zahl zwischen 0 und 2 ein.",
       "sourceAdmin": "Aktiv: {{value}} (Admin-Einstellung; Standard {{default}})",
       "sourceDefault": "Aktiv: {{value}} (Standard)"
-    }
+    },
+    "defaultTimezoneHelp": "Wird für Datumsangaben in erzeugten Titeln verwendet, wenn der Browser eines Benutzers keine Zeitzone gemeldet und der Benutzer keine gewählt hat."
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
@@ -1343,7 +1347,7 @@
     "moveUp": "Nach oben",
     "moveDown": "Nach unten",
     "titleLabel": "Titel (optional)",
-    "titlePlaceholder": "Leer lassen, um den Titel der ersten Aufnahme zu verwenden",
+    "titlePlaceholder": "Leer lassen für einen automatischen Titel wie beim Hochladen",
     "deleteOriginals": "Ursprüngliche Aufnahmen löschen",
     "deleteOriginalsHint": "Entfernt die Quellaufnahmen, nachdem die zusammengeführte Aufnahme erstellt wurde. Standardmäßig deaktiviert.",
     "reprocessNote": "Das kombinierte Audio wird erneut transkribiert und zusammengefasst, um eine durchgehende Transkription und Zusammenfassung zu erstellen.",

@@ -30,7 +30,7 @@ def generate_ics_content(event):
         'METHOD:PUBLISH',
         'BEGIN:VEVENT',
         f'UID:{uid}',
-        f'DTSTAMP:{format_ical_date(datetime.utcnow())}',
+        f'DTSTAMP:{format_ical_date(datetime.utcnow())}Z',  # UTC, as RFC 5545 requires
     ]
 
     # Add event details
@@ -100,3 +100,24 @@ def escape_ical_text(text):
 
 
 
+
+
+def generate_combined_ics(events):
+    """One calendar file with several events (web download and API v1).
+
+    Each VEVENT comes from generate_ics_content, so escaping, DTSTAMP and the
+    default one-hour end are the same in both downloads (#412).
+    """
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Speakr//Event Export//EN",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH"]
+    for event in events:
+        in_event = False
+        for line in generate_ics_content(event).replace("\r\n", "\n").split("\n"):
+            if line.startswith("BEGIN:VEVENT"):
+                in_event = True
+            if in_event:
+                lines.append(line)
+            if line.startswith("END:VEVENT"):
+                in_event = False
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines)

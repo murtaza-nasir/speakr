@@ -380,9 +380,10 @@ def stitch_recording_session(session_id: str) -> Tuple[int, str, dict]:
     # title — instead of a fabricated default being mistaken for a user
     # choice and AI titling getting skipped (the same class of bug fixed for
     # the share target in 482614c).
-    from src.utils.titles import resolve_upload_title
+    from src.utils.titles import resolve_upload_title, upload_title_source
     user_title = (metadata.get('title') or '').strip()
     recording.title = resolve_upload_title(user_title, final_filename)
+    recording.title_source = upload_title_source(user_title)
     recording.audio_path = final_path
     recording.original_filename = final_filename
     recording.file_size = file_size

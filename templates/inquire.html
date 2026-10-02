@@ -206,6 +206,7 @@
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     {% include 'includes/loading_overlay.html' %}
+    <script src="{{ url_for('static', filename='js/timezone-sync.js') }}" defer></script>
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="inquire-app" v-cloak class="h-full flex flex-col"

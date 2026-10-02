@@ -465,6 +465,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <script src="{{ url_for('static', filename='js/timezone-sync.js') }}" defer></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
     {% set page_label = 'Account' %}
@@ -1092,6 +1093,17 @@
                                             <option value="Portuguese (Brazilian)" data-i18n="languages.pt-BR" {% if current_user.output_language == 'Portuguese (Brazilian)' %}selected{% endif %}>Portuguese (Brazilian)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
+                                    </div>
+                                    <div>
+                                        <label for="timezone_select" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.timezone">Timezone</label>
+                                        <select name="timezone" id="timezone_select"
+                                                data-current="{{ current_user.timezone or '' }}"
+                                                data-mode="{{ current_user.timezone_mode or 'auto' }}"
+                                                class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="auto" id="timezone_auto_option">Automatic (this device)</option>
+                                        </select>
+                                        <input type="hidden" name="detected_timezone" id="detected_timezone" value="">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.timezoneHelp">Used for dates in titles from naming templates. Dates shown on pages always follow this device.</p>
                                     </div>
                                 </div>
 
@@ -6178,7 +6190,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         function formatTokenDate(dateString) {
             if (!dateString) return 'Never';
-            const date = new Date(dateString);
+            // Naive UTC from the server: read as UTC, show in local time (#412).
+            let s = dateString;
+            if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                s = s.replace(' ', 'T') + 'Z';
+            }
+            const date = new Date(s);
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
         }
 
@@ -7742,5 +7759,38 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <!-- Webhooks tab logic (#275) -->
     <script src="{{ url_for('static', filename='js/account-webhooks.js') }}"></script>
 
+    <script>
+        // Timezone select (#412): every zone the browser knows; "Automatic"
+        // follows this device. The detected zone goes with the form.
+        (function () {
+            var sel = document.getElementById('timezone_select');
+            if (!sel) return;
+            var detected = '';
+            try { detected = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+            document.getElementById('detected_timezone').value = detected;
+            var auto = document.getElementById('timezone_auto_option');
+            if (detected) auto.dataset.detected = detected;
+            var zones = [];
+            try { zones = Intl.supportedValuesOf('timeZone'); } catch (e) {}
+            var current = sel.dataset.current;
+            if (current && zones.indexOf(current) === -1) zones.push(current);
+            zones.forEach(function (z) {
+                var o = document.createElement('option');
+                o.value = z;
+                o.textContent = z.replace(/_/g, ' ');
+                sel.appendChild(o);
+            });
+            sel.value = (sel.dataset.mode === 'fixed' && current) ? current : 'auto';
+            function label() {
+                var base = (window.i18n && window.i18n.t) ? window.i18n.t('account.timezoneAutomatic') : 'Automatic (this device)';
+                auto.textContent = detected ? base + ': ' + detected.replace(/_/g, ' ') : base;
+            }
+            // Set after translations load (the label carries the detected zone,
+            // so it is not a plain data-i18n element).
+            label();
+            if (window.i18n && window.i18n.ready) window.i18n.ready.then(label);
+            window.addEventListener('i18nReady', label);
+        })();
+    </script>
 </body>
 </html>

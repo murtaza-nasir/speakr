@@ -108,7 +108,10 @@
     "signInSecurity": "Connexion et sécurité",
     "password": "Mot de passe",
     "savedSuccess": "Paramètres enregistrés",
-    "contextualSpeakerLabellingHelp": "Les locuteurs sont identifiés à partir du contexte de la conversation, car votre moteur de transcription ne fournit pas d'empreintes vocales. Cela peut être assez imprécis, selon ce que la conversation révèle sur l'identité des locuteurs et la capacité de votre modèle à les distinguer. Pour la correspondance de locuteurs la plus précise, basée sur la voix, le conteneur WhisperX ASR est recommandé."
+    "contextualSpeakerLabellingHelp": "Les locuteurs sont identifiés à partir du contexte de la conversation, car votre moteur de transcription ne fournit pas d'empreintes vocales. Cela peut être assez imprécis, selon ce que la conversation révèle sur l'identité des locuteurs et la capacité de votre modèle à les distinguer. Pour la correspondance de locuteurs la plus précise, basée sur la voix, le conteneur WhisperX ASR est recommandé.",
+    "timezone": "Fuseau horaire",
+    "timezoneAutomatic": "Automatique (cet appareil)",
+    "timezoneHelp": "Utilisé pour les dates des titres issus des modèles de nommage. Les dates affichées dans les pages suivent toujours cet appareil."
   },
   "accountTabs": {
     "about": "À Propos",
@@ -359,7 +362,8 @@
       "invalid": "Saisissez un nombre entre 0 et 2.",
       "sourceAdmin": "Utilisée : {{value}} (réglage administrateur ; par défaut {{default}})",
       "sourceDefault": "Utilisée : {{value}} (par défaut)"
-    }
+    },
+    "defaultTimezoneHelp": "Utilisé pour les dates des titres générés lorsque le navigateur d'un utilisateur n'a pas indiqué de fuseau horaire et que l'utilisateur n'en a pas choisi."
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",
@@ -1343,7 +1347,7 @@
     "moveUp": "Monter",
     "moveDown": "Descendre",
     "titleLabel": "Titre (facultatif)",
-    "titlePlaceholder": "Laissez vide pour utiliser le titre du premier enregistrement",
+    "titlePlaceholder": "Laissez vide pour un titre automatique, comme pour un import",
     "deleteOriginals": "Supprimer les enregistrements d'origine",
     "deleteOriginalsHint": "Supprime les enregistrements sources après la création de l'enregistrement fusionné. Désactivé par défaut.",
     "reprocessNote": "L'audio combiné sera de nouveau transcrit et résumé afin de produire une transcription et un résumé continus.",

@@ -144,7 +144,7 @@ def create_joined_recording(owner, parts, *, title=None, notes=None, folder=None
                             prompt_variables=None, transcribe_params=None):
     """Create the recording for a claimed group and queue the merge job. Commits."""
     from src.services.job_queue import job_queue
-    from src.utils.titles import resolve_upload_title
+    from src.utils.titles import resolve_upload_title, upload_title_source
 
     now = datetime.utcnow()
     original_filename = _joined_filename(parts[0].original_filename)
@@ -154,6 +154,7 @@ def create_joined_recording(owner, parts, *, title=None, notes=None, folder=None
         audio_path=None,
         original_filename=original_filename,
         title=resolve_upload_title(title, original_filename),
+        title_source=upload_title_source(title),
         file_size=sum(p.file_size or 0 for p in parts),
         status='QUEUED',
         meeting_date=min(meeting_dates) if meeting_dates else now,

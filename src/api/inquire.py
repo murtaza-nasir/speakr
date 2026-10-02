@@ -889,7 +889,7 @@ def get_available_filters():
         return jsonify({
             'tags': [tag.to_dict() for tag in all_tags],
             'speakers': speaker_names,
-            'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': f"{r.meeting_date.isoformat()}T00:00:00" if r.meeting_date else None} for r in recordings]
+            'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None} for r in recordings]
         })
 
     except Exception as e:

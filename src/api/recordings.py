@@ -12,7 +12,7 @@ import time
 import threading
 import subprocess
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from src.services.llm_settings import get_temperature
 from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
@@ -41,7 +41,7 @@ from src.services.transcription_defaults import (
 from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
-from src.utils.titles import resolve_upload_title
+from src.utils.titles import resolve_upload_title, upload_title_source
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
 )
@@ -407,9 +407,10 @@ def download_summary_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
             add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
@@ -524,8 +525,9 @@ def download_chat_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
-        add_unicode_paragraph(doc, f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local, now_local, user_timezone  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date or recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Chat Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}')
         doc.add_paragraph('')  # Empty line
 
         # Add chat messages
@@ -658,9 +660,10 @@ def download_notes_word(recording_id):
             return p
 
         # Add metadata
-        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        from src.utils.timezones import to_user_local  # owner's local time (#412)
+        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
             add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
@@ -1327,23 +1330,32 @@ def regenerate_title(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to edit this recording'}), 403
 
-        if not recording.transcription or len(recording.transcription.strip()) < 10:
-            return jsonify({'error': 'No valid transcription available for title generation'}), 400
+        # Same title step as processing (naming template, AI title, fallbacks), so
+        # regenerating gives the title the pipeline would give (#412). The checks
+        # below apply only when the title needs an LLM call.
+        from src.services.titling import compute_title, needs_ai_title
+        if needs_ai_title(recording):
+            if not recording.transcription or len(recording.transcription.strip()) < 10:
+                return jsonify({'error': 'No valid transcription available for title generation'}), 400
 
-        if is_transcription_error(recording.transcription):
-            return jsonify({'error': 'Cannot generate title: transcription failed. Please reprocess the transcription first.'}), 400
+            if is_transcription_error(recording.transcription):
+                return jsonify({'error': 'Cannot generate title: transcription failed. Please reprocess the transcription first.'}), 400
 
-        if client is None:
-            return jsonify({'error': 'Title generation service is not available (OpenRouter client not configured)'}), 503
+            if client is None:
+                return jsonify({'error': 'Title generation service is not available (OpenRouter client not configured)'}), 503
 
-        from src.tasks.processing import _generate_ai_title
-
-        new_title = _generate_ai_title(recording)
+        new_title = compute_title(recording, raise_budget_errors=True)
         if not new_title:
             return jsonify({'error': 'Failed to generate a title'}), 500
 
         recording.title = new_title
+        recording.title_source = 'auto'
         db.session.commit()
+        # Keep the exported file in step with the new title, as /save does.
+        try:
+            export_recording(recording.id)
+        except Exception as export_error:
+            current_app.logger.warning(f"Export after title regeneration failed for {recording.id}: {export_error}")
 
         recording_dict = recording.to_dict(viewer_user=current_user)
         enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
@@ -1690,158 +1702,78 @@ def get_recordings_paginated():
             text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'speaker:\S+', '', text_query, flags=re.IGNORECASE).strip()
 
-            # Apply date filters
+            # Apply date filters (#412). Each filter is a range of local calendar
+            # days in the viewer's timezone (sent by the browser, else the account
+            # zone), converted to UTC because meeting_date / created_at are stored
+            # as naive UTC. Ranges are half-open [start, end): the last day is
+            # included up to midnight (date_to and lastmonth dropped it before).
+            from src.utils.timezones import local_day_start_utc, now_local, request_timezone
+            _zone = request_timezone(request.args.get('tz'), current_user)
+            _today = now_local(_zone).date()
+
+            def _days(first, after_last=None):
+                start_utc = local_day_start_utc(first, _zone)
+                end_utc = local_day_start_utc(after_last, _zone) if after_last else None
+                meeting = [Recording.meeting_date >= start_utc]
+                created = [Recording.created_at >= start_utc]
+                if end_utc is not None:
+                    meeting.append(Recording.meeting_date < end_utc)
+                    created.append(Recording.created_at < end_utc)
+                return db.or_(db.and_(*meeting),
+                              db.and_(Recording.meeting_date.is_(None), *created))
+
+            def _month_start(year, month):
+                return date(year, month, 1)
+
+            def _next_month(d):
+                return date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+
             for date_filter in date_filters:
                 if date_filter == 'today':
-                    today = datetime.now().date()
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == today,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == today
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today, _today + timedelta(days=1)))
                 elif date_filter == 'yesterday':
-                    yesterday = datetime.now().date() - timedelta(days=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == yesterday,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == yesterday
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today - timedelta(days=1), _today))
                 elif date_filter == 'thisweek':
-                    today = datetime.now().date()
-                    start_of_week = today - timedelta(days=today.weekday())
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= start_of_week,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_week
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today - timedelta(days=_today.weekday())))
                 elif date_filter == 'lastweek':
-                    today = datetime.now().date()
-                    end_of_last_week = today - timedelta(days=today.weekday())
-                    start_of_last_week = end_of_last_week - timedelta(days=7)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                Recording.meeting_date >= start_of_last_week,
-                                Recording.meeting_date < end_of_last_week
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_last_week,
-                                db.func.date(Recording.created_at) < end_of_last_week
-                            )
-                        )
-                    )
+                    this_week = _today - timedelta(days=_today.weekday())
+                    stmt = stmt.where(_days(this_week - timedelta(days=7), this_week))
                 elif date_filter == 'thismonth':
-                    today = datetime.now().date()
-                    start_of_month = today.replace(day=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= start_of_month,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= start_of_month
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(_today.replace(day=1)))
                 elif date_filter == 'lastmonth':
-                    today = datetime.now().date()
-                    first_day_this_month = today.replace(day=1)
-                    last_day_last_month = first_day_this_month - timedelta(days=1)
-                    first_day_last_month = last_day_last_month.replace(day=1)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                Recording.meeting_date >= first_day_last_month,
-                                Recording.meeting_date <= last_day_last_month
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= first_day_last_month,
-                                db.func.date(Recording.created_at) <= last_day_last_month
-                            )
-                        )
-                    )
+                    this_month = _today.replace(day=1)
+                    last_month = (this_month - timedelta(days=1)).replace(day=1)
+                    stmt = stmt.where(_days(last_month, this_month))
                 elif re.match(r'^\d{4}-\d{2}-\d{2}$', date_filter):
-                    # Specific date format YYYY-MM-DD
-                    target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            db.func.date(Recording.meeting_date) == target_date,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) == target_date
-                            )
-                        )
-                    )
+                    try:
+                        target = datetime.strptime(date_filter, '%Y-%m-%d').date()
+                        stmt = stmt.where(_days(target, target + timedelta(days=1)))
+                    except ValueError:
+                        pass
                 elif re.match(r'^\d{4}-\d{2}$', date_filter):
-                    # Month format YYYY-MM
                     year, month = map(int, date_filter.split('-'))
-                    stmt = stmt.where(
-                        db.or_(
-                            db.and_(
-                                db.extract('year', Recording.meeting_date) == year,
-                                db.extract('month', Recording.meeting_date) == month
-                            ),
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.extract('year', Recording.created_at) == year,
-                                db.extract('month', Recording.created_at) == month
-                            )
-                        )
-                    )
+                    if 1 <= month <= 12:
+                        first = _month_start(year, month)
+                        stmt = stmt.where(_days(first, _next_month(first)))
                 elif re.match(r'^\d{4}$', date_filter):
-                    # Year format YYYY
                     year = int(date_filter)
-                    stmt = stmt.where(
-                        db.or_(
-                            db.extract('year', Recording.meeting_date) == year,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.extract('year', Recording.created_at) == year
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(date(year, 1, 1), date(year + 1, 1, 1)))
 
-            # Apply date range filters
+            # Apply date range filters (date_to includes that whole day)
             if date_from_filters and date_from_filters[0]:
                 try:
                     date_from = datetime.strptime(date_from_filters[0], '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date >= date_from,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) >= date_from
-                            )
-                        )
-                    )
+                    stmt = stmt.where(_days(date_from))
                 except ValueError:
                     pass  # Invalid date format, ignore
 
             if date_to_filters and date_to_filters[0]:
                 try:
                     date_to = datetime.strptime(date_to_filters[0], '%Y-%m-%d').date()
-                    stmt = stmt.where(
-                        db.or_(
-                            Recording.meeting_date <= date_to,
-                            db.and_(
-                                Recording.meeting_date.is_(None),
-                                db.func.date(Recording.created_at) <= date_to
-                            )
-                        )
-                    )
+                    end_utc = local_day_start_utc(date_to + timedelta(days=1), _zone)
+                    stmt = stmt.where(db.or_(
+                        Recording.meeting_date < end_utc,
+                        db.and_(Recording.meeting_date.is_(None), Recording.created_at < end_utc)))
                 except ValueError:
                     pass  # Invalid date format, ignore
 
@@ -2075,6 +2007,8 @@ def save_metadata():
         # Update fields requiring edit permission
         if requires_edit:
             if 'title' in data:
+                if data['title'] != recording.title:
+                    recording.title_source = 'user'
                 recording.title = data['title']
             if 'participants' in data:
                 recording.participants = data['participants']
@@ -2087,18 +2021,16 @@ def save_metadata():
                         # Try to parse as full ISO datetime first. meeting_date is
                         # stored as naive UTC (like created_at), so convert any
                         # zone-aware input to UTC before storing.
-                        try:
+                        if re.match(r'^\d{4}-\d{2}-\d{2}$', date_str.strip()):
+                            # Date only: keep the existing time of day, else noon UTC
+                            # so the calendar day reads the same in every timezone.
+                            # (Python 3.11 parses a bare date as midnight UTC, which
+                            # showed as the previous day west of UTC, #412 B5.)
+                            parsed_date = datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                            existing_time = recording.meeting_date.time() if recording.meeting_date else datetime.min.time().replace(hour=12)
+                            recording.meeting_date = datetime.combine(parsed_date.date(), existing_time)
+                        else:
                             recording.meeting_date = to_utc_naive(datetime.fromisoformat(date_str.replace('Z', '+00:00')))
-                        except (ValueError, AttributeError):
-                            # Fall back to date-only format, preserve existing time if available
-                            parsed_date = datetime.strptime(date_str, '%Y-%m-%d')
-                            if recording.meeting_date:
-                                # Preserve existing time
-                                existing_time = recording.meeting_date.time()
-                                recording.meeting_date = datetime.combine(parsed_date.date(), existing_time)
-                            else:
-                                # No existing time, use the parsed date with midnight time
-                                recording.meeting_date = parsed_date
                     else:
                         recording.meeting_date = None
                 except (ValueError, TypeError) as e:
@@ -2333,7 +2265,7 @@ def share_target():
     # (resolve_upload_title) so the AI title task recognises it and generates
     # a title — previously the filename stem was used, which the title task
     # treated as a user-chosen title and skipped, leaving shared files untitled.
-    from src.utils.titles import resolve_upload_title
+    from src.utils.titles import resolve_upload_title, upload_title_source
     share_title = resolve_upload_title(request.form.get('title'), original_filename)
 
     notes_parts = []
@@ -2347,6 +2279,7 @@ def share_target():
         audio_path=filepath,
         original_filename=original_filename,
         title=share_title,
+        title_source=upload_title_source(request.form.get('title')),
         status='PENDING',
         user_id=current_user.id,
         notes=share_notes,
@@ -2792,6 +2725,14 @@ def ingest_uploaded_recording(
         # local time to reach UTC). Used to convert filename wall-clock dates
         # to the naive-UTC storage convention.
         client_tz_offset = form.get('client_tz_offset')
+        # The browser's IANA zone (#412): saved for an uploader in 'auto' mode so
+        # the title of this very recording already uses it. Only for the
+        # uploader's own recordings, never for an owner uploaded on behalf of.
+        client_timezone = form.get('client_timezone')
+        if client_timezone and current_user.is_authenticated and owner.id == current_user.id:
+            from src.utils.timezones import record_browser_timezone
+            if record_browser_timezone(owner, client_timezone):
+                db.session.commit()
 
         # Get selected tags if provided (multiple tags support)
         selected_tags = []
@@ -2962,6 +2903,7 @@ def ingest_uploaded_recording(
             audio_path=None,
             original_filename=original_filename,
             title=resolve_upload_title(user_title, original_filename),
+            title_source=upload_title_source(user_title),
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,

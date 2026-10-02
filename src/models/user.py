@@ -25,6 +25,11 @@ class User(db.Model, UserMixin):
     recordings = db.relationship('Recording', backref='owner', lazy=True)
     transcription_language = db.Column(db.String(10), nullable=True)  # For ISO 639-1 codes
     output_language = db.Column(db.String(50), nullable=True)  # For full language names like "Spanish"
+    # IANA timezone for text the server writes (titles from naming templates) (#412).
+    # timezone_mode 'auto': the browser's zone is saved as the user visits;
+    # 'fixed': chosen in Account settings. See src/utils/timezones.py.
+    timezone = db.Column(db.String(64), nullable=True)
+    timezone_mode = db.Column(db.String(8), nullable=True, default='auto')
     ui_language = db.Column(db.String(10), nullable=True, default='en')  # For UI language preference (en, es, fr, zh)
     summary_prompt = db.Column(db.Text, nullable=True)
     title_prompt = db.Column(db.Text, nullable=True)  # Instructions for AI titles (#400)

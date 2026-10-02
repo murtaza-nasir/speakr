@@ -275,8 +275,14 @@ def test_naming_template(template_id):
         except ValueError:
             pass
 
+    # A sample date is a wall-clock time and is used as given (an aware value
+    # is converted to the user's zone); the default is "now" in the user's
+    # local time, as the title would show it (#412).
+    from src.utils.timezones import to_user_local, user_timezone, now_local
+    if meeting_date is not None and meeting_date.tzinfo is not None:
+        meeting_date = to_user_local(meeting_date, current_user)
     if not meeting_date:
-        meeting_date = datetime.now()
+        meeting_date = now_local(user_timezone(current_user))
 
     # Apply template
     result = template.apply(

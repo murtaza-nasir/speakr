@@ -2002,9 +2002,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // naive UTC (no zone designator); new Date() would parse a zoneless
             // string as LOCAL, showing the UTC clock value instead of converting
             // it. Append 'Z' so it's parsed as UTC; toLocale* then renders it in
-            // the viewer's own timezone. Do NOT use this for calendar fields
-            // (meeting_date) or wall-clock event times — those are not UTC and
-            // must keep their literal value (parse with plain new Date()).
+            // the viewer's own timezone. meeting_date is stored as naive UTC too
+            // (src/utils/dates.py, #320), so it uses this as well. Do NOT use it
+            // for wall-clock event times, which are not UTC.
             const parseServerInstant = (s) => {
                 if (s == null) return new Date(NaN);
                 if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
@@ -2126,11 +2126,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             };
 
-            // Date helper functions. meeting_date is a calendar day (parse local,
-            // no tz shift); created_at is a UTC instant (parseServerInstant).
+            // Date helper functions. meeting_date and created_at are both naive
+            // UTC instants, so the sidebar groups by the same local day the
+            // label shows (#412: meeting_date was parsed as local, so a
+            // recording near midnight was labelled one day and filed under another).
             const getDateForSorting = (recording) => {
                 if (sortBy.value === 'meeting_date' && recording.meeting_date) {
-                    return new Date(recording.meeting_date);
+                    return parseServerInstant(recording.meeting_date);
                 }
                 return recording.created_at ? parseServerInstant(recording.created_at) : null;
             };

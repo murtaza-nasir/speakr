@@ -849,6 +849,11 @@ def admin_update_setting():
         if value not in ['true', 'false', '1', '0', 'yes', 'no', True, False, 1, 0]:
             return jsonify({'error': 'Value must be a valid boolean (true/false, 1/0, yes/no)'}), 400
     
+    if key == 'default_timezone':
+        from src.utils.timezones import is_valid_timezone
+        if not is_valid_timezone(value):
+            return jsonify({'error': 'Value must be a valid IANA timezone, for example Europe/Berlin'}), 400
+
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 

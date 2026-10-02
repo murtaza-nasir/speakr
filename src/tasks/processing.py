@@ -355,6 +355,49 @@ def _end_transaction_before_external_call(*instances):
         session.expire_on_commit = previous
 
 
+def finish_processing(recording_id, events_transcript=None, events_summary=None):
+    """The last step of every processing path (#412).
+
+    Extracts events (when the owner has event extraction on), marks the
+    recording COMPLETED, then applies team-tag auto-shares, writes the
+    auto-export and builds the Inquire chunks. Every exit of the pipeline calls
+    this (title only, summary, empty or skipped summary, short transcription),
+    so none of them can skip a step. Events no longer depend on a summary: with
+    auto-summarization off they are extracted from the transcript. The steps
+    after COMPLETED are best-effort: a failure is logged and the recording
+    stays COMPLETED.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return
+    from src.utils.error_formatting import is_transcription_error
+    owner = recording.owner
+    if (owner and owner.extract_events and client is not None and recording.transcription
+            and len(recording.transcription.strip()) >= 10 and not is_transcription_error(recording.transcription)):
+        transcript = events_transcript or format_transcription_for_llm(recording.transcription)
+        extract_events_from_transcript(recording_id, transcript, events_summary or "")
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return
+    recording.status = 'COMPLETED'
+    recording.completed_at = datetime.utcnow()
+    db.session.commit()
+    try:
+        apply_team_tag_auto_shares(recording_id)
+    except Exception as e:
+        current_app.logger.error(f"Auto-shares failed for recording {recording_id} (recording stays COMPLETED): {e}")
+    if ENABLE_AUTO_EXPORT:
+        try:
+            export_recording(recording_id)
+        except Exception as e:
+            current_app.logger.error(f"Auto-export failed for recording {recording_id} (recording stays COMPLETED): {e}")
+    if ENABLE_INQUIRE_MODE:
+        try:
+            process_recording_chunks(recording_id)
+        except Exception as e:
+            current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
+
+
 def generate_title_task(app_context, recording_id, will_auto_summarize=False):
     """Generates only a title for a recording based on transcription.
 
@@ -373,96 +416,33 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         # is_placeholder_title is the shared source of truth (also used by the
         # upload + share-target routes) so every entry point's title is
         # recognised here and gets an AI title unless the user chose one.
-        from src.utils.titles import is_placeholder_title
-        if not is_placeholder_title(recording.title, recording.original_filename):
+        from src.utils.titles import title_is_user_chosen
+        if title_is_user_chosen(recording):
             current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
-            if not will_auto_summarize:
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
             db.session.commit()
+            if not will_auto_summarize:
+                finish_processing(recording_id)
             return
 
-        # Resolve naming template: first tag with template → user default → None
-        naming_template = None
-        for tag in recording.tags:
-            if tag.naming_template_id:
-                naming_template = tag.naming_template
-                current_app.logger.info(f"Using naming template '{naming_template.name}' from tag '{tag.name}' for recording {recording_id}")
-                break
-
-        if not naming_template and recording.owner and recording.owner.default_naming_template_id:
-            naming_template = recording.owner.default_naming_template
-            if naming_template:
-                current_app.logger.info(f"Using user's default naming template '{naming_template.name}' for recording {recording_id}")
-
-        # Check if we need to generate AI title
-        needs_ai_title = naming_template is None or naming_template.needs_ai_title()
-
-        # Early exit conditions
-        if not needs_ai_title:
-            # Template doesn't need AI - we can skip LLM call entirely
-            current_app.logger.info(f"Naming template doesn't require AI title for recording {recording_id}, skipping LLM call")
-            ai_title = None
-        elif client is None:
-            current_app.logger.warning(f"Skipping AI title generation for {recording_id}: OpenRouter client not configured.")
-            ai_title = None
-        elif not recording.transcription or len(recording.transcription.strip()) < 10:
-            current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping AI title generation.")
-            ai_title = None
-        else:
-            # Generate AI title via LLM. A budget-exceeded error is actionable
-            # by the user but must not fail the whole recording here — skip
-            # titling and continue (the interactive endpoint surfaces it).
-            try:
-                ai_title = _generate_ai_title(recording)
-            except TokenBudgetExceeded as e:
-                current_app.logger.warning(f"Skipping AI title for recording {recording_id}: {e}")
-                ai_title = None
-
-        # Apply naming template if we have one
-        final_title = None
-        if naming_template:
-            final_title = naming_template.apply(
-                original_filename=recording.original_filename,
-                meeting_date=recording.meeting_date,
-                ai_title=ai_title
-            )
-            if final_title:
-                current_app.logger.info(f"Applied naming template for recording {recording_id}: '{final_title}'")
-
-        # Fallback chain: template result → AI title → filename
-        if not final_title:
-            if ai_title:
-                final_title = ai_title
-            elif recording.original_filename:
-                # Use filename without extension as last resort
-                import os
-                final_title = os.path.splitext(recording.original_filename)[0]
-                current_app.logger.info(f"Using filename as title for recording {recording_id}: '{final_title}'")
+        # The title step (naming template, AI title, fallbacks) is shared with the
+        # regenerate-title endpoint so both produce the same title (#412).
+        from src.services.titling import compute_title
+        final_title = compute_title(recording)
 
         if final_title:
             recording.title = final_title
+            recording.title_source = 'auto'
             current_app.logger.info(f"Title set for recording {recording_id}: {final_title}")
         else:
             current_app.logger.warning(f"Could not generate title for recording {recording_id}")
 
-        # Only set status to COMPLETED if auto-summarization won't happen next
-        # If auto-summarization is enabled, the summary task will set COMPLETED
+        db.session.commit()
+        # Without a summary to follow, the title is the last step: finish here.
+        # Otherwise the summary task finishes the recording.
         if not will_auto_summarize:
-            recording.status = 'COMPLETED'
-            recording.completed_at = datetime.utcnow()
-            db.session.commit()
-            current_app.logger.info(f"Title generation complete, status set to COMPLETED for recording {recording_id}")
-
-            # Process chunks for semantic search after completion (if inquire mode is enabled)
-            if ENABLE_INQUIRE_MODE:
-                try:
-                    process_recording_chunks(recording_id)
-                except Exception as e:
-                    current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
+            finish_processing(recording_id)
+            current_app.logger.info(f"Title generation complete, recording {recording_id} finished")
         else:
-            # Just commit the title without changing status
-            db.session.commit()
             current_app.logger.info(f"Title generation complete, leaving status unchanged (auto-summarization will follow) for recording {recording_id}")
 
 
@@ -672,8 +652,8 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
             recording.summary = "[Summary skipped due to short transcription]"
-            recording.status = 'COMPLETED'
             db.session.commit()
+            finish_processing(recording_id)
             return
 
         # Get user preferences and tag custom prompts
@@ -827,14 +807,16 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 summarization_instructions, prompt_variables
             )
 
-        # Build context information
-        current_date = datetime.now().strftime("%B %d, %Y")
+        # Build context information. Dates are in the owner's local time (#412).
+        from src.utils.timezones import now_local, to_local, user_timezone
+        _zone = user_timezone(recording.owner)
+        current_date = now_local(_zone).strftime("%B %d, %Y")
         context_parts = []
         context_parts.append(f"Current date: {current_date}")
 
         # Add recording metadata to context
         if recording.meeting_date:
-            context_parts.append(f"Recording date: {recording.meeting_date.strftime('%B %d, %Y')}")
+            context_parts.append(f"Recording date: {to_local(recording.meeting_date, _zone).strftime('%B %d, %Y')}")
         if recording.title:
             context_parts.append(f"Recording title: {recording.title}")
 
@@ -938,57 +920,23 @@ Summarization Instructions:
                 db.session.commit()
                 current_app.logger.info(f"Summary generated successfully for recording {recording_id}")
 
-                # Extract events if enabled for this user BEFORE marking as completed
-                if recording.owner and recording.owner.extract_events:
-                    extract_events_from_transcript(recording_id, formatted_transcription, summary)
-
-                # Mark as completed AFTER event extraction
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
-                # Calculate and save summarization duration
                 summarization_end_time = time.time()
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
                 current_app.logger.info(f"Summarization completed for recording {recording_id} in {recording.summarization_duration_seconds}s.")
-
-                # Best-effort post-completion side effects. The recording is
-                # already committed COMPLETED with a good summary; if either of
-                # these throws it must NOT bubble to the outer except, which
-                # would overwrite the summary with an error and flip the row to
-                # FAILED (a genuinely-complete recording corrupted by a share/
-                # export hiccup).
-                try:
-                    apply_team_tag_auto_shares(recording_id)
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
-                except Exception as post_err:
-                    current_app.logger.error(f"Post-completion step failed for recording {recording_id} (recording stays COMPLETED): {post_err}")
             else:
                 current_app.logger.warning(f"Empty summary generated for recording {recording_id}")
                 recording.summary = "[Summary not generated]"
-                recording.status = 'COMPLETED'
-                # Calculate and save summarization duration even for empty summary
                 summarization_end_time = time.time()
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
 
-                # Best-effort post-completion side effects (see the non-empty
-                # branch above): must not corrupt the completed recording.
-                try:
-                    apply_team_tag_auto_shares(recording_id)
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
-                except Exception as post_err:
-                    current_app.logger.error(f"Post-completion step failed for recording {recording_id} (recording stays COMPLETED): {post_err}")
-
-            # Process chunks for semantic search after completion (if inquire mode is enabled).
-            # Mirrors the non-summary path in generate_title_task; without this, Inquire
-            # embeddings are never generated when auto-summarization is enabled (issue #305).
-            if ENABLE_INQUIRE_MODE:
-                try:
-                    process_recording_chunks(recording_id)
-                except Exception as chunk_err:
-                    current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {chunk_err}")
+            # Events, status, auto-shares, export and Inquire chunks (#305, #412).
+            # The steps after COMPLETED are best-effort inside finish_processing,
+            # so a share/export hiccup cannot reach the except below and
+            # overwrite a good summary with an error.
+            finish_processing(recording_id, events_transcript=formatted_transcription,
+                              events_summary=summary or None)
 
         except Exception as e:
             error_msg = format_api_error_message(str(e))
@@ -1026,8 +974,25 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
         if recording.owner:
             user_output_language = recording.owner.output_language
 
-        # Build comprehensive context information
-        current_date = datetime.now()
+        # With a summary: the summary plus a transcript excerpt, as before. Without
+        # one (auto-summarization off, #412): the transcript itself, up to the
+        # admin transcript length limit.
+        if summary_text:
+            events_source = (f"Transcript Summary:\n{summary_text}\n\n"
+                             f"Transcript excerpt (for additional context):\n{transcript_text[:8000]}")
+        else:
+            limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+            body = transcript_text if limit == -1 else transcript_text[:limit]
+            events_source = f"Transcript:\n{body}"
+
+        # Build comprehensive context information. All dates are the owner's
+        # local calendar (#412): relative dates such as "tomorrow" are counted
+        # from the local day, and the event times returned are local wall-clock.
+        from src.utils.timezones import now_local, to_local, user_timezone
+        _zone = user_timezone(recording.owner)
+        current_date = now_local(_zone)
+        local_meeting = to_local(recording.meeting_date, _zone)
+        local_created = to_local(recording.created_at, _zone)
         context_parts = []
 
         # CRITICAL: Determine the reference date for relative date calculations
@@ -1036,25 +1001,25 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
 
         if recording.meeting_date:
             # Prefer meeting date if available
-            reference_date = recording.meeting_date
+            reference_date = local_meeting
             reference_date_source = "Meeting Date"
-            context_parts.append(f"**MEETING DATE (use this for relative date calculations): {recording.meeting_date.strftime('%A, %B %d, %Y')}**")
+            context_parts.append(f"**MEETING DATE (use this for relative date calculations): {local_meeting.strftime('%A, %B %d, %Y')}**")
         elif recording.created_at:
             # Fall back to upload date
-            reference_date = recording.created_at.date()
+            reference_date = local_created.date()
             reference_date_source = "Upload Date (no meeting date available)"
-            context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {recording.created_at.strftime('%A, %B %d, %Y')}**")
+            context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {local_created.strftime('%A, %B %d, %Y')}**")
 
         context_parts.append(f"Today's actual date: {current_date.strftime('%A, %B %d, %Y')}")
         context_parts.append(f"Current time: {current_date.strftime('%I:%M %p')}")
 
         # Add additional recording context
         if recording.created_at:
-            context_parts.append(f"Recording uploaded on: {recording.created_at.strftime('%B %d, %Y at %I:%M %p')}")
+            context_parts.append(f"Recording uploaded on: {local_created.strftime('%B %d, %Y at %I:%M %p')}")
         if recording.meeting_date and reference_date_source == "Meeting Date":
             # Calculate days between meeting and today for context
             # Ensure both sides are date objects (meeting_date might be datetime or date)
-            meeting_date_obj = recording.meeting_date.date() if isinstance(recording.meeting_date, datetime) else recording.meeting_date
+            meeting_date_obj = local_meeting.date() if isinstance(local_meeting, datetime) else local_meeting
             days_since = (current_date.date() - meeting_date_obj).days
             if days_since == 0:
                 context_parts.append("This meeting happened today")
@@ -1124,11 +1089,7 @@ For each event found, extract:
 - Attendees: List of people who should attend (if mentioned)
 - Reminder minutes: How how long before to remind (default 1 day)
 
-Transcript Summary:
-{summary_text}
-
-Transcript excerpt (for additional context):
-{transcript_text[:8000]}
+{events_source}
 
 RESPONSE FORMAT:
 Respond with a JSON object containing an "events" array. If no events are found, return a JSON object with an empty events array.
@@ -2435,26 +2396,19 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
             user = db.session.get(User, recording.user_id)
             user_disabled = user and user.auto_summarization is False
-            will_auto_summarize = not admin_disabled and not user_disabled
+            # Without an LLM client there is no summary step: the title step
+            # finishes the recording (it stayed PROCESSING before, #412).
+            no_client = client is None
+            will_auto_summarize = not admin_disabled and not user_disabled and not no_client
 
             # Generate title immediately
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
             if not will_auto_summarize:
-                reason = "admin setting" if admin_disabled else "user preference"
+                # generate_title_task has already finished the recording
+                # (finish_processing: status, auto-shares, export, Inquire chunks).
+                reason = "admin setting" if admin_disabled else ("user preference" if user_disabled else "no LLM client")
                 current_app.logger.info(f"Auto-summarization disabled ({reason}), skipping summary for recording {recording_id}")
-                recording = db.session.get(Recording, recording_id)
-                if recording:
-                    recording.status = 'COMPLETED'
-                    recording.completed_at = datetime.utcnow()
-                    db.session.commit()
-
-                    # Apply auto-shares for group tags after processing completes
-                    apply_team_tag_auto_shares(recording_id)
-
-                    # Export transcription-only if auto-export is enabled
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
             else:
                 # Auto-generate summary for all recordings
                 current_app.logger.info(f"Auto-generating summary for recording {recording_id}")

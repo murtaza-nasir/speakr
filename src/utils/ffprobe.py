@@ -579,7 +579,9 @@ def _get_file_mtime(filename: str) -> Optional[datetime]:
 
     try:
         stat_info = os.stat(filename)
-        return datetime.fromtimestamp(stat_info.st_mtime)
+        # Naive UTC, the storage convention (was server-local time, #412 B6).
+        from datetime import timezone as _tz
+        return datetime.fromtimestamp(stat_info.st_mtime, tz=_tz.utc).replace(tzinfo=None)
     except (OSError, ValueError) as e:
         logger.warning(f"Failed to get file mtime for {filename}: {e}")
         return None

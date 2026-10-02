@@ -791,11 +791,14 @@ def get_current_user():
             'extract_events': bool(current_user.extract_events),
             'auto_speaker_labelling': bool(current_user.auto_speaker_labelling),
             'auto_speaker_labelling_threshold': current_user.auto_speaker_labelling_threshold,
-            'auto_summarization': bool(current_user.auto_summarization),
+            # None means enabled, as in processing (#412 audit S10).
+            'auto_summarization': current_user.auto_summarization is not False,
             'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
             'editor_autosave': bool(current_user.editor_autosave),
             'notify_email_on_completion': bool(current_user.notify_email_on_completion),
-            'diarize': bool(current_user.diarize),
+            # The per-user diarize preference has had no control since Aug 2025
+            # and was never read; report what transcription actually does.
+            'diarize': _effective_diarize(),
         },
         'group_memberships': memberships,
     })
@@ -869,17 +872,23 @@ def list_recordings():
     # 'all' = no status filter
 
     # Date filters
+    # Aware values are converted to the naive-UTC storage convention; a bare
+    # date_to includes that whole day (#412 B8).
+    from src.utils.dates import to_utc_naive
     if date_from:
         try:
-            from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+            from_date = to_utc_naive(datetime.fromisoformat(date_from.replace('Z', '+00:00')))
             query = query.filter(Recording.created_at >= from_date)
         except ValueError:
             pass
 
     if date_to:
         try:
-            to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-            query = query.filter(Recording.created_at <= to_date)
+            to_date = to_utc_naive(datetime.fromisoformat(date_to.replace('Z', '+00:00')))
+            if len(date_to.strip()) == 10:
+                query = query.filter(Recording.created_at < to_date + timedelta(days=1))
+            else:
+                query = query.filter(Recording.created_at <= to_date)
         except ValueError:
             pass
 
@@ -1235,6 +1244,8 @@ def update_recording(recording_id):
 
     # Update fields if provided
     if 'title' in data:
+        if data['title'] != recording.title:
+            recording.title_source = 'user'
         recording.title = data['title']
         changed_fields.append('title')
     if 'participants' in data:
@@ -1472,6 +1483,17 @@ def get_recording_status(recording_id):
 # =============================================================================
 # Title Regeneration
 # =============================================================================
+
+def _effective_diarize():
+    """Whether recordings are diarized: the active connector's default (the
+    processing task passes no per-user preference)."""
+    try:
+        from src.services.transcription import get_registry
+        connector = get_registry().get_active_connector()
+        return bool(connector.supports_diarization and connector.default_diarize)
+    except Exception:
+        return False
+
 
 @api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
 @login_required
@@ -2499,6 +2521,9 @@ Transcript:
 
 Notes: {recording.notes or 'None'}
 """
+    # Same output language as web chat (#412 audit S8).
+    if current_user.output_language:
+        system_prompt += f"\nPlease provide all your responses in {current_user.output_language}.\n"
 
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
@@ -2506,7 +2531,9 @@ Notes: {recording.notes or 'None'}
     messages.append({"role": "user", "content": user_message})
 
     try:
-        completion = call_chat_completion(messages, user_id=current_user.id)
+        # Same admin chat temperature as web chat (#412 audit S8).
+        from src.services.llm_settings import get_temperature
+        completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
         reply = completion.choices[0].message.content
 
         return jsonify({
@@ -2564,28 +2591,13 @@ def download_events_ics(recording_id):
     if not events:
         return jsonify({'error': 'No events found'}), 404
 
-    # Generate combined ICS
-    ics_lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Speakr//Events//EN']
-
-    for event in events:
-        ics_lines.append('BEGIN:VEVENT')
-        ics_lines.append(f'UID:{event.id}@speakr')
-        ics_lines.append(f'SUMMARY:{event.title}')
-        if event.start_datetime:
-            ics_lines.append(f'DTSTART:{event.start_datetime.strftime("%Y%m%dT%H%M%S")}')
-        if event.end_datetime:
-            ics_lines.append(f'DTEND:{event.end_datetime.strftime("%Y%m%dT%H%M%S")}')
-        if event.description:
-            ics_lines.append(f'DESCRIPTION:{event.description}')
-        if event.location:
-            ics_lines.append(f'LOCATION:{event.location}')
-        ics_lines.append('END:VEVENT')
-
-    ics_lines.append('END:VCALENDAR')
+    # Same builder as the web download (#412).
+    from src.services.calendar import generate_combined_ics
+    ics_text = generate_combined_ics(events)
 
     from flask import Response
     return Response(
-        '\r\n'.join(ics_lines),
+        ics_text,
         mimetype='text/calendar',
         headers={'Content-Disposition': f'attachment; filename=events-{recording_id}.ics'}
     )
