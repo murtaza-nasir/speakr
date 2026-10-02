@@ -1357,6 +1357,68 @@ Ask questions about a recording's content using AI.
 }
 ```
 
+**Sources.** With `"with_sources": true`, the transcript goes to the model with segment markers and the answer cites segments with short quotes. Citations in `response` become `[1]`, `[2]`, and `sources` lists them:
+
+```json
+{
+  "response": "The freeze covers travel only [1].",
+  "sources": [{"n": 1, "segment_index": 12, "start_time": 754.2, "end_time": 761.0,
+               "speaker": "Dana", "quote": "the budget freeze applies to travel only", "verified": true}]
+}
+```
+
+`verified` is `true` when the quote appears in that segment (ignoring case and spacing). A citation of a segment that does not exist has `segment_index: null` and `verified: false`.
+
+The notes in the chat context are the ones you can see: your own for your recordings, your personal notes for a recording shared with you. Chat sends the transcript to the chat model of the instance; `GET /api/v1/capabilities` reports `models_local`.
+
+---
+
+## Inquire
+
+### Ask Across Recordings
+
+```http
+POST /api/v1/inquire
+```
+
+**Scope:** `process`
+
+Answers a question from the recordings you can read, with Inquire's search (and the Inquire agent when the administrator turned it on). Needs Inquire mode on the instance (`403 feature_disabled` otherwise).
+
+```json
+{
+  "question": "What did we decide about the course redesign?",
+  "filters": {"recording_ids": [412, 398], "tag_ids": [], "speakers": [], "date_from": "2026-09-01", "date_to": null},
+  "scope": "own",
+  "mode": "auto",
+  "stream": false,
+  "history": []
+}
+```
+
+- `mode`: `rag`, `agent` (`403 feature_disabled` when the agent is off) or `auto` (the agent when it is on).
+- `scope`: `own`, `shared` or `all`, as on [List Recordings](#list-recordings).
+- `stream: true` returns the server-sent events of the web app's Inquire (`delta`, `status`, `agent_step`, `agent_summary`, `error`).
+
+**Response** (`stream: false`):
+
+```json
+{
+  "answer": "The redesign moves the project to week 6 [1] and drops the midterm [2].",
+  "citations": [
+    {"n": 1, "recording_id": 412, "title": "Weekly sync", "start_time": 754, "quote": null,
+     "url": "/recordings/412?t=754"},
+    {"n": 2, "recording_id": 398, "title": "Budget review", "start_time": null, "quote": null,
+     "url": "/recordings/398"}
+  ],
+  "mode_used": "agent",
+  "steps": 4,
+  "usage": null
+}
+```
+
+Every citation names a recording you can read. The question and the matching transcript passages go to the instance's chat model.
+
 ---
 
 ## Events

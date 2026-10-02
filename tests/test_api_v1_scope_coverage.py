@@ -23,7 +23,7 @@ EXPECTED = {
               "create_speaker", "update_speaker", "assign_speakers", "batch_update_recordings"},
     "account": {"update_auto_summarization"},
     "upload": {"upload_recording", "upload_from_asr_voice_recorder"},
-    "process": {"api_regenerate_title", "identify_speakers", "start_transcription", "start_summarization",
+    "process": {"inquire_v1", "api_regenerate_title", "identify_speakers", "start_transcription", "start_summarization",
                 "chat_with_recording", "batch_transcribe_recordings"},
     "delete": {"delete_recording", "delete_recording_audio", "batch_delete_recordings", "delete_tag",
                "delete_folder", "delete_speaker"},

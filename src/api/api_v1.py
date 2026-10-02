@@ -924,6 +924,7 @@ CAPABILITY_FEATURES = {
     'external_refs': True,
     'upload_idempotency': True,
     'share_links': True,
+    'chat_sources': True,
 }
 # search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
 
@@ -3133,10 +3134,10 @@ def start_summarization(recording_id):
 @require_scope('process')
 @login_required
 def chat_with_recording(recording_id):
-    """Chat about a recording's content."""
+    """Chat about a recording's content. with_sources: true returns numbered
+    sources with segment, time, speaker and a checked quote (mailr spec G9)."""
     from src.services.llm import chat_client, call_chat_completion
-    from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
-    from src.models import SystemSetting
+    from src.services.recording_chat import build_chat_messages, parse_sources
 
     recording = db.session.get(Recording, recording_id)
     if not recording:
@@ -3152,60 +3153,124 @@ def chat_with_recording(recording_id):
     if not data or not data.get('message'):
         return jsonify({'error': 'message is required'}), 400
 
-    user_message = data['message']
-    conversation_history = data.get('conversation_history', [])
+    with_sources = data.get('with_sources', False)
+    if not isinstance(with_sources, bool):
+        return jsonify({'error': 'with_sources must be true or false', 'code': 'invalid_parameter'}), 400
 
     # Check if chat client is available
     if chat_client is None:
         return jsonify({'error': 'Chat service not available'}), 503
 
-    # Format transcription (optionally with timestamps per the user's setting, #304)
-    _chat_ts = bool(current_user.chat_include_timestamps)
-    formatted_transcription = format_transcription_for_llm(
-        recording.transcription,
-        include_timestamps=_chat_ts,
-        template_format=_resolve_timestamp_template_format(
-            current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
-    )
-
-    # Get transcript limit
-    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-    if transcript_limit != -1:
-        formatted_transcription = formatted_transcription[:transcript_limit]
-
-    # Build system prompt
-    system_prompt = f"""You are a helpful assistant analyzing a recording. Answer questions based on the transcript below.
-
-Meeting: {recording.title}
-Participants: {recording.participants or 'Not specified'}
-
-Transcript:
-{formatted_transcription}
-
-Notes: {recording.notes or 'None'}
-"""
-    # Same output language as web chat (#412 audit S8).
-    if current_user.output_language:
-        system_prompt += f"\nPlease provide all your responses in {current_user.output_language}.\n"
-
-    # Build messages
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(conversation_history)
-    messages.append({"role": "user", "content": user_message})
-
+    messages, segments = build_chat_messages(recording, current_user, data['message'],
+                                             data.get('conversation_history', []), with_sources=with_sources)
     try:
-        # Same admin chat temperature as web chat (#412 audit S8).
         from src.services.llm_settings import get_temperature
         completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
         reply = completion.choices[0].message.content
-
-        return jsonify({
-            'response': reply,
-            'sources': []  # Could be enhanced to extract relevant segments
-        })
     except Exception as e:
         current_app.logger.error(f"Chat error: {e}")
         return jsonify({'error': 'Chat failed'}), 500
+
+    sources = []
+    if with_sources and segments:
+        reply, sources = parse_sources(reply, segments)
+    return jsonify({'response': reply, 'sources': sources})
+
+
+@api_v1_bp.route('/inquire', methods=['POST'])
+@require_scope('process')
+@login_required
+def inquire_v1():
+    """Ask a question across recordings (mailr spec G9).
+
+    Body: question, filters {recording_ids, tag_ids, speakers, date_from,
+    date_to}, scope (own|shared|all), mode (rag|agent|auto), stream, history.
+    """
+    import re as _re
+    from flask import Response, stream_with_context
+    from src.api.inquire import inquire_stream
+    from src.services.inquire_agent import agent_enabled
+    from src.services.recording_scope import scope_condition
+    if os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() != 'true':
+        return jsonify({'error': 'Inquire is turned off on this server', 'code': 'feature_disabled'}), 403
+    body = request.get_json(silent=True) or {}
+    question = (body.get('question') or '').strip()
+    if not question:
+        return jsonify({'error': 'question is required', 'code': 'invalid_parameter'}), 400
+    mode = body.get('mode', 'auto')
+    if mode not in ('rag', 'agent', 'auto'):
+        return jsonify({'error': 'mode must be rag, agent or auto', 'code': 'invalid_parameter'}), 400
+    if mode == 'agent' and not agent_enabled():
+        return jsonify({'error': 'The Inquire agent is turned off on this server', 'code': 'feature_disabled'}), 403
+    scope = body.get('scope', 'own')
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    filters = body.get('filters') or {}
+    if not isinstance(filters, dict):
+        return jsonify({'error': 'filters must be an object', 'code': 'invalid_parameter'}), 400
+
+    allowed = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(current_user.id, scope))]
+    if filters.get('recording_ids'):
+        wanted = {int(r) for r in filters['recording_ids'] if str(r).isdigit()}
+        allowed = [rid for rid in allowed if rid in wanted]
+    if not allowed:
+        return jsonify({'answer': 'There are no recordings to search with these filters.', 'citations': [],
+                        'mode_used': 'rag', 'steps': 0, 'usage': None})
+    data = {
+        'message': question,
+        'message_history': body.get('history') or [],
+        'filter_recording_ids': allowed,
+        'filter_tags': filters.get('tag_ids') or [],
+        'filter_speakers': filters.get('speakers') or [],
+        'filter_date_from': filters.get('date_from'),
+        'filter_date_to': filters.get('date_to'),
+    }
+    mode_used = 'agent' if (mode != 'rag' and agent_enabled()) else 'rag'
+    stream = inquire_stream(current_user, data, mode=mode)
+    if body.get('stream'):
+        return Response(stream_with_context(stream), mimetype='text/event-stream')
+
+    answer, steps, error = [], 0, None
+    for chunk in stream:
+        for line in str(chunk).splitlines():
+            if not line.startswith('data: '):
+                continue
+            try:
+                event = json.loads(line[6:])
+            except ValueError:
+                continue
+            if isinstance(event.get('delta'), str):
+                answer.append(event['delta'])
+            if 'error' in event:
+                error = event['error']
+            summary = event.get('agent_summary')
+            if isinstance(summary, dict) and isinstance(summary.get('steps'), int):
+                steps = summary['steps']
+    text = ''.join(answer)
+    if error and not text:
+        return jsonify({'error': error, 'code': 'inquire_failed'}), 502
+
+    # [Title @ 12:34](/recordings/412?t=754) -> [1], for recordings the caller can read.
+    readable = set(allowed)
+    citations, numbers = [], {}
+    link = _re.compile(r'\[([^\]]+)\]\(/recordings/(\d+)(?:\?t=(\d+(?:\.\d+)?))?\)')
+
+    def _cite(match):
+        rid = int(match.group(2))
+        if rid not in readable:
+            return match.group(1)
+        t = float(match.group(3)) if match.group(3) else None
+        key = (rid, t)
+        if key not in numbers:
+            rec = db.session.get(Recording, rid)
+            numbers[key] = len(citations) + 1
+            citations.append({'n': numbers[key], 'recording_id': rid, 'title': rec.title if rec else None,
+                              'start_time': t, 'quote': None,
+                              'url': f'/recordings/{rid}' + (f'?t={match.group(3)}' if match.group(3) else '')})
+        return f'[{numbers[key]}]'
+
+    text = link.sub(_cite, text)
+    return jsonify({'answer': text, 'citations': citations, 'mode_used': mode_used, 'steps': steps, 'usage': None})
 
 
 # =============================================================================
