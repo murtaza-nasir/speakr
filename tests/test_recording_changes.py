@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import (APIToken, Event, InternalShare, Recording, RecordingTag, RecordingTombstone,
-                        SystemSetting, Tag, User)
+                        Speaker, SystemSetting, Tag, User)
 from src.services import recording_changes as rc
 from src.utils.token_auth import hash_token
 
@@ -69,6 +69,7 @@ def world():
         Recording.query.filter(Recording.id.in_(rec_ids)).delete(synchronize_session=False)
         RecordingTombstone.query.filter(RecordingTombstone.user_id.in_(users)).delete(synchronize_session=False)
         Tag.query.filter(Tag.user_id.in_(users)).delete(synchronize_session=False)
+        Speaker.query.filter(Speaker.user_id.in_(users)).delete(synchronize_session=False)
         APIToken.query.filter(APIToken.user_id.in_(users)).delete(synchronize_session=False)
         User.query.filter(User.id.in_(users)).delete(synchronize_session=False)
         db.session.commit()
