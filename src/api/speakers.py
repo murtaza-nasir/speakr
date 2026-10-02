@@ -608,7 +608,8 @@ def merge_speaker_profiles():
             return jsonify({
                 'success': True,
                 'message': f'Successfully merged {len(source_ids)} speaker(s) into {merged_speaker.name}',
-                'speaker': merged_speaker.to_dict()
+                'speaker': merged_speaker.to_dict(),
+                'recordings_updated': getattr(merged_speaker, 'recordings_updated', 0)
             })
 
     except ValueError as e:

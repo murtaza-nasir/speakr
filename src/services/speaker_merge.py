@@ -104,10 +104,12 @@ def merge_speakers(target_id, source_ids, user_id):
 
     # Recordings keep speaker names, not speaker ids: without this the
     # recordings of a merged speaker kept showing the old name.
-    renamed = set()
+    renamed = {}
     for source in sources:
-        _, recording_ids = rename_speaker_in_recordings(user_id, source.name, target.name)
-        renamed.update(recording_ids)
+        _, changed = rename_speaker_in_recordings(user_id, source.name, target.name)
+        for rid, fields in changed.items():
+            renamed.setdefault(rid, set()).update(fields)
+    target.recordings_updated = len(renamed)   # for the route's answer, not a column
 
     # Delete source speakers
     for source in sources:
@@ -130,7 +132,7 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
     Covers the transcript segments, the participants list, the diarization
     label map and the Inquire chunks' speaker column. Names match ignoring
     case and surrounding spaces, as saved speakers do. Does not commit.
-    Returns (chunks_updated, ids of the recordings changed).
+    Returns (chunks_updated, {recording id: set of the fields changed}).
     """
     from src.models import Recording, TranscriptChunk
 
@@ -142,9 +144,9 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
         chunk.speaker_name = new_name
         chunks_updated += 1
 
-    changed = []
+    changed = {}
     for recording in Recording.query.filter_by(user_id=user_id).all():
-        updated = False
+        fields = set()
 
         if recording.participants:
             names = [p.strip() for p in recording.participants.split(',') if p.strip()]
@@ -155,7 +157,7 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
                     if not any(_same_name(p, m) for m in merged):
                         merged.append(p)
                 recording.participants = ', '.join(merged)
-                updated = True
+                fields.add('participants')
 
         if recording.transcription:
             try:
@@ -170,7 +172,7 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
                         hit = True
                 if hit:
                     recording.transcription = json.dumps(segments)
-                    updated = True
+                    fields.add('transcription')
 
         # The label map records which name each diarization label shows;
         # without this the next save would think the voice was removed.
@@ -178,23 +180,29 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
         if isinstance(label_map, dict) and any(_same_name(n, old_name) for n in label_map.values()):
             recording.speaker_label_map = {
                 label: (new_name if _same_name(n, old_name) else n) for label, n in label_map.items()}
-            updated = True
+            fields.add('speaker_label_map')
 
-        if updated:
-            changed.append(recording.id)
+        if fields:
+            changed.setdefault(recording.id, set()).update(fields)
     return chunks_updated, changed
 
 
-def refresh_renamed_recordings(recording_ids):
+def refresh_renamed_recordings(changed):
     """After names change in committed recordings: rebuild their Inquire
-    chunks (the chunk text holds the names) and rewrite their auto-exports."""
-    if not recording_ids:
+    chunks (the chunk text holds the names), rewrite their auto-exports and
+    send recording.updated for each. changed: {recording id: fields}."""
+    if not changed:
         return
     from flask import current_app
     from src.api import recordings as recordings_api
     from src.file_exporter import ENABLE_AUTO_EXPORT, export_recording
-    for rid in sorted(recording_ids):
+    from src.models import Recording
+    from src.services.webhook_dispatch import emit_recording_updated
+    for rid in sorted(changed):
         recordings_api.reindex_recording_chunks_async(rid)
+        recording = db.session.get(Recording, rid)
+        if recording is not None:
+            emit_recording_updated(recording, sorted(changed[rid]))
         if ENABLE_AUTO_EXPORT:
             try:
                 export_recording(rid)

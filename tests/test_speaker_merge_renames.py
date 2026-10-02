@@ -4,7 +4,8 @@ Recordings keep speaker names, not speaker ids. A merge in Speaker Management
 moved the voice samples and snippets to the kept speaker, but every recording
 of a merged speaker went on showing the old name. Merge and rename now share
 rename_speaker_in_recordings, and both rebuild the Inquire chunks and rewrite
-the exports of the recordings they change.
+the exports of the recordings they change, and send recording.updated for
+each (mailr spec, note of 1 Oct 2026).
 
 SHARED-DB: users, speakers, recordings and chunks are removed afterwards.
 """
@@ -99,10 +100,16 @@ def _speakers(rid):
 
 def test_a_merge_renames_the_merged_speaker_in_every_recording(world):
     reindex, flag, export = _effects()
-    with reindex as m_reindex, flag, export as m_export:
+    with reindex as m_reindex, flag, export as m_export, \
+            patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
         resp = _client(world["me"]).post("/speakers/merge",
                                          json={"target_id": world["keep"], "source_ids": [world["old"]]})
     assert resp.status_code == 200, resp.get_json()
+    assert resp.get_json()["recordings_updated"] == 2
+    updates = {c.kwargs["data"]["recording_id"]: c.kwargs["data"]["fields_changed"]
+               for c in emit.call_args_list if c.kwargs["event_type"] == "recording.updated"}
+    assert updates == {world["only_old"]: ["participants", "speaker_label_map", "transcription"],
+                       world["both"]: ["participants", "transcription"]}
     with app.app_context():
         segs, parts, label_map = _speakers(world["only_old"])
         assert segs == ["Murtaza", "Bob"] and parts == "Bob, Murtaza"
