@@ -938,69 +938,10 @@ def update_speakers(recording_id):
         if speaker_map is None:
             return jsonify({'error': 'No speaker map provided'}), 400
 
-        transcription_text = recording.transcription
-        is_json = False
-        try:
-            transcription_data = json.loads(transcription_text)
-            # Updated check for our new simplified JSON format (a list of segment objects)
-            is_json = isinstance(transcription_data, list)
-        except (json.JSONDecodeError, TypeError):
-            is_json = False
-
-        speaker_names_used = []
-
-        label_to_name = {}
-        seconds_by_key = None
-        if is_json:
-            from src.services.voice_profiles import speech_seconds_by_label
-            seconds_by_key = speech_seconds_by_label(transcription_data)
-            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
-            recording.transcription = json.dumps(transcription_data)
-            recording.participants = participants_from_segments(transcription_data)
-
-        else:
-            # Handle plain text transcript
-            new_participants = []
-            for speaker_label, new_name_info in speaker_map.items():
-                new_name = new_name_info.get('name', '').strip()
-                # If isMe is checked but no name provided, use current user's name
-                if new_name_info.get('isMe') and not new_name:
-                    new_name = current_user.name or 'Me'
-
-                if new_name:
-                    transcription_text = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription_text, flags=re.IGNORECASE)
-                    if new_name not in new_participants:
-                        new_participants.append(new_name)
-
-            recording.transcription = transcription_text
-            if new_participants:
-                recording.participants = ', '.join(new_participants)
-            speaker_names_used = new_participants
-
-        # Update speaker usage statistics
-        if speaker_names_used:
-            update_speaker_usage(speaker_names_used)
-
-        # Update speaker voice embeddings and snippets if available
-        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
-
-        db.session.commit()
-
-        # Speaker names changed the transcription text — rebuild the Inquire
-        # chunks so semantic search answers with the applied names, not the
-        # raw SPEAKER_XX labels. Background + best-effort.
-        reindex_recording_chunks_async(recording_id)
-
-        summary_queued = False
-        if regenerate_summary:
-            current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after speaker update.")
-            job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording.id,
-                job_type='summarize',
-                params={'user_id': current_user.id}
-            )
-            summary_queued = True
+        # Same rename and follow-up steps as API v1 /speakers/assign (#412).
+        from src.services.speaker_assignment import apply_speaker_names
+        result = apply_speaker_names(recording, current_user, speaker_map, regenerate_summary)
+        summary_queued = result['summary_queued']
 
         # Return recording with per-user status
         recording_dict = recording.to_dict(viewer_user=current_user)

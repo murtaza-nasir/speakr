@@ -2249,60 +2249,12 @@ def assign_speakers(recording_id):
             else:
                 return jsonify({'error': f'Invalid value type for speaker "{label}"'}), 400
 
-        # --- Apply names exactly as the web app's update_speakers does ---
-        from src.services.speaker import apply_speaker_map, participants_from_segments, update_voice_profiles
-        from src.services.voice_profiles import speech_seconds_by_label
-
-        transcription_text = recording.transcription or ''
-        try:
-            transcription_data = json.loads(transcription_text)
-            is_json = isinstance(transcription_data, list)
-        except (json.JSONDecodeError, TypeError):
-            is_json = False
-
-        embeddings_updated = 0
-        snippets_created = 0
-        if is_json:
-            seconds_by_key = speech_seconds_by_label(transcription_data)
-            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
-            recording.transcription = json.dumps(transcription_data)
-            recording.participants = participants_from_segments(transcription_data)
-            if speaker_names_used:
-                update_speaker_usage(speaker_names_used)
-            embeddings_updated, snippets_created = update_voice_profiles(
-                recording, label_to_name, current_user, seconds_by_key)
-        else:
-            # Plain text transcript
-            new_participants = []
-            for speaker_label, new_name_info in speaker_map.items():
-                new_name = new_name_info.get('name', '').strip()
-                if new_name_info.get('isMe') and not new_name:
-                    new_name = current_user.name or 'Me'
-                if new_name:
-                    transcription_text = re.sub(
-                        r'\[\s*' + re.escape(speaker_label) + r'\s*\]',
-                        f'[{new_name}]',
-                        transcription_text,
-                        flags=re.IGNORECASE
-                    )
-                    if new_name not in new_participants:
-                        new_participants.append(new_name)
-            recording.transcription = transcription_text
-            recording.participants = ', '.join(new_participants)
-            if new_participants:
-                update_speaker_usage(new_participants)
-
-        db.session.commit()
-
-        summary_queued = False
-        if regenerate_summary:
-            job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording.id,
-                job_type='summarize',
-                params={'user_id': current_user.id}
-            )
-            summary_queued = True
+        # Same rename and follow-up steps as the web update_speakers (#412).
+        from src.services.speaker_assignment import apply_speaker_names
+        result = apply_speaker_names(recording, current_user, speaker_map, regenerate_summary)
+        summary_queued = result['summary_queued']
+        embeddings_updated = result['embeddings_updated']
+        snippets_created = result['snippets_created']
 
         return jsonify({
             'success': True,

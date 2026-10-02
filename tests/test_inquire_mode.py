@@ -160,8 +160,15 @@ def test_speaker_and_transcript_edits_reindex_inquire_chunks():
     assert hasattr(rec, 'reindex_recording_chunks_async'), "reindex helper missing"
     us = _inspect.getsource(rec.update_speakers)
     ut = _inspect.getsource(rec.update_transcript)
-    assert 'reindex_recording_chunks_async(recording_id)' in us, \
-        "update_speakers must reindex Inquire chunks after a speaker rename"
+    # Speaker renames go through the shared service (web and API v1, #412),
+    # which rebuilds the chunks.
+    from src.services import speaker_assignment as sa
+    from src.api import api_v1
+    assert 'apply_speaker_names(' in us, "update_speakers must use the shared speaker service"
+    assert 'apply_speaker_names(' in _inspect.getsource(api_v1.assign_speakers), \
+        "API v1 /speakers/assign must use the shared speaker service"
+    assert 'reindex_recording_chunks_async(recording.id)' in _inspect.getsource(sa.apply_speaker_names), \
+        "the speaker service must reindex Inquire chunks after a speaker rename"
     assert 'reindex_recording_chunks_async(recording_id)' in ut, \
         "update_transcript must reindex Inquire chunks after a transcript edit"
 
