@@ -720,10 +720,6 @@ def account():
             # Empty string = use the default template (recording_{{id}})
             current_user.export_filename_template = template_value if template_value else None
 
-        # Only update diarize if it's not locked by env var
-        if 'ASR_DIARIZE' not in os.environ:
-            current_user.diarize = 'diarize' in request.form
-
         db.session.commit()
 
         # Return JSON response for AJAX requests
@@ -752,8 +748,6 @@ def account():
     from src.tasks.processing import _user_title_instructions
     default_title_prompt_text = _user_title_instructions(None)[0]
 
-    asr_diarize_locked = 'ASR_DIARIZE' in os.environ
-    ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'false').lower() == 'true'
     USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
     USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'
     ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
@@ -841,8 +835,6 @@ def account():
                            enable_auto_deletion=ENABLE_AUTO_DELETION,
                            enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                            user_admin_groups=user_admin_groups,
-                           asr_diarize_locked=asr_diarize_locked,
-                           asr_diarize_env_value=ASR_DIARIZE,
                            is_team_admin=is_team_admin,
                            sso_enabled=sso_enabled,
                            sso_provider_name=sso_config.get('provider_name', 'SSO'),

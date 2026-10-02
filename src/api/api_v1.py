@@ -795,7 +795,9 @@ def get_current_user():
             'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
             'editor_autosave': bool(current_user.editor_autosave),
             'notify_email_on_completion': bool(current_user.notify_email_on_completion),
-            'diarize': bool(current_user.diarize),
+            # The per-user diarize preference has had no control since Aug 2025
+            # and was never read; report what transcription actually does.
+            'diarize': _effective_diarize(),
         },
         'group_memberships': memberships,
     })
@@ -1472,6 +1474,17 @@ def get_recording_status(recording_id):
 # =============================================================================
 # Title Regeneration
 # =============================================================================
+
+def _effective_diarize():
+    """Whether recordings are diarized: the active connector's default (the
+    processing task passes no per-user preference)."""
+    try:
+        from src.services.transcription import get_registry
+        connector = get_registry().get_active_connector()
+        return bool(connector.supports_diarization and connector.default_diarize)
+    except Exception:
+        return False
+
 
 @api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
 @login_required
