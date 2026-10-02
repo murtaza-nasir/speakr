@@ -25,6 +25,8 @@ class Share(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     share_summary = db.Column(db.Boolean, default=True)
     share_notes = db.Column(db.Boolean, default=True)
+    # After this time the public link answers 404 (API v1 expires_in_days).
+    expires_at = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship('User', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
     recording = db.relationship('Recording', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
@@ -39,7 +41,8 @@ class Share(db.Model):
             'share_summary': self.share_summary,
             'share_notes': self.share_notes,
             'recording_title': self.recording.title if self.recording else "N/A",
-            'audio_available': self.recording.audio_deleted_at is None if self.recording else True
+            'audio_available': self.recording.audio_deleted_at is None if self.recording else True,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
         }
 
 

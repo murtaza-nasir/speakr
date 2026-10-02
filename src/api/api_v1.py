@@ -923,6 +923,7 @@ CAPABILITY_FEATURES = {
     'webhook_signature_v2': True,
     'external_refs': True,
     'upload_idempotency': True,
+    'share_links': True,
 }
 # search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
 
@@ -1453,6 +1454,76 @@ def delete_external_ref(recording_id, ref_id):
         return jsonify({'error': 'Reference not found', 'code': 'not_found'}), 404
     db.session.delete(row)
     db.session.commit()
+    return '', 204
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/share', methods=['POST'])
+@require_scope('share')
+@login_required
+def create_public_share(recording_id):
+    """Create or reuse a public link (mailr spec G10). Notes are not shared
+    unless asked, and a reused link's flags change only with update_existing."""
+    from flask import url_for
+    from src.services.public_shares import get_or_create, share_dict
+    if os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() != 'true':
+        return jsonify({'error': 'Public sharing is turned off on this server', 'code': 'feature_disabled'}), 403
+    if not getattr(current_user, 'can_share_publicly', True):
+        return jsonify({'error': 'You may not create public links', 'code': 'not_permitted'}), 403
+    if not request.is_secure:
+        return jsonify({'error': 'Public links need an HTTPS connection', 'code': 'https_required'}), 403
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    data = request.get_json(silent=True) or {}
+    flags = {}
+    for key, default in (('share_summary', True), ('share_notes', False), ('force_new', False),
+                         ('update_existing', False)):
+        value = data.get(key, default)
+        if not isinstance(value, bool):
+            return jsonify({'error': f'{key} must be true or false', 'code': 'invalid_parameter'}), 400
+        flags[key] = value
+    days = data.get('expires_in_days')
+    if days is not None and (not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= 3650):
+        return jsonify({'error': 'expires_in_days must be 1 to 3650', 'code': 'invalid_parameter'}), 400
+    share, created, differ = get_or_create(recording, current_user, flags['share_summary'], flags['share_notes'],
+                                           force_new=flags['force_new'], update_existing=flags['update_existing'],
+                                           expires_in_days=days)
+    return jsonify({
+        'share_url': url_for('shares.view_shared_recording', public_id=share.public_id, _external=True),
+        'existing': not created,
+        'flags_differ': differ,
+        'share': share_dict(share),
+    }), 201 if created else 200
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/shares', methods=['GET'])
+@require_scope('share')
+@login_required
+def list_public_shares(recording_id):
+    """Your public links of a recording."""
+    from flask import url_for
+    from src.models import Share
+    from src.services.public_shares import share_dict
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found', 'code': 'not_found'}), 404
+    shares = (Share.query.filter_by(recording_id=recording.id, user_id=current_user.id)
+              .order_by(Share.created_at.desc()).all())
+    return jsonify({'shares': [dict(share_dict(s), share_url=url_for('shares.view_shared_recording',
+                                                                     public_id=s.public_id, _external=True))
+                               for s in shares]})
+
+
+@api_v1_bp.route('/shares/<int:share_id>', methods=['DELETE'])
+@require_scope('share')
+@login_required
+def revoke_public_share(share_id):
+    from src.models import Share
+    from src.services.public_shares import revoke
+    share = db.session.get(Share, share_id)
+    if share is None or share.user_id != current_user.id:
+        return jsonify({'error': 'Share not found', 'code': 'not_found'}), 404
+    revoke(share)
     return '', 204
 
 

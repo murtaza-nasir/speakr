@@ -175,3 +175,18 @@ def test_speaker_contact_columns(tmp_path, fixture):
     assert con.execute("SELECT name, email, aliases FROM speaker WHERE id = 4").fetchone() == ("Dana", None, None)
     con.close()
 
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])
+def test_share_expiry_column(tmp_path, fixture):
+    """G10: share.expires_at arrives empty, so existing links never expire."""
+    db_path, con = _load(tmp_path, fixture)
+    if "share" not in {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        con.close()
+        pytest.skip("share table not in this release")
+    con.close()
+    _upgrade(db_path)
+    _upgrade(db_path)
+    con = sqlite3.connect(db_path)
+    assert "expires_at" in _columns(con, "share")
+    con.close()
+

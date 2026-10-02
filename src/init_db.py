@@ -258,6 +258,9 @@ def _run_migrations(app, engine):
 
         run_once(engine, '0002_backfill_recording_updated_at', _backfill_recording_updated_at,
                  logger=app.logger)
+        # Public share link expiry (mailr spec G10).
+        if add_column_if_not_exists(engine, 'share', 'expires_at', 'DATETIME'):
+            app.logger.info("Added expires_at column to share table")
         # Speaker contact details (mailr spec G6).
         if add_column_if_not_exists(engine, 'speaker', 'email', 'VARCHAR(320)'):
             app.logger.info("Added email column to speaker table")

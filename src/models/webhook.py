@@ -29,6 +29,8 @@ WEBHOOK_EVENT_TYPES = (
     'recording.events.extracted',
     'recording.updated',
     'recording.deleted',
+    'recording.share.created',
+    'recording.share.revoked',
     'webhook.test',
 )
 

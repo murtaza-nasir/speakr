@@ -154,6 +154,10 @@ The "Share Notes" option controls whether your personal notes are visible. These
 
 Once you've selected your options, click "Create Share Link" to generate the secure URL. The link appears immediately in the modal, ready to copy to your clipboard. This link is permanent until you explicitly revoke it, so recipients can bookmark it for future reference.
 
+### Share Links from Other Tools
+
+Integrations can create, list and revoke share links through the API (see [Share Links](api-reference.md#share-links)) with a token that has the `share` scope. A link created there shares the summary only unless notes are asked for, can expire after a number of days, and an existing link keeps its settings unless the request asks to change them.
+
 ## What Recipients Experience
 
 ![Shared Recording View](../assets/images/screenshots/Share link.png)

@@ -889,6 +889,64 @@ DELETE /api/v1/recordings/{id}
 
 ---
 
+## Share Links
+
+### Create or Reuse a Share Link
+
+```http
+POST /api/v1/recordings/{id}/share
+```
+
+**Scope:** `share`
+
+Only the recording's owner can create a link. Without `force_new`, the newest link of the recording is reused.
+
+```json
+{"share_summary": true, "share_notes": false, "force_new": false, "update_existing": false, "expires_in_days": 30}
+```
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `share_summary` | `true` | Show the summary on the shared page |
+| `share_notes` | `false` | Show the owner's notes. Off unless asked (the web dialog defaults to on). |
+| `force_new` | `false` | Create a new link even when one exists |
+| `update_existing` | `false` | Give a reused link the flags of this request. Without it a reused link keeps its flags, and `flags_differ` says when they differ from the request. |
+| `expires_in_days` | none | 1 to 3650; after that the link answers `404` |
+
+`201` for a new link, `200` for a reused one:
+
+```json
+{
+  "share_url": "https://speakr.example.com/share/AbC123",
+  "existing": true,
+  "flags_differ": false,
+  "share": {"id": 31, "share_summary": true, "share_notes": false,
+            "created_at": "2026-10-02T09:00:00.000000Z", "expires_at": null}
+}
+```
+
+`403` with `code` `feature_disabled` (public sharing is off), `not_permitted` (your account may not create public links) or `https_required` (the request did not arrive over HTTPS; behind a reverse proxy Speakr reads `X-Forwarded-Proto`, see `TRUSTED_PROXY_HOPS`).
+
+### List Share Links
+
+```http
+GET /api/v1/recordings/{id}/shares
+```
+
+**Scope:** `share`
+
+Your links of the recording, newest first, each with its `share_url`.
+
+### Revoke a Share Link
+
+```http
+DELETE /api/v1/shares/{share_id}
+```
+
+**Scope:** `share`
+
+`204`. The link stops working at once.
+
 ## Search
 
 ### Search Recordings
@@ -1632,6 +1690,8 @@ These are the event types a webhook can subscribe to:
 | `recording.events.extracted` | Calendar events are extracted |
 | `recording.updated` | A recording is updated |
 | `recording.deleted` | A recording is deleted |
+| `recording.share.created` | A public share link is created |
+| `recording.share.revoked` | A public share link is revoked |
 | `webhook.test` | A manual test delivery (see Test Webhook below) |
 
 ### List Webhooks
