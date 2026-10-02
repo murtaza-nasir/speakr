@@ -791,7 +791,8 @@ def get_current_user():
             'extract_events': bool(current_user.extract_events),
             'auto_speaker_labelling': bool(current_user.auto_speaker_labelling),
             'auto_speaker_labelling_threshold': current_user.auto_speaker_labelling_threshold,
-            'auto_summarization': bool(current_user.auto_summarization),
+            # None means enabled, as in processing (#412 audit S10).
+            'auto_summarization': current_user.auto_summarization is not False,
             'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
             'editor_autosave': bool(current_user.editor_autosave),
             'notify_email_on_completion': bool(current_user.notify_email_on_completion),
@@ -2514,6 +2515,9 @@ Transcript:
 
 Notes: {recording.notes or 'None'}
 """
+    # Same output language as web chat (#412 audit S8).
+    if current_user.output_language:
+        system_prompt += f"\nPlease provide all your responses in {current_user.output_language}.\n"
 
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
@@ -2521,7 +2525,9 @@ Notes: {recording.notes or 'None'}
     messages.append({"role": "user", "content": user_message})
 
     try:
-        completion = call_chat_completion(messages, user_id=current_user.id)
+        # Same admin chat temperature as web chat (#412 audit S8).
+        from src.services.llm_settings import get_temperature
+        completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
         reply = completion.choices[0].message.content
 
         return jsonify({
