@@ -1,18 +1,3 @@
-/* App logo wrapper — gives the colourful Speakr icon a quiet, theme-
-   appropriate outline that sits FLUSH with the visible icon edge (the
-   PNGs are now trim-cropped so there's no transparent margin to fight
-   with) wherever the icon appears: top-left header, page-header, inquire
-   header, share view, settings About page.
-
-   Uses box-shadow rather than border + padding because:
-     - box-shadow doesn't change the image's box dimensions, so every
-       existing utility size (w-7 h-7, h-12 w-12, etc.) keeps producing
-       the same footprint — no shrinkage from box-sizing math.
-     - The two layered shadows give a hairline outline (first shadow)
-       PLUS a soft drop (second) without two stacked elements.
-   border-radius: 22% matches the iOS-style rounded-square corner of the
-   Speakr icon so the outline traces the icon's actual shape rather than
-   cutting across it. */
 /* The paper-fold S has a transparent background and stands on its own:
    no frame, no tint, the same apricot in every theme. */
 .app-logo {
