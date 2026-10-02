@@ -77,6 +77,8 @@ The **Title Generation Prompt** field sets the instructions for the titles Speak
 
 Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title Prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
 
+The naming template comes from the first tag on the recording that has one, then from the recording's folder, then from your default template. The same template is applied when you regenerate a title from the recording header. When a recording is processed again, for example after you reprocess its transcription, a generated title is generated again with the current tags and templates; a title you typed or edited is kept. A merged recording without a typed title is titled the same way as an upload.
+
 ### Transcription Hints
 
 Below the summary prompt, you'll find the **Transcription Hints** section with two fields that help improve transcription accuracy:
@@ -124,6 +126,12 @@ The Preferences tab is the home for display and editor behaviour settings that s
 Three language settings shape your Speakr experience. The interface language dropdown immediately transforms all menus, buttons, and messages to your chosen language; the transcription language field sets a default ISO 639-1 code that the recognition service uses to optimise accuracy when auto-detect is too slow or ambiguous; and the preferred output language controls the language of titles, summaries, and chat responses regardless of the source audio's language. Leaving the transcription language on **Auto-detect** is the right default for multilingual content.
 
 These settings used to live on the Account Information tab. They moved here so all preferences that affect your day-to-day Speakr experience live in one place.
+
+### Timezone
+
+Dates in generated titles, such as the `{{date}}` and `{{time}}` variables of a naming template, are written in your timezone. The same timezone is used for dates in exported files and for the dates the AI is given when it writes summaries and extracts events, so "tomorrow" in a meeting is counted from your calendar day.
+
+With **Automatic (this device)**, the default, your timezone is taken from the browser you use and updated when it changes, for example after travelling. To keep one timezone regardless of the device, choose it from the list. Dates shown on pages, such as the meeting date in the sidebar, always follow the device you are using. If no browser has reported a timezone for you yet (for example, for recordings created only through the API or the watch folder), the administrator's default timezone is used.
 
 ### Meeting Date from Filename
 

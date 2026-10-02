@@ -215,13 +215,13 @@ If the recording was uploaded with a tag, folder, or user-default prompt that us
 
 ## Event Extraction
 
-When event extraction is enabled in your account settings, Speakr automatically identifies calendar-worthy events from your recordings during the summary generation process. This feature intelligently detects meetings, deadlines, appointments, and other time-sensitive items mentioned in your conversations.
+When event extraction is enabled in your account settings, calendar-worthy events in each recording are identified after it is processed. Events are extracted whether or not a summary is generated: with automatic summarization turned off, they are found in the transcript itself. This feature intelligently detects meetings, deadlines, appointments, and other time-sensitive items mentioned in your conversations.
 
 ![Event Extraction](../assets/images/screenshots/event extraction.png)
 
 ### Viewing Extracted Events
 
-After a recording is processed with event extraction enabled, an Events tab appears in the right panel if any events were detected. The tab shows a clean list of identified events, each displaying the event title, date, time, and description extracted from the conversation. Events are automatically parsed with intelligent date recognition that understands relative references like "next Tuesday" or "in two weeks" based on the recording date.
+After a recording is processed with event extraction enabled, an Events tab appears in the right panel if any events were detected. The tab shows a clean list of identified events, each displaying the event title, date, time, and description extracted from the conversation. Events are automatically parsed with intelligent date recognition that understands relative references like "next Tuesday" or "in two weeks" based on the recording date, counted in your timezone (Account → Preferences).
 
 ### Exporting to Calendar
 
@@ -229,7 +229,7 @@ Each extracted event can be exported as an ICS file that's compatible with virtu
 
 ### Enabling Event Extraction
 
-Event extraction can be toggled on or off in your Account Settings under the Custom Prompts tab. When enabled, the system adds event extraction instructions to your summary prompt, asking the AI to identify calendar-worthy items during summary generation. This feature works with any LLM provider configured in your system and adapts to different conversation styles, from formal meetings to casual discussions. The quality of event extraction depends on the AI model being used, with more advanced models providing better detection of nuanced scheduling references.
+Event extraction can be toggled on or off in your Account Settings under the Custom Prompts tab. When it is enabled, the AI is asked in a separate request to identify calendar-worthy items, with the summary when there is one and the transcript otherwise. This feature works with any LLM provider configured in your system and adapts to different conversation styles, from formal meetings to casual discussions. The quality of event extraction depends on the AI model being used, with more advanced models providing better detection of nuanced scheduling references.
 
 ## Interactive Chat
 

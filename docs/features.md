@@ -250,7 +250,7 @@ Set up a watched directory where dropped audio files are automatically processed
 
 ### Automated Export
 
-Automatically export completed transcriptions and summaries to markdown files after processing. Configure the export directory to point to your Obsidian vault, Logseq directory, or any other note-taking system for seamless integration. Choose what to export (transcription, summary, or both) and let Speakr maintain synchronized copies of your recordings in your preferred format. Custom export templates allow you to format the output to match your note-taking workflow. Exports are organized in per-user subdirectories for multi-user instances.
+Automatically export completed transcriptions and summaries to markdown files after processing. Configure the export directory to point to your Obsidian vault, Logseq directory, or any other note-taking system for seamless integration. Choose what to export (transcription, summary, or both) and let Speakr maintain synchronized copies of your recordings in your preferred format. Custom export templates allow you to format the output to match your note-taking workflow. When a recording's tag and its folder both have an export template, the tag's template is used; otherwise the folder's, and then your default. Dates in exported files and file names are written in your timezone. Exports are organized in per-user subdirectories for multi-user instances.
 
 ### Custom Vocabulary & Transcription Hints
 

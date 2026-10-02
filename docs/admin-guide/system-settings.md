@@ -37,6 +37,10 @@ Setting this too low causes longer recordings to fail even when the transcriptio
 
 Your optimal timeout depends on your transcription service's performance and your users' recording lengths. Monitor processing times for successful transcriptions and set the timeout comfortably above your longest normal processing time. If you regularly process multi-hour recordings, you might need 3,600 seconds or more.
 
+## Default Timezone
+
+Dates in generated titles (naming-template dates and default titles), in exported files and in the dates given to the AI are written in each user's timezone. A user's timezone is reported by their browser or chosen in Account → Preferences. The default timezone is used for users without one, for example accounts that only use the API or the watch folder. On a new installation it is UTC; if the `TIMEZONE` variable from earlier versions is set, its value is used as the initial default. Stored dates and API responses are always UTC.
+
 ## Recording Disclaimer
 
 The recording disclaimer appears before users start any recording session, making it perfect for legal notices, policy reminders, or usage guidelines. This markdown-formatted message ensures users understand their responsibilities before creating content.
