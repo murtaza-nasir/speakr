@@ -355,6 +355,37 @@ def _end_transaction_before_external_call(*instances):
         session.expire_on_commit = previous
 
 
+def finish_processing(recording_id):
+    """The last step of every processing path (#412).
+
+    Marks the recording COMPLETED, then applies team-tag auto-shares, writes the
+    auto-export and builds the Inquire chunks. Every exit of the pipeline calls
+    this (title only, summary, empty or skipped summary, short transcription),
+    so none of them can skip a step. The steps after COMPLETED are best-effort:
+    a failure is logged and the recording stays COMPLETED.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return
+    recording.status = 'COMPLETED'
+    recording.completed_at = datetime.utcnow()
+    db.session.commit()
+    try:
+        apply_team_tag_auto_shares(recording_id)
+    except Exception as e:
+        current_app.logger.error(f"Auto-shares failed for recording {recording_id} (recording stays COMPLETED): {e}")
+    if ENABLE_AUTO_EXPORT:
+        try:
+            export_recording(recording_id)
+        except Exception as e:
+            current_app.logger.error(f"Auto-export failed for recording {recording_id} (recording stays COMPLETED): {e}")
+    if ENABLE_INQUIRE_MODE:
+        try:
+            process_recording_chunks(recording_id)
+        except Exception as e:
+            current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
+
+
 def generate_title_task(app_context, recording_id, will_auto_summarize=False):
     """Generates only a title for a recording based on transcription.
 
@@ -376,10 +407,9 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         from src.utils.titles import is_placeholder_title
         if not is_placeholder_title(recording.title, recording.original_filename):
             current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
-            if not will_auto_summarize:
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
             db.session.commit()
+            if not will_auto_summarize:
+                finish_processing(recording_id)
             return
 
         # The title step (naming template, AI title, fallbacks) is shared with the
@@ -393,23 +423,13 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         else:
             current_app.logger.warning(f"Could not generate title for recording {recording_id}")
 
-        # Only set status to COMPLETED if auto-summarization won't happen next
-        # If auto-summarization is enabled, the summary task will set COMPLETED
+        db.session.commit()
+        # Without a summary to follow, the title is the last step: finish here.
+        # Otherwise the summary task finishes the recording.
         if not will_auto_summarize:
-            recording.status = 'COMPLETED'
-            recording.completed_at = datetime.utcnow()
-            db.session.commit()
-            current_app.logger.info(f"Title generation complete, status set to COMPLETED for recording {recording_id}")
-
-            # Process chunks for semantic search after completion (if inquire mode is enabled)
-            if ENABLE_INQUIRE_MODE:
-                try:
-                    process_recording_chunks(recording_id)
-                except Exception as e:
-                    current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
+            finish_processing(recording_id)
+            current_app.logger.info(f"Title generation complete, recording {recording_id} finished")
         else:
-            # Just commit the title without changing status
-            db.session.commit()
             current_app.logger.info(f"Title generation complete, leaving status unchanged (auto-summarization will follow) for recording {recording_id}")
 
 
@@ -619,8 +639,8 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
             recording.summary = "[Summary skipped due to short transcription]"
-            recording.status = 'COMPLETED'
             db.session.commit()
+            finish_processing(recording_id)
             return
 
         # Get user preferences and tag custom prompts
@@ -889,53 +909,23 @@ Summarization Instructions:
                 if recording.owner and recording.owner.extract_events:
                     extract_events_from_transcript(recording_id, formatted_transcription, summary)
 
-                # Mark as completed AFTER event extraction
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
-                # Calculate and save summarization duration
+                # Events are extracted before the recording is finished.
                 summarization_end_time = time.time()
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
                 current_app.logger.info(f"Summarization completed for recording {recording_id} in {recording.summarization_duration_seconds}s.")
-
-                # Best-effort post-completion side effects. The recording is
-                # already committed COMPLETED with a good summary; if either of
-                # these throws it must NOT bubble to the outer except, which
-                # would overwrite the summary with an error and flip the row to
-                # FAILED (a genuinely-complete recording corrupted by a share/
-                # export hiccup).
-                try:
-                    apply_team_tag_auto_shares(recording_id)
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
-                except Exception as post_err:
-                    current_app.logger.error(f"Post-completion step failed for recording {recording_id} (recording stays COMPLETED): {post_err}")
             else:
                 current_app.logger.warning(f"Empty summary generated for recording {recording_id}")
                 recording.summary = "[Summary not generated]"
-                recording.status = 'COMPLETED'
-                # Calculate and save summarization duration even for empty summary
                 summarization_end_time = time.time()
                 recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
                 db.session.commit()
 
-                # Best-effort post-completion side effects (see the non-empty
-                # branch above): must not corrupt the completed recording.
-                try:
-                    apply_team_tag_auto_shares(recording_id)
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
-                except Exception as post_err:
-                    current_app.logger.error(f"Post-completion step failed for recording {recording_id} (recording stays COMPLETED): {post_err}")
-
-            # Process chunks for semantic search after completion (if inquire mode is enabled).
-            # Mirrors the non-summary path in generate_title_task; without this, Inquire
-            # embeddings are never generated when auto-summarization is enabled (issue #305).
-            if ENABLE_INQUIRE_MODE:
-                try:
-                    process_recording_chunks(recording_id)
-                except Exception as chunk_err:
-                    current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {chunk_err}")
+            # Status, auto-shares, export and Inquire chunks (#305, #412). The
+            # steps after COMPLETED are best-effort inside finish_processing, so
+            # a share/export hiccup cannot reach the except below and overwrite
+            # a good summary with an error.
+            finish_processing(recording_id)
 
         except Exception as e:
             error_msg = format_api_error_message(str(e))
@@ -2382,26 +2372,19 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
             user = db.session.get(User, recording.user_id)
             user_disabled = user and user.auto_summarization is False
-            will_auto_summarize = not admin_disabled and not user_disabled
+            # Without an LLM client there is no summary step: the title step
+            # finishes the recording (it stayed PROCESSING before, #412).
+            no_client = client is None
+            will_auto_summarize = not admin_disabled and not user_disabled and not no_client
 
             # Generate title immediately
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
             if not will_auto_summarize:
-                reason = "admin setting" if admin_disabled else "user preference"
+                # generate_title_task has already finished the recording
+                # (finish_processing: status, auto-shares, export, Inquire chunks).
+                reason = "admin setting" if admin_disabled else ("user preference" if user_disabled else "no LLM client")
                 current_app.logger.info(f"Auto-summarization disabled ({reason}), skipping summary for recording {recording_id}")
-                recording = db.session.get(Recording, recording_id)
-                if recording:
-                    recording.status = 'COMPLETED'
-                    recording.completed_at = datetime.utcnow()
-                    db.session.commit()
-
-                    # Apply auto-shares for group tags after processing completes
-                    apply_team_tag_auto_shares(recording_id)
-
-                    # Export transcription-only if auto-export is enabled
-                    if ENABLE_AUTO_EXPORT:
-                        export_recording(recording_id)
             else:
                 # Auto-generate summary for all recordings
                 current_app.logger.info(f"Auto-generating summary for recording {recording_id}")
