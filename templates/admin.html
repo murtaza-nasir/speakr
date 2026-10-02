@@ -350,8 +350,8 @@
                                     <i class="fas fa-comments text-xl"></i>
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalQueries')}</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_queries }</p>
+                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.aiRequestsMonth')}</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (stats.ai_requests_month || 0).toLocaleString() }</p>
                                 </div>
                             </div>
                         </div>
@@ -361,26 +361,45 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.recordingStatusDistribution')}</h4>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-2xl font-bold text-[var(--text-success-strong)]">${ stats.completed_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.completedRecordings')}</span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-success-strong)]">${ stats.completed_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.completedRecordings')}</span>
                                 </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-2xl font-bold text-[var(--text-warn-strong)]">${ stats.processing_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.processingRecordings')}</span>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-warn-strong)]">${ stats.transcribing_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.transcribingRecordings')}</span>
                                 </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-2xl font-bold text-[var(--text-pending-strong)]">${ stats.pending_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.pendingRecordings')}</span>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-warn-strong)]">${ stats.summarizing_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.summarizingRecordings')}</span>
                                 </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-2xl font-bold text-[var(--text-danger-strong)]">${ stats.failed_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.failedRecordings')}</span>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-pending-strong)]">${ stats.pending_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.pendingRecordings')}</span>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-danger-strong)]">${ stats.failed_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.failedRecordings')}</span>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-secondary)]">${ stats.audio_removed_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.audioRemovedRecordings')}</span>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <span class="block text-xl font-bold text-[var(--text-secondary)]">${ stats.archived_recordings }</span>
+                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.archivedRecordings')}</span>
                                 </div>
                             </div>
+                            <!-- The job queue: waiting, running, failed this week. -->
+                            <p class="mt-3 text-sm text-[var(--text-secondary)]">
+                                <i class="fas fa-layer-group mr-1 text-[var(--text-muted)]"></i>
+                                <span v-text="t('adminDashboard.jobQueue', { queued: stats.jobs.queued, running: stats.jobs.running })"></span>
+                                <span v-if="stats.jobs.failed_7d" class="ml-2 text-[var(--text-danger-strong)]"
+                                      v-text="t('adminDashboard.jobsFailed7d', { count: stats.jobs.failed_7d })"></span>
+                            </p>
                         </div>
-                        
+
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.topUsersByStorage')}</h4>
                             <div class="space-y-3">
@@ -509,7 +528,7 @@
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
                                             <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.monthlyCost') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.embedding_cost || 0).toFixed(4) }</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]" v-text="tokenStats.embeddings_local ? t('adminDashboard.tokenUsage.local') : '$' + (tokenStats.current_month?.embedding_cost || 0).toFixed(4)"></p>
                                         </div>
                                     </div>
                                 </div>
@@ -557,7 +576,7 @@
                             <!-- Per-User Token Usage -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                                 <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>
-                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                <div class="space-y-2">
                                     <div v-for="user in tokenUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
                                         <div class="flex justify-between items-center">
                                             <div class="flex items-center">
@@ -681,7 +700,7 @@
                             <!-- Per-User Transcription Usage -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                                 <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.userTranscriptionUsage')}</h5>
-                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                <div class="space-y-2">
                                     <div v-for="user in transcriptionUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
                                         <div class="flex justify-between items-center">
                                             <div class="flex items-center">
@@ -2185,11 +2204,16 @@ Summarization Instructions:
                     total_users: 0,
                     total_recordings: 0,
                     total_storage: 0,
-                    total_queries: 0,
+                    ai_requests_month: 0,
                     completed_recordings: 0,
                     processing_recordings: 0,
+                    transcribing_recordings: 0,
+                    summarizing_recordings: 0,
                     pending_recordings: 0,
                     failed_recordings: 0,
+                    audio_removed_recordings: 0,
+                    archived_recordings: 0,
+                    jobs: { queued: 0, running: 0, failed_7d: 0 },
                     top_users: []
                 });
                 const tokenStats = ref({
@@ -2718,7 +2742,7 @@ Summarization Instructions:
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
                             scales: {
-                                x: { ticks: { color: textColor, maxRotation: 45, minRotation: 45 }, grid: { color: gridColor } },
+                                x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
                                 y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
                             }
                         }
@@ -2726,13 +2750,18 @@ Summarization Instructions:
                 };
 
                 const renderDailyChart = (data) => {
-                    window._dailyLabels = data.map(d => d.date);
+                    const shortMonth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    window._dailyLabels = data.map(d => {
+                        const [, m, day] = String(d.date).split('-');
+                        return m && day ? `${shortMonth[Number(m) - 1]} ${Number(day)}` : d.date;
+                    });
                     window._dailyData = data;
                     _renderDailyBar('dailyTokenChart', dailyTokenChart, 'llm_tokens', 'LLM tokens', '79, 70, 229');
                     _renderDailyBar('dailyEmbeddingChart', dailyEmbeddingChart, 'embedding_tokens', 'Embedding tokens', '34, 197, 94');
                 };
 
-                // Shared line-chart factory for monthly LLM vs embedding usage.
+                // Monthly totals as bars: a smoothed line drew rises and dips
+                // between months that never happened.
                 const _renderMonthlyLine = (canvasId, ref_, labels, values, displayLabel, colorRgb) => {
                     const ctx = document.getElementById(canvasId);
                     if (!ctx) return;
@@ -2741,17 +2770,15 @@ Summarization Instructions:
                     const textColor = isDark ? '#9ca3af' : '#6b7280';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
                     ref_.value = new Chart(ctx, {
-                        type: 'line',
+                        type: 'bar',
                         data: {
                             labels: labels,
                             datasets: [{
                                 label: displayLabel,
                                 data: values,
-                                fill: true,
-                                backgroundColor: `rgba(${colorRgb}, 0.2)`,
+                                backgroundColor: `rgba(${colorRgb}, 0.7)`,
                                 borderColor: `rgba(${colorRgb}, 1)`,
-                                borderWidth: 2,
-                                tension: 0.3
+                                borderWidth: 1
                             }]
                         },
                         options: {
@@ -2759,7 +2786,7 @@ Summarization Instructions:
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
                             scales: {
-                                x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                                x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { display: false } },
                                 y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
                             }
                         }
@@ -2768,7 +2795,7 @@ Summarization Instructions:
 
                 const renderMonthlyChart = (data) => {
                     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const labels = data.map(d => `${monthNames[d.month - 1]} ${d.year}`);
+                    const labels = data.map(d => d.month === 1 || d === data[0] ? `${monthNames[d.month - 1]} ${d.year}` : monthNames[d.month - 1]);
                     const llm = data.map(d => d.llm_tokens || 0);
                     const emb = data.map(d => d.embedding_tokens || 0);
                     _renderMonthlyLine('monthlyTokenChart', monthlyTokenChart, labels, llm, 'LLM tokens', '22, 163, 74');

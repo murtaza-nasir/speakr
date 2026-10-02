@@ -241,19 +241,20 @@ class TranscriptionTracker:
             func.sum(TranscriptionUsage.estimated_cost).label('cost')
         ).group_by('year', 'month').order_by('year', 'month').all()
 
-        # Get last N months
-        monthly_data = [
-            {
-                'year': int(r.year),
-                'month': int(r.month),
-                'seconds': r.seconds or 0,
-                'minutes': (r.seconds or 0) // 60,
-                'cost': r.cost or 0
-            }
-            for r in results
-        ]
-
-        return monthly_data[-months:] if len(monthly_data) > months else monthly_data
+        by_month = {(int(r.year), int(r.month)): r for r in results}
+        # The last N calendar months up to this one, zeros included, so the
+        # last entry is always the current month (it used to be the last
+        # month WITH usage, which showed last month's total as "this month").
+        today = date.today()
+        out = []
+        y, m = today.year, today.month
+        for _ in range(max(months, 1)):
+            r = by_month.get((y, m))
+            seconds = (r.seconds or 0) if r else 0
+            out.append({'year': y, 'month': m, 'seconds': seconds, 'minutes': seconds // 60,
+                        'cost': (r.cost or 0) if r else 0})
+            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+        return list(reversed(out))
 
     def get_user_stats(self) -> List[Dict]:
         """Get per-user transcription usage breakdown for current month."""

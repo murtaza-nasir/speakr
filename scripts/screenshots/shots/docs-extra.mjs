@@ -3,7 +3,7 @@
 // public share page, tag stacking in the upload dialog, and the recorder
 // with one or two sources (desktop) and an external microphone (phone).
 
-import { go, settle, clickVisible, blurEmails } from '../helpers.mjs';
+import { go, settle, clickVisible, blurEmails, blurUrls } from '../helpers.mjs';
 import { accountTab, adminTab } from './settings-admin.mjs';
 import { openWithSidebar, ANCHOR } from './detail.mjs';
 import { openRecording as openMobileRecording, openUploadSheet, tap } from './mobile.mjs';
@@ -148,6 +148,22 @@ export default [
             await go(page, '/account');
             await accountTab(page, 'account');
             await blurEmails(page);
+            // Name, job title, organization, username and the sign-in
+            // provider's subject id identify the account owner.
+            await page.evaluate(() => {
+                const blur = (el) => { if (el) el.style.filter = 'blur(6px)'; };
+                const panel = document.querySelector('#content-account') || document.body;
+                panel.querySelectorAll('input[type="text"], input:not([type])').forEach(blur);
+                const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+                let n;
+                while ((n = walker.nextNode())) {
+                    const text = n.nodeValue.trim();
+                    const el = n.parentElement;
+                    if (!el) continue;
+                    if (/^Subject/.test(text)) blur(el.parentElement && el.parentElement.innerText.length < 120 ? el.parentElement : el);
+                    if (text === 'Username') blur(el.nextElementSibling);
+                }
+            });
         },
     },
     {
@@ -157,6 +173,7 @@ export default [
         run: async (page) => {
             await go(page, '/account');
             await accountTab(page, 'shares');
+            await blurUrls(page);   // live share links / internal endpoints
         },
     },
     {
@@ -175,6 +192,7 @@ export default [
         run: async (page) => {
             await go(page, '/account');
             await accountTab(page, 'about');
+            await blurUrls(page);   // live share links / internal endpoints
         },
     },
     {

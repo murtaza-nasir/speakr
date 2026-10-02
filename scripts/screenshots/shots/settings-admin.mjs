@@ -4,7 +4,7 @@
 // each tab a `#content-*` panel with its own `.tab-scroll` scroller) and
 // /admin (a small Vue app whose tabs are driven by `activeTab`).
 
-import { go, settle, clickVisible, openRecordingByTitle, blurEmails } from '../helpers.mjs';
+import { go, settle, clickVisible, openRecordingByTitle, blurEmails, blurUrls } from '../helpers.mjs';
 
 /** A recording carrying tags, used for the localized interface shots. */
 const TAGGED_RECORDING = 'SEC/Data Science Team Updates and Announcements';
@@ -129,6 +129,27 @@ export default [
         description: 'Outbound webhooks on recording events',
         theme: { dark: true, scheme: 'purple' },
         run: async (page) => {
+            // The dev instance's sample endpoint points at a made-up host, so
+            // its real history is all failures. Show the same endpoint as a
+            // healthy one: the responses are fetched for real and only the
+            // health fields are changed; nothing is sent anywhere.
+            await page.route(/\/api\/v1\/webhooks(\?.*)?$/, async (route) => {
+                const res = await route.fetch();
+                const body = await res.json();
+                for (const w of body.webhooks || []) {
+                    Object.assign(w, { enabled: true, auto_paused: false, consecutive_failures: 0 });
+                }
+                await route.fulfill({ response: res, json: body });
+            });
+            await page.route(/\/api\/v1\/webhooks\/\d+\/deliveries(\?.*)?$/, async (route) => {
+                const res = await route.fetch();
+                const body = await res.json();
+                for (const d of body.deliveries || []) {
+                    Object.assign(d, { status: 'success', attempt_count: 1, response_status: 200,
+                                       response_body_preview: 'ok', error_message: null, next_retry_at: null });
+                }
+                await route.fulfill({ response: res, json: body });
+            });
             await go(page, '/account');
             await accountTab(page, 'webhooks');
             // Expand the delivery log of the first endpoint so the shot shows
@@ -199,6 +220,7 @@ export default [
         run: async (page) => {
             await go(page, '/admin', 1500);
             await adminTab(page, 'Vector Store');
+            await blurUrls(page);   // internal embedding endpoint
         },
     },
     {

@@ -302,14 +302,14 @@
       "tokensByOperation": "Tokens por operación (este mes)",
       "noUsage": "Aún no se ha registrado uso este mes.",
       "requests": "sol.",
-      "cached": "en caché"
+      "cached": "en caché",
+      "local": "Local"
     },
     "tokens": "tokens",
     "topUsers": "Usuarios Principales",
     "topUsersByStorage": "Principales Usuarios por Almacenamiento",
     "total": "Total",
     "totalChunks": "Total de Fragmentos",
-    "totalQueries": "Total de Consultas",
     "totalRecordings": "Total de Grabaciones",
     "totalStorage": "Almacenamiento Total",
     "totalUsers": "Total de Usuarios",
@@ -363,7 +363,14 @@
       "sourceAdmin": "En uso: {{value}} (ajuste del administrador; predeterminado {{default}})",
       "sourceDefault": "En uso: {{value}} (predeterminado)"
     },
-    "defaultTimezoneHelp": "Se usa para las fechas de los títulos generados cuando el navegador de un usuario no ha indicado una zona horaria y el usuario no ha elegido ninguna."
+    "defaultTimezoneHelp": "Se usa para las fechas de los títulos generados cuando el navegador de un usuario no ha indicado una zona horaria y el usuario no ha elegido ninguna.",
+    "aiRequestsMonth": "Solicitudes de IA este mes",
+    "transcribingRecordings": "Transcribiendo",
+    "summarizingRecordings": "Resumiendo",
+    "audioRemovedRecordings": "Audio eliminado",
+    "archivedRecordings": "Archivadas",
+    "jobQueue": "Cola de trabajos: {{queued}} en espera, {{running}} en curso",
+    "jobsFailed7d": "{{count}} fallidos en los últimos 7 días"
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",

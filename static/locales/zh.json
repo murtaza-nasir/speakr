@@ -302,14 +302,14 @@
       "tokensByOperation": "按操作分类的令牌（本月）",
       "noUsage": "本月尚无使用记录。",
       "requests": "次请求",
-      "cached": "已缓存"
+      "cached": "已缓存",
+      "local": "本地"
     },
     "tokens": "tokens",
     "topUsers": "顶级用户",
     "topUsersByStorage": "按存储排序的顶级用户",
     "total": "合计",
     "totalChunks": "总块数",
-    "totalQueries": "总查询数",
     "totalRecordings": "总录音数",
     "totalStorage": "总存储",
     "totalUsers": "总用户数",
@@ -363,7 +363,14 @@
       "sourceAdmin": "当前：{{value}}（管理员设置；默认 {{default}}）",
       "sourceDefault": "当前：{{value}}（默认）"
     },
-    "defaultTimezoneHelp": "当用户的浏览器未报告时区且用户未选择时区时，用于生成标题中的日期。"
+    "defaultTimezoneHelp": "当用户的浏览器未报告时区且用户未选择时区时，用于生成标题中的日期。",
+    "aiRequestsMonth": "本月 AI 请求",
+    "transcribingRecordings": "转录中",
+    "summarizingRecordings": "摘要中",
+    "audioRemovedRecordings": "音频已移除",
+    "archivedRecordings": "已归档",
+    "jobQueue": "任务队列：{{queued}} 个等待，{{running}} 个运行中",
+    "jobsFailed7d": "最近 7 天 {{count}} 个失败"
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",

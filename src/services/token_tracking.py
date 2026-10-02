@@ -297,8 +297,20 @@ class TokenTracker:
                 buckets[key]['llm_tokens'] += tokens
                 buckets[key]['llm_cost'] += cost
 
-        ordered = [buckets[k] for k in sorted(buckets.keys())]
-        return ordered[-months:] if len(ordered) > months else ordered
+        # The last N calendar months up to this one, with zeros for months
+        # without usage, so charts keep an even axis and the last entry is
+        # always the current month (it used to be the last month WITH usage).
+        today = date.today()
+        out = []
+        y, m = today.year, today.month
+        for _ in range(max(months, 1)):
+            out.append(buckets.get((y, m)) or {
+                'year': y, 'month': m, 'tokens': 0, 'cost': 0.0,
+                'llm_tokens': 0, 'llm_cost': 0.0, 'embedding_tokens': 0, 'embedding_cost': 0.0,
+                'cached_tokens': 0, 'cache_write_tokens': 0,
+            })
+            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+        return list(reversed(out))
 
     def get_user_stats(self) -> List[Dict]:
         """Get per-user token usage breakdown for current month."""

@@ -17,7 +17,7 @@ import { readdir } from 'node:fs/promises';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { makeContext, login, freezePage } from './helpers.mjs';
+import { makeContext, login, freezePage, hidePrivateRecordings } from './helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_OUT = path.resolve(HERE, '../../docs/assets/images/screenshots');
@@ -72,6 +72,8 @@ async function main() {
         const page = await context.newPage();
         try {
             await shot.run(page);
+            const hidden = await hidePrivateRecordings(page);
+            if (hidden) process.stdout.write(`(hid ${hidden} private row(s)) `);
             await freezePage(page);
             await page.waitForTimeout(300);
             const file = path.join(outDir, `${shot.name}.png`);

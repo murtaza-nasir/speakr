@@ -134,6 +134,24 @@ async function frameChat(page) {
 }
 
 /** Drag the floating chat panel by its header so its top-left lands at x,y. */
+/**
+ * Fit the floating chat to the right-hand column and put it in the
+ * bottom-right corner of the content area, where the app opens it.
+ */
+async function anchorChatInRightColumn(page, height = 560) {
+    const geo = await page.evaluate(() => {
+        const cols = document.getElementById('mainContentColumns');
+        const right = document.getElementById('rightMainColumn');
+        if (!cols || !right) return null;
+        const c = cols.getBoundingClientRect(), r = right.getBoundingClientRect();
+        return { right: c.right, bottom: c.bottom, width: r.width };
+    });
+    if (!geo) throw new Error('Content columns not found');
+    const w = Math.round(geo.width - 32);
+    await resizeChatPanel(page, w, height);
+    await moveChatPanel(page, Math.round(geo.right - w - 16), Math.round(geo.bottom - height - 16));
+}
+
 async function moveChatPanel(page, x, y) {
     const header = page.locator('.floating-chat-header').first();
     const box = await header.boundingBox();
@@ -241,7 +259,7 @@ const R = {
     follow: 'Job Cuts, Internet Regulations, and Apple Subscriptions',
     edit: 'Fortnightly Team Meeting at ABC Manufacturing',
     chat: 'Job Cuts, Internet Regulations, and Apple Subscriptions',
-    tokens: 'Road Trip Reflections and Future Research Plans',
+    tokens: 'SEC Disgorgement Limits and Investor Harm',
     nextSteps: 'Fortnightly Team Meeting at ABC Manufacturing',
     reprocess: 'SEC Disgorgement Limits and Investor Harm',
 };
@@ -346,10 +364,9 @@ export default [
             await clickVisible(page, '.tab:has-text("Notes")');
             await settle(page, 400);
             await openChat(page);
-            await resizeChatPanel(page, 600, 540);
-            await moveChatPanel(page, 348, 460);
+            await anchorChatInRightColumn(page);
             await askChat(page, 'In two or three sentences, what did the hosts say about Apple charging $240 a year for device insurance?');
-            await moveChatPanel(page, 348, 460);
+            await anchorChatInRightColumn(page);
             await frameChat(page);
         },
     },
