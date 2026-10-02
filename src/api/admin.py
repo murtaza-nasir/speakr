@@ -526,6 +526,16 @@ def admin_get_stats():
     })
 
 
+@admin_bp.route('/admin/stats/overview', methods=['GET'])
+@login_required
+def admin_get_stats_overview():
+    """Everything the System Statistics tab shows, for the last 7, 30 or 90 days."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    from src.services.admin_stats import build_overview
+    return jsonify(build_overview(request.args.get('days', 30, type=int)))
+
+
 # --- Token Usage Stats ---
 
 @admin_bp.route('/admin/token-stats', methods=['GET'])
