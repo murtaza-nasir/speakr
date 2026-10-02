@@ -8,9 +8,12 @@ When speakers are merged:
 - Voice embeddings are combined using weighted average
 - All snippets are transferred to the target speaker
 - Usage statistics are combined
+- Every recording that shows a source speaker's name shows the target's name
 - Source speakers are deleted
 - Confidence score is recalculated
 """
+
+import json
 
 import numpy as np
 from src.database import db
@@ -99,6 +102,13 @@ def merge_speakers(target_id, source_ids, user_id):
     db.session.flush()
     refresh_speaker_summary(target)
 
+    # Recordings keep speaker names, not speaker ids: without this the
+    # recordings of a merged speaker kept showing the old name.
+    renamed = set()
+    for source in sources:
+        _, recording_ids = rename_speaker_in_recordings(user_id, source.name, target.name)
+        renamed.update(recording_ids)
+
     # Delete source speakers
     for source in sources:
         db.session.delete(source)
@@ -106,7 +116,90 @@ def merge_speakers(target_id, source_ids, user_id):
     # Commit all changes
     db.session.commit()
 
+    refresh_renamed_recordings(renamed)
     return target
+
+
+def _same_name(a, b):
+    return isinstance(a, str) and a.strip().lower() == b.strip().lower()
+
+
+def rename_speaker_in_recordings(user_id, old_name, new_name):
+    """Show new_name wherever the user's recordings show old_name.
+
+    Covers the transcript segments, the participants list, the diarization
+    label map and the Inquire chunks' speaker column. Names match ignoring
+    case and surrounding spaces, as saved speakers do. Does not commit.
+    Returns (chunks_updated, ids of the recordings changed).
+    """
+    from src.models import Recording, TranscriptChunk
+
+    old_key = old_name.strip().lower()
+    chunks_updated = 0
+    for chunk in TranscriptChunk.query.filter(
+            TranscriptChunk.user_id == user_id,
+            db.func.lower(db.func.trim(TranscriptChunk.speaker_name)) == old_key).all():
+        chunk.speaker_name = new_name
+        chunks_updated += 1
+
+    changed = []
+    for recording in Recording.query.filter_by(user_id=user_id).all():
+        updated = False
+
+        if recording.participants:
+            names = [p.strip() for p in recording.participants.split(',') if p.strip()]
+            if any(_same_name(p, old_name) for p in names):
+                merged = []
+                for p in names:
+                    p = new_name if _same_name(p, old_name) else p
+                    if not any(_same_name(p, m) for m in merged):
+                        merged.append(p)
+                recording.participants = ', '.join(merged)
+                updated = True
+
+        if recording.transcription:
+            try:
+                segments = json.loads(recording.transcription)
+            except (json.JSONDecodeError, TypeError):
+                segments = None
+            if isinstance(segments, list):
+                hit = False
+                for segment in segments:
+                    if isinstance(segment, dict) and _same_name(segment.get('speaker'), old_name):
+                        segment['speaker'] = new_name
+                        hit = True
+                if hit:
+                    recording.transcription = json.dumps(segments)
+                    updated = True
+
+        # The label map records which name each diarization label shows;
+        # without this the next save would think the voice was removed.
+        label_map = recording.speaker_label_map
+        if isinstance(label_map, dict) and any(_same_name(n, old_name) for n in label_map.values()):
+            recording.speaker_label_map = {
+                label: (new_name if _same_name(n, old_name) else n) for label, n in label_map.items()}
+            updated = True
+
+        if updated:
+            changed.append(recording.id)
+    return chunks_updated, changed
+
+
+def refresh_renamed_recordings(recording_ids):
+    """After names change in committed recordings: rebuild their Inquire
+    chunks (the chunk text holds the names) and rewrite their auto-exports."""
+    if not recording_ids:
+        return
+    from flask import current_app
+    from src.api import recordings as recordings_api
+    from src.file_exporter import ENABLE_AUTO_EXPORT, export_recording
+    for rid in sorted(recording_ids):
+        recordings_api.reindex_recording_chunks_async(rid)
+        if ENABLE_AUTO_EXPORT:
+            try:
+                export_recording(rid)
+            except Exception as e:
+                current_app.logger.warning(f"Export after speaker rename failed for {rid}: {e}")
 
 
 def _merge_voice_samples(target, sources):
