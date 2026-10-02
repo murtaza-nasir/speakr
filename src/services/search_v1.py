@@ -117,9 +117,10 @@ def _parse_date(value, end_of_day=False):
 
 
 def candidate_query(user, terms, fields, recording_ids=None, tag_id=None, folder_id=None,
-                    date_from=None, date_to=None, date_field='meeting_date'):
+                    date_from=None, date_to=None, date_field='meeting_date', scope='own'):
     from src.models import Recording, RecordingTag
-    query = Recording.query.filter(Recording.user_id == user.id)       # scope=own (G4 adds shared)
+    from src.services.recording_scope import scope_condition
+    query = Recording.query.filter(scope_condition(user.id, scope))
     if recording_ids:
         query = query.filter(Recording.id.in_(recording_ids))
     if tag_id:
@@ -202,10 +203,11 @@ def semantic_available():
 
 
 def semantic_search(user, query_text, limit=20, recording_ids=None, tag_id=None, date_from=None,
-                    date_to=None, speaker=None, **_ignored):
+                    date_to=None, speaker=None, scope='own', **_ignored):
     from src.models import Recording
     from src.services.embeddings import semantic_search_chunks
-    own = [rid for (rid,) in db.session.query(Recording.id).filter(Recording.user_id == user.id)]
+    from src.services.recording_scope import scope_condition
+    own = [rid for (rid,) in db.session.query(Recording.id).filter(scope_condition(user.id, scope))]
     if recording_ids:
         own = [rid for rid in own if rid in set(recording_ids)]
     if not own:

@@ -154,7 +154,11 @@ OPENAPI_SPEC = {
                     "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
                     "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}},
                     "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."},
-                    "updated_at": {"type": "string", "format": "date-time", "description": "Last change a client can see; starts at created_at"}
+                    "updated_at": {"type": "string", "format": "date-time", "description": "Last change a client can see; starts at created_at"},
+                    "is_shared": {"type": "boolean"},
+                    "owner": {"type": "object", "nullable": True},
+                    "share": {"type": "object", "nullable": True},
+                    "external_refs": {"type": "array", "items": {"type": "object"}}
                 }
             },
             "Tag": {
@@ -285,7 +289,7 @@ OPENAPI_SPEC = {
                 "parameters": [
                     {"name": "cursor", "in": "query", "schema": {"type": "string"}},
                     {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 100, "minimum": 1, "maximum": 500}},
-                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own"], "default": "own"}}
+                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"}}
                 ],
                 "responses": {
                     "200": {"description": "A page of changes", "content": {"application/json": {"schema": {
@@ -332,6 +336,8 @@ OPENAPI_SPEC = {
                     {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size", "status", "updated_at"]}},
                     {"name": "updated_since", "in": "query", "schema": {"type": "string", "format": "date-time"}, "description": "Only recordings changed after this time"},
                     {"name": "date_field", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date"], "default": "created_at"}, "description": "What date_from and date_to filter"},
+                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own", "shared", "all"], "default": "own"}},
+                    {"name": "owner_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "archived", "in": "query", "schema": {"type": "boolean"}, "description": "true: only archived recordings; false: only unarchived. Omitted: both, as before."},
@@ -1009,7 +1015,7 @@ def _updated_at_z(recording):
     return iso_z(effective_updated_at(recording))
 
 
-def _recording_list_item(r, refs=None):
+def _recording_list_item(r, refs=None, shared=None):
     """One recording as GET /recordings lists it; the changes feed uses the same shape.
 
     refs: this caller's external references of the recording, when the caller
@@ -1047,7 +1053,10 @@ def _recording_list_item(r, refs=None):
         'keep_audio_only': r.keep_audio_only,
         'updated_at': iso_z(effective_updated_at(r)),
         'external_refs': refs,
-    }
+        'is_shared': False,
+        'owner': None,
+        'share': None,
+    } if shared is None else dict(_recording_list_item(r, refs), **shared)
 
 
 @api_v1_bp.route('/recordings', methods=['GET'])
@@ -1070,6 +1079,8 @@ def list_recordings():
         inbox: Filter by inbox status (true/false)
         starred: Filter by starred status (true/false)
         archived: Filter by archive status (true/false); omitted returns both
+        scope: own (default), shared or all
+        owner_id: Only recordings of this owner
         updated_since: Only recordings changed after this time (ISO 8601)
         date_field: What date_from and date_to filter: created_at (default)
                     or meeting_date
@@ -1089,6 +1100,11 @@ def list_recordings():
     starred_filter = request.args.get('starred')
     archived_filter = request.args.get('archived')
     updated_since = request.args.get('updated_since')
+    from src.services.recording_scope import SCOPES, join_personal_state, personal_flag, scope_condition
+    scope = request.args.get('scope', 'own')
+    if scope not in SCOPES:
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
+    owner_id = request.args.get('owner_id', type=int)
     date_field = request.args.get('date_field', 'created_at')
     if date_field not in ('created_at', 'meeting_date'):
         return jsonify({'error': "date_field must be created_at or meeting_date",
@@ -1108,8 +1124,12 @@ def list_recordings():
             joinedload(Recording.folder),
             joinedload(Recording.tag_associations).joinedload(RecordingTag.tag),
         )
-        .filter(Recording.user_id == current_user.id)
+        .filter(scope_condition(current_user.id, scope))
     )
+    if scope != 'own':
+        query = join_personal_state(query, current_user.id)
+    if owner_id is not None:
+        query = query.filter(Recording.user_id == owner_id)
 
     # Status filter
     if status_filter == 'pending':
@@ -1195,21 +1215,24 @@ def list_recordings():
             )
         )
 
-    # Inbox filter
+    # Inbox and starred filters: the caller's own value (a recipient's is on
+    # SharedRecordingState).
     if inbox_filter is not None:
         is_inbox = inbox_filter.lower() == 'true'
-        query = query.filter(Recording.is_inbox == is_inbox)
+        query = query.filter((personal_flag(current_user.id, 'is_inbox', True) if scope != 'own'
+                              else Recording.is_inbox) == is_inbox)
 
-    # Starred filter
     if starred_filter is not None:
         is_starred = starred_filter.lower() == 'true'
-        query = query.filter(Recording.is_highlighted == is_starred)
+        query = query.filter((personal_flag(current_user.id, 'is_highlighted', False) if scope != 'own'
+                              else Recording.is_highlighted) == is_starred)
 
     # Archive filter (#394). The API keeps returning archived recordings by
     # default so existing integrations see no change.
     if archived_filter is not None:
         is_archived = archived_filter.lower() == 'true'
-        query = query.filter(db.func.coalesce(Recording.is_archived, False) == is_archived)
+        query = query.filter((personal_flag(current_user.id, 'is_archived', False) if scope != 'own'
+                              else db.func.coalesce(Recording.is_archived, False)) == is_archived)
 
     # Sorting
     sort_columns = {
@@ -1232,8 +1255,11 @@ def list_recordings():
 
     # Build response
     from src.services.external_refs import refs_map
+    from src.services.recording_scope import share_details
     page_refs = refs_map([r.id for r in pagination.items], current_user.id)
-    recordings = [_recording_list_item(r, page_refs.get(r.id, [])) for r in pagination.items]
+    page_shared = share_details(pagination.items, current_user)
+    recordings = [_recording_list_item(r, page_refs.get(r.id, []), page_shared.get(r.id))
+                  for r in pagination.items]
 
     return jsonify({
         'recordings': recordings,
@@ -1302,8 +1328,9 @@ def search_recordings_v1():
     mode = args.get('mode', 'keyword')
     if mode not in ('keyword', 'semantic', 'auto'):
         return jsonify({'error': 'mode must be keyword, semantic or auto', 'code': 'invalid_parameter'}), 400
-    if args.get('scope', 'own') != 'own':
-        return jsonify({'error': "scope must be 'own'", 'code': 'invalid_parameter'}), 400
+    scope = args.get('scope', 'own')
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
     fields = tuple(f.strip() for f in args.get('fields', ','.join(search_v1.FIELDS)).split(',') if f.strip())
     unknown = [f for f in fields if f not in search_v1.FIELDS]
     if unknown or not fields:
@@ -1331,7 +1358,7 @@ def search_recordings_v1():
             return jsonify({'error': 'folder_id must be an id or none', 'code': 'invalid_parameter'}), 400
     filters = dict(recording_ids=recording_ids, tag_id=args.get('tag_id', type=int), folder_id=folder_id,
                    date_from=args.get('date_from') or None, date_to=args.get('date_to') or None,
-                   date_field=date_field)
+                   date_field=date_field, scope=scope)
     speaker = (args.get('speaker') or '').strip() or None
 
     use_semantic = mode == 'semantic' or (mode == 'auto' and search_v1.semantic_available())
@@ -1448,8 +1475,8 @@ def list_recording_changes():
     if limit is None or not 1 <= limit <= 500:
         return jsonify({'error': 'limit must be between 1 and 500', 'code': 'invalid_parameter'}), 400
     scope = request.args.get('scope', 'own')
-    if scope != 'own':
-        return jsonify({'error': "scope must be 'own'", 'code': 'invalid_parameter'}), 400
+    if scope not in ('own', 'shared', 'all'):
+        return jsonify({'error': 'scope must be own, shared or all', 'code': 'invalid_parameter'}), 400
     if cursor:
         try:
             changed_at, _, _, full_since = decode_cursor(cursor)
@@ -1458,13 +1485,17 @@ def list_recording_changes():
         if cursor_expired(current_user.id, changed_at, full_since):
             return jsonify({'error': 'The cursor is too old; start again without a cursor',
                             'code': 'cursor_expired'}), 410
-    items, next_cursor, has_more = read_changes(current_user.id, cursor=cursor, limit=limit)
+    items, next_cursor, has_more = read_changes(current_user.id, cursor=cursor, limit=limit, scope=scope)
     from src.services.external_refs import refs_map
-    page_refs = refs_map([obj.id for kind, obj in items if kind == 'upsert'], current_user.id)
+    from src.services.recording_scope import share_details
+    upserts = [obj for kind, obj in items if kind == 'upsert']
+    page_refs = refs_map([obj.id for obj in upserts], current_user.id)
+    page_shared = share_details(upserts, current_user)
     changes = []
     for kind, obj in items:
         if kind == 'upsert':
-            changes.append({'type': 'upsert', 'recording': _recording_list_item(obj, page_refs.get(obj.id, []))})
+            changes.append({'type': 'upsert', 'recording': _recording_list_item(
+                obj, page_refs.get(obj.id, []), page_shared.get(obj.id))})
         else:
             changes.append({'type': 'delete', 'id': obj.recording_id,
                             'deleted_at': iso_z(obj.deleted_at), 'reason': obj.reason})

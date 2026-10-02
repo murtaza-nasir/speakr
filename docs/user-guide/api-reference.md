@@ -409,6 +409,8 @@ GET /api/v1/recordings
 | `date_field` | string | `created_at` | What `date_from` and `date_to` filter: `created_at` or `meeting_date` |
 | `updated_since` | string | - | Only recordings changed after this time (ISO 8601). Deletions are not listed; use the [changes feed](#changes-feed) for those. |
 | `external_system`, `external_ref`, `external_kind` | string | - | Only recordings that carry this [external reference](#external-references) of yours (`external_kind` optional) |
+| `scope` | string | `own` | `own`, `shared` (recordings other users shared with you) or `all` |
+| `owner_id` | integer | - | Only recordings of this owner |
 | `tag_id` | integer | - | Filter by tag ID |
 | `q` | string | - | Search query (title, participants) |
 | `inbox` | boolean | - | Filter by inbox status |
@@ -461,6 +463,19 @@ GET /api/v1/recordings
   }
 }
 ```
+
+**Shared recordings.** With `scope=shared` or `scope=all` the list includes completed recordings other users shared with you (shared directly, through a group tag or through a group folder), as the web app's shared list does. Every item says whose it is:
+
+```json
+{
+  "is_shared": true,
+  "owner": {"id": 3, "username": "evan", "name": "Evan Ross"},
+  "share": {"id": 51, "can_edit": false, "can_reshare": false, "source": "group_tag",
+            "shared_at": "2026-09-20T10:00:00.000000Z"}
+}
+```
+
+Your own recordings have `"is_shared": false, "owner": null, "share": null`. `owner.username` and `owner.name` are `null` unless the administrator sets `SHOW_USERNAMES_IN_UI=true`. For a shared recording, `is_inbox`, `is_highlighted` and `is_archived` are your own values and `tags` are the tags you can see. With internal sharing turned off, `shared` is empty and `all` is the same as `own`.
 
 `updated_at` is the time of the last change a client can see: title, participants, notes, summary, transcript, status, dates, folder, flags, tags, events or sharing. It is present on every recording in API v1 and starts at `created_at`.
 
@@ -528,7 +543,7 @@ Every create, edit and delete of your recordings since a cursor, each once and i
 |-----------|------|---------|-------------|
 | `cursor` | string | - | `next_cursor` from the previous answer. Without it, the answer lists every recording (a full pass) and no older deletions. |
 | `limit` | integer | 100 | 1 to 500 |
-| `scope` | string | `own` | `own` |
+| `scope` | string | `own` | `own`, `shared` or `all`. With `shared` or `all`, a share that is removed arrives as a delete with reason `access_revoked`. |
 
 **Response:**
 
@@ -881,7 +896,7 @@ Finds words in the titles, participants, notes, summaries and transcripts of you
 | `q` | string | required | 2 to 500 characters. Words are matched separately; `"a quoted phrase"` stays together. Every word must appear in the recording. `%` and `_` are literal. |
 | `mode` | string | `keyword` | `keyword`, `semantic`, or `auto` (semantic when available, else keyword) |
 | `fields` | string | all | Comma list of `title`, `participants`, `notes`, `summary`, `transcript` (keyword mode) |
-| `scope` | string | `own` | `own` |
+| `scope` | string | `own` | `own`, `shared` or `all` (see [List Recordings](#list-recordings)) |
 | `recording_ids` | string | - | Comma list of recording ids |
 | `tag_id`, `folder_id` | - | - | As on [List Recordings](#list-recordings) |
 | `speaker` | string | - | Transcript hits of this speaker only (exact name, any case) |

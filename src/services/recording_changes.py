@@ -302,7 +302,7 @@ def cursor_expired(user_id, changed_at, full_since):
     return False
 
 
-def read_changes(user_id, cursor=None, limit=100, now=None):
+def read_changes(user_id, cursor=None, limit=100, now=None, scope='own'):
     """One page of the feed. Returns (items, next_cursor, has_more); each item
     is ('upsert', Recording) or ('delete', RecordingTombstone).
 
@@ -320,13 +320,17 @@ def read_changes(user_id, cursor=None, limit=100, now=None):
         key, full_since = None, now   # a full pass: tombstones only from its start
 
     changed = func.coalesce(Recording.updated_at, Recording.created_at)
-    rq = Recording.query.filter(Recording.user_id == user_id, changed <= settle)
+    from src.services.recording_scope import scope_condition
+    rq = Recording.query.filter(scope_condition(user_id, scope), changed <= settle)
     if key:
         rq = rq.filter(_after(changed, Recording.id, _UPSERT, key))
     recs = rq.order_by(changed.asc(), Recording.id.asc()).limit(limit + 1).all()
 
     tq = RecordingTombstone.query.filter(RecordingTombstone.user_id == user_id,
                                          RecordingTombstone.deleted_at <= settle)
+    if scope == 'own':
+        # access_revoked concerns recordings shared with the user
+        tq = tq.filter(RecordingTombstone.reason != 'access_revoked')
     if full_since is not None:
         tq = tq.filter(RecordingTombstone.deleted_at >= full_since)
     if key:
