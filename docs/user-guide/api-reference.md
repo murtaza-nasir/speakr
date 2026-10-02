@@ -1272,7 +1272,7 @@ GET /api/v1/recordings/{id}/events
 
 **Scope:** `read`
 
-Returns calendar events extracted from the recording.
+Returns calendar events extracted from the recording. The `events` in [Get Recording Details](#get-recording-details) are the same objects.
 
 **Response:**
 
@@ -1281,15 +1281,27 @@ Returns calendar events extracted from the recording.
   "events": [
     {
       "id": 1,
+      "recording_id": 412,
       "title": "Follow-up Meeting",
-      "start_datetime": "2024-01-22T10:00:00Z",
-      "end_datetime": "2024-01-22T11:00:00Z",
+      "start_datetime": "2024-01-22T10:00:00",
+      "end_datetime": "2024-01-22T11:00:00",
+      "floating": true,
       "description": "Discuss project progress",
-      "location": "Conference Room A"
+      "location": "Conference Room A",
+      "attendees": [
+        {"name": "Dana Lee", "email": null},
+        {"name": "Priya Shah", "email": "priya@example.org"}
+      ],
+      "reminder_minutes": 15,
+      "created_at": "2024-01-15T10:05:00"
     }
   ]
 }
 ```
+
+- `floating: true`: `start_datetime` and `end_datetime` are wall-clock times as said in the recording, without a time zone. Show them as they are, in the user's own zone.
+- `attendees` are objects: a name, an address, or both. A name the transcript gave without an address has `email: null`.
+- Before v0.10.11-alpha, `attendees` in the recording details were plain strings.
 
 ### Download Events as ICS
 
@@ -1299,7 +1311,7 @@ GET /api/v1/recordings/{id}/events/ics
 
 **Scope:** `read`
 
-Returns an ICS file containing all events from the recording.
+Returns an ICS file containing all events from the recording. Times are floating (no zone). Attendees with an address are `ATTENDEE` entries; names without an address are listed at the end of the description. `reminder_minutes` becomes an alarm.
 
 ---
 

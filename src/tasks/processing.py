@@ -1133,6 +1133,14 @@ You must respond with valid JSON format only."""
                                 f"{event_data.get('end_datetime')!r}: {parse_err!r}"
                             )
 
+                # Event times are floating wall-clock times: keep what the
+                # model wrote and drop any zone, so SQLite and PostgreSQL
+                # store the same value (mailr spec G5, open question 1).
+                if start_dt is not None and start_dt.tzinfo is not None:
+                    start_dt = start_dt.replace(tzinfo=None)
+                if end_dt is not None and end_dt.tzinfo is not None:
+                    end_dt = end_dt.replace(tzinfo=None)
+
                 # Create event record
                 event = Event(
                     recording_id=recording_id,

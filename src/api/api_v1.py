@@ -1518,7 +1518,7 @@ def get_recording(recording_id):
         'folder_id': recording.folder_id,
         'folder': {'id': recording.folder.id, 'name': recording.folder.name} if recording.folder else None,
         'deletion_exempt': recording.deletion_exempt,
-        'events': [e.to_dict() for e in recording.events] if hasattr(recording, 'events') else [],
+        'events': [e.api_dict() for e in recording.events] if hasattr(recording, 'events') else [],
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags],
         'duplicate_info': recording.get_duplicate_info(),
@@ -3064,16 +3064,7 @@ def get_recording_events(recording_id):
 
     events = Event.query.filter_by(recording_id=recording_id).all()
 
-    return jsonify({
-        'events': [{
-            'id': e.id,
-            'title': e.title,
-            'start_datetime': e.start_datetime.isoformat() if e.start_datetime else None,
-            'end_datetime': e.end_datetime.isoformat() if e.end_datetime else None,
-            'description': e.description,
-            'location': e.location
-        } for e in events]
-    })
+    return jsonify({'events': [e.api_dict() for e in events]})
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/events/ics', methods=['GET'])
