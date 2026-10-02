@@ -206,10 +206,9 @@ export default [
         run: async (page) => {
             await go(page, '/admin', 1500);
             await adminTab(page, 'System Statistics');
-            // The budgets live below the instance-wide counters; the negative
-            // margin parks the section heading just above the frame so the
-            // whole per-user budget panel fits.
-            await scrollTabTo(page, 'h4', -60, 'Token Usage Statistics');
+            // The budgets are in the Users table at the end of the tab; the
+            // section heading sits at the top of the frame.
+            await scrollTabTo(page, 'h4', 24, 'Users');
             await blurEmails(page);
         },
     },

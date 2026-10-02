@@ -39,14 +39,17 @@ def _days(start, end):
 def _usage_window(start, end):
     """Tokens, cost and transcription seconds between two dates, inclusive."""
     tok = db.session.query(TokenUsage.operation_type, db.func.sum(TokenUsage.total_tokens),
-                           db.func.sum(TokenUsage.cost), db.func.sum(TokenUsage.request_count)) \
+                           db.func.sum(TokenUsage.cost), db.func.sum(TokenUsage.request_count),
+                           db.func.sum(TokenUsage.cached_tokens), db.func.sum(TokenUsage.cache_write_tokens)) \
         .filter(TokenUsage.date >= start, TokenUsage.date <= end).group_by(TokenUsage.operation_type).all()
     tr = db.session.query(db.func.sum(TranscriptionUsage.audio_duration_seconds),
                           db.func.sum(TranscriptionUsage.estimated_cost)) \
         .filter(TranscriptionUsage.date >= start, TranscriptionUsage.date <= end).first()
-    out = {'llm_cost': 0.0, 'embedding_cost': 0.0, 'ai_requests': 0,
+    out = {'llm_cost': 0.0, 'embedding_cost': 0.0, 'ai_requests': 0, 'cache_reads': 0, 'cache_writes': 0,
            'transcription_seconds': int(tr[0] or 0), 'transcription_cost': float(tr[1] or 0)}
-    for op, _tokens, cost, requests in tok:
+    for op, _tokens, cost, requests, cached, written in tok:
+        out['cache_reads'] += int(cached or 0)
+        out['cache_writes'] += int(written or 0)
         if token_tracker.is_embedding_op(op):
             out['embedding_cost'] += float(cost or 0)
         else:
@@ -253,6 +256,9 @@ def build_overview(days=30, today=None):
             'daily': list(daily_use.values()),
             'operations': [op for op, _ in sorted(operations.items(), key=lambda kv: -kv[1])],
             'by_model': model_rows,
+            # Prompt tokens served from a prefix cache, as the backend reports them.
+            'cache_reads': cur['cache_reads'],
+            'cache_writes': cur['cache_writes'],
             'monthly': _monthly_cost(12, today),
             'embeddings_local': embeddings_are_local(),
             'models_local': os.environ.get('MODELS_ARE_LOCAL', 'false').lower() == 'true',
