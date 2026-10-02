@@ -681,6 +681,25 @@ def start_dispatcher_thread(app):
         app.logger.info("✅ Webhook dispatcher thread initialized")
 
 
+def emit_recording_updated(recording, fields_changed):
+    """recording.updated for a change made outside PATCH /recordings/{id}.
+
+    Same payload as the PATCH route. Best-effort: never raises.
+    """
+    try:
+        emit_webhook_event(
+            user_id=recording.user_id,
+            event_type='recording.updated',
+            data={
+                'recording_id': recording.id,
+                'title': recording.title,
+                'fields_changed': list(fields_changed),
+            },
+        )
+    except Exception as e:
+        logger.warning(f"Webhook emit (recording.updated) failed for {getattr(recording, 'id', None)}: {e}")
+
+
 def emit_recording_created(recording):
     """recording.created, from every path that creates a recording (#412 audit P11).
 
