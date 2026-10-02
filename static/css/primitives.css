@@ -570,9 +570,35 @@ html.dark {
 .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet) {
     color: var(--text-muted);
 }
-.btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet):hover:not(:disabled) {
+/* Hover tint only where a pointer really hovers: a touch screen keeps
+   :hover after a tap, which left a grey box on the last button tapped. */
+@media (hover: hover) {
+    .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet):hover:not(:disabled) {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+}
+.btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet):active:not(:disabled) {
     background: var(--bg-tertiary);
     color: var(--text-primary);
+}
+
+/* Page header buttons: one height for icon and labelled buttons, and on
+   phones (labels hidden) one square size for all of them. */
+.btn.header-action {
+    min-height: 36px;
+}
+.btn.header-action.btn--icon {
+    width: 36px;
+}
+@media (max-width: 639px) {
+    .btn.header-action,
+    .btn.header-action.btn--icon {
+        width: 40px;
+        min-height: 40px;
+        padding: 0;
+        justify-content: center;
+    }
 }
 .btn--icon.btn--lg {
     width: 44px;
