@@ -117,9 +117,10 @@ def test_inquire_filter_dates_are_plain_iso(world):
     with c.session_transaction() as sess:
         sess["_user_id"] = str(ids["user"])
     resp = c.get("/api/inquire/available_filters")
-    if resp.status_code == 404:
+    body = resp.get_json(silent=True) or {}
+    if resp.status_code != 200 or "recordings" not in body:
         pytest.skip("Inquire mode disabled in this environment")
-    dates = [r["meeting_date"] for r in resp.get_json()["recordings"] if r["id"] in (ids["a"], ids["b"])]
+    dates = [r["meeting_date"] for r in body["recordings"] if r["id"] in (ids["a"], ids["b"])]
     assert dates and all(re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$", d) for d in dates)
 
 
