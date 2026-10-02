@@ -651,10 +651,16 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
                     TranscriptChunk.recording_id.in_(filters['recording_ids'])
                 )
 
-            if filters.get('date_from'):
-                chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
-            if filters.get('date_to'):
-                chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+            if filters.get('date_from') or filters.get('date_to'):
+                # Local calendar days of the user, as UTC bounds; date_to is
+                # inclusive (it used to drop the last day, #412).
+                from src.utils.timezones import local_date_bounds, user_timezone_by_id
+                _start, _end = local_date_bounds(filters.get('date_from'), filters.get('date_to'),
+                                                 user_timezone_by_id(user_id))
+                if _start is not None:
+                    chunks_query = chunks_query.filter(Recording.meeting_date >= _start)
+                if _end is not None:
+                    chunks_query = chunks_query.filter(Recording.meeting_date < _end)
 
         # Text search - filter stop words and rank by match count
         stop_words = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
@@ -813,10 +819,16 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
                     TranscriptChunk.recording_id.in_(filters['recording_ids'])
                 )
 
-            if filters.get('date_from'):
-                chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
-            if filters.get('date_to'):
-                chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+            if filters.get('date_from') or filters.get('date_to'):
+                # Local calendar days of the user, as UTC bounds; date_to is
+                # inclusive (it used to drop the last day, #412).
+                from src.utils.timezones import local_date_bounds, user_timezone_by_id
+                _start, _end = local_date_bounds(filters.get('date_from'), filters.get('date_to'),
+                                                 user_timezone_by_id(user_id))
+                if _start is not None:
+                    chunks_query = chunks_query.filter(Recording.meeting_date >= _start)
+                if _end is not None:
+                    chunks_query = chunks_query.filter(Recording.meeting_date < _end)
 
         # Get chunks that have embeddings
         chunks = chunks_query.filter(TranscriptChunk.embedding.isnot(None)).all()

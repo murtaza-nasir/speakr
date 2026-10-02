@@ -266,6 +266,8 @@ def create_merge_recording(user, recording_ids, title=None, delete_originals=Fal
             order += 1
 
     db.session.commit()
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
 
     try:
         job_queue.enqueue(

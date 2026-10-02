@@ -679,3 +679,53 @@ def start_dispatcher_thread(app):
         t.start()
         _dispatcher_thread_started = True
         app.logger.info("✅ Webhook dispatcher thread initialized")
+
+
+def emit_recording_created(recording):
+    """recording.created, from every path that creates a recording (#412 audit P11).
+
+    Upload, upload join, API v1 and integration uploads, the share target, the
+    watch folder, merges and recording-session finalize all call this, so a
+    subscriber hears about every new recording. Best-effort: never raises.
+    """
+    try:
+        emit_webhook_event(
+            user_id=recording.user_id,
+            event_type='recording.created',
+            data={
+                'recording_id': recording.id,
+                'title': recording.title,
+                'file_size': recording.file_size,
+                'original_filename': recording.original_filename,
+            },
+        )
+    except Exception as e:
+        logger.warning(f"Webhook emit (recording.created) failed for {getattr(recording, 'id', None)}: {e}")
+
+
+def emit_summary_result(recording, ok, error=None):
+    """recording.summary.completed / .failed from the summary step itself (#412 audit P12).
+
+    The job queue used to infer these from the job type: the first summary of
+    an upload (run inside the transcription job) never fired, a summary that
+    failed inside its job fired "completed", and "failed" never fired.
+    Best-effort: never raises.
+    """
+    try:
+        if ok:
+            data = {
+                'recording_id': recording.id,
+                'title': recording.title,
+                'language': recording.transcription_language,
+                'audio_duration_seconds': recording.audio_duration_seconds,
+                'transcription_duration_seconds': recording.transcription_duration_seconds,
+                'summarization_duration_seconds': recording.summarization_duration_seconds,
+            }
+            emit_webhook_event(user_id=recording.user_id, event_type='recording.summary.completed',
+                               data={k: v for k, v in data.items() if v is not None})
+        else:
+            emit_webhook_event(user_id=recording.user_id, event_type='recording.summary.failed',
+                               data={'recording_id': recording.id, 'title': recording.title,
+                                     'error': (error or '')[:500]})
+    except Exception as e:
+        logger.warning(f"Webhook emit (summary result) failed for {getattr(recording, 'id', None)}: {e}")

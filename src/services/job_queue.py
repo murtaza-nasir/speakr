@@ -419,9 +419,14 @@ class FairJobQueue:
                         if recording:
                             # Keep the recording with FAILED status so user can see the error and fix settings
                             recording.status = 'FAILED'
-                            # Format the error for nice display
+                            # Format the error for nice display. A failed summary
+                            # job keeps the transcript and shows the error as the
+                            # summary; it used to overwrite a good transcript (#412).
                             from src.utils.error_formatting import format_error_for_storage
-                            recording.transcription = format_error_for_storage(error_str)
+                            if job_type in ('summarize', 'reprocess_summary'):
+                                recording.summary = format_error_for_storage(error_str)
+                            else:
+                                recording.transcription = format_error_for_storage(error_str)
 
                         if is_permanent_error:
                             logger.error(f"Job {job_id} failed permanently (non-retryable error)")
@@ -790,11 +795,13 @@ class FairJobQueue:
 
     # --- Webhook emission helpers (#275) ---------------------------------
 
+    # recording.summary.completed is emitted by the summary step itself
+    # (processing.generate_summary_only_task, #412): a summary job can end with
+    # a FAILED summary, and the first summary of an upload runs inside the
+    # transcribe job, so the job type alone cannot say whether a summary exists.
     _COMPLETION_EVENT_MAP = {
         'transcribe': 'recording.transcription.completed',
-        'summarize': 'recording.summary.completed',
         'reprocess_transcription': 'recording.transcription.completed',
-        'reprocess_summary': 'recording.summary.completed',
     }
 
     _FAILURE_EVENT_MAP = {

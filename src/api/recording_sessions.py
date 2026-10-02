@@ -292,6 +292,8 @@ def _finalize_session_into_stitch(session, *, user_id, title, notes=None,
     session.finalized_recording_id = recording.id
     session.last_seen_at = datetime.utcnow()
     db.session.commit()
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
 
     try:
         job_queue.enqueue(

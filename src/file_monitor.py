@@ -534,6 +534,8 @@ class FileMonitor:
                         self.logger.info(f"Applied tag '{tag.name}' (id={tag_id}) to recording {recording.id}")
 
                 db.session.commit()
+                from src.services.webhook_dispatch import emit_recording_created
+                emit_recording_created(recording)
 
                 # Resolve transcribe params through the shared chain so an
                 # auto-processed file honors the same tag/folder/env/account

@@ -458,6 +458,38 @@ def _user_title_instructions(user):
     return DEFAULT_TITLE_PROMPT, 'default'
 
 
+def resolve_summary_instructions(recording):
+    """Instructions for a recording's summary, and which level supplied them.
+
+    tag > folder > user > admin default > shipped default (#412 audit S5).
+    Every tag the owner can see that carries a prompt contributes, in the order
+    the tags were added. The owner's view is used for every processing step,
+    so a summary does not depend on which editor asked for it (S3, S4).
+
+    Returns (instructions, source); source is 'tag', 'folder', 'user', 'admin'
+    or 'default'.
+    """
+    owner = recording.owner
+    if owner:
+        tag_prompts = [
+            tag.custom_prompt.strip()
+            for tag in (recording.get_visible_tags(owner) or [])
+            if tag.custom_prompt and tag.custom_prompt.strip()
+        ]
+        if tag_prompts:
+            return "\n\n".join(tag_prompts), 'tag'
+    folder = recording.folder
+    if folder and folder.custom_prompt and folder.custom_prompt.strip():
+        return folder.custom_prompt.strip(), 'folder'
+    if owner and owner.summary_prompt and owner.summary_prompt.strip():
+        return owner.summary_prompt, 'user'
+    admin_default = SystemSetting.get_setting('admin_default_summary_prompt', None)
+    if admin_default:
+        return admin_default, 'admin'
+    from src.config.prompts import DEFAULT_SUMMARY_PROMPT
+    return DEFAULT_SUMMARY_PROMPT, 'default'
+
+
 def resolve_title_instructions(recording, viewer=None):
     """Instructions for a recording's AI title, and which level supplied them.
 
@@ -641,6 +673,8 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
             db.session.commit()
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(recording, ok=False, error="LLM client not configured")
             return
 
         recording.status = 'SUMMARIZING'
@@ -654,72 +688,13 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             recording.summary = "[Summary skipped due to short transcription]"
             db.session.commit()
             finish_processing(recording_id)
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(db.session.get(Recording, recording_id), ok=True)
             return
 
-        # Get user preferences and tag custom prompts
-        user_summary_prompt = None
-        user_output_language = None
-        tag_custom_prompt = None
-
-        # Determine which user's perspective to use for tag visibility
-        # If user_id is provided (e.g., from reprocess), use that user
-        # Otherwise default to the recording owner
-        viewer_user = None
-        if user_id:
-            viewer_user = db.session.get(User, user_id)
-            if viewer_user:
-                current_app.logger.info(f"Using user {viewer_user.username} (ID: {user_id}) for tag visibility filtering")
-            else:
-                current_app.logger.warning(f"User ID {user_id} not found, falling back to recording owner")
-                viewer_user = recording.owner
-        else:
-            viewer_user = recording.owner
-            if viewer_user:
-                current_app.logger.info(f"Using recording owner {viewer_user.username} for tag visibility filtering")
-
-        # Collect custom prompts from tags visible to the viewer user
-        tag_custom_prompts = []
-        if viewer_user:
-            visible_tags = recording.get_visible_tags(viewer_user)
-            if visible_tags:
-                current_app.logger.info(f"Found {len(visible_tags)} visible tags for user {viewer_user.username} on recording {recording_id}")
-                # Tags are ordered by the order they were added to this recording
-                for tag in visible_tags:
-                    if tag.custom_prompt and tag.custom_prompt.strip():
-                        tag_custom_prompts.append({
-                            'name': tag.name,
-                            'prompt': tag.custom_prompt.strip()
-                        })
-                        current_app.logger.info(f"Found custom prompt from tag '{tag.name}' for recording {recording_id}")
-        else:
-            current_app.logger.warning(f"No viewer user available for tag filtering on recording {recording_id}")
-
-        # Create merged prompt if we have multiple tag prompts
-        if tag_custom_prompts:
-            if len(tag_custom_prompts) == 1:
-                tag_custom_prompt = tag_custom_prompts[0]['prompt']
-                current_app.logger.info(f"Using single custom prompt from tag '{tag_custom_prompts[0]['name']}' for recording {recording_id}")
-            else:
-                # Merge multiple prompts seamlessly as unified instructions
-                merged_parts = []
-                for tag_prompt in tag_custom_prompts:
-                    merged_parts.append(tag_prompt['prompt'])
-                tag_custom_prompt = "\n\n".join(merged_parts)
-                tag_names = [tp['name'] for tp in tag_custom_prompts]
-                current_app.logger.info(f"Combined custom prompts from {len(tag_custom_prompts)} tags in order added ({', '.join(tag_names)}) for recording {recording_id}")
-        else:
-            tag_custom_prompt = None
-
-        # Get folder custom prompt (if recording has a folder)
-        # Folder prompt has lower priority than tag prompts (tags override folders)
-        folder_custom_prompt = None
-        if recording.folder and recording.folder.custom_prompt and recording.folder.custom_prompt.strip():
-            folder_custom_prompt = recording.folder.custom_prompt.strip()
-            current_app.logger.info(f"Found custom prompt from folder '{recording.folder.name}' for recording {recording_id}")
-
-        if recording.owner:
-            user_summary_prompt = recording.owner.summary_prompt
-            user_output_language = recording.owner.output_language
+        # Prompt levels come from resolve_summary_instructions (owner's view of
+        # tags, #412). user_id is kept for the job interface and logging.
+        user_output_language = recording.owner.output_language if recording.owner else None
 
         # Format transcription for LLM (convert JSON to clean text format like clipboard copy).
         # Optionally include timestamps for the summarizer per the owner's setting (#304).
@@ -741,33 +716,15 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 
         language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
 
-        # Determine which summarization instructions to use.
-        # Priority order: custom_prompt_override > tag custom prompt > folder custom prompt > user summary prompt > admin default prompt > hardcoded fallback.
-        # When custom_prompt_append is True the override is appended to the resolved default rather than replacing it.
-        summarization_instructions = ""
+        # Instructions: a replacing override, else the resolved level
+        # (tag > folder > user > admin > default). An appended override is
+        # added below.
         if custom_prompt_override and not custom_prompt_append:
             current_app.logger.info(f"Using custom prompt override for recording {recording_id} (length: {len(custom_prompt_override)})")
             summarization_instructions = custom_prompt_override
-        elif tag_custom_prompt:
-            current_app.logger.info(f"Using tag custom prompt for recording {recording_id}")
-            summarization_instructions = tag_custom_prompt
-        elif folder_custom_prompt:
-            current_app.logger.info(f"Using folder custom prompt for recording {recording_id}")
-            summarization_instructions = folder_custom_prompt
-        elif user_summary_prompt:
-            current_app.logger.info(f"Using user custom prompt for recording {recording_id}")
-            summarization_instructions = user_summary_prompt
         else:
-            # Get admin default prompt from system settings
-            admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
-            if admin_default_prompt:
-                current_app.logger.info(f"Using admin default prompt for recording {recording_id}")
-                summarization_instructions = admin_default_prompt
-            else:
-                # Fallback to the shipped default if admin hasn't set one.
-                from src.config.prompts import DEFAULT_SUMMARY_PROMPT
-                summarization_instructions = DEFAULT_SUMMARY_PROMPT
-                current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
+            summarization_instructions, _source = resolve_summary_instructions(recording)
+            current_app.logger.info(f"Using {_source} summary prompt for recording {recording_id}")
 
         # Append the user's per-run additions on top of the resolved default
         # (issue / discussion #253). This is how a user supplies a meeting agenda
@@ -824,9 +781,9 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         if recording.folder:
             context_parts.append(f"Folder: {recording.folder.name}")
 
-        # Add selected tags information (only visible tags)
-        if viewer_user:
-            visible_tags = recording.get_visible_tags(viewer_user)
+        # Add selected tags information (the owner's view of the tags, #412)
+        if recording.owner:
+            visible_tags = recording.get_visible_tags(recording.owner)
             if visible_tags:
                 tag_names = [tag.name for tag in visible_tags]
                 context_parts.append(f"Tags applied to this transcript by the user: {', '.join(tag_names)}")
@@ -937,6 +894,8 @@ Summarization Instructions:
             # overwrite a good summary with an error.
             finish_processing(recording_id, events_transcript=formatted_transcription,
                               events_summary=summary or None)
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(db.session.get(Recording, recording_id), ok=True)
 
         except Exception as e:
             error_msg = format_api_error_message(str(e))
@@ -944,6 +903,8 @@ Summarization Instructions:
             recording.summary = error_msg
             recording.status = 'FAILED'
             db.session.commit()
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(recording, ok=False, error=error_msg)
 
 
 def extract_events_from_transcript(recording_id, transcript_text, summary_text):
@@ -2656,9 +2617,21 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # Determine diarization settings (respects ASR_DIARIZE env var)
         should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
 
-        # Use user's language preference if not explicitly provided
-        if language is None and user:
-            language = user.transcription_language
+        # Same settings chain as an upload (#412 audit P14): request value, then
+        # ASR speaker-count env defaults, the user's defaults and the admin
+        # defaults. Incognito has no tags or folder. An empty language falls
+        # through to the user's language, as on upload ("auto" forces detection).
+        from src.services.transcription_defaults import resolve_transcription_params
+        _resolved = resolve_transcription_params(
+            None,
+            {'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers,
+             'hotwords': hotwords, 'initial_prompt': initial_prompt,
+             'transcription_model': transcription_model},
+            tags=[], folder=None, owner=user)
+        language = _resolved['language']
+        min_speakers, max_speakers = _resolved['min_speakers'], _resolved['max_speakers']
+        hotwords, initial_prompt = _resolved['hotwords'], _resolved['initial_prompt']
+        transcription_model = _resolved['transcription_model']
 
         # Normalize at the boundary — legacy values like "français" must
         # become "fr" before the connector receives them (issue #256).
@@ -2675,9 +2648,6 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
         # Same model an upload would get, so a service without its own default
         # model works in incognito mode too (#409).
-        from src.services.transcription_defaults import resolve_transcription_model
-        transcription_model = resolve_transcription_model(transcription_model)
-
         current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
 
         if should_chunk:
@@ -2757,7 +2727,9 @@ def _generate_incognito_title(transcription_text, user=None):
         # Get formatted text for LLM
         formatted_text = format_transcription_for_llm(transcription_text)
         # Limit text for title generation
-        limited_text = formatted_text[:5000]
+        # Same transcript limit as the stored title (admin setting, #412).
+        _limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        limited_text = formatted_text if _limit == -1 else formatted_text[:_limit]
 
         # Get user language preference
         user_output_language = user.output_language if user else None

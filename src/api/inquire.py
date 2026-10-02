@@ -9,6 +9,7 @@ import json
 import re
 import time
 from datetime import datetime, timedelta
+from src.utils.timezones import to_user_local, user_timezone
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -530,7 +531,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                     # Build recording header with complete metadata
                     header = f"=== {recording.title} [Recording ID: {recording_id}] ==="
                     if recording.meeting_date:
-                        header += f" ({recording.meeting_date})"
+                        header += f" ({to_user_local(recording.meeting_date, current_user).strftime('%Y-%m-%d %H:%M')})"
                     
                     # Add participants information
                     if recording.participants:
@@ -825,6 +826,7 @@ Order your response with notes from the most recent meetings first. Always use p
                 'title': user_title,
                 'company': user_company,
                 'output_language': user_output_language,
+                'timezone': user_timezone(current_user),
             }
             agent_gen = run_inquire_agent(
                 app, user_id, user_ctx, user_message, message_history,

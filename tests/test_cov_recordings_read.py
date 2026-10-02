@@ -110,7 +110,9 @@ class FakeStorage:
 
 @contextmanager
 def use_storage(storage):
-    with patch.object(rec_module, "get_storage_service", return_value=storage):
+    # Reprocessing checks storage in src/services/reprocessing.py (#412).
+    with patch.object(rec_module, "get_storage_service", return_value=storage), \
+         patch("src.services.storage.get_storage_service", return_value=storage):
         yield storage
 
 
@@ -968,7 +970,7 @@ def test_reprocess_summary_enqueues(owner):
     c = new_client()
     login(c, owner)
     # client (the OpenRouter client) must not be None for the endpoint to proceed.
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code in (200, 202)
     assert len(calls) == 1
@@ -983,7 +985,7 @@ def test_reprocess_summary_custom_prompt_append(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary",
                       json={"custom_prompt": "Be brief", "prompt_mode": "append"})
     assert resp.status_code in (200, 202)
@@ -999,7 +1001,7 @@ def test_reprocess_summary_no_transcription_400(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 400
     assert calls == []
@@ -1012,7 +1014,7 @@ def test_reprocess_summary_transcription_error_400(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 400
     assert calls == []
@@ -1025,7 +1027,7 @@ def test_reprocess_summary_non_owner_denied(owner, other):
 
     c = new_client()
     login(c, other)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 403
     assert calls == []
@@ -1038,7 +1040,7 @@ def test_reprocess_summary_client_unavailable_503(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", None), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", None), patch("src.services.llm.client", None), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
     assert resp.status_code == 503
     assert calls == []
@@ -1056,7 +1058,7 @@ def test_generate_summary_enqueues(owner):
 
     c = new_client()
     login(c, owner)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/generate_summary", json={})
     assert resp.status_code in (200, 202)
     assert len(calls) == 1
@@ -1070,7 +1072,7 @@ def test_generate_summary_non_owner_denied(owner, other):
 
     c = new_client()
     login(c, other)
-    with patch.object(rec_module, "client", object()), capture_enqueue() as calls:
+    with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/generate_summary", json={})
     assert resp.status_code == 403
     assert calls == []
@@ -1209,12 +1211,12 @@ def test_bulk_delete_too_many_400(owner):
 def test_bulk_reprocess_summary_enqueues(owner):
     with _db():
         u = db.session.get(User, owner)
-        a = make_recording(u, status="COMPLETED", transcription="content a").id
-        b = make_recording(u, status="COMPLETED", transcription="content b").id
+        a = make_recording(u, status="COMPLETED", transcription="content of recording a").id
+        b = make_recording(u, status="COMPLETED", transcription="content of recording b").id
 
     c = new_client()
     login(c, owner)
-    with capture_enqueue() as calls:
+    with patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post("/api/recordings/bulk-reprocess",
                       json={"recording_ids": [a, b], "type": "summary"})
     assert resp.status_code == 200
@@ -1244,12 +1246,12 @@ def test_bulk_reprocess_skips_non_owned(owner, other):
     with _db():
         u = db.session.get(User, owner)
         o = db.session.get(User, other)
-        mine = make_recording(u, status="COMPLETED", transcription="x").id
-        theirs = make_recording(o, status="COMPLETED", transcription="y").id
+        mine = make_recording(u, status="COMPLETED", transcription="my own recording text").id
+        theirs = make_recording(o, status="COMPLETED", transcription="their recording text").id
 
     c = new_client()
     login(c, owner)
-    with capture_enqueue() as calls:
+    with patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post("/api/recordings/bulk-reprocess",
                       json={"recording_ids": [mine, theirs], "type": "summary"})
     assert resp.status_code == 200

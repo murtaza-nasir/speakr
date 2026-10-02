@@ -81,3 +81,22 @@ def test_calendar_files_are_built_in_one_place():
     for rel in ("src/api/api_v1.py", "src/api/events.py"):
         text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
         assert "BEGIN:VEVENT" not in text, f"{rel} builds ICS itself; use generate_combined_ics"
+
+
+def test_reprocess_jobs_are_queued_only_by_the_reprocessing_service():
+    """A route that queues reprocess_* itself skips the shared checks and clearing (#412)."""
+    offenders = []
+    for dirpath, _, files in os.walk(SRC):
+        for name in files:
+            if not name.endswith(".py"):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, name), ROOT)
+            if rel == "src/services/reprocessing.py":
+                continue
+            for node in ast.walk(ast.parse(open(os.path.join(dirpath, name), encoding="utf-8").read())):
+                if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "enqueue":
+                    for kw in node.keywords:
+                        if kw.arg == "job_type" and isinstance(kw.value, ast.Constant) \
+                                and kw.value.value in ("reprocess_transcription", "reprocess_summary"):
+                            offenders.append(f"{rel}:{node.lineno} queues {kw.value.value}")
+    assert not offenders, "Use src.services.reprocessing:\n" + "\n".join(offenders)

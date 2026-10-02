@@ -2249,60 +2249,12 @@ def assign_speakers(recording_id):
             else:
                 return jsonify({'error': f'Invalid value type for speaker "{label}"'}), 400
 
-        # --- Apply names exactly as the web app's update_speakers does ---
-        from src.services.speaker import apply_speaker_map, participants_from_segments, update_voice_profiles
-        from src.services.voice_profiles import speech_seconds_by_label
-
-        transcription_text = recording.transcription or ''
-        try:
-            transcription_data = json.loads(transcription_text)
-            is_json = isinstance(transcription_data, list)
-        except (json.JSONDecodeError, TypeError):
-            is_json = False
-
-        embeddings_updated = 0
-        snippets_created = 0
-        if is_json:
-            seconds_by_key = speech_seconds_by_label(transcription_data)
-            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
-            recording.transcription = json.dumps(transcription_data)
-            recording.participants = participants_from_segments(transcription_data)
-            if speaker_names_used:
-                update_speaker_usage(speaker_names_used)
-            embeddings_updated, snippets_created = update_voice_profiles(
-                recording, label_to_name, current_user, seconds_by_key)
-        else:
-            # Plain text transcript
-            new_participants = []
-            for speaker_label, new_name_info in speaker_map.items():
-                new_name = new_name_info.get('name', '').strip()
-                if new_name_info.get('isMe') and not new_name:
-                    new_name = current_user.name or 'Me'
-                if new_name:
-                    transcription_text = re.sub(
-                        r'\[\s*' + re.escape(speaker_label) + r'\s*\]',
-                        f'[{new_name}]',
-                        transcription_text,
-                        flags=re.IGNORECASE
-                    )
-                    if new_name not in new_participants:
-                        new_participants.append(new_name)
-            recording.transcription = transcription_text
-            recording.participants = ', '.join(new_participants)
-            if new_participants:
-                update_speaker_usage(new_participants)
-
-        db.session.commit()
-
-        summary_queued = False
-        if regenerate_summary:
-            job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording.id,
-                job_type='summarize',
-                params={'user_id': current_user.id}
-            )
-            summary_queued = True
+        # Same rename and follow-up steps as the web update_speakers (#412).
+        from src.services.speaker_assignment import apply_speaker_names
+        result = apply_speaker_names(recording, current_user, speaker_map, regenerate_summary)
+        summary_queued = result['summary_queued']
+        embeddings_updated = result['embeddings_updated']
+        snippets_created = result['snippets_created']
 
         return jsonify({
             'success': True,
@@ -2386,16 +2338,9 @@ def start_transcription(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Check if audio is available
-    if recording.audio_deleted_at:
-        return jsonify({'error': 'Audio has been deleted'}), 400
-
+    # Same checks, clearing and settings as the web reprocess (#412).
+    from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
     data = request.get_json() or {}
-
-    # Resolve the full transcribe param set through the shared chain so the API
-    # applies the same tag/folder/env/account defaults + admin model validation
-    # as the web upload/reprocess endpoints (issue #266).
-    from src.services.transcription_defaults import resolve_transcription_params
     overrides = {
         'min_speakers': data.get('min_speakers'),
         'max_speakers': data.get('max_speakers'),
@@ -2405,15 +2350,10 @@ def start_transcription(recording_id):
     }
     if 'language' in data:
         overrides['language'] = data.get('language')
-    params = resolve_transcription_params(recording, overrides)
-
-    # Queue the job
-    job_id = job_queue.enqueue(
-        user_id=current_user.id,
-        recording_id=recording_id,
-        job_type='reprocess_transcription',
-        params=params
-    )
+    try:
+        job_id = queue_transcription_reprocess(recording, current_user, overrides)
+    except ReprocessError as e:
+        return jsonify({'error': e.message}), e.status
 
     return jsonify({
         'success': True,
@@ -2436,24 +2376,17 @@ def start_summarization(recording_id):
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify({'error': 'Permission denied'}), 403
 
-    # Check if transcription exists
-    if not recording.transcription:
-        return jsonify({'error': 'No transcription available - transcribe first'}), 400
-
+    # Same checks, clearing and parameters as the web reprocess, including
+    # prompt_mode and prompt_variables (#412).
+    from src.services.reprocessing import queue_summary_reprocess, ReprocessError
     data = request.get_json() or {}
-
-    params = {
-        'custom_prompt': data.get('custom_prompt'),
-        'user_id': current_user.id
-    }
-
-    # Queue the job
-    job_id = job_queue.enqueue(
-        user_id=current_user.id,
-        recording_id=recording_id,
-        job_type='reprocess_summary',
-        params={k: v for k, v in params.items() if v is not None}
-    )
+    try:
+        job_id = queue_summary_reprocess(recording, current_user,
+                                         custom_prompt=data.get('custom_prompt'),
+                                         prompt_mode=data.get('prompt_mode'),
+                                         prompt_variables=data.get('prompt_variables'))
+    except ReprocessError as e:
+        return jsonify({'error': e.message}), e.status
 
     return jsonify({
         'success': True,
@@ -2875,19 +2808,13 @@ def batch_transcribe_recordings():
             results.append({'id': recording_id, 'success': False, 'error': 'Permission denied'})
             continue
 
-        if recording.audio_deleted_at:
-            results.append({'id': recording_id, 'success': False, 'error': 'Audio deleted'})
-            continue
-
+        # Same checks, clearing and settings as a single reprocess (#412).
+        from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
         try:
-            from src.services.transcription_defaults import resolve_transcription_params
-            job_id = job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording_id,
-                job_type='reprocess_transcription',
-                params=resolve_transcription_params(recording)
-            )
+            job_id = queue_transcription_reprocess(recording, current_user)
             results.append({'id': recording_id, 'success': True, 'job_id': job_id})
+        except ReprocessError as e:
+            results.append({'id': recording_id, 'success': False, 'error': e.message})
         except Exception as e:
             results.append({'id': recording_id, 'success': False, 'error': str(e)})
 

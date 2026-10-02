@@ -119,12 +119,15 @@ def resolve_transcription_params(recording=None, overrides=None, *, tags=None, f
     # Derive context from the recording when given; otherwise the caller (upload,
     # which resolves before the row exists) supplies tags/folder/owner directly.
     if recording is not None:
-        if tags is None:
-            tags = recording.tags
-        if folder is None:
-            folder = recording.folder
         if owner is None:
             owner = recording.owner
+        if tags is None:
+            # The owner's view of the tags, as for prompts and naming templates
+            # (#412 S3): another user's personal tag on a shared recording does
+            # not change how it is transcribed.
+            tags = recording.get_visible_tags(owner) if owner else []
+        if folder is None:
+            folder = recording.folder
     tags = list(tags) if tags else []
 
     def _override_str(key):
@@ -139,13 +142,17 @@ def resolve_transcription_params(recording=None, overrides=None, *, tags=None, f
     initial_prompt = _override_str('initial_prompt')
     transcription_model = _override_str('transcription_model')
     # language behaves like every other field: a real override wins; an empty or
-    # blank value falls through the tag -> folder -> owner chain.
+    # blank value falls through the tag -> folder -> owner chain. The explicit
+    # value "auto" forces auto-detection and skips the chain (#412 audit S9).
     language = _override_str('language')
+    force_auto_language = isinstance(language, str) and language.strip().lower() == 'auto'
+    if force_auto_language:
+        language = None
 
     # Tag defaults — first tag (by order) that supplies each value.
     first_tag = tags[0] if tags else None
     for tag in tags:
-        if not language and tag.default_language:
+        if not language and not force_auto_language and tag.default_language:
             language = tag.default_language
         if min_speakers is None and tag.default_min_speakers:
             min_speakers = tag.default_min_speakers
@@ -160,7 +167,7 @@ def resolve_transcription_params(recording=None, overrides=None, *, tags=None, f
 
     # Folder defaults.
     if folder:
-        if not language and folder.default_language:
+        if not language and not force_auto_language and folder.default_language:
             language = folder.default_language
         if min_speakers is None and folder.default_min_speakers:
             min_speakers = folder.default_min_speakers
@@ -181,12 +188,23 @@ def resolve_transcription_params(recording=None, overrides=None, *, tags=None, f
 
     # Owner (account-level) defaults.
     if owner:
-        if not language and owner.transcription_language:
+        if not language and not force_auto_language and owner.transcription_language:
             language = owner.transcription_language
         if not hotwords and owner.transcription_hotwords:
             hotwords = owner.transcription_hotwords
         if not initial_prompt and owner.transcription_initial_prompt:
             initial_prompt = owner.transcription_initial_prompt
+
+    # Admin defaults are the last level (#412 audit S6). They used to be
+    # applied only inside the transcription task, so callers that read these
+    # resolved values (upload pre-fill, parity checks) missed them; the task
+    # keeps its fallback for jobs queued before this change.
+    if not hotwords or not initial_prompt:
+        from src.models import SystemSetting
+        if not hotwords:
+            hotwords = (SystemSetting.get_setting('admin_default_hotwords', '') or '').strip() or None
+        if not initial_prompt:
+            initial_prompt = (SystemSetting.get_setting('admin_default_initial_prompt', '') or '').strip() or None
 
     # Admin-curated validation / default for the model.
     transcription_model = resolve_transcription_model(transcription_model)

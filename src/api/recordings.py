@@ -938,69 +938,10 @@ def update_speakers(recording_id):
         if speaker_map is None:
             return jsonify({'error': 'No speaker map provided'}), 400
 
-        transcription_text = recording.transcription
-        is_json = False
-        try:
-            transcription_data = json.loads(transcription_text)
-            # Updated check for our new simplified JSON format (a list of segment objects)
-            is_json = isinstance(transcription_data, list)
-        except (json.JSONDecodeError, TypeError):
-            is_json = False
-
-        speaker_names_used = []
-
-        label_to_name = {}
-        seconds_by_key = None
-        if is_json:
-            from src.services.voice_profiles import speech_seconds_by_label
-            seconds_by_key = speech_seconds_by_label(transcription_data)
-            speaker_names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, current_user)
-            recording.transcription = json.dumps(transcription_data)
-            recording.participants = participants_from_segments(transcription_data)
-
-        else:
-            # Handle plain text transcript
-            new_participants = []
-            for speaker_label, new_name_info in speaker_map.items():
-                new_name = new_name_info.get('name', '').strip()
-                # If isMe is checked but no name provided, use current user's name
-                if new_name_info.get('isMe') and not new_name:
-                    new_name = current_user.name or 'Me'
-
-                if new_name:
-                    transcription_text = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription_text, flags=re.IGNORECASE)
-                    if new_name not in new_participants:
-                        new_participants.append(new_name)
-
-            recording.transcription = transcription_text
-            if new_participants:
-                recording.participants = ', '.join(new_participants)
-            speaker_names_used = new_participants
-
-        # Update speaker usage statistics
-        if speaker_names_used:
-            update_speaker_usage(speaker_names_used)
-
-        # Update speaker voice embeddings and snippets if available
-        update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
-
-        db.session.commit()
-
-        # Speaker names changed the transcription text — rebuild the Inquire
-        # chunks so semantic search answers with the applied names, not the
-        # raw SPEAKER_XX labels. Background + best-effort.
-        reindex_recording_chunks_async(recording_id)
-
-        summary_queued = False
-        if regenerate_summary:
-            current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after speaker update.")
-            job_queue.enqueue(
-                user_id=current_user.id,
-                recording_id=recording.id,
-                job_type='summarize',
-                params={'user_id': current_user.id}
-            )
-            summary_queued = True
+        # Same rename and follow-up steps as API v1 /speakers/assign (#412).
+        from src.services.speaker_assignment import apply_speaker_names
+        result = apply_speaker_names(recording, current_user, speaker_map, regenerate_summary)
+        summary_queued = result['summary_queued']
 
         # Return recording with per-user status
         recording_dict = recording.to_dict(viewer_user=current_user)
@@ -1150,38 +1091,9 @@ def reprocess_transcription(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
 
-        if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
-            return jsonify({'error': 'Audio file not found for reprocessing'}), 404
-
-        if recording.status in ['QUEUED', 'PROCESSING', 'SUMMARIZING']:
-            return jsonify({'error': 'Recording is already being processed'}), 400
-
-        # File path and name for processing (conversion handled in background task if needed)
-        filepath = recording.audio_path
-        filename_for_asr = recording.original_filename or os.path.basename(filepath)
-
-        # --- Proceed with reprocessing ---
-        recording.transcription = None
-        recording.summary = None
-        recording.status = 'QUEUED'  # Will change to PROCESSING when job starts
-
-        # Clear existing events since they depend on the transcription
-        Event.query.filter_by(recording_id=recording_id).delete()
-
-        db.session.commit()
-
-        current_app.logger.info(f"Queueing transcription reprocessing for recording {recording_id}")
-
-        # Prepare job parameters
+        # Checks, clearing and settings are shared with every reprocess path (#412).
+        from src.services.reprocessing import queue_transcription_reprocess, ReprocessError
         data = request.json or {}
-        start_time = datetime.utcnow()
-        app_context = current_app._get_current_object().app_context()
-
-        # Resolve the full transcribe param set through the shared chain:
-        # per-request override > tag > folder > env > owner > admin default.
-        # The 'language' key is only forwarded when explicitly present so an
-        # empty string still means auto-detect and an absent key falls back to
-        # the owner's default (see resolve_transcription_params).
         overrides = {
             'min_speakers': data.get('min_speakers'),
             'max_speakers': data.get('max_speakers'),
@@ -1191,14 +1103,11 @@ def reprocess_transcription(recording_id):
         }
         if 'language' in data:
             overrides['language'] = data.get('language')
-        job_params = resolve_transcription_params(recording, overrides)
-
-        job_id = job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='reprocess_transcription',
-            params=job_params
-        )
+        try:
+            queue_transcription_reprocess(recording, current_user, overrides)
+        except ReprocessError as e:
+            return jsonify({'error': e.message}), e.status
+        current_app.logger.info(f"Queued transcription reprocessing for recording {recording_id}")
 
         # Get queue position for response
         queue_position = job_queue.get_position_in_queue(recording.id)
@@ -1235,69 +1144,18 @@ def reprocess_summary(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
 
-        # Check if transcription exists
-        if not recording.transcription or len(recording.transcription.strip()) < 10:
-            return jsonify({'error': 'No valid transcription available for summary generation'}), 400
-
-        # Check if transcription is an error message (not actual content)
-        if is_transcription_error(recording.transcription):
-            return jsonify({'error': 'Cannot generate summary: transcription failed. Please reprocess the transcription first.'}), 400
-
-        # Check if already processing
-        if recording.status in ['PROCESSING', 'SUMMARIZING']:
-            return jsonify({'error': 'Recording is already being processed'}), 400
-
-        # Check if OpenRouter client is available
-        if client is None:
-            return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
-
-        # Get custom prompt + mode from request if provided
+        # Checks, clearing and job parameters are shared with every reprocess
+        # path, including API v1 and the bulk action (#412).
+        from src.services.reprocessing import queue_summary_reprocess, ReprocessError
         data = request.get_json() or {}
-        custom_prompt = data.get('custom_prompt', '').strip() if data.get('custom_prompt') else None
-        prompt_mode = (data.get('prompt_mode') or 'replace').strip().lower()
-        if prompt_mode not in ('replace', 'append'):
-            prompt_mode = 'replace'
-        custom_prompt_append = bool(custom_prompt) and prompt_mode == 'append'
-
-        # Debug logging
-        if custom_prompt:
-            current_app.logger.info(
-                f"Received custom prompt override for recording {recording_id} "
-                f"(mode={prompt_mode}, length={len(custom_prompt)})"
-            )
-        else:
-            current_app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
-
-        # Per-recording prompt-template variables. Sanitised through the same
-        # helper used at upload time so reprocess can't bypass the caps.
-        from src.utils.prompt_variables import sanitize_variable_values
-        raw_prompt_variables = data.get('prompt_variables')
-        if raw_prompt_variables is not None:
-            recording.prompt_variables = sanitize_variable_values(raw_prompt_variables)
-
-        # Clear existing summary (status will be set to QUEUED by job_queue.enqueue)
-        recording.summary = None
-
-        # Clear existing events since they might be re-extracted during summary generation
-        Event.query.filter_by(recording_id=recording_id).delete()
-
-        db.session.commit()
-
-        current_app.logger.info(f"Queueing summary reprocessing for recording {recording_id}" +
-                       (f" with custom prompt (length: {len(custom_prompt)})" if custom_prompt else ""))
-
-        # Queue summary generation job
-        job_params = {
-            'custom_prompt': custom_prompt,
-            'custom_prompt_append': custom_prompt_append,
-            'user_id': current_user.id
-        }
-        job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='reprocess_summary',
-            params=job_params
-        )
+        try:
+            queue_summary_reprocess(recording, current_user,
+                                    custom_prompt=data.get('custom_prompt'),
+                                    prompt_mode=data.get('prompt_mode'),
+                                    prompt_variables=data.get('prompt_variables'))
+        except ReprocessError as e:
+            return jsonify({'error': e.message}), e.status
+        current_app.logger.info(f"Queued summary reprocessing for recording {recording_id}")
 
         # Refresh recording to get updated status
         db.session.refresh(recording)
@@ -2243,72 +2101,34 @@ def share_target():
     if not shared or not getattr(shared, 'filename', ''):
         return redirect(url_for('recordings.index') + '?share_target_error=missing_file')
 
-    original_filename = shared.filename
-    safe_filename = secure_filename(original_filename) or 'shared-recording.webm'
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{timestamp}_{safe_filename}")
+    # The file goes through the same ingestion as every upload (#412 audit
+    # P13): storage backend (local or S3), file hash and duplicate check,
+    # meeting date, MIME type, title placeholder, recording.created and the
+    # transcription job. A share sheet carries no tag or folder; its title,
+    # text and url become the title and notes.
+    from werkzeug.datastructures import MultiDict
+    form = MultiDict()
+    share_title = (request.form.get('title') or '').strip()
+    if share_title:
+        form['title'] = share_title
+    notes_parts = [(request.form.get(k) or '').strip() for k in ('title', 'text', 'url')]
+    notes_parts = [v for v in notes_parts if v]
+    if notes_parts:
+        form['notes'] = '\n\n'.join(notes_parts)
 
     try:
-        shared.save(filepath)
+        result = ingest_uploaded_recording(owner=current_user, uploaded_file=shared, form=form,
+                                           processing_source='share_target')
     except RequestEntityTooLarge:
         return redirect(url_for('recordings.index') + '?share_target_error=too_large')
-    except Exception as save_err:
-        current_app.logger.warning(f"share-target file save failed: {save_err}")
-        return redirect(url_for('recordings.index') + '?share_target_error=save_failed')
+    resp, status = result if isinstance(result, tuple) else (result, result.status_code)
+    data = resp.get_json(silent=True) or {}
+    if status >= 400 or not data.get('id'):
+        current_app.logger.warning(f"share-target ingest failed ({status}): {data.get('error')}")
+        error = 'too_large' if status == 413 else 'save_failed'
+        return redirect(url_for('recordings.index') + f'?share_target_error={error}')
 
-    file_size = os.path.getsize(filepath)
-
-    # Build the recording row. Tags and folder cannot be inferred from a
-    # share sheet, so we leave them empty; the user can adjust from the
-    # recording detail view. Title comes from the share sheet's title field
-    # if present; otherwise we use the SAME placeholder a normal upload gets
-    # (resolve_upload_title) so the AI title task recognises it and generates
-    # a title — previously the filename stem was used, which the title task
-    # treated as a user-chosen title and skipped, leaving shared files untitled.
-    from src.utils.titles import resolve_upload_title, upload_title_source
-    share_title = resolve_upload_title(request.form.get('title'), original_filename)
-
-    notes_parts = []
-    for key in ('title', 'text', 'url'):
-        val = (request.form.get(key) or '').strip()
-        if val:
-            notes_parts.append(val)
-    share_notes = '\n\n'.join(notes_parts) if notes_parts else None
-
-    recording = Recording(
-        audio_path=filepath,
-        original_filename=original_filename,
-        title=share_title,
-        title_source=upload_title_source(request.form.get('title')),
-        status='PENDING',
-        user_id=current_user.id,
-        notes=share_notes,
-        file_size=file_size,
-    )
-    db.session.add(recording)
-    db.session.commit()
-
-    # Enqueue transcription through the shared resolver so a shared file honors
-    # the same account defaults (and any future tag/folder context) as every
-    # other ingestion path. A share sheet carries no tag/folder, so this
-    # resolves to the owner's account-level defaults.
-    job_params = resolve_transcription_params(recording)
-    try:
-        job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='transcribe',
-            params=job_params,
-            is_new_upload=True,
-        )
-    except Exception as queue_err:
-        current_app.logger.warning(f"share-target enqueue failed for recording {recording.id}: {queue_err}")
-        recording.status = 'FAILED'
-        recording.transcription = f"Processing failed: {queue_err}"
-        db.session.commit()
-        return redirect(url_for('recordings.index') + '?share_target_error=queue_failed')
-
-    return redirect(url_for('recordings.index') + f'?share_target=ok&recording_id={recording.id}')
+    return redirect(url_for('recordings.index') + f"?share_target=ok&recording_id={data['id']}")
 
 
 @recordings_bp.route('/upload', methods=['POST'])
@@ -2861,6 +2681,7 @@ def ingest_uploaded_recording(
                 pattern_key=owner.filename_date_pattern or 'auto',
                 custom_regex=owner.filename_date_regex,
                 tz_offset_minutes=tz_offset,
+                tz_name=form.get('client_timezone'),
             )
             if meeting_date:
                 current_app.logger.info(f"Using filename-parsed meeting_date: {meeting_date}")
@@ -2971,20 +2792,8 @@ def ingest_uploaded_recording(
         # Webhook event (#275). Fan-out happens off-request via the
         # dispatcher; this call only enqueues a delivery row per matching
         # subscription, so it is cheap and safe inside the request path.
-        try:
-            from src.services.webhook_dispatch import emit_webhook_event
-            emit_webhook_event(
-                user_id=owner.id,
-                event_type='recording.created',
-                data={
-                    'recording_id': recording.id,
-                    'title': recording.title,
-                    'file_size': recording.file_size,
-                    'original_filename': recording.original_filename,
-                },
-            )
-        except Exception as e:
-            current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+        from src.services.webhook_dispatch import emit_recording_created
+        emit_recording_created(recording)
 
         response_data = recording.to_dict(viewer_user=owner)
         if duplicate_warning:
@@ -3053,16 +2862,8 @@ def _ingest_join_part(owner, join, filepath, storage, now, *, original_filename,
         owner, parts, title=title, notes=notes, folder=folder, tags=tags,
         prompt_variables=prompt_variables, transcribe_params=transcribe_params)
     current_app.logger.info(f"Joined {count} uploaded files into recording {recording.id}")
-    try:
-        from src.services.webhook_dispatch import emit_webhook_event
-        emit_webhook_event(
-            user_id=owner.id,
-            event_type='recording.created',
-            data={'recording_id': recording.id, 'title': recording.title,
-                  'file_size': recording.file_size, 'original_filename': recording.original_filename},
-        )
-    except Exception as e:
-        current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
     response_data = recording.to_dict(viewer_user=owner)
     response_data['joined_parts'] = count
     if duplicate_warning:
@@ -3144,7 +2945,8 @@ def upload_incognito():
             current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
 
         # Get optional parameters
-        # Note: Empty string '' means auto-detect, don't convert to None
+        # An empty language falls through to the user's default, as on upload;
+        # "auto" forces auto-detection (resolved in transcribe_incognito, #412).
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers')
         max_speakers = request.form.get('max_speakers')
@@ -3152,6 +2954,10 @@ def upload_incognito():
         initial_prompt = request.form.get('initial_prompt', '').strip() or None
         transcription_model = request.form.get('transcription_model', '').strip() or None
         auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
+        # The admin switch that disables automatic summaries applies here too (#412).
+        _admin_off = SystemSetting.get_setting('disable_auto_summarization', False)
+        if (_admin_off if isinstance(_admin_off, bool) else str(_admin_off).lower() == 'true'):
+            auto_summarize = False
 
         # Convert to int if provided
         if min_speakers:
@@ -4577,29 +4383,16 @@ def bulk_reprocess():
                 if recording.status not in ['COMPLETED', 'FAILED']:
                     continue
 
-                # For transcription reprocess, need audio file
-                if reprocess_type == 'transcription':
-                    if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
-                        continue
-                    job_type = 'reprocess_transcription'
-                else:
-                    # For summary, need transcription
-                    if not recording.transcription:
-                        continue
-                    job_type = 'reprocess_summary'
-
-                # Queue the job. A transcription reprocess gets the recording's
-                # resolved model, hotwords and speaker hints, as a single
-                # reprocess and API v1 batch transcribe do.
-                params = {'user_id': current_user.id}
-                if job_type == 'reprocess_transcription':
-                    params = {**resolve_transcription_params(recording), **params}
-                job_queue.enqueue(
-                    user_id=current_user.id,
-                    recording_id=recording.id,
-                    job_type=job_type,
-                    params=params
-                )
+                # Same checks, clearing and settings as a single reprocess (#412).
+                from src.services.reprocessing import (
+                    queue_transcription_reprocess, queue_summary_reprocess, ReprocessError)
+                try:
+                    if reprocess_type == 'transcription':
+                        queue_transcription_reprocess(recording, current_user)
+                    else:
+                        queue_summary_reprocess(recording, current_user)
+                except ReprocessError:
+                    continue
 
                 queued_ids.append(recording_id)
 
