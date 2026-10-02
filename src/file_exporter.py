@@ -450,9 +450,10 @@ def get_user_export_template(user, recording=None):
     """
     Get the export template to use for a recording.
 
-    Resolution order:
-    1. Folder's export_template_id (if recording is in a folder)
-    2. Tag's export_template_id (first matching tag with an export template)
+    Resolution order (#412: same order as every other per-recording setting,
+    tag before folder; before #412 the folder came first):
+    1. Tag's export_template_id (first matching tag with an export template)
+    2. Folder's export_template_id (if recording is in a folder)
     3. User's default export template (is_default=True)
 
     Args:
@@ -465,19 +466,19 @@ def get_user_export_template(user, recording=None):
     from src.models import ExportTemplate
     from src.database import db
 
-    # 1. Check folder's export template
-    if recording and recording.folder and recording.folder.export_template_id:
-        template = db.session.get(ExportTemplate, recording.folder.export_template_id)
-        if template:
-            return template
-
-    # 2. Check tags' export templates
+    # 1. Check tags' export templates
     if recording and recording.tags:
         for tag in recording.tags:
             if tag.export_template_id:
                 template = db.session.get(ExportTemplate, tag.export_template_id)
                 if template:
                     return template
+
+    # 2. Check folder's export template
+    if recording and recording.folder and recording.folder.export_template_id:
+        template = db.session.get(ExportTemplate, recording.folder.export_template_id)
+        if template:
+            return template
 
     # 3. Fall back to user's default
     return ExportTemplate.query.filter_by(
