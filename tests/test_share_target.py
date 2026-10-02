@@ -42,6 +42,32 @@ def _login(client, user):
         sess["_fresh"] = True
 
 
+
+from contextlib import contextmanager as _contextmanager
+
+
+@_contextmanager
+def _no_media_tools():
+    """The share target runs the standard upload ingestion (#412), which probes
+    and converts audio with ffmpeg. These tests send placeholder bytes, so the
+    media steps are stubbed as in tests/test_cov_recordings_write.py."""
+    from unittest.mock import MagicMock, patch as _patch
+
+    def _convert(filepath, **kwargs):
+        r = MagicMock()
+        r.output_path = filepath
+        r.was_converted = r.was_compressed = False
+        r.original_codec = r.final_codec = "opus"
+        r.size_reduction_percent = 0.0
+        return r
+    with _patch("src.api.recordings.convert_if_needed", side_effect=_convert), \
+         _patch("src.api.recordings.get_codec_info",
+                return_value={"has_video": False, "audio_codec": "opus", "video_codec": None, "duration": 5.0}), \
+         _patch("src.api.recordings.get_duration", return_value=5.0), \
+         _patch("src.api.recordings.get_creation_date", return_value=None):
+        yield
+
+
 def test_manifest_share_target_action():
     """The PWA manifest must point share_target.action at /share-target."""
     manifest_path = Path(__file__).parent.parent / "static" / "manifest.json"
@@ -77,7 +103,7 @@ def test_share_target_creates_recording_and_enqueues_job():
             captured.update(kwargs)
             return 999
 
-        with patch("src.services.job_queue.job_queue.enqueue", side_effect=fake_enqueue), \
+        with _no_media_tools(), patch("src.services.job_queue.job_queue.enqueue", side_effect=fake_enqueue), \
              patch("src.api.recordings.os.path.getsize", return_value=12345):
             resp = client.post(
                 "/share-target",
@@ -131,7 +157,7 @@ def test_share_target_without_title_gets_ai_titleable_placeholder():
         client = app.test_client()
         _login(client, user)
 
-        with patch("src.services.job_queue.job_queue.enqueue", return_value=1), \
+        with _no_media_tools(), patch("src.services.job_queue.job_queue.enqueue", return_value=1), \
              patch("src.api.recordings.os.path.getsize", return_value=12345):
             resp = client.post(
                 "/share-target",
