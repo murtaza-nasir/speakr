@@ -91,7 +91,8 @@ def _has_time(groups) -> bool:
 
 def parse_filename_date(filename: str, pattern_key: str = 'auto',
                         custom_regex: Optional[str] = None,
-                        tz_offset_minutes: Optional[int] = None) -> Optional[datetime]:
+                        tz_offset_minutes: Optional[int] = None,
+                        tz_name: Optional[str] = None) -> Optional[datetime]:
     """
     Extract a meeting date from *filename* and return it as naive UTC.
 
@@ -138,7 +139,16 @@ def parse_filename_date(filename: str, pattern_key: str = 'auto',
         if parsed is None:
             continue
 
-        # Local wall-clock -> naive UTC per the storage convention.
+        # Local wall-clock -> naive UTC per the storage convention. A named zone
+        # (the browser's IANA zone) gives the offset that applied on that date,
+        # across daylight-saving changes; the browser's current offset is the
+        # fallback (#412 B9).
+        if tz_name:
+            from src.utils.timezones import is_valid_timezone
+            if is_valid_timezone(tz_name):
+                from zoneinfo import ZoneInfo
+                from datetime import timezone as _utc
+                return parsed.replace(tzinfo=ZoneInfo(tz_name)).astimezone(_utc.utc).replace(tzinfo=None)
         if tz_offset_minutes is not None:
             try:
                 offset = int(tz_offset_minutes)

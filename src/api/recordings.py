@@ -2681,6 +2681,7 @@ def ingest_uploaded_recording(
                 pattern_key=owner.filename_date_pattern or 'auto',
                 custom_regex=owner.filename_date_regex,
                 tz_offset_minutes=tz_offset,
+                tz_name=form.get('client_timezone'),
             )
             if meeting_date:
                 current_app.logger.info(f"Using filename-parsed meeting_date: {meeting_date}")
