@@ -708,6 +708,13 @@ def _run_migrations(app, engine):
             app.logger.warning(f"Error during meeting_date migration: {e}")
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
+    with _migration_section(app, failures, "webhook secret rotation grace"):
+        # mailr spec W2: the previous secret signs a second V2 value for a while.
+        if add_column_if_not_exists(engine, 'webhook', 'previous_secret', 'VARCHAR(120)'):
+            app.logger.info("Added previous_secret column to webhook table")
+        if add_column_if_not_exists(engine, 'webhook', 'previous_secret_expires_at', 'DATETIME'):
+            app.logger.info("Added previous_secret_expires_at column to webhook table")
+
     with _migration_section(app, failures, "notifications"):
         # The table itself comes from create_all(); these cover a database
         # that already had an earlier version of it. Columns are added

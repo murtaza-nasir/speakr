@@ -13,6 +13,11 @@ tombstone for that user. The changes feed reads updated_at and the
 tombstones in one order, (changed_at, kind, id), and pages with an opaque
 cursor.
 
+The same listener collects what changed per recording; after the commit one
+recording.updated webhook goes out per recording (spec W3), so an edit from
+the web app fires the same event as an API PATCH. Status changes during
+processing fire none: the lifecycle events cover them.
+
 Bulk Query.update() bypasses ORM events; tests/test_recording_changes.py fails
 if one is added for the recording table.
 """
@@ -33,6 +38,17 @@ TRACKED_FIELDS = (
     'folder_id', 'is_inbox', 'is_highlighted', 'is_archived', 'audio_deleted_at', 'completed_at',
     'error_message', 'speaker_label_map', 'deletion_exempt', 'prompt_variables',
 )
+
+# Column -> the word in recording.updated fields_changed. Columns not listed
+# (status, completed_at, error_message) move updated_at but fire no
+# recording.updated; the lifecycle events cover them.
+WEBHOOK_FIELD_NAMES = {
+    'title': 'title', 'participants': 'participants', 'notes': 'notes', 'summary': 'summary',
+    'transcription': 'transcript', 'meeting_date': 'meeting_date', 'folder_id': 'folder_id',
+    'is_inbox': 'is_inbox', 'is_highlighted': 'is_highlighted', 'is_archived': 'is_archived',
+    'speaker_label_map': 'speakers', 'audio_deleted_at': 'audio', 'deletion_exempt': 'deletion_exempt',
+    'prompt_variables': 'prompt_variables',
+}
 
 SETTLE_SECONDS = 2
 TOMBSTONE_DAYS = int(os.environ.get('RECORDING_TOMBSTONE_DAYS', '90') or 90)
@@ -59,20 +75,28 @@ def effective_updated_at(recording):
 # ---------------------------------------------------------------- listener
 
 def _child_recording_ids(session):
-    """Recording ids touched through a row that belongs to a recording."""
+    """{recording id: webhook field or None} for rows that belong to a recording.
+
+    Tags, events and external references are part of the owner's view
+    (fields tags, events, external_refs). Shares and a recipient's own state
+    move updated_at but fire no recording.updated for the owner (None).
+    """
     from src.models import Event, InternalShare, RecordingTag, SharedRecordingState
-    child_types = (RecordingTag, Event, InternalShare, SharedRecordingState)
+    kinds = [(RecordingTag, 'tags'), (Event, 'events'), (InternalShare, None), (SharedRecordingState, None)]
     try:
         from src.models import RecordingExternalRef  # G8
-        child_types = child_types + (RecordingExternalRef,)
+        kinds.append((RecordingExternalRef, 'external_refs'))
     except ImportError:
         pass
-    ids = set()
+    ids = {}
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
-        if isinstance(obj, child_types):
-            rid = getattr(obj, 'recording_id', None)
-            if rid is not None:
-                ids.add(rid)
+        for model, field in kinds:
+            if isinstance(obj, model):
+                rid = getattr(obj, 'recording_id', None)
+                if rid is not None:
+                    fields = ids.setdefault(rid, set())
+                    if field:
+                        fields.add(field)
     return ids
 
 
@@ -104,11 +128,13 @@ def _before_flush(session, flush_context, instances):
 
     deleted_recordings = {obj.id for obj in session.deleted if isinstance(obj, Recording)}
     with session.no_autoflush:
-        for rid in _child_recording_ids(session) - deleted_recordings:
+        for rid, fields in _child_recording_ids(session).items():
+            if rid in deleted_recordings:
+                continue
             rec = session.get(Recording, rid)
             if rec is not None and rec not in session.new:
                 rec.updated_at = now
-                changes.setdefault(rid, set()).add('related')
+                changes.setdefault(rid, set()).update(fields)
 
         for obj in session.deleted:
             if isinstance(obj, Recording):
@@ -135,12 +161,60 @@ def _add_tombstone(session, recording_id, user_id, now, reason):
     session.add(RecordingTombstone(recording_id=recording_id, user_id=user_id, deleted_at=now, reason=reason))
 
 
+def _after_flush(session, flush_context):
+    """Remember owner, title and updated_at while the rows are loaded; after
+    the commit the objects are expired and the session cannot query."""
+    from sqlalchemy.orm.util import identity_key
+    from src.models import Recording
+    changes = session.info.get('recording_changes')
+    if not changes:
+        return
+    facts = session.info.setdefault('recording_change_facts', {})
+    for rid in changes:
+        rec = session.identity_map.get(identity_key(Recording, rid))
+        if rec is not None:
+            facts[rid] = (rec.user_id, rec.title, iso_z(rec.updated_at or rec.created_at))
+
+
+def _after_commit(session):
+    changes = session.info.pop('recording_changes', None) or {}
+    facts = session.info.pop('recording_change_facts', None) or {}
+    events = []
+    for rid, columns in changes.items():
+        fields = sorted({WEBHOOK_FIELD_NAMES.get(c, c) for c in columns
+                         if c in WEBHOOK_FIELD_NAMES or c in ('tags', 'events', 'external_refs')})
+        if fields and rid in facts:
+            user_id, title, updated_at = facts[rid]
+            events.append((user_id, {'recording_id': rid, 'title': title, 'fields_changed': fields,
+                                     'updated_at': updated_at}))
+    if not events:
+        return
+    try:
+        from src.services.webhook_dispatch import _global_enabled, enqueue_event
+        if not _global_enabled():
+            return
+        with Session(bind=session.get_bind()) as webhook_session:
+            for user_id, data in events:
+                enqueue_event(webhook_session, user_id, 'recording.updated', data)
+    except Exception as e:  # webhooks never undo or fail the change itself
+        import logging
+        logging.getLogger(__name__).warning(f"recording.updated webhook not queued: {e}")
+
+
+def _after_rollback(session):
+    session.info.pop('recording_changes', None)
+    session.info.pop('recording_change_facts', None)
+
+
 def register_change_tracking():
-    """Register the listener once, for every session."""
+    """Register the listeners once, for every session."""
     global _registered
     if _registered:
         return
     event.listen(Session, 'before_flush', _before_flush)
+    event.listen(Session, 'after_flush', _after_flush)
+    event.listen(Session, 'after_commit', _after_commit)
+    event.listen(Session, 'after_soft_rollback', lambda session, previous_transaction: _after_rollback(session))
     _registered = True
 
 

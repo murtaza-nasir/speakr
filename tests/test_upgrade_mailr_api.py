@@ -107,3 +107,33 @@ def test_recording_updated_at_and_tombstones(tmp_path, fixture):
     assert {"ix_recording_updated_at", "ix_recording_user_updated"} <= indexes
     assert "recording_tombstone" in tables
     assert ledger == 1 and since and since[0].endswith("Z")
+
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])
+def test_webhook_rotation_grace_columns(tmp_path, fixture):
+    """W2: previous_secret columns arrive empty; the current secret is untouched."""
+    db_path, con = _load(tmp_path, fixture)
+    if "webhook" not in {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        con.close()
+        pytest.skip("webhook table not in this release")
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+                ("u", "u@example.test", "hash"))
+    cols = _columns(con, "webhook")
+    values = {"id": 3, "user_id": 1, "name": "n8n", "url": "https://example.com/h", "secret": "s" * 40,
+              "events": "[]", "enabled": 1, "auto_paused": 0, "consecutive_failures": 0,
+              "created_at": "2026-01-01 00:00:00", "updated_at": "2026-01-01 00:00:00", "allow_http": 0}
+    values = {k: v for k, v in values.items() if k in cols}
+    con.execute(f"INSERT INTO webhook ({', '.join(values)}) VALUES ({', '.join('?' for _ in values)})",
+                tuple(values.values()))
+    con.commit()
+    con.close()
+
+    _upgrade(db_path)
+    _upgrade(db_path)
+
+    con = sqlite3.connect(db_path)
+    assert {"previous_secret", "previous_secret_expires_at"} <= _columns(con, "webhook")
+    row = con.execute("SELECT secret, previous_secret, previous_secret_expires_at FROM webhook WHERE id = 3").fetchone()
+    con.close()
+    assert row == ("s" * 40, None, None)
+

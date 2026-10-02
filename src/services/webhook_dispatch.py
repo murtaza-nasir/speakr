@@ -334,11 +334,33 @@ def sign_payload(secret: str, body: bytes) -> str:
     return f'sha256={mac.hexdigest()}'
 
 
+def sign_payload_v2(secret: str, t: int, body: bytes) -> str:
+    """One v1= value of Speakr-Signature-V2: HMAC-SHA256 over "<t>." + body.
+
+    The send time t is inside the signature, so a receiver can check
+    freshness on every attempt while the body stays byte-identical.
+    """
+    mac = hmac.new(secret.encode('utf-8'), f'{t}.'.encode('utf-8') + body, hashlib.sha256)
+    return mac.hexdigest()
+
+
+def signature_v2_header(webhook, t: int, body: bytes) -> str:
+    """t=<unix seconds>,v1=<new secret>[,v1=<previous secret during the rotation grace>]."""
+    parts = [f't={t}', f'v1={sign_payload_v2(webhook.secret, t, body)}']
+    previous = getattr(webhook, 'previous_secret', None)
+    expires = getattr(webhook, 'previous_secret_expires_at', None)
+    if isinstance(previous, str) and previous and isinstance(expires, datetime) and expires > datetime.utcnow():
+        parts.append(f'v1={sign_payload_v2(previous, t, body)}')
+    return ','.join(parts)
+
+
 def _build_envelope(event_id: str, event_type: str, user_id: int, data: dict):
+    now = datetime.utcnow().isoformat() + 'Z'
     return {
         'id': event_id,
         'type': event_type,
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'timestamp': now,
+        'occurred_at': now,
         'user_id': user_id,
         'data': data or {},
     }
@@ -377,39 +399,75 @@ def emit_webhook_event(user_id: int, event_type: str, data: dict, *, app=None) -
         return 0
 
     def _do_enqueue():
-        # Find enabled, non-paused webhooks for the user that subscribe to this event.
-        subscriptions = (
-            Webhook.query
-            .filter_by(user_id=user_id, enabled=True)
-            .all()
-        )
-        matched = [w for w in subscriptions if event_type in w.event_list]
-        if not matched:
-            return 0
-
-        event_id = str(uuid.uuid4())
-        first_attempt_at = datetime.utcnow()
-        created = 0
-        for wh in matched:
-            envelope = _build_envelope(event_id, event_type, user_id, data)
-            delivery = WebhookDelivery(
-                webhook_id=wh.id,
-                event_id=event_id,
-                event_type=event_type,
-                payload=serialize_envelope(envelope),
-                status='pending',
-                next_retry_at=first_attempt_at,
-            )
-            db.session.add(delivery)
-            created += 1
-        if created:
-            db.session.commit()
-        return created
+        return enqueue_event(db.session, user_id, event_type, data)
 
     if app is not None:
         with app.app_context():
             return _do_enqueue()
     return _do_enqueue()
+
+
+def _with_updated_at(session, event_type, data):
+    """data of a recording.* event carries the recording's updated_at (spec W4)."""
+    data = dict(data or {})
+    if event_type.startswith('recording.') and 'updated_at' not in data and data.get('recording_id'):
+        from src.models import Recording
+        rec = session.get(Recording, data['recording_id'])
+        if rec is not None:
+            data['updated_at'] = rec.updated_at_z()
+    return data
+
+
+def _merge_pending_update(session, webhook_id, data):
+    """Fold a recording.updated into a not-yet-attempted delivery for the same
+    recording and fields (autosave bursts give one delivery). Returns True when
+    merged."""
+    candidates = (session.query(WebhookDelivery)
+                  .filter_by(webhook_id=webhook_id, event_type='recording.updated',
+                             status='pending', attempt_count=0)
+                  .order_by(WebhookDelivery.id.desc()).limit(20).all())
+    for delivery in candidates:
+        try:
+            envelope = json.loads(delivery.payload)
+        except (TypeError, ValueError):
+            continue
+        old = envelope.get('data') or {}
+        if (old.get('recording_id') == data.get('recording_id')
+                and sorted(old.get('fields_changed') or []) == sorted(data.get('fields_changed') or [])):
+            envelope['data'] = data
+            delivery.payload = serialize_envelope(envelope)
+            return True
+    return False
+
+
+def enqueue_event(session, user_id, event_type, data):
+    """Write one pending delivery per subscribed webhook through ``session``
+    and commit it. Returns the number of deliveries written or merged."""
+    subscriptions = session.query(Webhook).filter_by(user_id=user_id, enabled=True).all()
+    matched = [w for w in subscriptions if event_type in w.event_list]
+    if not matched:
+        return 0
+    data = _with_updated_at(session, event_type, data)
+    event_id = str(uuid.uuid4())
+    first_attempt_at = datetime.utcnow()
+    created = 0
+    for wh in matched:
+        if event_type == 'recording.updated' and _merge_pending_update(session, wh.id, data):
+            created += 1
+            continue
+        envelope = _build_envelope(event_id, event_type, user_id, data)
+        session.add(WebhookDelivery(
+            webhook_id=wh.id,
+            event_id=event_id,
+            event_type=event_type,
+            payload=serialize_envelope(envelope),
+            status='pending',
+            next_retry_at=first_attempt_at,
+        ))
+        created += 1
+    if created:
+        session.commit()
+    return created
 
 
 # ---- Dispatcher: one pass over due deliveries -----------------------------
@@ -435,10 +493,14 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
         return None, None, f'blocked at delivery: {reason}'[:500]
 
     signature = sign_payload(webhook.secret, body_bytes)
+    import time as _time
+    sent_at = int(_time.time())
     headers = {
         'Content-Type': 'application/json',
         'User-Agent': f'Speakr-Webhook/1.0',
         'Speakr-Signature': signature,
+        'Speakr-Signature-V2': signature_v2_header(webhook, sent_at, body_bytes),
+        'Speakr-Attempt': str((delivery.attempt_count or 0) + 1),
         'Speakr-Delivery-Id': delivery.event_id,
         'Speakr-Event': delivery.event_type,
         'Speakr-Timestamp': datetime.utcnow().isoformat() + 'Z',
@@ -679,25 +741,6 @@ def start_dispatcher_thread(app):
         t.start()
         _dispatcher_thread_started = True
         app.logger.info("✅ Webhook dispatcher thread initialized")
-
-
-def emit_recording_updated(recording, fields_changed):
-    """recording.updated for a change made outside PATCH /recordings/{id}.
-
-    Same payload as the PATCH route. Best-effort: never raises.
-    """
-    try:
-        emit_webhook_event(
-            user_id=recording.user_id,
-            event_type='recording.updated',
-            data={
-                'recording_id': recording.id,
-                'title': recording.title,
-                'fields_changed': list(fields_changed),
-            },
-        )
-    except Exception as e:
-        logger.warning(f"Webhook emit (recording.updated) failed for {getattr(recording, 'id', None)}: {e}")
 
 
 def emit_recording_created(recording):

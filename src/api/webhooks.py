@@ -196,6 +196,20 @@ def rotate_secret(webhook_id):
     wh, err = _load_owned(webhook_id)
     if err:
         return err
+    # The old secret stays valid for WEBHOOK_SECRET_GRACE_HOURS: Speakr-Signature-V2
+    # carries a second v1= value signed with it until then (spec W2).
+    import os as _os
+    from datetime import timedelta
+    try:
+        grace_hours = float(_os.environ.get('WEBHOOK_SECRET_GRACE_HOURS', '24'))
+    except ValueError:
+        grace_hours = 24.0
+    if grace_hours > 0:
+        wh.previous_secret = wh.secret
+        wh.previous_secret_expires_at = datetime.utcnow() + timedelta(hours=grace_hours)
+    else:
+        wh.previous_secret = None
+        wh.previous_secret_expires_at = None
     wh.secret = generate_webhook_secret()
     db.session.commit()
     return jsonify(wh.to_dict(include_secret=True))
@@ -302,6 +316,7 @@ def replay_delivery(webhook_id, delivery_id):
         envelope = _json.loads(src.payload)
         envelope['id'] = new_event_id
         envelope['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        envelope['occurred_at'] = envelope['timestamp']
         envelope['replayed_from'] = src.event_id
         new_payload = serialize_envelope(envelope)
     except Exception:

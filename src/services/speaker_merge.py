@@ -190,19 +190,15 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
 def refresh_renamed_recordings(changed):
     """After names change in committed recordings: rebuild their Inquire
     chunks (the chunk text holds the names), rewrite their auto-exports and
-    send recording.updated for each. changed: {recording id: fields}."""
+    recording.updated goes out from the change listener on commit.
+    changed: {recording id: fields}."""
     if not changed:
         return
     from flask import current_app
     from src.api import recordings as recordings_api
     from src.file_exporter import ENABLE_AUTO_EXPORT, export_recording
-    from src.models import Recording
-    from src.services.webhook_dispatch import emit_recording_updated
     for rid in sorted(changed):
         recordings_api.reindex_recording_chunks_async(rid)
-        recording = db.session.get(Recording, rid)
-        if recording is not None:
-            emit_recording_updated(recording, sorted(changed[rid]))
         if ENABLE_AUTO_EXPORT:
             try:
                 export_recording(rid)
