@@ -7,18 +7,19 @@
     <!-- Left side: Menu toggle + (logo OR recording title+meta+actions) -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <!-- Menu Toggle Button -->
-        <!-- sm:-mr-1.5: the button is a 36 px box around a 16 px glyph, so its
-             padding reads as extra space before the logo when it is not
-             hovered. Pulling the logo in balances bars-logo-title. -->
+        <!-- -mr-2 / sm:-mr-1.5: the button is a 40 / 36 px box around a 16 px
+             glyph, so its padding reads as extra space before the logo.
+             Pulling the logo in balances bars, logo and title (12 and 10 px
+             on phones, 16 and 14 px from sm up). -->
         <button @click="toggleSidebar"
-                class="btn btn--icon header-action flex-shrink-0 sm:-mr-1.5"
+                class="btn btn--icon header-action flex-shrink-0 -mr-2 sm:-mr-1.5"
                 :title="isSidebarCollapsed ? t('tooltips.showSidebar') : t('tooltips.hideSidebar')">
             <i class="fas fa-bars text-lg"></i>
         </button>
 
         <!-- LIST VIEW (or any non-detail screen): Speakr logo + name -->
         <div v-if="currentView !== 'detail' || !selectedRecording"
-             class="flex items-center gap-2 sm:gap-3.5 min-w-0">
+             class="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
             <img src="{{ url_for('static', filename='img/icon-64.png') }}" srcset="{{ url_for('static', filename='img/icon-64.png') }} 1x, {{ url_for('static', filename='img/icon-128.png') }} 2x" alt="Speakr" class="app-logo w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
             <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
         </div>
