@@ -54,6 +54,8 @@ Bursts are merged: a `recording.updated` with the same `recording_id` and `field
 as a delivery that has not been attempted yet replaces that delivery's `data`, so a notes
 autosave sends one delivery with the latest state.
 
+**Shared recordings.** A webhook created with `"include_shared": true` (or changed with `PATCH`) also receives the `recording.*` events of completed recordings other users shared with its owner. Their `data` carries `owner_user_id`, and `external_refs` are the webhook owner's own. A reference a user adds to a recording shared with them is private and sends no event to the recording's owner. `recording.deleted` reaches only the owner's webhooks; a client that follows shared recordings learns about deletions from the changes feed (`scope=shared`).
+
 Since v0.10.11-alpha, edits made in the web app fire `recording.updated` too. Before, only
 `PATCH /api/v1/recordings/{id}` did, so receivers subscribed to this event get more of them.
 
@@ -281,7 +283,7 @@ or an API token. The OpenAPI schema documents every field.
 | GET | `/api/v1/webhooks` | List the caller's webhooks. Returns `event_types` + `max_per_user` for UI rendering. |
 | POST | `/api/v1/webhooks` | Create a webhook. Response includes the secret **once**; capture it. |
 | GET | `/api/v1/webhooks/{id}` | Read one. Secret is never returned. |
-| PATCH | `/api/v1/webhooks/{id}` | Update name / url / events / enabled / allow_http. |
+| PATCH | `/api/v1/webhooks/{id}` | Update name / url / events / enabled / allow_http / include_shared. |
 | DELETE | `/api/v1/webhooks/{id}` | Delete (cascades to deliveries). |
 | POST | `/api/v1/webhooks/{id}/rotate-secret` | Generate a fresh HMAC secret. Returned once; the previous one stays valid for the grace period. |
 | POST | `/api/v1/webhooks/{id}/test` | Queue a synthetic `webhook.test` delivery. |

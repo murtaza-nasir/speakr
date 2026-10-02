@@ -724,6 +724,9 @@ def _run_migrations(app, engine):
             app.logger.warning("New recordings will work correctly, but existing dates may need manual migration")
 
     with _migration_section(app, failures, "webhook secret rotation grace"):
+        # mailr spec W6: recipients' webhooks for shared recordings (opt-in).
+        if add_column_if_not_exists(engine, 'webhook', 'include_shared', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added include_shared column to webhook table")
         # mailr spec W2: the previous secret signs a second V2 value for a while.
         if add_column_if_not_exists(engine, 'webhook', 'previous_secret', 'VARCHAR(120)'):
             app.logger.info("Added previous_secret column to webhook table")

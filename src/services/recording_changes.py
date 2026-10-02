@@ -95,7 +95,11 @@ def _child_recording_ids(session):
                 rid = getattr(obj, 'recording_id', None)
                 if rid is not None:
                     fields = ids.setdefault(rid, set())
-                    if field:
+                    if field == 'external_refs':
+                        # References are private: only the owner's own tell
+                        # the owner's webhooks something changed.
+                        fields.add(('external_refs', getattr(obj, 'user_id', None)))
+                    elif field:
                         fields.add(field)
     return ids
 
@@ -134,7 +138,10 @@ def _before_flush(session, flush_context, instances):
             rec = session.get(Recording, rid)
             if rec is not None and rec not in session.new:
                 rec.updated_at = now
-                changes.setdefault(rid, set()).update(fields)
+                plain = {f for f in fields if isinstance(f, str)}
+                if any(isinstance(f, tuple) and f[1] == rec.user_id for f in fields):
+                    plain.add('external_refs')
+                changes.setdefault(rid, set()).update(plain)
 
         for obj in session.deleted:
             if isinstance(obj, Recording):

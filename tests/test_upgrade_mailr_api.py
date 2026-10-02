@@ -136,7 +136,8 @@ def test_webhook_rotation_grace_columns(tmp_path, fixture):
     _upgrade(db_path)
 
     con = sqlite3.connect(db_path)
-    assert {"previous_secret", "previous_secret_expires_at"} <= _columns(con, "webhook")
+    assert {"previous_secret", "previous_secret_expires_at", "include_shared"} <= _columns(con, "webhook")
+    assert con.execute("SELECT include_shared FROM webhook WHERE id = 3").fetchone()[0] in (0, False)
     row = con.execute("SELECT secret, previous_secret, previous_secret_expires_at FROM webhook WHERE id = 3").fetchone()
     con.close()
     assert row == ("s" * 40, None, None)

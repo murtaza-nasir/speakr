@@ -75,6 +75,9 @@ class Webhook(db.Model):
     # validates that the destination is not a private IP unless the
     # admin has explicitly allowlisted intranet hosts.
     allow_http = db.Column(db.Boolean, default=False, nullable=False)
+    # Also deliver recording.* events of recordings shared with the owner
+    # (mailr spec W6), with data.owner_user_id.
+    include_shared = db.Column(db.Boolean, default=False, nullable=False)
 
     # HMAC signing secret. Treat as a credential: redact in API
     # responses, surface to the user only on creation, allow rotation
@@ -157,6 +160,7 @@ class Webhook(db.Model):
             'name': self.name,
             'url': self.url,
             'allow_http': bool(self.allow_http),
+            'include_shared': bool(self.include_shared),
             'events': self.event_list,
             'enabled': bool(self.enabled),
             'auto_paused': bool(self.auto_paused),

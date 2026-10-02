@@ -67,7 +67,7 @@ def list_webhooks():
 def create_webhook():
     """Create a webhook.
 
-    Body: ``{name, url, events, allow_http=false, enabled=true}``.
+    Body: ``{name, url, events, allow_http=false, enabled=true, include_shared=false}``.
     The newly-minted HMAC secret is returned **once** in this response;
     after that it is never exposed.
     """
@@ -109,6 +109,7 @@ def create_webhook():
         url=url[:500],
         allow_http=allow_http,
         enabled=enabled,
+        include_shared=bool(data.get('include_shared', False)),
         secret=generate_webhook_secret(),
     )
     try:
@@ -164,6 +165,8 @@ def update_webhook(webhook_id):
             wh.event_list = events
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
+    if 'include_shared' in data:
+        wh.include_shared = bool(data.get('include_shared'))
     if 'enabled' in data:
         enabled = bool(data.get('enabled'))
         wh.enabled = enabled
