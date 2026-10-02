@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.11--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.12--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -223,7 +223,14 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.11-alpha)
+## Latest Release (v0.10.12-alpha)
+
+- System Statistics rebuilt: a 7, 30 or 90 day period compared with the one before, activity and health, usage and cost by task and by model, and one sortable users table.
+- Corrected statistics: "this month" is the calendar month, monthly charts show every month, and AI requests replace a "Total Queries" that was always 0.
+- Even header spacing on phones, and every screenshot recaptured with the current interface.
+
+### v0.10.11-alpha
+
 
 - Dates in generated titles, exports and AI prompts follow each user's timezone; Regenerate title applies the naming template (#412).
 - Renaming or merging speakers updates every recording they appear in.
@@ -232,7 +239,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Every processing path runs the same steps: titles, events, exports and search indexing no longer depend on how a recording arrived.
 - A new icon, and even header buttons on phones.
 
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.11-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.12-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

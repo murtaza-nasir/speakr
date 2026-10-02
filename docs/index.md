@@ -128,6 +128,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.12-alpha - System Statistics"
+    No database or configuration changes are required.
+
+    - **Statistics** - A 7, 30 or 90 day period compared with the one before, activity and health, usage and cost by task and model, and a sortable users table.
+    - **Fixes** - "This month" is the calendar month, monthly charts show every month, and AI requests replace a count that was always 0.
+    - **Interface** - Even header spacing on phones, and new screenshots throughout the documentation.
+
 !!! info "Version 0.10.11-alpha - Timezones, speaker links, API for integrations"
     The database is updated at startup; no configuration changes are required. Export filenames with a date may change on the next export.
 
