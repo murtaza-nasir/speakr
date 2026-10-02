@@ -168,66 +168,13 @@ def update_speaker(speaker_id):
         # Update the speaker name
         speaker.name = new_name
 
-        # Update all transcript chunks that reference this speaker's old name
-        # This ensures the name change cascades to all recordings
-        from src.models import TranscriptChunk
-        chunks_updated = TranscriptChunk.query.filter_by(
-            user_id=current_user.id,
-            speaker_name=old_name
-        ).update({'speaker_name': new_name})
-
-        # Update Recording.participants field (comma-separated list of speakers)
-        # AND update speaker names in the transcription JSON
-        recordings_updated = 0
-        user_recordings = Recording.query.filter_by(user_id=current_user.id).all()
-
-        for recording in user_recordings:
-            updated = False
-
-            # Update participants field if it contains the old name
-            if recording.participants and old_name in recording.participants:
-                # Replace exact speaker name matches in participants list
-                # Handle various formats: "Ross", "Ross, John", "John, Ross", etc.
-                participants_list = [p.strip() for p in recording.participants.split(',')]
-                if old_name in participants_list:
-                    # Replace the old name with new name
-                    participants_list = [new_name if p == old_name else p for p in participants_list]
-                    recording.participants = ', '.join(participants_list)
-                    updated = True
-
-            # Update speaker names in the transcription JSON
-            # This is what displays in the transcript view speaker badges
-            if recording.transcription:
-                try:
-                    transcription_data = json.loads(recording.transcription)
-
-                    # Handle JSON format (array of segments with speaker field)
-                    if isinstance(transcription_data, list):
-                        segments_updated = False
-                        for segment in transcription_data:
-                            if segment.get('speaker') == old_name:
-                                segment['speaker'] = new_name
-                                segments_updated = True
-
-                        if segments_updated:
-                            recording.transcription = json.dumps(transcription_data)
-                            updated = True
-                except (json.JSONDecodeError, TypeError):
-                    # Not JSON or invalid format, skip
-                    pass
-
-            # The label map records which name each diarization label shows;
-            # without this the next save would think the voice was removed.
-            if recording.speaker_label_map and old_name in recording.speaker_label_map.values():
-                recording.speaker_label_map = {
-                    label: (new_name if name == old_name else name)
-                    for label, name in recording.speaker_label_map.items()}
-                updated = True
-
-            if updated:
-                recordings_updated += 1
+        # Cascade the new name to every recording of this user
+        from src.services.speaker_merge import rename_speaker_in_recordings, refresh_renamed_recordings
+        chunks_updated, renamed = rename_speaker_in_recordings(current_user.id, old_name, new_name)
+        recordings_updated = len(renamed)
 
         db.session.commit()
+        refresh_renamed_recordings(renamed)
 
         current_app.logger.info(
             f"Updated speaker {speaker_id} from '{old_name}' to '{new_name}': "
