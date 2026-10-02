@@ -25,6 +25,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
+from src.utils.token_auth import require_scope
 from sqlalchemy import func, extract, or_, and_
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -518,12 +519,14 @@ OPENAPI_SPEC = {
 
 
 @api_v1_bp.route('/openapi.json', methods=['GET'])
+@require_scope('read')
 def get_openapi_spec():
     """Return OpenAPI specification."""
     return jsonify(OPENAPI_SPEC)
 
 
 @api_v1_bp.route('/docs', methods=['GET'])
+@require_scope('read')
 def get_docs():
     """Serve Swagger UI documentation.
 
@@ -562,6 +565,7 @@ def get_docs():
 # =============================================================================
 
 @api_v1_bp.route('/stats', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_stats():
     """
@@ -752,7 +756,63 @@ def get_stats():
 # Current User
 # =============================================================================
 
+@api_v1_bp.route('/tokens/current', methods=['GET'])
+@require_scope()
+@login_required
+def get_current_token():
+    """The API token of this request: id, name, scopes and times (mailr spec G1)."""
+    from flask import g
+    from src.utils.token_auth import current_api_token
+    token = current_api_token()
+    if token is None:
+        return jsonify({'error': 'No API token in this request', 'code': 'not_found'}), 404
+
+    def _z(dt):
+        return dt.isoformat(timespec='microseconds') + 'Z' if dt else None
+    return jsonify({
+        'id': token.id,
+        'name': token.name,
+        'scopes': token.scope_list,
+        'created_at': _z(token.created_at),
+        'expires_at': _z(token.expires_at),
+        'last_used_at': _z(token.last_used_at),
+        'via': 'query' if g.get('api_token_via_query') else 'header',
+    })
+
+
+# Features this server supports (mailr spec G1). A key appears when the feature
+# ships; a missing key means false.
+CAPABILITY_FEATURES = {
+    'token_scopes': True,
+}
+
+
+@api_v1_bp.route('/capabilities', methods=['GET'])
+@require_scope()
+@login_required
+def get_capabilities():
+    """Feature discovery for API clients; read this instead of the version string."""
+    from src.config.version import get_version
+    features = dict(CAPABILITY_FEATURES)
+    features['internal_sharing'] = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+    features['public_sharing'] = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
+    features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    features['inquire'] = {
+        'enabled': os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true',
+        'agent': os.environ.get('ENABLE_INQUIRE_AGENT', 'false').lower() == 'true',
+    }
+    return jsonify({
+        'speakr_version': get_version(),
+        'api_version': '1.1',
+        'features': features,
+        # True only when the administrator states that the text, chat and
+        # embedding endpoints all run on machines they control.
+        'models_local': os.environ.get('MODELS_ARE_LOCAL', 'false').lower() == 'true',
+    })
+
+
 @api_v1_bp.route('/users/me', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_current_user():
     """
@@ -809,6 +869,7 @@ def get_current_user():
 # =============================================================================
 
 @api_v1_bp.route('/recordings', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_recordings():
     """
@@ -1001,6 +1062,7 @@ def list_recordings():
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_recording(recording_id):
     """
@@ -1071,6 +1133,7 @@ def get_recording(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/transcript', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_transcript(recording_id):
     """
@@ -1160,6 +1223,7 @@ def get_transcript(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_summary(recording_id):
     """Get summary markdown."""
@@ -1177,6 +1241,7 @@ def get_summary(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_notes(recording_id):
     """Get notes markdown."""
@@ -1198,6 +1263,7 @@ def get_notes(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['PATCH'])
+@require_scope('write')
 @login_required
 def update_recording(recording_id):
     """
@@ -1343,6 +1409,7 @@ def update_recording(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['PUT'])
+@require_scope('write')
 @login_required
 def replace_notes(recording_id):
     """Replace notes entirely."""
@@ -1364,6 +1431,7 @@ def replace_notes(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['PUT'])
+@require_scope('write')
 @login_required
 def replace_summary(recording_id):
     """Replace summary entirely."""
@@ -1389,6 +1457,7 @@ def replace_summary(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_recording(recording_id):
     """Delete a recording."""
@@ -1420,6 +1489,7 @@ def delete_recording(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/delete-audio', methods=['POST'])
+@require_scope('delete')
 @login_required
 def delete_recording_audio(recording_id):
     """Delete a recording's media file and keep its transcript, summary and notes."""
@@ -1446,6 +1516,7 @@ def delete_recording_audio(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/status', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_recording_status(recording_id):
     """Get processing status of a recording."""
@@ -1496,6 +1567,7 @@ def _effective_diarize():
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
+@require_scope('process')
 @login_required
 def api_regenerate_title(recording_id):
     """Regenerate the AI title for a recording based on its existing transcription."""
@@ -1508,6 +1580,7 @@ def api_regenerate_title(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/tags', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_tags():
     """List available tags (personal + group tags user has access to)."""
@@ -1567,6 +1640,7 @@ def list_tags():
 
 
 @api_v1_bp.route('/tags', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_tag():
     """Create a new tag."""
@@ -1629,6 +1703,7 @@ def create_tag():
 
 
 @api_v1_bp.route('/tags/<int:tag_id>', methods=['PUT'])
+@require_scope('write')
 @login_required
 def update_tag(tag_id):
     """Update a tag."""
@@ -1687,6 +1762,7 @@ def update_tag(tag_id):
 
 
 @api_v1_bp.route('/tags/<int:tag_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_tag(tag_id):
     """Delete a tag."""
@@ -1718,6 +1794,7 @@ def delete_tag(tag_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/tags', methods=['POST'])
+@require_scope('write')
 @login_required
 def add_tags_to_recording(recording_id):
     """Add tag(s) to a recording."""
@@ -1794,6 +1871,7 @@ def add_tags_to_recording(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/tags/<int:tag_id>', methods=['DELETE'])
+@require_scope('write')
 @login_required
 def remove_tag_from_recording(recording_id, tag_id):
     """Remove a tag from a recording."""
@@ -1836,6 +1914,7 @@ def remove_tag_from_recording(recording_id, tag_id):
 # =============================================================================
 
 @api_v1_bp.route('/folders', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_folders():
     """List folders the user can access (personal + group folders)."""
@@ -1844,6 +1923,7 @@ def list_folders():
 
 
 @api_v1_bp.route('/folders', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_folder():
     """Create a new folder. Accepts the same JSON body as the web endpoint."""
@@ -1852,6 +1932,7 @@ def create_folder():
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_folder(folder_id):
     """Get a single folder by id."""
@@ -1884,6 +1965,7 @@ def get_folder(folder_id):
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['PATCH', 'PUT'])
+@require_scope('write')
 @login_required
 def update_folder(folder_id):
     """Update a folder. Same JSON body as the web endpoint."""
@@ -1892,6 +1974,7 @@ def update_folder(folder_id):
 
 
 @api_v1_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_folder(folder_id):
     """Delete a folder. Recordings in it are unassigned."""
@@ -1904,6 +1987,7 @@ def delete_folder(folder_id):
 # =============================================================================
 
 @api_v1_bp.route('/transcription', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_transcription_info():
     """
@@ -2010,6 +2094,7 @@ def get_transcription_info():
 # =============================================================================
 
 @api_v1_bp.route('/speakers', methods=['GET'])
+@require_scope('read')
 @login_required
 def list_speakers():
     """List all speakers for the current user."""
@@ -2030,6 +2115,7 @@ def list_speakers():
 
 
 @api_v1_bp.route('/speakers', methods=['POST'])
+@require_scope('write')
 @login_required
 def create_speaker():
     """Create a new speaker."""
@@ -2062,6 +2148,7 @@ def create_speaker():
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['PUT'])
+@require_scope('write')
 @login_required
 def update_speaker(speaker_id):
     """Update a speaker (cascades name changes to recordings)."""
@@ -2106,6 +2193,7 @@ def update_speaker(speaker_id):
 
 
 @api_v1_bp.route('/speakers/<int:speaker_id>', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def delete_speaker(speaker_id):
     """Delete a speaker."""
@@ -2123,6 +2211,7 @@ def delete_speaker(speaker_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_recording_speakers(recording_id):
     """Get speakers in a recording with suggestions."""
@@ -2198,6 +2287,7 @@ def get_recording_speakers(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers/assign', methods=['PUT'])
+@require_scope('write')
 @login_required
 def assign_speakers(recording_id):
     """
@@ -2277,6 +2367,7 @@ def assign_speakers(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers/identify', methods=['POST'])
+@require_scope('process')
 @login_required
 def identify_speakers(recording_id):
     """
@@ -2326,6 +2417,7 @@ def identify_speakers(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/transcribe', methods=['POST'])
+@require_scope('process')
 @login_required
 def start_transcription(recording_id):
     """Queue transcription for a recording."""
@@ -2364,6 +2456,7 @@ def start_transcription(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/summarize', methods=['POST'])
+@require_scope('process')
 @login_required
 def start_summarization(recording_id):
     """Queue summarization for a recording with optional custom prompt."""
@@ -2401,6 +2494,7 @@ def start_summarization(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/chat', methods=['POST'])
+@require_scope('process')
 @login_required
 def chat_with_recording(recording_id):
     """Chat about a recording's content."""
@@ -2483,6 +2577,7 @@ Notes: {recording.notes or 'None'}
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/events', methods=['GET'])
+@require_scope('read')
 @login_required
 def get_recording_events(recording_id):
     """Get calendar events extracted from a recording."""
@@ -2508,6 +2603,7 @@ def get_recording_events(recording_id):
 
 
 @api_v1_bp.route('/recordings/<int:recording_id>/events/ics', methods=['GET'])
+@require_scope('read')
 @login_required
 def download_events_ics(recording_id):
     """Download all events as ICS file."""
@@ -2541,6 +2637,7 @@ def download_events_ics(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/<int:recording_id>/audio', methods=['GET'])
+@require_scope('read')
 @login_required
 def download_audio(recording_id):
     """Download or stream audio file."""
@@ -2595,6 +2692,7 @@ def download_audio(recording_id):
 # =============================================================================
 
 @api_v1_bp.route('/recordings/batch', methods=['PATCH'])
+@require_scope('write')
 @login_required
 def batch_update_recordings():
     """Batch update multiple recordings."""
@@ -2735,6 +2833,7 @@ def batch_update_recordings():
 
 
 @api_v1_bp.route('/recordings/batch', methods=['DELETE'])
+@require_scope('delete')
 @login_required
 def batch_delete_recordings():
     """Batch delete multiple recordings."""
@@ -2784,6 +2883,7 @@ def batch_delete_recordings():
 
 
 @api_v1_bp.route('/recordings/batch/transcribe', methods=['POST'])
+@require_scope('process')
 @login_required
 def batch_transcribe_recordings():
     """Batch queue transcriptions for multiple recordings."""
@@ -2832,6 +2932,7 @@ def batch_transcribe_recordings():
 # =============================================================================
 
 @api_v1_bp.route('/settings/auto-summarization', methods=['PUT'])
+@require_scope('account')
 @login_required
 def update_auto_summarization():
     """Toggle auto-summarization for the current user."""
@@ -2895,6 +2996,7 @@ def _asr_upload_rate_cost():
 
 
 @api_v1_bp.route('/integrations/asr-voice-recorder/upload', methods=['POST'])
+@require_scope('upload')
 @rate_limit(f'{_ASR_RATE_UNITS_PER_MINUTE} per minute', cost=_asr_upload_rate_cost)
 def upload_from_asr_voice_recorder():
     """Accept an ASR Voice Recorder connection test or completed upload."""
@@ -2915,6 +3017,10 @@ def upload_from_asr_voice_recorder():
         secret = request.form.get('secret', '')
         owner = load_user_from_token_value(secret)
         if owner is None:
+            return jsonify({'error': 'Authentication failed'}), 401
+        # A scoped token must carry 'upload' (mailr spec G1); full tokens pass.
+        _token = request.environ.get('_speakr_secret_token')
+        if _token is not None and _token.scope_set is not None and 'upload' not in _token.scope_set:
             return jsonify({'error': 'Authentication failed'}), 401
 
         uploaded_file = request.files.get('file')
@@ -2950,6 +3056,7 @@ def upload_from_asr_voice_recorder():
 
 
 @api_v1_bp.route('/recordings/upload', methods=['POST'])
+@require_scope('upload')
 @login_required
 def upload_recording():
     """

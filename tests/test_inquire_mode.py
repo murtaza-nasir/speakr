@@ -117,7 +117,17 @@ def test_chunking_functions():
         # not return None placeholders. sentence-transformers isn't a hard
         # dependency (it's absent in CI), so assert whichever applies here.
         from src.services.embeddings import USE_API_EMBEDDINGS, LOCAL_EMBEDDINGS_AVAILABLE
-        embeddings = generate_embeddings(["test sentence", "another test"])
+        # In API mode the embedding server itself is stubbed: this test checks
+        # the helper's contract, not a live service (a busy or remote endpoint
+        # made it flaky; #412 F2).
+        from contextlib import nullcontext
+        from unittest.mock import patch as _patch
+        import numpy as _np
+        stub = (_patch("src.services.embeddings._api_embed",
+                       side_effect=lambda texts, user_id=None: [_np.ones(8, dtype=_np.float32) for _ in texts])
+                if USE_API_EMBEDDINGS else nullcontext())
+        with stub:
+            embeddings = generate_embeddings(["test sentence", "another test"])
         assert isinstance(embeddings, list)
         if USE_API_EMBEDDINGS or LOCAL_EMBEDDINGS_AVAILABLE:
             assert len(embeddings) == 2, "one embedding per input when a backend is available"

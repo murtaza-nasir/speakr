@@ -1,7 +1,7 @@
 # Speakr - Audio Transcription and Summarization App
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response, session
 from urllib.parse import urlparse, urljoin, quote
 from email.utils import encode_rfc2231
 from markupsafe import Markup
@@ -179,10 +179,18 @@ _markdown_instance = markdown.Markdown(extensions=[
 # limits (login/register/password-reset) are applied via the rate_limit
 # decorator in src/api/auth.py and src/api/tokens.py.
 _RATELIMIT_ENABLED = os.environ.get('RATELIMIT_ENABLED', 'true').lower() != 'false'
+def _token_request_exempt():
+    # Token traffic has per-token limits (src/utils/token_auth.require_scope);
+    # the app-wide per-IP defaults apply to session traffic only (mailr spec G1).
+    from src.utils.token_auth import is_token_request
+    return is_token_request()
+
+
 limiter = Limiter(
     get_remote_address,
     app=None,  # Defer initialization
     default_limits=["5000 per day", "1000 per hour"],
+    default_limits_exempt_when=_token_request_exempt,
     enabled=_RATELIMIT_ENABLED,
 )
 
@@ -535,7 +543,33 @@ login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 bcrypt = Bcrypt()
 bcrypt.init_app(app)
+# Rate-limit headers, including Retry-After on 429 (mailr spec G1).
+app.config.setdefault("RATELIMIT_HEADERS_ENABLED", True)
 limiter.init_app(app)  # Initialize the limiter (uses in-memory storage by default)
+
+
+from flask_limiter.errors import RateLimitExceeded as _RateLimitExceeded
+
+
+@app.errorhandler(_RateLimitExceeded)
+def _rate_limit_exceeded(e):
+    """The limiter's own 429 response, plus Retry-After in seconds (mailr spec G1)."""
+    import time as _time
+    resp = e.get_response()
+    retry = None
+    try:
+        current = limiter.current_limit
+        if current is not None:
+            retry = max(1, int(current.reset_at - _time.time()))
+    except Exception:
+        retry = None
+    if retry is None:
+        try:
+            retry = int(e.limit.limit.get_expiry())
+        except Exception:
+            retry = 60
+    resp.headers["Retry-After"] = str(retry)
+    return resp
 
 # Exempt frequently-polled status endpoints from rate limiting
 @limiter.request_filter
@@ -633,6 +667,37 @@ def csrf_token_aware_check():
     # fails, csrf.protect() raises a CSRFError which Flask-WTF's error
     # handler turns into a 400 response.
     csrf.protect()
+
+
+@app.before_request
+def enforce_token_scopes():
+    """Scoped API tokens (mailr spec G1), checked before any view runs.
+
+    Sessions and full tokens (scopes NULL, every token made before scopes) pass
+    unchanged. A scoped token must come from a header, may only reach routes
+    marked with require_scope, and must hold every scope the route needs.
+    A refused request therefore has no side effect and fires no webhook.
+    """
+    if not request.endpoint or request.endpoint == 'static':
+        return
+    if session.get('_user_id'):
+        return  # a browser session takes precedence over a token, as in Flask-Login
+    from src.utils.token_auth import resolve_request_token, scope_error_response
+    api_token, via_query = resolve_request_token()
+    if api_token is None or api_token.scope_set is None:
+        return
+    if via_query:
+        resp = jsonify({'error': 'Scoped tokens are accepted only in a header (Authorization: Bearer ...)',
+                        'code': 'invalid_token'})
+        resp.status_code = 401
+        return resp
+    view = app.view_functions.get(request.endpoint)
+    required = getattr(view, '_required_scopes', None)
+    if required is None:
+        return scope_error_response(None, api_token)
+    missing = required - api_token.scope_set
+    if missing:
+        return scope_error_response(missing, api_token)
 
 
 

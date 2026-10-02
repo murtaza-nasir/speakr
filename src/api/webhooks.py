@@ -13,6 +13,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
+from src.utils.token_auth import require_scope
 
 from src.database import db
 from src.models import Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES, generate_webhook_secret
@@ -43,6 +44,7 @@ def _load_owned(webhook_id: int):
 # ---- Collection ------------------------------------------------------------
 
 @webhooks_bp.route('', methods=['GET'])
+@require_scope('webhooks')
 @login_required
 def list_webhooks():
     """List the caller's webhooks."""
@@ -60,6 +62,7 @@ def list_webhooks():
 
 
 @webhooks_bp.route('', methods=['POST'])
+@require_scope('webhooks')
 @login_required
 def create_webhook():
     """Create a webhook.
@@ -122,6 +125,7 @@ def create_webhook():
 # ---- Single resource -------------------------------------------------------
 
 @webhooks_bp.route('/<int:webhook_id>', methods=['GET'])
+@require_scope('webhooks')
 @login_required
 def get_webhook(webhook_id):
     wh, err = _load_owned(webhook_id)
@@ -131,6 +135,7 @@ def get_webhook(webhook_id):
 
 
 @webhooks_bp.route('/<int:webhook_id>', methods=['PATCH'])
+@require_scope('webhooks')
 @login_required
 def update_webhook(webhook_id):
     wh, err = _load_owned(webhook_id)
@@ -170,6 +175,7 @@ def update_webhook(webhook_id):
 
 
 @webhooks_bp.route('/<int:webhook_id>', methods=['DELETE'])
+@require_scope('webhooks')
 @login_required
 def delete_webhook(webhook_id):
     wh, err = _load_owned(webhook_id)
@@ -183,6 +189,7 @@ def delete_webhook(webhook_id):
 # ---- Secret rotation -------------------------------------------------------
 
 @webhooks_bp.route('/<int:webhook_id>/rotate-secret', methods=['POST'])
+@require_scope('webhooks')
 @login_required
 def rotate_secret(webhook_id):
     """Generate a fresh HMAC secret and return it once."""
@@ -197,6 +204,7 @@ def rotate_secret(webhook_id):
 # ---- Test fire -------------------------------------------------------------
 
 @webhooks_bp.route('/<int:webhook_id>/test', methods=['POST'])
+@require_scope('webhooks')
 @login_required
 def test_fire(webhook_id):
     """Enqueue a synthetic ``webhook.test`` delivery against this webhook.
@@ -235,6 +243,7 @@ def test_fire(webhook_id):
 # ---- Deliveries listing / replay ------------------------------------------
 
 @webhooks_bp.route('/<int:webhook_id>/deliveries', methods=['GET'])
+@require_scope('webhooks')
 @login_required
 def list_deliveries(webhook_id):
     wh, err = _load_owned(webhook_id)
@@ -258,6 +267,7 @@ def list_deliveries(webhook_id):
 
 
 @webhooks_bp.route('/<int:webhook_id>/deliveries/<int:delivery_id>', methods=['GET'])
+@require_scope('webhooks')
 @login_required
 def get_delivery(webhook_id, delivery_id):
     wh, err = _load_owned(webhook_id)
@@ -272,6 +282,7 @@ def get_delivery(webhook_id, delivery_id):
 
 
 @webhooks_bp.route('/<int:webhook_id>/deliveries/<int:delivery_id>/replay', methods=['POST'])
+@require_scope('webhooks')
 @login_required
 def replay_delivery(webhook_id, delivery_id):
     """Re-enqueue the delivery as a brand-new attempt with the same payload."""

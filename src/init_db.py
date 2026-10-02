@@ -759,6 +759,11 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'title_source', 'VARCHAR(16)'):
             app.logger.info("Added title_source column to recording table")
 
+        # Token scopes (mailr spec G1). NULL = full access, so existing tokens
+        # keep working exactly as before; no backfill.
+        if add_column_if_not_exists(engine, 'api_token', 'scopes', 'TEXT'):
+            app.logger.info("Added scopes column to api_token table")
+
         # Add file_hash column for duplicate detection
         if add_column_if_not_exists(engine, 'recording', 'file_hash', 'VARCHAR(64)'):
             app.logger.info("Added file_hash column to recording table")
