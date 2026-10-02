@@ -128,39 +128,17 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.10.10-alpha - Sidebar multi-select, configurable temperatures, no flicker"
-    No database or configuration changes are required. To run from source, build the stylesheet with `scripts/build_css.sh`.
+!!! info "Version 0.10.11-alpha - Timezones, speaker links, API for integrations"
+    The database is updated at startup; no configuration changes are required. Export filenames with a date may change on the next export.
 
-    - **Sidebar multi-select** - With Ctrl-click (Cmd-click on macOS), a recording is added to or removed from the selection, and with Shift-click, a range is selected.
-    - **Generation temperatures** - Set in the admin dashboard, in the Default Prompts tab (#411).
-    - **Recording safety** - A recording started during a previous upload is no longer lost when that upload finishes (#407).
-    - **No flicker** - Pages are shown styled and translated from the first paint, with a short cross-fade between pages.
-    - **Companion apps** - A new page lists unofficial community apps.
-
-!!! info "Version 0.10.9-alpha - Header fix for the settings pages"
-    No database or configuration changes are required.
-
-    - **Settings page header** - The header controls and user menu are shown again on the Account, Admin and Group Management pages.
-
-!!! info "Version 0.10.8-alpha - Startup model fix for whisperx-asr-service"
-    No database or configuration changes are required.
-
-    - **"Invalid model size ''" at startup (#409)** - The configured default transcription model is now sent with the voice embedding check, as with an upload.
-    - **Model settings** - Incognito mode and bulk reprocessing use the configured model, hotwords and speaker counts; empty model names are never sent.
-    - **Example admin address** - A container started from an unchanged example configuration no longer stops on `admin@example.com`.
-    - **Tests for the documented setup** - Speakr and whisperx-asr-service are tested from their documented settings in CI.
-
-!!! info "Version 0.10.7-alpha - Archive, joining files at upload, voice matching, and configurable titles"
-    Database tables and columns are added automatically; no configuration changes are required.
-
-    - **Archive and Audio removed (#394)** - Archive hides a recording from the main list and deletes nothing, per user like inbox and star. The retention state formerly called "Archived" is now **Audio removed**, with its own quick filter and a manual **Delete audio, keep transcript** action.
-    - **Join files at upload** - With two or more files queued, choose **One recording** to join them in order and transcribe the result once.
-    - **Voice matching rebuilt** - Profiles are built from per-recording samples forming one or more voice variants per person, kept separately per embedding model, with thresholds calibrated from your data.
-    - **Identify Speakers dialog rebuilt (#395)** and **configurable AI title prompts (#400)** at tag, folder, user and admin level.
-    - **Fixes** - SQLAlchemy capped below 2.1 for PostgreSQL (#401), the installed app is draggable again (#402), CSRF failures behind proxies explain themselves (#388), and API v1 deletes now remove media.
+    - **Timezone** - Dates in generated titles, exports and AI prompts follow each user's timezone (#412).
+    - **Speakers** - Renaming or merging a speaker updates every recording they appear in.
+    - **API** - Scoped tokens, a changes feed, search, external references, share links, chat citations and Inquire.
+    - **Webhooks** - Signed send times, and `recording.updated` for web edits too.
+    - **Processing** - Every path runs the same title, event, export and indexing steps.
 
 !!! note "Earlier releases"
-    Release notes for v0.10.6 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.10 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

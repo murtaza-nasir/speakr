@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.10--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.11--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -223,36 +223,16 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.10-alpha)
+## Latest Release (v0.10.11-alpha)
 
-- Select several recordings in the sidebar with Ctrl-click (Cmd-click on macOS) or Shift-click.
-- Set the temperatures for summaries, titles, chat and event extraction in the admin dashboard, Default Prompts tab (#411).
-- A recording started during an upload is no longer lost when that upload finishes (#407).
-- No flicker on page load: the stylesheet is built with the image, and translations are included in the page.
-- [Unofficial companion apps](#unofficial-companion-apps) for Android and Windows are now listed.
-- Running from source: build the stylesheet with `scripts/build_css.sh`.
+- Dates in generated titles, exports and AI prompts follow each user's timezone; Regenerate title applies the naming template (#412).
+- Renaming or merging speakers updates every recording they appear in.
+- Scoped, rate-limited API tokens, and an API v1 for integrations: changes feed, search, external references, share links, chat citations and Inquire.
+- Signed webhook send times, and `recording.updated` for edits made in the web app.
+- Every processing path runs the same steps: titles, events, exports and search indexing no longer depend on how a recording arrived.
+- A new icon, and even header buttons on phones.
 
-### v0.10.9-alpha
-
-- Fixed the empty header on the Account, Admin and Group Management pages.
-
-### v0.10.8-alpha
-
-- Fixed "Invalid model size ''" at startup with whisperx-asr-service when `PRELOAD_MODEL` is not set (#409). Use whisperx-asr-service 0.4.2 or later.
-- Incognito mode and bulk reprocessing use the configured model settings.
-- A container started from the unchanged example configuration no longer stops on the example admin address.
-
-### v0.10.7-alpha
-
-- **Archive**: an archived recording leaves the main list, and nothing is deleted (#394). The retention state formerly called "Archived" is now **Audio removed**, with its own filter.
-- **Delete audio, keep transcript** for a single recording.
-- **Join files at upload**: with two or more files queued, choose **One recording** to join them and transcribe the result once.
-- **Identify Speakers dialog rebuilt** for recordings with many speakers (#395).
-- **AI title instructions** per tag, folder, user and deployment (#400).
-- **Voice matching rebuilt**: samples and voice variants per person, separate profiles per embedding model, and thresholds calibrated from your data. OpenASR can return speaker embeddings (#380).
-- Fixes for PostgreSQL with SQLAlchemy 2.1 (#401) and dragging the desktop app (#402), both by @jjsmackay; errors behind proxies that strip the Referer header (#388); and media removal on API v1 deletion.
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.10-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.11-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
