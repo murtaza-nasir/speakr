@@ -35,6 +35,33 @@ export async function makeContext(browser, { dark = true, scheme = 'blue', mobil
 }
 
 /** Kill animations/transitions and hide carets so pixels are stable. */
+/**
+ * Recordings that must never appear in published screenshots (real meetings
+ * with real names). Comma-separated SPEAKR_PRIVATE_TITLES extends the list.
+ */
+export const PRIVATE_TITLES = [
+    'Unified AI Curriculum and Course Track Planning',
+    'Road Trip Reflections and Future Research Plans',
+    ...(process.env.SPEAKR_PRIVATE_TITLES || '').split(',').map((t) => t.trim()).filter(Boolean),
+];
+
+/** Remove sidebar and list rows of private recordings. Returns how many were hidden. */
+export async function hidePrivateRecordings(page) {
+    return page.evaluate((titles) => {
+        let hidden = 0;
+        for (const el of document.querySelectorAll('h4, .recording-title, [title]')) {
+            const text = (el.getAttribute('title') || el.textContent || '').trim();
+            if (!titles.some((t) => text.startsWith(t) || (text.endsWith('…') && t.startsWith(text.slice(0, -1))))) continue;
+            const row = el.closest('li, .recording-item, [data-recording-id]') || el.parentElement;
+            if (row && row.style.display !== 'none' && row.getBoundingClientRect().height > 0) {
+                row.style.display = 'none';
+                hidden++;
+            }
+        }
+        return hidden;
+    }, PRIVATE_TITLES);
+}
+
 export async function freezePage(page) {
     await page.addStyleTag({
         content: `
