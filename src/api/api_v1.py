@@ -1602,18 +1602,27 @@ def get_transcript(recording_id):
     format_type = request.args.get('format', 'json').lower()
 
     if format_type == 'json':
+        # One documented shape whatever key set the transcript was stored
+        # with (mailr spec G12); optional window: start, end, max_segments.
+        from src.services.transcript_segments import canonical_segments, window
+        segments = canonical_segments(recording)
+        if segments is None:
+            return jsonify({'format': 'json', 'kind': 'plain', 'segments': [], 'raw': recording.transcription})
         try:
-            segments = json.loads(recording.transcription)
-            return jsonify({
-                'format': 'json',
-                'segments': segments
-            })
-        except json.JSONDecodeError:
-            return jsonify({
-                'format': 'json',
-                'segments': [],
-                'raw': recording.transcription
-            })
+            start = request.args.get('start', type=float)
+            end = request.args.get('end', type=float)
+            max_segments = request.args.get('max_segments', type=int)
+        except ValueError:
+            start = end = max_segments = None
+        if max_segments is not None and max_segments < 1:
+            return jsonify({'error': 'max_segments must be at least 1', 'code': 'invalid_parameter'}), 400
+        body = {'format': 'json', 'kind': 'segments', 'duration': recording.get_audio_duration()}
+        if start is not None or end is not None or max_segments is not None:
+            segments, next_start = window(segments, start, end, max_segments)
+            if next_start is not None:
+                body['next_start'] = next_start
+        body['segments'] = segments
+        return jsonify(body)
 
     elif format_type == 'text':
         # Use user's default template for text format

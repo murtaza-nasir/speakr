@@ -106,7 +106,8 @@ def merge_speakers(target_id, source_ids, user_id):
     # recordings of a merged speaker kept showing the old name.
     renamed = {}
     for source in sources:
-        _, changed = rename_speaker_in_recordings(user_id, source.name, target.name)
+        _, changed = rename_speaker_in_recordings(user_id, source.name, target.name,
+                                                  speaker_id=source.id, new_speaker_id=target.id)
         for rid, fields in changed.items():
             renamed.setdefault(rid, set()).update(fields)
     target.recordings_updated = len(renamed)   # for the route's answer, not a column
@@ -126,12 +127,14 @@ def _same_name(a, b):
     return isinstance(a, str) and a.strip().lower() == b.strip().lower()
 
 
-def rename_speaker_in_recordings(user_id, old_name, new_name):
+def rename_speaker_in_recordings(user_id, old_name, new_name, speaker_id=None, new_speaker_id=None):
     """Show new_name wherever the user's recordings show old_name.
 
     Covers the transcript segments, the participants list, the diarization
-    label map and the Inquire chunks' speaker column. Names match ignoring
-    case and surrounding spaces, as saved speakers do. Does not commit.
+    label map and the Inquire chunks' speaker column. A segment linked to
+    speaker_id follows the link (and is linked to new_speaker_id); a segment
+    without a link matches by name, ignoring case and surrounding spaces, as
+    saved speakers do. Does not commit.
     Returns (chunks_updated, {recording id: set of the fields changed}).
     """
     from src.models import Recording, TranscriptChunk
@@ -167,9 +170,17 @@ def rename_speaker_in_recordings(user_id, old_name, new_name):
             if isinstance(segments, list):
                 hit = False
                 for segment in segments:
-                    if isinstance(segment, dict) and _same_name(segment.get('speaker'), old_name):
-                        segment['speaker'] = new_name
-                        hit = True
+                    if not isinstance(segment, dict):
+                        continue
+                    linked = segment.get('speaker_id')
+                    if (speaker_id is not None and linked == speaker_id) or \
+                            (linked is None and _same_name(segment.get('speaker'), old_name)):
+                        if segment.get('speaker') != new_name:
+                            segment['speaker'] = new_name
+                            hit = True
+                        if new_speaker_id is not None and linked != new_speaker_id:
+                            segment['speaker_id'] = new_speaker_id
+                            hit = True
                 if hit:
                     recording.transcription = json.dumps(segments)
                     fields.add('transcription')

@@ -1110,6 +1110,16 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"transcription_language normalization migration skipped: {e}")
 
+        # Link named transcript segments to saved speakers (speaker_id), once.
+        # Voice samples help where they exist; the name match covers the rest.
+        try:
+            from src.services.speaker_links import backfill_all
+            run_once(engine, '0003_link_transcript_speakers',
+                     lambda eng: backfill_all(eng, logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Transcript speaker linking skipped, retried next start: {e}")
+
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled

@@ -107,6 +107,10 @@ def test_recording_updated_at_and_tombstones(tmp_path, fixture):
     assert {"ix_recording_updated_at", "ix_recording_user_updated"} <= indexes
     assert "recording_tombstone" in tables
     assert ledger == 1 and since and since[0].endswith("Z")
+    con = sqlite3.connect(db_path)
+    assert con.execute("SELECT count(*) FROM schema_migrations "
+                       "WHERE migration_id = '0003_link_transcript_speakers'").fetchone()[0] == 1
+    con.close()
 
 
 @pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])

@@ -38,6 +38,13 @@ def apply_speaker_names(recording, user, speaker_map, regenerate_summary=False):
     if is_json:
         seconds_by_key = speech_seconds_by_label(transcription_data)
         names_used, label_to_name = apply_speaker_map(transcription_data, speaker_map, user)
+        # Saved speakers first (update_speaker_usage commits on its own), so
+        # the segments can link to them in the same commit as the names.
+        if names_used:
+            update_speaker_usage(names_used)
+            names_used = []
+        from src.services.speaker_links import link_list
+        link_list(transcription_data, recording)
         recording.transcription = json.dumps(transcription_data)
         recording.participants = participants_from_segments(transcription_data)
     else:

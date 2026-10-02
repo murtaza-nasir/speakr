@@ -674,14 +674,22 @@ GET /api/v1/recordings/{id}/transcript
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `format` | string | `json` | Output format: `json`, `text`, `srt`, `vtt` |
+| `start`, `end` | number | - | JSON only: segments that overlap this window, in seconds |
+| `max_segments` | integer | - | JSON only: at most this many segments; `next_start` gives the start time of the next one |
 
 === "JSON Format"
     ```json
     {
       "format": "json",
+      "kind": "segments",
+      "duration": 1834.2,
       "segments": [
         {
+          "index": 0,
           "speaker": "Alice",
+          "speaker_label": "SPEAKER_00",
+          "speaker_id": 12,
+          "text": "Hello everyone",
           "sentence": "Hello everyone",
           "start_time": 0.0,
           "end_time": 2.5
@@ -689,6 +697,8 @@ GET /api/v1/recordings/{id}/transcript
       ]
     }
     ```
+
+    Every segment has every key above, whatever format the transcript was saved in; clients can rely on this shape. `text` and `sentence` are the same (`sentence` is kept for older clients). Times are seconds or `null`. `speaker_label` is the diarization label (also after the speaker was named), or `null` when it is not known. `speaker_id` is the id of the saved speaker the segment is linked to, else `null`; for a linked segment, `speaker` is that speaker's current name. A transcript without speaker segments returns `"kind": "plain"`, an empty `segments` list and the text in `raw`.
 
 === "Text Format"
     Uses your default transcript template:

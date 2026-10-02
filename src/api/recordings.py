@@ -987,13 +987,16 @@ def update_transcript(recording_id):
         seconds_by_key = speech_seconds_by_label(transcript_data)
         speaker_names_used, label_to_name = apply_speaker_map(transcript_data, speaker_map, current_user)
 
+        # Saved speakers first (update_speaker_usage commits on its own), so
+        # the segments link to them in the same commit as the names.
+        if speaker_names_used:
+            update_speaker_usage(speaker_names_used)
+        from src.services.speaker_links import link_list
+        link_list(transcript_data, recording)
+
         # Save the updated transcript
         recording.transcription = json.dumps(transcript_data)
         recording.participants = participants_from_segments(transcript_data)
-
-        # Update speaker usage statistics
-        if speaker_names_used:
-            update_speaker_usage(speaker_names_used)
 
         update_voice_profiles(recording, label_to_name, current_user, seconds_by_key)
 
