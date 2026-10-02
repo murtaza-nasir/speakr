@@ -939,6 +939,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Touch the tick to register reactivity for resize updates.
                 void chatLayoutTick.value;
 
+                if (chatPanelState.value === 'floating' && chatPanelX.value == null) {
+                    const r = _rect('#mainContentColumns');
+                    if (r && r.width > 0) {
+                        return {
+                            top: (r.bottom - chatPanelH.value - 24) + 'px',
+                            left: (r.right - chatPanelW.value - 24) + 'px',
+                            width: chatPanelW.value + 'px',
+                            height: chatPanelH.value + 'px',
+                            right: 'auto',
+                            bottom: 'auto'
+                        };
+                    }
+                }
                 if (chatPanelState.value === 'floating' && chatPanelX.value != null) {
                     return {
                         top: chatPanelY.value + 'px',
@@ -998,47 +1011,62 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return {};
             });
 
-            // Persistence per recording (best-effort; ignores errors).
-            const _chatPanelStorageKey = () => {
-                const rec = selectedRecording.value;
-                return rec ? `chat_panel_pos_${rec.id}` : null;
-            };
+            // One chat layout for every recording (best-effort; ignores
+            // errors). It used to be stored per recording with absolute
+            // viewport coordinates, so the panel opened on some recordings
+            // only and landed mid-page after the window or sidebar changed.
+            // The floating position is now kept as the gap to the
+            // bottom-right corner of #mainContentColumns, the corner the
+            // panel opens from, and every layout change re-applies that gap.
+            const CHAT_PANEL_KEY = 'chat_panel_layout';
+            let _chatAnchor = null;  // {dx, dy} of the floating panel
             const saveChatPanelPosition = () => {
-                const key = _chatPanelStorageKey();
-                if (!key) return;
-                try {
-                    localStorage.setItem(key, JSON.stringify({
-                        state: chatPanelState.value,
-                        x: chatPanelX.value,
-                        y: chatPanelY.value,
-                        w: chatPanelW.value,
-                        h: chatPanelH.value,
-                    }));
-                } catch (e) { /* ignore */ }
+                const data = { state: chatPanelState.value, w: chatPanelW.value, h: chatPanelH.value };
+                const r = _rect('#mainContentColumns');
+                if (chatPanelState.value === 'floating' && chatPanelX.value != null && r && r.width > 0) {
+                    data.dx = Math.round(r.right - (chatPanelX.value + chatPanelW.value));
+                    data.dy = Math.round(r.bottom - (chatPanelY.value + chatPanelH.value));
+                    _chatAnchor = { dx: data.dx, dy: data.dy };
+                } else if (_chatAnchor) {
+                    data.dx = _chatAnchor.dx;
+                    data.dy = _chatAnchor.dy;
+                }
+                try { localStorage.setItem(CHAT_PANEL_KEY, JSON.stringify(data)); } catch (e) { /* ignore */ }
+            };
+            const _applyChatAnchor = () => {
+                if (!_chatAnchor || chatPanelState.value !== 'floating') return;
+                if (chatDragActive.value || chatResizeActive.value) return;
+                const r = _rect('#mainContentColumns');
+                if (!r || r.width <= 0) return;
+                chatPanelX.value = r.right - chatPanelW.value - _chatAnchor.dx;
+                chatPanelY.value = r.bottom - chatPanelH.value - _chatAnchor.dy;
             };
             const restoreChatPanelPosition = () => {
-                const key = _chatPanelStorageKey();
-                if (!key) return;
+                const validStates = ['collapsed', 'floating', 'dock-left', 'dock-right', 'dock-full'];
+                let data = null;
                 try {
-                    const raw = localStorage.getItem(key);
-                    if (!raw) { chatPanelState.value = 'collapsed'; return; }
-                    const data = JSON.parse(raw);
-                    // Migrate legacy state values from the previous
-                    // panel design (docked-ne/nw/se/sw, maximized) to
-                    // the new state vocabulary.
-                    const validStates = ['collapsed', 'floating', 'dock-left', 'dock-right', 'dock-full'];
-                    let s = data.state || 'collapsed';
-                    if (!validStates.includes(s)) {
-                        // Any legacy value → collapse so the user opens fresh.
-                        s = 'collapsed';
+                    data = JSON.parse(localStorage.getItem(CHAT_PANEL_KEY) || 'null');
+                    // Drop the old per-recording entries.
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith('chat_panel_pos_')) localStorage.removeItem(k);
                     }
-                    chatPanelState.value = s;
-                    chatPanelX.value = data.x;
-                    chatPanelY.value = data.y;
-                    if (data.w) chatPanelW.value = data.w;
-                    if (data.h) chatPanelH.value = data.h;
-                } catch (e) {
+                } catch (e) { data = null; }
+                if (!data || !validStates.includes(data.state)) {
                     chatPanelState.value = 'collapsed';
+                    return;
+                }
+                if (data.w) chatPanelW.value = data.w;
+                if (data.h) chatPanelH.value = data.h;
+                chatPanelState.value = data.state;
+                _chatAnchor = Number.isFinite(data.dx) && Number.isFinite(data.dy)
+                    ? { dx: data.dx, dy: data.dy } : null;
+                if (data.state === 'floating') {
+                    if (!_chatAnchor) _chatAnchor = { dx: 24, dy: 24 };
+                    // Placed by the next layout pass, once the detail view
+                    // of this recording has its final size.
+                    chatPanelX.value = null;
+                    chatPanelY.value = null;
                 }
             };
 
@@ -1294,6 +1322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Bump the layout tick on window resize / sidebar toggle so
             // the docked positioning style recomputes.
             const _bumpChatLayout = () => {
+                _applyChatAnchor();
                 clampChatPanelIntoView();
                 chatLayoutTick.value += 1;
             };
