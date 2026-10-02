@@ -100,7 +100,7 @@ Lists the features this instance supports. Read features here, not from the vers
 {
   "speakr_version": "v0.10.11-alpha",
   "api_version": "1.1",
-  "features": {"token_scopes": true},
+  "features": {"token_scopes": true, "changes_feed": true, "etags": true},
   "models_local": false
 }
 ```
@@ -382,10 +382,12 @@ GET /api/v1/recordings
 | `page` | integer | 1 | Page number |
 | `per_page` | integer | 25 | Items per page (max: 100) |
 | `status` | string | `all` | Filter: `all`, `pending`, `processing`, `completed`, `failed` |
-| `sort_by` | string | `created_at` | Sort field: `created_at`, `meeting_date`, `title`, `file_size` |
+| `sort_by` | string | `created_at` | Sort field: `created_at`, `meeting_date`, `title`, `file_size`, `status`, `updated_at` |
 | `sort_order` | string | `desc` | Sort order: `asc`, `desc` |
 | `date_from` | string | - | Filter from date (ISO format) |
-| `date_to` | string | - | Filter to date (ISO format) |
+| `date_to` | string | - | Filter to date (ISO format); a date alone includes that whole day |
+| `date_field` | string | `created_at` | What `date_from` and `date_to` filter: `created_at` or `meeting_date` |
+| `updated_since` | string | - | Only recordings changed after this time (ISO 8601). Deletions are not listed; use the [changes feed](#changes-feed) for those. |
 | `tag_id` | integer | - | Filter by tag ID |
 | `q` | string | - | Search query (title, participants) |
 | `inbox` | boolean | - | Filter by inbox status |
@@ -424,7 +426,8 @@ GET /api/v1/recordings
       "keep_audio_only": false,
       "tags": [
         {"id": 1, "name": "Work", "color": "#3B82F6"}
-      ]
+      ],
+      "updated_at": "2024-01-15T10:05:00.000000Z"
     }
   ],
   "pagination": {
@@ -436,6 +439,76 @@ GET /api/v1/recordings
     "has_prev": false
   }
 }
+```
+
+`updated_at` is the time of the last change a client can see: title, participants, notes, summary, transcript, status, dates, folder, flags, tags, events or sharing. It is present on every recording in API v1 and starts at `created_at`.
+
+### Changes Feed
+
+```http
+GET /api/v1/recordings/changes
+```
+
+**Scope:** `read`
+
+Every create, edit and delete of your recordings since a cursor, each once and in its latest state. This is the way to keep a copy of your recordings in sync without listing the whole collection.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cursor` | string | - | `next_cursor` from the previous answer. Without it, the answer lists every recording (a full pass) and no older deletions. |
+| `limit` | integer | 100 | 1 to 500 |
+| `scope` | string | `own` | `own` |
+
+**Response:**
+
+```json
+{
+  "changes": [
+    {"type": "upsert", "recording": {"id": 412, "title": "Weekly sync", "updated_at": "2026-10-02T14:03:22.123456Z"}},
+    {"type": "delete", "id": 398, "deleted_at": "2026-10-02T14:05:00.000000Z", "reason": "deleted"}
+  ],
+  "next_cursor": "eyJ1IjoiMjAyNi0xMC0wMlQxNDowNTowMC4wMDAwMDBaIiwiayI6MSwiaSI6Mzk4fQ",
+  "has_more": false
+}
+```
+
+- `recording` in an upsert has the same fields as one item of [List Recordings](#list-recordings).
+- `reason` on a delete is `deleted` (by a user, the API or a merge), `retention` (auto-deletion) or `access_revoked` (a recording shared with you is no longer shared).
+- Changes from the last two seconds wait for the next call, so a change saved late is never skipped.
+- The cursor is opaque. Store `next_cursor` after every answer, including an answer with no changes.
+- `400` with `"code": "invalid_parameter"`: the cursor cannot be read.
+- `410` with `"code": "cursor_expired"`: the cursor is older than the deletions Speakr still keeps (`RECORDING_TOMBSTONE_DAYS`, default 90). Start again without a cursor.
+
+A sync loop:
+
+```text
+cursor = stored cursor, or none
+repeat:
+    answer = GET /api/v1/recordings/changes?cursor=<cursor>
+    if status is 410: drop the local copy's sync state, cursor = none, continue
+    apply each change: upsert replaces the recording, delete removes it
+    cursor = answer.next_cursor; store it
+    if not answer.has_more: wait (or wait for a webhook), then repeat
+```
+
+### Conditional Requests
+
+These requests send a weak `ETag` header:
+
+| Request | Answer depends on |
+|---------|-------------------|
+| `GET /api/v1/recordings/{id}` | the recording, its tags and folder, and the parameters |
+| `GET /api/v1/recordings/{id}/transcript` | the transcript, the format and, for `format=text`, your transcript template |
+| `GET /api/v1/recordings/{id}/summary` | the summary |
+| `GET /api/v1/recordings/{id}/notes` | the notes you can see |
+| `GET /api/v1/recordings/{id}/events` | the extracted events |
+| `GET /api/v1/recordings/{id}/speakers` | the speakers and the voice suggestions |
+
+Send the value back in `If-None-Match`. When nothing in the answer changed, the answer is `304 Not Modified` with no body. Treat the value as opaque. The access check comes first, so a caller without access gets `403` or `404`, never `304`. The answers carry `Cache-Control: private, no-cache`.
+
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" -H 'If-None-Match: W/"t412-1790950000000000-3f2a9c0d1b7e4a55"' \
+     https://speakr.example.com/api/v1/recordings/412/transcript
 ```
 
 ### Get Recording Details

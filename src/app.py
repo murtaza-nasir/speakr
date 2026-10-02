@@ -495,6 +495,10 @@ else:
 from src.database import db
 db.init_app(app)
 
+# updated_at and tombstones for API clients (mailr spec G2)
+from src.services.recording_changes import register_change_tracking
+register_change_tracking()
+
 # Import all models from extracted modules
 from src.models import (
     User, Speaker, Recording, TranscriptChunk, Share, InternalShare,

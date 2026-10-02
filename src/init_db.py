@@ -238,6 +238,26 @@ def _run_migrations(app, engine):
             app.logger.info("Added audio_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
             app.logger.info("Added completed_at column to recording table")
+        # Change tracking for API clients (mailr spec G2). Filled from
+        # completed_at or created_at once; the feed reads NULL as created_at,
+        # so a failed backfill is harmless and the next start retries it.
+        if add_column_if_not_exists(engine, 'recording', 'updated_at', 'DATETIME'):
+            app.logger.info("Added updated_at column to recording table")
+        create_index_if_not_exists(engine, 'ix_recording_updated_at', 'recording', 'updated_at')
+        create_index_if_not_exists(engine, 'ix_recording_user_updated', 'recording', 'user_id, updated_at')
+
+        def _backfill_recording_updated_at(engine):
+            from datetime import datetime as _dt
+            from src.services.recording_changes import FEED_SINCE_KEY, iso_z
+            with engine.begin() as conn:
+                conn.execute(text(
+                    'UPDATE recording SET updated_at = COALESCE(completed_at, created_at) '
+                    'WHERE updated_at IS NULL'))
+            SystemSetting.set_setting(FEED_SINCE_KEY, iso_z(_dt.utcnow()),
+                                      'Start of change tracking (changes feed)')
+
+        run_once(engine, '0002_backfill_recording_updated_at', _backfill_recording_updated_at,
+                 logger=app.logger)
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):

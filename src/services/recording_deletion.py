@@ -12,7 +12,7 @@ from flask import current_app
 from src.database import db
 
 
-def delete_recording_completely(recording, storage=None, strict_media=False):
+def delete_recording_completely(recording, storage=None, strict_media=False, reason='deleted'):
     """Delete the media, the rows that reference the recording, and the recording.
 
     Emits the recording.deleted webhook and marks the export as deleted.
@@ -23,6 +23,8 @@ def delete_recording_completely(recording, storage=None, strict_media=False):
     strict_media: when the media cannot be deleted, raise and keep the
     recording (retention wants that, so its next run retries). A user's
     delete leaves a stray file instead of an undeletable recording.
+    reason: the tombstone reason for the changes feed, 'deleted' or
+    'retention'.
     """
     from src.models.processing_job import ProcessingJob
     from src.models.speaker_snippet import SpeakerSnippet
@@ -54,8 +56,12 @@ def delete_recording_completely(recording, storage=None, strict_media=False):
     if snippets or jobs:
         current_app.logger.info(f"Deleted {snippets} speaker snippets and {jobs} processing jobs for recording {recording_id}")
 
-    db.session.delete(recording)  # cascades to chunks, shares, tags
-    db.session.commit()
+    db.session.info['tombstone_reason'] = reason
+    try:
+        db.session.delete(recording)  # cascades to chunks, shares, tags
+        db.session.commit()
+    finally:
+        db.session.info.pop('tombstone_reason', None)
     current_app.logger.info(f"Deleted recording {recording_id}")
 
     try:

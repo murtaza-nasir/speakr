@@ -153,7 +153,8 @@ OPENAPI_SPEC = {
                     "folder": {"type": "object", "nullable": True, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
                     "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
                     "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}},
-                    "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."}
+                    "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."},
+                    "updated_at": {"type": "string", "format": "date-time", "description": "Last change a client can see; starts at created_at"}
                 }
             },
             "Tag": {
@@ -252,6 +253,33 @@ OPENAPI_SPEC = {
                                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Capabilities"}}}}}
             }
         },
+        "/recordings/changes": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Changes to your recordings since a cursor",
+                "description": "Each create, edit and delete once, in latest state. Store next_cursor after every answer. 410 cursor_expired: start again without a cursor.",
+                "parameters": [
+                    {"name": "cursor", "in": "query", "schema": {"type": "string"}},
+                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 100, "minimum": 1, "maximum": 500}},
+                    {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["own"], "default": "own"}}
+                ],
+                "responses": {
+                    "200": {"description": "A page of changes", "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "changes": {"type": "array", "items": {"type": "object", "properties": {
+                                "type": {"type": "string", "enum": ["upsert", "delete"]},
+                                "recording": {"$ref": "#/components/schemas/Recording"},
+                                "id": {"type": "integer"},
+                                "deleted_at": {"type": "string", "format": "date-time"},
+                                "reason": {"type": "string", "enum": ["deleted", "retention", "access_revoked"]}}}},
+                            "next_cursor": {"type": "string"},
+                            "has_more": {"type": "boolean"}}}}}},
+                    "400": {"description": "invalid_parameter"},
+                    "410": {"description": "cursor_expired"}
+                }
+            }
+        },
         "/stats": {
             "get": {
                 "tags": ["Stats"],
@@ -277,7 +305,9 @@ OPENAPI_SPEC = {
                     {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
                     {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 25, "maximum": 100}},
                     {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["all", "pending", "processing", "completed", "failed"]}},
-                    {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size"]}},
+                    {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size", "status", "updated_at"]}},
+                    {"name": "updated_since", "in": "query", "schema": {"type": "string", "format": "date-time"}, "description": "Only recordings changed after this time"},
+                    {"name": "date_field", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date"], "default": "created_at"}, "description": "What date_from and date_to filter"},
                     {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "archived", "in": "query", "schema": {"type": "boolean"}, "description": "true: only archived recordings; false: only unarchived. Omitted: both, as before."},
@@ -858,6 +888,8 @@ def get_current_token():
 # ships; a missing key means false.
 CAPABILITY_FEATURES = {
     'token_scopes': True,
+    'changes_feed': True,
+    'etags': True,
 }
 
 
@@ -942,6 +974,44 @@ def get_current_user():
 # Recordings List with Enhanced Filtering
 # =============================================================================
 
+def _updated_at_z(recording):
+    from src.services.recording_changes import effective_updated_at, iso_z
+    return iso_z(effective_updated_at(recording))
+
+
+def _recording_list_item(r):
+    """One recording as GET /recordings lists it; the changes feed uses the same shape."""
+    from src.services.recording_changes import effective_updated_at, iso_z
+    return {
+        'id': r.id,
+        'title': r.title,
+        'status': r.status,
+        'created_at': r.created_at.isoformat() if r.created_at else None,
+        'completed_at': r.completed_at.isoformat() if r.completed_at else None,
+        'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None,
+        'file_size': r.file_size,
+        'original_filename': r.original_filename,
+        'participants': r.participants,
+        'is_inbox': r.is_inbox,
+        'is_highlighted': r.is_highlighted,
+        'is_archived': bool(r.is_archived),
+        'audio_available': r.audio_deleted_at is None,
+        'audio_duration': r.get_audio_duration(),
+        'has_transcription': bool(r.transcription),
+        'has_summary': bool(r.summary),
+        'processing_time_seconds': r.processing_time_seconds,
+        'transcription_duration_seconds': r.transcription_duration_seconds,
+        'summarization_duration_seconds': r.summarization_duration_seconds,
+        'folder_id': r.folder_id,
+        'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
+        'deletion_exempt': r.deletion_exempt,
+        'error_message': r.error_message if r.status == 'FAILED' else None,
+        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
+        'keep_audio_only': r.keep_audio_only,
+        'updated_at': iso_z(effective_updated_at(r)),
+    }
+
+
 @api_v1_bp.route('/recordings', methods=['GET'])
 @require_scope('read')
 @login_required
@@ -962,6 +1032,9 @@ def list_recordings():
         inbox: Filter by inbox status (true/false)
         starred: Filter by starred status (true/false)
         archived: Filter by archive status (true/false); omitted returns both
+        updated_since: Only recordings changed after this time (ISO 8601)
+        date_field: What date_from and date_to filter: created_at (default)
+                    or meeting_date
     """
     # Parse query parameters
     page = request.args.get('page', 1, type=int)
@@ -977,6 +1050,11 @@ def list_recordings():
     inbox_filter = request.args.get('inbox')
     starred_filter = request.args.get('starred')
     archived_filter = request.args.get('archived')
+    updated_since = request.args.get('updated_since')
+    date_field = request.args.get('date_field', 'created_at')
+    if date_field not in ('created_at', 'meeting_date'):
+        return jsonify({'error': "date_field must be created_at or meeting_date",
+                        'code': 'invalid_parameter'}), 400
 
     # Base query - user's recordings.
     # Eager-load folder and tag-association+Tag so the list builder
@@ -1010,10 +1088,11 @@ def list_recordings():
     # Aware values are converted to the naive-UTC storage convention; a bare
     # date_to includes that whole day (#412 B8).
     from src.utils.dates import to_utc_naive
+    date_column = Recording.meeting_date if date_field == 'meeting_date' else Recording.created_at
     if date_from:
         try:
             from_date = to_utc_naive(datetime.fromisoformat(date_from.replace('Z', '+00:00')))
-            query = query.filter(Recording.created_at >= from_date)
+            query = query.filter(date_column >= from_date)
         except ValueError:
             pass
 
@@ -1021,11 +1100,20 @@ def list_recordings():
         try:
             to_date = to_utc_naive(datetime.fromisoformat(date_to.replace('Z', '+00:00')))
             if len(date_to.strip()) == 10:
-                query = query.filter(Recording.created_at < to_date + timedelta(days=1))
+                query = query.filter(date_column < to_date + timedelta(days=1))
             else:
-                query = query.filter(Recording.created_at <= to_date)
+                query = query.filter(date_column <= to_date)
         except ValueError:
             pass
+
+    changed_column = db.func.coalesce(Recording.updated_at, Recording.created_at)
+    if updated_since:
+        try:
+            since = to_utc_naive(datetime.fromisoformat(updated_since.replace('Z', '+00:00')))
+        except ValueError:
+            return jsonify({'error': 'updated_since must be an ISO 8601 date-time',
+                            'code': 'invalid_parameter'}), 400
+        query = query.filter(changed_column > since)
 
     # Tag filter
     if tag_id:
@@ -1075,7 +1163,8 @@ def list_recordings():
         'meeting_date': Recording.meeting_date,
         'title': Recording.title,
         'file_size': Recording.file_size,
-        'status': Recording.status
+        'status': Recording.status,
+        'updated_at': changed_column,
     }
     sort_column = sort_columns.get(sort_by, Recording.created_at)
 
@@ -1088,35 +1177,7 @@ def list_recordings():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Build response
-    recordings = []
-    for r in pagination.items:
-        recordings.append({
-            'id': r.id,
-            'title': r.title,
-            'status': r.status,
-            'created_at': r.created_at.isoformat() if r.created_at else None,
-            'completed_at': r.completed_at.isoformat() if r.completed_at else None,
-            'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None,
-            'file_size': r.file_size,
-            'original_filename': r.original_filename,
-            'participants': r.participants,
-            'is_inbox': r.is_inbox,
-            'is_highlighted': r.is_highlighted,
-            'is_archived': bool(r.is_archived),
-            'audio_available': r.audio_deleted_at is None,
-            'audio_duration': r.get_audio_duration(),
-            'has_transcription': bool(r.transcription),
-            'has_summary': bool(r.summary),
-            'processing_time_seconds': r.processing_time_seconds,
-            'transcription_duration_seconds': r.transcription_duration_seconds,
-            'summarization_duration_seconds': r.summarization_duration_seconds,
-            'folder_id': r.folder_id,
-            'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
-            'deletion_exempt': r.deletion_exempt,
-            'error_message': r.error_message if r.status == 'FAILED' else None,
-            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
-            'keep_audio_only': r.keep_audio_only,
-        })
+    recordings = [_recording_list_item(r) for r in pagination.items]
 
     return jsonify({
         'recordings': recordings,
@@ -1135,9 +1196,80 @@ def list_recordings():
 # Recording Detail
 # =============================================================================
 
+def _conditional(prefix):
+    """Weak ETag and If-None-Match for a GET on one recording (mailr spec G11).
+
+    The tag holds the recording id, its updated_at and a hash of the body, so
+    it also changes when something outside the recording changes the answer
+    (a tag or folder name, the viewer's transcript template, voice
+    suggestions). It runs after the view, so the view's access check comes
+    first and a caller without access gets 403 or 404, never 304.
+    """
+    def decorator(view):
+        @wraps(view)
+        def wrapper(recording_id, *args, **kwargs):
+            import hashlib
+            from flask import make_response
+            from src.services.recording_changes import etag_matches, updated_at_us
+            response = make_response(view(recording_id, *args, **kwargs))
+            if response.status_code != 200 or response.direct_passthrough:
+                return response
+            recording = db.session.get(Recording, recording_id)
+            digest = hashlib.sha1(response.get_data()).hexdigest()[:16]
+            etag = f'W/"{prefix}{recording_id}-{updated_at_us(recording) if recording else 0}-{digest}"'
+            if etag_matches(request, etag):
+                response = make_response('', 304)
+            response.headers['ETag'] = etag
+            response.headers['Cache-Control'] = 'private, no-cache'
+            return response
+        return wrapper
+    return decorator
+
+
+@api_v1_bp.route('/recordings/changes', methods=['GET'])
+@require_scope('read')
+@login_required
+def list_recording_changes():
+    """Changes to the user's recordings since a cursor (mailr spec G2).
+
+    Query params:
+        cursor: from a previous answer; absent starts a full pass (every live
+                recording, no tombstones)
+        limit: 1 to 500 (default 100)
+        scope: own (default; shared and all arrive with G4)
+    """
+    from src.services.recording_changes import (CursorError, cursor_expired, decode_cursor,
+                                                iso_z, read_changes)
+    cursor = request.args.get('cursor') or None
+    limit = request.args.get('limit', 100, type=int)
+    if limit is None or not 1 <= limit <= 500:
+        return jsonify({'error': 'limit must be between 1 and 500', 'code': 'invalid_parameter'}), 400
+    scope = request.args.get('scope', 'own')
+    if scope != 'own':
+        return jsonify({'error': "scope must be 'own'", 'code': 'invalid_parameter'}), 400
+    if cursor:
+        try:
+            changed_at, _, _, full_since = decode_cursor(cursor)
+        except CursorError:
+            return jsonify({'error': 'The cursor could not be read', 'code': 'invalid_parameter'}), 400
+        if cursor_expired(current_user.id, changed_at, full_since):
+            return jsonify({'error': 'The cursor is too old; start again without a cursor',
+                            'code': 'cursor_expired'}), 410
+    items, next_cursor, has_more = read_changes(current_user.id, cursor=cursor, limit=limit)
+    changes = []
+    for kind, obj in items:
+        if kind == 'upsert':
+            changes.append({'type': 'upsert', 'recording': _recording_list_item(obj)})
+        else:
+            changes.append({'type': 'delete', 'id': obj.recording_id,
+                            'deleted_at': iso_z(obj.deleted_at), 'reason': obj.reason})
+    return jsonify({'changes': changes, 'next_cursor': next_cursor, 'has_more': has_more})
+
+
 @api_v1_bp.route('/recordings/<int:recording_id>', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('r')
 def get_recording(recording_id):
     """
     Get full recording details.
@@ -1154,6 +1286,7 @@ def get_recording(recording_id):
     if not has_recording_access(recording, current_user):
         return jsonify({'error': 'Permission denied'}), 403
 
+    from src.services.recording_changes import effective_updated_at, iso_z
     include = request.args.get('include', 'transcription,summary,notes')
     include_fields = [f.strip() for f in include.split(',')]
     format_type = request.args.get('format', 'full')
@@ -1185,6 +1318,7 @@ def get_recording(recording_id):
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags],
         'duplicate_info': recording.get_duplicate_info(),
         'keep_audio_only': recording.keep_audio_only,
+        'updated_at': iso_z(effective_updated_at(recording)),
     }
 
     # Include large text fields based on params
@@ -1209,6 +1343,7 @@ def get_recording(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/transcript', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('t')
 def get_transcript(recording_id):
     """
     Get transcript in various formats.
@@ -1299,6 +1434,7 @@ def get_transcript(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/summary', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('s')
 def get_summary(recording_id):
     """Get summary markdown."""
     recording = db.session.get(Recording, recording_id)
@@ -1317,6 +1453,7 @@ def get_summary(recording_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/notes', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('n')
 def get_notes(recording_id):
     """Get notes markdown."""
     recording = db.session.get(Recording, recording_id)
@@ -1477,7 +1614,8 @@ def update_recording(recording_id):
             'is_inbox': recording.is_inbox,
             'is_highlighted': recording.is_highlighted,
             'is_archived': get_user_archived(recording, current_user),
-            'folder_id': recording.folder_id
+            'folder_id': recording.folder_id,
+            'updated_at': _updated_at_z(recording),
         }
     })
 
@@ -2287,6 +2425,7 @@ def delete_speaker(speaker_id):
 @api_v1_bp.route('/recordings/<int:recording_id>/speakers', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('k')
 def get_recording_speakers(recording_id):
     """Get speakers in a recording with suggestions."""
     from src.services.speaker_embedding_matcher import find_matching_speakers
@@ -2653,6 +2792,7 @@ Notes: {recording.notes or 'None'}
 @api_v1_bp.route('/recordings/<int:recording_id>/events', methods=['GET'])
 @require_scope('read')
 @login_required
+@_conditional('e')
 def get_recording_events(recording_id):
     """Get calendar events extracted from a recording."""
     recording = db.session.get(Recording, recording_id)

@@ -59,3 +59,51 @@ def test_api_token_scopes_column(tmp_path, fixture):
     con.close()
     assert row[:4] == ("abc123", "n8n", "2027-01-01 00:00:00", 1)
     assert row[4] is None, "existing tokens keep full access (scopes NULL)"
+
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=[f[:-4] for f in FIXTURES])
+def test_recording_updated_at_and_tombstones(tmp_path, fixture):
+    """G2: updated_at is filled from completed_at or created_at, once."""
+    db_path, con = _load(tmp_path, fixture)
+    cols = _columns(con, "recording")
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+                ("u", "u@example.test", "hash"))
+    extra = {"keep_audio_only": 0} if "keep_audio_only" in cols else {}
+
+    def _insert(**values):
+        values.update(extra)
+        names = ", ".join(values)
+        marks = ", ".join("?" for _ in values)
+        con.execute(f"INSERT INTO recording ({names}) VALUES ({marks})", tuple(values.values()))
+
+    _insert(id=7, user_id=1, title="Old", status="COMPLETED", created_at="2024-03-01 10:00:00")
+    if "completed_at" in cols:
+        _insert(id=8, user_id=1, title="Done", status="COMPLETED", created_at="2024-03-02 10:00:00",
+                completed_at="2024-03-02 11:30:00")
+    con.commit()
+    con.close()
+
+    _upgrade(db_path)
+    con = sqlite3.connect(db_path)
+    con.execute("UPDATE recording SET updated_at = '2025-05-05 05:05:05' WHERE id = 7")
+    con.commit()
+    con.close()
+    _upgrade(db_path)   # second start: the backfill does not run again
+
+    con = sqlite3.connect(db_path)
+    assert "updated_at" in _columns(con, "recording")
+    rows = dict(con.execute("SELECT id, updated_at FROM recording").fetchall())
+    titles = dict(con.execute("SELECT id, title FROM recording").fetchall())
+    indexes = {r[1] for r in con.execute("PRAGMA index_list('recording')")}
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    ledger = con.execute("SELECT count(*) FROM schema_migrations "
+                         "WHERE migration_id = '0002_backfill_recording_updated_at'").fetchone()[0]
+    since = con.execute("SELECT value FROM system_setting WHERE key = 'changes_feed_since'").fetchone()
+    con.close()
+    assert rows[7].startswith("2025-05-05 05:05:05"), "second start left the value alone"
+    if 8 in rows:
+        assert rows[8].startswith("2024-03-02 11:30:00"), "filled from completed_at"
+    assert titles[7] == "Old"
+    assert {"ix_recording_updated_at", "ix_recording_user_updated"} <= indexes
+    assert "recording_tombstone" in tables
+    assert ledger == 1 and since and since[0].endswith("Z")
