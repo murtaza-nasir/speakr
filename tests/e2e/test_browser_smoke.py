@@ -217,3 +217,55 @@ def test_a_recording_detail_view(browser_page):
     _open(page, problems, path)
     _check_user_menu(page, path)
     _check_common(page, problems, path)
+
+
+_CHAT_GAP = """() => {
+    const p = document.querySelector('.floating-chat-panel');
+    const c = document.getElementById('mainContentColumns');
+    if (!p || !c) return null;
+    const r = p.getBoundingClientRect(), b = c.getBoundingClientRect();
+    return {dx: Math.round(b.right - r.right), dy: Math.round(b.bottom - r.bottom),
+            inside: r.top >= b.top && r.left >= b.left && r.right <= b.right && r.bottom <= b.bottom};
+}"""
+
+
+def test_the_chat_panel_layout_is_shared_and_anchored(browser_page):
+    """One chat layout for every recording, kept as a gap to the content area's corner.
+
+    It used to be saved per recording with absolute coordinates: the panel
+    opened on some recordings only, and after a window or sidebar change it
+    floated in the middle of the page.
+    """
+    page, _ = browser_page
+    listing = page.request.get(f"{BASE}/api/recordings?per_page=2")
+    items = listing.json().get("recordings", []) if listing.ok else []
+    if len(items) < 2:
+        pytest.skip("needs two recordings")
+    first, second = (f"/recordings/{r['id']}" for r in items[:2])
+    page.goto(f"{BASE}{first}")
+    page.wait_for_timeout(2500)
+    page.evaluate("() => localStorage.removeItem('chat_panel_layout')")
+    page.click(".floating-chat-fab")
+    page.wait_for_timeout(300)
+    head = page.locator(".floating-chat-header-title").bounding_box()
+    page.mouse.move(head["x"] + 20, head["y"] + 10)
+    page.mouse.down()
+    page.mouse.move(head["x"] - 80, head["y"] - 40, steps=8)
+    page.mouse.up()
+    page.wait_for_timeout(300)
+    moved = page.evaluate(_CHAT_GAP)
+    assert moved and moved["inside"]
+
+    page.goto(f"{BASE}{second}")
+    page.wait_for_timeout(2500)
+    there = page.evaluate(_CHAT_GAP)
+    assert there is not None, "the chat panel did not open on the second recording"
+    assert there["inside"] and abs(there["dx"] - moved["dx"]) <= 1
+
+    page.set_viewport_size({"width": 1200, "height": 900})
+    page.wait_for_timeout(600)
+    narrower = page.evaluate(_CHAT_GAP)
+    assert narrower["inside"] and abs(narrower["dx"] - moved["dx"]) <= 1
+    keys = page.evaluate("() => Object.keys(localStorage).filter(k => k.startsWith('chat_panel'))")
+    assert keys == ["chat_panel_layout"]
+    page.set_viewport_size({"width": 1400, "height": 900})
