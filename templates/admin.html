@@ -301,442 +301,249 @@
                   <div class="tab-footer"></div>
                 </div>
 
-                <!-- System Statistics Tab -->
+                <!-- System Statistics Tab. One read, /admin/stats/overview,
+                     for a range of 7, 30 or 90 days compared with the range
+                     before it; recording states and the job queue come from
+                     /admin/stats. -->
                 <div class="tab-content" :class="{ hidden: activeTab !== 'stats' }">
                   <div class="tab-scroll">
-                    <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">${t('adminDashboard.systemStatistics')}</h3>
-                    
-                    <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center">
-                                <div class="p-3 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
-                                    <i class="fas fa-users text-xl"></i>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.systemStatistics')}</h3>
+                        <div class="flex items-center gap-1.5">
+                            <button v-for="d in [7, 30, 90]" :key="d" @click="setStatsDays(d)"
+                                    class="btn btn--sm" :class="statsDays === d ? 'btn--primary' : 'btn--ghost'"
+                                    :aria-pressed="statsDays === d"
+                                    v-text="t('adminDashboard.statsPage.lastDays', { count: d })"></button>
+                            <button @click="refreshStats" class="btn btn--sm btn--ghost" :title="t('buttons.refresh')" :aria-label="t('buttons.refresh')">
+                                <i class="fas fa-sync-alt" :class="{ 'fa-spin': overviewLoading }"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-[var(--text-muted)] mb-4" v-if="overview"
+                       v-text="t('adminDashboard.statsPage.rangeNote', { start: formatDay(overview.start), end: formatDay(overview.end), count: overview.days })"></p>
+
+                    <!-- Overview: the range against the range before it -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+                        <div v-for="card in overviewCards" :key="card.key"
+                             class="bg-[var(--bg-tertiary)] p-3 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <p class="text-xs font-medium text-[var(--text-muted)] flex items-center gap-1.5 truncate">
+                                <i :class="card.icon" class="text-[var(--text-accent)]"></i><span v-text="card.label"></span>
+                            </p>
+                            <p class="text-2xl font-semibold text-[var(--text-primary)] mt-1 truncate" v-text="card.value"></p>
+                            <p class="text-xs mt-0.5 leading-snug sm:truncate text-[var(--text-muted)]" v-text="card.note || ' '"></p>
+                        </div>
+                    </div>
+
+                    <!-- Activity and health -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 lg:items-start gap-6 mb-6">
+                        <div class="lg:col-span-2 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.recordingsPerDay')}</h4>
+                            <div class="h-56"><canvas id="statsRecordingsChart"></canvas></div>
+                            <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                <div>
+                                    <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.created')}</p>
+                                    <p class="font-semibold text-[var(--text-primary)]" v-text="overview ? overview.activity.created.toLocaleString() : '—'"></p>
                                 </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalUsers')}</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_users }</p>
+                                <div>
+                                    <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.medianProcessing')}</p>
+                                    <p class="font-semibold text-[var(--text-primary)]" v-text="overview && overview.activity.median_processing_seconds != null ? formatSeconds(overview.activity.median_processing_seconds) : '—'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.failureRate')}</p>
+                                    <p class="font-semibold" :class="overview && overview.activity.failed ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-primary)]'"
+                                       v-text="overview && overview.activity.failure_rate != null ? t('adminDashboard.statsPage.failedOf', { failed: overview.activity.failed, total: overview.activity.created, pct: overview.activity.failure_rate }) : '—'"></p>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center">
-                                <div class="p-3 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
-                                    <i class="fas fa-file-audio text-xl"></i>
-                                </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalRecordings')}</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_recordings }</p>
+
+                        <div class="flex flex-col gap-6 min-w-0">
+                            <!-- Health: states now, the job queue, the latest failures -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.health')}</h4>
+                                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                                    <template v-for="s in statusRows" :key="s.key">
+                                        <div class="flex items-center justify-between gap-2 min-w-0">
+                                            <dt class="flex items-center gap-1.5 text-[var(--text-secondary)] truncate">
+                                                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" :style="{ background: s.color }"></span><span v-text="s.label"></span>
+                                            </dt>
+                                            <dd class="font-semibold text-[var(--text-primary)]" v-text="(s.value || 0).toLocaleString()"></dd>
+                                        </div>
+                                    </template>
+                                </dl>
+                                <p class="mt-3 text-sm text-[var(--text-secondary)]">
+                                    <i class="fas fa-layer-group mr-1 text-[var(--text-muted)]"></i>
+                                    <span v-text="t('adminDashboard.jobQueue', { queued: stats.jobs.queued, running: stats.jobs.running })"></span>
+                                    <span v-if="stats.jobs.failed_7d" class="ml-2 text-[var(--text-danger-strong)]"
+                                          v-text="t('adminDashboard.jobsFailed7d', { count: stats.jobs.failed_7d })"></span>
+                                </p>
+                                <div v-if="overview && overview.failed_recent.length" class="mt-3 border-t border-[var(--border-primary)] pt-3">
+                                    <p class="text-xs font-medium text-[var(--text-muted)] mb-1.5">${t('adminDashboard.statsPage.latestFailures')}</p>
+                                    <ul class="space-y-1.5">
+                                        <li v-for="f in overview.failed_recent" :key="f.id" class="text-xs min-w-0" :title="f.error">
+                                            <p class="text-[var(--text-primary)] truncate" v-text="f.title"></p>
+                                            <p class="text-[var(--text-muted)] truncate">
+                                                <span v-text="f.username"></span> · <span v-text="formatDate(f.created_at)"></span><span v-if="f.error"> · </span><span v-text="f.error"></span>
+                                            </p>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center">
-                                <div class="p-3 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
-                                    <i class="fas fa-database text-xl"></i>
+
+                            <!-- Voice embedding compatibility (#380). The admin
+                                 notification's link lands on this anchor. -->
+                            <div id="voice-embeddings" v-if="voiceEmbedding.supported !== false"
+                                 class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                    <h4 class="text-md font-medium text-[var(--text-secondary)]">${t('adminDashboard.voiceEmbedding.title')}</h4>
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold"
+                                          :class="voiceEmbedding.status === 'ok' ? 'bg-[var(--bg-success)] text-[var(--text-success-strong)]' : (voiceEmbedding.status === 'changed' ? 'bg-[var(--bg-danger)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]')"
+                                          v-text="voiceEmbedding.status === 'ok' ? t('adminDashboard.voiceEmbedding.statusOk') : (voiceEmbedding.status === 'changed' ? t('adminDashboard.voiceEmbedding.statusChanged') : t('adminDashboard.voiceEmbedding.statusUnknown'))"></span>
                                 </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalStorage')}</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ formatFileSize(stats.total_storage) }</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center">
-                                <div class="p-3 rounded-full bg-[var(--bg-accent)] text-[var(--text-accent)]">
-                                    <i class="fas fa-comments text-xl"></i>
-                                </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.aiRequestsMonth')}</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (stats.ai_requests_month || 0).toLocaleString() }</p>
+                                <p class="text-xs text-[var(--text-muted)] mb-2">${t('adminDashboard.voiceEmbedding.help')}</p>
+                                <p class="text-xs text-[var(--text-secondary)] mb-2 flex flex-wrap gap-x-3">
+                                    <span v-if="voiceEmbedding.dimension">${t('adminDashboard.voiceEmbedding.dimension')}: <span class="font-medium" v-text="voiceEmbedding.dimension"></span></span>
+                                    <span v-if="voiceEmbedding.checked_at" class="text-[var(--text-muted)]">${t('adminDashboard.voiceEmbedding.lastChecked')}: <span v-text="formatDate(voiceEmbedding.checked_at)"></span></span>
+                                </p>
+                                <!-- Diagnostic string and voice spaces, one per embedding model
+                                     seen. Profiles are only compared within their space. -->
+                                <details v-if="voiceEmbedding.detail || (voiceEmbedding.spaces && voiceEmbedding.spaces.length)" class="mb-3 text-xs">
+                                    <summary class="cursor-pointer text-[var(--text-secondary)]" v-text="t('adminDashboard.voiceEmbedding.spacesTitle')"></summary>
+                                    <p v-if="voiceEmbedding.detail" class="mt-2 text-[var(--text-muted)] font-mono break-words" v-text="voiceEmbedding.detail"></p>
+                                    <div class="overflow-x-auto">
+                                    <table v-if="voiceEmbedding.spaces && voiceEmbedding.spaces.length" class="w-full mt-2">
+                                        <thead>
+                                            <tr class="text-left text-[var(--text-muted)]">
+                                                <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.space')"></th>
+                                                <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.dimension')"></th>
+                                                <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.samples')"></th>
+                                                <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.threshold')"></th>
+                                                <th class="py-1 font-normal" v-text="t('adminDashboard.voiceEmbedding.lastSeen')"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="space in voiceEmbedding.spaces" :key="space.id" class="border-t border-[var(--border-primary)]">
+                                                <td class="py-1 pr-2">
+                                                    #${ space.id }
+                                                    <span v-if="space.current" class="ml-1 px-1.5 rounded bg-[var(--bg-success)] text-[var(--text-success-strong)]" v-text="t('adminDashboard.voiceEmbedding.current')"></span>
+                                                </td>
+                                                <td class="py-1 pr-2">${ space.dimension || '' }</td>
+                                                <td class="py-1 pr-2">${ space.sample_count }</td>
+                                                <td class="py-1 pr-2" v-text="space.calibrated_threshold != null ? space.calibrated_threshold : t('adminDashboard.voiceEmbedding.notCalibrated')"></td>
+                                                <td class="py-1" v-text="space.last_seen_at ? formatDate(space.last_seen_at) : ''"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    </div>
+                                </details>
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="checkVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--ghost">
+                                        <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': voiceEmbeddingBusy }"></i>${t('adminDashboard.voiceEmbedding.checkNow')}
+                                    </button>
+                                    <button @click="rebaselineVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--danger">
+                                        <i class="fas fa-redo mr-1"></i>${t('adminDashboard.voiceEmbedding.rebaseline')}
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Status Distribution -->
+
+                    <!-- Usage and cost -->
+                    <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                        <i class="fas fa-coins mr-2"></i>${t('adminDashboard.statsPage.usageAndCost')}
+                    </h4>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.recordingStatusDistribution')}</h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-success-strong)]">${ stats.completed_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.completedRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-warn-strong)]">${ stats.transcribing_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.transcribingRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-warn-strong)]">${ stats.summarizing_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.summarizingRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-pending-strong)]">${ stats.pending_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.pendingRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-danger-strong)]">${ stats.failed_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.failedRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-secondary)]">${ stats.audio_removed_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.audioRemovedRecordings')}</span>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <span class="block text-xl font-bold text-[var(--text-secondary)]">${ stats.archived_recordings }</span>
-                                    <span class="block text-xs text-[var(--text-muted)]">${t('adminDashboard.archivedRecordings')}</span>
-                                </div>
-                            </div>
-                            <!-- The job queue: waiting, running, failed this week. -->
-                            <p class="mt-3 text-sm text-[var(--text-secondary)]">
-                                <i class="fas fa-layer-group mr-1 text-[var(--text-muted)]"></i>
-                                <span v-text="t('adminDashboard.jobQueue', { queued: stats.jobs.queued, running: stats.jobs.running })"></span>
-                                <span v-if="stats.jobs.failed_7d" class="ml-2 text-[var(--text-danger-strong)]"
-                                      v-text="t('adminDashboard.jobsFailed7d', { count: stats.jobs.failed_7d })"></span>
-                            </p>
+                        <div class="lg:col-span-2 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.llmTokensPerDay')}</h5>
+                            <div class="h-64"><canvas id="statsOperationsChart"></canvas></div>
                         </div>
-
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.topUsersByStorage')}</h4>
-                            <div class="space-y-3">
-                                <div v-for="user in stats.top_users" :key="user.id" class="flex justify-between items-center p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <div class="flex items-center">
-                                        <i class="fas fa-user text-[var(--text-accent)] mr-2"></i>
-                                        <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
-                                    </div>
-                                    <div class="text-sm text-[var(--text-secondary)]">
-                                        <span class="font-medium">${ formatFileSize(user.storage_used) }</span>
-                                        <span class="text-[var(--text-muted)] ml-2">(${ user.recordings_count} recordings)</span>
-                                    </div>
-                                </div>
-                                <div v-if="stats.top_users.length === 0" class="text-center text-sm text-[var(--text-muted)] p-2">
-                                    No data available
-                                </div>
-                            </div>
+                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.minutesPerDay')}</h5>
+                            <div class="h-48"><canvas id="statsMinutesChart"></canvas></div>
                         </div>
-
-                        <!-- Voice embedding compatibility (#380). The admin
-                             notification's link lands on this anchor. -->
-                        <div id="voice-embeddings" v-if="voiceEmbedding.supported !== false"
-                             class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.voiceEmbedding.title')}</h4>
-                            <p class="text-xs text-[var(--text-muted)] mb-3">${t('adminDashboard.voiceEmbedding.help')}</p>
-                            <div class="flex flex-wrap items-center gap-3 mb-3">
-                                <span class="px-2 py-1 rounded text-xs font-semibold"
-                                      :class="voiceEmbedding.status === 'ok' ? 'bg-[var(--bg-success)] text-[var(--text-success-strong)]' : (voiceEmbedding.status === 'changed' ? 'bg-[var(--bg-danger)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]')"
-                                      v-text="voiceEmbedding.status === 'ok' ? t('adminDashboard.voiceEmbedding.statusOk') : (voiceEmbedding.status === 'changed' ? t('adminDashboard.voiceEmbedding.statusChanged') : t('adminDashboard.voiceEmbedding.statusUnknown'))"></span>
-                                <span v-if="voiceEmbedding.dimension" class="text-sm text-[var(--text-secondary)]">
-                                    ${t('adminDashboard.voiceEmbedding.dimension')}: <span class="font-medium" v-text="voiceEmbedding.dimension"></span>
-                                </span>
-                                <span v-if="voiceEmbedding.checked_at" class="text-sm text-[var(--text-muted)]">
-                                    ${t('adminDashboard.voiceEmbedding.lastChecked')}: <span v-text="formatDate(voiceEmbedding.checked_at)"></span>
-                                </span>
-                            </div>
-                            <!-- Diagnostic string from the checker, shown as-is like a log line. -->
-                            <p v-if="voiceEmbedding.detail" class="text-xs text-[var(--text-muted)] mb-3 font-mono break-words" v-text="voiceEmbedding.detail"></p>
-                            <!-- Voice spaces: one per embedding model seen. Profiles are only
-                                 compared within their space, so switching back to a previous
-                                 backend brings its profiles back. -->
-                            <div v-if="voiceEmbedding.spaces && voiceEmbedding.spaces.length" class="mb-3">
-                                <div class="text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('adminDashboard.voiceEmbedding.spacesTitle')"></div>
-                                <table class="w-full text-xs">
+                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.embeddingTokensPerDay')}</h5>
+                            <div class="h-48"><canvas id="statsEmbeddingChart"></canvas></div>
+                        </div>
+                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.monthlyCost')}</h5>
+                            <div class="h-56"><canvas id="statsMonthlyCostChart"></canvas></div>
+                        </div>
+                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm min-w-0">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.statsPage.costByModel')}</h5>
+                            <div v-if="!overview || !overview.usage.by_model.length" class="text-sm text-[var(--text-muted)]">${t('adminDashboard.tokenUsage.noUsage')}</div>
+                            <div v-else class="overflow-x-auto">
+                                <table class="w-full text-sm">
                                     <thead>
-                                        <tr class="text-left text-[var(--text-muted)]">
-                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.space')"></th>
-                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.dimension')"></th>
-                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.samples')"></th>
-                                            <th class="py-1 pr-2 font-normal" v-text="t('adminDashboard.voiceEmbedding.threshold')"></th>
-                                            <th class="py-1 font-normal" v-text="t('adminDashboard.voiceEmbedding.lastSeen')"></th>
+                                        <tr class="text-left text-xs text-[var(--text-muted)]">
+                                            <th class="py-1 pr-3 font-normal">${t('adminDashboard.statsPage.model')}</th>
+                                            <th class="py-1 pr-3 font-normal text-right">${t('adminDashboard.statsPage.requests')}</th>
+                                            <th class="py-1 pr-3 font-normal text-right">${t('adminDashboard.statsPage.volume')}</th>
+                                            <th class="py-1 font-normal text-right">${t('adminDashboard.statsPage.cost')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="space in voiceEmbedding.spaces" :key="space.id" class="border-t border-[var(--border-primary)]">
-                                            <td class="py-1 pr-2">
-                                                #${ space.id }
-                                                <span v-if="space.current" class="ml-1 px-1.5 rounded bg-[var(--bg-success)] text-[var(--text-success-strong)]" v-text="t('adminDashboard.voiceEmbedding.current')"></span>
+                                        <tr v-for="m in overview.usage.by_model" :key="m.kind + m.model" class="border-t border-[var(--border-primary)]">
+                                            <td class="py-1.5 pr-3 min-w-0">
+                                                <span class="block truncate max-w-[16rem] text-[var(--text-primary)]" :title="m.model" v-text="m.model || '—'"></span>
+                                                <span class="text-xs text-[var(--text-muted)]" v-text="t('adminDashboard.statsPage.kind.' + m.kind)"></span>
                                             </td>
-                                            <td class="py-1 pr-2">${ space.dimension || '' }</td>
-                                            <td class="py-1 pr-2">${ space.sample_count }</td>
-                                            <td class="py-1 pr-2" v-text="space.calibrated_threshold != null ? space.calibrated_threshold : t('adminDashboard.voiceEmbedding.notCalibrated')"></td>
-                                            <td class="py-1" v-text="space.last_seen_at ? formatDate(space.last_seen_at) : ''"></td>
+                                            <td class="py-1.5 pr-3 text-right tabular-nums" v-text="m.requests.toLocaleString()"></td>
+                                            <td class="py-1.5 pr-3 text-right tabular-nums whitespace-nowrap"
+                                                v-text="m.kind === 'transcription' ? t('adminDashboard.statsPage.minutesShort', { count: Math.round(m.minutes).toLocaleString() }) : formatCompact(m.tokens)"></td>
+                                            <td class="py-1.5 text-right tabular-nums whitespace-nowrap" v-text="formatModelCost(m)"></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="flex flex-wrap gap-2">
-                                <button @click="checkVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--ghost">
-                                    <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': voiceEmbeddingBusy }"></i>${t('adminDashboard.voiceEmbedding.checkNow')}
-                                </button>
-                                <button @click="rebaselineVoiceEmbedding" :disabled="voiceEmbeddingBusy" class="btn btn--sm btn--danger">
-                                    <i class="fas fa-redo mr-1"></i>${t('adminDashboard.voiceEmbedding.rebaseline')}
-                                </button>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Token Usage Section -->
-                    <div class="mt-6">
-                        <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
-                            <i class="fas fa-coins mr-2"></i> ${ t('adminDashboard.tokenUsage.title') }
-                        </h4>
-
-                        <!-- Token Stats and Per-User Usage Side by Side -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            <!-- Token Usage Summary Cards (LLM and Embedding tracked separately) -->
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.usageSummary') }</h5>
-
-                                <!-- LLM bucket (chat, summarization, title, etc.) -->
-                                <div class="mb-3">
-                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-robot mr-1"></i> ${ t('adminDashboard.tokenUsage.llm') }</p>
-                                    <div class="grid grid-cols-3 gap-3">
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.today') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.llm_tokens || 0).toLocaleString() }</p>
+                    <!-- Users: one sortable table, budgets are monthly -->
+                    <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                        <i class="fas fa-users mr-2"></i>${t('adminDashboard.statsPage.users')}
+                    </h4>
+                    <div class="bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] shadow-sm overflow-x-auto mb-2">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-xs text-[var(--text-muted)] border-b border-[var(--border-primary)]">
+                                    <th v-for="col in userColumns" :key="col.key" class="py-2 px-3 font-medium whitespace-nowrap" :class="col.align === 'right' ? 'text-right' : ''"
+                                        :aria-sort="statsSort.key === col.key ? (statsSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortUsersBy(col.key)" class="inline-flex items-center gap-1 hover:text-[var(--text-primary)]">
+                                            <span v-text="col.label"></span>
+                                            <i class="fas text-[10px]" :class="statsSort.key === col.key ? (statsSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="u in sortedStatsUsers" :key="u.id" class="border-t border-[var(--border-primary)] first:border-t-0">
+                                    <td class="py-2 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">
+                                        <span v-text="u.username"></span>
+                                        <i v-if="(u.token_pct || 0) >= 80 || (u.minutes_pct || 0) >= 80" class="fas fa-exclamation-triangle ml-1.5"
+                                           :class="(u.token_pct || 0) >= 100 || (u.minutes_pct || 0) >= 100 ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-warn-strong)]'"
+                                           :title="t('adminDashboard.statsPage.nearBudget')"></i>
+                                    </td>
+                                    <td class="py-2 px-3 text-right tabular-nums" v-text="u.recordings.toLocaleString()"></td>
+                                    <td class="py-2 px-3 text-right tabular-nums whitespace-nowrap" v-text="formatFileSize(u.storage)"></td>
+                                    <td class="py-2 px-3 whitespace-nowrap text-[var(--text-secondary)]" v-text="u.last_recording_at ? formatDay(u.last_recording_at.slice(0, 10)) : '—'"></td>
+                                    <td class="py-2 px-3 text-right min-w-[8rem]">
+                                        <span class="tabular-nums" v-text="formatCompact(u.tokens_month)"></span><span v-if="u.token_budget" class="text-xs text-[var(--text-muted)]"> / <span v-text="formatCompact(u.token_budget)"></span></span>
+                                        <div v-if="u.token_budget" class="w-full bg-[var(--bg-secondary)] rounded-full h-1 mt-1">
+                                            <div class="h-1 rounded-full" :class="budgetBarClass(u.token_pct)" :style="{ width: Math.min(u.token_pct || 0, 100) + '%' }"></div>
                                         </div>
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.thisMonth') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.llm_tokens || 0).toLocaleString() }</p>
+                                    </td>
+                                    <td class="py-2 px-3 text-right min-w-[8rem]">
+                                        <span class="tabular-nums" v-text="u.minutes_month.toLocaleString()"></span><span v-if="u.minutes_budget" class="text-xs text-[var(--text-muted)]"> / <span v-text="u.minutes_budget.toLocaleString()"></span></span>
+                                        <div v-if="u.minutes_budget" class="w-full bg-[var(--bg-secondary)] rounded-full h-1 mt-1">
+                                            <div class="h-1 rounded-full" :class="budgetBarClass(u.minutes_pct)" :style="{ width: Math.min(u.minutes_pct || 0, 100) + '%' }"></div>
                                         </div>
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.monthlyCost') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.llm_cost || 0).toFixed(4) }</p>
-                                        </div>
-                                    </div>
-                                    <!-- Prompt cache: reads are prompt tokens served from a prefix cache. -->
-                                    <p class="text-xs text-[var(--text-muted)] mt-2 flex items-center flex-wrap gap-x-3">
-                                        <span><i class="fas fa-bolt mr-1 text-[var(--text-accent)]"></i>${ t('adminDashboard.tokenUsage.cacheReadsLabel') } <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cached_tokens || 0).toLocaleString() }</span> ${ t('adminDashboard.tokenUsage.thisMonthInline') } <span v-if="(tokenStats.today?.cached_tokens || 0) > 0">(${ (tokenStats.today?.cached_tokens || 0).toLocaleString() } ${ t('adminDashboard.tokenUsage.todayInline') })</span></span>
-                                        <span v-if="(tokenStats.current_month?.cache_write_tokens || 0) > 0">· ${ t('adminDashboard.tokenUsage.cacheWritesLabel') } <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cache_write_tokens || 0).toLocaleString() }</span></span>
-                                    </p>
-                                </div>
-
-                                <!-- Embedding bucket -->
-                                <div class="mb-3">
-                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-vector-square mr-1"></i> ${ t('adminDashboard.tokenUsage.embeddings') }</p>
-                                    <div class="grid grid-cols-3 gap-3">
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.today') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.embedding_tokens || 0).toLocaleString() }</p>
-                                        </div>
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.thisMonth') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.embedding_tokens || 0).toLocaleString() }</p>
-                                        </div>
-                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.monthlyCost') }</p>
-                                            <p class="text-lg font-semibold text-[var(--text-primary)]" v-text="tokenStats.embeddings_local ? t('adminDashboard.tokenUsage.local') : '$' + (tokenStats.current_month?.embedding_cost || 0).toFixed(4)"></p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Budget warnings -->
-                                <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <div class="flex items-center">
-                                        <div class="p-2 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.budgetWarnings') }</p>
-                                            <p class="text-sm font-semibold">
-                                                <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } ${ t('adminDashboard.tokenUsage.blocked') }</span>
-                                                <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } ${ t('adminDashboard.tokenUsage.warning') }</span>
-                                                <span v-else class="text-[var(--text-success-strong)]">${ t('adminDashboard.tokenUsage.none') }</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Operation breakdown for the current month -->
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm lg:col-span-2">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.tokensByOperation') }</h5>
-                                <div v-if="(tokenStats.current_month?.by_operation || []).length === 0" class="text-sm text-[var(--text-muted)]">
-                                    ${ t('adminDashboard.tokenUsage.noUsage') }
-                                </div>
-                                <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    <div v-for="op in (tokenStats.current_month?.by_operation || [])"
-                                         :key="op.operation_type"
-                                         class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <p class="text-xs text-[var(--text-muted)] capitalize">${ op.operation_type.replace('_', ' ') }</p>
-                                        <p class="text-base font-semibold text-[var(--text-primary)]">${ op.tokens.toLocaleString() }</p>
-                                        <p class="text-xs text-[var(--text-muted)]">
-                                            ${ op.requests } ${ t('adminDashboard.tokenUsage.requests') }<span v-if="op.cost > 0"> · $${ op.cost.toFixed(4) }</span>
-                                        </p>
-                                        <p v-if="(op.cached_tokens || 0) > 0" class="text-xs text-[var(--text-accent)]">
-                                            <i class="fas fa-bolt mr-1"></i>${ op.cached_tokens.toLocaleString() } ${ t('adminDashboard.tokenUsage.cached') }
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Per-User Token Usage -->
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>
-                                <div class="space-y-2">
-                                    <div v-for="user in tokenUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-user text-[var(--text-accent)] mr-2 text-xs"></i>
-                                                <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
-                                            </div>
-                                            <div class="text-sm text-right">
-                                                <span class="font-semibold" :class="{
-                                                    'text-[var(--text-danger-strong)]': user.percentage >= 100,
-                                                    'text-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
-                                                    'text-[var(--text-primary)]': !user.monthly_budget || user.percentage < 80
-                                                }">${ user.current_usage?.toLocaleString() || 0 }</span>
-                                                <span v-if="user.monthly_budget" class="text-[var(--text-muted)] text-xs"> / ${ user.monthly_budget?.toLocaleString() }</span>
-                                                <span v-else class="text-[var(--text-muted)] text-xs ml-1">(unlimited)</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="user.monthly_budget" class="mt-1.5">
-                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-1">
-                                                <div class="h-1 rounded-full transition-all"
-                                                    :class="{
-                                                        'bg-[var(--text-danger-strong)]': user.percentage >= 100,
-                                                        'bg-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
-                                                        'bg-[var(--text-success-strong)]': user.percentage < 80
-                                                    }"
-                                                    :style="{width: Math.min(user.percentage || 0, 100) + '%'}">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-if="tokenUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-4">
-                                        No token usage data available
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Token Usage Charts (LLM and Embeddings shown separately) -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily LLM Tokens (Last 30 Days)</h5>
-                                <div class="h-64"><canvas id="dailyTokenChart"></canvas></div>
-                            </div>
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily Embedding Tokens (Last 30 Days)</h5>
-                                <div class="h-64"><canvas id="dailyEmbeddingChart"></canvas></div>
-                            </div>
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly LLM Tokens (Last 12 Months)</h5>
-                                <div class="h-64"><canvas id="monthlyTokenChart"></canvas></div>
-                            </div>
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly Embedding Tokens (Last 12 Months)</h5>
-                                <div class="h-64"><canvas id="monthlyEmbeddingChart"></canvas></div>
-                            </div>
-                        </div>
+                                    </td>
+                                    <td class="py-2 px-3 text-right tabular-nums whitespace-nowrap" v-text="formatCost(u.cost_month)"></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- Transcription Usage Section -->
-                    <div class="mt-8">
-                        <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
-                            <i class="fas fa-microphone mr-2"></i>${t('adminDashboard.transcriptionUsage')}
-                        </h4>
-
-                        <!-- Transcription Stats and Per-User Usage Side by Side -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Transcription Usage Summary Cards (2x2 grid) -->
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.usageSummary') }</h5>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
-                                                <i class="fas fa-calendar-day"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.todaysMinutes')}</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ transcriptionStats.today?.minutes || 0 }</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
-                                                <i class="fas fa-calendar-alt"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.thisMonth')}</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ transcriptionStats.current_month?.minutes || 0 } min</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.monthlyCost')}</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (transcriptionStats.current_month?.cost || 0).toFixed(4) }</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full" :class="transcriptionStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
-                                                <i class="fas fa-exclamation-triangle"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.budgetWarnings')}</p>
-                                                <p class="text-lg font-semibold">
-                                                    <span v-if="transcriptionStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ transcriptionStats.users_at_100_percent } ${t('adminDashboard.blocked')}</span>
-                                                    <span v-else-if="transcriptionStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ transcriptionStats.users_over_80_percent } ${t('adminDashboard.warning')}</span>
-                                                    <span v-else class="text-[var(--text-success-strong)]">${t('adminDashboard.none')}</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Per-User Transcription Usage -->
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.userTranscriptionUsage')}</h5>
-                                <div class="space-y-2">
-                                    <div v-for="user in transcriptionUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-user text-[var(--text-accent)] mr-2 text-xs"></i>
-                                                <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
-                                            </div>
-                                            <div class="text-sm text-right">
-                                                <span class="font-semibold" :class="{
-                                                    'text-[var(--text-danger-strong)]': user.percentage >= 100,
-                                                    'text-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
-                                                    'text-[var(--text-primary)]': !user.monthly_budget_minutes || user.percentage < 80
-                                                }">${ user.current_usage_minutes || 0 } min</span>
-                                                <span v-if="user.monthly_budget_minutes" class="text-[var(--text-muted)] text-xs"> / ${ user.monthly_budget_minutes } min</span>
-                                                <span v-else class="text-[var(--text-muted)] text-xs ml-1">(unlimited)</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="user.monthly_budget_minutes" class="mt-1.5">
-                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-1">
-                                                <div class="h-1 rounded-full transition-all"
-                                                    :class="{
-                                                        'bg-[var(--text-danger-strong)]': user.percentage >= 100,
-                                                        'bg-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
-                                                        'bg-[var(--text-success-strong)]': user.percentage < 80
-                                                    }"
-                                                    :style="{width: Math.min(user.percentage || 0, 100) + '%'}">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-if="transcriptionUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-4">
-                                        ${t('adminDashboard.noTranscriptionData')}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.usersNote')}</p>
                   </div><!-- /.tab-scroll -->
                   <div class="tab-footer"></div>
                 </div>
@@ -2186,7 +1993,7 @@ Summarization Instructions:
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, watch } = Vue
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
         
         // Initialize i18n before Vue app creation
         initializeI18n().then(() => {
@@ -2216,30 +2023,14 @@ Summarization Instructions:
                     jobs: { queued: 0, running: 0, failed_7d: 0 },
                     top_users: []
                 });
-                const tokenStats = ref({
-                    today: { tokens: 0, cost: 0 },
-                    current_month: { tokens: 0, cost: 0 },
-                    user_count_with_usage: 0,
-                    users_over_80_percent: 0,
-                    users_at_100_percent: 0
-                });
-                const tokenUserStats = ref([]);
+                const statsDays = ref(30);
+                const overview = ref(null);
+                const overviewLoading = ref(false);
+                const statsSort = ref({ key: 'storage', dir: -1 });
                 // Voice embedding compatibility (#380). Reads the stored verdict;
                 // a probe costs a real transcription so it only runs on the button.
                 const voiceEmbedding = ref({ status: 'unknown', supported: null, dimension: null, checked_at: null, detail: null });
                 const voiceEmbeddingBusy = ref(false);
-                const transcriptionStats = ref({
-                    today: { seconds: 0, minutes: 0, cost: 0 },
-                    current_month: { seconds: 0, minutes: 0, cost: 0 },
-                    user_count_with_usage: 0,
-                    users_over_80_percent: 0,
-                    users_at_100_percent: 0
-                });
-                const transcriptionUserStats = ref([]);
-                const dailyTokenChart = ref(null);
-                const monthlyTokenChart = ref(null);
-                const dailyEmbeddingChart = ref(null);
-                const monthlyEmbeddingChart = ref(null);
                 const settings = ref([]);
                 // Settings that are managed by dedicated UI panels
                 // elsewhere and should not appear as raw editable cards
@@ -2654,152 +2445,200 @@ Summarization Instructions:
                     }
                 };
 
-                // Token Stats Functions
-                const loadTokenStats = async () => {
+                // System Statistics: one read for a range of days, compared
+                // with the range before it.
+                const _t = (key, params) => i18nInstance ? i18nInstance.t(key, params) : key;
+                const loadOverview = async () => {
+                    overviewLoading.value = true;
                     try {
-                        // Load summary stats
-                        const statsResponse = await fetch('/admin/token-stats');
-                        if (statsResponse.ok) {
-                            tokenStats.value = await statsResponse.json();
-                        }
-
-                        // Load user stats
-                        const userStatsResponse = await fetch('/admin/token-stats/users');
-                        if (userStatsResponse.ok) {
-                            const data = await userStatsResponse.json();
-                            tokenUserStats.value = data.users || [];
-                        }
-
-                        // Load and render charts
-                        await loadTokenCharts();
+                        const response = await fetch(`/admin/stats/overview?days=${statsDays.value}`);
+                        if (!response.ok) throw new Error('Failed to load statistics');
+                        overview.value = await response.json();
+                        await nextTick();
+                        renderStatsCharts();
                     } catch (error) {
-                        console.error('Error loading token stats:', error);
+                        console.error('Error loading statistics:', error);
+                    } finally {
+                        overviewLoading.value = false;
                     }
                 };
-
-                const loadTokenCharts = async () => {
-                    try {
-                        const dailyResponse = await fetch('/admin/token-stats/daily?days=30');
-                        if (dailyResponse.ok) {
-                            const { stats } = await dailyResponse.json();
-                            renderDailyChart(stats);
-                        }
-                        const monthlyResponse = await fetch('/admin/token-stats/monthly?months=12');
-                        if (monthlyResponse.ok) {
-                            const { stats } = await monthlyResponse.json();
-                            renderMonthlyChart(stats);
-                        }
-                    } catch (error) {
-                        console.error('Error loading token charts:', error);
-                    }
+                const setStatsDays = (days) => {
+                    if (statsDays.value === days) return;
+                    statsDays.value = days;
+                    loadOverview();
                 };
+                const refreshStats = () => { loadStats(); loadOverview(); };
 
-                // Transcription Stats Functions
-                const loadTranscriptionStats = async () => {
-                    try {
-                        // Load summary stats
-                        const statsResponse = await fetch('/admin/transcription-stats');
-                        if (statsResponse.ok) {
-                            transcriptionStats.value = await statsResponse.json();
-                        }
-
-                        // Load user stats
-                        const userStatsResponse = await fetch('/admin/transcription-stats/users');
-                        if (userStatsResponse.ok) {
-                            const data = await userStatsResponse.json();
-                            transcriptionUserStats.value = data.users || [];
-                        }
-                    } catch (error) {
-                        console.error('Error loading transcription stats:', error);
-                    }
+                const formatCompact = (n) => {
+                    n = Number(n) || 0;
+                    if (n < 1000) return n.toLocaleString();
+                    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
                 };
+                const formatCost = (v) => {
+                    v = Number(v) || 0;
+                    if (v === 0) return '$0';
+                    return '$' + (v < 1 ? v.toFixed(v < 0.01 ? 4 : 3) : v.toFixed(2));
+                };
+                // A model that costs nothing and runs locally reads "Local", not $0.
+                const formatModelCost = (m) => {
+                    const local = overview.value && (m.kind === 'embedding' ? overview.value.usage.embeddings_local : overview.value.usage.models_local);
+                    return m.cost === 0 && local ? _t('adminDashboard.tokenUsage.local') : formatCost(m.cost);
+                };
+                const formatSeconds = (s) => {
+                    s = Math.round(Number(s) || 0);
+                    if (s < 60) return _t('adminDashboard.statsPage.seconds', { count: s });
+                    const m = Math.floor(s / 60), r = s % 60;
+                    return r ? _t('adminDashboard.statsPage.minSec', { min: m, sec: r }) : _t('adminDashboard.statsPage.minutesShort', { count: m });
+                };
+                const formatMinutes = (min) => {
+                    min = Math.round(Number(min) || 0);
+                    if (min < 60) return _t('adminDashboard.statsPage.minutesShort', { count: min });
+                    return _t('adminDashboard.statsPage.hoursMinutes', { h: Math.floor(min / 60), m: min % 60 });
+                };
+                // "2026-10-02" read as a calendar day, not as UTC midnight.
+                const formatDay = (iso) => {
+                    if (!iso) return '';
+                    const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+                    return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                };
+                const _change = (cur, prev) => {
+                    if (!prev) return cur ? _t('adminDashboard.statsPage.newInRange') : _t('adminDashboard.statsPage.noChange');
+                    const pct = Math.round((cur - prev) / prev * 100);
+                    if (pct === 0) return _t('adminDashboard.statsPage.noChange');
+                    return _t('adminDashboard.statsPage.vsPrevious', { pct: (pct > 0 ? '+' : '') + pct + '%' });
+                };
+                const overviewCards = computed(() => {
+                    const o = overview.value && overview.value.overview;
+                    if (!o) return [];
+                    const costLocal = o.ai_cost.current === 0 && overview.value.usage.models_local;
+                    return [
+                        { key: 'recordings', icon: 'fas fa-file-audio', label: _t('adminDashboard.statsPage.recordings'),
+                          value: o.recordings.current.toLocaleString(), note: _change(o.recordings.current, o.recordings.previous) },
+                        { key: 'audio', icon: 'fas fa-microphone', label: _t('adminDashboard.statsPage.audioTranscribed'),
+                          value: formatMinutes(o.audio_minutes.current), note: _change(o.audio_minutes.current, o.audio_minutes.previous) },
+                        { key: 'requests', icon: 'fas fa-comments', label: _t('adminDashboard.statsPage.aiRequests'),
+                          value: o.ai_requests.current.toLocaleString(), note: _change(o.ai_requests.current, o.ai_requests.previous) },
+                        { key: 'cost', icon: 'fas fa-dollar-sign', label: _t('adminDashboard.statsPage.aiCost'),
+                          value: costLocal ? _t('adminDashboard.tokenUsage.local') : formatCost(o.ai_cost.current),
+                          note: costLocal ? '' : _change(o.ai_cost.current, o.ai_cost.previous) },
+                        { key: 'users', icon: 'fas fa-users', label: _t('adminDashboard.statsPage.activeUsers'),
+                          value: o.active_users.current.toLocaleString(), note: _t('adminDashboard.statsPage.ofTotal', { total: o.active_users.total }) },
+                        { key: 'storage', icon: 'fas fa-database', label: _t('adminDashboard.totalStorage'),
+                          value: formatFileSize(o.storage), note: _t('adminDashboard.statsPage.allRecordings', { count: stats.value.total_recordings || 0 }) },
+                    ];
+                });
+                const STATUS_COLORS = { completed: '#16a34a', transcribing: '#d97706', summarizing: '#ca8a04', pending: '#6366f1',
+                                        failed: '#dc2626', audioRemoved: '#94a3b8', archived: '#64748b' };
+                const statusRows = computed(() => [
+                    { key: 'completed', label: _t('adminDashboard.completedRecordings'), value: stats.value.completed_recordings },
+                    { key: 'transcribing', label: _t('adminDashboard.transcribingRecordings'), value: stats.value.transcribing_recordings },
+                    { key: 'summarizing', label: _t('adminDashboard.summarizingRecordings'), value: stats.value.summarizing_recordings },
+                    { key: 'pending', label: _t('adminDashboard.pendingRecordings'), value: stats.value.pending_recordings },
+                    { key: 'failed', label: _t('adminDashboard.failedRecordings'), value: stats.value.failed_recordings },
+                    { key: 'audioRemoved', label: _t('adminDashboard.audioRemovedRecordings'), value: stats.value.audio_removed_recordings },
+                    { key: 'archived', label: _t('adminDashboard.archivedRecordings'), value: stats.value.archived_recordings },
+                ].map(r => ({ ...r, color: STATUS_COLORS[r.key] })));
 
-                // Shared bar-chart factory: builds either the LLM or embedding
-                // daily chart against its own canvas. LLM and embedding tokens
-                // never share a chart since their magnitudes and per-token
-                // costs differ by orders of magnitude.
-                const _renderDailyBar = (canvasId, ref_, dataField, displayLabel, colorRgb) => {
+                const userColumns = computed(() => [
+                    { key: 'username', label: _t('adminDashboard.statsPage.user') },
+                    { key: 'recordings', label: _t('adminDashboard.statsPage.recordings'), align: 'right' },
+                    { key: 'storage', label: _t('adminDashboard.statsPage.storage'), align: 'right' },
+                    { key: 'last_recording_at', label: _t('adminDashboard.statsPage.lastRecording') },
+                    { key: 'tokens_month', label: _t('adminDashboard.statsPage.tokensMonth'), align: 'right' },
+                    { key: 'minutes_month', label: _t('adminDashboard.statsPage.minutesMonth'), align: 'right' },
+                    { key: 'cost_month', label: _t('adminDashboard.statsPage.costMonth'), align: 'right' },
+                ]);
+                const sortUsersBy = (key) => {
+                    statsSort.value = statsSort.value.key === key
+                        ? { key, dir: -statsSort.value.dir }
+                        : { key, dir: key === 'username' ? 1 : -1 };
+                };
+                const sortedStatsUsers = computed(() => {
+                    const rows = overview.value ? [...overview.value.users] : [];
+                    const { key, dir } = statsSort.value;
+                    return rows.sort((a, b) => {
+                        const x = a[key], y = b[key];
+                        if (x == null && y == null) return 0;
+                        if (x == null) return 1;
+                        if (y == null) return -1;
+                        return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
+                    });
+                });
+                const budgetBarClass = (pct) => pct >= 100 ? 'bg-[var(--text-danger-strong)]'
+                    : (pct >= 80 ? 'bg-[var(--text-warn-strong)]' : 'bg-[var(--text-success-strong)]');
+
+                // Charts live outside Vue's reactivity; Chart.js mutates them.
+                const statsCharts = {};
+                const OP_COLORS = ['79, 70, 229', '22, 163, 74', '217, 119, 6', '219, 39, 119', '8, 145, 178',
+                                   '147, 51, 234', '220, 38, 38', '101, 163, 13', '100, 116, 139'];
+                const _bar = (canvasId, labels, datasets, { stacked = false, legend = false, yTicks } = {}) => {
                     const ctx = document.getElementById(canvasId);
-                    if (!ctx) return;
-                    if (ref_.value) ref_.value.destroy();
+                    if (!ctx || typeof Chart === 'undefined') return;
+                    if (statsCharts[canvasId]) statsCharts[canvasId].destroy();
                     const isDark = document.documentElement.classList.contains('dark');
                     const textColor = isDark ? '#9ca3af' : '#6b7280';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
-                    ref_.value = new Chart(ctx, {
+                    statsCharts[canvasId] = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: window._dailyLabels || [],
-                            datasets: [{
-                                label: displayLabel,
-                                data: window._dailyData ? window._dailyData.map(d => d[dataField] || 0) : [],
-                                backgroundColor: `rgba(${colorRgb}, ${isDark ? 0.7 : 0.7})`,
-                                borderColor: `rgba(${colorRgb}, 1)`,
-                                borderWidth: 1
-                            }]
+                            labels,
+                            datasets: datasets.map(d => ({ ...d, backgroundColor: `rgba(${d.rgb}, 0.75)`,
+                                                          borderColor: `rgba(${d.rgb}, 1)`, borderWidth: 1 }))
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
+                            plugins: {
+                                legend: { display: legend, position: 'bottom', labels: { color: textColor, boxWidth: 10, boxHeight: 10 } },
+                                tooltip: { mode: 'index', intersect: false,
+                                           filter: (item) => !stacked || item.raw > 0,
+                                           callbacks: yTicks ? { label: (c) => `${c.dataset.label}: ${yTicks(c.raw)}` } : {} }
+                            },
                             scales: {
-                                x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
-                                y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
+                                x: { stacked, ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
+                                y: { stacked, beginAtZero: true, grid: { color: gridColor },
+                                     ticks: { color: textColor, precision: yTicks ? undefined : 0, callback: yTicks || ((v) => formatCompact(v)) } }
                             }
                         }
                     });
                 };
-
-                const renderDailyChart = (data) => {
-                    const shortMonth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    window._dailyLabels = data.map(d => {
-                        const [, m, day] = String(d.date).split('-');
-                        return m && day ? `${shortMonth[Number(m) - 1]} ${Number(day)}` : d.date;
-                    });
-                    window._dailyData = data;
-                    _renderDailyBar('dailyTokenChart', dailyTokenChart, 'llm_tokens', 'LLM tokens', '79, 70, 229');
-                    _renderDailyBar('dailyEmbeddingChart', dailyEmbeddingChart, 'embedding_tokens', 'Embedding tokens', '34, 197, 94');
+                const _dayLabel = (iso) => {
+                    const [y, m, d] = String(iso).split('-').map(Number);
+                    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 };
+                const renderStatsCharts = () => {
+                    const o = overview.value;
+                    if (!o) return;
+                    const recDays = o.activity.daily;
+                    const sources = [['upload', '79, 70, 229'], ['recording', '22, 163, 74'], ['merge', '217, 119, 6'], ['other', '100, 116, 139']];
+                    _bar('statsRecordingsChart', recDays.map(d => _dayLabel(d.date)),
+                         sources.filter(([k]) => recDays.some(d => d[k] > 0) || k === 'upload')
+                                .map(([k, rgb]) => ({ label: _t('adminDashboard.statsPage.source.' + k), data: recDays.map(d => d[k]), rgb })),
+                         { stacked: true, legend: true });
 
-                // Monthly totals as bars: a smoothed line drew rises and dips
-                // between months that never happened.
-                const _renderMonthlyLine = (canvasId, ref_, labels, values, displayLabel, colorRgb) => {
-                    const ctx = document.getElementById(canvasId);
-                    if (!ctx) return;
-                    if (ref_.value) ref_.value.destroy();
-                    const isDark = document.documentElement.classList.contains('dark');
-                    const textColor = isDark ? '#9ca3af' : '#6b7280';
-                    const gridColor = isDark ? '#374151' : '#e5e7eb';
-                    ref_.value = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: displayLabel,
-                                data: values,
-                                backgroundColor: `rgba(${colorRgb}, 0.7)`,
-                                borderColor: `rgba(${colorRgb}, 1)`,
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { display: false } },
-                                y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
-                            }
-                        }
+                    const useDays = o.usage.daily;
+                    const labels = useDays.map(d => _dayLabel(d.date));
+                    _bar('statsOperationsChart', labels,
+                         o.usage.operations.map((op, i) => ({
+                             label: op.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()),
+                             data: useDays.map(d => d.operations[op] || 0),
+                             rgb: OP_COLORS[i % OP_COLORS.length] })),
+                         { stacked: true, legend: true });
+                    _bar('statsMinutesChart', labels,
+                         [{ label: _t('adminDashboard.statsPage.minutes'), data: useDays.map(d => d.minutes), rgb: '8, 145, 178' }]);
+                    _bar('statsEmbeddingChart', labels,
+                         [{ label: _t('adminDashboard.statsPage.embeddingTokens'), data: useDays.map(d => d.embedding_tokens), rgb: '22, 163, 74' }]);
+
+                    const months = o.usage.monthly;
+                    const monthLabels = months.map((m, i) => {
+                        const name = new Date(m.year, m.month - 1, 1).toLocaleDateString(undefined, { month: 'short' });
+                        return i === 0 || m.month === 1 ? `${name} ${m.year}` : name;
                     });
-                };
-
-                const renderMonthlyChart = (data) => {
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const labels = data.map(d => d.month === 1 || d === data[0] ? `${monthNames[d.month - 1]} ${d.year}` : monthNames[d.month - 1]);
-                    const llm = data.map(d => d.llm_tokens || 0);
-                    const emb = data.map(d => d.embedding_tokens || 0);
-                    _renderMonthlyLine('monthlyTokenChart', monthlyTokenChart, labels, llm, 'LLM tokens', '22, 163, 74');
-                    _renderMonthlyLine('monthlyEmbeddingChart', monthlyEmbeddingChart, labels, emb, 'Embedding tokens', '79, 70, 229');
+                    _bar('statsMonthlyCostChart', monthLabels, [
+                        { label: _t('adminDashboard.statsPage.kind.llm'), data: months.map(m => m.llm_cost), rgb: '79, 70, 229' },
+                        { label: _t('adminDashboard.statsPage.kind.embedding'), data: months.map(m => m.embedding_cost), rgb: '22, 163, 74' },
+                        { label: _t('adminDashboard.statsPage.kind.transcription'), data: months.map(m => m.transcription_cost), rgb: '8, 145, 178' },
+                    ], { stacked: true, legend: true, yTicks: (v) => formatCost(v) });
                 };
 
                 const showEditSettingModal = ref(false);
@@ -4077,8 +3916,7 @@ Summarization Instructions:
                         loadUsers();
                         loadStats();
                         loadVoiceEmbedding();
-                        loadTokenStats();
-                        loadTranscriptionStats();
+                        loadOverview();
 
                         // Load settings first, then default prompt can use that data
                         if (activeTab.value === 'settings' || activeTab.value === 'prompts') {
@@ -4148,6 +3986,7 @@ Summarization Instructions:
                             loadUsers();
                         } else if (newTab === 'stats') {
                             loadStats();
+                            loadOverview();
                         } else if (newTab === 'settings') {
                             await loadSettings();
                         } else if (newTab === 'prompts') {
@@ -4178,10 +4017,9 @@ Summarization Instructions:
                     users,
                     stats,
                     voiceEmbedding, voiceEmbeddingBusy, checkVoiceEmbedding, rebaselineVoiceEmbedding,
-                    tokenStats,
-                    tokenUserStats,
-                    transcriptionStats,
-                    transcriptionUserStats,
+                    statsDays, overview, overviewLoading, overviewCards, statusRows,
+                    userColumns, statsSort, sortUsersBy, sortedStatsUsers, budgetBarClass,
+                    formatCompact, formatCost, formatModelCost, formatSeconds, formatDay,
                     settings,
                     displayedSettings,
                     isLoadingUsers,
@@ -4271,8 +4109,7 @@ Summarization Instructions:
                     loadUsers,
                     loadStats,
                     loadSettings,
-                    loadTokenStats,
-                    loadTranscriptionStats,
+                    loadOverview, setStatsDays, refreshStats,
                     editSetting,
                     saveSettingValue,
                     updateSetting,
