@@ -12,7 +12,7 @@
          = primary-success, New Recording = primary). -->
     <!-- Inquire Mode Button -->
     {% if inquire_mode_enabled %}
-    <a href="/inquire" class="btn btn--sm" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
+    <a href="/inquire" class="btn btn--sm header-action" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
         <i class="fas fa-search"></i>
         <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
     </a>
@@ -21,7 +21,7 @@
     <!-- Install PWA Button -->
     <button v-if="showInstallButton && !isPWAInstalled"
             @click="promptInstall"
-            class="btn btn--sm"
+            class="btn btn--sm header-action"
             style="background: #16a34a; color: #fff; border-color: transparent;"
             :title="t('pwa.installApp')">
         <i class="fas fa-download"></i>
@@ -29,7 +29,7 @@
     </button>
 
     <!-- New Recording Button -->
-    <button @click="switchToUploadView" class="btn btn--sm btn--primary">
+    <button @click="switchToUploadView" class="btn btn--sm btn--primary header-action">
         <i class="fas fa-plus"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
     </button>
 
@@ -38,7 +38,7 @@
     <div class="relative">
         <button @click="isUserMenuOpen = !isUserMenuOpen"
                 data-user-menu-toggle
-                class="btn btn--icon relative"
+                class="btn btn--icon header-action relative"
                 :title="t('admin.userMenu')">
             <i class="fas fa-user-circle text-lg"></i>
             <!-- Unread badge. The menu is the only always-visible anchor
