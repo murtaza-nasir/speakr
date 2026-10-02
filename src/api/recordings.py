@@ -2145,6 +2145,8 @@ def share_target():
     )
     db.session.add(recording)
     db.session.commit()
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
 
     # Enqueue transcription through the shared resolver so a shared file honors
     # the same account defaults (and any future tag/folder context) as every
@@ -2829,20 +2831,8 @@ def ingest_uploaded_recording(
         # Webhook event (#275). Fan-out happens off-request via the
         # dispatcher; this call only enqueues a delivery row per matching
         # subscription, so it is cheap and safe inside the request path.
-        try:
-            from src.services.webhook_dispatch import emit_webhook_event
-            emit_webhook_event(
-                user_id=owner.id,
-                event_type='recording.created',
-                data={
-                    'recording_id': recording.id,
-                    'title': recording.title,
-                    'file_size': recording.file_size,
-                    'original_filename': recording.original_filename,
-                },
-            )
-        except Exception as e:
-            current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+        from src.services.webhook_dispatch import emit_recording_created
+        emit_recording_created(recording)
 
         response_data = recording.to_dict(viewer_user=owner)
         if duplicate_warning:
@@ -2911,16 +2901,8 @@ def _ingest_join_part(owner, join, filepath, storage, now, *, original_filename,
         owner, parts, title=title, notes=notes, folder=folder, tags=tags,
         prompt_variables=prompt_variables, transcribe_params=transcribe_params)
     current_app.logger.info(f"Joined {count} uploaded files into recording {recording.id}")
-    try:
-        from src.services.webhook_dispatch import emit_webhook_event
-        emit_webhook_event(
-            user_id=owner.id,
-            event_type='recording.created',
-            data={'recording_id': recording.id, 'title': recording.title,
-                  'file_size': recording.file_size, 'original_filename': recording.original_filename},
-        )
-    except Exception as e:
-        current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
     response_data = recording.to_dict(viewer_user=owner)
     response_data['joined_parts'] = count
     if duplicate_warning:

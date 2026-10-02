@@ -790,11 +790,13 @@ class FairJobQueue:
 
     # --- Webhook emission helpers (#275) ---------------------------------
 
+    # recording.summary.completed is emitted by the summary step itself
+    # (processing.generate_summary_only_task, #412): a summary job can end with
+    # a FAILED summary, and the first summary of an upload runs inside the
+    # transcribe job, so the job type alone cannot say whether a summary exists.
     _COMPLETION_EVENT_MAP = {
         'transcribe': 'recording.transcription.completed',
-        'summarize': 'recording.summary.completed',
         'reprocess_transcription': 'recording.transcription.completed',
-        'reprocess_summary': 'recording.summary.completed',
     }
 
     _FAILURE_EVENT_MAP = {

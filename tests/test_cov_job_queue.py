@@ -702,9 +702,14 @@ def test_emit_completion_webhook_dispatches_event(track):
     rid = _make_recording(uid); track.recording_ids.append(rid)
 
     with patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
-        job_queue._emit_completion_webhook("summarize", rid)
+        job_queue._emit_completion_webhook("transcribe", rid)
     emit.assert_called_once()
-    assert emit.call_args[1]["event_type"] == "recording.summary.completed"
+    assert emit.call_args[1]["event_type"] == "recording.transcription.completed"
+    # recording.summary.completed comes from the summary step itself (#412),
+    # not from the job type.
+    with patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
+        job_queue._emit_completion_webhook("summarize", rid)
+    emit.assert_not_called()
 
 
 def test_emit_failure_webhook_dispatches_event_and_truncates(track):

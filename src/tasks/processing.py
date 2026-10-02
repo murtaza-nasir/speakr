@@ -641,6 +641,8 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
             db.session.commit()
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(recording, ok=False, error="LLM client not configured")
             return
 
         recording.status = 'SUMMARIZING'
@@ -654,6 +656,8 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             recording.summary = "[Summary skipped due to short transcription]"
             db.session.commit()
             finish_processing(recording_id)
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(db.session.get(Recording, recording_id), ok=True)
             return
 
         # Get user preferences and tag custom prompts
@@ -937,6 +941,8 @@ Summarization Instructions:
             # overwrite a good summary with an error.
             finish_processing(recording_id, events_transcript=formatted_transcription,
                               events_summary=summary or None)
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(db.session.get(Recording, recording_id), ok=True)
 
         except Exception as e:
             error_msg = format_api_error_message(str(e))
@@ -944,6 +950,8 @@ Summarization Instructions:
             recording.summary = error_msg
             recording.status = 'FAILED'
             db.session.commit()
+            from src.services.webhook_dispatch import emit_summary_result
+            emit_summary_result(recording, ok=False, error=error_msg)
 
 
 def extract_events_from_transcript(recording_id, transcript_text, summary_text):
