@@ -997,6 +997,20 @@ def update_transcript(recording_id):
         speaker_map = data.get('speaker_map', {})
         regenerate_summary = data.get('regenerate_summary', False)
 
+        if 'workspace_effects' in data:
+            from src.services.transcript_workspace import save_workspace
+            try:
+                follow_up = save_workspace(
+                    recording, transcript_data, data['workspace_effects'], current_user,
+                    regenerate_summary, reindex_recording_chunks_async, export_recording, job_queue.enqueue)
+            except ValueError as error:
+                db.session.rollback()
+                return jsonify({'error': str(error)}), 400
+            recording_dict = recording.to_dict(viewer_user=current_user)
+            enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
+            return jsonify(success=True, recording=recording_dict, persistence_status='saved',
+                           follow_up=follow_up, summary_queued=follow_up['summary'] == 'queued')
+
         if not transcript_data or not isinstance(transcript_data, list):
             return jsonify({'error': 'Invalid transcript data provided'}), 400
 
@@ -1057,6 +1071,17 @@ def update_transcript(recording_id):
         return jsonify({'error': str(e)}), 500
 
 
+@recordings_bp.route('/recording/<int:recording_id>/workspace_context', methods=['GET'])
+@login_required
+def workspace_context(recording_id):
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify(error='Recording not found'), 404
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify(error='Editing permission required'), 403
+    return jsonify(voice_labels=list(recording.speaker_embeddings or {}),
+                   speaker_label_map=recording.speaker_label_map or {})
+
 
 @recordings_bp.route('/recording/<int:recording_id>/auto_identify_speakers', methods=['POST'])
 @login_required
@@ -1075,12 +1100,20 @@ def auto_identify_speakers(recording_id):
         if not has_recording_access(recording, current_user):
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
 
-        if not recording.transcription:
+        draft_request = request.get_json(silent=True) or {}
+        if 'transcript_data' in draft_request and not has_recording_access(recording, current_user, require_edit=True):
+            return jsonify({'error': 'You do not have permission to edit this recording'}), 403
+
+        if not recording.transcription and 'transcript_data' not in draft_request:
             return jsonify({'error': 'No transcription available for speaker identification'}), 400
 
         try:
-            transcription_data = json.loads(recording.transcription)
-        except (json.JSONDecodeError, TypeError):
+            if 'transcript_data' in draft_request:
+                from src.services.transcript_workspace import validate_segments
+                transcription_data = validate_segments(draft_request['transcript_data'])
+            else:
+                transcription_data = json.loads(recording.transcription)
+        except (ValueError, TypeError):
             return jsonify({'error': 'Transcription format not supported for auto-identification'}), 400
 
         if not isinstance(transcription_data, list):
@@ -1971,6 +2004,14 @@ def update_transcription(recording_id):
             return jsonify({'error': 'No transcription data provided'}), 400
 
         # The incoming data could be a JSON string (from ASR edit) or plain text
+        try:
+            segments = json.loads(new_transcription)
+        except (TypeError, ValueError):
+            segments = None
+        if isinstance(segments, list):
+            from src.services.speaker_links import link_list
+            link_list(segments, recording)
+            new_transcription = json.dumps(segments, ensure_ascii=False)
         recording.transcription = new_transcription
 
         # Optional: If the transcription changes, we might want to indicate that the summary is outdated.
@@ -3669,6 +3710,255 @@ def get_status(recording_id):
     except Exception as e:
         current_app.logger.error(f"Error fetching status for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+def _segment_edit_recording(recording_id):
+    from src.services.segment_transcription import SegmentTranscriptionError
+    recording = db.session.get(Recording, recording_id)
+    if recording is None:
+        raise SegmentTranscriptionError('missing', 404)
+    if not has_recording_access(recording, current_user, require_edit=True):
+        raise SegmentTranscriptionError('forbidden', 403)
+    return recording
+
+
+def _segment_local_path(recording):
+    from src.services.segment_transcription import SegmentTranscriptionError
+    if not recording.audio_path or recording.audio_deleted_at:
+        raise SegmentTranscriptionError('missing', 404)
+    storage = get_storage_service()
+    locator = storage.parse_locator(recording.audio_path)
+    if not locator or not locator.is_local:
+        raise SegmentTranscriptionError('remote', 501)
+    return str(storage.resolve_local_filesystem_path(recording.audio_path))
+
+
+def _segment_job_error(error):
+    response = jsonify(code=error.code)
+    response.headers['Cache-Control'] = 'private, no-store'
+    if error.status == 429:
+        response.headers['Retry-After'] = '2'
+    return response, error.status
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/segment-transcriptions', methods=['POST'])
+@login_required
+def start_segment_transcription(recording_id):
+    from src.services.segment_transcription import segment_jobs, validate_bounds, SegmentTranscriptionError
+    from src.services.transcription import get_registry
+    try:
+        recording = _segment_edit_recording(recording_id)
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            raise SegmentTranscriptionError('bounds', 400)
+        start, end = validate_bounds(data.get('start'), data.get('end'))
+        path = _segment_local_path(recording)
+        registry = get_registry()
+        connector = registry.get_active_connector()
+        params = resolve_transcription_params(recording, {
+            'language': recording.transcription_language,
+            'hotwords': recording.resolved_hotwords,
+            'initial_prompt': recording.resolved_initial_prompt,
+        })
+        # A missing historical hint means none was applied, not "use today's defaults".
+        params.update(language=recording.transcription_language or None,
+                      hotwords=recording.resolved_hotwords or None,
+                      initial_prompt=recording.resolved_initial_prompt or None)
+        result = segment_jobs.start(current_user.id, recording_id, path, start, end,
+            registry.get_active_connector_name(), connector.config, params)
+        response = jsonify(result)
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response, 202
+    except SegmentTranscriptionError as error:
+        return _segment_job_error(error)
+    except Exception:
+        current_app.logger.warning('Segment ASR start failed for recording %s', recording_id)
+        return _segment_job_error(SegmentTranscriptionError('unavailable', 503))
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/segment-transcriptions/<job_id>', methods=['GET', 'DELETE'])
+@login_required
+def segment_transcription_status(recording_id, job_id):
+    from src.services.segment_transcription import segment_jobs, SegmentTranscriptionError
+    try:
+        recording = _segment_edit_recording(recording_id)
+        try:
+            path = _segment_local_path(recording)
+        except SegmentTranscriptionError:
+            path = None  # Source may disappear after start; cancel still works.
+        result = segment_jobs.get(current_user.id, recording_id, job_id, path, cancel=request.method == 'DELETE')
+        response = jsonify(result)
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response
+    except SegmentTranscriptionError as error:
+        return _segment_job_error(error)
+    except Exception:
+        current_app.logger.warning('Segment ASR status failed for recording %s', recording_id)
+        return _segment_job_error(SegmentTranscriptionError('unavailable', 503))
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/spectrogram')
+@login_required
+def get_segment_spectrogram(recording_id):
+    from src.services.segment_spectrogram import render_spectrogram, validate_window, validate_frequency, validate_gain, SpectrogramError
+    recording = db.session.get(Recording, recording_id)
+    if recording is None:
+        return jsonify(code='missing'), 404
+    has_access = recording.user_id == current_user.id
+    if not has_access and ENABLE_INTERNAL_SHARING:
+        has_access = InternalShare.query.filter_by(
+            recording_id=recording_id, shared_with_user_id=current_user.id).first() is not None
+    if not has_access:
+        return jsonify(code='forbidden'), 403
+    if recording.audio_deleted_at or not recording.audio_path:
+        return jsonify(code='missing'), 404
+    try:
+        start, end = validate_window(request.args.get('start'), request.args.get('end'))
+        frequency = validate_frequency(request.args.get('frequency'))
+        gain_db = validate_gain(request.args.get('gainDb', '0'))
+        storage = get_storage_service()
+        locator = storage.parse_locator(recording.audio_path)
+        if not locator or not locator.is_local:
+            return jsonify(code='remote'), 501
+        path = storage.resolve_local_filesystem_path(recording.audio_path)
+        result = render_spectrogram(path, start, end, frequency, gain_db=gain_db)
+        return Response(result.png, mimetype='image/png', headers={
+            'Cache-Control': 'private, no-store',
+            'X-Spectrogram-Start': str(result.start),
+            'X-Spectrogram-End': str(result.end),
+            'X-Spectrogram-Duration': str(result.duration),
+            'X-Spectrogram-Channels': str(result.channels),
+            'X-Spectrogram-Max-Frequency': str(result.max_frequency),
+            'X-Spectrogram-Sample-Rate': str(result.sample_rate),
+            'X-Spectrogram-Gain-Db': str(result.gain_db),
+        })
+    except SpectrogramError as error:
+        response = jsonify(code=error.code)
+        response.headers['Cache-Control'] = 'private, no-store'
+        if error.status == 429:
+            response.headers['Retry-After'] = '2'
+        return response, error.status
+    except Exception:
+        current_app.logger.warning('Spectrogram generation failed for recording %s', recording_id)
+        return jsonify(code='unavailable'), 500
+
+
+def _prepared_spectrogram_source(recording_id, allow_missing=False):
+    """Resolve current permissions and source for EVERY cached artifact read."""
+    from src.services.segment_spectrogram import SpectrogramError
+    recording = db.session.get(Recording, recording_id)
+    if recording is None:
+        raise SpectrogramError('missing', 404)
+    allowed = recording.user_id == current_user.id
+    if not allowed and ENABLE_INTERNAL_SHARING:
+        allowed = InternalShare.query.filter_by(recording_id=recording_id, shared_with_user_id=current_user.id).first() is not None
+    if not allowed:
+        raise SpectrogramError('forbidden', 403)
+    if recording.audio_deleted_at or not recording.audio_path:
+        if allow_missing:
+            return None
+        raise SpectrogramError('missing', 404)
+    storage = get_storage_service()
+    locator = storage.parse_locator(recording.audio_path)
+    if not locator or not locator.is_local:
+        raise SpectrogramError('remote', 501)
+    return storage.resolve_local_filesystem_path(recording.audio_path)
+
+
+def _prepared_spectrogram_response(result, recording_id, status=200):
+    # Never return server paths/fingerprints; tile URLs remain authenticated.
+    if result.get('manifest'):
+        result['manifest'] = dict(result['manifest'])
+        result['manifest']['tiles'] = [dict(tile, url=f'/api/recordings/{recording_id}/spectrogram/preparations/{result["id"]}/tiles/{tile["index"]}')
+                                         for tile in result['manifest']['tiles']]
+    response = jsonify(result)
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response, status
+
+
+def _prepared_spectrogram_error(error):
+    response = jsonify(code=error.code)
+    response.headers['Cache-Control'] = 'private, no-store'
+    if error.status == 429:
+        response.headers['Retry-After'] = '2'
+    return response, error.status
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/spectrogram/prepare', methods=['POST'])
+@login_required
+def prepare_segment_spectrogram(recording_id):
+    from src.services.spectrogram_cache import spectrogram_cache
+    from src.services.segment_spectrogram import SpectrogramError
+    try:
+        path = _prepared_spectrogram_source(recording_id)
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            raise SpectrogramError('bounds', 400)
+        if 'existing_id' in data and (not isinstance(data['existing_id'], str) or not data['existing_id']):
+            raise SpectrogramError('expired', 410)
+        if 'gainDb' in data and type(data['gainDb']) is not int:
+            raise SpectrogramError('gain', 400)
+        result = spectrogram_cache.prepare(current_user.id, recording_id, path, data.get('start'), data.get('end'), data.get('frequency'), data.get('span'), existing_id=data.get('existing_id'), gain_db=data.get('gainDb', 0))
+        return _prepared_spectrogram_response(result, recording_id, 200 if result['status'] == 'ready' else 202)
+    except SpectrogramError as error:
+        return _prepared_spectrogram_error(error)
+    except Exception:
+        current_app.logger.warning('Spectrogram preparation failed for recording %s', recording_id)
+        return jsonify(code='unavailable'), 500
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/spectrogram/preparations/<preparation_id>')
+@login_required
+def prepared_segment_spectrogram(recording_id, preparation_id):
+    from src.services.spectrogram_cache import spectrogram_cache
+    from src.services.segment_spectrogram import SpectrogramError
+    try:
+        path = _prepared_spectrogram_source(recording_id)
+        result = spectrogram_cache.metadata(current_user.id, recording_id, preparation_id, path, request.args.get('lease'))
+        return _prepared_spectrogram_response(result, recording_id)
+    except SpectrogramError as error:
+        return _prepared_spectrogram_error(error)
+    except Exception:
+        current_app.logger.warning('Spectrogram metadata failed for recording %s', recording_id)
+        return jsonify(code='unavailable'), 500
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/spectrogram/preparations/<preparation_id>/tiles/<int:index>')
+@login_required
+def prepared_segment_spectrogram_tile(recording_id, preparation_id, index):
+    from src.services.spectrogram_cache import spectrogram_cache
+    from src.services.segment_spectrogram import SpectrogramError
+    try:
+        path = _prepared_spectrogram_source(recording_id)
+        png = spectrogram_cache.tile(current_user.id, recording_id, preparation_id, path, request.args.get('lease'), index)
+        return Response(png, mimetype='image/png', headers={'Cache-Control': 'private, no-store'})
+    except SpectrogramError as error:
+        return _prepared_spectrogram_error(error)
+    except Exception:
+        current_app.logger.warning('Spectrogram cache read failed for recording %s', recording_id)
+        return jsonify(code='unavailable'), 500
+
+
+@recordings_bp.route('/api/recordings/<int:recording_id>/spectrogram/preparations/<preparation_id>/lease', methods=['POST', 'DELETE'])
+@login_required
+def prepared_segment_spectrogram_lease(recording_id, preparation_id):
+    from src.services.spectrogram_cache import spectrogram_cache
+    from src.services.segment_spectrogram import SpectrogramError
+    try:
+        path = _prepared_spectrogram_source(recording_id, allow_missing=request.method == 'DELETE')
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            raise SpectrogramError('bounds', 400)
+        if request.method == 'DELETE':
+            result = spectrogram_cache.release(current_user.id, recording_id, preparation_id, data.get('lease'))
+        else:
+            result = spectrogram_cache.renew(current_user.id, recording_id, preparation_id, path, data.get('lease'))
+        return _prepared_spectrogram_response(result, recording_id)
+    except SpectrogramError as error:
+        return _prepared_spectrogram_error(error)
+    except Exception:
+        current_app.logger.warning('Spectrogram lease failed for recording %s', recording_id)
+        return jsonify(code='unavailable'), 500
 
 
 @recordings_bp.route('/audio/<int:recording_id>')

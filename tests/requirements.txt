@@ -1,0 +1,5 @@
+# Test tooling only; do not add these to the runtime image requirements.
+pytest
+pytest-cov
+# Decode spectrogram PNGs for real frequency/channel/tile-seam assertions.
+Pillow>=10.1.0

@@ -1,0 +1,39 @@
+
+            <div class="flex items-center gap-2">
+                <div class="relative inline-flex" ref="autoIdSplitBtn">
+                    <!-- Identifies speakers from names mentioned in the conversation,
+                         with the text model. It predates voice profiles: voice
+                         matches already appear as suggestions without it (#403). -->
+                    <button data-testid="workspace-identify" @click="autoIdentifySpeakers(false)"
+                            class="btn btn--primary"
+                            style="border-top-right-radius: 0; border-bottom-right-radius: 0;"
+                            :disabled="asrEditingLocked || selectedRecording.incognito || isAutoIdentifying || {{ 'false' if text_model_configured else 'true' }}"
+                            :title="{{ 'true' if text_model_configured else 'false' }} ? t('help.autoIdentifyTooltip') : t('help.autoIdentifyNoModel')">
+                        <i class="fas fa-magic"></i>
+                        <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
+                        <span v-if="!isAutoIdentifying" class="sm:hidden" v-text="t('help.autoIdentifyMobile')"></span>
+                        <span v-else><i class="fas fa-spinner fa-spin"></i></span>
+                    </button>
+                    <button @click="showAutoIdDropdown = !showAutoIdDropdown"
+                            class="btn btn--primary btn--icon"
+                            style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid rgba(255,255,255,0.2);"
+                            :disabled="asrEditingLocked || selectedRecording.incognito || isAutoIdentifying || {{ 'false' if text_model_configured else 'true' }}"
+                            :aria-label="t('help.identifyAllSpeakers')">
+                        <i class="fas fa-caret-down"></i>
+                    </button>
+                    <div v-if="showAutoIdDropdown"
+                         class="absolute bottom-full left-0 mb-1 surface-raised z-50"
+                         style="min-width: 200px;">
+                        <button @click="autoIdentifySpeakers(true)"
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors rounded-md">
+                            <i class="fas fa-users mr-2"></i>
+                            <span v-text="t('help.identifyAllSpeakers')"></span>
+                        </button>
+                    </div>
+                </div>
+                <button :disabled="asrEditingLocked" v-if="hasAnySuggestions" @click="applySuggestedNames" class="btn btn--primary">
+                    <i class="fas fa-lightbulb"></i>
+                    <span class="hidden sm:inline" v-text="t('help.applySuggested')"></span>
+                    <span class="sm:hidden" v-text="t('help.applySuggestedMobile')"></span>
+                </button>
+            </div>

@@ -1,6 +1,6 @@
 <!-- Edit Speakers Modal (design system v1) -->
 <div v-if="showEditSpeakersModal" @click.self="closeEditSpeakersModal" class="modal-overlay">
-    <div class="modal-panel modal-panel--sm">
+    <div class="modal-panel modal-panel--sm" data-testid="asr-speaker-names">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editSpeakers')"></h3>
             <button @click="closeEditSpeakersModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
@@ -30,7 +30,7 @@
                                 </button>
                             </div>
                         </teleport>
-                        <button @click="removeEditingSpeaker(index)" class="btn btn--icon btn--sm" style="color: var(--text-muted);">
+                        <button @click="removeEditingSpeaker(index)" :data-testid="'asr-speaker-remove-'+index" :aria-label="t('asrWorkplace.removeSpeaker')" class="btn btn--icon btn--sm" style="color: var(--text-muted);">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>

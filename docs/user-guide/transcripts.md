@@ -48,9 +48,13 @@ For standard transcriptions without speaker diarization, click the Edit button i
 
 For transcriptions processed with [ASR](../features.md#speaker-diarization) and speaker diarization, Speakr offers a powerful segment-based editor that preserves the structure and timing of your transcription. If you encounter issues with speaker identification, see [troubleshooting](../troubleshooting.md#speaker-identification-not-working).
 
-![ASR Transcription Editor](../assets/images/screenshots/edit-transcript-modal.png)
+![Speaker assignment in the shared workspace](../assets/images/screenshots/transcript-workspace-speakers.png)
 
-The ASR editor presents your transcription as a table of segments, where each row represents a single utterance with its associated metadata. For each segment, you can:
+**Identify Speakers** and **Edit Transcript** open the same workspace for JSON transcriptions. Speaker mode keeps the speaker panel on the left and full utterances in the central list. Each utterance has its original segment number and start–end time range. Click its edit action to hide the speaker panel and open that segment's ASR tools on the right. **Back to speakers** restores speaker mode while keeping your draft, selection and filter. After splitting a filtered utterance, both parts stay visible so you can assign different speakers.
+
+![Segment tools beside the shared transcript](../assets/images/screenshots/transcript-workspace-editor.png)
+
+Both modes use one draft and one save, including speaker names and transcript changes. Existing speaker sorting, short-speaker merging, saved-name search, voice suggestions, **Me** and conversation-based identification remain available. Conversation identification uses your current draft. One audio or video player serves both modes. On narrow screens, tabs switch between speakers, transcript and segment tools. For each segment, you can:
 
 **Edit Speaker Names**: Each segment shows who is speaking. You can click on any speaker field to change it, with an intelligent dropdown that suggests speakers from your saved speaker database. As you type, the system filters suggestions to help you quickly find the right speaker. This is particularly useful for correcting misidentified speakers or standardizing speaker names across the transcription.
 
@@ -58,17 +62,33 @@ The ASR editor presents your transcription as a table of segments, where each ro
 
 **Edit Text Content**: The main content of each utterance can be edited directly in its text field. You can correct transcription errors, fix grammar, add punctuation, or clarify unclear speech while maintaining the segment structure.
 
-**Manage Segments**: Use the trash icon to remove segments that shouldn't be in the transcription (such as false detections or noise). You can also add new segments if the ASR system missed something, positioning them with appropriate timestamps.
+**Manage Segments**: Use **More → Delete segment** and confirm to remove segments that shouldn't be in the transcription (such as false detections or noise). You can also add new segments if the ASR system missed something, positioning them with appropriate timestamps.
+
+**Split a Segment**: When two people's phrases appear in one segment, place the cursor between them and click the scissors, or press **Ctrl+Enter** (**⌘+Enter** on Mac). Review both texts, their shared time boundary, and the speaker of each part in the preview. Click **Confirm split** to create two adjacent segments. The editor selects the second segment's speaker field so you can assign the other person immediately. Both parts initially keep the original speaker. Their shared time boundary is estimated from the text lengths; you can adjust it using the timestamp fields. Place a single cursor inside the text, with nonempty text on both sides and valid timestamps at least 0.02 seconds apart. Splits follow your usual manual-save or autosave preference. Splitting requires a browser with `Intl.Segmenter`; on older browsers only the split action is disabled, with an explanation to update the browser.
+
+**Expand Boundaries**: Use **To previous end** beside the start time or **To next start** beside the end time. For the last segment, **To recording end** uses the actual recording duration. These commands expand only the selected segment, preserve neighbors, and are unavailable when there is no gap, the boundary is invalid, or the duration is unknown.
+
+**Playback**: Choose the selected segment, marker-to-end, continuous playback from the segment, or the whole recording. Volume, mute, seek, pause/resume, and all existing speed options remain available. Seeking outside the selected segment or marker range pauses playback; pressing Play returns to that range. Selecting a segment stops bounded playback; whole-recording playback may continue.
+
+**Segment Spectrogram**: Click the wave icon in a segment's actions to inspect its audio frequencies over time. Mono audio has one plot; stereo shows separate L/R plots. Use zoom, the horizontal scrollbar, or the arrow buttons to inspect long segments. Zoom out is disabled when the whole segment is visible; zoom in is disabled at the minimum window of 0.25 seconds. **Fit entire segment** returns to a complete overview, including segments longer than a minute, without changing the frequency range, split marker, or listening position. Scrolling uses the prepared spectrogram for that scale; it does not regenerate the visible portion, move your marker, or stop playback. A new scale or frequency range may need preparation; the previous view remains available while it is prepared. Retry after a failed scale change repeats the requested scale; cancelling discards that request. If the prepared data expires, choose Retry to prepare it again. Play the segment or listen from the marker; the same button becomes Pause and then Resume, keeping your listening position. These buttons share the player at the top of the editor. Click the plot or enter a split time, then place the text cursor between phrases and press Ctrl+Enter. The split uses your selected audio time instead of the text-length estimate. Resetting the marker restores the estimate. Spectrograms require local audio, do not change the audio file, and do not identify speakers automatically.
+
+![Segment spectrogram and split marker](../assets/images/screenshots/asr-segment-spectrogram.png)
+
+Choose **0–2 / 0–4 / 0–8 kHz / Full range** at the upper frequency label on the left of the plot. The default 8 kHz view focuses on speech. The axis shows the actual available frequency range, and changing it keeps your split marker and time window. Your choice is remembered in this browser.
+
+Use **Brightness** below the plot to reveal quiet sounds, from 0 to +40 dB in 5 dB steps. It changes the spectrogram's color scale without changing the audio volume or file. Release the slider to apply; keyboard changes settle before applying. Your time window, zoom and split marker stay in place. Brightness is remembered in this browser; **Reset** returns to 0 dB. A new brightness level may need preparation. The previous image remains visible, with its currently displayed level labelled until the new one is ready. Strong amplification also makes noise more visible.
+
+**Transcribe a Segment Again**: Click the circular arrow in a segment's actions to recognize its current audio range, including a segment you have just split and have not saved yet. Review and edit the proposed text, then click **Replace text** to apply it to that segment. The speaker and timestamps stay the same. Save normally, or let your enabled autosave save the replacement. Generating a proposal alone does not change the transcript. Local mono or stereo segments from 0.25 seconds to 5 minutes are supported; split longer segments first. Changing the segment's text or timestamps while recognition is running invalidates the proposal.
 
 The ASR editor maintains the JSON structure of your transcription, which is essential for features like speaker-based search, audio synchronization (clicking on text to jump to that point in the audio), and proper display in bubble view. When you save changes in the ASR editor, the system preserves all timing and speaker information while applying your corrections.
 
-Your edits are saved to the database when you click "Save Changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
+Your edits are saved to the database when you click **Save** (or **Save and close** in its menu), press Ctrl+S, or an enabled autosave completes. Generating a spectrogram, viewing a split preview, or receiving an ASR proposal does not save the transcript. The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
 
 #### Editor Productivity Features
 
 The ASR editor includes several quality-of-life features for working through long transcripts:
 
-**Autosave**: When enabled in your account preferences (`Account → Preferences → Autosave editor`), edits are saved automatically two seconds after the last keystroke. The Save indicator briefly flashes "Saved" each time a save completes. Autosave is opt-in so users who prefer explicit control over save points can leave it off.
+**Autosave**: When enabled in your account preferences (`Account → Preferences → Autosave editor`), edits are saved automatically two seconds after the last keystroke. The footer shows unsaved, saving, saved, or failure status. A failed save keeps your draft; edits made during a pending save remain unsaved until the next save. Closing an unsaved draft offers save, discard, or keep editing. Discard does not undo earlier successful autosaves. Autosave is opt-in so users who prefer explicit control over save points can leave it off.
 
 **Save Without Closing**: The save button next to the close button keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your scroll position.
 
@@ -76,7 +96,7 @@ The ASR editor includes several quality-of-life features for working through lon
 
 **Scroll Memory**: The editor remembers your scroll position when you close it. Reopening the editor for the same recording returns you to where you were instead of jumping to the top.
 
-**Double-Click to Edit**: Double-clicking any segment in the simple transcript view opens the ASR editor and scrolls directly to that segment. The target row is briefly highlighted so it stands out among the others.
+**Double-Click to Edit**: Double-clicking any segment in the simple transcript view opens the ASR editor and scrolls directly to that segment. The target segment is selected and briefly highlighted so it stands out among the others.
 
 ## View Options
 
