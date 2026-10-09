@@ -35,6 +35,25 @@ class FFmpegNotFoundError(FFmpegError):
     pass
 
 
+def describe_size_reduction(reduction_percent: float) -> str:
+    """Label a size change for a log line: "40.2% smaller", "93.5% larger".
+
+    The old "(-93.5% reduction)" was arithmetically right and read as a
+    win for a file that had doubled.
+    """
+    if reduction_percent > 0.05:
+        return f"{reduction_percent:.1f}% smaller"
+    if reduction_percent < -0.05:
+        return f"{-reduction_percent:.1f}% larger"
+    return "same size"
+
+
+def describe_size_change(original_size: int, final_size: int) -> str:
+    """describe_size_reduction for two byte counts."""
+    pct = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0.0
+    return describe_size_reduction(pct)
+
+
 def convert_to_mp3(
     input_path: str,
     output_path: Optional[str] = None,
@@ -333,12 +352,11 @@ def compress_audio(
         
         # Get compressed file size
         compressed_size = os.path.getsize(temp_output_path)
-        ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
-        
+
         current_app.logger.info(
             f"Compressed {os.path.basename(input_path)}: "
             f"{original_size / 1024 / 1024:.1f}MB -> "
-            f"{compressed_size / 1024 / 1024:.1f}MB ({ratio:.1f}% reduction)"
+            f"{compressed_size / 1024 / 1024:.1f}MB ({describe_size_change(original_size, compressed_size)})"
         )
         
         # Remove original and rename temp to final

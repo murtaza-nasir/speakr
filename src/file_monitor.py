@@ -446,7 +446,7 @@ class FileMonitor:
                         if result.was_converted:
                             self.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
                         if result.was_compressed:
-                            self.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+                            self.logger.info(f"File compressed: {result.size_change_label}")
 
                     except FFmpegNotFoundError as e:
                         self.logger.error(f"FFmpeg not found: {e}")
