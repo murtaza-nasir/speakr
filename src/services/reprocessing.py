@@ -41,16 +41,30 @@ def queue_transcription_reprocess(recording, user, overrides=None):
     if recording.status in IN_PROGRESS:
         raise ReprocessError('Recording is already being processed', 400)
 
+    # Settings first: a lookup that raises after the clearing below has
+    # committed leaves a QUEUED recording with no job and no transcript,
+    # which nothing can reprocess ("already being processed") or reset.
+    params = resolve_transcription_params(recording, overrides or {})
+    params['user_id'] = user.id
+
     recording.transcription = None
     recording.summary = None
     recording.status = 'QUEUED'
     Event.query.filter_by(recording_id=recording.id).delete()
     db.session.commit()
 
-    params = resolve_transcription_params(recording, overrides or {})
-    params['user_id'] = user.id
-    return job_queue.enqueue(user_id=user.id, recording_id=recording.id,
-                             job_type='reprocess_transcription', params=params)
+    try:
+        return job_queue.enqueue(user_id=user.id, recording_id=recording.id,
+                                 job_type='reprocess_transcription', params=params)
+    except Exception as e:
+        # Same trap from the other side: the results are gone, so leave the
+        # recording FAILED, which the reprocess and reset routes accept.
+        db.session.rollback()
+        recording = db.session.get(type(recording), recording.id)
+        recording.status = 'FAILED'
+        recording.error_message = f'Could not queue reprocessing: {e}'
+        db.session.commit()
+        raise ReprocessError('Could not queue reprocessing; please try again', 503) from e
 
 
 def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
