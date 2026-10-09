@@ -308,6 +308,23 @@ def format_error_for_user(error_text: str) -> Dict:
     }
 
 
+def truncate_middle(text: str, limit: int, tail_share: float = 0.6) -> str:
+    """Cut `text` to at most `limit` characters, keeping both ends.
+
+    A traceback says why it failed on its last line, so a cut that keeps
+    only the start loses the one line worth reading. Most of the budget
+    goes to the end (`tail_share`); the rest keeps the first lines, which
+    name the request that failed.
+    """
+    if len(text) <= limit:
+        return text
+    marker = ' … '
+    budget = max(limit - len(marker), 0)
+    tail = int(budget * tail_share)
+    head = budget - tail
+    return text[:head] + marker + text[len(text) - tail:]
+
+
 def format_error_for_storage(error_text: str) -> str:
     """
     Format an error message for storage in the database.
@@ -334,7 +351,9 @@ def format_error_for_storage(error_text: str) -> str:
     # "Technical details" panel has something to show even for unknown errors
     # where the user-facing message is the same as the raw text.
     if formatted['technical']:
-        error_data['d'] = formatted['technical'][:500]  # Limit technical detail length
+        # Limit technical detail length, keeping the end: that is where a
+        # traceback names the exception.
+        error_data['d'] = truncate_middle(formatted['technical'], 500)
 
     try:
         json_str = json.dumps(error_data, ensure_ascii=False)
