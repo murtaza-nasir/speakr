@@ -238,7 +238,7 @@
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('summary.regenerateSummary')"><i class="fas fa-sync-alt"></i></button>
                     <button @click.stop="confirmReset(selectedRecording)"
-                            v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                            v-if="['PENDING', 'QUEUED', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             style="color: var(--text-warn, #d97706);"
                             :title="t('buttons.resetStuckProcessing')"><i class="fas fa-undo"></i></button>
