@@ -130,3 +130,44 @@ def test_v1_batch_uses_the_same_checks(world):
     assert resp.get_json()["results"][0] == {"id": ids["rec"], "success": False,
                                              "error": "Recording is already being processed"}
     enq.assert_not_called()
+
+
+# --- Nothing is cleared until the job can be queued ---
+# A reprocess that raised after wiping the transcript (settings lookup, a
+# busy database on enqueue) left the recording QUEUED with no job: the UI
+# blocked every way out as "already being processed".
+
+def _call(ids, overrides=None):
+    from src.services.reprocessing import queue_transcription_reprocess
+    r = db.session.get(Recording, ids["rec"])
+    u = db.session.get(User, ids["user"])
+    return queue_transcription_reprocess(r, u, overrides or {})
+
+
+def test_transcription_reprocess_keeps_results_when_settings_lookup_fails(world):
+    ids, _ = world
+    with app.app_context(), _storage(), \
+            patch("src.services.transcription_defaults.resolve_transcription_params",
+                  side_effect=RuntimeError("settings unavailable")), \
+            patch.object(job_queue, "enqueue") as enq:
+        with pytest.raises(RuntimeError):
+            _call(ids)
+        enq.assert_not_called()
+    with app.app_context():
+        r = db.session.get(Recording, ids["rec"])
+        assert (r.transcription, r.summary, r.status) == (TRANSCRIPT, "Old summary", "COMPLETED")
+        assert Event.query.filter_by(recording_id=ids["rec"]).count() == 1
+
+
+def test_transcription_reprocess_is_not_left_queued_when_enqueue_fails(world):
+    from src.services.reprocessing import ReprocessError
+    ids, _ = world
+    with app.app_context(), _storage(), \
+            patch.object(job_queue, "enqueue", side_effect=RuntimeError("database is locked")):
+        with pytest.raises(ReprocessError) as exc:
+            _call(ids)
+        assert exc.value.status == 503
+    with app.app_context():
+        r = db.session.get(Recording, ids["rec"])
+        assert r.status == "FAILED"
+        assert "database is locked" in (r.error_message or "")
