@@ -2499,7 +2499,7 @@ def ingest_uploaded_recording(
                 if result.was_converted:
                     current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
                 if result.was_compressed:
-                    current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+                    current_app.logger.info(f"File compressed: {result.size_change_label}")
 
             except FFmpegNotFoundError as e:
                 current_app.logger.error(f"FFmpeg not found: {e}")

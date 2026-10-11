@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Optional, Tuple, Set, Dict, Any
 
 from src.utils.ffprobe import get_codec_info, is_lossless_audio, FFProbeError
-from src.utils.ffmpeg_utils import compress_audio, extract_audio_from_video, FFmpegError, FFmpegNotFoundError
+from src.utils.ffmpeg_utils import (compress_audio, describe_size_change, describe_size_reduction,
+                                    extract_audio_from_video, FFmpegError, FFmpegNotFoundError)
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, AUDIO_UNSUPPORTED_CODECS
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,11 @@ class ConversionResult:
         if self.original_size == 0:
             return 0.0
         return ((self.original_size - self.final_size) / self.original_size) * 100
+
+    @property
+    def size_change_label(self) -> str:
+        """"40.2% smaller" / "93.5% larger" / "same size", for log lines."""
+        return describe_size_reduction(self.size_reduction_percent)
 
     @property
     def original_size_mb(self) -> float:
@@ -210,12 +216,11 @@ def convert_if_needed(
                 final_codec = video_target_codec
 
             final_size = os.path.getsize(output_filepath)
-            reduction = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0
 
             logger.info(
                 f"Successfully extracted audio from {original_filename}: "
                 f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
-                f"({reduction:.1f}% reduction)"
+                f"({describe_size_change(original_size, final_size)})"
             )
 
             return ConversionResult(
@@ -287,12 +292,11 @@ def convert_if_needed(
             )
             
             final_size = os.path.getsize(output_filepath)
-            reduction = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0
-            
+
             logger.info(
                 f"Successfully converted {original_filename}: "
                 f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
-                f"({reduction:.1f}% reduction)"
+                f"({describe_size_change(original_size, final_size)})"
             )
             
             return ConversionResult(
@@ -355,12 +359,11 @@ def convert_if_needed(
                 )
 
                 final_size = os.path.getsize(compressed_path)
-                reduction = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0
 
                 logger.info(
                     f"Successfully compressed {original_filename}: "
                     f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
-                    f"({reduction:.1f}% reduction)"
+                    f"({describe_size_change(original_size, final_size)})"
                 )
 
                 return ConversionResult(
