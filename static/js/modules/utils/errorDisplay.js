@@ -5,6 +5,8 @@
  * Handles both JSON-formatted errors (ERROR_JSON:...) and plain text errors.
  */
 
+import { errorTextMatches } from './error-patterns.js';
+
 /**
  * Parse a stored error message from the backend.
  * @param {string} text - The stored transcription/error text
@@ -148,7 +150,7 @@ function parseUnformattedError(text) {
     // Check patterns
     for (const pattern of patterns) {
         for (const p of pattern.patterns) {
-            if (lowerText.includes(p)) {
+            if (errorTextMatches(lowerText, p)) {
                 return {
                     title: pattern.title,
                     message: pattern.message,

@@ -10,6 +10,7 @@ import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
 import { shouldSliceUpload, uploadFileInSlices } from '../db/sliced-file-upload.js';
 import { computeUploadTimeout } from '../utils/upload-timeout.js';
 import { recorderInUse } from '../utils/recorder-state.js';
+import { errorTextMatches } from '../utils/error-patterns.js';
 import {
     sortQueuedForJoin, moveQueuedItem, placeQueuedItem, totalJoinDuration,
     newJoinGroupId, isVideoFileName, MAX_JOIN_FILES,
@@ -37,7 +38,7 @@ function getFriendlyError(errorMessage, t) {
     ];
     for (const pattern of patterns) {
         for (const p of pattern.patterns) {
-            if (lowerText.includes(p)) return { title: pattern.title, guidance: pattern.guidance };
+            if (errorTextMatches(lowerText, p)) return { title: pattern.title, guidance: pattern.guidance };
         }
     }
     return { title: _t('errors.processingError'), guidance: _t('errors.processingErrorFallbackGuidance') };

@@ -10,6 +10,13 @@ import json
 from typing import Dict, Optional, Tuple
 
 
+def _code(status):
+    """A status code as a separate token ("status 401", "(429)"), never inside
+    an id or a longer number: "401" in a Ray actor id labelled a WhisperX
+    out-of-memory traceback as an authentication error."""
+    return rf'(?<![\w.-]){status}(?![\w-]|\.\w)'
+
+
 # Known error patterns with user-friendly messages
 ERROR_PATTERNS = [
     # File size errors
@@ -17,7 +24,7 @@ ERROR_PATTERNS = [
         'patterns': [
             r'maximum content size limit.*exceeded',
             r'file.*too large',
-            r'413.*exceeded',
+            _code(413) + r'.*exceeded',
             r'payload too large',
         ],
         'title': 'File Too Large',
@@ -43,7 +50,7 @@ ERROR_PATTERNS = [
     # Authentication errors
     {
         'patterns': [
-            r'401.*unauthorized',
+            _code(401) + r'.*unauthorized',
             r'invalid.*api.*key',
             r'authentication.*failed',
             r'api key.*invalid',
@@ -60,7 +67,7 @@ ERROR_PATTERNS = [
         'patterns': [
             r'rate.*limit',
             r'too many requests',
-            r'429',
+            _code(429),
             r'quota.*exceeded',
         ],
         'title': 'Rate Limit Exceeded',
@@ -88,9 +95,9 @@ ERROR_PATTERNS = [
     # Service unavailable
     {
         'patterns': [
-            r'503.*service unavailable',
-            r'502.*bad gateway',
-            r'500.*internal server error',
+            _code(503) + r'.*service unavailable',
+            _code(502) + r'.*bad gateway',
+            _code(500) + r'.*internal server error',
             r'service.*unavailable',
             r'server.*error',
         ],

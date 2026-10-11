@@ -25,6 +25,7 @@ import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
+import { errorTextMatches } from './modules/utils/error-patterns.js';
 import {
     detectPlatform,
     getAudioCapabilities,
@@ -161,7 +162,7 @@ const parseUnformattedError = (text) => {
     // Check patterns
     for (const pattern of patterns) {
         for (const p of pattern.patterns) {
-            if (lowerText.includes(p)) {
+            if (errorTextMatches(lowerText, p)) {
                 return {
                     title: pattern.title,
                     message: pattern.message,
