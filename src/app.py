@@ -790,6 +790,18 @@ def inject_i18n_bootstrap():
     return {'i18n_bootstrap': _i18n_bootstrap}
 
 @app.context_processor
+def inject_account_theme():
+    """The theme saved with the signed-in user's account (D#419), for
+    includes/theme_account.html. None for a visitor who is not signed in."""
+    from flask import has_request_context
+    from flask_login import current_user
+    if not has_request_context() or not current_user.is_authenticated:
+        return {'account_theme': None}
+    return {'account_theme': {'dark': current_user.theme_dark_mode,
+                              'scheme': current_user.theme_color_scheme}}
+
+
+@app.context_processor
 def inject_inquire_mode_flag():
     """The shared header shows the Inquire button on every page."""
     return {'inquire_mode_enabled': ENABLE_INQUIRE_MODE}

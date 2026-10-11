@@ -70,6 +70,7 @@ async function mountGlobalHeader() {
                 isDarkMode.value = !isDarkMode.value;
                 localStorage.setItem('darkMode', isDarkMode.value);
                 applyTheme(isDarkMode.value);
+                if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
             };
             const openInMainApp = (query) => { window.location.href = `/?${query}`; };
 

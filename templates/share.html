@@ -2,6 +2,7 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
+    {% include 'includes/theme_account.html' %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Shared Recording - {{ recording.title }}</title>
@@ -804,6 +805,7 @@
                     }
 
                     localStorage.setItem('darkMode', newDarkMode.toString());
+                    if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
                 }
 
                 function showToast(message) {

@@ -15,6 +15,7 @@ function useDarkMode() {
             document.documentElement.classList.remove('dark');
             localStorage.setItem('darkMode', 'false');
         }
+        if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
     };
     
     const initializeDarkMode = () => {
@@ -107,6 +108,7 @@ function useColorScheme() {
     
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         const scheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === schemeId);
         if (window.showToast && scheme) {
             window.showToast(`Applied ${scheme.name} theme`, 'fa-palette');
@@ -115,6 +117,7 @@ function useColorScheme() {
     
     const resetColorScheme = () => {
         applyColorScheme('blue');
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         if (window.showToast) {
             const defaultScheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === 'blue');
             window.showToast(`Reset to default ${defaultScheme?.name || 'Ocean Blue'} theme`, 'fa-undo');

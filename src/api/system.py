@@ -58,6 +58,10 @@ def init_system_helpers(**kwargs):
 
 
 
+# Color scheme ids, as in colorSchemes in static/js/app.modular.js.
+THEME_COLOR_SCHEMES = ('blue', 'emerald', 'purple', 'rose', 'amber', 'teal')
+
+
 # --- Routes ---
 
 @system_bp.route('/api/user/preferences', methods=['POST'])
@@ -76,7 +80,17 @@ def save_user_preferences():
         if mode not in ('range', 'single'):
             return jsonify({'error': 'Invalid speaker_count_mode'}), 400
         current_user.speaker_count_mode = mode
-    
+
+    # Theme, saved when the user changes it so other devices follow (D#419).
+    if 'dark_mode' in data:
+        if not isinstance(data['dark_mode'], bool):
+            return jsonify({'error': 'Invalid dark_mode'}), 400
+        current_user.theme_dark_mode = data['dark_mode']
+    if 'color_scheme' in data:
+        if data['color_scheme'] not in THEME_COLOR_SCHEMES:
+            return jsonify({'error': 'Invalid color_scheme'}), 400
+        current_user.theme_color_scheme = data['color_scheme']
+
     db.session.commit()
     
     return jsonify({

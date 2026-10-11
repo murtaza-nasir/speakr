@@ -73,6 +73,7 @@ export function useUI(state, utils, processedTranscription) {
 
         // Re-apply current color scheme for new mode
         applyColorScheme(currentColorScheme.value);
+        if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
     };
 
     // Initialize dark mode from storage
@@ -144,12 +145,14 @@ export function useUI(state, utils, processedTranscription) {
     // Select a color scheme
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         showToast(t('messages.colorSchemeApplied'), 'fa-palette');
     };
 
     // Reset to default color scheme
     const resetColorScheme = () => {
         applyColorScheme('blue');
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         showToast(t('messages.colorSchemeReset'), 'fa-undo');
     };
 

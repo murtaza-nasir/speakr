@@ -109,6 +109,10 @@ class User(db.Model, UserMixin):
     # Speaker-count entry mode in transcription UIs: 'range' (min/max)
     # or 'single' (one count, stored as min == max). Null means 'range' (#362).
     speaker_count_mode = db.Column(db.String(10), nullable=True)
+    # Light/dark mode and color scheme chosen in the app (D#419). Null until
+    # the user changes them; until then each browser keeps its own setting.
+    theme_dark_mode = db.Column(db.Boolean, nullable=True)
+    theme_color_scheme = db.Column(db.String(16), nullable=True)
     # Audio player placement in the recording-detail view. 'bottom'
     # (default) keeps the player anchored under the content columns;
     # 'top' renders it above the columns so it sits closer to the

@@ -397,6 +397,13 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'monthly_transcription_budget', 'INTEGER'):
             app.logger.info("Added monthly_transcription_budget column to user table")
 
+        # Light/dark mode and color scheme saved with the account (D#419);
+        # null until the user changes them
+        if add_column_if_not_exists(engine, 'user', 'theme_dark_mode', 'BOOLEAN'):
+            app.logger.info("Added theme_dark_mode column to user table")
+        if add_column_if_not_exists(engine, 'user', 'theme_color_scheme', 'VARCHAR(16)'):
+            app.logger.info("Added theme_color_scheme column to user table")
+
         # Storage quota in megabytes (#413)
         if add_column_if_not_exists(engine, 'user', 'storage_quota_mb', 'INTEGER'):
             app.logger.info("Added storage_quota_mb column to user table")

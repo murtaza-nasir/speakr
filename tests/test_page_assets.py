@@ -193,8 +193,9 @@ def test_scripts_follow_the_stylesheets(page):
     """
     head = _read(page).split("</head>")[0]
     last_css = max(m.start() for m in re.finditer(r'rel="stylesheet"', head))
+    # The theme includes are inline scripts and must come first (D#419).
     early = [m.group(0) for m in re.finditer(r"<script src=[^>]*>|\{% include '[^']*' %\}", head)
-             if m.start() < last_css and "theme_bootstrap" not in m.group(0)]
+             if m.start() < last_css and not any(t in m.group(0) for t in ("theme_bootstrap", "theme_account"))]
     assert not early, f"{page}: before the last stylesheet: {early}"
 
 
