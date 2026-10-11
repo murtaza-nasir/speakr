@@ -1264,10 +1264,18 @@ def reset_status(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
 
-        # Allow resetting if it's stuck or failed
-        if recording.status in ['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED']:
+        # Allow resetting if it's stuck or failed. QUEUED is included for a
+        # recording whose job never ran: reprocess refuses it as "already
+        # being processed", so this is its only way out.
+        if recording.status in ['PENDING', 'QUEUED', 'PROCESSING', 'SUMMARIZING', 'FAILED']:
             recording.status = 'FAILED'
             recording.error_message = "Manually reset from stuck or failed state."
+            # A job still waiting in the queue would claim the recording
+            # later and overwrite the reset. A running job cannot be stopped
+            # from here; it finishes on its own and sets a final status.
+            ProcessingJob.query.filter_by(recording_id=recording.id, status='queued').update(
+                {'status': 'failed', 'error_message': 'Cancelled by manual reset.'},
+                synchronize_session=False)
             db.session.commit()
             current_app.logger.info(f"Manually reset status for recording {recording_id} to FAILED.")
 
