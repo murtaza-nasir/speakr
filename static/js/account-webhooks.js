@@ -55,6 +55,18 @@
         return d.innerHTML;
     }
 
+    // Safe wrapper for insertAdjacentHTML that sanitizes dynamic HTML with DOMPurify
+    function safeInsert(el, position, html) {
+        if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+            el.insertAdjacentHTML(position, window.DOMPurify.sanitize(html));
+        } else {
+            // Fallback: escape entire string (fails closed)
+            const div = document.createElement('div');
+            div.textContent = html;
+            el.insertAdjacentHTML(position, div.innerHTML);
+        }
+    }
+
     // Backend timestamps are naive UTC (no zone). Append 'Z' so they're parsed
     // as UTC and rendered in the viewer's timezone, not mis-read as local.
     function parseServerInstant(s) {
@@ -144,7 +156,7 @@
                     + '</label>';
             }).join('');
         eventsContainer.replaceChildren();
-        eventsContainer.insertAdjacentHTML('afterbegin', checkboxes);
+        safeInsert(eventsContainer, 'afterbegin', checkboxes);
         modal.classList.remove('hidden');
     }
 
@@ -162,10 +174,11 @@
             allEventTypes = body.event_types || [];
             list.replaceChildren();
             if (!body.webhooks || body.webhooks.length === 0) {
+                // safe: static HTML string, no user data
                 list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">No webhooks configured. Add one to start receiving event notifications.</p>');
                 return;
             }
-            body.webhooks.forEach(function (wh) { list.insertAdjacentHTML('beforeend', renderWebhookCard(wh)); });
+            body.webhooks.forEach(function (wh) { safeInsert(list, 'beforeend', renderWebhookCard(wh)); });
             list.querySelectorAll('[data-webhook-id]').forEach(function (card) {
                 const id = card.getAttribute('data-webhook-id');
                 card.querySelectorAll('[data-action]').forEach(function (btn) {
@@ -174,7 +187,7 @@
             });
         } catch (e) {
             list.replaceChildren();
-            list.insertAdjacentHTML('beforeend', '<p class="text-sm text-red-500">Error loading webhooks: ' + escapeHtml(e.message) + '</p>');
+            safeInsert(list, 'beforeend', '<p class="text-sm text-red-500">Error loading webhooks: ' + escapeHtml(e.message) + '</p>');
         }
     }
     window.loadWebhooks = loadWebhooks;
@@ -201,11 +214,13 @@
                 const listEl = card.querySelector('[data-deliveries-list]');
                 if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
                 listEl.replaceChildren();
+                // safe: static HTML string, no user data
                 listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">Loading...</p>');
                 panel.classList.remove('hidden');
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/deliveries?limit=25');
                 listEl.replaceChildren();
                 if (!body.deliveries || body.deliveries.length === 0) {
+                    // safe: static HTML string, no user data
                     listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">No deliveries yet.</p>');
                     return;
                 }
@@ -226,7 +241,7 @@
                         +   '</div>'
                         +   '<button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-replay="' + Number(d.id) + '" title="Replay this delivery"><i class="fas fa-redo"></i></button>'
                         + '</div>';
-                    listEl.insertAdjacentHTML('beforeend', row);
+                    safeInsert(listEl, 'beforeend', row);
                 });
                 listEl.querySelectorAll('[data-replay]').forEach(function (btn) {
                     btn.addEventListener('click', async function () {
