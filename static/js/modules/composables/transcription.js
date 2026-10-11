@@ -287,12 +287,20 @@ export function useTranscription(state, utils) {
         }
     };
 
-    // O(1) dropdown management using single ref instead of O(n) forEach
-    const openSpeakerSuggestions = (index) => {
-        if (editingSegments.value[index]) {
+    // O(1) dropdown management using single ref instead of O(n) forEach.
+    // Opening the list (focus, chevron) shows every speaker; the list is
+    // filtered only while the name is being typed. Filtering by the name
+    // already in the field left only that speaker to choose (#425).
+    const openSpeakerSuggestions = (index, { filter = false } = {}) => {
+        const segment = editingSegments.value[index];
+        if (segment) {
             // Simply set the open index - O(1) instead of O(n) forEach
             openAsrDropdownIndex.value = index;
-            filterSpeakerSuggestions(index);
+            if (filter) {
+                filterSpeakerSuggestions(index);
+            } else {
+                segment.filteredSpeakers = [...availableSpeakers.value];
+            }
             updateDropdownPosition(index);
         }
     };
@@ -387,7 +395,10 @@ export function useTranscription(state, utils) {
         });
     };
 
-    const selectSpeaker = (index, speaker) => {
+    // Not selectSpeaker: the Identify Speakers dialog exports that name, and
+    // as the later composable in the app it replaced this one, so choosing a
+    // name in the editor did nothing (#425).
+    const selectSegmentSpeaker = (index, speaker) => {
         if (editingSegments.value[index]) {
             editingSegments.value[index].speaker = speaker;
             closeSpeakerSuggestions(index);
@@ -609,7 +620,7 @@ export function useTranscription(state, utils) {
         isDropdownOpen,
         getDropdownPosition,
         updateDropdownPosition,
-        selectSpeaker,
+        selectSegmentSpeaker,
         addSegment,
         removeSegment,
         addSegmentBelow,
