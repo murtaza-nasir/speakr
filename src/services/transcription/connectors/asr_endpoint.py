@@ -20,6 +20,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
+from src.utils.error_formatting import truncate_middle
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +228,9 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 body = e.response.text
             except Exception:
                 body = ''
-            body_excerpt = body.strip()
-            if len(body_excerpt) > 800:
-                body_excerpt = body_excerpt[:800] + '...'
+            # Keep both ends: a worker traceback names the exception on its
+            # last line, and a cut from the start threw exactly that away.
+            body_excerpt = truncate_middle(body.strip(), 800)
             logger.error(
                 f"ASR request for {request.filename!r} failed with status "
                 f"{e.response.status_code}: {body_excerpt}"
