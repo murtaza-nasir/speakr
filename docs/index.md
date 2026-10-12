@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.14-alpha - Theme with the account, transcript editor and processing fixes"
+    Two new columns are added at startup; no configuration changes are required.
+
+    - **Theme** - The light or dark mode and the color scheme are saved with the account (#419).
+    - **Transcript editor** - Every speaker can be chosen for a segment again (#425).
+    - **Processing** - Recordings stuck in QUEUED or SUMMARIZING can be reset, and a transcript is no longer lost when reprocessing cannot be queued (#420, #423, #424).
+    - **Errors** - The exception line of a failed WhisperX request is kept (#422), and "Authentication Error" is no longer shown for an ID that contains "401".
+
 !!! info "Version 0.10.13-alpha - Storage quotas, shared transcripts, right-to-left text"
     One new column and one new setting are added at startup; nothing is limited until an administrator sets a quota.
 

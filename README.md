@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.13--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.14--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -223,7 +223,14 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.13-alpha)
+## Latest Release (v0.10.14-alpha)
+
+- The light or dark mode and the color scheme are saved with the account, for every device (#419).
+- In the transcript editor, every speaker can be chosen for a segment again (#425).
+- Recordings stuck in QUEUED or SUMMARIZING can be reset, and a transcript is no longer lost when reprocessing cannot be queued (#420, #423, #424).
+- The exception line of a failed WhisperX request is kept (#422), and "Authentication Error" is no longer shown for an ID that contains "401".
+
+### v0.10.13-alpha
 
 - Storage quotas per user, with a default for new accounts, usage on the Account page and in the header (#413).
 - Shared Transcripts lists your public links, your shares with people and groups, and recordings shared with you (#416).
@@ -245,7 +252,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Every processing path runs the same steps: titles, events, exports and search indexing no longer depend on how a recording arrived.
 - A new icon, and even header buttons on phones.
 
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.13-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.14-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
