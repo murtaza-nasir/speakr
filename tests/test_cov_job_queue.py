@@ -566,6 +566,34 @@ def test_permanent_error_fails_without_retry(track):
     fail_hook.assert_called_once()
 
 
+def test_recording_deleted_while_the_job_runs_drops_the_job(track):
+    """Deleting a recording mid-job gave StaleDataError, then
+    PendingRollbackError in the failure handler, and retries (#432)."""
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "summarize"); track.job_ids.append(jid)
+    job = _claim(rid, SUMMARY_JOBS, "summary")
+
+    def delete_then_write(*args, **kwargs):
+        rec = db.session.get(Recording, rid)
+        # The user deletes the recording from another request
+        with db.engine.begin() as conn:
+            conn.execute(db.text("DELETE FROM processing_job WHERE recording_id = :r"), {"r": rid})
+            conn.execute(db.text("DELETE FROM recording WHERE id = :r"), {"r": rid})
+        rec.summary = "late result"
+        db.session.commit()
+
+    with patch("src.tasks.processing.generate_summary_only_task", side_effect=delete_then_write), \
+         patch.object(job_queue, "_emit_failure_webhook") as fail_hook, \
+         patch.object(job_queue, "_emit_failure_email") as fail_mail:
+        job_queue._process_job(job)
+
+    assert db.session.get(Recording, rid) is None
+    assert db.session.get(ProcessingJob, jid) is None
+    fail_hook.assert_not_called()
+    fail_mail.assert_not_called()
+
+
 def test_retry_exhaustion_marks_failed(track):
     uid = _make_user(); track.user_ids.append(uid)
     rid = _make_recording(uid); track.recording_ids.append(rid)
@@ -608,10 +636,10 @@ def test_process_job_missing_recording_fails(track):
 
     db.session.expire_all()
     refreshed = db.session.get(ProcessingJob, jid)
-    # "Recording not found" is transient (not in permanent-error list) -> retry.
-    assert refreshed.status == "queued"
-    assert refreshed.retry_count == 1
-    assert "not found" in refreshed.error_message.lower()
+    # A recording that no longer exists is not retried (#432)
+    assert refreshed.status == "failed"
+    assert refreshed.retry_count == 0
+    assert "deleted" in refreshed.error_message.lower()
 
 
 # --------------------------------------------------------------------------

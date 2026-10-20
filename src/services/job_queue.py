@@ -389,6 +389,26 @@ class FairJobQueue:
 
             except Exception as e:
                 error_str = str(e)
+                # A failed flush (for example on a recording deleted while
+                # the job ran) leaves the session unusable until it is rolled
+                # back; without this every query below raised
+                # PendingRollbackError (#432).
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+
+                if db.session.get(Recording, recording_id) is None:
+                    # Deleted while the job ran: nothing to retry or report
+                    logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
+                    job = db.session.get(ProcessingJob, job_id)
+                    if job:
+                        job.status = 'failed'
+                        job.error_message = 'Recording deleted while the job ran'
+                        job.completed_at = datetime.utcnow()
+                        db.session.commit()
+                    return
+
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
                 # Check if this is a permanent error that shouldn't be retried
