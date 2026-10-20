@@ -291,31 +291,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - **Database**: SQLite (default) or PostgreSQL
 - **Deployment**: Docker, Docker Compose
 
-## Roadmap
-
-### Completed
-- Speaker voice profiles with AI-powered identification (v0.5.9)
-- Group workspaces with shared recordings (v0.5.9)
-- PWA enhancements with offline support and background sync (v0.5.10)
-- Multi-user job queue with fair scheduling (v0.6.0)
-- SSO integration with OIDC providers (v0.7.0)
-- Token usage tracking and per-user budgets (v0.7.2)
-- Connector-based transcription architecture with auto-detection (v0.8.0)
-- Comprehensive REST API with Swagger UI documentation (v0.8.0)
-- Video retention with in-browser video playback (v0.8.11)
-- Parallel uploads with duplicate detection (v0.8.11)
-- Fullscreen video mode with live subtitles (v0.8.14)
-- Custom vocabulary and transcription hints (v0.8.14)
-
-### Near-term
-- Quick language switching for transcription
-- Automated workflow triggers
-
-### Long-term
-- Plugin system for custom integrations
-- End-to-end encryption option
-
-### Reporting Issues
+## Reporting Issues
 
 - [Report bugs](https://github.com/murtaza-nasir/speakr/issues)
 - [Request features](https://github.com/murtaza-nasir/speakr/discussions)
