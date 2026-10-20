@@ -219,6 +219,23 @@ def test_upload_with_html_extension_is_not_stored_as_html():
         _cleanup(rec, user)
 
 
+def test_upload_with_a_long_file_name():
+    """A name of 208 or more characters failed with a 500 (#430)."""
+    long_name = "n" * 250 + ".mp3"
+    with app.app_context():
+        user = _mk_user("up_long")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging):
+            resp = _do_upload(client, filename=long_name)
+        assert resp.status_code == 202, resp.data
+        rec = _latest_rec(user)
+        assert rec.original_filename == long_name
+        assert len(rec.title) <= 200
+        _cleanup(rec, user)
+
+
 def test_upload_default_title_is_placeholder():
     with app.app_context():
         user = _mk_user("up_title")

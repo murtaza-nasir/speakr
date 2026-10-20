@@ -53,6 +53,7 @@ from src.services.llm import client, chat_client, call_llm_completion, call_chat
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.mime import served_media_mime, sandbox_media_response
+from src.utils.filenames import shorten_filename
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
@@ -2230,7 +2231,7 @@ def ingest_uploaded_recording(
                 response_data['idempotent_replay'] = True
                 return jsonify(response_data), success_status
 
-        safe_filename = secure_filename(original_filename)
+        safe_filename = shorten_filename(secure_filename(original_filename))
         storage = get_storage_service()
         staging_dir = storage.get_staging_dir()
         filepath = os.path.join(

@@ -19,6 +19,8 @@ from werkzeug.utils import secure_filename
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed
+from src.utils.filenames import shorten_filename
+from src.utils.titles import placeholder_titles
 
 # Video retention - when enabled, video files keep their video stream for playback
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
@@ -368,7 +370,7 @@ class FileMonitor:
                         raise_notice(user, quota_error, original_filename)
                     return
                 self._quota_skipped.discard(str(processing_path.with_name(original_filename)))
-                safe_filename = secure_filename(original_filename)
+                safe_filename = shorten_filename(secure_filename(original_filename))
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 new_filename = f"auto_{timestamp}_{safe_filename}"
                 
@@ -511,7 +513,7 @@ class FileMonitor:
                 recording = Recording(
                     audio_path=None,
                     original_filename=original_filename,
-                    title=f"Auto-processed - {original_filename}",
+                    title=placeholder_titles(original_filename)[1],
                     file_size=file_size,
                     status='PENDING',
                     meeting_date=meeting_date,

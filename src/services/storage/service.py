@@ -11,6 +11,8 @@ from typing import Iterator, Optional
 from uuid import uuid4
 import threading
 
+from src.utils.filenames import shorten_filename
+
 from .factory import StorageSettings, build_local_backend, build_s3_backend, load_storage_settings_from_env
 from .interfaces import AudioDeliveryResult, MaterializedFile, StorageLocator, StoredObject
 from .locator import build_local_locator, parse_locator, relative_key_from_local_path
@@ -59,7 +61,7 @@ class StorageService:
         now = now or datetime.utcnow()
         base_name = os.path.basename(original_filename or 'recording.bin').replace('\\', '_').replace('/', '_')
         safe_name = ''.join(c for c in base_name if c.isalnum() or c in (' ', '.', '-', '_')).strip() or 'recording.bin'
-        safe_name = safe_name.replace(' ', '_')
+        safe_name = shorten_filename(safe_name.replace(' ', '_'))
         ts = now.strftime('%Y%m%d%H%M%S')
         rec_part = str(recording_id) if recording_id is not None else f"tmp-{uuid4().hex[:8]}"
         prefix = (self.settings.key_prefix or 'recordings').strip('/').replace('\\', '/')

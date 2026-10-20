@@ -15,16 +15,20 @@ normal upload instead of being silently skipped.
 """
 
 
+# Length of Recording.title; PostgreSQL refuses a longer value (#430)
+TITLE_MAX_LENGTH = 200
+
+
 def placeholder_title(original_filename):
     """The default placeholder title for an upload with no user-supplied title."""
-    return f"Recording - {original_filename}"
+    return f"Recording - {original_filename}"[:TITLE_MAX_LENGTH]
 
 
 def placeholder_titles(original_filename):
     """All placeholder titles the AI title generator may overwrite."""
     return (
-        f"Recording - {original_filename}",
-        f"Auto-processed - {original_filename}",
+        f"Recording - {original_filename}"[:TITLE_MAX_LENGTH],
+        f"Auto-processed - {original_filename}"[:TITLE_MAX_LENGTH],
     )
 
 
@@ -36,7 +40,7 @@ def resolve_upload_title(user_title, original_filename):
     recognises, so AI title generation runs.
     """
     if user_title and user_title.strip():
-        return user_title.strip()
+        return user_title.strip()[:TITLE_MAX_LENGTH]
     return placeholder_title(original_filename)
 
 
