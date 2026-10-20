@@ -7,6 +7,11 @@
 # files are regenerated with scripts/lock-requirements.sh, so every new
 # version is reviewed before it is locked. Actions are pinned by commit and
 # the base image by digest; Dependabot updates both.
+#
+# Minor and patch updates of Python packages come in one pull request, and
+# all action updates in another. Deliberate pins are ignored: authlib stays
+# below 1.7 (authlib/authlib#902, see requirements.txt) and the base image
+# stays on Python 3.11 (its digest is still updated).
 version: 2
 updates:
   - package-ecosystem: pip
@@ -16,6 +21,12 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: authlib
+        versions: [">=1.7.0"]
   - package-ecosystem: docker
     directory: /
     schedule:
@@ -23,6 +34,9 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -30,3 +44,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ["*"]

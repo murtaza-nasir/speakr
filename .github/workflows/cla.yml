@@ -8,7 +8,8 @@ permissions:
 
 jobs:
   cla-reminder:
-    if: github.event_name == 'pull_request_target'
+    # Bots (Dependabot) do not sign the CLA
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
       - name: "Post CLA Reminder"
