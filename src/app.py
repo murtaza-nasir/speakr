@@ -20,7 +20,6 @@ import httpx
 import re
 import subprocess
 import mimetypes
-import markdown
 import bleach
 
 # Add common audio MIME type mappings that might be missing
@@ -159,19 +158,6 @@ root_logger.addHandler(handler)
 # Silence noisy markdown extension debug logs
 markdown_logger = logging.getLogger('MARKDOWN')
 markdown_logger.setLevel(logging.WARNING)
-
-# --- Initialize Markdown Once (Performance Optimization) ---
-# Create a single reusable Markdown instance to avoid reinitializing extensions on every call
-_markdown_instance = markdown.Markdown(extensions=[
-    'fenced_code',      # Fenced code blocks
-    'tables',           # Table support
-    'attr_list',        # Attribute lists
-    'def_list',         # Definition lists
-    'footnotes',        # Footnotes
-    'abbr',             # Abbreviations
-    'codehilite',       # Syntax highlighting for code blocks
-    'smarty'            # Smart quotes, dashes, etc.
-])
 
 # --- Rate Limiting Setup (will be configured after app creation) ---
 # RATELIMIT_ENABLED (default true) lets the test suite and any deployment that

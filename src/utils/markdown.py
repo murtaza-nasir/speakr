@@ -6,12 +6,11 @@ sanitizing HTML to prevent XSS and other security issues.
 """
 
 import re
+import threading
 import markdown
 import bleach
 
-# --- Initialize Markdown Once (Performance Optimization) ---
-# Create a single reusable Markdown instance to avoid reinitializing extensions on every call
-_markdown_instance = markdown.Markdown(extensions=[
+_EXTENSIONS = [
     'fenced_code',      # Fenced code blocks
     'tables',           # Table support
     'attr_list',        # Attribute lists
@@ -20,7 +19,19 @@ _markdown_instance = markdown.Markdown(extensions=[
     'abbr',             # Abbreviations
     'codehilite',       # Syntax highlighting for code blocks
     'smarty'            # Smart quotes, dashes, etc.
-])
+]
+
+# A Markdown instance keeps state while it converts, so one instance shared by
+# the request threads mixed the HTML of concurrent conversions (#442). Each
+# thread builds its own instance once and reuses it.
+_local = threading.local()
+
+
+def _markdown():
+    md = getattr(_local, 'md', None)
+    if md is None:
+        md = _local.md = markdown.Markdown(extensions=_EXTENSIONS)
+    return md
 
 
 def sanitize_html(text):
@@ -123,10 +134,10 @@ def md_to_html(text):
     # Fix list spacing
     processed_text = fix_list_spacing(text)
 
-    # Convert markdown to HTML using the pre-configured singleton instance
-    # Reset the instance to clear any state from previous conversions
-    _markdown_instance.reset()
-    html = _markdown_instance.convert(processed_text)
+    # Reset the thread's instance to clear any state from its previous conversion
+    md = _markdown()
+    md.reset()
+    html = md.convert(processed_text)
 
     # Apply sanitization to the generated HTML
     return _with_auto_direction(sanitize_html(html))
