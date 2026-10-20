@@ -1873,7 +1873,11 @@ def save_metadata():
         if 'notes' in data:
             if recording.user_id == current_user.id:
                 # Owner saves to Recording.notes
-                recording.notes = sanitize_html(data['notes']) if data['notes'] else data['notes']
+                # Stored as written: notes and summaries are Markdown, and the
+                # HTML cleaner would turn "> quote" into "&gt; quote". They are
+                # cleaned when converted to HTML (md_to_html), the only form ever
+                # shown as HTML.
+                recording.notes = data['notes']
             else:
                 # Shared user saves to personal_notes (requires SharedRecordingState)
                 from src.models.sharing import SharedRecordingState
@@ -1892,7 +1896,7 @@ def save_metadata():
                     )
                     db.session.add(state)
 
-                state.personal_notes = sanitize_html(data['notes']) if data['notes'] else data['notes']
+                state.personal_notes = data['notes']
 
         # Determine if any fields requiring edit permission are being updated
         edit_fields = ['title', 'participants', 'summary', 'meeting_date']
@@ -1911,7 +1915,7 @@ def save_metadata():
             if 'participants' in data:
                 recording.participants = data['participants']
             if 'summary' in data:
-                recording.summary = sanitize_html(data['summary']) if data['summary'] else data['summary']
+                recording.summary = data['summary']
             if 'meeting_date' in data:
                 try:
                     date_str = data['meeting_date']
