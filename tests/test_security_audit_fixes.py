@@ -31,7 +31,7 @@ app.config["WTF_CSRF_ENABLED"] = False
 
 
 def _make_user(suffix):
-    username = f"secfix_{suffix}_{secrets.token_hex(3)}"
+    username = f"sf_{suffix}_{secrets.token_hex(3)}"
     user = User(username=username, email=f"{username}@local.test")
     db.session.add(user)
     db.session.commit()

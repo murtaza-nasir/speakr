@@ -47,7 +47,7 @@ from src.utils.token_auth import hash_token
 def _make_user(prefix, **overrides):
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{prefix}_{suffix}",
+        username=f"{prefix[:11]}_{suffix}",
         email=f"{prefix}_{suffix}@local.test",
         password=overrides.pop('password', 'placeholder-bcrypt-hash'),
         **overrides,

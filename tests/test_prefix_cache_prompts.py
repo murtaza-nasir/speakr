@@ -39,10 +39,10 @@ def app_with_recording():
     from src.models import User, Recording
 
     with app.app_context():
-        user = User.query.filter_by(username="prefix_cache_test_user").first()
+        user = User.query.filter_by(username="prefix_cache_user").first()
         created_user = False
         if not user:
-            user = User(username="prefix_cache_test_user", email="prefix_cache_test@local.test")
+            user = User(username="prefix_cache_user", email="prefix_cache_test@local.test")
             user.password = "unused"
             db.session.add(user)
             db.session.commit()

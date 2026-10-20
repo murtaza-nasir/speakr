@@ -57,7 +57,7 @@ def setup_recording(*, owner_hotwords=None, owner_prompt=None,
     """Create a user, recording, optional tag, optional folder, and any default values."""
     suffix = uuid.uuid4().hex[:10]
     user = User(
-        username=f"reprocess_test_{suffix}",
+        username=f"reproc_{suffix}",
         email=f"reprocess_test_{suffix}@test.local",
         password="x",  # column is just a hash string; auth isn't exercised in this test
     )
@@ -220,7 +220,7 @@ def cleanup_test_users():
     user-management screens.
     """
     with app.app_context():
-        for u in User.query.filter(User.username.like('reprocess_test_%')).all():
+        for u in User.query.filter(User.username.like('reproc_%')).all():
             db.session.delete(u)
         db.session.commit()
 

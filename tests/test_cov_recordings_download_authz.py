@@ -29,7 +29,7 @@ app.config["WTF_CSRF_ENABLED"] = False
 
 def _mk_user(prefix):
     s = uuid.uuid4().hex[:8]
-    u = User(username=f"{prefix}_{s}", email=f"{prefix}_{s}@example.test", password="x")
+    u = User(username=f"{prefix[:11]}_{s}", email=f"{prefix}_{s}@example.test", password="x")
     db.session.add(u)
     db.session.commit()
     return u

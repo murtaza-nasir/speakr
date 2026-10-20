@@ -22,7 +22,12 @@ import tempfile
 # connections / app contexts, which an in-memory SQLite DB would not share.
 _TEST_DIR = tempfile.mkdtemp(prefix="speakr_pytest_")
 _TEST_DB_PATH = os.path.join(_TEST_DIR, "test.db")
-os.environ["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{_TEST_DB_PATH}"
+# PYTEST_DATABASE_URI runs the suite against another database, such as the
+# PostgreSQL service of the CI job. That database must be empty and is used
+# only by the tests.
+os.environ["SQLALCHEMY_DATABASE_URI"] = (
+    os.environ.get("PYTEST_DATABASE_URI") or f"sqlite:///{_TEST_DB_PATH}"
+)
 
 # The app os.makedirs(UPLOAD_FOLDER) at import time; default is /data/uploads
 # which isn't writable in CI / outside Docker. Point it at the temp dir.

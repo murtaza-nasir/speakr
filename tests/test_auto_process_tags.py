@@ -322,7 +322,7 @@ class TestTagAutoProcessAPI(unittest.TestCase):
 class TestFileMonitorTagSubdirs(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
-        _drop_synthetic_users('autotest_monitor_user')
+        _drop_synthetic_users('autotest_monitor')
 
 
     """Test file monitor tag subdirectory scanning."""
@@ -332,10 +332,10 @@ class TestFileMonitorTagSubdirs(unittest.TestCase):
         self.app_context.push()
         self.temp_dir = tempfile.mkdtemp()
 
-        self.user = User.query.filter_by(username='autotest_monitor_user').first()
+        self.user = User.query.filter_by(username='autotest_monitor').first()
         if not self.user:
             self.user = User(
-                username='autotest_monitor_user',
+                username='autotest_monitor',
                 email='autotest_monitor@test.com',
                 password='fakehash',
                 is_admin=True

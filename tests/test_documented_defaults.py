@@ -217,7 +217,7 @@ def _drain(recording_ids):
 
 
 def _cleanup(user_ids):
-    from src.models import SpeakerVoiceSample, Speaker
+    from src.models import SpeakerVoiceSample, Speaker, TranscriptionUsage
     from src.models.upload_join import UploadJoinPart
     rec_ids = [r.id for r in Recording.query.filter(Recording.user_id.in_(user_ids)).all()]
     if rec_ids:
@@ -227,6 +227,7 @@ def _cleanup(user_ids):
     if rec_ids:
         Recording.query.filter(Recording.id.in_(rec_ids)).delete(synchronize_session=False)
     Speaker.query.filter(Speaker.user_id.in_(user_ids)).delete(synchronize_session=False)
+    TranscriptionUsage.query.filter(TranscriptionUsage.user_id.in_(user_ids)).delete(synchronize_session=False)
     User.query.filter(User.id.in_(user_ids)).delete(synchronize_session=False)
     db.session.commit()
 

@@ -80,7 +80,7 @@ def _setup_user(prefix, can_share_publicly=True):
     context closes)."""
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{prefix}_{suffix}",
+        username=f"{prefix[:11]}_{suffix}",
         email=f"{prefix}_{suffix}@local.test",
         password="x",
         can_share_publicly=can_share_publicly,

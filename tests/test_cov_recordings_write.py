@@ -40,7 +40,7 @@ app.config["WTF_CSRF_ENABLED"] = False
 def _mk_user(prefix="up"):
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{prefix}_{suffix}",
+        username=f"{prefix[:11]}_{suffix}",
         email=f"{prefix}_{suffix}@local.test",
         password="x",
     )

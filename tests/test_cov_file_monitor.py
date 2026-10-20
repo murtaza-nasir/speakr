@@ -259,7 +259,7 @@ class TestModeDispatch(unittest.TestCase):
         self.ctx = app.app_context()
         self.ctx.push()
         self.temp_dir = tempfile.mkdtemp()
-        self.username = _uniq('cov_fm_dispatch')
+        self.username = _uniq('fm_dispatch')
         self.user = User(
             username=self.username,
             email=f'{self.username}@test.com',
@@ -428,8 +428,8 @@ class TestAdminUserSelection(unittest.TestCase):
         self.ctx = app.app_context()
         self.ctx.push()
         self.temp_dir = tempfile.mkdtemp()
-        self.admin_username = _uniq('cov_fm_admin')
-        self.normal_username = _uniq('cov_fm_normal')
+        self.admin_username = _uniq('fm_admin')
+        self.normal_username = _uniq('fm_normal')
         self.admin = User(
             username=self.admin_username,
             email=f'{self.admin_username}@test.com',
@@ -495,7 +495,7 @@ class TestProcessFile(unittest.TestCase):
         self.ctx.push()
         self.temp_dir = tempfile.mkdtemp()
         self.staging_dir = tempfile.mkdtemp()
-        self.username = _uniq('cov_fm_proc')
+        self.username = _uniq('fm_proc')
         self.user = User(
             username=self.username,
             email=f'{self.username}@test.com',
@@ -873,7 +873,7 @@ class TestModuleHelpers(unittest.TestCase):
         # user<id>), plus a tag whose user no longer exists (skip) and one with
         # no folder name (skip).
         with app.app_context():
-            username = _uniq('cov_fm_ensure')
+            username = _uniq('fm_ensure')
             user = User(username=username, email=f'{username}@t.com',
                         password='x', is_admin=True)
             db.session.add(user)

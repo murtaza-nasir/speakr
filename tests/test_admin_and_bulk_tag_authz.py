@@ -21,7 +21,7 @@ app.config['WTF_CSRF_ENABLED'] = False
 
 def _user(prefix):
     s = uuid.uuid4().hex[:8]
-    u = User(username=f'{prefix}_{s}', email=f'{prefix}_{s}@local.test',
+    u = User(username=f'{prefix[:11]}_{s}', email=f'{prefix}_{s}@local.test',
              password=bcrypt.generate_password_hash('Passw0rd!').decode())
     db.session.add(u)
     db.session.commit()

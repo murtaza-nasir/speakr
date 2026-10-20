@@ -22,7 +22,7 @@ app.config["WTF_CSRF_ENABLED"] = False
 def _setup_user(username_prefix, **overrides):
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{username_prefix}_{suffix}",
+        username=f"{username_prefix[:11]}_{suffix}",
         email=f"{username_prefix}_{suffix}@local.test",
         password="x",
         **overrides,

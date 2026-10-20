@@ -52,7 +52,7 @@ SAMPLE_EMBEDDINGS = json.dumps({
 
 def _get_or_create_test_user(suffix=""):
     """Get or create a test user. Returns (user, created_bool)."""
-    username = f"speaker_test_user{suffix}"
+    username = f"spk_test{suffix}"
     user = User.query.filter_by(username=username).first()
     created = False
     if not user:

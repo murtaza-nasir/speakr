@@ -333,6 +333,9 @@ def teardown_module(module):
             for r in Recording.query.filter_by(user_id=u.id).all():
                 RecordingTag.query.filter_by(recording_id=r.id).delete()
                 db.session.delete(r)
+            tag_ids = [t.id for t in Tag.query.filter_by(user_id=u.id).all()]
+            if tag_ids:
+                RecordingTag.query.filter(RecordingTag.tag_id.in_(tag_ids)).delete(synchronize_session=False)
             Tag.query.filter_by(user_id=u.id).delete()
             GroupMembership.query.filter_by(user_id=u.id).delete()
             db.session.delete(u)

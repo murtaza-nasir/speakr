@@ -144,7 +144,7 @@ _PREFIX = "covrecread"
 
 
 def make_user():
-    suffix = uuid.uuid4().hex[:10]
+    suffix = uuid.uuid4().hex[:9]
     user = User(
         username=f"{_PREFIX}_{suffix}",
         email=f"{_PREFIX}_{suffix}@test.local",

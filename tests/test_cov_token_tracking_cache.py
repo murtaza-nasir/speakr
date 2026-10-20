@@ -21,7 +21,7 @@ from src.services.token_tracking import token_tracker
 @pytest.fixture
 def isolated_user():
     with app.app_context():
-        user = User(username="cache_track_test_user", email="cache_track_test@local.test")
+        user = User(username="cache_track_user", email="cache_track_test@local.test")
         user.password = "unused"
         db.session.add(user)
         db.session.commit()
