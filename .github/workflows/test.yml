@@ -14,6 +14,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default; a job that needs more declares it
+permissions:
+  contents: read
+
 jobs:
   python-tests:
     runs-on: ubuntu-latest
@@ -35,10 +39,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: pip
@@ -47,7 +50,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest pytest-cov
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov
 
       - name: Build the Tailwind stylesheet as the image build does
         run: scripts/build_css.sh
@@ -73,17 +76,16 @@ jobs:
 
     steps:
       - name: Checkout Speakr
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Checkout whisperx-asr-service
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           repository: murtaza-nasir/whisperx-asr-service
           ref: ${{ env.WHISPERX_REF }}
           path: whisperx
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: pip
@@ -93,7 +95,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt pytest
+          pip install --require-hashes --no-deps -r requirements.lock && pip install pytest
           python -m venv /tmp/wxv
           /tmp/wxv/bin/pip install -r whisperx/tests/requirements-ci.txt
 
@@ -121,6 +123,15 @@ jobs:
         if: always()
         run: tail -n 200 /tmp/whisperx.log || true
 
+  lock-check:
+    # The lock files pin every package with its hashes; they must match
+    # requirements.txt and requirements-embeddings.txt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Lock files match the requirements
+        run: scripts/lock-requirements.sh --check
+
   browser-smoke:
     # Opens every page in headless Chromium and fails on failed requests,
     # JavaScript errors, leftover template text, or a header whose user menu
@@ -132,16 +143,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest playwright
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest playwright
 
       - name: Download vendor files as the image build does
         run: PRODUCTION=1 python scripts/download_offline_deps.py
@@ -173,10 +183,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           # No npm cache: package-lock.json is gitignored in this repo, so it's

@@ -1,19 +1,32 @@
 # Dependency updates (#434), checked once a month. Pull requests for security
 # advisories are enabled separately, under Settings, Code security.
+#
+# A release is proposed only after it has been public for a week (cooldown):
+# most malicious releases are found and withdrawn within days. Dependabot
+# updates requirements.txt; the lock-check job then fails until the lock
+# files are regenerated with scripts/lock-requirements.sh, so every new
+# version is reviewed before it is locked. Actions are pinned by commit and
+# the base image by digest; Dependabot updates both.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 2
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 2
