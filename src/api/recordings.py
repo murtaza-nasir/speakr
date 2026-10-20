@@ -1746,8 +1746,9 @@ def get_recordings_paginated():
             # Default: sort by created_at (upload/processing date)
             stmt = stmt.order_by(Recording.created_at.desc())
 
-        # Get total count for pagination info
-        count_stmt = select(db.func.count()).select_from(stmt.subquery())
+        # Get total count for pagination info; the order does not change the
+        # count, so it is left out of the counting query (D#441)
+        count_stmt = select(db.func.count()).select_from(stmt.order_by(None).subquery())
         total_count = db.session.execute(count_stmt).scalar()
 
         # Apply pagination

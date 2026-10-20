@@ -273,6 +273,9 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
             app.logger.info("Added upload_idempotency_key column to recording table")
         create_index_if_not_exists(engine, 'ix_recording_user_idem', 'recording', 'user_id, upload_idempotency_key')
+        # Chunks are read and deleted by recording, in order (D#441)
+        create_index_if_not_exists(engine, 'ix_transcript_chunk_recording', 'transcript_chunk',
+                                   'recording_id, chunk_index')
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):

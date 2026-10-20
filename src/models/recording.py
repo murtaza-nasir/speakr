@@ -520,6 +520,8 @@ class TranscriptChunk(db.Model):
     # Composite index for efficient speaker name lookups scoped to user
     __table_args__ = (
         db.Index('idx_user_speaker_name', 'user_id', 'speaker_name'),
+        # Chunks are read and deleted by recording, in order (D#441)
+        db.Index('ix_transcript_chunk_recording', 'recording_id', 'chunk_index'),
     )
 
     # Relationships
