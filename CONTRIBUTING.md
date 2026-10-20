@@ -135,8 +135,22 @@ python -m pytest -q tests/test_migration_compatibility.py tests/test_upgrade_pat
 
 # and against a real PostgreSQL, which the tests skip without one
 docker compose -f docker-compose.postgres.yml up -d postgres
-TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr python -m pytest -q tests/
+TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr python -m pytest -q \
+    tests/test_postgres_migrations.py tests/test_migration_drop_not_null.py
 ```
+
+The whole suite also runs on PostgreSQL in CI (`python-tests-postgres`). To run it locally,
+create an empty database used only by the tests and pass it in `PYTEST_DATABASE_URI`:
+
+```bash
+docker compose -f docker-compose.postgres.yml exec postgres createdb -U speakr speakr_suite
+PYTEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr_suite python -m pytest -q tests/
+```
+
+`TEST_DATABASE_URI` is read only by the migration tests, which drop every table when they
+finish, so the two variables point at different databases. PostgreSQL enforces what SQLite
+does not: test data has to fit the columns (a username holds at most 20 characters), and
+a test that cleans up deletes the rows that refer to a recording, tag or user before it.
 
 These run in CI, and the pre-commit hook runs them whenever you touch `src/init_db.py`,
 `src/utils/database.py` or `src/models/`.

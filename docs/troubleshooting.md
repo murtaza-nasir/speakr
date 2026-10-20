@@ -52,6 +52,8 @@ When recordings stay in "pending" or "queued" status indefinitely, check these c
 
 ### Transcription Fails Immediately
 
+A failed transcription is shown in place of the transcript, with the cause, a hint and a **Reprocess transcription** button. **Technical details** opens the error message returned by the transcription service; when you report a problem, copy it with the button beside it.
+
 Quick failures usually indicate API authentication problems. Double-check your API keys in the environment file. Remember that OpenAI and OpenRouter use different key formats. OpenAI keys start with "sk-" while OpenRouter keys look different. Ensure you're using the right key for your configured service.
 
 API rate limits or insufficient credits also cause immediate failures. Log into your API provider's dashboard to check your usage and limits. Some API plans have restrictive rate limits that Speakr might exceed with large files.

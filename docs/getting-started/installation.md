@@ -564,10 +564,15 @@ images, and connections may use.
 
 ### Reverse-proxy hops
 
-`TRUSTED_PROXY_HOPS` (default `1`) controls how many `X-Forwarded-For` /
-`X-Forwarded-Proto` hops are trusted for client-IP and HTTPS detection. Set it
-to the actual number of proxies in front of the app so rate limiting and HSTS
-behave correctly and forwarded headers cannot be spoofed.
+`TRUSTED_PROXY_HOPS` (default `1`) is the number of proxies in front of the app
+whose `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` and
+`X-Forwarded-Prefix` headers are trusted. These headers give the client address
+(used for rate limiting), HTTPS detection and the host name. Set it to the number
+of proxies in front of Speakr.
+
+When Speakr is reachable directly, without a proxy, set `TRUSTED_PROXY_HOPS=0`
+so that these headers cannot be forged, and set `APP_BASE_URL` so that the links
+in password-reset and verification emails always use your address.
 
 ## Advanced Deployment Scenarios
 

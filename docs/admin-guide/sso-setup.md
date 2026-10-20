@@ -90,6 +90,10 @@ The claims may live in the ID token or at the UserInfo endpoint; both work. When
 - If `SSO_AUTO_REGISTER=false`, only existing users with a linked SSO subject can sign in.
 - Email domain allowlist is enforced only when an email is present.
 
+## Staying signed in
+
+A **Remember me** option is shown below the SSO button on the sign-in page. When it is ticked, the sign-in lasts `REMEMBER_COOKIE_DAYS` days (default 30); otherwise it ends when the browser is closed. Before v0.10.15, every SSO sign-in was remembered for a year.
+
 ## Disabling password login
 
 Set `SSO_DISABLE_PASSWORD_LOGIN=true` to enforce SSO-only authentication for regular users. When enabled:
