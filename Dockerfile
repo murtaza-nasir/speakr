@@ -3,7 +3,7 @@
 ###############################################################################
 # The base image is pinned by digest, so a changed image under the same tag is
 # never used unnoticed; Dependabot proposes the update when the tag moves.
-FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS builder
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS builder
 
 ARG PRODUCTION=0
 ARG LIGHTWEIGHT=0
@@ -44,7 +44,7 @@ RUN PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
 # (read the new values from the release's checksums.sha256). BtbN binaries nest
 # under bin/, hence the adjusted move paths.
 ###############################################################################
-FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS ffmpeg-stage
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS ffmpeg-stage
 
 ARG BTBN_TAG=autobuild-2026-10-13-13-05
 ARG FFMPEG_VER=n8.1.3-18-g46d899d7a0
@@ -75,7 +75,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
 # binary's SHA-256 is verified; scripts/build_css.sh holds the same pin for
 # local builds, and both are updated together.
 ###############################################################################
-FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS css-stage
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS css-stage
 
 ARG TAILWIND_VERSION=v3.4.19
 ARG TAILWIND_SHA256_amd64=4af3198c015616ea7d6617974ec3d70d987ecc00c1ca8463b0a30fd65cc7c06e
@@ -103,7 +103,7 @@ RUN tailwindcss -c tailwind.config.js -i static/css/tailwind.input.css -o static
 ###############################################################################
 # Stage 4: Runtime — lean final image with only what's needed
 ###############################################################################
-FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
 
 WORKDIR /app
 
