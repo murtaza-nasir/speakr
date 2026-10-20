@@ -26,7 +26,7 @@ import time as time_mod
 from datetime import datetime, time as dtime
 
 from src.database import db
-from src.models import Recording, RecordingTag, Tag, User
+from src.models import Folder, Recording, RecordingTag, Tag, User
 from src.services.embeddings import (
     get_accessible_recording_ids,
     semantic_search_chunks,
@@ -128,6 +128,8 @@ def resolve_allowed_recording_ids(user_id, filters):
     if filters.get('tag_ids'):
         q = q.join(RecordingTag, Recording.id == RecordingTag.recording_id) \
              .filter(RecordingTag.tag_id.in_(filters['tag_ids']))
+    if filters.get('folder_ids'):
+        q = q.filter(Recording.folder_id.in_(filters['folder_ids']))
     if filters.get('speaker_names'):
         q = q.filter(db.or_(*[
             Recording.participants.ilike(f'%{name}%')
@@ -824,6 +826,9 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         if f.get('tag_ids'):
             names = [t.name for t in Tag.query.filter(Tag.id.in_(f['tag_ids'])).all()]
             filter_bits.append(f"tags: {', '.join(names)}")
+        if f.get('folder_ids'):
+            names = [x.name for x in Folder.query.filter(Folder.id.in_(f['folder_ids'])).all()]
+            filter_bits.append(f"folders: {', '.join(names)}")
         if f.get('speaker_names'):
             filter_bits.append(f"speakers: {', '.join(f['speaker_names'])}")
         if f.get('date_from') or f.get('date_to'):

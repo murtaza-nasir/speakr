@@ -3218,8 +3218,8 @@ def chat_with_recording(recording_id):
 def inquire_v1():
     """Ask a question across recordings (mailr spec G9).
 
-    Body: question, filters {recording_ids, tag_ids, speakers, date_from,
-    date_to}, scope (own|shared|all), mode (rag|agent|auto), stream, history.
+    Body: question, filters {recording_ids, tag_ids, folder_ids, speakers,
+    date_from, date_to}, scope (own|shared|all), mode (rag|agent|auto), stream, history.
     """
     import re as _re
     from flask import Response, stream_with_context
@@ -3256,6 +3256,7 @@ def inquire_v1():
         'message_history': body.get('history') or [],
         'filter_recording_ids': allowed,
         'filter_tags': filters.get('tag_ids') or [],
+        'filter_folders': filters.get('folder_ids') or [],
         'filter_speakers': filters.get('speakers') or [],
         'filter_date_from': filters.get('date_from'),
         'filter_date_to': filters.get('date_to'),

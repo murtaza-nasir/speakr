@@ -1123,6 +1123,7 @@
     "placeholderSizeMB": "Enter size in MB",
     "searchSpeakers": "Search speakers...",
     "searchTags": "Search tags...",
+    "searchFolders": "Search folders...",
     "seconds": "Seconds",
     "shareNotes": "Share Notes",
     "shareSummary": "Share Summary",
@@ -1369,7 +1370,9 @@
     "speakers": "Speakers",
     "speakersCount": "speakers",
     "tags": "Tags",
+    "folders": "Folders",
     "tagsCount": "tags",
+    "foldersCount": "folders",
     "title": "Inquire",
     "to": "To"
   },

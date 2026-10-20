@@ -637,6 +637,11 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
                     RecordingTag, Recording.id == RecordingTag.recording_id
                 ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
 
+            if filters.get('folder_ids'):
+                # A subquery, so that no second join to Recording is needed (#428)
+                chunks_query = chunks_query.filter(TranscriptChunk.recording_id.in_(
+                    db.session.query(Recording.id).filter(Recording.folder_id.in_(filters['folder_ids']))))
+
             if filters.get('speaker_names'):
                 # Filter by the participants field on the recording.
                 speaker_conditions = [
@@ -804,6 +809,11 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
                 chunks_query = chunks_query.join(
                     RecordingTag, Recording.id == RecordingTag.recording_id
                 ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
+
+            if filters.get('folder_ids'):
+                # A subquery, so that no second join to Recording is needed (#428)
+                chunks_query = chunks_query.filter(TranscriptChunk.recording_id.in_(
+                    db.session.query(Recording.id).filter(Recording.folder_id.in_(filters['folder_ids']))))
 
             if filters.get('speaker_names'):
                 # Filter by the participants field on the recording.

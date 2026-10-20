@@ -1121,6 +1121,7 @@
     "placeholderSizeMB": "Ingrese tamaño en MB",
     "searchSpeakers": "Buscar hablantes...",
     "searchTags": "Buscar etiquetas...",
+    "searchFolders": "Buscar carpetas...",
     "seconds": "Segundos",
     "shareNotes": "Compartir Notas",
     "shareSummary": "Compartir Resumen",
@@ -1369,7 +1370,9 @@
     "speakers": "Oradores",
     "speakersCount": "oradores",
     "tags": "Etiquetas",
+    "folders": "Carpetas",
     "tagsCount": "etiquetas",
+    "foldersCount": "carpetas",
     "title": "Consultar",
     "to": "Hasta"
   },

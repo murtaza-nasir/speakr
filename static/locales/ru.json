@@ -1121,6 +1121,7 @@
     "placeholderSizeMB": "Введите размер в МБ",
     "searchSpeakers": "Поиск спикеров...",
     "searchTags": "Поиск тегов...",
+    "searchFolders": "Поиск папок...",
     "seconds": "Секунды",
     "shareNotes": "Поделиться заметками",
     "shareSummary": "Поделиться резюме",
@@ -1369,7 +1370,9 @@
     "speakers": "Спикеры",
     "speakersCount": "спикеров",
     "tags": "Теги",
+    "folders": "Папки",
     "tagsCount": "тегов",
+    "foldersCount": "папок",
     "title": "Inquire",
     "to": "По"
   },

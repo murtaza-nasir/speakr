@@ -1410,7 +1410,7 @@ Answers a question from the recordings you can read, with Inquire's search (and 
 ```json
 {
   "question": "What did we decide about the course redesign?",
-  "filters": {"recording_ids": [412, 398], "tag_ids": [], "speakers": [], "date_from": "2026-09-01", "date_to": null},
+  "filters": {"recording_ids": [412, 398], "tag_ids": [], "folder_ids": [], "speakers": [], "date_from": "2026-09-01", "date_to": null},
   "scope": "own",
   "mode": "auto",
   "stream": false,

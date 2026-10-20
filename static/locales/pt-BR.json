@@ -1121,6 +1121,7 @@
     "placeholderSizeMB": "Digite tamanho em MB",
     "searchSpeakers": "Pesquisar oradores...",
     "searchTags": "Pesquisar etiquetas...",
+    "searchFolders": "Pesquisar pastas...",
     "seconds": "Segundos",
     "shareNotes": "Compartilhar Notas",
     "shareSummary": "Compartilhar Resumo",
@@ -1369,7 +1370,9 @@
     "speakers": "Oradores",
     "speakersCount": "oradores",
     "tags": "Etiquetas",
+    "folders": "Pastas",
     "tagsCount": "etiquetas",
+    "foldersCount": "pastas",
     "title": "Consulta",
     "to": "Para"
   },

@@ -1121,6 +1121,7 @@
     "placeholderSizeMB": "Entrez la taille en Mo",
     "searchSpeakers": "Rechercher des intervenants...",
     "searchTags": "Rechercher des étiquettes...",
+    "searchFolders": "Rechercher des dossiers...",
     "seconds": "Secondes",
     "shareNotes": "Partager les Notes",
     "shareSummary": "Partager le Résumé",
@@ -1369,7 +1370,9 @@
     "speakers": "Intervenants",
     "speakersCount": "intervenants",
     "tags": "Étiquettes",
+    "folders": "Dossiers",
     "tagsCount": "étiquettes",
+    "foldersCount": "dossiers",
     "title": "Enquêter",
     "to": "À"
   },

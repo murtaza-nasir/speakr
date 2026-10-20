@@ -1121,6 +1121,7 @@
     "placeholderSizeMB": "输入大小（MB）",
     "searchSpeakers": "搜索发言人...",
     "searchTags": "搜索标签...",
+    "searchFolders": "搜索文件夹...",
     "seconds": "秒",
     "shareNotes": "分享笔记",
     "shareSummary": "分享摘要",
@@ -1369,7 +1370,9 @@
     "speakers": "发言人",
     "speakersCount": "个发言人",
     "tags": "标签",
+    "folders": "文件夹",
     "tagsCount": "个标签",
+    "foldersCount": "个文件夹",
     "title": "查询",
     "to": "结束日期"
   },

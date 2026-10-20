@@ -300,6 +300,27 @@
                         </div>
                     </div>
 
+                    <!-- Folder Filters (#428), shown when folders are enabled -->
+                    <div v-if="availableFilters.folders.length > 0" class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-folder mr-2" style="color: var(--text-accent);"></i>${ t('inquire.folders') }
+                        </h3>
+                        <input type="text" v-model="folderSearchQuery" :placeholder="t('form.searchFolders')"
+                               class="field mb-2"
+                               style="font-size: var(--fs-meta);">
+                        <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                            <label v-for="folder in filteredFolders" :key="folder.id"
+                                   class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
+                                       class="filter-checkbox">
+                                <span class="ml-2 text-sm font-medium flex-1" :style="{ color: folder.color }">${ folder.name }</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full"
+                                      style="background: var(--bg-tertiary); color: var(--text-muted);">${ folder.recording_count }</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Speaker Filters -->
                     <div class="rounded-md border p-3"
                          style="background: var(--bg-primary); border-color: var(--border-secondary);">
@@ -378,6 +399,12 @@
                                   style="background: var(--bg-accent); color: var(--text-accent);">
                                 <i class="fas fa-tags"></i>
                                 <span>${ inquireFilters.selectedTags.length } ${ t('inquire.tagsCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.selectedFolders.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-folder"></i>
+                                <span>${ inquireFilters.selectedFolders.length } ${ t('inquire.foldersCount') }</span>
                             </span>
                             <span v-if="inquireFilters.selectedSpeakers.length"
                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
@@ -704,6 +731,7 @@
                     // --- State ---
                     const inquireFilters = reactive({
                         selectedTags: [],
+                        selectedFolders: [],
                         selectedSpeakers: [],
                         selectedRecordings: [],
                         dateFrom: null,
@@ -712,6 +740,7 @@
                     
                     // Search queries for filters
                     const tagSearchQuery = ref('');
+                    const folderSearchQuery = ref('');
                     const speakerSearchQuery = ref('');
                     
                     // Use shared components
@@ -741,6 +770,7 @@
                     
                     const availableFilters = reactive({
                         tags: [],
+                        folders: [],
                         speakers: [],
                         recordings: []
                     });
@@ -776,6 +806,7 @@
                     // --- Computed ---
                     const hasActiveFilters = computed(() => {
                         return inquireFilters.selectedTags.length > 0 ||
+                               inquireFilters.selectedFolders.length > 0 ||
                                inquireFilters.selectedSpeakers.length > 0 ||
                                inquireFilters.selectedRecordings.length > 0 ||
                                inquireFilters.dateFrom ||
@@ -789,6 +820,13 @@
                         );
                     });
                     
+                    const filteredFolders = computed(() => {
+                        if (!folderSearchQuery.value) return availableFilters.folders;
+                        return availableFilters.folders.filter(folder =>
+                            folder.name.toLowerCase().includes(folderSearchQuery.value.toLowerCase())
+                        );
+                    });
+
                     const filteredSpeakers = computed(() => {
                         if (!speakerSearchQuery.value) return availableFilters.speakers;
                         return availableFilters.speakers.filter(speaker => 
@@ -821,6 +859,7 @@
                             if (response.ok) {
                                 const data = await response.json();
                                 availableFilters.tags = data.tags;
+                                availableFilters.folders = data.folders || [];
                                 availableFilters.speakers = data.speakers;
                                 availableFilters.recordings = data.recordings;
                             }
@@ -1000,6 +1039,7 @@
                                     message_history: sentHistory,
                                     conversation_memory: memoryState.memory || undefined,
                                     filter_tags: inquireFilters.selectedTags,
+                                    filter_folders: inquireFilters.selectedFolders,
                                     filter_speakers: inquireFilters.selectedSpeakers,
                                     filter_recording_ids: inquireFilters.selectedRecordings,
                                     filter_date_from: inquireFilters.dateFrom,
@@ -1134,6 +1174,7 @@
 
                     const clearInquireFilters = () => {
                         inquireFilters.selectedTags = [];
+                        inquireFilters.selectedFolders = [];
                         inquireFilters.selectedSpeakers = [];
                         inquireFilters.selectedRecordings = [];
                         inquireFilters.dateFrom = null;
@@ -1299,6 +1340,7 @@
                         chatProcessingStatus,
                         showProcessingStatus,
                         tagSearchQuery,
+                        folderSearchQuery,
                         speakerSearchQuery,
                         
                         // Dark Mode
@@ -1326,6 +1368,7 @@
                         // Computed
                         hasActiveFilters,
                         filteredTags,
+                        filteredFolders,
                         filteredSpeakers,
                         
                         // Functions

@@ -139,6 +139,8 @@ def inquire_search():
         filters = {}
         if data.get('filter_tags'):
             filters['tag_ids'] = data['filter_tags']
+        if data.get('filter_folders'):
+            filters['folder_ids'] = data['filter_folders']
         if data.get('filter_speakers'):
             filters['speaker_names'] = data['filter_speakers']
         if data.get('filter_recording_ids'):
@@ -173,7 +175,7 @@ def inquire_stream(user, data, mode='auto'):
     """The Inquire answer as an SSE generator, for the web route and API v1.
 
     data: message, message_history, conversation_memory, filter_tags,
-    filter_speakers, filter_recording_ids, filter_date_from, filter_date_to.
+    filter_folders, filter_speakers, filter_recording_ids, filter_date_from, filter_date_to.
     mode: 'auto' (the agent when ENABLE_INQUIRE_AGENT is on), 'rag' or
     'agent' (the caller checks that the agent is on).
     """
@@ -183,6 +185,8 @@ def inquire_stream(user, data, mode='auto'):
     filters = {}
     if data.get('filter_tags'):
         filters['tag_ids'] = data['filter_tags']
+    if data.get('filter_folders'):
+        filters['folder_ids'] = data['filter_folders']
     if data.get('filter_speakers'):
         filters['speaker_names'] = data['filter_speakers']
     if data.get('filter_recording_ids'):
@@ -571,6 +575,9 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 if data.get('filter_tags'):
                     tag_names = [tag.name for tag in Tag.query.filter(Tag.id.in_(data['filter_tags'])).all()]
                     filter_description.append(f"tags: {', '.join(tag_names)}")
+                if data.get('filter_folders'):
+                    folder_names = [f.name for f in Folder.query.filter(Folder.id.in_(data['filter_folders'])).all()]
+                    filter_description.append(f"folders: {', '.join(folder_names)}")
             if data.get('filter_speakers'):
                 filter_description.append(f"speakers: {', '.join(data['filter_speakers'])}")
             if data.get('filter_date_from') or data.get('filter_date_to'):
@@ -902,8 +909,20 @@ def get_available_filters():
             Recording.status == 'COMPLETED'
         ).order_by(Recording.created_at.desc()).all()
 
+        # Folders (#428): the user's own and those of their groups, when the
+        # feature is on
+        folders = []
+        if SystemSetting.get_setting('enable_folders', False):
+            folders = Folder.query.filter_by(user_id=current_user.id, group_id=None).all()
+            if group_ids:
+                folders += Folder.query.filter(Folder.group_id.in_(group_ids)).all()
+            folders.sort(key=lambda f: f.name.lower())
+
         return jsonify({
             'tags': [tag.to_dict() for tag in all_tags],
+            'folders': [{'id': f.id, 'name': f.name, 'color': f.color,
+                         'group_name': f.group.name if f.group else None,
+                         'recording_count': len(f.recordings) if f.recordings else 0} for f in folders],
             'speakers': speaker_names,
             'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None} for r in recordings]
         })
