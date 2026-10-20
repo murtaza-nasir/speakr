@@ -39,3 +39,11 @@ def test_titles_fit_the_title_column():
     assert all(len(t) == 200 for t in placeholder_titles(long_name))
     assert placeholder_title(long_name) in placeholder_titles(long_name)
     assert len(resolve_upload_title("y" * 300, long_name)) == 200
+
+
+def test_any_title_is_cut_to_the_column_length():
+    from src.models import Recording
+    assert len(Recording(title="t" * 400).title) == 200
+    rec = Recording(title="short")
+    rec.title = "u" * 250
+    assert len(rec.title) == 200
