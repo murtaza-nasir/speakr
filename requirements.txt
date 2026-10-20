@@ -6,7 +6,7 @@ flask-wtf==1.2.2
 flask-bcrypt==1.0.1
 Flask-Limiter==3.5.0
 flask-openapi3>=3.0.0
-pydantic>=2.0.0
+pydantic>=2.14.1
 # authlib 1.7.x ships an OAuth client change that mis-handles the
 # client_id claim placement for some OpenID Connect providers, causing
 # `unsupported_header: Unsupported {'client_id'} in header` on the SSO
