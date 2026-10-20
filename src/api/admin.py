@@ -207,6 +207,11 @@ def admin_add_user():
         if field not in data:
             return jsonify({'error': f'Missing required field: {field}'}), 400
     
+    # The username column holds 20 characters; PostgreSQL refuses a longer
+    # value, which gave a 500 instead of this message
+    if not 2 <= len(str(data['username']).strip()) <= 20:
+        return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
+
     # Check if username or email already exists
     if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'Username already exists'}), 400
@@ -272,6 +277,8 @@ def admin_update_user(user_id):
     
     # Update user fields
     if 'username' in data and data['username'] != user.username:
+        if not 2 <= len(str(data['username']).strip()) <= 20:
+            return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
         # Check if username already exists
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already exists'}), 400

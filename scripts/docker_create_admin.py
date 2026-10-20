@@ -60,6 +60,11 @@ def create_admin_user_from_env():
         print(f"Error: Invalid email: {str(e)}")
         sys.exit(1)
     
+    # The username column holds 20 characters
+    if not 2 <= len(username) <= 20:
+        print("Error: ADMIN_USERNAME must be 2 to 20 characters long.")
+        sys.exit(1)
+
     # Validate password
     if len(password) < 8:
         print("Error: Password must be at least 8 characters long.")
