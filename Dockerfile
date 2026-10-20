@@ -1,7 +1,9 @@
 ###############################################################################
 # Stage 1: Builder — install Python deps and download vendor assets
 ###############################################################################
-FROM python:3.11-slim AS builder
+# The base image is pinned by digest, so a changed image under the same tag is
+# never used unnoticed; Dependabot proposes the update when the tag moves.
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS builder
 
 ARG PRODUCTION=0
 ARG LIGHTWEIGHT=0
@@ -12,18 +14,18 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt requirements-embeddings.txt constraints.txt ./
-RUN pip install --no-cache-dir --prefix=/install -c constraints.txt -r requirements.txt && \
-    if [ "$LIGHTWEIGHT" = "0" ]; then \
-        pip install --no-cache-dir --prefix=/install -c constraints.txt -r requirements-embeddings.txt; \
-    fi
+# Install Python dependencies from the lock files: every package, including
+# the dependencies of dependencies, at an exact version and checked against
+# its hash, so a new or changed release on PyPI never reaches an image
+# unnoticed. Regenerate them with scripts/lock-requirements.sh.
+COPY requirements.lock requirements-embeddings.lock ./
+RUN if [ "$LIGHTWEIGHT" = "0" ]; then LOCK=requirements-embeddings.lock; else LOCK=requirements.lock; fi && \
+    pip install --no-cache-dir --prefix=/install --require-hashes --no-deps -r "$LOCK"
 
 # Download vendor assets (JS/CSS/fonts)
 RUN mkdir -p /app/static/vendor
 COPY scripts/download_offline_deps.py scripts/
-RUN pip install --no-cache-dir requests && \
-    PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
+RUN PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
     echo "✓ Vendor dependencies downloaded successfully"
 
 ###############################################################################
@@ -42,12 +44,12 @@ RUN pip install --no-cache-dir requests && \
 # (read the new values from the release's checksums.sha256). BtbN binaries nest
 # under bin/, hence the adjusted move paths.
 ###############################################################################
-FROM python:3.11-slim AS ffmpeg-stage
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS ffmpeg-stage
 
-ARG BTBN_TAG=autobuild-2026-09-28-13-06
-ARG FFMPEG_VER=n8.1.3-6-gff48edd8b2
-ARG FFMPEG_SHA256_amd64=591f8541e5d041cc3637a74de3bd9b4d020e9a7b7e891e590e440935a4933138
-ARG FFMPEG_SHA256_arm64=93201f43109ab8fbef6858d78cb8061b72b074c5cdf9cb4cad4feba18a6b7c4b
+ARG BTBN_TAG=autobuild-2026-10-13-13-05
+ARG FFMPEG_VER=n8.1.3-18-g46d899d7a0
+ARG FFMPEG_SHA256_amd64=b3506f47a71a2f8cff8c0775112bf02a8a49035e3994232aa5f218058328e0e7
+ARG FFMPEG_SHA256_arm64=bb5477906594f7b02f84fedaa2dc3d503bb14166fc4acb2f3175be0488967e43
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
     && rm -rf /var/lib/apt/lists/* \
@@ -73,7 +75,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
 # binary's SHA-256 is verified; scripts/build_css.sh holds the same pin for
 # local builds, and both are updated together.
 ###############################################################################
-FROM python:3.11-slim AS css-stage
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS css-stage
 
 ARG TAILWIND_VERSION=v3.4.19
 ARG TAILWIND_SHA256_amd64=4af3198c015616ea7d6617974ec3d70d987ecc00c1ca8463b0a30fd65cc7c06e
@@ -101,7 +103,7 @@ RUN tailwindcss -c tailwind.config.js -i static/css/tailwind.input.css -o static
 ###############################################################################
 # Stage 4: Runtime — lean final image with only what's needed
 ###############################################################################
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce
 
 WORKDIR /app
 

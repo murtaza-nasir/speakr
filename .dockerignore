@@ -63,3 +63,7 @@ tests/
 !requirements*.txt
 LICENSE
 CLAUDE.md
+
+# Vendor files are downloaded and checksum-verified during the build; a local
+# copy must never replace them
+static/vendor/
