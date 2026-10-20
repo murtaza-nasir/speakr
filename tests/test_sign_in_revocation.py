@@ -55,7 +55,14 @@ def test_cookie_settings():
     assert app.config["REMEMBER_COOKIE_HTTPONLY"] is True
     assert app.config["REMEMBER_COOKIE_SECURE"] == app.config["SESSION_COOKIE_SECURE"]
     assert app.config["REMEMBER_COOKIE_DURATION"] == timedelta(days=30)
-    assert app.config["REMEMBER_COOKIE_REFRESH_EACH_REQUEST"] is True
+    assert not app.config.get("REMEMBER_COOKIE_REFRESH_EACH_REQUEST")
+
+
+def test_no_remember_cookie_without_remember_me(user_id):
+    """A signed-in browser that did not ask to be remembered gets no remember-me cookie."""
+    resp = _client(str(user_id)).get("/account")
+    name = app.config.get("REMEMBER_COOKIE_NAME", "remember_token")
+    assert not [c for c in resp.headers.getlist("Set-Cookie") if c.startswith(name + "=")]
 
 
 def test_existing_plain_id_sign_in_stays_valid(user_id):

@@ -304,6 +304,8 @@ def sso_login():
         session['sso_next'] = next_url
     else:
         session.pop('sso_next', None)
+    # "Remember me" on the sign-in page, as for a password sign-in (#437)
+    session['sso_remember'] = request.args.get('remember') == '1'
 
     return oauth.sso.authorize_redirect(redirect_uri=get_sso_config().get('redirect_uri'))
 
@@ -335,6 +337,7 @@ def sso_callback():
 
     link_user_id = session.pop('sso_link_user_id', None)
     next_url = session.pop('sso_next', None)
+    remember = bool(session.pop('sso_remember', False))
     cfg = get_sso_config()
 
     if link_user_id:
@@ -368,7 +371,7 @@ def sso_callback():
         flash('Could not complete SSO login. Please try again.', 'danger')
         return redirect(url_for('auth.login'))
 
-    login_user(user, remember=True)
+    login_user(user, remember=remember)
 
     if next_url and is_safe_url(next_url):
         return redirect(next_url)

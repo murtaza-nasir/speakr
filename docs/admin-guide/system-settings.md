@@ -188,7 +188,7 @@ If the process that owns the background work is recycled or killed, the replacem
 
 **SESSION_COOKIE_SECURE**: When `true`, the session cookie is sent only over HTTPS. Set this to `true` for any production deployment behind TLS (Nginx Proxy Manager, Caddy, Traefik with a real certificate). Default: `false`, so http://localhost and bare-LAN deployments keep working out of the box. If you turn this on and reach the instance over plain HTTP, the browser will silently drop the cookie and you'll be unable to log in.
 
-**REMEMBER_COOKIE_DAYS**: How long a sign-in with "Remember me" (and every SSO sign-in) lasts without a visit, in days. Each visit starts the period again, so a person who uses Speakr regularly stays signed in. The cookie follows `SESSION_COOKIE_SECURE` and is `SameSite=Lax`. Default: `30`.
+**REMEMBER_COOKIE_DAYS**: How long a sign-in with "Remember me" lasts, in days from the sign-in. The option is on the sign-in page for password and SSO sign-ins; without it, the sign-in ends when the browser is closed. The cookie follows `SESSION_COOKIE_SECURE` and is `SameSite=Lax`. Default: `30`.
 
 When a password is changed, reset by email, or set by an administrator, the account is signed out of every browser. The browser in which the password was changed stays signed in. Sign-ins made before v0.10.15 remain valid until the account's password is next set.
 

@@ -435,8 +435,9 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 # Remember-me cookie (#437). Flask-Login's defaults are a 365-day cookie with
 # no Secure flag and no SameSite attribute. It now follows the session
 # cookie's Secure setting, is SameSite=Lax, and lasts REMEMBER_COOKIE_DAYS
-# (default 30) from the last visit, so a person who keeps using Speakr stays
-# signed in.
+# (default 30) from the sign-in. It is set only when "Remember me" is ticked:
+# REMEMBER_COOKIE_REFRESH_EACH_REQUEST stays off, because with it Flask-Login
+# sets the cookie on every response for every signed-in user.
 app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
@@ -445,7 +446,6 @@ try:
 except ValueError:
     _remember_days = 30
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=_remember_days)
-app.config['REMEMBER_COOKIE_REFRESH_EACH_REQUEST'] = True
 
 # --- Security response headers ---
 # Set at the app level so a deployment WITHOUT a hardening reverse proxy is

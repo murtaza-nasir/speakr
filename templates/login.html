@@ -80,9 +80,15 @@
                 
                 {% if sso_enabled %}
                 <div class="flex flex-col space-y-3 {% if not password_login_disabled %}mb-6{% endif %}">
-                    <a href="{{ url_for('auth.sso_login') }}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                        <i class="fas fa-cloud mr-2"></i> Sign in with {{ sso_provider_name }}
-                    </a>
+                    <form method="GET" action="{{ url_for('auth.sso_login') }}" class="flex flex-col space-y-3">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                            <i class="fas fa-cloud mr-2"></i> Sign in with {{ sso_provider_name }}
+                        </button>
+                        <label class="inline-flex items-center text-sm text-[var(--text-secondary)]">
+                            <input type="checkbox" name="remember" value="1" class="h-4 w-4 text-[var(--text-accent)] focus:ring-[var(--ring-focus)] border-[var(--border-secondary)] rounded">
+                            <span class="ml-2">Remember Me</span>
+                        </label>
+                    </form>
                     {% if not password_login_disabled %}
                     <div class="flex items-center text-xs text-[var(--text-muted)]">
                         <span class="flex-grow border-t border-[var(--border-secondary)]"></span>
