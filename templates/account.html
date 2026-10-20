@@ -798,6 +798,24 @@
                             </div>
                         </div>
 
+                        <!-- Notes in summaries (#440) -->
+                        <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                            <input type="hidden" name="summary_notes_section" value="1">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">
+                                <i class="fas fa-sticky-note mr-2"></i>
+                                <span data-i18n="summaryNotes.title">Notes in Summaries</span>
+                            </h3>
+                            <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="summaryNotes.description">
+                                Your notes on a recording, such as the correct spelling of names, an agenda or text pasted from an email, can be given to the summarization agent as context. The transcript remains the record of what was said.
+                            </p>
+                            <label class="flex items-start space-x-3">
+                                <input type="checkbox" name="summary_include_notes" id="summary_include_notes"
+                                    {% if current_user.summary_include_notes %}checked{% endif %}
+                                    class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="summaryNotes.label">Give the summarization agent my notes</span>
+                            </label>
+                        </div>
+
                         <!-- Event Extraction Settings -->
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">

@@ -477,6 +477,19 @@
     "ctrlSHint": "Ctrl+S 保存",
     "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
   },
+  "findReplace": {
+    "open": "查找和替换 (Ctrl+F)",
+    "find": "查找",
+    "replaceWith": "替换为",
+    "matchCase": "区分大小写",
+    "wholeWord": "全字匹配",
+    "previous": "上一个 (Shift+Enter)",
+    "next": "下一个 (Enter)",
+    "replace": "替换",
+    "replaceAll": "全部替换",
+    "noMatches": "无匹配",
+    "replacedCount": "已替换 {{count}} 处"
+  },
   "audioRemoved": {
     "filterHint": "音频文件已删除的录音；转录文本保留",
     "label": "音频已删除"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "让摘要代理获得时间戳",
     "chatLabel": "让聊天代理获得时间戳",
     "defaultFormat": "默认时间戳格式"
+  },
+  "summaryNotes": {
+    "title": "摘要中的笔记",
+    "description": "您对录音的笔记（例如人名的正确拼写、议程或从邮件中粘贴的文字）可以作为上下文提供给摘要代理。转录文本仍是所说内容的记录。",
+    "label": "将我的笔记提供给摘要代理"
   },
   "toasts": {
     "processingCompleted": "处理完成！",

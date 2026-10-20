@@ -67,6 +67,9 @@ PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
     'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
 ).lower() == 'true'
 
+# Longest notes text given to the summarizer (#440)
+SUMMARY_NOTES_LIMIT = 8000
+
 # Must be byte-identical between the title and summary calls. Keep it short and
 # generic; per-task guidance belongs in the user-message suffix.
 _SHARED_LLM_SYSTEM_MSG = (
@@ -763,6 +766,18 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 context_parts.append(f"Information about the user: {', '.join(user_context_parts)}")
 
         context_section = "Context:\n" + "\n".join(f"- {part}" for part in context_parts)
+
+        # The owner's notes on the recording, when they chose to include them
+        # (#440). The notes add context; the transcript stays the source.
+        if recording.owner and recording.owner.summary_include_notes:
+            owner_notes = (recording.get_user_notes(recording.owner) or '').strip()
+            if owner_notes:
+                context_section += (
+                    "\n\nNotes written by the user about this recording (use them as "
+                    "context, for example for names, spellings and background; the "
+                    "transcript remains the record of what was said):\n"
+                    f'"""\n{owner_notes[:SUMMARY_NOTES_LIMIT]}\n"""'
+                )
 
         if PREFIX_CACHE_OPTIMIZED_PROMPTS:
             # Shared-prefix layout: the system message and the user-message bytes

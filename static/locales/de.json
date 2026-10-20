@@ -477,6 +477,19 @@
     "ctrlSHint": "Strg+S zum Speichern",
     "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)"
   },
+  "findReplace": {
+    "open": "Suchen und ersetzen (Strg+F)",
+    "find": "Suchen",
+    "replaceWith": "Ersetzen durch",
+    "matchCase": "Groß-/Kleinschreibung beachten",
+    "wholeWord": "Ganze Wörter",
+    "previous": "Vorheriger Treffer (Umschalt+Eingabe)",
+    "next": "Nächster Treffer (Eingabe)",
+    "replace": "Ersetzen",
+    "replaceAll": "Alle ersetzen",
+    "noMatches": "Keine Treffer",
+    "replacedCount": "{{count}} ersetzt"
+  },
   "audioRemoved": {
     "filterHint": "Aufnahmen, deren Audiodatei entfernt wurde; das Transkript bleibt erhalten",
     "label": "Audio entfernt"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "Dem Zusammenfassungs-Agenten Zeitstempel geben",
     "chatLabel": "Dem Chat-Agenten Zeitstempel geben",
     "defaultFormat": "Standard-Zeitstempelformat"
+  },
+  "summaryNotes": {
+    "title": "Notizen in Zusammenfassungen",
+    "description": "Ihre Notizen zu einer Aufnahme, etwa die richtige Schreibweise von Namen, eine Tagesordnung oder aus einer E-Mail eingefügter Text, können dem Zusammenfassungsagenten als Kontext übergeben werden. Das Transkript bleibt die Aufzeichnung des Gesagten.",
+    "label": "Meine Notizen an den Zusammenfassungsagenten übergeben"
   },
   "toasts": {
     "processingCompleted": "Verarbeitung abgeschlossen!",

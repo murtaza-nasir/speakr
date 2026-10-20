@@ -477,6 +477,19 @@
     "saveWithoutClosing": "Salvar sem fechar (Ctrl+S)",
     "saved": "Salvo"
   },
+  "findReplace": {
+    "open": "Localizar e substituir (Ctrl+F)",
+    "find": "Localizar",
+    "replaceWith": "Substituir por",
+    "matchCase": "Diferenciar maiúsculas",
+    "wholeWord": "Palavras inteiras",
+    "previous": "Ocorrência anterior (Shift+Enter)",
+    "next": "Próxima ocorrência (Enter)",
+    "replace": "Substituir",
+    "replaceAll": "Substituir tudo",
+    "noMatches": "Nenhuma ocorrência",
+    "replacedCount": "{{count}} substituídas"
+  },
   "audioRemoved": {
     "filterHint": "Gravações cujo arquivo de áudio foi removido; a transcrição é mantida",
     "label": "Áudio removido"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "Dar marcações de tempo ao agente de resumo",
     "chatLabel": "Dar marcações de tempo ao agente de chat",
     "defaultFormat": "Formato de marcação de tempo padrão"
+  },
+  "summaryNotes": {
+    "title": "Notas nos resumos",
+    "description": "Suas notas sobre uma gravação, como a grafia correta de nomes, uma pauta ou um texto colado de um e-mail, podem ser enviadas ao agente de resumo como contexto. A transcrição continua sendo o registro do que foi dito.",
+    "label": "Enviar minhas notas ao agente de resumo"
   },
   "toasts": {
     "processingCompleted": "Processamento concluído!",

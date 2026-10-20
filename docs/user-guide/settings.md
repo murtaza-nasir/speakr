@@ -109,6 +109,10 @@ At the top of the Prompt Options you can control whether the AI receives per-lin
 
 Each toggle has a format dropdown. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout; you can also select any of your saved transcript templates to control exactly how each line is rendered. Both toggles are off by default, which keeps the prompt shorter and avoids spending tokens on timestamps when you do not need them.
 
+### Notes in Summaries
+
+When **Give the summarization agent my notes** is on, your notes on a recording are added to the summary request as context. Notes can hold the correct spelling of names and products, an agenda, or text pasted from an email or a chat thread. The transcript remains the record of what was said. The setting is off by default, applies to summaries generated after it is turned on (regenerate a summary to use it on an existing recording), and uses only your own notes, never those of people a recording is shared with. Up to 8,000 characters of notes are sent.
+
 ### Writing Effective Prompts
 
 Craft prompts based on how you actually use summaries. Do you extract action items for project management? Look for decisions that affect strategy? Track technical details for documentation? Your prompt should request exactly what you need for these next steps.

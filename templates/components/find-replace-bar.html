@@ -1,0 +1,41 @@
+<!-- Find and replace bar of the transcript editors (#440). Included in the
+     segment editor and the plain transcript editor; it acts on whichever
+     one is open. -->
+<div v-if="findReplace.open" class="find-replace-bar" @click.stop>
+    <div class="find-replace-bar__fields">
+        <div class="find-replace-bar__field">
+            <i class="fas fa-search find-replace-bar__icon"></i>
+            <input type="text" data-find-input class="field field--sm" v-model="findReplace.find"
+                   :placeholder="t('findReplace.find')" :aria-label="t('findReplace.find')"
+                   @keydown.enter.exact.prevent="goToMatch(1)"
+                   @keydown.shift.enter.prevent="goToMatch(-1)"
+                   @keydown.esc.stop.prevent="closeFindReplace">
+            <span class="find-replace-bar__count t-meta" aria-live="polite" v-text="findReplaceLabel"></span>
+        </div>
+        <input type="text" class="field field--sm find-replace-bar__replace" v-model="findReplace.replace"
+               :placeholder="t('findReplace.replaceWith')" :aria-label="t('findReplace.replaceWith')"
+               @keydown.enter.prevent="replaceCurrentMatch"
+               @keydown.esc.stop.prevent="closeFindReplace">
+    </div>
+    <div class="find-replace-bar__actions">
+        <button type="button" class="btn btn--icon btn--sm find-replace-toggle" :aria-pressed="findReplace.matchCase ? 'true' : 'false'"
+                @click="findReplace.matchCase = !findReplace.matchCase" :title="t('findReplace.matchCase')">
+            <span class="font-mono text-xs">Aa</span>
+        </button>
+        <button type="button" class="btn btn--icon btn--sm find-replace-toggle" :aria-pressed="findReplace.wholeWord ? 'true' : 'false'"
+                @click="findReplace.wholeWord = !findReplace.wholeWord" :title="t('findReplace.wholeWord')">
+            <span class="font-mono text-xs underline">ab</span>
+        </button>
+        <button type="button" class="btn btn--icon btn--sm" @click="goToMatch(-1)" :disabled="!findReplaceMatches.length" :title="t('findReplace.previous')">
+            <i class="fas fa-chevron-up text-xs"></i>
+        </button>
+        <button type="button" class="btn btn--icon btn--sm" @click="goToMatch(1)" :disabled="!findReplaceMatches.length" :title="t('findReplace.next')">
+            <i class="fas fa-chevron-down text-xs"></i>
+        </button>
+        <button type="button" class="btn btn--ghost btn--sm" @click="replaceCurrentMatch" :disabled="!findReplaceMatches.length" v-text="t('findReplace.replace')"></button>
+        <button type="button" class="btn btn--ghost btn--sm" @click="replaceAllMatches" :disabled="!findReplaceMatches.length" v-text="t('findReplace.replaceAll')"></button>
+        <button type="button" class="btn btn--icon btn--sm" @click="closeFindReplace" :title="t('buttons.close')">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    </div>
+</div>

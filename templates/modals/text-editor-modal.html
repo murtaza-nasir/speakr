@@ -3,12 +3,14 @@
     <div class="modal-panel modal-panel--lg">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editTranscription')"></h3>
+            <button @click="findReplace.open ? closeFindReplace() : openFindReplace()" class="modal-close ml-auto" :title="t('findReplace.open')"><i class="fas fa-search"></i></button>
             <button @click="closeTextEditorModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
+        {% include 'components/find-replace-bar.html' %}
         <div class="modal-body">
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('transcription.title')"></label>
-                <textarea dir="auto" v-model="editingTranscriptionContent" rows="15" class="field font-mono" style="min-height: 320px;"></textarea>
+                <textarea dir="auto" data-transcript-textarea v-model="editingTranscriptionContent" rows="15" class="field font-mono" style="min-height: 320px;"></textarea>
             </div>
         </div>
         <div class="modal-footer">

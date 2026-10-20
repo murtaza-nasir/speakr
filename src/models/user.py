@@ -101,6 +101,9 @@ class User(db.Model, UserMixin):
     summary_include_timestamps = db.Column(db.Boolean, default=False)
     summary_timestamp_template_id = db.Column(db.Integer, db.ForeignKey('transcript_template.id', ondelete='SET NULL'), nullable=True)
     chat_include_timestamps = db.Column(db.Boolean, default=False)
+    # Give the summarizer the owner's notes on the recording (#440). Off by
+    # default, so existing summaries are generated as before.
+    summary_include_notes = db.Column(db.Boolean, default=False)
     chat_timestamp_template_id = db.Column(db.Integer, db.ForeignKey('transcript_template.id', ondelete='SET NULL'), nullable=True)
 
     # UI/display preferences

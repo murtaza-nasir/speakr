@@ -477,6 +477,19 @@
     "ctrlSHint": "Ctrl+S para guardar",
     "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
   },
+  "findReplace": {
+    "open": "Buscar y reemplazar (Ctrl+F)",
+    "find": "Buscar",
+    "replaceWith": "Reemplazar con",
+    "matchCase": "Distinguir mayúsculas",
+    "wholeWord": "Palabras completas",
+    "previous": "Coincidencia anterior (Mayús+Intro)",
+    "next": "Coincidencia siguiente (Intro)",
+    "replace": "Reemplazar",
+    "replaceAll": "Reemplazar todo",
+    "noMatches": "Sin coincidencias",
+    "replacedCount": "{{count}} reemplazadas"
+  },
   "audioRemoved": {
     "filterHint": "Grabaciones cuyo archivo de audio se eliminó; la transcripción se conserva",
     "label": "Audio eliminado"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "Dar marcas de tiempo al agente de resumen",
     "chatLabel": "Dar marcas de tiempo al agente de chat",
     "defaultFormat": "Formato de marca de tiempo predeterminado"
+  },
+  "summaryNotes": {
+    "title": "Notas en los resúmenes",
+    "description": "Sus notas sobre una grabación, como la ortografía correcta de nombres, una agenda o texto pegado de un correo, pueden darse al agente de resúmenes como contexto. La transcripción sigue siendo el registro de lo que se dijo.",
+    "label": "Dar mis notas al agente de resúmenes"
   },
   "toasts": {
     "processingCompleted": "¡Procesamiento completado!",

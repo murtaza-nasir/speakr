@@ -477,6 +477,19 @@
     "ctrlSHint": "Ctrl+S pour enregistrer",
     "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
   },
+  "findReplace": {
+    "open": "Rechercher et remplacer (Ctrl+F)",
+    "find": "Rechercher",
+    "replaceWith": "Remplacer par",
+    "matchCase": "Respecter la casse",
+    "wholeWord": "Mots entiers",
+    "previous": "Occurrence précédente (Maj+Entrée)",
+    "next": "Occurrence suivante (Entrée)",
+    "replace": "Remplacer",
+    "replaceAll": "Tout remplacer",
+    "noMatches": "Aucune occurrence",
+    "replacedCount": "{{count}} remplacée(s)"
+  },
   "audioRemoved": {
     "filterHint": "Enregistrements dont le fichier audio a été supprimé ; la transcription est conservée",
     "label": "Audio supprimé"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "Fournir les horodatages à l'agent de résumé",
     "chatLabel": "Fournir les horodatages à l'agent de chat",
     "defaultFormat": "Format d'horodatage par défaut"
+  },
+  "summaryNotes": {
+    "title": "Notes dans les résumés",
+    "description": "Vos notes sur un enregistrement, comme l'orthographe correcte des noms, un ordre du jour ou un texte copié d'un e-mail, peuvent être transmises à l'agent de résumé comme contexte. La transcription reste la trace de ce qui a été dit.",
+    "label": "Transmettre mes notes à l'agent de résumé"
   },
   "toasts": {
     "processingCompleted": "Traitement terminé !",

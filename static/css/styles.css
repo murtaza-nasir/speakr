@@ -4994,3 +4994,61 @@ select:disabled {
 .usage-meters--stacked .usage-meter { padding-top: 0; padding-bottom: 0; font-size: 10px; line-height: 1.2; gap: 0.3rem; }
 .usage-meters--stacked .usage-meter span { min-width: 2.2rem; text-align: right; font-variant-numeric: tabular-nums; }
 .usage-meters--stacked .usage-meter > div { height: 3px; }
+
+/* Find and replace bar of the transcript editors (#440) */
+.find-replace-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-4);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+.find-replace-bar__fields {
+    display: flex;
+    flex: 1 1 22rem;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+.find-replace-bar__field {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+}
+.find-replace-bar__field .field {
+    padding-left: 1.75rem;
+    padding-right: 4.5rem;
+}
+.find-replace-bar__icon {
+    position: absolute;
+    left: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.find-replace-bar__count {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+}
+.find-replace-bar__replace {
+    flex: 1 1 0;
+    min-width: 0;
+}
+.find-replace-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-1);
+}
+.find-replace-toggle[aria-pressed="true"] {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+}

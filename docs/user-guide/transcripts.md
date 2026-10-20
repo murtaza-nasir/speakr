@@ -58,6 +58,8 @@ The ASR editor presents your transcription as a table of segments, where each ro
 
 **Edit Text Content**: The main content of each utterance can be edited directly in its text field. You can correct transcription errors, fix grammar, add punctuation, or clarify unclear speech while maintaining the segment structure.
 
+**Find and Replace**: Click the search icon in the header of either editor, or press Ctrl+F (Cmd+F on a Mac), to open the find and replace bar. The number of matches is shown as you type. Enter moves to the next match and Shift+Enter to the previous one; **Replace** replaces the selected match, and **Replace all** replaces every match in the transcript text. **Aa** limits the search to the same capitals, and **ab** to whole words. Speaker names are not changed (use the speaker editor for those), and nothing is saved until you save the transcript, so Cancel discards the replacements. After correcting a name throughout, regenerate the summary to carry the correction into it.
+
 **Manage Segments**: Use the trash icon to remove segments that shouldn't be in the transcription (such as false detections or noise). You can also add new segments if the ASR system missed something, positioning them with appropriate timestamps.
 
 The ASR editor maintains the JSON structure of your transcription, which is essential for features like speaker-based search, audio synchronization (clicking on text to jump to that point in the audio), and proper display in bubble view. When you save changes in the ASR editor, the system preserves all timing and speaker information while applying your corrections.

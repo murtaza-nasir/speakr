@@ -477,6 +477,19 @@
     "ctrlSHint": "Ctrl+S to save",
     "saveWithoutClosing": "Save without closing (Ctrl+S)"
   },
+  "findReplace": {
+    "open": "Find and replace (Ctrl+F)",
+    "find": "Find",
+    "replaceWith": "Replace with",
+    "matchCase": "Match case",
+    "wholeWord": "Whole words",
+    "previous": "Previous match (Shift+Enter)",
+    "next": "Next match (Enter)",
+    "replace": "Replace",
+    "replaceAll": "Replace all",
+    "noMatches": "No matches",
+    "replacedCount": "Replaced {{count}}"
+  },
   "audioRemoved": {
     "filterHint": "Recordings whose audio file was removed; the transcript is kept",
     "label": "Audio removed"
@@ -2081,6 +2094,11 @@
     "summaryLabel": "Give the summarization agent timestamps",
     "chatLabel": "Give the chat agent timestamps",
     "defaultFormat": "Default timestamp format"
+  },
+  "summaryNotes": {
+    "title": "Notes in Summaries",
+    "description": "Your notes on a recording, such as the correct spelling of names, an agenda or text pasted from an email, can be given to the summarization agent as context. The transcript remains the record of what was said.",
+    "label": "Give the summarization agent my notes"
   },
   "toasts": {
     "processingCompleted": "Processing completed!",

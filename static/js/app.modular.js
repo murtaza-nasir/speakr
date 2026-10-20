@@ -9,6 +9,7 @@ import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
+import { useFindReplace } from './modules/composables/find-replace.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
@@ -753,6 +754,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const editingRecording = ref(null);
             const editingTranscriptionContent = ref('');
             const editingSegments = ref([]);
+            // Find and replace bar of the transcript editors (#440)
+            const findReplace = reactive({ open: false, find: '', replace: '', matchCase: false, wholeWord: false, current: -1 });
             const availableSpeakers = ref([]);
             const showEditSpeakersModal = ref(false);
             const editingSpeakersList = ref([]);
@@ -1878,7 +1881,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
                 showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
-                editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
+                editingSegments, findReplace, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
                 recordingToShare, shareOptions,
@@ -2609,6 +2612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const modalsComposable = useModals(state, utils);
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
+            const findReplaceComposable = useFindReplace(state, utils);
             const chatComposable = useChat(state, utils);
             const pwaComposable = usePWA(state, utils);
             const notificationsComposable = useNotifications(state, utils);
@@ -4544,6 +4548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...sharingComposable,
                 ...reprocessComposable,
                 ...transcriptionComposable,
+                ...findReplaceComposable,
                 ...speakersComposable,
                 ...speakerModalComposable,
                 ...chatComposable,

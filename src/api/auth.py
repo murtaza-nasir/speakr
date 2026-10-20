@@ -790,6 +790,9 @@ def account():
                 return tpl.id if tpl else None
 
             current_user.summary_include_timestamps = 'summary_include_timestamps' in request.form
+            # Gated on its marker field so another form cannot clear it (#440)
+            if 'summary_notes_section' in request.form:
+                current_user.summary_include_notes = 'summary_include_notes' in request.form
             current_user.summary_timestamp_template_id = _ts_template_id('summary_timestamp_template_id')
             current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
             current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
