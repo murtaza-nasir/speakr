@@ -40,9 +40,9 @@
             <div v-else-if="!selectedRecording.summary" class="empty">
                 <div class="empty__icon"><i class="fas fa-file-alt"></i></div>
                 <div class="empty__title" v-text="t('summary.noSummary')"></div>
-                <div v-if="processedTranscription.isError" class="banner banner--warn">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Cannot generate summary: transcription failed</span>
+                <div v-if="processedTranscription.isError" class="banner banner--info">
+                    <i class="fas fa-info-circle"></i>
+                    <span v-text="t('summary.needsTranscription')"></span>
                 </div>
                 <div class="flex items-center gap-2" style="margin-top: var(--sp-3);">
                     <button class="btn btn--primary"

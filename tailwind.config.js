@@ -5,7 +5,7 @@
 // Only complete class names that appear literally in the files below are
 // compiled. A class name assembled at runtime from parts (for example
 // `bg-${color}-500`) is absent from the output; each full class name has to
-// be written out instead (see static/js/modules/utils/errorDisplay.js).
+// be written out instead.
 
 /** @type {import('tailwindcss').Config} */
 export default {

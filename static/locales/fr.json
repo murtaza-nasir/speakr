@@ -944,7 +944,8 @@
     "uploadTimedOut": "Délai d’envoi dépassé",
     "validationError": "Erreur de validation",
     "waitAndRetryGuidance": "Patientez quelques minutes et réessayez",
-    "shareTarget_storage_quota": "Le fichier partagé n'a pas été enregistré, car votre stockage est plein."
+    "shareTarget_storage_quota": "Le fichier partagé n'a pas été enregistré, car votre stockage est plein.",
+    "technicalDetails": "Détails techniques"
   },
   "eventExtraction": {
     "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",
@@ -2032,7 +2033,8 @@
     "summaryInProgress": "Génération du résumé en cours...",
     "title": "Résumé",
     "customizePrompt": "Personnaliser le prompt",
-    "editingSaveHint": "Modification — enregistrer depuis la barre d'onglets ci-dessus"
+    "editingSaveHint": "Modification — enregistrer depuis la barre d'onglets ci-dessus",
+    "needsTranscription": "Un résumé pourra être généré une fois la transcription réussie."
   },
   "summaryMode": {
     "applyMode": "Mode d'application",

@@ -57,8 +57,8 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5" style="color: var(--text-danger);">
-            <i class="fas fa-exclamation-triangle"></i>
+        <div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5">
+            <i class="fas fa-info-circle"></i>
             <span v-text="t('chat.cannotChatTranscriptionFailed')"></span>
         </div>
     </div>

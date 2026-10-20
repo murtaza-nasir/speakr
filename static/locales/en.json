@@ -944,7 +944,8 @@
     "uploadTimedOut": "Upload timed out",
     "validationError": "Validation error",
     "waitAndRetryGuidance": "Wait a few minutes and try again",
-    "shareTarget_storage_quota": "The shared file was not saved because your storage is full."
+    "shareTarget_storage_quota": "The shared file was not saved because your storage is full.",
+    "technicalDetails": "Technical details"
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
@@ -2032,7 +2033,8 @@
     "summaryInProgress": "Summary generation in progress...",
     "title": "Summary",
     "customizePrompt": "Customise prompt",
-    "editingSaveHint": "Editing — save from the tab bar above"
+    "editingSaveHint": "Editing — save from the tab bar above",
+    "needsTranscription": "A summary can be generated once the transcription has succeeded."
   },
   "summaryMode": {
     "applyMode": "Apply mode",

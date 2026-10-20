@@ -42,7 +42,7 @@ body.unloaded {
     --bg-danger-hover: #b91c1c; /* red-700 */
     --bg-danger-light: #fce4e4; /* muted red */
     --bg-info-light: #c3d9f7; /* muted blue */
-    --bg-warn-light: #d4e8f5; /* soft blue */
+    --bg-warn-light: #fef3c7; /* amber-100 */
     --bg-success-light: #c6f0dc; /* muted green */
     --bg-pending-light: #eeeeec; /* stone */
     --bg-input: #fafbfc; /* slightly gray white */
@@ -57,7 +57,7 @@ body.unloaded {
     --text-danger: #b91c1c; /* red-700 */
     --text-danger-strong: #991b1b; /* red-800 */
     --text-info-strong: #1e40af; /* blue-800 */
-    --text-warn-strong: #0369a1; /* sky-700 - friendly blue tone */
+    --text-warn-strong: #b45309; /* amber-700 */
     --text-success-strong: #065f46; /* green-800 */
     --text-pending-strong: #44403c; /* stone-700 */
 
@@ -181,7 +181,7 @@ body.unloaded {
     --bg-danger-hover: #ef4444; /* red-500 */
     --bg-danger-light: #7f1d1d; /* red-900 */
     --bg-info-light: #1e3a8a; /* blue-900 */
-    --bg-warn-light: #164e63; /* cyan-800 - soft, friendly dark blue */
+    --bg-warn-light: #78350f; /* amber-900 */
     --bg-success-light: #064e3b; /* green-900 */
     --bg-pending-light: #292524; /* stone-800 */
     --bg-input: #374151; /* gray-700 */
@@ -196,7 +196,7 @@ body.unloaded {
     --text-danger: #f87171; /* red-400 */
     --text-danger-strong: #fca5a5; /* red-300 */
     --text-info-strong: #93c5fd; /* blue-300 */
-    --text-warn-strong: #67e8f9; /* cyan-300 - soft, friendly cyan text */
+    --text-warn-strong: #fcd34d; /* amber-300 */
     --text-success-strong: #6ee7b7; /* green-300 */
     --text-pending-strong: #d6d3d1; /* stone-300 */
 

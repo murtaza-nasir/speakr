@@ -113,14 +113,14 @@
                 </label>
             </fieldset>
 
-            <div class="banner banner--warn mt-4" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+            <div class="banner banner--info mt-4" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                 <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
                 <div class="t-meta" v-text="t('mergeRecordings.reprocessNote')"></div>
             </div>
 
             <!-- Shown only when a video source is selected: the merged output is audio-only. -->
             <div v-if="mergeOrderedList.some(r => (r.mime_type || '').startsWith('video'))"
-                 class="banner banner--warn mt-2" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+                 class="banner banner--info mt-2" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                 <i class="fas fa-video" style="margin-top: 2px;"></i>
                 <div class="t-meta" v-text="t('mergeRecordings.videoNote')"></div>
             </div>

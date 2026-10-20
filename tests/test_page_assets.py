@@ -92,14 +92,26 @@ def test_the_service_worker_caches_the_compiled_stylesheet():
     assert "'/static/css/tailwind.css'" in text
 
 
-def test_compiled_stylesheet_has_the_dynamic_error_colors():
+def test_compiled_stylesheet_has_the_template_classes():
     """Runs where the stylesheet has been built (CI builds it first)."""
     path = os.path.join(ROOT, "static", "css", "tailwind.css")
     if not os.path.exists(path):
         pytest.skip("static/css/tailwind.css is not built; run scripts/build_css.sh")
     css = open(path, encoding="utf-8").read()
-    for cls in (r".bg-amber-500\/10", r".border-indigo-500\/30", r".dark\:text-pink-400", r".text-\[var\(--text-primary\)\]"):
+    for cls in (r".text-\[var\(--text-primary\)\]", r".bg-\[var\(--bg-tertiary\)\]"):
         assert cls in css, cls
+
+
+def test_the_transcription_error_card_takes_its_colours_from_the_notice_level():
+    """One level (danger) for every cause; no colour per error type."""
+    card = open(os.path.join(ROOT, "templates", "components", "detail", "_transcription-error.html"),
+                encoding="utf-8").read()
+    assert "notice notice--danger" in card
+    assert "error.type" not in card
+    assert not re.search(r"(bg|text|border)-(red|amber|orange|yellow|blue|purple|pink|indigo|gray)-[0-9]", card)
+    css = open(os.path.join(ROOT, "static", "css", "primitives.css"), encoding="utf-8").read()
+    for level in ("danger", "warn", "info", "success"):
+        assert f".notice--{level}" in css
 
 
 # --- i18n_bootstrap() --------------------------------------------------------

@@ -944,7 +944,8 @@
     "uploadTimedOut": "Tempo limite de envio excedido",
     "validationError": "Erro de validação",
     "waitAndRetryGuidance": "Aguarde alguns minutos e tente novamente",
-    "shareTarget_storage_quota": "O arquivo compartilhado não foi salvo porque seu armazenamento está cheio."
+    "shareTarget_storage_quota": "O arquivo compartilhado não foi salvo porque seu armazenamento está cheio.",
+    "technicalDetails": "Detalhes técnicos"
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",
@@ -2032,7 +2033,8 @@
     "summaryInProgress": "Geração de resumo em andamento...",
     "title": "Resumo",
     "customizePrompt": "Personalizar prompt",
-    "editingSaveHint": "Editando — salvar na barra de abas acima"
+    "editingSaveHint": "Editando — salvar na barra de abas acima",
+    "needsTranscription": "Um resumo poderá ser gerado quando a transcrição for concluída com sucesso."
   },
   "summaryMode": {
     "append": "Acrescentar",

@@ -883,8 +883,81 @@ html.dark select.field {
 }
 .banner--info     { background: var(--bg-info-light);    border-color: var(--border-accent); color: var(--text-info-strong, var(--text-primary)); }
 .banner--success  { background: var(--bg-success-light); border-color: var(--border-success, var(--border-primary)); color: var(--text-primary); }
-.banner--warn     { background: var(--bg-warn-light);    border-color: var(--border-accent); color: var(--text-primary); }
+.banner--warn     { background: var(--tint-warn);        border-color: var(--tint-warn-border); color: var(--text-primary); }
+.banner--warn > i { color: var(--tint-warn-fg); }
 .banner--danger   { background: var(--bg-danger-light);  border-color: var(--border-danger); color: var(--text-danger-strong, var(--text-danger)); }
+
+
+/* ---- Notice -------------------------------------------------------------
+ *
+ * A message that takes the place of content inside a panel, such as a failed
+ * transcription. Levels, used the same way here and on .banner:
+ *
+ *   notice--danger   something failed and needs an action
+ *   notice--warn     it works, but something needs attention
+ *   notice--info     a state or an explanation, including the consequence
+ *                    of an error that is shown elsewhere on the page
+ *   notice--success  something finished
+ *
+ * Only the icon and the left border carry the level colour; the title and
+ * the text keep the text colours, so a notice reads the same in every theme.
+ * The cause of an error is told by its icon and title, never by a colour.
+ */
+.notice {
+    --notice-fg: var(--text-muted);
+    --notice-tint: var(--bg-tertiary);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-left: 3px solid var(--notice-fg);
+    border-radius: var(--radius-md);
+}
+.notice--danger  { --notice-fg: var(--tint-danger-fg);  --notice-tint: var(--tint-danger); }
+.notice--warn    { --notice-fg: var(--tint-warn-fg);    --notice-tint: var(--tint-warn); }
+.notice--info    { --notice-fg: var(--tint-info-fg);    --notice-tint: var(--tint-info); }
+.notice--success { --notice-fg: var(--tint-success-fg); --notice-tint: var(--tint-success); }
+.notice__icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--notice-tint);
+    color: var(--notice-fg);
+}
+.notice__body { flex: 1; min-width: 0; }
+.notice__title {
+    margin: 0;
+    font-size: var(--fs-subhead);
+    font-weight: 600;
+    line-height: 32px;
+    color: var(--text-primary);
+}
+.notice__message { margin: 0; color: var(--text-primary); }
+.notice__hint { margin: var(--sp-1) 0 0; font-size: var(--fs-meta); color: var(--text-muted); }
+.notice__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-4); }
+.notice__actions .btn { white-space: nowrap; }
+.notice__details { margin-top: var(--sp-3); font-size: var(--fs-meta); }
+.notice__details > summary { width: max-content; cursor: pointer; color: var(--text-muted); }
+.notice__details > summary:hover { color: var(--text-secondary); }
+.notice__details-body { position: relative; margin-top: var(--sp-2); }
+.notice__details pre {
+    margin: 0;
+    max-height: 12rem;
+    overflow: auto;
+    padding: var(--sp-3) 40px var(--sp-3) var(--sp-3);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+.notice__copy { position: absolute; top: var(--sp-1); right: var(--sp-1); }
 
 
 /* ---- Modal / dialog ----------------------------------------------------

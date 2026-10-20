@@ -1,0 +1,29 @@
+{# A failed transcription, shown in place of the transcript on desktop and
+   mobile. Every cause is an error (notice--danger); the cause is told by the
+   icon and the title. The technical details open below the actions, inside
+   the card, so nothing beside them moves. #}
+<div class="notice notice--danger">
+    <div class="notice__icon"><i :class="['fas', processedTranscription.error.icon]"></i></div>
+    <div class="notice__body">
+        <h3 class="notice__title">${processedTranscription.error.title}</h3>
+        <p class="notice__message">${processedTranscription.error.message}</p>
+        <p v-if="processedTranscription.error.guidance" class="notice__hint">${processedTranscription.error.guidance}</p>
+        <div v-if="selectedRecording.can_edit !== false" class="notice__actions">
+            <button class="btn btn--primary" @click="reprocessTranscription(selectedRecording.id)">
+                <i class="fas fa-redo-alt"></i>
+                <span v-text="t('buttons.reprocessTranscription')"></span>
+            </button>
+        </div>
+        <details v-if="processedTranscription.error.technical" class="notice__details">
+            <summary v-text="t('errors.technicalDetails')"></summary>
+            <div class="notice__details-body">
+                <pre>${processedTranscription.error.technical}</pre>
+                <button class="btn btn--quiet btn--icon btn--sm notice__copy"
+                        @click="copyMessage(processedTranscription.error.technical, $event)"
+                        :title="t('buttons.copyToClipboard')" :aria-label="t('buttons.copyToClipboard')">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </details>
+    </div>
+</div>

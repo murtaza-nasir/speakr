@@ -944,7 +944,8 @@
     "uploadTimedOut": "Se agotó el tiempo de subida",
     "validationError": "Error de validación",
     "waitAndRetryGuidance": "Espere unos minutos y vuelva a intentarlo",
-    "shareTarget_storage_quota": "El archivo compartido no se guardó porque su almacenamiento está lleno."
+    "shareTarget_storage_quota": "El archivo compartido no se guardó porque su almacenamiento está lleno.",
+    "technicalDetails": "Detalles técnicos"
   },
   "eventExtraction": {
     "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",
@@ -2032,7 +2033,8 @@
     "summaryInProgress": "Generación de resumen en progreso...",
     "title": "Resumen",
     "customizePrompt": "Personalizar instrucción",
-    "editingSaveHint": "Editando — guarda desde la barra de pestañas de arriba"
+    "editingSaveHint": "Editando — guarda desde la barra de pestañas de arriba",
+    "needsTranscription": "Se podrá generar un resumen cuando la transcripción se haya completado correctamente."
   },
   "summaryMode": {
     "applyMode": "Modo de aplicación",

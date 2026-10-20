@@ -944,7 +944,8 @@
     "uploadTimedOut": "Upload-Zeitüberschreitung",
     "validationError": "Validierungsfehler",
     "waitAndRetryGuidance": "Einige Minuten warten und erneut versuchen",
-    "shareTarget_storage_quota": "Die geteilte Datei wurde nicht gespeichert, weil Ihr Speicher voll ist."
+    "shareTarget_storage_quota": "Die geteilte Datei wurde nicht gespeichert, weil Ihr Speicher voll ist.",
+    "technicalDetails": "Technische Details"
   },
   "eventExtraction": {
     "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",
@@ -2032,7 +2033,8 @@
     "summaryInProgress": "Zusammenfassung wird generiert...",
     "title": "Zusammenfassung",
     "customizePrompt": "Prompt anpassen",
-    "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern"
+    "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern",
+    "needsTranscription": "Eine Zusammenfassung kann erstellt werden, sobald die Transkription erfolgreich war."
   },
   "summaryMode": {
     "applyMode": "Anwendungsmodus",
