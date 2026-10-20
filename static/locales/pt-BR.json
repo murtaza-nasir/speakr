@@ -945,7 +945,8 @@
     "validationError": "Erro de validação",
     "waitAndRetryGuidance": "Aguarde alguns minutos e tente novamente",
     "shareTarget_storage_quota": "O arquivo compartilhado não foi salvo porque seu armazenamento está cheio.",
-    "technicalDetails": "Detalhes técnicos"
+    "technicalDetails": "Detalhes técnicos",
+    "shareTarget_rate_limited": "Muitos arquivos foram compartilhados em pouco tempo. Aguarde antes de compartilhar mais."
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",

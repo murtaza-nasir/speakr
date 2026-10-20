@@ -945,7 +945,8 @@
     "validationError": "验证错误",
     "waitAndRetryGuidance": "请等待几分钟后再重试",
     "shareTarget_storage_quota": "由于存储已满，共享的文件未保存。",
-    "technicalDetails": "技术详情"
+    "technicalDetails": "技术详情",
+    "shareTarget_rate_limited": "短时间内分享的文件过多。请稍后再分享。"
   },
   "eventExtraction": {
     "description": "启用后，AI将识别录音中提到的会议、约会和截止日期，并创建可下载的日历事件。",

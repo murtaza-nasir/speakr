@@ -945,7 +945,8 @@
     "validationError": "Validierungsfehler",
     "waitAndRetryGuidance": "Einige Minuten warten und erneut versuchen",
     "shareTarget_storage_quota": "Die geteilte Datei wurde nicht gespeichert, weil Ihr Speicher voll ist.",
-    "technicalDetails": "Technische Details"
+    "technicalDetails": "Technische Details",
+    "shareTarget_rate_limited": "In kurzer Zeit wurden zu viele Dateien geteilt. Bitte warten Sie, bevor Sie weitere teilen."
   },
   "eventExtraction": {
     "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",

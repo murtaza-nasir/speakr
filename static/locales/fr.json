@@ -945,7 +945,8 @@
     "validationError": "Erreur de validation",
     "waitAndRetryGuidance": "Patientez quelques minutes et réessayez",
     "shareTarget_storage_quota": "Le fichier partagé n'a pas été enregistré, car votre stockage est plein.",
-    "technicalDetails": "Détails techniques"
+    "technicalDetails": "Détails techniques",
+    "shareTarget_rate_limited": "Trop de fichiers ont été partagés en peu de temps. Veuillez patienter avant d'en partager d'autres."
   },
   "eventExtraction": {
     "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",

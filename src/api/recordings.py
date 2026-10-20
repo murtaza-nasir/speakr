@@ -2114,6 +2114,21 @@ def delete_recording_audio(recording_id):
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
+# Shares per signed-in user (#435): a forced share from another page cannot
+# fill an account or queue paid transcriptions without bound.
+try:
+    from limits import parse as _parse_limit
+    SHARE_TARGET_LIMIT = _parse_limit(os.environ.get('SHARE_TARGET_RATE_LIMIT', '20 per hour'))
+except Exception:
+    SHARE_TARGET_LIMIT = None
+
+
+def _share_target_allowed(user_id):
+    if SHARE_TARGET_LIMIT is None or limiter is None or not getattr(limiter, 'enabled', True):
+        return True
+    return limiter.limiter.hit(SHARE_TARGET_LIMIT, 'share_target', str(user_id))
+
+
 @recordings_bp.route('/share-target', methods=['POST', 'GET'])
 @login_required
 def share_target():
@@ -2150,6 +2165,10 @@ def share_target():
         current_app.logger.warning(
             f"share-target POST from another site refused for user {current_user.id}")
         return redirect(url_for('recordings.index') + '?share_target_error=cross_site')
+
+    if not _share_target_allowed(current_user.id):
+        current_app.logger.warning(f"share-target rate limit reached for user {current_user.id}")
+        return redirect(url_for('recordings.index') + '?share_target_error=rate_limited')
 
     shared = request.files.get('shared_audio') or request.files.get('file')
     if not shared or not getattr(shared, 'filename', ''):

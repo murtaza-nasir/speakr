@@ -258,3 +258,37 @@ if __name__ == "__main__":
     test_share_target_requires_login()
     test_share_target_is_csrf_exempt()
     print("All share-target tests passed.")
+
+
+def test_share_target_is_limited_per_user():
+    """#435: shares are counted per signed-in user; another user is not affected."""
+    from types import SimpleNamespace
+    from limits import parse
+    from limits.storage import MemoryStorage
+    from limits.strategies import FixedWindowRateLimiter
+    from src.api import recordings as rec_module
+    with app.app_context():
+        ids = [_setup_user(p).id for p in ("rl_first", "rl_second")]
+    clients = []
+    for uid in ids:
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(uid)
+            sess["_fresh"] = True
+        clients.append(client)
+    # The suite runs with rate limiting off, so Flask-Limiter has no storage;
+    # an enabled limiter with its own memory storage stands in for it.
+    old_limiter, old_limit = rec_module.limiter, rec_module.SHARE_TARGET_LIMIT
+    rec_module.limiter = SimpleNamespace(enabled=True, limiter=FixedWindowRateLimiter(MemoryStorage()))
+    rec_module.SHARE_TARGET_LIMIT = parse("2 per hour")
+    try:
+        places = [clients[0].post("/share-target", data={}).headers["Location"] for _ in range(3)]
+        assert "missing_file" in places[0] and "missing_file" in places[1]
+        assert "share_target_error=rate_limited" in places[2]
+        assert "missing_file" in clients[1].post("/share-target", data={}).headers["Location"]
+    finally:
+        rec_module.limiter, rec_module.SHARE_TARGET_LIMIT = old_limiter, old_limit
+        with app.app_context():
+            for uid in ids:
+                db.session.delete(db.session.get(User, uid))
+            db.session.commit()

@@ -945,7 +945,8 @@
     "validationError": "Validation error",
     "waitAndRetryGuidance": "Wait a few minutes and try again",
     "shareTarget_storage_quota": "The shared file was not saved because your storage is full.",
-    "technicalDetails": "Technical details"
+    "technicalDetails": "Technical details",
+    "shareTarget_rate_limited": "Too many files were shared in a short time. Please wait before sharing more."
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",

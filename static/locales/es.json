@@ -945,7 +945,8 @@
     "validationError": "Error de validación",
     "waitAndRetryGuidance": "Espere unos minutos y vuelva a intentarlo",
     "shareTarget_storage_quota": "El archivo compartido no se guardó porque su almacenamiento está lleno.",
-    "technicalDetails": "Detalles técnicos"
+    "technicalDetails": "Detalles técnicos",
+    "shareTarget_rate_limited": "Se compartieron demasiados archivos en poco tiempo. Espere antes de compartir más."
   },
   "eventExtraction": {
     "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",

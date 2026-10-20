@@ -76,6 +76,8 @@ Once the PWA is installed, Speakr appears in your phone's native share sheet. Fr
 
 Accepted file types are the common audio formats plus the following video containers: `mp4`, `mov` (QuickTime), `mkv`, and `webm`.
 
+Each account can share up to 20 files per hour this way (`SHARE_TARGET_RATE_LIMIT`, for example `50 per hour`). Uploads from the app are not counted.
+
 !!! warning "Installed PWA only"
     Share-to-Speakr works only for the **installed PWA**, not a browser tab. If you installed the PWA before this feature shipped, reopen the app, then uninstall and reinstall it so Android registers the new share entry.
 
