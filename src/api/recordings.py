@@ -52,6 +52,7 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
+from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
@@ -2577,6 +2578,13 @@ def ingest_uploaded_recording(
                 current_app.logger.info(f"Resolved video mime {mime_type!r} -> {corrected!r} from container for {filepath}")
             mime_type = corrected
 
+        # The extension is the uploader's choice: an audio file named .html
+        # was stored as text/html (#438). A guess that is not audio or video
+        # is replaced by the type of the contents.
+        if not (mime_type or '').startswith(('audio/', 'video/')):
+            from src.utils.mime import resolve_media_mime
+            mime_type = served_media_mime(resolve_media_mime(filepath, codec_info=codec_info))
+
         current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
 
         # Cache media duration while the upload is still available locally.
@@ -3718,10 +3726,11 @@ def get_audio(recording_id):
             ext = os.path.splitext(recording.original_filename or '')[1] or '.mp3'
             download_name = f"{filename}{ext}"
 
+        serve_mime = served_media_mime(recording.mime_type, recording.audio_path)
         delivery = storage.get_audio_delivery(
             recording.audio_path,
             download=download,
-            mime_type=recording.mime_type,
+            mime_type=serve_mime,
             download_name=download_name,
             is_public=False,
         )
@@ -3734,15 +3743,15 @@ def get_audio(recording_id):
             return jsonify({'error': 'Audio file missing from server'}), 404
 
         if download:
-            return send_file(
+            return sandbox_media_response(send_file(
                 delivery.local_path,
                 as_attachment=True,
                 download_name=download_name,
-                mimetype=recording.mime_type,
+                mimetype=serve_mime,
                 conditional=True,
-            )
+            ))
 
-        return send_file(delivery.local_path, mimetype=recording.mime_type, conditional=True)
+        return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500

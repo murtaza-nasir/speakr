@@ -139,3 +139,27 @@ def resolve_media_mime(path, codec_info=None, has_video=None, timeout=10):
         return video_mime_for_path(path)
     guessed, _ = mimetypes.guess_type(path)
     return guessed or 'application/octet-stream'
+
+
+def served_media_mime(mime, path=None):
+    """Content type for serving a stored recording (#438).
+
+    The stored type came from the uploaded file's extension, so an audio file
+    named ``.html`` was stored as ``text/html`` and opened as a page on the
+    app's own origin. Anything other than ``audio/*`` or ``video/*`` is served
+    as ``application/octet-stream``; media elements still play it, and a
+    browser never renders it as a document. Without a stored type, the type is
+    guessed from ``path`` under the same rule.
+    """
+    if not mime and path:
+        mime, _ = mimetypes.guess_type(path)
+    base = (mime or '').split(';')[0].strip().lower()
+    if base.startswith(('audio/', 'video/')):
+        return mime
+    return 'application/octet-stream'
+
+
+def sandbox_media_response(response):
+    """Mark a media response so that it can never run script (#438)."""
+    response.headers['Content-Security-Policy'] = 'sandbox'
+    return response

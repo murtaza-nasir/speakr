@@ -204,6 +204,21 @@ def test_upload_creates_recording_row_with_locator_and_enqueues():
         _cleanup(rec, user)
 
 
+def test_upload_with_html_extension_is_not_stored_as_html():
+    """An audio file named .html was stored as text/html (#438)."""
+    with app.app_context():
+        user = _mk_user("up_html")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging):
+            resp = _do_upload(client, filename="song.mp3.html")
+        assert resp.status_code == 202, resp.data
+        rec = _latest_rec(user)
+        assert rec.mime_type == "application/octet-stream"
+        _cleanup(rec, user)
+
+
 def test_upload_default_title_is_placeholder():
     with app.app_context():
         user = _mk_user("up_title")

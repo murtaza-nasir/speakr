@@ -44,6 +44,7 @@ from src.api.recordings import (
     upload_file as _upload_file_ui,
 )
 from src.services.storage import get_storage_service
+from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.token_auth import load_user_from_token_value
 
 # Create blueprint with /api/v1 prefix
@@ -3372,7 +3373,7 @@ def download_audio(recording_id):
     delivery = storage.get_audio_delivery(
         recording.audio_path,
         download=download,
-        mime_type=recording.mime_type or 'audio/mpeg',
+        mime_type=served_media_mime(recording.mime_type or 'audio/mpeg'),
         download_name=safe_download_name,
         is_public=False,
     )
@@ -3383,12 +3384,12 @@ def download_audio(recording_id):
     if not delivery.local_path or not os.path.exists(delivery.local_path):
         return jsonify({'error': 'Audio file not found'}), 404
 
-    return send_file(
+    return sandbox_media_response(send_file(
         delivery.local_path,
-        mimetype=recording.mime_type or 'audio/mpeg',
+        mimetype=served_media_mime(recording.mime_type or 'audio/mpeg'),
         as_attachment=download,
         download_name=safe_download_name,
-    )
+    ))
 
 
 # =============================================================================

@@ -19,6 +19,7 @@ from src.models import Recording, Share, InternalShare, SharedRecordingState, Us
 from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404
+from src.utils.mime import served_media_mime, sandbox_media_response
 
 # Configuration from environment
 ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
@@ -159,10 +160,11 @@ def get_shared_audio(public_id):
         recording = share.recording
         if not recording or not recording.audio_path:
             return jsonify({'error': 'Recording or audio file not found'}), 404
+        serve_mime = served_media_mime(recording.mime_type, recording.audio_path)
         delivery = get_storage_service().get_audio_delivery(
             recording.audio_path,
             download=False,
-            mime_type=recording.mime_type,
+            mime_type=serve_mime,
             download_name=recording.original_filename,
             is_public=True,
         )
@@ -171,7 +173,7 @@ def get_shared_audio(public_id):
         if not delivery.local_path or not os.path.exists(delivery.local_path):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
             return jsonify({'error': 'Audio file missing from server'}), 404
-        return send_file(delivery.local_path, mimetype=(recording.mime_type or delivery.mimetype), conditional=True)
+        return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except HTTPException:
         # Let first_or_404() (and any other HTTP error) keep its real status —
         # an unknown public_id must stay a 404, not be masked as a 500.
