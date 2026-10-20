@@ -601,6 +601,8 @@ def reset_password(token):
         user.password = hashed_password
         user.password_reset_token = None  # Clear the token
         user.password_reset_sent_at = None
+        # Sign the account out of every browser (#437)
+        user.end_all_sessions()
 
         # Also verify email if not already verified
         if not user.email_verified:
@@ -1066,7 +1068,12 @@ def change_password():
     # not leave an emailed reset token able to overwrite the new password.
     current_user.password_reset_token = None
     current_user.password_reset_sent_at = None
+    # Sign the account out of every other browser (#437), and sign this one
+    # in again with the new login id.
+    remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
+    current_user.end_all_sessions()
     db.session.commit()
+    login_user(current_user, remember=remembered)
 
     flash('Your password has been updated!', 'success')
     return redirect(url_for('auth.account'))

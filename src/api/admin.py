@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 
 from src.database import db
@@ -288,6 +288,8 @@ def admin_update_user(user_id):
     
     if 'password' in data and data['password']:
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+        # Sign the account out of every browser (#437)
+        user.end_all_sessions()
     
     if 'is_admin' in data:
         new_is_admin = bool(data['is_admin'])
@@ -325,6 +327,10 @@ def admin_update_user(user_id):
             return jsonify({'error': 'The storage quota must be a positive number of MB.'}), 400
 
     db.session.commit()
+    if user.id == current_user.id and data.get('password'):
+        # An administrator who sets their own password stays signed in here
+        remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
+        login_user(user, remember=remembered)
 
     # Get recordings count and storage used
     recordings_count = len(user.recordings)

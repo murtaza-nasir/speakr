@@ -404,6 +404,10 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'theme_color_scheme', 'VARCHAR(16)'):
             app.logger.info("Added theme_color_scheme column to user table")
 
+        # Raised when the password is set, to end the account's sign-ins (#437)
+        if add_column_if_not_exists(engine, 'user', 'session_version', 'INTEGER'):
+            app.logger.info("Added session_version column to user table")
+
         # Storage quota in megabytes (#413)
         if add_column_if_not_exists(engine, 'user', 'storage_quota_mb', 'INTEGER'):
             app.logger.info("Added storage_quota_mb column to user table")

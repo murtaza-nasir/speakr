@@ -432,6 +432,21 @@ app.config['SESSION_COOKIE_SECURE'] = (
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Still protect against XSS
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
+# Remember-me cookie (#437). Flask-Login's defaults are a 365-day cookie with
+# no Secure flag and no SameSite attribute. It now follows the session
+# cookie's Secure setting, is SameSite=Lax, and lasts REMEMBER_COOKIE_DAYS
+# (default 30) from the last visit, so a person who keeps using Speakr stays
+# signed in.
+app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
+try:
+    _remember_days = max(1, int(os.environ.get('REMEMBER_COOKIE_DAYS', '30')))
+except ValueError:
+    _remember_days = 30
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=_remember_days)
+app.config['REMEMBER_COOKIE_REFRESH_EACH_REQUEST'] = True
+
 # --- Security response headers ---
 # Set at the app level so a deployment WITHOUT a hardening reverse proxy is
 # still protected (previously the app set only X-Robots-Tag, leaving direct /
@@ -844,7 +859,18 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # --- User loader for Flask-Login ---
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    # "<id>" or "<id>:<session_version>" (see User.get_id). A sign-in made
+    # before the password was last set carries an older version and is
+    # refused (#437).
+    uid, _, version = str(user_id).partition(':')
+    try:
+        user = db.session.get(User, int(uid))
+        version = int(version or 0)
+    except ValueError:
+        return None
+    if user is None or (user.session_version or 0) != version:
+        return None
+    return user
 
 
 @login_manager.request_loader

@@ -118,6 +118,20 @@ class User(db.Model, UserMixin):
     # 'top' renders it above the columns so it sits closer to the
     # title bar. User-configurable from the Display tab in settings.
     audio_player_position = db.Column(db.String(10), default='bottom')
+    # Raised when the password is set (#437), which signs the account out of
+    # every browser: the login id that Flask-Login keeps in the session and
+    # the remember-me cookie carries it, and an id with an older value is
+    # refused. Null and 0 keep the plain id, so sign-ins made before the
+    # column existed stay valid until the password is next set.
+    session_version = db.Column(db.Integer, nullable=True, default=0)
+
+    def get_id(self):
+        version = self.session_version or 0
+        return f"{self.id}:{version}" if version else str(self.id)
+
+    def end_all_sessions(self):
+        """Sign the account out of every browser (see session_version)."""
+        self.session_version = (self.session_version or 0) + 1
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
