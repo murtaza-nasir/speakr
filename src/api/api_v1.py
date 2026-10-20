@@ -629,27 +629,50 @@ OPENAPI_SPEC = {
 
 def _openapi_with_scopes():
     """OPENAPI_SPEC with x-required-scopes on every operation, read from the
-    routes' require_scope marks so the document cannot drift from the code."""
+    routes' require_scope marks so the document cannot drift from the code.
+
+    Every operation also gets an operationId (#443), which tools that turn
+    an OpenAPI document into LLM tools (Open WebUI, for one) require. It is
+    the view function's name, with the method appended when one function
+    serves several methods, so it stays the same across releases unless the
+    function is renamed."""
     import copy
     import re
     from flask import current_app
     spec = copy.deepcopy(OPENAPI_SPEC)
     norm = lambda path: re.sub(r'<[^>]+>|\{[^}]+\}', '{}', path)
     by_route = {}
+    view_names = {}
     for rule in current_app.url_map.iter_rules():
         if not rule.rule.startswith('/api/v1/'):
             continue
+        name = rule.endpoint.rsplit('.', 1)[-1]
+        methods = rule.methods - {'HEAD', 'OPTIONS'}
+        for method in methods:
+            view_names[(norm(rule.rule[len('/api/v1'):]), method.lower())] = (name, len(methods) > 1)
         view = current_app.view_functions.get(rule.endpoint)
         scopes = getattr(view, '_required_scopes', None)
         if scopes is None:
             continue
-        for method in rule.methods - {'HEAD', 'OPTIONS'}:
+        for method in methods:
             by_route[(norm(rule.rule[len('/api/v1'):]), method.lower())] = sorted(scopes)
+    used_ids = set()
     for path, operations in spec.get('paths', {}).items():
         for method, operation in operations.items():
+            if not isinstance(operation, dict):
+                continue
             scopes = by_route.get((norm(path), method))
-            if scopes is not None and isinstance(operation, dict):
+            if scopes is not None:
                 operation['x-required-scopes'] = scopes
+            if 'operationId' not in operation:
+                name, shared = view_names.get(
+                    (norm(path), method),
+                    (re.sub(r'\W+', '_', path).strip('_'), True))
+                op_id = f'{name}_{method}' if shared else name
+                while op_id in used_ids:
+                    op_id += '_'
+                operation['operationId'] = op_id
+            used_ids.add(operation['operationId'])
     return spec
 
 
