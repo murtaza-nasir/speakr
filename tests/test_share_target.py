@@ -29,7 +29,8 @@ from src.models import User, Recording
 def _setup_user(prefix):
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{prefix}_{suffix}",
+        # The username column holds 20 characters (PostgreSQL enforces it)
+        username=f"{prefix[:11]}_{suffix}",
         email=f"{prefix}_{suffix}@local.test",
         password="x",
     )
