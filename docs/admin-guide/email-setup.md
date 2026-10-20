@@ -54,7 +54,7 @@ Restart Speakr after updating environment variables.
 | `SMTP_USE_SSL` | `false` | Use SSL encryption (port 465) |
 | `SMTP_FROM_ADDRESS` | `noreply@yourdomain.com` | Email address shown in "From" field |
 | `SMTP_FROM_NAME` | `Speakr` | Display name shown alongside from address |
-| `APP_BASE_URL` | (none) | External URL of this instance, used for links in notification email |
+| `APP_BASE_URL` | (none) | External URL of this instance, used for all links in email; recommended whenever SMTP is configured |
 
 ### Processing Notifications
 
@@ -78,10 +78,13 @@ path:
 APP_BASE_URL=https://speakr.example.com
 ```
 
-Verification and reset mail work out their own URL because they are sent while
-handling a request. A notification is sent from a background worker, which has
-no request to look at, so without this variable the mail goes out without a link
-to the recording rather than with a broken one.
+Links in verification and password-reset mail are built from this address.
+Without it, the host is taken from the request, and a request for a reset link
+can carry a forged `Host` or `X-Forwarded-Host` header that points the emailed
+link at another site. A warning is logged when such a link is sent without
+`APP_BASE_URL`. Notification mail is sent from a background worker, which has no
+request to look at, so without this variable a notification is sent without a
+link to the recording.
 
 Note that each recording sends its own message, so a bulk upload of fifty files
 produces fifty emails. The setting is most useful for long recordings the user

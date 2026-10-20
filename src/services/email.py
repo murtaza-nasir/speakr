@@ -338,7 +338,7 @@ def send_verification_email(user) -> bool:
     db.session.commit()
 
     # Build verification URL
-    verify_url = url_for('auth.verify_email', token=token, _external=True)
+    verify_url = _account_link('auth.verify_email', token=token)
 
     subject = "Verify your email address - Speakr"
 
@@ -402,7 +402,7 @@ def send_password_reset_email(user) -> bool:
     db.session.commit()
 
     # Build reset URL
-    reset_url = url_for('auth.reset_password', token=token, _external=True)
+    reset_url = _account_link('auth.reset_password', token=token)
 
     subject = "Reset your password - Speakr"
 
@@ -529,6 +529,29 @@ def get_app_base_url() -> Optional[str]:
     """External base URL of this instance, e.g. https://speakr.example.com."""
     base = (os.environ.get('APP_BASE_URL') or '').split('#')[0].strip()
     return base.rstrip('/') or None
+
+
+_warned_host_links = False
+
+
+def _account_link(endpoint: str, **values) -> str:
+    """Absolute link for verification and password-reset mail (#436).
+
+    Built from APP_BASE_URL when it is set. Otherwise the host comes from the
+    request, including X-Forwarded-Host, which the person asking for a reset
+    link can choose; a warning is logged once so that the variable gets set.
+    """
+    global _warned_host_links
+    base = get_app_base_url()
+    if base:
+        return base + url_for(endpoint, **values)
+    if not _warned_host_links:
+        _warned_host_links = True
+        logger.warning(
+            "APP_BASE_URL is not set, so links in verification and password-reset "
+            "email are built from the request's host header. Set APP_BASE_URL to "
+            "the address users reach Speakr on.")
+    return url_for(endpoint, _external=True, **values)
 
 
 def _recording_url(recording_id: int) -> Optional[str]:
