@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.10-alpha: sidebar multi-select, configurable temperatures, no flicker"
-    Several recordings can be selected in the sidebar with Ctrl-click (Cmd-click) and Shift-click. Generation temperatures can be set in the admin dashboard (#411). A recording started during a previous upload is no longer lost (#407), and pages no longer flicker while they load. No configuration changes are required.
+!!! success "Latest Release: v0.10.15-alpha: security fixes, find and replace, notes in summaries"
+    Seven security fixes, find and replace in the transcript editors, notes given to the summarizer, and a folder filter in Inquire. Set `APP_BASE_URL` if Speakr sends email.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.10-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.15-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.15-alpha - Security fixes, find and replace, notes in summaries"
+    Two columns and one index are added at startup. Set `APP_BASE_URL` if Speakr sends email, and `TRUSTED_PROXY_HOPS=0` if no reverse proxy is in front of it.
+
+    - **Security** - Email links, the remember-me cookie, recording files, summary display, the share target, Markdown rendering and gunicorn (#434 to #439, #442).
+    - **Transcripts** - Find and replace in the transcript editors, and notes given to the summarizer as context (#440).
+    - **Inquire and API** - A folder filter in Inquire (#428), and an operationId on every API operation (#443).
+    - **Fixes** - Long file names (#430), recordings deleted during transcription (#432), and dependencies pinned and verified.
+
 !!! info "Version 0.10.14-alpha - Theme with the account, transcript editor and processing fixes"
     Two new columns are added at startup; no configuration changes are required.
 
@@ -143,24 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Sharing** - Shared Transcripts lists public links, shares with people and groups, and recordings shared with you (#416).
     - **Fixes** - Right-to-left text (#414), speaker counts from `.env` (#415), local language models without an API key.
 
-!!! info "Version 0.10.12-alpha - System Statistics"
-    No database or configuration changes are required.
-
-    - **Statistics** - A 7, 30 or 90 day period compared with the one before, activity and health, usage and cost by task and model, and a sortable users table.
-    - **Fixes** - "This month" is the calendar month, monthly charts show every month, and AI requests replace a count that was always 0.
-    - **Interface** - Even header spacing on phones, and new screenshots throughout the documentation.
-
-!!! info "Version 0.10.11-alpha - Timezones, speaker links, API for integrations"
-    The database is updated at startup; no configuration changes are required. Export filenames with a date may change on the next export.
-
-    - **Timezone** - Dates in generated titles, exports and AI prompts follow each user's timezone (#412).
-    - **Speakers** - Renaming or merging a speaker updates every recording they appear in.
-    - **API** - Scoped tokens, a changes feed, search, external references, share links, chat citations and Inquire.
-    - **Webhooks** - Signed send times, and `recording.updated` for web edits too.
-    - **Processing** - Every path runs the same title, event, export and indexing steps.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.10 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.12 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
