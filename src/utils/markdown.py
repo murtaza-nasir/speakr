@@ -5,10 +5,14 @@ This module provides functions for converting markdown to HTML and
 sanitizing HTML to prevent XSS and other security issues.
 """
 
+import html as html_lib
+import logging
 import re
 import threading
 import markdown
 import bleach
+
+logger = logging.getLogger(__name__)
 
 _EXTENSIONS = [
     'fenced_code',      # Fenced code blocks
@@ -137,7 +141,15 @@ def md_to_html(text):
     # Reset the thread's instance to clear any state from its previous conversion
     md = _markdown()
     md.reset()
-    html = md.convert(processed_text)
+    try:
+        html = md.convert(processed_text)
+    except Exception:
+        # Malformed HTML-like text can make the parser raise (CVE-2025-69534,
+        # no fixed release). The text is then shown escaped, as plain
+        # paragraphs, instead of failing the request.
+        logger.warning("Markdown conversion failed; showing the text as plain paragraphs", exc_info=True)
+        md.reset()
+        html = "".join(f"<p>{html_lib.escape(part)}</p>" for part in text.split("\n\n") if part.strip())
 
     # Apply sanitization to the generated HTML
     return _with_auto_direction(sanitize_html(html))

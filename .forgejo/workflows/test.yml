@@ -99,6 +99,21 @@ jobs:
           PYTEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_suite
         run: pytest tests/ -q -p no:cacheprovider --timeout=120
 
+  dependency-audit:
+    # The locked packages against the published advisories (pip-audit);
+    # accepted advisories are in scripts/audit-exceptions.txt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: pip install pip-audit==2.9.0
+      - name: Audit the lock files
+        run: scripts/audit-dependencies.sh
+
   js-tests:
     runs-on: ubuntu-latest
 

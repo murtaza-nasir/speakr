@@ -1,0 +1,26 @@
+# Advisories for locked packages that do not apply to Speakr, read by
+# scripts/audit-dependencies.sh. One per line:
+#   <advisory id>  <review date YYYY-MM-DD>  <reason>
+# Past its review date an exception no longer applies.
+
+# markdown: a malformed HTML-like text can make the parser raise; no fixed
+# release. md_to_html catches the error and shows the text escaped.
+PYSEC-2026-89        2027-04-30  markdown parser error is caught in md_to_html
+# scikit-learn: TfidfVectorizer keeps all tokens; Speakr uses only cosine_similarity.
+PYSEC-2024-110       2027-04-30  scikit-learn TfidfVectorizer is not used
+# certifi: the fixed release (2026.10.19) came out on 2026-10-20; it is taken
+# after the 7-day wait for new releases.
+GHSA-6q48-6c7w-9gw2  2026-10-27  certifi 2026.10.19 is newer than 7 days
+
+# transformers and sentence-transformers (embeddings image only): code
+# execution or file writes when loading or saving an untrusted model. Speakr
+# loads one model, named by the administrator in EMBEDDING_MODEL, without
+# trust_remote_code, and never trains, saves or loads custom generation code.
+# The fixes are in transformers 5, a major upgrade.
+PYSEC-2025-217       2027-01-31  transformers X-CLIP conversion is not used
+PYSEC-2026-2288      2027-01-31  transformers Trainer is not used
+PYSEC-2026-2289      2027-01-31  only the administrator's embedding model is loaded
+PYSEC-2026-2290      2027-01-31  only the administrator's embedding model is loaded
+PYSEC-2026-3929      2027-01-31  tokenizers are never saved
+PYSEC-2026-4174      2027-01-31  load_custom_generate is not used
+PYSEC-2026-4164      2027-01-31  only the administrator's embedding model is loaded

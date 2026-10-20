@@ -268,6 +268,7 @@ Every Python package, including the dependencies of dependencies, is pinned with
 - Give a clear reason for a new dependency in the PR description. A feature that can be built with the existing packages is preferred, and for a heavy dependency needed only by a rarely used feature, you may be asked to keep that part in a fork.
 - After a change to `requirements.txt` or `requirements-embeddings.txt`, run `scripts/lock-requirements.sh` (Docker is required) and commit the lock files. The lock files are checked in CI, and a mismatch is reported as a failure.
 - To update one package: `scripts/lock-requirements.sh --upgrade-package <name>`. Releases that have been public for less than a week are not accepted.
+- The locked packages are checked against the published advisories with `scripts/audit-dependencies.sh` (pip-audit), in CI and before every release. An advisory that does not apply to Speakr is listed in `scripts/audit-exceptions.txt` with a reason and a review date.
 - PRs that change dependencies, the Dockerfile, workflows or scripts, or that add minified, binary or encoded content, are reviewed line by line, so their review can take longer.
 
 ## What Happens After You Submit a PR?
