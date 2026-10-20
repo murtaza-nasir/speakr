@@ -18,6 +18,8 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
@@ -208,6 +210,37 @@ def test_share_target_is_csrf_exempt():
     # Match by qualified function name
     assert any("share_target" in name for name in exempt_set), \
         f"share_target view should be CSRF-exempt; current exempts: {exempt_set}"
+
+
+@pytest.mark.parametrize("site", ["cross-site", "same-site"])
+def test_share_target_refuses_a_post_from_another_site(site):
+    """A forged share from another site carries the user's cookies (#435)."""
+    with app.app_context():
+        user = _setup_user(f"share_xsite_{site[:5]}")
+        client = app.test_client()
+        _login(client, user)
+        data = {"shared_audio": (io.BytesIO(b"\x00" * 512), "a.mp3"), "text": "<b>x</b>"}
+        resp = client.post("/share-target", data=data, headers={"Sec-Fetch-Site": site},
+                           content_type="multipart/form-data", follow_redirects=False)
+        assert resp.status_code == 302
+        assert "share_target_error=cross_site" in resp.headers.get("Location", "")
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        db.session.delete(user)
+        db.session.commit()
+
+
+@pytest.mark.parametrize("site", ["none", "same-origin"])
+def test_share_target_accepts_the_share_sheet(site):
+    """The operating system's share sheet is marked "none"."""
+    with app.app_context():
+        user = _setup_user(f"share_ok_{site[:4]}")
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post("/share-target", data={}, headers={"Sec-Fetch-Site": site},
+                           follow_redirects=False)
+        assert "share_target_error=missing_file" in resp.headers.get("Location", "")
+        db.session.delete(user)
+        db.session.commit()
 
 
 def teardown_module(module):

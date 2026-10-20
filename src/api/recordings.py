@@ -2122,7 +2122,11 @@ def share_target():
     CSRF is exempted at app startup (the share sheet has no way to
     round-trip a CSRF token). Authentication still happens via the
     session cookie carried by the browser; unauthenticated visitors hit
-    @login_required and are bounced to the login page.
+    @login_required and are bounced to the login page. A POST that a
+    browser marks as sent from another site (``Sec-Fetch-Site``) is
+    refused (#435): a share from the operating system's share sheet is
+    marked ``none``, and a page elsewhere could otherwise submit a forged
+    share with the signed-in user's cookies.
 
     Implementation: save the file to ``UPLOAD_FOLDER``, create a Recording
     row applying the same user / folder / tag defaults as ``upload_file``
@@ -2134,6 +2138,12 @@ def share_target():
     if request.method == 'GET':
         # Some platforms pre-flight with GET. Just land the user on the SPA.
         return redirect(url_for('recordings.index'))
+
+    # Browsers without Fetch Metadata send no header and are let through.
+    if request.headers.get('Sec-Fetch-Site', '').lower() in ('cross-site', 'same-site'):
+        current_app.logger.warning(
+            f"share-target POST from another site refused for user {current_user.id}")
+        return redirect(url_for('recordings.index') + '?share_target_error=cross_site')
 
     shared = request.files.get('shared_audio') or request.files.get('file')
     if not shared or not getattr(shared, 'filename', ''):
