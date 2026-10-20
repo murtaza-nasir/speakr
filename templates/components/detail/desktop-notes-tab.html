@@ -8,8 +8,8 @@
     <div v-if="!editingNotes"
          class="flex-1 overflow-y-auto px-4 py-4 prose-flush"
          @click="clickToEditNotes">
-        <div v-if="selectedRecording.notes_html"
-             v-html="selectedRecording.notes_html">
+        <div v-if="notesHtml"
+             v-html="notesHtml">
         </div>
         <div v-else-if="selectedRecording.notes" class="whitespace-pre-wrap">
             ${selectedRecording.notes}

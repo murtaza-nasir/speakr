@@ -501,7 +501,7 @@
                                 <div v-if="message.html || message.content"
                                      class="prose prose-sm max-w-none"
                                      :class="message.role === 'user' ? 'prose-invert' : ''"
-                                     v-html="message.html || message.content">
+                                     v-html="message.html">
                                 </div>
                             </div>
                         </div>
@@ -829,6 +829,13 @@
                         }
                     };
 
+                    // A typed question is shown as text, never as HTML (#439).
+                    const escapeHtml = (text) => {
+                        const div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    };
+
                     // Rewrite citation links into numbered chips plus a
                     // trailing Sources list. The model emits
                     // [Title @ m:ss](/recordings/<id>?t=s); repeating the full
@@ -955,7 +962,7 @@
                         if (!inquireChatInput.value.trim() || isInquireChatLoading.value) return;
 
                         const userMessage = inquireChatInput.value.trim();
-                        inquireChatMessages.value.push({ role: 'user', content: userMessage, html: userMessage });
+                        inquireChatMessages.value.push({ role: 'user', content: userMessage, html: escapeHtml(userMessage) });
                         inquireChatInput.value = '';
                         isInquireChatLoading.value = true;
                         showProcessingStatus.value = true;

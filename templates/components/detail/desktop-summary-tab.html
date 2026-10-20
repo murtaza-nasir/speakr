@@ -48,7 +48,7 @@
          is inside so the scrollbar runs the full edge. -->
     <div v-else-if="!editingSummary"
          class="flex-1 overflow-y-auto px-4 py-4 prose-flush"
-         v-html="selectedRecording.summary_html || selectedRecording.summary">
+         v-html="summaryHtml">
     </div>
 
     <!-- Editing mode — EasyMDE is mounted onto the textarea below.
