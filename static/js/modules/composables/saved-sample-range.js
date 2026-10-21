@@ -39,7 +39,8 @@ export function useSavedSampleRange(state, utils) {
         let segments;
         try {segments=JSON.parse(state.selectedRecording.value.transcription);}catch {}
         const index=Array.isArray(segments) && segments.every(s=>Number.isFinite(s.start_time)&&Number.isFinite(s.end_time)) ? segments.findIndex(s=>rangeOverlaps(s,ready)) : -1;
-        if(index>=0) {
+        const record=state.selectedRecording.value;
+        if(index>=0 && record.can_edit!==false && record.is_read_only!==true) {
             try {await utils.openAtSegment(index);} catch {savedSampleInspection.value=true;}
             if(token!==generation || Number(state.selectedRecording.value?.id)!==ready.recording_id)return;
             if(!state.showAsrEditorModal.value)savedSampleInspection.value=true;

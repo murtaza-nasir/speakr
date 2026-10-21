@@ -63,3 +63,11 @@ it('does not focus a stale opening after a deferred nextTick',async()=>{
  await vi.waitFor(()=>expect(ui.savedSampleInspection.value).toBe(true));
  state.selectedRecording.value.id=5;watchers[0]();release();await opening;expect(focus).not.toHaveBeenCalled();
 });
+
+it.each([{can_edit:false},{is_read_only:true}])('keeps timestamped read-only records out of the upstream writable editor: %o',async flags=>{
+ Object.assign(state.selectedRecording.value,flags,{transcription:JSON.stringify([{start_time:35,end_time:94,sentence:'preserve'}])});
+ const before=JSON.stringify(state);
+ await ui.openSavedSampleRange(2,id,4);
+ expect(ui.savedSampleInspection.value).toBe(true);expect(utils.openAtSegment).not.toHaveBeenCalled();
+ expect(JSON.stringify(state)).toBe(before);
+});
