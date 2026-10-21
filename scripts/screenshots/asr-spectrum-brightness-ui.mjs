@@ -70,8 +70,14 @@ async function scenario(width,dark,amplitude=.002){
    await screenshot('-final');
    result.geometry=await field('asr-spectrogram-brightness-controls').evaluate(e=>({width:e.getBoundingClientRect().width,overflow:e.scrollWidth>e.clientWidth+1}));assert(!result.geometry.overflow);
    assert(await field('asr-spectrogram-gain').evaluate(e=>e.getBoundingClientRect().height>=44));
-   if(width<737)await field('asr-editor').getByRole('tab',{name:'Транскрипт',exact:true}).click();
-   await field('workspace-edit-1').click();await field('asr-show-spectrogram').click();await settled();assert.equal((await view()).applied,20);
+   if(await field('workspace-edit-1').count()) {
+    if(width<737)await field('asr-editor').getByRole('tab',{name:'Транскрипт',exact:true}).click();
+    await field('workspace-edit-1').click();
+   } else {
+    if(width<737)await field('asr-mobile-picker').click();
+    await page.locator('[data-list-index="1"]').click();
+   }
+   await field('asr-show-spectrogram').click();await settled();assert.equal((await view()).applied,20);
    await close();await open();assert.equal((await view()).applied,20);await close();
    const next=await fixture();await open(next.id);assert.equal((await view()).applied,20);
    await close();await page.reload({waitUntil:'domcontentloaded'});await open();assert.equal((await view()).applied,20);
