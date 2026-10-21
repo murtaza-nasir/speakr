@@ -224,7 +224,7 @@ def test_an_election_error_leaves_this_process_in_charge(monkeypatch, sqlite_url
     assert acquire_singleton_lock(engine, "speakr.test_fail_open") is True
 
 
-def test_the_election_never_opens_a_database_connection():
+def test_the_election_never_opens_a_database_connection(tmp_path):
     """Leadership must not depend on a connection nobody watches.
 
     A session-level advisory lock vanishes when its connection does -- server
@@ -236,7 +236,7 @@ def test_the_election_never_opens_a_database_connection():
 
     class _EngineThatRefusesConnections:
         name = "postgresql"
-        url = "postgresql://probe@nowhere/elect"
+        url = f"postgresql://probe@nowhere/{tmp_path.name}-{os.getpid()}"
 
         def connect(self):
             raise AssertionError("the election opened a database connection")
