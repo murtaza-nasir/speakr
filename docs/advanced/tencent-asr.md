@@ -38,7 +38,11 @@ in seconds (maximum timeout 10800).
 
 ## Large files and storage
 
-Files up to 5 MiB are sent directly. Larger files use the existing Speakr S3
+The connector declares original-audio passthrough, so Speakr skips audio
+preprocessing (including forced WebM conversion) and the MP3 error-retry path
+for it. This applies to audio recordings; video extraction is a separate app
+feature. The connector never compresses or splits audio. Files up to 5 MiB are sent
+directly. Larger files use the existing Speakr S3
 backend: configure `S3_BUCKET_NAME`, `S3_REGION`, `S3_ENDPOINT_URL`,
 `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. The endpoint and signed download
 URL must be reachable by Tencent over the public internet; a NAS-only address
@@ -47,20 +51,73 @@ S3-compatible client, not a separate COS SDK; verify your chosen storage
 provider's compatibility before relying on it. Local recording storage can
 remain selected (`FILE_STORAGE_BACKEND=local`).
 
-Staging objects use the `tencent-asr/` prefix and 24-hour signed URLs. They are
+Tencent COS example (use your own bucket, credentials and region):
+
+```env
+FILE_STORAGE_BACKEND=local
+S3_BUCKET_NAME=your-bucket-1234567890
+S3_REGION=ap-hongkong
+S3_ENDPOINT_URL=https://cos.ap-hongkong.myqcloud.com
+S3_ACCESS_KEY_ID=your-cos-secret-id
+S3_SECRET_ACCESS_KEY=your-cos-secret-key
+S3_USE_PATH_STYLE=false
+S3_VERIFY_SSL=true
+TENCENT_ASR_STAGING_PREFIX=recordings/speakr
+```
+
+These storage credentials need object upload, read and delete permissions.
+They may differ from the ASR credentials. COS uses virtual-host addressing;
+the backend disables optional AWS checksum trailers for COS compatibility.
+Staging uploads explicitly set a private object ACL, even for an existing
+image bucket. Check that no bucket policy independently grants public access.
+There is no requirement to store audio with Alibaba or AWS.
+
+Staging objects use the configurable `TENCENT_ASR_STAGING_PREFIX` (default
+`tencent-asr/`) and 24-hour signed URLs. They are
 deleted after a terminal task result. Configure a bucket lifecycle rule to
 expire this prefix after at least two days: timed-out tasks, interrupted
 workers, and uncertain submissions retain their objects so Tencent can finish
 downloading them. These objects contain audio; storage charges may apply.
-The API limits URL jobs to 1 GiB and five hours.
+The API limits URL jobs to 1 GiB and five hours. The operator should configure
+expiration and incomplete-multipart-upload cleanup on this prefix only;
+Speakr does not change bucket lifecycle policies automatically.
+
+Live validation used an unchanged 9.64 MB WebM recording (598.74 seconds) in
+a private COS object: downloaded bytes matched SHA-256, anonymous access was
+denied, Tencent returned 176 timestamped segments, and deletion was verified.
+This is a functional test, not an accuracy or performance benchmark.
 
 ## Failures and retries
 
-Transient polling failures retry the same task. **Submission is never retried
-by the connector.** Task IDs are logged and included in timeout errors. There
-is no automatic resume across worker restarts: check the Tencent ASR console
-before manually retrying a failed/timeout recording, since a new transcription
-can create another billable task. A network timeout during submission can mean
-Tencent accepted it even though no task ID reached Speakr.
+Checkpoints are stored in `tencent-tasks/` under the Flask instance directory,
+or in `TENCENT_ASR_STATE_DIR` when set. Keep that directory on persistent storage.
+It contains task IDs, object locators and completed transcription results, but
+not credentials or signed URLs. Treat it as private application data. Every
+worker serving the same instance must share it; per-file OS locks prevent
+concurrent submission. Distributed deployments need filesystem lock semantics
+and are not validated by this connector.
+
+An identical audio file, ASR account and recognition parameters reuse the saved
+task. After a polling failure or worker restart, retrying the recording resumes
+polling rather than submitting again. Completed results are reused; results are
+saved before deleting staging audio. Failed cleanup retains its locator and is
+retried when that recording is processed again, with bucket lifecycle cleanup
+as a fallback. There is no new background polling thread: recovery occurs when
+Speakr's job queue or the user invokes transcription again.
+
+**Ambiguous submissions never retry automatically.** If the worker dies after
+starting submission but before saving the returned task ID, the checkpoint
+blocks further submission until an operator reconciles it with Tencent's
+console. Tasks older than 23 hours also stop instead of querying a potentially
+reused task ID (Tencent retains results for 24 hours). A known provider rejection
+can be retried after fixing configuration or quota. Failed remote tasks require
+operator review. Checkpoints are not automatically expired to avoid silently
+charging for the same recording again.
+
+To intentionally request fresh recognition with unchanged settings, stop work
+on that recording, confirm the old remote task is finished and clean up any
+staging locator, then back up/remove only its matching checkpoint JSON. This
+explicit operation can create another billable task. A user-facing reset action
+is not included yet.
 
 API reference: [CreateRecTask](https://cloud.tencent.com/document/api/1093/37823).

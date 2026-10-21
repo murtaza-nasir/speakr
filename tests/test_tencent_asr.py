@@ -13,9 +13,9 @@ from src.services.transcription.exceptions import ConfigurationError, ProviderEr
 
 
 @pytest.fixture
-def connector():
+def connector(tmp_path):
     return mod.TencentASRConnector({'secret_id': 'test-id', 'secret_key': 'test-secret',
-                                   'poll_interval': .001, 'timeout': .05})
+                                   'poll_interval': .001, 'timeout': .5, 'state_dir': str(tmp_path)})
 
 
 def request(data=b'audio', **kwargs):
@@ -122,10 +122,11 @@ def test_large_file_uses_private_staging_and_cleans_terminal(connector, monkeypa
     monkeypatch.setattr(mod, 'INLINE_LIMIT', 5)
     storage = Mock()
     locator = object()
-    def stage(path, req):
+    def stage(path, req, *args):
         assert mod.Path(path).read_bytes() == b'123456'
         return storage, locator, 'https://bucket/file?signed=PRIVATE'
     monkeypatch.setattr(connector, '_stage', stage)
+    monkeypatch.setattr(connector, '_cleanup_checkpoint', lambda state, save: storage.delete(locator, missing_ok=True) if state.get('status') in ('completed','failed') else None)
     calls = transport(monkeypatch, [{'Data': {'TaskId': 42}}, {'Data': {'Status': status, 'Result': 'text'}}])
     if status == 2:
         assert connector.transcribe(request(b'123456')).text == 'text'
@@ -208,6 +209,7 @@ def test_submission_rejection_removes_staging(connector, monkeypatch):
     monkeypatch.setattr(mod, 'INLINE_LIMIT', 5)
     storage = Mock()
     monkeypatch.setattr(connector, '_stage', lambda *args: (storage, 'locator', 'https://bucket/file'))
+    monkeypatch.setattr(connector, '_cleanup_checkpoint', lambda state, save: storage.delete('locator', missing_ok=True) if state.get('status') == 'rejected' else None)
     transport(monkeypatch, [{'Error': {'Code': 'AuthFailure.SecretIdNotFound'}}])
     with pytest.raises(ProviderError):
         connector.transcribe(request(b'123456'))
