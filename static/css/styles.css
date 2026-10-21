@@ -10,20 +10,6 @@
 .sw-spectrum-scroll { width:100%; height:100%; overflow-x:scroll; overflow-y:hidden; touch-action:pan-x; scrollbar-width:auto; }
 .sw-spectrum-strip { position:relative; min-width:100%; }
 .sw-spectrum-tile { position:absolute; top:0; max-width:none; user-select:none; }
-.sw-spectrum-panel { margin-inline-start:-8px; }
-.sw-spectrum-brightness { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-block-start:4px; }
-.sw-spectrum-brightness input { flex:1 1 80px; min-width:64px; max-width:100%; height:44px; accent-color:var(--text-accent); }
-.sw-spectrum-brightness output { white-space:nowrap; font-variant-numeric:tabular-nums; }
-.sw-spectrum-brightness button { min-width:44px; min-height:44px; }
-.sw-spectrum-brightness input:focus-visible { outline:2px solid var(--text-accent); outline-offset:2px; }
-.sw-spectrum-axis { width:48px; font-size:11px; line-height:1.25; overflow-wrap:anywhere; }
-.sw-spectrum-frequency { position:relative; display:block; min-height:44px; color:var(--text-secondary); cursor:pointer; border-radius:4px; }
-.sw-spectrum-frequency > span { display:block; padding-inline-end:10px; }
-.sw-spectrum-frequency > i { position:absolute; inset-inline-end:0; top:3px; font-size:8px; }
-.sw-spectrum-frequency select { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
-.sw-spectrum-frequency:focus-within { outline:2px solid var(--text-accent); outline-offset:2px; }
-.sw-spectrum-frequency:hover { color:var(--text-accent); background:var(--bg-tertiary); }
-@media(max-width:736px) { .sw-spectrum-panel { margin-inline-start:-4px; } }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {

@@ -8,6 +8,7 @@ const browser=await chromium.launch({executablePath:process.env.SPEAKR_CHROMIUM_
 const results=[];
 const segment=(speaker,start,end,sentence='Первая фраза. Ответ другого человека.')=>({speaker,start_time:start,end_time:end,sentence,extra:{preserve:true}});
 async function scenario(name,options,run){
+ if(name==='real-segment-asr-boundaries-delete'&&!process.argv.includes('--with-asr'))return;
  const context=await browser.newContext({viewport:{width:options.width || (options.mobile?390:1440),height:options.mobile?844:1000},serviceWorkers:'block',locale:'ru-RU',recordVideo:{dir:out}});
  const fixture=await(await context.request.post(base+'/__asr-split-fixture',{data:{count:8,spectrogram:true,audio_duration:90,...options}})).json();assert(fixture.isolated);
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));

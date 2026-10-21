@@ -4,7 +4,7 @@ const {chromium}=await import(process.env.SPEAKR_PLAYWRIGHT_MODULE||'playwright'
 const base=process.env.SPEAKR_URL||'http://127.0.0.1:8919';
 assert(['localhost','127.0.0.1'].includes(new URL(base).hostname)&&!['8898','8899'].includes(new URL(base).port));
 const out='output/playwright/modal-layering';await mkdir(out,{recursive:true});
-const common=process.env.SPEAKR_MODAL_COMMON==='1';
+const common=process.env.SPEAKR_MODAL_COMMON!=='0';
 const browser=await chromium.launch();const results=[];
 try{
  for(const [width,dark] of [[1440,false],[390,true]]){
