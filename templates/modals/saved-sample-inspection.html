@@ -1,0 +1,6 @@
+<div v-if="savedSampleInspection" class="modal-overlay" style="z-index:80" @click.self="clearSavedSampleRange" data-testid="saved-range-inspection">
+ <section class="modal-panel modal-panel--sm" role="dialog" tabindex="-1" aria-modal="true" :aria-label="t('manualVoice.title')" @keydown="handleSavedInspectionKeydown">
+  <header class="modal-header"><h2 class="modal-title" v-text="selectedRecording?.title"></h2><button @click="clearSavedSampleRange" class="modal-close" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button></header>
+  <div class="modal-body">{% include 'modals/saved-sample-range.html' %}</div>
+ </section>
+</div>

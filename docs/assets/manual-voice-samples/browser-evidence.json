@@ -1,0 +1,119 @@
+{
+  "uploads": [
+    {
+      "sha256": "2df3540c0a0ccdd3edc334c6b813e380dfbda77a8ece9dd814fdc0dafb7e2150",
+      "size": 344044,
+      "duration": 21.5,
+      "frames": 172000,
+      "rate": 8000,
+      "channels": 1,
+      "query": {
+        "encode": [
+          "true"
+        ],
+        "task": [
+          "transcribe"
+        ],
+        "output": [
+          "json"
+        ],
+        "diarize": [
+          "true"
+        ],
+        "enable_diarization": [
+          "true"
+        ],
+        "return_speaker_embeddings": [
+          "true"
+        ],
+        "min_speakers": [
+          "1"
+        ],
+        "max_speakers": [
+          "1"
+        ]
+      }
+    },
+    {
+      "sha256": "219a33b6ecf114306affd70827463e0baa1e82ab2308b3bcb87d7c3dc3a4b7f2",
+      "size": 320044,
+      "duration": 20.0,
+      "frames": 160000,
+      "rate": 8000,
+      "channels": 1,
+      "query": {
+        "encode": [
+          "true"
+        ],
+        "task": [
+          "transcribe"
+        ],
+        "output": [
+          "json"
+        ],
+        "diarize": [
+          "true"
+        ],
+        "enable_diarization": [
+          "true"
+        ],
+        "return_speaker_embeddings": [
+          "true"
+        ],
+        "min_speakers": [
+          "1"
+        ],
+        "max_speakers": [
+          "1"
+        ]
+      }
+    },
+    {
+      "sha256": "d301c48cc72f4ebd4bda279d6508eec605e63d2844db80a73301dbb5d02ebae6",
+      "size": 320044,
+      "duration": 20.0,
+      "frames": 160000,
+      "rate": 8000,
+      "channels": 1,
+      "query": {
+        "encode": [
+          "true"
+        ],
+        "task": [
+          "transcribe"
+        ],
+        "output": [
+          "json"
+        ],
+        "diarize": [
+          "true"
+        ],
+        "enable_diarization": [
+          "true"
+        ],
+        "return_speaker_embeddings": [
+          "true"
+        ],
+        "min_speakers": [
+          "1"
+        ],
+        "max_speakers": [
+          "1"
+        ]
+      }
+    }
+  ],
+  "js_errors": [],
+  "draft_preserved": true,
+  "pcm_exact": true,
+  "two_ranges": true,
+  "receipt_retry": true,
+  "prepared_media_state": {
+    "duration": 21.5,
+    "readyState": 4,
+    "currentTime": 1.152001
+  },
+  "prepared_played_to_end": true,
+  "physical_listening": "not verified",
+  "provider_accuracy": "stand-in response only"
+}

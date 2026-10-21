@@ -9,6 +9,9 @@ import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
+import {useManualVoiceSamples} from './modules/composables/manual-voice-samples.js';
+import {useSavedSampleRange} from './modules/composables/saved-sample-range.js';
+import {parseSampleLink} from './modules/utils/saved-voice-samples.js';
 import { useFindReplace } from './modules/composables/find-replace.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
@@ -2612,6 +2615,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const modalsComposable = useModals(state, utils);
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
+            const manualVoiceComposable=useManualVoiceSamples(state,{...utils,pauseOtherAudio:()=>document.querySelectorAll('audio,video').forEach(a=>a.pause())});
+            const savedSampleRangeComposable=useSavedSampleRange(state,{...utils,openAtSegment:transcriptionComposable.openAsrEditorAtSegment});
             const findReplaceComposable = useFindReplace(state, utils);
             const chatComposable = useChat(state, utils);
             const pwaComposable = usePWA(state, utils);
@@ -4013,6 +4018,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Deep link to a specific recording: /recordings/<id> (#301).
                 // Captured before load; selected once recordings are in.
                 let deepLinkRecordingId = null;
+                let savedSampleDeepLink=null, savedSampleDeepLinkError=false;
                 // Optional ?t=<seconds> seek (Inquire citations link to the
                 // cited moment): after the recording opens, seek the main
                 // player there and start playback.
@@ -4020,9 +4026,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const m = window.location.pathname.match(/^\/recordings\/(\d+)\/?$/);
                     if (m) deepLinkRecordingId = m[1];
+                    if(m) savedSampleDeepLink=parseSampleLink(window.location);
                     const t = new URLSearchParams(window.location.search).get('t');
                     if (m && t !== null && /^\d+(\.\d+)?$/.test(t)) deepLinkSeekSeconds = parseFloat(t);
-                } catch (_) { /* best-effort */ }
+                } catch (_) { savedSampleDeepLinkError=true; }
 
                 const applyDeepLinkSeek = (seconds) => {
                     const startedAt = Date.now();
@@ -4103,7 +4110,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else if (deepLinkRecordingId) {
                     // Honour the /recordings/<id> deep link now that data is loaded.
                     await recordingsComposable.selectRecordingById(deepLinkRecordingId);
-                    if (deepLinkSeekSeconds !== null) {
+                    if(savedSampleDeepLinkError) showToast(t('manualVoice.errors.access'));
+                    else if(savedSampleDeepLink) await savedSampleRangeComposable.openSavedSampleRange(
+                        savedSampleDeepLink.speakerId,savedSampleDeepLink.sampleId,deepLinkRecordingId);
+                    else if (deepLinkSeekSeconds !== null) {
                         applyDeepLinkSeek(deepLinkSeekSeconds);
                     }
                 }
@@ -4548,6 +4558,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...sharingComposable,
                 ...reprocessComposable,
                 ...transcriptionComposable,
+                ...manualVoiceComposable,
+                ...savedSampleRangeComposable,
                 ...findReplaceComposable,
                 ...speakersComposable,
                 ...speakerModalComposable,

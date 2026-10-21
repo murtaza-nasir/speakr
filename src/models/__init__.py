@@ -15,7 +15,7 @@ from src.database import db
 
 # Import all models
 from .user import User, Speaker
-from .voice import VoiceEmbeddingSpace, SpeakerVoiceSample
+from .voice import VoiceEmbeddingSpace, SpeakerVoiceSample, ManualVoiceSample, ManualVoiceSampleReceipt
 from .api_token import APIToken
 from .speaker_snippet import SpeakerSnippet
 from .recording import Recording, RecordingTombstone, TranscriptChunk
@@ -58,6 +58,8 @@ __all__ = [
     'Speaker',
     'VoiceEmbeddingSpace',
     'SpeakerVoiceSample',
+    'ManualVoiceSample',
+    'ManualVoiceSampleReceipt',
     'APIToken',
     'SpeakerSnippet',
     # Recording models

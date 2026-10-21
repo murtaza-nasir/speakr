@@ -246,6 +246,8 @@
                             v-if="processedTranscription.hasDialogue"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('buttons.identifySpeakers')"><i class="fas fa-user-tag"></i></button>
+                    <button @click.stop="openManualVoice" data-testid="manual-voice-open-mobile" class="btn btn--icon btn--sm flex-shrink-0"
+                            :title="t('manualVoice.title')" :aria-label="t('manualVoice.title')"><i class="fas fa-wave-square"></i></button>
                     <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
                             @click.stop="openUnifiedShareModal(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"

@@ -1,0 +1,35 @@
+<!-- Independent fields and players preserve the workplace's unsaved transcript. -->
+<div v-if="manualVoiceOpen" class="modal-overlay" data-testid="manual-voice-panel" @click.self="!manualBusy && closeManualVoice()" @keydown.stop="handleManualKeydown" style="z-index: 80">
+ <section class="modal-panel modal-panel--sm" role="dialog" aria-modal="true" :aria-label="t('manualVoice.title')">
+  <header class="modal-header"><h3 class="modal-title" v-text="t('manualVoice.title')"></h3><button class="modal-close" data-testid="manual-voice-close" @click="closeManualVoice" :disabled="manualJob?.state==='committing'" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button></header>
+  <div class="modal-body space-y-3">
+   <p class="t-body-strong" data-testid="manual-voice-recording">${ selectedRecording?.title || t('manualVoice.recording') }</p>
+   <p class="t-meta" v-text="t('manualVoice.independent')"></p>
+   <div class="grid grid-cols-2 gap-3">
+    <label class="t-label"><span v-text="t('manualVoice.start')"></span><input class="field mt-1" type="text" inputmode="decimal" data-testid="manual-voice-start" v-model="manualStart" @input="changeManualContext" :disabled="manualJob?.state==='committing'" placeholder="00:00:00.000"></label>
+    <label class="t-label"><span v-text="t('manualVoice.end')"></span><input class="field mt-1" type="text" inputmode="decimal" data-testid="manual-voice-end" v-model="manualEnd" @input="changeManualContext" :disabled="manualJob?.state==='committing'" placeholder="00:00:15.000"></label>
+   </div>
+   <p class="t-meta" v-text="t('manualVoice.rangeHint')"></p>
+   <label class="t-label block"><span v-text="t('manualVoice.person')"></span><select class="field mt-1" data-testid="manual-voice-speaker" v-model="manualSpeakerId" @change="changeManualContext" :disabled="manualLoading || manualJob?.state==='committing'"><option value="" v-text="t('manualVoice.choosePerson')"></option><option v-for="speaker in manualSpeakers" :key="speaker.id" :value="String(speaker.id)">${ speaker.name }</option></select></label>
+   <p v-if="!manualLoading && !manualSpeakers.length" class="t-meta"><span v-text="t('manualVoice.noProfiles')"></span> <a href="/account#speakers" class="text-[var(--text-accent)]" v-text="t('manualVoice.manageProfiles')"></a></p>
+   <audio v-if="selectedRecording?.id && !selectedRecording.incognito && !selectedRecording.audio_deleted_at" ref="manualSourceAudio" :src="'/audio/'+selectedRecording.id" preload="metadata" @loadedmetadata="onManualMetadata" @timeupdate="onManualTimeUpdate" @ended="stopManualRange" data-testid="manual-voice-source-audio"></audio>
+   <button type="button" class="btn btn--ghost" data-testid="manual-voice-listen" @click="playManualRange" :disabled="!canListenManualRange && !manualRangePlaying"><i :class="manualRangePlaying ? 'fas fa-pause' : 'fas fa-play'"></i><span v-text="t(manualRangePlaying ? 'manualVoice.stop' : 'manualVoice.listen')"></span></button>
+   <p v-if="manualAvailability" class="t-meta" data-testid="manual-voice-unavailable" v-text="t('manualVoice.'+manualAvailability)"></p>
+   <p class="t-meta" v-text="t('manualVoice.previewNote')"></p>
+   <p class="t-body" data-testid="manual-voice-provider-note" v-text="t('manualVoice.providerNote')"></p>
+   <div class="flex flex-wrap gap-2"><button type="button" class="btn btn--primary" data-testid="manual-voice-prepare" @click="prepareManualVoice" :disabled="!canPrepareManualVoice" v-text="t('manualVoice.prepare')"></button><button v-if="manualJob?.state==='preparing'" class="btn btn--ghost" data-testid="manual-voice-cancel" @click="cancelManualVoice" v-text="t('buttons.cancel')"></button></div>
+   <p v-if="manualJob?.state==='preparing'" role="status" data-testid="manual-voice-preparing" class="t-meta" v-text="t('manualVoice.preparing')"></p>
+   <div v-if="manualJob?.state==='ready' || manualJob?.state==='committing'" class="space-y-2" data-testid="manual-voice-ready">
+    <p class="t-body-strong">${ t('manualVoice.ready') }: ${ formatManualRangeTime(manualJob.start_ms) }–${ formatManualRangeTime(manualJob.end_ms) }</p>
+    <p class="t-meta">${ t('manualVoice.duration') }: ${ ((manualJob.end_ms-manualJob.start_ms)/1000).toFixed(3) } ${ t('manualVoice.seconds') } · ${ t('manualVoice.speech') }: ${ (manualJob.speech_ms/1000).toFixed(3) } ${ t('manualVoice.seconds') } · ${ t('manualVoice.space') }: ${ manualJob.space_id }</p>
+    <label class="t-label block"><span v-text="t('manualVoice.preparedListen')"></span><audio v-if="manualPreparedAudioUrl" ref="manualPreparedAudio" :src="manualPreparedAudioUrl" controls preload="none" class="w-full mt-1" @play="stopManualRange" @error="onManualPreparedError" data-testid="manual-voice-prepared-audio"></audio></label>
+    <p class="t-meta" v-text="t('manualVoice.ownershipNote')"></p><button class="btn btn--primary" data-testid="manual-voice-commit" @click="commitManualVoice" :disabled="!canCommitManualVoice" v-text="t(manualJob.state==='committing' ? 'manualVoice.adding' : 'manualVoice.add')"></button>
+   </div>
+   <p v-if="manualJob?.state==='committed'" role="status" data-testid="manual-voice-committed" class="t-body-strong" v-text="t('manualVoice.added')"></p>
+   <p v-if="manualError" role="alert" class="text-[var(--text-danger)]" data-testid="manual-voice-error" v-text="t('manualVoice.errors.'+manualError)"></p><a v-if="manualCheckUrl" :href="manualCheckUrl" class="text-[var(--text-accent)]" v-text="t('manualVoice.checkLink')"></a>
+   <section v-if="manualSpeakerId" data-testid="manual-voice-samples"><h4 class="t-body-strong" v-text="t('manualVoice.samples')"></h4><p v-if="manualListError" role="alert" class="t-meta" v-text="t('manualVoice.errors.'+manualListError)"></p><p v-else-if="!manualSamples.length" class="t-meta" v-text="t('manualVoice.empty')"></p>
+    <div v-for="sample in manualSamples" :key="sample.id" :data-testid="'manual-voice-sample-'+sample.id" class="border-t border-[var(--border-primary)] py-2 flex items-center gap-2"><div class="flex-1 min-w-0"><a v-if="manualSourceLink(sample)" :href="manualSourceLink(sample)" class="text-[var(--text-accent)]" v-text="sample.recording_title || t('manualVoice.recording')"></a><span v-else class="t-meta" v-text="t('manualVoice.sourceUnavailable')"></span><p class="t-meta">${ formatManualRangeTime(sample.start_ms) }–${ formatManualRangeTime(sample.end_ms) } · ${ ((sample.end_ms-sample.start_ms)/1000).toFixed(3) } ${ t('manualVoice.seconds') }</p></div><button class="btn btn--ghost btn--sm" data-testid="manual-voice-delete" @click="deleteManualVoice(sample)" :disabled="sample.removing" v-text="t('manualVoice.remove')"></button></div>
+   </section>
+  </div>
+ </section>
+</div>

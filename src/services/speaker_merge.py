@@ -64,6 +64,12 @@ def merge_speakers(target_id, source_ids, user_id):
     if target_id in source_ids:
         raise ValueError("Cannot merge a speaker with itself")
 
+    # Serialize against range commits before retiring either profile context.
+    from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+    for speaker in sorted([target] + sources, key=lambda sp: sp.id):
+        begin_profile_transaction(speaker.id, user_id)
+        invalidate_profile(user_id, speaker.id)
+
     # Move the voice samples. The target's variants are rebuilt from the
     # combined samples below, so the merge keeps every voice condition the
     # people had instead of averaging them into one vector.
@@ -101,6 +107,8 @@ def merge_speakers(target_id, source_ids, user_id):
     from src.services.voice_profiles import refresh_speaker_summary
     db.session.flush()
     refresh_speaker_summary(target)
+    from src.services.voice_profiles import _calibration_cache
+    _calibration_cache.clear()
 
     # Recordings keep speaker names, not speaker ids: without this the
     # recordings of a merged speaker kept showing the old name.
@@ -223,12 +231,13 @@ def _merge_voice_samples(target, sources):
     Profiles from before samples existed are written out as samples first,
     so nothing they learned is lost.
     """
-    from src.models import SpeakerVoiceSample
+    from src.models import SpeakerVoiceSample, ManualVoiceSample
     from src.services.voice_profiles import _materialize_legacy
     for speaker in [target] + list(sources):
         _materialize_legacy(speaker)
     for source in sources:
         SpeakerVoiceSample.query.filter_by(speaker_id=source.id).update({'speaker_id': target.id})
+        ManualVoiceSample.query.filter_by(speaker_id=source.id, user_id=target.user_id).update({'speaker_id': target.id})
     db.session.flush()
 
 

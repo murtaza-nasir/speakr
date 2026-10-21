@@ -5052,3 +5052,7 @@ select:disabled {
     background: var(--bg-accent);
     color: var(--text-accent);
 }
+
+/* Keep the sample action accessible beside the workspace title on narrow phones. */
+.tw-manual-sample-icon{display:none}
+@media(max-width:360px){.tw-manual-sample-label{display:none}.tw-manual-sample-icon{display:inline}.tw-workspace .modal-header .modal-title{flex:1;min-width:0}}

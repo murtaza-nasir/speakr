@@ -3270,6 +3270,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     speakerCard.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200';
                     speakerCard.dataset.speakerId = speaker.id;
                     speakerCard.dataset.speakerName = speaker.name.toLowerCase();
+                    speakerCard.style.minWidth = '0';
 
                     speakerCard.innerHTML = `
                         <div class="p-3">
@@ -3324,7 +3325,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <button class="view-snippets-btn w-full px-2 py-1 text-[10px] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-colors"
                                     data-speaker-id="${speaker.id}">
                                 <i class="fas fa-volume-up mr-1"></i>
-                                <span>Voice Samples</span>
+                                <span>${escapeHtml(vt('manualVoice.recentQuotes', 'Recent quotes'))}</span>
                                 <i class="fas fa-chevron-down ml-1 transition-transform duration-200"></i>
                             </button>
 
@@ -3438,6 +3439,38 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Toggle speaker snippets
             // ---- Voice profile samples ------------------------------------
+            let activeSavedPlayback = null;
+            const savedSampleHelpers = import('/static/js/modules/utils/saved-voice-samples.js');
+            function closeSavedSampleMenus(except = null, restoreFocus = false) {
+                document.querySelectorAll('[data-testid="sample-actions-menu"][open]').forEach(menu => {
+                    if (menu === except) return;
+                    menu.open = false;
+                    if (restoreFocus) menu.querySelector('summary').focus();
+                });
+            }
+            document.addEventListener('click', event => closeSavedSampleMenus(event.target.closest('[data-testid="sample-actions-menu"]')));
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeSavedSampleMenus(null, true);
+            });
+            function stopSavedPlayback() {
+                if (!activeSavedPlayback) return;
+                activeSavedPlayback.audio.pause();
+                activeSavedPlayback.audio.removeAttribute('src');
+                activeSavedPlayback.audio.load();
+                activeSavedPlayback.control.stop();
+                activeSavedPlayback.listen.disabled=false;
+                activeSavedPlayback.status.textContent='';
+                activeSavedPlayback.audio.classList.add('hidden');
+                activeSavedPlayback = null;
+            }
+            window.addEventListener('pagehide', stopSavedPlayback);
+            new MutationObserver(() => {
+                if (activeSavedPlayback && (!activeSavedPlayback.container.isConnected ||
+                    document.getElementById('content-speakers').classList.contains('hidden'))) stopSavedPlayback();
+            }).observe(document.getElementById('content-speakers'), {attributes:true, childList:true, subtree:true});
+            new MutationObserver(() => {
+                if (document.getElementById('content-speakers').classList.contains('hidden')) closeSavedSampleMenus();
+            }).observe(document.getElementById('content-speakers'), {attributes:true, attributeFilter:['class']});
             function vt(key, fallback, params) {
                 if (window.i18n) {
                     const value = window.i18n.t(key, params || {});
@@ -3470,6 +3503,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             async function toggleVoiceSamples(speaker, button, container, card) {
                 const chevron = button.querySelector('.fa-chevron-down');
                 if (!container.classList.contains('hidden')) {
+                    closeSavedSampleMenus();
+                    container._voiceGeneration = (container._voiceGeneration || 0) + 1;
+                    if (activeSavedPlayback?.container === container) stopSavedPlayback();
                     container.classList.add('hidden');
                     chevron.classList.remove('rotate-180');
                     return;
@@ -3480,17 +3516,36 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             async function renderVoiceSamples(speaker, container, card) {
+                if (activeSavedPlayback?.container === container) stopSavedPlayback();
+                const generation = container._voiceGeneration = (container._voiceGeneration || 0) + 1;
+                const current = () => container.isConnected && generation === container._voiceGeneration && !container.classList.contains('hidden');
                 container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i></div>';
                 try {
                     const response = await fetch(`/speakers/${speaker.id}/voice_samples`);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const data = await response.json();
                     const samples = data.samples || [];
+                    let manualUnavailable = false;
+                    try {
+                        const manualResponse = await fetch(`/speakers/${speaker.id}/manual_voice_samples`);
+                        if (!manualResponse.ok) throw new Error('manual unavailable');
+                        const manualData = await manualResponse.json();
+                        samples.push(...(manualData.samples || []).map(sample => ({...sample, source:'manual-range'})));
+                    } catch {manualUnavailable = true;}
+                    if (!current()) return;
+                    const helpers = await savedSampleHelpers;
+                    if (!current()) return;
                     container.innerHTML = '';
                     const hint = document.createElement('p');
                     hint.className = 'text-[10px] text-[var(--text-muted)] mb-1';
                     hint.textContent = vt('voiceProfiles.hint', 'Voice matching compares new recordings with these samples. Remove one that belongs to someone else.');
                     container.appendChild(hint);
+                    if (manualUnavailable) {
+                        const warning = document.createElement('p');
+                        warning.className = 'text-[10px] text-[var(--text-danger)]';
+                        warning.textContent = vt('manualVoice.errors.unavailable', 'Manual samples are unavailable.');
+                        container.appendChild(warning);
+                    }
                     if (!samples.length) {
                         const empty = document.createElement('p');
                         empty.className = 'text-[10px] text-[var(--text-muted)] italic';
@@ -3500,33 +3555,138 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     }
                     samples.forEach(sample => {
                         const row = document.createElement('div');
-                        row.className = 'flex items-center gap-2 py-1 border-t border-[var(--border-primary)] text-[10px]';
+                        row.className = 'flex flex-wrap items-center gap-2 py-2 border-t border-[var(--border-primary)] text-xs';
+                        if (sample.source === 'manual-range') row.dataset.testid = `account-manual-sample-${sample.id}`;
                         const info = document.createElement('div');
                         info.className = 'flex-1 min-w-0';
-                        const title = document.createElement(sample.recording_id ? 'a' : 'span');
-                        title.className = 'block truncate text-[var(--text-secondary)]' + (sample.recording_id ? ' hover:text-[var(--text-accent)]' : '');
-                        if (sample.recording_id) title.href = `/recordings/${sample.recording_id}`;
+                        const hasSource = !!sample.recording_id && (sample.source !== 'manual-range' || sample.source_available);
+                        const title = document.createElement(hasSource ? 'a' : 'span');
+                        title.className = 'block truncate text-[var(--text-secondary)]' + (hasSource ? ' hover:text-[var(--text-accent)]' : '');
+                        if (hasSource) {
+                            title.href = sample.source === 'manual-range' ? helpers.sampleLink(speaker.id, sample) : `/recordings/${sample.recording_id}`;
+                            if (sample.source === 'manual-range') {title.target='_blank'; title.rel='noopener';}
+                        }
                         title.textContent = sample.source === 'legacy'
                             ? vt('voiceProfiles.legacy', 'Earlier voice profile')
-                            : (sample.recording_title || vt('voiceProfiles.deletedRecording', 'Deleted recording'));
+                            : sample.source === 'manual-range' && !hasSource
+                                ? vt('manualVoice.sourceUnavailable', 'Source recording deleted or access unavailable')
+                                : (sample.recording_title || vt('voiceProfiles.deletedRecording', 'Deleted recording'));
                         const meta = document.createElement('span');
                         meta.className = 'block truncate text-[var(--text-muted)]';
                         const parts = [];
+                        if (sample.source === 'manual-range') {
+                            const clock = ms => {
+                                const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+                                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;
+                            };
+                            parts.push(`${clock(sample.start_ms)}–${clock(sample.end_ms)}`);
+                            parts.push(`${((sample.end_ms-sample.start_ms)/1000).toFixed(3)} ${vt('manualVoice.seconds','s')}`);
+                        }
                         if (sample.label) parts.push(sample.label);
                         if (sample.speech_seconds != null) parts.push(formatSeconds(sample.speech_seconds));
                         parts.push(sample.source === 'auto' ? vt('voiceProfiles.auto', 'auto-labelled')
+                                 : sample.source === 'manual-range' ? vt('manualVoice.manualRange', 'manual range')
                                  : sample.source === 'legacy' ? vt('voiceProfiles.legacyWeight', `weight ${sample.weight}`, { count: sample.weight })
                                  : vt('voiceProfiles.confirmed', 'confirmed'));
-                        if (!sample.in_current_space) parts.push(vt('voiceProfiles.anotherModel', 'another model'));
+                        if (sample.in_current_space === false) parts.push(vt('voiceProfiles.anotherModel', 'another model'));
                         meta.textContent = parts.join(' · ');
                         info.appendChild(title);
                         info.appendChild(meta);
+                        let manualActions = null;
+                        if (sample.source === 'manual-range') {
+                            const actions = document.createElement('div');
+                            manualActions = actions;
+                            actions.className = 'absolute right-0 top-full mt-1 min-w-[15rem] surface-raised z-50 py-1';
+                            actions.setAttribute('role', 'menu');
+                            const menu = document.createElement('details');
+                            menu.className = 'relative flex-shrink-0 self-start'; menu.dataset.testid='sample-actions-menu';
+                            const more = document.createElement('summary');
+                            more.className = 'btn btn--icon cursor-pointer'; more.style.listStyle='none';
+                            more.dataset.testid='sample-actions'; more.title=vt('headerActions.more','Other actions');
+                            more.style.minWidth='44px'; more.style.minHeight='44px';
+                            more.setAttribute('aria-label',more.title); more.setAttribute('aria-haspopup','menu'); more.setAttribute('aria-expanded','false');
+                            more.innerHTML='<i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>';
+                            menu.append(more, actions); row.appendChild(menu);
+                            const available = () => [...actions.querySelectorAll('[role="menuitem"]')].filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+                            menu.addEventListener('toggle', () => {
+                                more.setAttribute('aria-expanded',String(menu.open));
+                                if (menu.open) {
+                                    closeSavedSampleMenus(menu);
+                                    actions.style.top='100%'; actions.style.bottom='auto';
+                                    if(actions.getBoundingClientRect().bottom>window.innerHeight) {actions.style.top='auto'; actions.style.bottom='100%';}
+                                    if(document.activeElement===more)available()[0]?.focus();
+                                }
+                            });
+                            more.addEventListener('keydown', event => {
+                                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                                    event.preventDefault(); menu.open=true;
+                                    const items=available(); (event.key==='ArrowUp' ? items.at(-1) : items[0])?.focus();
+                                } else if (event.key==='Tab') menu.open=false;
+                            });
+                            actions.addEventListener('keydown', event => {
+                                const items=available(), index=items.indexOf(document.activeElement);
+                                if (['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+                                    event.preventDefault();
+                                    const next=event.key==='Home' ? 0 : event.key==='End' ? items.length-1 : (index+(event.key==='ArrowDown' ? 1 : -1)+items.length)%items.length;
+                                    items[next]?.focus();
+                                } else if (event.key==='Tab') {menu.open=false; more.focus();}
+                            });
+                            // Capture availability before action handlers disable themselves.
+                            actions.addEventListener('click', event => {
+                                const item=event.target.closest('[role="menuitem"]');
+                                if (item && !item.disabled) {menu.open=false; more.focus();}
+                            }, true);
+                            const listen = document.createElement('button');
+                            listen.className='w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] whitespace-nowrap'; listen.dataset.testid='sample-listen';
+                            listen.setAttribute('role','menuitem'); listen.tabIndex=-1; listen.style.minHeight='44px';
+                            listen.textContent=vt('manualVoice.listenSaved','Listen'); listen.disabled=!hasSource;
+                            actions.appendChild(listen);
+                            {
+                                const open = document.createElement(hasSource ? 'a' : 'button');
+                                open.className=listen.className; open.dataset.testid='sample-open-range';
+                                open.setAttribute('role','menuitem'); open.tabIndex=-1; open.style.minHeight='44px';
+                                if (hasSource) {open.href=helpers.sampleLink(speaker.id,sample); open.target='_blank'; open.rel='noopener';}
+                                else {open.disabled=true; open.setAttribute('aria-disabled','true');}
+                                open.textContent=vt('manualVoice.openRange','Open range');
+                                open.addEventListener('click',()=>activeSavedPlayback?.audio.pause());
+                                title.addEventListener('click',()=>activeSavedPlayback?.audio.pause());
+                                actions.appendChild(open);
+                            }
+                            const status = document.createElement('p'); status.dataset.testid='sample-playback-status';
+                            status.className='text-xs text-[var(--text-muted)] mt-1';
+                            const audio = document.createElement('audio'); audio.controls=true; audio.preload='none';
+                            audio.dataset.testid='sample-audio'; audio.className='w-full mt-2 hidden';
+                            audio.style.minWidth='0'; audio.style.maxWidth='100%';
+                            audio.addEventListener('play',()=>document.querySelectorAll('audio').forEach(a=>{if(a!==audio)a.pause();}));
+                            audio.addEventListener('error',()=>{if(activeSavedPlayback?.audio!==audio)return;stopSavedPlayback();status.textContent=vt('manualVoice.playbackErrors.unavailable','Playback unavailable');listen.disabled=!hasSource;});
+                            listen.addEventListener('click',async()=>{
+                                stopSavedPlayback(); listen.disabled=true;
+                                const control = new helpers.SavedSamplePlayback(data=>{
+                                    if (activeSavedPlayback?.control!==control || !current()) return;
+                                    if(data.state==='preparing')status.textContent=vt('manualVoice.preparingPlayback','Preparing local playback…');
+                                    if(data.state==='ready'){status.textContent=helpers.rangeText(data); audio.src=data.audioUrl; audio.classList.remove('hidden'); listen.disabled=false; void audio.play().catch(()=>{});}
+                                    if(data.state==='failed'){audio.pause(); audio.removeAttribute('src');audio.load();audio.classList.add('hidden');status.textContent=vt(helpers.playbackErrorKey(data.code),'Playback unavailable');listen.disabled=!hasSource;}
+                                });
+                                activeSavedPlayback={control,audio,listen,status,container,sampleId:sample.id};
+                                await control.start(speaker.id,sample.id);
+                            });
+                            info.append(status,audio);
+                        }
                         const remove = document.createElement('button');
                         remove.className = 'p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] rounded flex-shrink-0';
                         remove.title = vt('voiceProfiles.remove', 'Remove this sample');
                         remove.setAttribute('aria-label', remove.title);
-                        remove.innerHTML = '<i class="fas fa-times"></i>';
+                        remove.innerHTML = sample.source === 'manual-range' ? '' : '<i class="fas fa-times"></i>';
+                        if (sample.source === 'manual-range') {
+                            remove.className='w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] whitespace-nowrap'; remove.dataset.testid='sample-detach';
+                            remove.style.color='var(--text-danger)'; remove.style.borderTop='1px solid var(--border-primary)';
+                            remove.setAttribute('role','menuitem'); remove.tabIndex=-1; remove.style.minHeight='44px';
+                            remove.title=remove.textContent=vt('manualVoice.detach','Detach'); remove.setAttribute('aria-label',remove.title);
+                        }
                         remove.addEventListener('click', async () => {
+                            if (sample.source === 'manual-range' && !confirm(vt('manualVoice.detachConfirm',
+                                'Detach this sample from {name}? The source recording is kept.', {name:speaker.name,range:helpers.rangeText(sample)}))) return;
+                            if (activeSavedPlayback?.sampleId===sample.id) stopSavedPlayback();
                             remove.disabled = true;
                             try {
                                 const csrf = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
@@ -3535,7 +3695,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 const r = sample.id == null
                                     ? await fetch(`/speakers/${speaker.id}/clear_embeddings`, {
                                         method: 'POST', headers: csrf ? { 'X-CSRFToken': csrf } : {} })
-                                    : await fetch(`/speakers/${speaker.id}/voice_samples/${sample.id}`, {
+                                    : await fetch(`/speakers/${speaker.id}/${sample.source === 'manual-range' ? 'manual_voice_samples' : 'voice_samples'}/${sample.id}`, {
                                         method: 'DELETE', headers: csrf ? { 'X-CSRFToken': csrf } : {} });
                                 const body = await r.json();
                                 if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
@@ -3549,11 +3709,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 showToast(error.message, 'error');
                             }
                         });
-                        row.appendChild(info);
-                        row.appendChild(remove);
+                        row.insertBefore(info, row.firstChild);
+                        if (manualActions) manualActions.appendChild(remove);
+                        else row.appendChild(remove);
                         container.appendChild(row);
                     });
                 } catch (error) {
+                    if (!current()) return;
                     container.innerHTML = '';
                     const err = document.createElement('p');
                     err.className = 'text-[10px] text-[var(--text-danger)]';

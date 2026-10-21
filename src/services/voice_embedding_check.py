@@ -429,17 +429,19 @@ def _initialize_spaces(vp, reference):
 def spaces_status():
     """Voice spaces for the admin card: which is current, samples, threshold."""
     try:
-        from src.models import SpeakerVoiceSample, VoiceEmbeddingSpace
+        from src.models import SpeakerVoiceSample, ManualVoiceSample, VoiceEmbeddingSpace
         from src.services import voice_profiles as vp
         current, legacy = vp.current_space_id(), vp.legacy_space_id()
         counts = {}
-        for (space_id,) in SpeakerVoiceSample.query.with_entities(SpeakerVoiceSample.space_id).all():
-            key = vp.effective_space(space_id)
-            counts[key] = counts.get(key, 0) + 1
+        with_samples = set()
+        for model in (SpeakerVoiceSample, ManualVoiceSample):
+            for space_id, speaker_id in model.query.with_entities(model.space_id, model.speaker_id).all():
+                key = vp.effective_space(space_id)
+                counts[key] = counts.get(key, 0) + 1
+                with_samples.add(speaker_id)
         # Profiles from before samples existed count as one sample each in
         # the legacy space until their next update writes them out.
         from src.models import Speaker
-        with_samples = {sid for (sid,) in SpeakerVoiceSample.query.with_entities(SpeakerVoiceSample.speaker_id).distinct()}
         legacy_only = sum(1 for (sid,) in Speaker.query.filter(Speaker.average_embedding.isnot(None))
                           .with_entities(Speaker.id).all() if sid not in with_samples)
         if legacy_only and legacy is not None:

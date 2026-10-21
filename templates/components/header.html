@@ -187,6 +187,8 @@
                     :title="t('buttons.identifySpeakers')">
                 <i class="fas fa-user-tag"></i>
             </button>
+            <button @click="openManualVoice" data-testid="manual-voice-open-detail" class="btn btn--icon hidden md:inline-flex"
+                    :title="t('manualVoice.title')" :aria-label="t('manualVoice.title')"><i class="fas fa-wave-square"></i></button>
             <div class="hidden md:block w-px h-5 bg-[var(--border-primary)] mx-0.5"></div>
             <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
                     @click="openUnifiedShareModal(selectedRecording)"

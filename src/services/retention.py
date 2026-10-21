@@ -213,11 +213,15 @@ def remove_recording_audio(recording):
     Returns True when a stored file was deleted, False when there was none
     (the recording is marked either way). Commits.
     """
+    # Serialize file removal with range commits before touching bytes. The same
+    # hook covers explicit delete_audio and the audio-only retention job.
+    from src.services.manual_voice_samples import invalidate_recording
+    invalidate_recording(recording.id)
     storage = get_storage_service()
     deleted = False
     if recording.audio_path and storage.exists(recording.audio_path):
         storage.delete(recording.audio_path, missing_ok=True)
-        current_app.logger.info(f"Removed audio file for recording {recording.id}: {recording.audio_path}")
+        current_app.logger.info(f"Removed audio file for recording {recording.id}")
         deleted = True
     if not recording.audio_deleted_at:
         recording.audio_deleted_at = datetime.utcnow()

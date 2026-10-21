@@ -37,6 +37,9 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     title = recording.title
     user_id = recording.user_id
 
+    from src.services.manual_voice_samples import invalidate_recording
+    invalidate_recording(recording_id)
+
     if recording.audio_path:
         try:
             storage.delete(recording.audio_path, missing_ok=True)
@@ -48,8 +51,9 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
 
     # Voice samples outlive the recording, as the averaged profile always
     # did; they only lose the reference (SQLite does not apply SET NULL).
-    from src.models import SpeakerVoiceSample
+    from src.models import SpeakerVoiceSample, ManualVoiceSample
     SpeakerVoiceSample.query.filter_by(recording_id=recording_id).update({'recording_id': None})
+    ManualVoiceSample.query.filter_by(recording_id=recording_id).update({'recording_id': None})
 
     snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
     jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()

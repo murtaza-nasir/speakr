@@ -217,6 +217,20 @@ class _Sample:
         self.vector, self.weight, self.row, self.created_at = vector, weight, row, created_at
 
 
+def profile_rows(speaker_id=None, user_id=None):
+    """Typed union; callers preloading profiles must include both tables."""
+    from src.models import SpeakerVoiceSample, ManualVoiceSample
+    rows = []
+    for model in (SpeakerVoiceSample, ManualVoiceSample):
+        query = model.query
+        if speaker_id is not None:
+            query = query.filter_by(speaker_id=speaker_id)
+        if user_id is not None:
+            query = query.filter_by(user_id=user_id)
+        rows.extend(query.all())
+    return rows
+
+
 def _legacy_sample(speaker):
     if not speaker.average_embedding:
         return None
@@ -235,10 +249,9 @@ def _legacy_sample(speaker):
 
 def samples_for(speaker, space_id, rows=None):
     """The person's samples in one (effective) space, legacy average included."""
-    from src.models import SpeakerVoiceSample
     target = effective_space(space_id)
     if rows is None:
-        rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+        rows = profile_rows(speaker_id=speaker.id)
     out = []
     for row in rows:
         if effective_space(row.space_id) != target:
@@ -311,7 +324,7 @@ def score_against(vector, variants, total_samples):
 def _materialize_legacy(speaker):
     """Write a speaker's pre-sample average out as a real sample, once."""
     from src.models import SpeakerVoiceSample
-    if SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).count():
+    if profile_rows(speaker_id=speaker.id):
         return
     legacy = _legacy_sample(speaker)
     if legacy is None:
@@ -341,7 +354,7 @@ def record_sample(speaker, recording, label, vector, speech_seconds=None, source
 
     _materialize_legacy(speaker)
     others = [s for s in samples_for(speaker, space)
-              if not (existing is not None and s.row is not None and s.row.id == existing.id)]
+              if not (existing is not None and isinstance(s.row, SpeakerVoiceSample) and s.row.id == existing.id)]
     if len(others) >= OUTLIER_MIN_SAMPLES:
         best = max((float(np.dot(vec, s.vector)) for s in others if s.vector.shape == vec.shape), default=None)
         if best is not None and best < OUTLIER_SIMILARITY:
@@ -393,8 +406,7 @@ def refresh_speaker_summary(speaker):
     embeddings_history: the last ten sample sources, which the orphaned-speaker
     cleanup reads. Does not commit.
     """
-    from src.models import SpeakerVoiceSample
-    rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+    rows = profile_rows(speaker_id=speaker.id)
     if not rows:
         speaker.average_embedding = None
         speaker.embedding_count = 0
@@ -424,9 +436,8 @@ def refresh_speaker_summary(speaker):
 
 def voice_summary(speaker, rows=None):
     """Counts for the speakers list: samples and variants per space."""
-    from src.models import SpeakerVoiceSample
     if rows is None:
-        rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
+        rows = profile_rows(speaker_id=speaker.id)
     space = current_space_id()
     current = samples_for(speaker, space, rows)
     stored_current = len([s for s in current if s.row is not None])
@@ -441,10 +452,10 @@ def voice_summary(speaker, rows=None):
 # ------------------------------------------------------------------ matching
 
 def _user_profiles(user_id, space_id, exclude_speaker_ids=()):
-    from src.models import Speaker, SpeakerVoiceSample
+    from src.models import Speaker
     speakers = Speaker.query.filter_by(user_id=user_id).all()
     rows_by_speaker = {}
-    for row in SpeakerVoiceSample.query.filter_by(user_id=user_id).all():
+    for row in profile_rows(user_id=user_id):
         rows_by_speaker.setdefault(row.speaker_id, []).append(row)
     profiles = []
     for sp in speakers:
@@ -592,7 +603,7 @@ def calibrated_threshold(space_id):
     if cached and time.time() - cached[0] < _CALIBRATION_TTL:
         return cached[1]
     by_user = {}
-    for row in SpeakerVoiceSample.query.all():
+    for row in profile_rows():
         if effective_space(row.space_id) != target:
             continue
         vec = from_bytes(row.embedding)

@@ -101,11 +101,18 @@ def cleanup_orphaned_speakers(dry_run=False):
                         "Deleting orphaned speaker: id=%d, name='%s', user_id=%d, embedding_count=%d",
                         speaker.id, speaker.name, speaker.user_id, speaker.embedding_count or 0
                     )
+                    from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+                    from src.models import ManualVoiceSample
+                    begin_profile_transaction(speaker.id, speaker.user_id)
+                    invalidate_profile(speaker.user_id, speaker.id)
+                    ManualVoiceSample.query.filter_by(speaker_id=speaker.id, user_id=speaker.user_id).delete()
                     db.session.delete(speaker)
                     stats['speakers_deleted'] += 1
 
             # Commit all deletions
             db.session.commit()
+            from src.services.voice_profiles import _calibration_cache
+            _calibration_cache.clear()
             logger.info("Speaker cleanup completed: %d speakers deleted", stats['speakers_deleted'])
 
             # Warning if large number deleted

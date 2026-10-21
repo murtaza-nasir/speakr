@@ -931,6 +931,7 @@ from src.api.folders import folders_bp, init_folders_helpers
 from src.api.groups import groups_bp, init_groups_helpers
 from src.api.admin import admin_bp, init_admin_helpers
 from src.api.speakers import speakers_bp, init_speakers_helpers
+from src.api.manual_voice_samples import manual_voice_samples_bp
 from src.api.inquire import inquire_bp, init_inquire_helpers
 from src.api.templates import templates_bp, init_templates_helpers
 from src.api.naming_templates import naming_templates_bp
@@ -979,6 +980,7 @@ app.register_blueprint(folders_bp)
 app.register_blueprint(groups_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(speakers_bp)
+app.register_blueprint(manual_voice_samples_bp)
 app.register_blueprint(inquire_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(naming_templates_bp)

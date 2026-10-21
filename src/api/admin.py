@@ -388,6 +388,13 @@ def admin_delete_user(user_id):
         return jsonify({'error': 'User not found'}), 404
     
     # Delete user's recordings and audio files
+    from src.models import Speaker, ManualVoiceSample, ManualVoiceSampleReceipt
+    from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+    for speaker in Speaker.query.filter_by(user_id=user_id).order_by(Speaker.id).all():
+        begin_profile_transaction(speaker.id, user_id)
+        invalidate_profile(user_id, speaker.id)
+    ManualVoiceSample.query.filter_by(user_id=user_id).delete()
+    ManualVoiceSampleReceipt.query.filter_by(user_id=user_id).delete()
     total_chunks = 0
     if ENABLE_INQUIRE_MODE:
         total_chunks = TranscriptChunk.query.filter_by(user_id=user_id).count()
@@ -411,6 +418,8 @@ def admin_delete_user(user_id):
     # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
+    from src.services.voice_profiles import _calibration_cache
+    _calibration_cache.clear()
     
     if ENABLE_INQUIRE_MODE and total_chunks > 0:
         current_app.logger.info(f"Successfully deleted {total_chunks} embeddings and chunks for user {user_id}")

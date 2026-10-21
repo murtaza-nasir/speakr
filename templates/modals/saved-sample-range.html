@@ -1,0 +1,7 @@
+<section v-if="savedSampleRange" data-testid="saved-range-selection" tabindex="-1" class="p-3 border-b border-[var(--border-primary)] text-sm">
+ <div class="flex flex-wrap items-center gap-2"><strong v-text="t('manualVoice.title')"></strong><span data-testid="saved-range-bounds">${ savedSampleRangeText }</span><button @click="clearSavedSampleRange" class="btn btn--ghost btn--sm" v-text="t('manualVoice.clearSelection')"></button></div>
+ <div class="relative h-5 my-2 rounded" style="background:var(--bg-secondary)" role="img" :aria-label="savedSampleRangeText" data-testid="saved-range-timeline">
+  <div class="absolute h-5 rounded" style="background:var(--text-accent)" :style="{left:savedSampleTimeline.left+'%',width:savedSampleTimeline.width+'%'}"></div>
+ </div>
+ <audio :key="savedSampleRange.preview_id+':'+savedSampleRange.lease" data-testid="saved-range-audio" :src="savedSampleRange.audioUrl" controls preload="none" class="w-full" @play="pauseOtherSampleAudio" @error="onSavedRangeAudioError"></audio>
+</section>

@@ -1,5 +1,5 @@
 <!-- ASR Editor Modal -->
-<div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="modal-overlay">
+<div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="modal-overlay" data-testid="asr-editor" :inert="manualVoiceOpen">
     <div @click="closeAllSpeakerSuggestions" class="modal-panel modal-panel--xl">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editAsrTranscription')"></h3>
@@ -8,6 +8,7 @@
                 <span v-text="t('asrEditor.saved')"></span>
             </span>
             <button @click="findReplace.open ? closeFindReplace() : openFindReplace()" class="modal-close ml-auto" :title="t('findReplace.open')"><i class="fas fa-search"></i></button>
+            <button class="btn btn--ghost btn--sm" data-testid="manual-voice-open" @click="openManualVoice" :aria-label="t('manualVoice.title')" :title="t('manualVoice.title')"><i class="fas fa-user-plus tw-manual-sample-icon" aria-hidden="true"></i><span class="tw-manual-sample-label" v-text="t('manualVoice.title')"></span></button>
             <button @click="closeAsrEditorModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
 
@@ -75,6 +76,7 @@
         </div>
 
         {% include 'components/find-replace-bar.html' %}
+        {% include 'modals/saved-sample-range.html' %}
 
         <!-- Editor table uses VIRTUAL SCROLLING with fixed itemHeight=44
              (set in app.modular.js's asrEditorVirtualScroll). This
@@ -101,7 +103,7 @@
                     <!-- Virtual scroll spacer (top) -->
                     <tr v-if="asrEditorSpacerBefore > 0"><td colspan="5" :style="{ height: asrEditorSpacerBefore + 'px', padding: 0 }"></td></tr>
 
-                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" :data-segment-index="segment._originalIndex" :class="['hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]', { 'asr-editor-row--highlighted': asrEditorHighlightIndex === segment._originalIndex }]">
+                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" :data-segment-index="segment._originalIndex" :data-sample-range="savedSampleIntersects(editingSegments[segment._originalIndex])" :class="['hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]', { 'asr-editor-row--highlighted': asrEditorHighlightIndex === segment._originalIndex || savedSampleIntersects(editingSegments[segment._originalIndex]) }]">
                         <td class="border-r border-[var(--border-primary)] align-middle">
                             <div class="relative h-full">
                                 <div class="flex items-center h-full">

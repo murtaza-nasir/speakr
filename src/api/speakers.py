@@ -57,10 +57,9 @@ def get_speakers():
                                .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
                                .all()
         # Voice profile counts (samples, variants) from one query for all.
-        from src.models import SpeakerVoiceSample
-        from src.services.voice_profiles import voice_summary
+        from src.services.voice_profiles import voice_summary, profile_rows
         rows_by_speaker = {}
-        for row in SpeakerVoiceSample.query.filter_by(user_id=current_user.id).all():
+        for row in profile_rows(user_id=current_user.id):
             rows_by_speaker.setdefault(row.speaker_id, []).append(row)
         out = []
         for speaker in speakers:
@@ -204,8 +203,14 @@ def delete_speaker(speaker_id):
         if not speaker:
             return jsonify({'error': 'Speaker not found'}), 404
 
+        from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+        begin_profile_transaction(speaker.id, current_user.id)
+        invalidate_profile(current_user.id, speaker.id)
+        ManualVoiceSample.query.filter_by(speaker_id=speaker.id, user_id=current_user.id).delete()
         db.session.delete(speaker)
         db.session.commit()
+        from src.services.voice_profiles import _calibration_cache
+        _calibration_cache.clear()
         return jsonify({'success': True})
 
     except Exception as e:
@@ -221,10 +226,17 @@ def delete_all_speakers():
     """Delete all speakers for the current user."""
     try:
         # Bulk delete skips ORM cascades, so the voice samples go first.
-        from src.models import SpeakerVoiceSample
+        from src.models import SpeakerVoiceSample, ManualVoiceSample
+        from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+        for speaker in Speaker.query.filter_by(user_id=current_user.id).order_by(Speaker.id).all():
+            begin_profile_transaction(speaker.id, current_user.id)
+            invalidate_profile(current_user.id, speaker.id)
+        ManualVoiceSample.query.filter_by(user_id=current_user.id).delete()
         SpeakerVoiceSample.query.filter_by(user_id=current_user.id).delete()
         deleted_count = Speaker.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
+        from src.services.voice_profiles import _calibration_cache
+        _calibration_cache.clear()
         return jsonify({'success': True, 'deleted_count': deleted_count})
 
     except Exception as e:
@@ -345,7 +357,7 @@ def get_speaker_recordings(speaker_id):
 def list_voice_samples(speaker_id):
     """The samples a person's voice profile is built from, newest first."""
     from src.models import SpeakerVoiceSample
-    from src.services.voice_profiles import voice_summary, effective_space, current_space_id
+    from src.services.voice_profiles import voice_summary, effective_space, current_space_id, profile_rows
     speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
     if not speaker:
         return jsonify({'error': 'Speaker not found'}), 404
@@ -358,7 +370,7 @@ def list_voice_samples(speaker_id):
                 titles[rec.id] = rec.title
     current = effective_space(current_space_id())
     samples = []
-    if not rows and speaker.average_embedding:
+    if not profile_rows(speaker_id=speaker.id) and speaker.average_embedding:
         # A profile from before samples existed: shown as one entry so it can
         # be seen and removed like any sample (removing it clears the profile).
         samples.append({'id': None, 'speaker_id': speaker.id, 'recording_id': None, 'label': None,
@@ -373,7 +385,7 @@ def list_voice_samples(speaker_id):
             item['recording_id'] = None  # deleted, or no longer shared with this user
         item['in_current_space'] = effective_space(r.space_id) == current
         samples.append(item)
-    return jsonify({'summary': voice_summary(speaker, rows), 'samples': samples})
+    return jsonify({'summary': voice_summary(speaker, profile_rows(speaker_id=speaker.id)), 'samples': samples})
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/voice_samples/<int:sample_id>', methods=['DELETE'])
@@ -423,12 +435,19 @@ def clear_speaker_embeddings(speaker_id):
         # phantom `voice_embeddings` attribute that never persisted, so the
         # real average_embedding survived and voice matching kept working
         # after a "clear". Null out the actual columns.
-        from src.models import SpeakerVoiceSample
+        from src.models import SpeakerVoiceSample, ManualVoiceSample
+        from src.services.manual_voice_samples import begin_profile_transaction, invalidate_profile
+        begin_profile_transaction(speaker.id, current_user.id)
+        invalidate_profile(current_user.id, speaker.id)
+        ManualVoiceSample.query.filter_by(speaker_id=speaker.id, user_id=current_user.id).delete()
         SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).delete()
         speaker.average_embedding = None
         speaker.embeddings_history = None
         speaker.embedding_count = 0
         speaker.confidence_score = None
+
+        from src.services.voice_profiles import _calibration_cache
+        _calibration_cache.clear()
 
         db.session.commit()
 
