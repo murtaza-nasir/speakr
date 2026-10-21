@@ -34,7 +34,7 @@
     <div ref="asrEditorRef" data-testid="asr-editor-scroll" class="sw-list-scroll custom-scrollbar" @scroll="onAsrEditorScroll($event)">
      <div :style="{height:asrEditorSpacerBefore+'px'}" aria-hidden="true"></div>
      <button v-for="segment in asrEditorVisibleSegments" :key="asrSegmentKey(segment._originalIndex)" type="button"
-       class="sw-list-row" :class="{'sw-selected':segment._originalIndex===asrSelectedIndex,'sw-highlight':segment._originalIndex===asrEditorHighlightIndex}" :aria-current="segment._originalIndex===asrSelectedIndex ? 'true' : undefined"
+       class="sw-list-row" :class="{'sw-selected':segment._originalIndex===asrSelectedIndex,'sw-highlight':segment._originalIndex===asrSelectedIndex}" :aria-current="segment._originalIndex===asrSelectedIndex ? 'true' : undefined"
        :data-list-index="segment._originalIndex" @click="selectAsrSegment(segment._originalIndex)" :disabled="asrCloseDecision" :title="segment.speaker+' · '+segment.sentence">
       <span class="sw-list-top"><strong>${ segment._originalIndex+1 }. ${ segment.speaker }</strong><small>${ Number(segment.start_time).toFixed(2) }–${ Number(segment.end_time).toFixed(2) }</small></span>
       <span class="sw-list-preview" v-text="segment.sentence || '…'"></span>
