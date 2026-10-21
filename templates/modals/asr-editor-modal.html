@@ -5,7 +5,7 @@
   <header class="modal-header">
    <h3 class="modal-title" v-text="t('modal.editAsrTranscription')"></h3>
    <button @click="findReplace.open ? closeFindReplace() : openFindReplace()" class="modal-close ml-auto" :title="t('findReplace.open')"><i class="fas fa-search"></i></button>
-   <button @click="closeAsrEditorModal" class="modal-close" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
+   <button data-testid="asr-editor-close" @click="closeAsrEditorModal" class="modal-close" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
   </header>
   {% include 'components/find-replace-bar.html' %}
   <div class="sw-transport">

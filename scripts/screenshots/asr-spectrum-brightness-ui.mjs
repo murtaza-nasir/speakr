@@ -30,9 +30,12 @@ async function scenario(width,dark,amplitude=.002){
  const open=async id=>{
   if(id)await page.goto(base+'/recordings/'+id,{waitUntil:'domcontentloaded',timeout:90000});
   if(width<737)await page.locator('[data-mobile-bottom-nav] button').filter({hasText:'Транскрипция'}).click();
-  await page.locator(width<737?'button[title="Редактировать транскрипт"]:visible':'button[title="Определить спикеров"]:visible').click();
-  if(width<737)await field('asr-editor').getByRole('tab',{name:'Транскрипт',exact:true}).click();
-  await field('workspace-edit-0').click();await field('asr-show-spectrogram').click();await settled();
+  await page.locator('button[title="Редактировать транскрипт"]:visible').first().click();
+  if(await field('workspace-edit-0').count()) {
+   if(width<737)await field('asr-editor').getByRole('tab',{name:'Транскрипт',exact:true}).click();
+   await field('workspace-edit-0').click();
+  }
+  await field('asr-show-spectrogram').click();await settled();
  };
  const close=()=>field('asr-editor-close').click();
  const setGain=async n=>{await field('asr-spectrogram-gain').fill(String(n));await field('asr-spectrogram-gain').dispatchEvent('change');await applied(n);};

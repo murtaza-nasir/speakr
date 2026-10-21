@@ -95,7 +95,7 @@ export function useAsrSegmentTranscription(state, utils) {
         closeSegmentTranscription();
         if (index >= 0) return retranscribeSegment(index);
     };
-    Vue.watch?.(() => [showAsrEditorModal.value, selectedRecording.value?.id, selectedRecording.value?.audio_deleted_at],()=>closeSegmentTranscription());
+    Vue.watch?.(() => JSON.stringify([showAsrEditorModal.value, selectedRecording.value?.id, selectedRecording.value?.audio_path, selectedRecording.value?.audio_deleted_at]),()=>closeSegmentTranscription());
     Vue.watch?.(() => [segmentTranscription.value, activeObject?.sentence, activeObject?.start_time, activeObject?.end_time, activeObject?.speaker,
         activeObject && editingSegments.value.includes(activeObject)],()=>{
         const view = segmentTranscription.value;
