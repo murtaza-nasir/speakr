@@ -105,12 +105,18 @@ class TencentASRConnector(BaseTranscriptionConnector):
         model = request.model if request.model in MODELS else self.model
         params = {'EngineModelType': model, 'ChannelNum': 1, 'ResTextFormat': 3,
                   'SpeakerDiarization': int(request.diarize or model == MODELS[0])}
+        words = []
         if request.hotwords:
-            words = list(dict.fromkeys(w.strip() for w in request.hotwords.split(',') if w.strip()))
-            if len(words) > 128 or any(len(w) > 30 or len(w.encode('utf-8')) > 30 or '|' in w for w in words):
-                raise ConfigurationError('Tencent hotwords: at most 128 words, 30 UTF-8 bytes per word; no | characters')
-            if words:
-                params['HotwordList'] = ','.join(w + '|5' for w in words)
+            given = list(dict.fromkeys(w.strip() for w in request.hotwords.split(',') if w.strip()))
+            # Tencent rejects the whole task for one word it cannot take, and
+            # the same hotwords are used with every connector, so those words
+            # are left out of the request.
+            words = [w for w in given if len(w.encode('utf-8')) <= 30 and '|' not in w][:128]
+            if len(words) < len(given):
+                logger.warning('Tencent ASR: %d of %d hotwords left out (at most 128 words, '
+                               '30 UTF-8 bytes per word, no | characters)', len(given) - len(words), len(given))
+        if words:
+            params['HotwordList'] = ','.join(w + '|5' for w in words)
         elif self.hotword_id:
             params['HotwordId'] = self.hotword_id
         return params

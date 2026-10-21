@@ -75,10 +75,19 @@ def test_invalid_config(config):
         mod.TencentASRConnector(config)
 
 
-@pytest.mark.parametrize('words', ['a|100', '中' * 11, ','.join(str(i) for i in range(129))])
-def test_invalid_hotwords(connector, words):
-    with pytest.raises(ConfigurationError):
-        connector._parameters(request(hotwords=words))
+@pytest.mark.parametrize('words, kept', [
+    ('a|100,alpha', 'alpha|5'),
+    ('中' * 11 + ',' + '中' * 10, '中' * 10 + '|5'),
+    (','.join(str(i) for i in range(129)), ','.join(f'{i}|5' for i in range(128)))])
+def test_hotwords_tencent_cannot_take_are_left_out(connector, words, kept):
+    assert connector._parameters(request(hotwords=words))['HotwordList'] == kept
+
+
+def test_hotword_table_used_when_no_request_hotword_fits():
+    connector = mod.TencentASRConnector({'secret_id': 'test-id', 'secret_key': 'test-secret',
+                                         'hotword_id': 'table-1'})
+    params = connector._parameters(request(hotwords='a|1'))
+    assert 'HotwordList' not in params and params['HotwordId'] == 'table-1'
 
 
 def test_quota_error_no_secrets(connector, monkeypatch):

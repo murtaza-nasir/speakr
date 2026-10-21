@@ -28,9 +28,11 @@ engine, not the UI language hint. Speaker count hints are not supported by these
 16 kHz engines. Segments include sentence timestamps and anonymous speaker labels;
 this does not identify people's names.
 
-Comma-separated UI hotwords are sent with weight 5 (up to 128 words, at most
-30 UTF-8 bytes each). Alternatively set `TENCENT_ASR_HOTWORD_ID` to a Tencent
-hotword table ID. Request hotwords take precedence. Optional
+Comma-separated UI hotwords are sent with weight 5. Tencent accepts up to 128
+words of at most 30 UTF-8 bytes each (10 Chinese characters), without `|`;
+other words are left out of the request and noted in the log. Alternatively set
+`TENCENT_ASR_HOTWORD_ID` to a Tencent hotword table ID. Request hotwords take
+precedence. Optional
 `TENCENT_ASR_TIMEOUT=1800` and `TENCENT_ASR_POLL_INTERVAL=5` control polling
 in seconds (maximum timeout 10800).
 
