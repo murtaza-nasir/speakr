@@ -18,13 +18,16 @@ import httpx
 from ..base import (BaseTranscriptionConnector, ConnectorSpecifications,
                     TranscriptionCapability, TranscriptionResponse, TranscriptionSegment)
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
-from ..tencent_state import locked_checkpoint
+from ..tencent_state import locked_checkpoint, prune_checkpoints
 
 logger = logging.getLogger(__name__)
 HOST = 'asr.tencentcloudapi.com'
 INLINE_LIMIT = 5 * 1024 * 1024
 FILE_LIMIT = 1024 * 1024 * 1024
 MODELS = ('16k_zh_en_meeting', '16k_zh_en_2.0')
+# Tencent keeps task results for 24 hours, so a checkpoint is no use for
+# recovery after that; it is removed a day later.
+CHECKPOINT_MAX_AGE = 2 * 24 * 3600
 
 
 class TencentASRConnector(BaseTranscriptionConnector):
@@ -178,8 +181,15 @@ class TencentASRConnector(BaseTranscriptionConnector):
     def _state_directory(self):
         if self.state_dir:
             return self.state_dir
-        from flask import current_app
-        return os.path.join(current_app.instance_path, 'tencent-tasks')
+        # Next to the SQLite database on the instance volume, as for the
+        # generated secret key; Flask's instance_path (/app/instance) is not a
+        # volume and is lost when the container is recreated.
+        uri = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
+        if uri.startswith('sqlite:///'):
+            base = os.path.dirname(uri.split('sqlite:///', 1)[1]) or '.'
+        else:
+            base = '/data/instance'
+        return os.path.join(base, 'tencent-tasks')
 
     def _cleanup_checkpoint(self, state, save):
         if not state.get('staging_locator'):
@@ -219,7 +229,11 @@ class TencentASRConnector(BaseTranscriptionConnector):
                 raise TranscriptionError('Tencent ASR: empty audio file')
             identity = json.dumps([self.secret_id, digest.hexdigest(), params], sort_keys=True)
             fingerprint = hashlib.sha256(identity.encode()).hexdigest()
-            with locked_checkpoint(self._state_directory(), fingerprint) as (state, save):
+            directory = self._state_directory()
+            for locator in prune_checkpoints(directory, CHECKPOINT_MAX_AGE):
+                logger.warning('Tencent ASR: expired checkpoint removed; its staging object %s was not '
+                               'deleted and is left to the bucket lifecycle rule', locator)
+            with locked_checkpoint(directory, fingerprint) as (state, save):
                 state.update(source_sha256=digest.hexdigest(), source_bytes=size)
                 save()
                 if state.get('status') in ('completed', 'failed'):

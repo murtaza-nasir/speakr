@@ -1,6 +1,7 @@
 """Durable Tencent task checkpoints; one OS lock per audio/options fingerprint."""
 import json
 import os
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
@@ -55,3 +56,34 @@ def locked_checkpoint(directory, fingerprint):
                 msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
             else:
                 fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def prune_checkpoints(directory, max_age_seconds):
+    """Remove checkpoints that have not been written for max_age_seconds.
+
+    A checkpoint holds the full transcription result, and it is kept only to
+    recover a task after a worker restart, so it must not outlive Tencent's
+    24-hour task retention by much. Returns the staging locators that expired
+    checkpoints still held (their objects are left to the bucket lifecycle rule).
+    """
+    root = Path(directory)
+    if not root.is_dir():
+        return []
+    cutoff = time.time() - max_age_seconds
+    leftovers = []
+    for path in root.glob('*.json'):
+        try:
+            if path.stat().st_mtime >= cutoff:
+                continue
+        except OSError:
+            continue
+        try:
+            with locked_checkpoint(root, path.stem) as (state, _save):
+                if state.get('staging_locator'):
+                    leftovers.append(state['staging_locator'])
+                path.unlink(missing_ok=True)
+        except TranscriptionError:
+            # In use by another worker, or unreadable (checkpoints are written
+            # atomically, so that needs outside interference); left alone.
+            continue
+    return leftovers

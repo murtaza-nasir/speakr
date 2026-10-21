@@ -139,3 +139,25 @@ def test_webm_pipeline_preserves_original_even_when_compression_enabled(tmp_path
     assert result.output_path==str(p)
     assert not result.was_compressed and not result.was_converted
     assert p.read_bytes()==b'original webm bytes'
+
+
+def test_expired_checkpoints_are_removed_and_report_staging(tmp_path):
+    import os, time
+    from src.services.transcription.tencent_state import locked_checkpoint, prune_checkpoints
+    for name, state in (('old', {'result': {'Result': 'text'}, 'staging_locator': 's3://b/k'}),
+                        ('new', {'result': {'Result': 'text'}})):
+        with locked_checkpoint(tmp_path, name) as (current, save):
+            current.update(state)
+            save()
+    stale = time.time() - 3 * 24 * 3600
+    os.utime(tmp_path / 'old.json', (stale, stale))
+    assert prune_checkpoints(tmp_path, 2 * 24 * 3600) == ['s3://b/k']
+    assert not (tmp_path / 'old.json').exists() and (tmp_path / 'new.json').exists()
+
+
+def test_default_checkpoint_directory_is_next_to_the_database(monkeypatch):
+    monkeypatch.setenv('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
+    connector = TencentASRConnector({'secret_id': 'id', 'secret_key': 'secret'})
+    assert connector._state_directory() == '/data/instance/tencent-tasks'
+    monkeypatch.setenv('SQLALCHEMY_DATABASE_URI', 'postgresql://u:p@db/speakr')
+    assert connector._state_directory() == '/data/instance/tencent-tasks'

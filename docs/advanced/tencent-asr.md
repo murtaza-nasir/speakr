@@ -89,8 +89,9 @@ This is a functional test, not an accuracy or performance benchmark.
 
 ## Failures and retries
 
-Checkpoints are stored in `tencent-tasks/` under the Flask instance directory,
-or in `TENCENT_ASR_STATE_DIR` when set. Keep that directory on persistent storage.
+Checkpoints are stored in `tencent-tasks/` next to the SQLite database
+(`/data/instance/tencent-tasks` in Docker), or in `TENCENT_ASR_STATE_DIR` when
+set. Keep that directory on persistent storage.
 It contains task IDs, object locators and completed transcription results, but
 not credentials or signed URLs. Treat it as private application data. Every
 worker serving the same instance must share it; per-file OS locks prevent
@@ -111,8 +112,14 @@ blocks further submission until an operator reconciles it with Tencent's
 console. Tasks older than 23 hours also stop instead of querying a potentially
 reused task ID (Tencent retains results for 24 hours). A known provider rejection
 can be retried after fixing configuration or quota. Failed remote tasks require
-operator review. Checkpoints are not automatically expired to avoid silently
-charging for the same recording again.
+operator review.
+
+Checkpoints are removed two days after their last update, since Tencent keeps
+task results for 24 hours. A checkpoint holds the transcription result, so
+deleting a recording in Speakr leaves that copy for at most two days. After a
+blocked checkpoint expires, processing the recording again submits a new
+billable task. An expired checkpoint whose staging object was never deleted is
+noted in the log; the bucket lifecycle rule removes the object.
 
 To intentionally request fresh recognition with unchanged settings, stop work
 on that recording, confirm the old remote task is finished and clean up any
