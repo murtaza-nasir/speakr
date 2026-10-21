@@ -995,6 +995,9 @@ html.dark select.field {
     animation: modalFadeIn 140ms ease-out;
 }
 
+/* Hidden organizer dialogs must stay hidden outside Tailwind utility layers. */
+.modal-overlay.hidden { display: none; }
+
 html.dark .modal-overlay {
     background: rgba(0, 0, 0, 0.7);
 }
