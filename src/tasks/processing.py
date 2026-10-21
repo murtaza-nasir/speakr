@@ -2153,7 +2153,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     ])
 
                     # Only retry with MP3 conversion on first attempt for format errors
-                    if attempt == 0 and is_format_error and not converted_filepath:
+                    if attempt == 0 and is_format_error and not converted_filepath and not getattr(connector_specs, 'preserve_original_audio', False):
                         current_app.logger.warning(f"Transcription failed with possible format error: {e}")
                         current_app.logger.info(f"Attempting MP3 conversion and retry...")
 

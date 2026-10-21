@@ -19,6 +19,11 @@ def _is_aliyun_oss_endpoint(endpoint_url: Optional[str]) -> bool:
     return hostname.endswith('.aliyuncs.com')
 
 
+def _is_tencent_cos_endpoint(endpoint_url: Optional[str]) -> bool:
+    hostname = urlparse(endpoint_url or '').hostname or ''
+    return hostname.startswith('cos.') and hostname.endswith('.myqcloud.com')
+
+
 def _botocore_supports_request_checksum() -> bool:
     """True if the installed botocore accepts request_checksum_calculation.
 
@@ -78,17 +83,19 @@ class S3StorageBackend:
             'signature_version': 's3v4',
             's3': {
                 'addressing_style': (
-                    'virtual' if _is_aliyun_oss_endpoint(resolved_endpoint)
+                    'virtual' if (_is_aliyun_oss_endpoint(resolved_endpoint) or _is_tencent_cos_endpoint(resolved_endpoint))
                     else 'path' if self.use_path_style else 'auto'
                 ),
             },
         }
-        # Aliyun OSS rejects the aws-chunked transfer encoding triggered by
-        # request checksums, so opt out for OSS endpoints. AWS/MinIO keep the
+        # OSS/COS need compatibility with the older S3 upload wire format;
+        # disable optional checksum trailers. AWS/MinIO keep the
         # botocore default. Guarded by the version that introduced the option.
-        if (_is_aliyun_oss_endpoint(resolved_endpoint)
+        if ((_is_aliyun_oss_endpoint(resolved_endpoint) or _is_tencent_cos_endpoint(resolved_endpoint))
                 and _botocore_supports_request_checksum()):
             config_kwargs['request_checksum_calculation'] = 'when_required'
+            if _is_tencent_cos_endpoint(resolved_endpoint):
+                config_kwargs['response_checksum_validation'] = 'when_required'
         client_kwargs['config'] = Config(**config_kwargs)
 
         return boto3.client(**client_kwargs)
@@ -126,9 +133,11 @@ class S3StorageBackend:
         stat = self.stat(StorageLocator(scheme='s3', raw=self.build_locator(key), bucket=self.bucket, key=key))
         return StoredObject(locator=self.build_locator(key), key=key, size=stat.size, content_type=stat.content_type, etag=stat.etag)
 
-    def upload_local_file(self, local_path: str, key: str, content_type: Optional[str] = None, metadata: Optional[dict] = None, delete_source: bool = False) -> StoredObject:
+    def upload_local_file(self, local_path: str, key: str, content_type: Optional[str] = None, metadata: Optional[dict] = None, delete_source: bool = False, acl: Optional[str] = None) -> StoredObject:
         client = self._get_client()
         extra = {}
+        if acl:
+            extra['ACL'] = acl
         if content_type:
             extra['ContentType'] = content_type
         if metadata:

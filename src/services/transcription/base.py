@@ -51,6 +51,8 @@ class ConnectorSpecifications:
     # Codecs this connector doesn't support (removed from defaults)
     # Merged with AUDIO_UNSUPPORTED_CODECS env var
     unsupported_codecs: Optional[FrozenSet[str]] = None
+    # Provider accepts original audio; do not transcode or repair its container.
+    preserve_original_audio: bool = False
 
 
 # Default specifications for connectors that don't define their own

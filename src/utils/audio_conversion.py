@@ -151,6 +151,13 @@ def convert_if_needed(
 
     # Get original file size
     original_size = os.path.getsize(filepath)
+    if getattr(connector_specs, 'preserve_original_audio', False):
+        import mimetypes
+        return ConversionResult(
+            output_path=filepath,
+            mime_type=mimetypes.guess_type(original_filename)[0] or 'application/octet-stream',
+            was_converted=False, was_compressed=False,
+            original_size=original_size, final_size=original_size)
 
     # Probe if codec info not provided
     if codec_info is None:
