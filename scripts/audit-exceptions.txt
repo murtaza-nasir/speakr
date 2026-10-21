@@ -3,11 +3,6 @@
 #   <advisory id>  <review date YYYY-MM-DD>  <reason>
 # Past its review date an exception no longer applies.
 
-# markdown: a malformed HTML-like text can make the parser raise; no fixed
-# release. md_to_html catches the error and shows the text escaped.
-PYSEC-2026-89        2027-04-30  markdown parser error is caught in md_to_html
-# scikit-learn: TfidfVectorizer keeps all tokens; Speakr uses only cosine_similarity.
-PYSEC-2024-110       2027-04-30  scikit-learn TfidfVectorizer is not used
 # certifi: the fixed release (2026.10.19) came out on 2026-10-20; it is taken
 # after the 7-day wait for new releases.
 GHSA-6q48-6c7w-9gw2  2026-10-27  certifi 2026.10.19 is newer than 7 days

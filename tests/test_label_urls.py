@@ -148,16 +148,15 @@ def test_label_url_serves_the_spa_shell(owner):
     assert resp.status_code == 200
     # Same shell the '/' route serves — the label is resolved client-side.
     #
-    # Compared with the CSRF meta token blanked out. Flask-WTF signs that
-    # token with a timed serializer, so its bytes embed the current second;
-    # two renders that straddle a second boundary differ there and nowhere
-    # else. That made a raw byte comparison flake in the full suite while
-    # passing every time this file ran alone.
+    # Compared with the CSRF tokens blanked out. Flask-WTF signs the token
+    # with a timed serializer, so its bytes embed the current second; two
+    # renders that straddle a second boundary differ there and nowhere else.
+    # The token appears in the meta tag, in the logout form and in a script
+    # header, so every signed token is blanked (its payload is a JSON string,
+    # which encodes to "Im...").
     import re
-    # The logout form carries the same token as a hidden input.
     def _shell(body):
-        body = re.sub(rb'(name="csrf-token"\s+content=")[^"]*(")', rb'\1\2', body)
-        return re.sub(rb'(name="csrf_token"\s+value=")[^"]*(")', rb'\1\2', body)
+        return re.sub(rb'Im[\w-]+\.[\w-]+\.[\w-]+', b'', body)
     assert _shell(resp.data) == _shell(c.get("/").data)
 
 
