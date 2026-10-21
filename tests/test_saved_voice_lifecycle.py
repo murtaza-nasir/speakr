@@ -16,7 +16,7 @@ import pytest
 from flask import Flask
 from src.database import db
 from src.services.manual_voice_playback import PlaybackJobs, Error
-from src.services.segment_transcription import process_identity
+from src.utils.media_job import process_identity
 from test_manual_voice_playback import saved_fixture, ready
 from test_manual_voice_access import access_fixture, login_client
 
@@ -251,3 +251,4 @@ def test_high_rate_and_long_decoded_source_stream_without_full_temp(tmp_path,rat
     assert output.stat().st_size<20*1024*1024
     assert sorted(p.name for p in tmp_path.iterdir())==['clip.wav','source.wav']
     if rate==8000:assert source.stat().st_size>512*1024*1024
+
