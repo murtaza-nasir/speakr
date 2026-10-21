@@ -46,8 +46,13 @@ def _contend(url, name, barrier, results):
     """Child process: try to win the election, report whether it did."""
     engine = create_engine(url)
     if barrier is not None:
-        barrier.wait()
+        barrier.wait(timeout=30)
     results.put(acquire_singleton_lock(engine, name))
+    if barrier is not None:
+        # Election is exclusive while the owner lives. Keep every contender
+        # alive until all peers have attempted the lock; an early exit would
+        # release it and legitimately let a later peer become the next owner.
+        barrier.wait(timeout=30)
 
 
 def _run_contenders(url, name, count):
@@ -57,11 +62,18 @@ def _run_contenders(url, name, count):
         _MP.Process(target=_contend, args=(url, name, barrier, results))
         for _ in range(count)
     ]
-    for p in procs:
-        p.start()
-    for p in procs:
-        p.join(timeout=30)
-    return [results.get() for _ in range(count)]
+    try:
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join(timeout=30)
+        assert all(p.exitcode==0 for p in procs), 'Election contender failed or did not finish'
+        return [results.get(timeout=30) for _ in range(count)]
+    finally:
+        for p in procs:
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
 
 
 # ---------------------------------------------------------------------------
