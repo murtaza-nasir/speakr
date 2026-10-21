@@ -25,10 +25,17 @@ def find_user_speaker(user_id, name):
     """
     if not name:
         return None
-    return (Speaker.query
+    found = (Speaker.query
             .filter(Speaker.user_id == user_id, func.lower(Speaker.name) == name.strip().lower())
             .order_by(Speaker.use_count.desc(), Speaker.id.asc())
             .first())
+    if found:
+        return found
+    # SQLite lower() folds ASCII only. Preserve saved spelling for Cyrillic
+    # and other Unicode names just as for English names.
+    return next((speaker for speaker in Speaker.query.filter_by(user_id=user_id)
+                 .order_by(Speaker.use_count.desc(), Speaker.id.asc())
+                 if speaker.name.strip().casefold() == name.strip().casefold()), None)
 
 
 def _resolve_name(info, user):

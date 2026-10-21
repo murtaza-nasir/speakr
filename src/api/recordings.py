@@ -999,6 +999,20 @@ def update_transcript(recording_id):
         speaker_map = data.get('speaker_map', {})
         regenerate_summary = data.get('regenerate_summary', False)
 
+        if 'workspace_effects' in data:
+            from src.services.transcript_workspace import save_workspace
+            try:
+                follow_up = save_workspace(
+                    recording, transcript_data, data['workspace_effects'], current_user,
+                    regenerate_summary, reindex_recording_chunks_async, export_recording, job_queue.enqueue)
+            except ValueError as error:
+                db.session.rollback()
+                return jsonify({'error': str(error)}), 400
+            recording_dict = recording.to_dict(viewer_user=current_user)
+            enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
+            return jsonify(success=True, recording=recording_dict, persistence_status='saved',
+                           follow_up=follow_up, summary_queued=follow_up['summary'] == 'queued')
+
         if not transcript_data or not isinstance(transcript_data, list):
             return jsonify({'error': 'Invalid transcript data provided'}), 400
 
@@ -1059,6 +1073,17 @@ def update_transcript(recording_id):
         return jsonify({'error': str(e)}), 500
 
 
+@recordings_bp.route('/recording/<int:recording_id>/workspace_context', methods=['GET'])
+@login_required
+def workspace_context(recording_id):
+    recording = db.session.get(Recording, recording_id)
+    if not recording:
+        return jsonify(error='Recording not found'), 404
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return jsonify(error='Editing permission required'), 403
+    return jsonify(voice_labels=list(recording.speaker_embeddings or {}),
+                   speaker_label_map=recording.speaker_label_map or {})
+
 
 @recordings_bp.route('/recording/<int:recording_id>/auto_identify_speakers', methods=['POST'])
 @login_required
@@ -1077,12 +1102,20 @@ def auto_identify_speakers(recording_id):
         if not has_recording_access(recording, current_user):
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
 
-        if not recording.transcription:
+        draft_request = request.get_json(silent=True) or {}
+        if 'transcript_data' in draft_request and not has_recording_access(recording, current_user, require_edit=True):
+            return jsonify({'error': 'You do not have permission to edit this recording'}), 403
+
+        if not recording.transcription and 'transcript_data' not in draft_request:
             return jsonify({'error': 'No transcription available for speaker identification'}), 400
 
         try:
-            transcription_data = json.loads(recording.transcription)
-        except (json.JSONDecodeError, TypeError):
+            if 'transcript_data' in draft_request:
+                from src.services.transcript_workspace import validate_segments
+                transcription_data = validate_segments(draft_request['transcript_data'])
+            else:
+                transcription_data = json.loads(recording.transcription)
+        except (ValueError, TypeError):
             return jsonify({'error': 'Transcription format not supported for auto-identification'}), 400
 
         if not isinstance(transcription_data, list):

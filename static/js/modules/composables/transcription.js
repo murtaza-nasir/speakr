@@ -3,6 +3,9 @@
  * Handles ASR editor, text editor, and segment management
  */
 
+import { splitAsrSegment, supportsAsrSegmentSplit } from '../utils/asr-segment-split.js';
+import { useTranscriptEditor } from './transcriptEditor.js';
+
 // Module-scoped scroll-position memory for the ASR editor. Keyed by recording
 // id so users editing a long transcript can close and reopen the modal within
 // the same session and land back where they left off. Cleared implicitly when
@@ -13,7 +16,7 @@ const _asrEditorScrollMemory = new Map();
 // double-click-on-simple-view-segment path. null means "restore last scroll".
 let _asrEditorPendingScrollIndex = null;
 
-export function useTranscription(state, utils) {
+export function useTranscription(state, utils, createTools) {
     const {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
         editingTranscriptionContent, editingSegments, availableSpeakers,
@@ -22,6 +25,103 @@ export function useTranscription(state, utils) {
     } = state;
 
     const { showToast, setGlobalError, nextTick } = utils;
+    let workplace;
+
+    const splitSelection = Vue.ref(null);
+    const clearSplitSelection = () => { splitSelection.value = null; };
+    const disabledTools = () => ({
+        spectrum: {spectrogram:Vue.ref(null),spectrogramBoundary:()=>undefined,
+            closeSpectrogram:()=>{},releaseSpectrogramPlayback:()=>{}},
+        segmentAsr: {segmentTranscription:Vue.ref(null),closeSegmentTranscription:()=>{}}
+    });
+    const {spectrum,segmentAsr} = createTools ? createTools(state, utils, {
+        beforeApply:clearSplitSelection,canEditDraft:()=>!workplace?.locked.value,
+        isSelectedSegment:segment=>workplace?.selected.value===segment
+    }) : disabledTools();
+    const splitMessage = (key) => window.i18n?.t(`asrEditor.${key}`) || key;
+
+    const captureSplitSelection = (index, event) => {
+        const segment = editingSegments.value[index];
+        const textarea = event.target;
+        if (!segment || textarea.value !== segment.sentence) {
+            clearSplitSelection();
+            return;
+        }
+        splitSelection.value = {
+            segment, text: segment.sentence,
+            start: textarea.selectionStart, end: textarea.selectionEnd
+        };
+    };
+
+    const getSplitResult = (index) => {
+        if (!supportsAsrSegmentSplit()) return { error: 'unsupported' };
+        const selection = splitSelection.value;
+        const segment = editingSegments.value[index];
+        if (!selection || selection.segment !== segment || selection.text !== segment?.sentence) {
+            return { error: 'cursor' };
+        }
+        return splitAsrSegment(segment, selection.start, selection.end, spectrum.spectrogramBoundary(segment));
+    };
+
+    const canSplitSegment = (index) => !workplace.locked.value && !workplace.splitPreview.value && !getSplitResult(index).error;
+    const splitErrorMessage = error => error === 'unsupported' ? 'splitUnsupportedBrowser'
+        : error === 'time' ? 'splitInvalidTime' : 'splitChooseCursor';
+    const splitSegmentTitle = (index) => {
+        const error = getSplitResult(index).error;
+        return splitMessage(error ? splitErrorMessage(error) : 'splitAtCursor');
+    };
+
+    const splitSegmentAtCursor = async (index) => {
+        if (workplace.locked.value) return false;
+        const result = getSplitResult(index);
+        if (result.error) {
+            showToast(splitMessage(splitErrorMessage(result.error)), 'fa-info-circle');
+            return false;
+        }
+        workplace.splitPreview.value = {
+            segment: editingSegments.value[index], snapshot: workplace.serialize([editingSegments.value[index]]),
+            parts: result.parts, exact: spectrum.spectrogramBoundary(editingSegments.value[index]) !== undefined
+        };
+        return true;
+    };
+
+    const confirmAsrSplit = async () => {
+        const preview = workplace.splitPreview.value;
+        if (!preview || workplace.locked.value || workplace.serialize([preview.segment]) !== preview.snapshot) return false;
+        const index = editingSegments.value.indexOf(preview.segment);
+        if (index < 0) return false;
+        const parts = preview.parts.map(part => ({
+            ...part, showSuggestions: false, filteredSpeakers: [...availableSpeakers.value]
+        }));
+        parts.forEach(part => { if (part.speaker !== preview.segment.speaker) delete part.speaker_id; });
+        spectrum.closeSpectrogram();
+        utils.workspace?.split(preview.segment, parts);
+        editingSegments.value.splice(index, 1, ...parts);
+        workplace.splitPreview.value = null;
+        editingSegments.value.forEach((seg, i) => { seg.id = i; });
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
+        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
+        const second = editingSegments.value[index + 1];
+        await workplace.select(index + 1);
+        await nextTick();
+        if (!showAsrEditorModal.value || editingSegments.value[index + 1] !== second) return true;
+        utils.scrollAsrEditorToIndex?.(index + 1);
+        await nextTick();
+        if (!showAsrEditorModal.value || editingSegments.value[index + 1] !== second) return true;
+        const input = document.querySelector('[data-testid="asr-detail"] [data-testid="asr-segment-speaker"]');
+        input?.focus();
+        input?.select();
+        return true;
+    };
+
+    const handleSplitKeydown = (index, event) => {
+        if (!showAsrEditorModal.value || workplace.splitPreview.value || state.showEditSpeakersModal?.value || event.isComposing || event.keyCode === 229 ||
+            event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        captureSplitSelection(index, event);
+        return splitSegmentAtCursor(index);
+    };
 
     // =========================================
     // Text Editor Modal
@@ -59,8 +159,7 @@ export function useTranscription(state, utils) {
 
     const saveTranscription = async () => {
         if (!selectedRecording.value) return;
-        await saveTranscriptionContent(editingTranscriptionContent.value);
-        closeTextEditorModal();
+        if (await saveTranscriptionContent(editingTranscriptionContent.value)) closeTextEditorModal();
     };
 
     // =========================================
@@ -76,14 +175,25 @@ export function useTranscription(state, utils) {
         }
     };
 
-    const openAsrEditorModal = async () => {
+    let openingGeneration = 0;
+    const openAsrEditorModal = async (entry = 'editor') => {
         if (!selectedRecording.value) return;
+        if (showAsrEditorModal.value) {
+            if (entry === 'speakers') utils.workspace?.back();
+            else utils.workspace?.openEditor(_asrEditorPendingScrollIndex ?? workplace.selectedIndex.value);
+            _asrEditorPendingScrollIndex = null;
+            return;
+        }
+        const openingToken = ++openingGeneration;
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
 
         // Pause outer audio player to avoid conflicts with modal's player
         pauseOuterAudioPlayer();
 
         try {
             const segments = JSON.parse(selectedRecording.value.transcription);
+            if (!Array.isArray(segments)) throw new Error('Not an array');
 
             // Populate available speakers from THIS recording only
             const speakersInTranscript = [...new Set(segments.map(s => s.speaker))].sort();
@@ -97,10 +207,12 @@ export function useTranscription(state, utils) {
             }));
 
             showAsrEditorModal.value = true;
+            const openingId = selectedRecording.value.id;
+            const initialized = await utils.workspace?.start(entry === 'speakers' ? 'speakers' : 'editor');
+            if (initialized === false || openingToken !== openingGeneration || !showAsrEditorModal.value || selectedRecording.value?.id !== openingId) return;
+            const targetIndex = _asrEditorPendingScrollIndex;
+            workplace.start(targetIndex);
 
-            // Reset autosave state for the new editing session.
-            _resetAutosave();
-            _primeAutosaveAfterOpen();
 
             // Reset virtual scroll state for fresh modal render. After it
             // initialises, either scroll to a specific segment (when the
@@ -110,12 +222,12 @@ export function useTranscription(state, utils) {
                 utils.resetAsrEditorScroll();
             }
             const recordingId = selectedRecording.value.id;
-            const targetIndex = _asrEditorPendingScrollIndex;
             _asrEditorPendingScrollIndex = null;
             await nextTick();
             // requestAnimationFrame defers past the virtualScroll's own
             // post-mount initialisation tick.
             requestAnimationFrame(() => {
+                if (!showAsrEditorModal.value || selectedRecording.value?.id !== recordingId) return;
                 if (targetIndex != null) {
                     if (utils.scrollAsrEditorToIndex) {
                         utils.scrollAsrEditorToIndex(targetIndex);
@@ -124,12 +236,15 @@ export function useTranscription(state, utils) {
                     const saved = _asrEditorScrollMemory.get(recordingId);
                     if (saved != null && utils.setAsrEditorScrollTop) {
                         utils.setAsrEditorScrollTop(saved);
-                    }
+                    } else utils.scrollAsrEditorToIndex?.(workplace.selectedIndex.value);
                 }
             });
         } catch (e) {
+            if (openingToken !== openingGeneration) return;
             console.error("Could not parse transcription as JSON for ASR editor:", e);
-            setGlobalError("This transcription is not in the correct format for the ASR editor.");
+            showAsrEditorModal.value = false;
+            utils.workspace?.stop();
+            setGlobalError(e.message || "This transcription is not in the correct format for the ASR editor.");
         }
     };
 
@@ -152,23 +267,30 @@ export function useTranscription(state, utils) {
         return openAsrEditorModal();
     };
 
-    const closeAsrEditorModal = () => {
-        // Cancel any pending autosave so we don't issue a write after close.
-        _resetAutosave();
-        // Clear any pending row highlight.
-        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
-
+    const closeAsrEditorModal = () => workplace.requestClose();
+    const finishAsrEditorClose = () => {
         // Save scroll position so reopening the same recording within this
         // session lands the user back where they were.
-        if (selectedRecording.value && asrEditorRef && asrEditorRef.value) {
+        const scrollContainer = asrEditorRef?.value || state.speakerModalTranscriptRef?.value;
+        if (selectedRecording.value && scrollContainer) {
             _asrEditorScrollMemory.set(
                 selectedRecording.value.id,
-                asrEditorRef.value.scrollTop
+                scrollContainer.scrollTop
             );
         }
 
+        openingGeneration++;
+        workplace.stop();
+        utils.workspace?.stop();
+        spectrum.closeSpectrogram();
+        segmentAsr.closeSegmentTranscription();
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
+        // Clear any pending row highlight.
+        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
+
         // Pause any playing modal audio before closing
-        const modalAudio = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
+        const modalAudio = document.querySelector('[data-testid="asr-editor"] audio, [data-testid="asr-editor"] video');
         if (modalAudio) {
             modalAudio.pause();
         }
@@ -181,41 +303,19 @@ export function useTranscription(state, utils) {
         editingSegments.value = [];
     };
 
-    const saveAsrTranscription = async (keepOpen = false) => {
-        if (!selectedRecording.value) return;
-
-        // Cancel any pending autosave so it doesn't fire a redundant write
-        // on top of this manual save (which would surface as two "Saved"
-        // toasts a couple of seconds apart).
-        if (_autosaveTimer) {
-            clearTimeout(_autosaveTimer);
-            _autosaveTimer = null;
-        }
-
-        // Remove extra UI fields and save the rest
-        const contentToSave = JSON.stringify(editingSegments.value.map(({ id, showSuggestions, filteredSpeakers, ...rest }) => rest));
-
-        await saveTranscriptionContent(contentToSave);
-
-        if (keepOpen) {
-            // Briefly flash a "Saved" indicator so the user knows the write
-            // succeeded without the modal closing.
-            if (asrEditorSaveFlash) {
-                asrEditorSaveFlash.value = true;
-                setTimeout(() => { asrEditorSaveFlash.value = false; }, 1800);
-            }
-        } else {
-            closeAsrEditorModal();
-        }
-    };
+    const saveAsrTranscription = (keepOpen = false) => workplace.save(keepOpen);
 
     // Ctrl+S / Cmd+S handler -- saves without closing while the editor modal
     // is open. preventDefault stops the browser's "save page" dialog.
     const handleAsrEditorKeydown = (event) => {
-        if (!showAsrEditorModal.value) return;
+        if (!showAsrEditorModal.value || workplace.closeDecision?.value || event.defaultPrevented) return;
         const isSaveShortcut = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
         if (isSaveShortcut) {
             event.preventDefault();
+            const editorRoot = document.querySelector('[data-testid="asr-editor"]');
+            const childDialogOpen = [...document.querySelectorAll('.modal-overlay')].some(layer =>
+                layer !== editorRoot && !editorRoot?.contains(layer) && layer.getClientRects().length > 0);
+            if (state.showEditSpeakersModal?.value || childDialogOpen) return;
             saveAsrTranscription(true);
         }
     };
@@ -223,49 +323,12 @@ export function useTranscription(state, utils) {
         window.addEventListener('keydown', handleAsrEditorKeydown);
     }
 
-    // Autosave -- when the user has opted in via the Preferences tab, debounce
-    // a save 2s after the last edit. The debounce prevents thrashing the API
-    // on every keystroke. The "primed" flag suppresses the initial firing
-    // when segments are first hydrated on modal open.
-    let _autosaveTimer = null;
-    let _autosavePrimed = false;
-
-    const _resetAutosave = () => {
-        if (_autosaveTimer) {
-            clearTimeout(_autosaveTimer);
-            _autosaveTimer = null;
-        }
-        _autosavePrimed = false;
-    };
-
-    const _primeAutosaveAfterOpen = () => {
-        // Defer priming until after the modal hydration tick so we don't
-        // mistake the initial editingSegments assignment for a user edit.
-        setTimeout(() => { _autosavePrimed = true; }, 500);
-    };
-
-    if (typeof Vue !== 'undefined' && Vue.watch) {
-        Vue.watch(
-            editingSegments,
-            () => {
-                if (!showAsrEditorModal.value) return;
-                if (!editorAutosave || !editorAutosave.value) return;
-                if (!_autosavePrimed) return;
-                if (_autosaveTimer) clearTimeout(_autosaveTimer);
-                _autosaveTimer = setTimeout(() => {
-                    _autosaveTimer = null;
-                    saveAsrTranscription(true);
-                }, 2000);
-            },
-            { deep: true }
-        );
-    }
-
     // =========================================
     // Segment Management
     // =========================================
 
     const adjustTime = (index, field, amount) => {
+        if (workplace.locked.value) return;
         if (editingSegments.value[index]) {
             editingSegments.value[index][field] = Math.max(0,
                 editingSegments.value[index][field] + amount
@@ -399,13 +462,26 @@ export function useTranscription(state, utils) {
     // as the later composable in the app it replaced this one, so choosing a
     // name in the editor did nothing (#425).
     const selectSegmentSpeaker = (index, speaker) => {
+        if (workplace.locked.value) return;
         if (editingSegments.value[index]) {
+            if (editingSegments.value[index].speaker !== speaker) delete editingSegments.value[index].speaker_id;
             editingSegments.value[index].speaker = speaker;
             closeSpeakerSuggestions(index);
         }
     };
 
+    const selectNewSegment = async index => {
+        const segment = editingSegments.value[index];
+        if (utils.workspace?.active()) await utils.workspace.openEditor(index);
+        else await workplace.select(index);
+        await nextTick();
+        if (showAsrEditorModal.value && workplace.selected.value === segment && !workplace.locked.value)
+            document.querySelector('[data-testid="asr-segment-text"]')?.focus();
+    };
     const addSegment = () => {
+        if (workplace.locked.value) return;
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
         const lastSegment = editingSegments.value[editingSegments.value.length - 1];
         const newStart = lastSegment ? lastSegment.end_time : 0;
 
@@ -418,10 +494,20 @@ export function useTranscription(state, utils) {
             showSuggestions: false,
             filteredSpeakers: [...availableSpeakers.value]
         });
+        selectNewSegment(editingSegments.value.length - 1);
     };
 
     const removeSegment = (index) => {
+        if (workplace.locked.value || !editingSegments.value[index]) return;
+        const wasSelected = workplace.selected.value === editingSegments.value[index];
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
         editingSegments.value.splice(index, 1);
+        if (wasSelected) {
+            workplace.selected.value = null;
+            if (editingSegments.value.length) workplace.select(Math.min(index, editingSegments.value.length - 1));
+            else { spectrum.closeSpectrogram(); segmentAsr.closeSegmentTranscription(); }
+        }
         // Re-index segments
         editingSegments.value.forEach((seg, i) => {
             seg.id = i;
@@ -429,6 +515,9 @@ export function useTranscription(state, utils) {
     };
 
     const addSegmentBelow = (index) => {
+        if (workplace.locked.value || !editingSegments.value[index]) return;
+        clearSplitSelection();
+        closeAllSpeakerSuggestions();
         const currentSegment = editingSegments.value[index];
         const nextSegment = editingSegments.value[index + 1];
 
@@ -449,6 +538,7 @@ export function useTranscription(state, utils) {
         editingSegments.value.forEach((seg, i) => {
             seg.id = i;
         });
+        selectNewSegment(index + 1);
     };
 
     const seekToSegmentTime = (time) => {
@@ -471,34 +561,35 @@ export function useTranscription(state, utils) {
     // Save Transcription Content
     // =========================================
 
-    const saveTranscriptionContent = async (content) => {
-        if (!selectedRecording.value) return;
-
+    const saveTranscriptionContent = async (content, recordingId = selectedRecording.value?.id, isCurrent = () => true) => {
+        if (recordingId == null) return false;
+        if (selectedRecording.value?.incognito) {
+            selectedRecording.value.transcription = content;
+            const index = recordings.value.findIndex(r => r.id === recordingId);
+            if (index >= 0) recordings.value[index] = {...recordings.value[index], transcription: content};
+            sessionStorage.setItem('speakr_incognito_recording', JSON.stringify(selectedRecording.value));
+            return {transcription: content};
+        }
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch(`/recording/${selectedRecording.value.id}/update_transcription`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
+            const response = await fetch(`/recording/${recordingId}/update_transcription`, {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
                 body: JSON.stringify({ transcription: content })
             });
-
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to update transcription');
-
-            // Update recording
-            selectedRecording.value.transcription = content;
-
-            const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
-            if (index !== -1) {
-                recordings.value[index].transcription = content;
+            const stored = data.recording?.transcription ?? content;
+            const index = recordings.value.findIndex(r => r.id === recordingId);
+            // Replace the list entry: it may alias a selected object from a newer session.
+            if (index !== -1) recordings.value[index] = {...recordings.value[index], transcription: stored};
+            if (isCurrent() && selectedRecording.value?.id === recordingId) {
+                selectedRecording.value.transcription = stored;
+                showToast(splitMessage('saved'), 'fa-check-circle');
             }
-
-            showToast('Transcription updated successfully!', 'fa-check-circle');
+            return {transcription: stored};
         } catch (error) {
-            setGlobalError(`Failed to save transcription: ${error.message}`);
+            if (isCurrent()) setGlobalError(`Failed to save transcription: ${error.message}`);
+            return false;
         }
     };
 
@@ -598,7 +689,36 @@ export function useTranscription(state, utils) {
         }
     };
 
+    workplace = useTranscriptEditor(state, utils, {...spectrum, ...segmentAsr}, {
+        clearSplitSelection,
+        fingerprint: payload => utils.workspace?.fingerprint(payload) ?? payload,
+        needsSave: automatic => utils.workspace?.needsSave(automatic) || false,
+        persist: (payload, id, isCurrent, automatic) => utils.workspace?.persist(payload, id, isCurrent, automatic) ?? saveTranscriptionContent(payload, id, isCurrent),
+        close: finishAsrEditorClose, remove: removeSegment
+    });
+    const keyMap = new WeakMap(); let keyCounter = 0;
+    const asrSegmentKey = index => {
+        const segment = editingSegments.value[index];
+        if (!segment) return index;
+        if (!keyMap.has(segment)) keyMap.set(segment, ++keyCounter);
+        return keyMap.get(segment);
+    };
+    const editAsrSpeaker = (index, value) => selectSegmentSpeaker(index, value);
+    const asrSpeakerOptions = Vue.computed(() => [...new Set([
+        ...availableSpeakers.value,
+        // Shared-pane synchronization removes unused labels from the active
+        // list. Keep initial/person draft choices available for undo/reassign.
+        ...Object.entries(state.speakerMap?.value || {}).map(([label, speaker]) => speaker?.name?.trim() || label),
+        ...editingSegments.value.map(segment => segment.speaker),
+        ...(workplace.splitPreview.value?.parts.map(part => part.speaker) || [])
+    ].filter(name => typeof name === 'string' && name.trim()))].sort());
+
     return {
+        ...spectrum,
+        ...segmentAsr,
+        ...workplace,
+        confirmAsrSplit, cancelAsrSplit: () => { workplace.splitPreview.value = null; },
+        asrSegmentKey, editAsrSpeaker, asrSpeakerOptions,
         // Text editor
         openTranscriptionEditor,
         openTextEditorModal,
@@ -624,6 +744,11 @@ export function useTranscription(state, utils) {
         addSegment,
         removeSegment,
         addSegmentBelow,
+        captureSplitSelection,
+        canSplitSegment,
+        splitSegmentTitle,
+        splitSegmentAtCursor,
+        handleSplitKeydown,
         seekToSegmentTime,
         autoResizeTextarea,
 

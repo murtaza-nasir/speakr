@@ -3,9 +3,8 @@
  *
  * Saving, auto-identify, voice suggestions and the per-line edits stay in
  * speakers.js; this composable owns what the rebuilt modal shows and how the
- * user moves through it. It reads the stored transcription directly instead
- * of processedTranscription, so typing a name re-renders only that speaker's
- * rows, not every segment of the recording.
+ * user moves through it. JSON sessions read the shared draft; the plain-text
+ * fallback reads stored transcription. Both avoid processedTranscription.
  */
 
 import {
@@ -51,6 +50,7 @@ export function useSpeakerModal(state, utils) {
     let searchTimer = null;
     let searchAbort = null;
     let blurTimer = null;
+    utils.releaseSpeakerSample = () => { sampleStopAt = null; };
 
     const nameOf = (id) => speakerMap.value[id]?.name || '';
     const labelOf = (id) => nameOf(id).trim() || id;
@@ -62,8 +62,16 @@ export function useSpeakerModal(state, utils) {
 
     // ---------------------------------------------------------------- data
 
-    const speakerModalData = computed(() =>
-        showSpeakerModal.value ? parseModalSegments(selectedRecording.value?.transcription) : EMPTY);
+    const speakerModalData = computed(() => {
+        if (state.showAsrEditorModal?.value && utils.workspace?.active()) return {
+            isJson: true, plainText: '', segments: state.editingSegments.value.map((segment, index) => ({
+                index, speakerId: segment.speaker || '', sentence: segment.sentence || '',
+                start: Number.isFinite(segment.start_time) ? segment.start_time : null,
+                end: Number.isFinite(segment.end_time) ? segment.end_time : null
+            }))
+        };
+        return showSpeakerModal.value ? parseModalSegments(selectedRecording.value?.transcription) : EMPTY;
+    });
 
     const speakerStats = computed(() => computeSpeakerStats(speakerModalData.value.segments));
 
@@ -199,6 +207,7 @@ export function useSpeakerModal(state, utils) {
     };
 
     const chooseName = (id, name) => {
+        if (utils.workspace?.active() && utils.canEditAsrDraft?.() === false) return;
         if (!speakerMap.value[id]) return;
         speakerMap.value[id].name = name;
         openNameField.value = null;
@@ -262,7 +271,10 @@ export function useSpeakerModal(state, utils) {
                 if (first !== undefined) scrollTranscriptTo(visibleModalSegments.value[first].index, 'center');
             }
         }
-        if (openTranscript) speakerModalTab.value = 'transcript';
+        if (openTranscript) {
+            speakerModalTab.value = 'transcript';
+            utils.workspace?.showTranscript();
+        }
     };
 
     const clearSelectedSpeaker = () => {
@@ -303,6 +315,15 @@ export function useSpeakerModal(state, utils) {
         if (!targetId || !selectedRecording.value?.transcription) return;
         const sources = sourceIds.filter(id => id && id !== targetId);
         if (!sources.length) return;
+        if (utils.workspace?.active()) {
+            if (utils.canEditAsrDraft?.() === false) return;
+            state.editingSegments.value.forEach(segment => {
+                if (sources.includes(segment.speaker)) { segment.speaker = targetId; delete segment.speaker_id; }
+            });
+            if (sources.includes(selectedSpeaker.value)) selectedSpeaker.value = targetId;
+            nextTick(snapshotNames);
+            return;
+        }
         let data;
         try {
             data = JSON.parse(selectedRecording.value.transcription);
@@ -328,7 +349,7 @@ export function useSpeakerModal(state, utils) {
 
     // --------------------------------------------------------------- player
 
-    const player = () => speakerModalPlayer.value;
+    const player = () => utils.workspace?.active() ? document.querySelector('[data-testid="asr-editor"] audio, [data-testid="asr-editor"] video') : speakerModalPlayer.value;
 
     const toggleModalPlayback = () => {
         const el = player();
@@ -339,12 +360,13 @@ export function useSpeakerModal(state, utils) {
     const playFrom = (seconds, stopAt = null) => {
         const el = player();
         if (!el || seconds === null || !isFinite(seconds)) return;
+        utils.releaseWorkspacePlayback?.();
         el.currentTime = Math.max(0, seconds);
         sampleStopAt = stopAt;
         el.play();
     };
 
-    const playModalSegment = (segment) => playFrom(segment.start);
+    const playModalSegment = (segment) => playFrom(segment.start, utils.workspace?.active() ? segment.end : null);
 
     const playSpeakerSample = (id) => {
         const agg = speakerStats.value.bySpeaker[id];
@@ -401,7 +423,7 @@ export function useSpeakerModal(state, utils) {
 
     // ------------------------------------------------------------ lifecycle
 
-    watch(showSpeakerModal, (open) => {
+    watch(() => showSpeakerModal.value || !!state.showAsrEditorModal?.value, (open) => {
         if (open) {
             selectedSpeaker.value = null;
             onlySelectedSpeaker.value = true;

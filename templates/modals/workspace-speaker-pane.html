@@ -1,0 +1,131 @@
+
+            <div v-show="workspaceMode==='speakers'" data-testid="workspace-speakers" class="tw-speakers lg:w-[38%] flex flex-col overflow-hidden lg:border-r border-[var(--border-primary)]"
+                 :class="{'tw-phone-hide':workspacePhonePane!=='speakers'}">
+
+                <div class="spk-toolbar">
+                    <label class="t-label" for="spk-sort" v-text="t('speakerModal.sortBy')"></label>
+                    <select id="spk-sort" class="field field--sm" :value="speakerSort" @change="setSpeakerSort($event.target.value)">
+                        <option value="duration" :disabled="!speakerStats.hasTimes" v-text="t('speakerModal.sortDuration')"></option>
+                        <option value="appearance" v-text="t('speakerModal.sortAppearance')"></option>
+                        <option value="name" v-text="t('speakerModal.sortName')"></option>
+                    </select>
+                </div>
+
+                <div class="spk-list custom-scrollbar">
+                    <template v-for="entry in speakerListEntries" :key="entry.key">
+
+                        <!-- Minor speakers group header -->
+                        <div v-if="entry.header" class="spk-minor-header">
+                            <button class="spk-minor-toggle" @click="showMinorSpeakers = !showMinorSpeakers"
+                                    :aria-expanded="showMinorSpeakers">
+                                <i class="fas" :class="showMinorSpeakers ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                <span class="t-body-strong" v-text="tc('speakerModal.minorSpeakers', minorSpeakers.length, { count: minorSpeakers.length })"></span>
+                                <span class="t-meta" v-text="t('speakerModal.minorSpeakersHint', { seconds: minorSpeakerSeconds, time: formatClock(minorSpeakersSeconds) })"></span>
+                            </button>
+                            <select :disabled="asrEditingLocked" class="field field--sm" :aria-label="t('speakerModal.mergeAllInto')"
+                                    @change="mergeSpeakersInto(minorSpeakers, $event.target.value); $event.target.value = ''">
+                                <option value="" v-text="t('speakerModal.mergeAllInto')"></option>
+                                <option v-for="target in mainSpeakers" :key="target" :value="target">${ labelOf(target) }</option>
+                            </select>
+                        </div>
+
+                        <!-- Speaker row -->
+                        <div v-else
+                             class="spk-row" :data-testid="'workspace-speaker-'+entry.id"
+                             :class="{ 'is-selected': selectedSpeaker === entry.id, 'is-minor': entry.minor }"
+                             @click="selectSpeaker(entry.id, { openTranscript: true })">
+
+                            <div class="spk-row-head">
+                                <span :class="speakerColor(entry.id)" class="spk-dot"></span>
+                                <span class="spk-label" :title="entry.id">${ entry.id }</span>
+                                <span v-if="modalSpeakers.indexOf(entry.id) >= 16" class="pill-status pill-status--warn spk-repeat"
+                                      v-text="t('speakerModal.colorRepeats')"></span>
+                                <label class="spk-me" @click.stop>
+                                    <input :disabled="asrEditingLocked" type="checkbox"
+                                           v-model="speakerMap[entry.id].isMe"
+                                           @change="handleIsMeChange(entry.id)"
+                                           class="speaker-checkbox w-4 h-4">
+                                    <span v-text="t('help.me')"></span>
+                                </label>
+                            </div>
+
+                            <div class="spk-row-stats">
+                                <span class="t-meta" v-text="speakerMeta(entry.id)"></span>
+                                <span v-if="speakerStats.hasTimes" class="spk-share" aria-hidden="true">
+                                    <span :class="speakerColor(entry.id)" :style="{ width: speakerShare(entry.id) + '%' }"></span>
+                                </span>
+                                <button v-if="canPlayModalAudio && speakerStats.hasTimes && speakerStats.bySpeaker[entry.id]"
+                                        @click.stop="playSpeakerSample(entry.id)"
+                                        class="btn btn--icon btn--sm"
+                                        :title="t('speakerModal.playSample')" :aria-label="t('speakerModal.playSample')">
+                                    <i class="fas fa-play text-[10px]"></i>
+                                </button>
+                            </div>
+
+                            <div class="spk-name" @click.stop>
+                                <div class="relative">
+                                    <input type="text"
+                                           v-model="speakerMap[entry.id].name"
+                                           @focus="onNameFocus(entry.id)"
+                                           @input="onNameInput(entry.id)"
+                                           @blur="onNameBlur()"
+                                           @keydown="onNameKeydown(entry.id, $event)"
+                                           :disabled="asrEditingLocked || speakerMap[entry.id].isMe"
+                                           class="field field--sm"
+                                           :class="{ 'pr-28': topVoiceMatch(entry.id) }"
+                                           :placeholder="speakerMap[entry.id].isMe ? currentUserName : t('speakerModal.namePlaceholder', { label: entry.id })"
+                                           role="combobox"
+                                           :aria-expanded="openNameField === entry.id && nameOptions(entry.id).length > 0"
+                                           :aria-controls="'spk-options-' + entry.id"
+                                           autocomplete="off">
+                                    <button v-if="topVoiceMatch(entry.id)"
+                                            @mousedown.prevent
+                                            @click="chooseName(entry.id, topVoiceMatch(entry.id).name)"
+                                            :disabled="asrEditingLocked" class="spk-voice-pill"
+                                            :title="t('speakerModal.voiceMatchTitle', { name: topVoiceMatch(entry.id).name, similarity: topVoiceMatch(entry.id).similarity })">
+                                        <i class="fas fa-waveform-lines text-[9px]"></i>
+                                        <span class="truncate max-w-[80px]">${ topVoiceMatch(entry.id).name }</span>
+                                        <span class="opacity-75">${ topVoiceMatch(entry.id).similarity }%</span>
+                                    </button>
+                                </div>
+
+                                <!-- Options render in the flow of the row, so the
+                                     scrolling list never clips them. -->
+                                <ul v-if="openNameField === entry.id && !speakerMap[entry.id].isMe && nameOptions(entry.id).length"
+                                    :id="'spk-options-' + entry.id"
+                                    class="spk-options" role="listbox">
+                                    <li v-for="(option, i) in nameOptions(entry.id)" :key="option.source + option.name"
+                                        role="option" :aria-selected="nameOptionIndex === i"
+                                        class="spk-option" :class="{ 'is-active': nameOptionIndex === i, 'is-taken': option.taken }"
+                                        @mousedown.prevent
+                                        @click="chooseName(entry.id, option.name)">
+                                        <i class="fas" :class="option.source === 'voice' ? 'fa-waveform-lines' : 'fa-user'"></i>
+                                        <span class="spk-option-name">${ option.name }</span>
+                                        <span v-if="option.source === 'voice'" class="t-meta" v-text="t('speakerModal.voiceMatch') + ' ' + option.similarity + '%'"></span>
+                                        <span v-else-if="option.taken" class="t-meta" v-text="t('speakerModal.alreadyAssigned')"></span>
+                                        <span v-else class="t-meta" v-text="tc('speakerModal.usedTimes', option.useCount, { count: option.useCount })"></span>
+                                    </li>
+                                </ul>
+
+                                <div v-if="savedSpellingFor(entry.id) && !speakerMap[entry.id].isMe" class="spk-spelling">
+                                    <span class="t-meta" v-text="t('speakerModal.savedSpelling', { name: savedSpellingFor(entry.id) })"></span>
+                                    <button class="btn btn--quiet btn--sm" @click="chooseName(entry.id, savedSpellingFor(entry.id))"
+                                            v-text="t('speakerModal.useSavedSpelling')"></button>
+                                </div>
+
+                                <select v-if="entry.minor" class="field field--sm spk-merge"
+                                        :aria-label="t('speakerModal.mergeInto')"
+                                        @change="mergeSpeakersInto([entry.id], $event.target.value); $event.target.value = ''">
+                                    <option value="" v-text="t('speakerModal.mergeInto')"></option>
+                                    <option v-for="target in mainSpeakers" :key="target" :value="target">${ labelOf(target) }</option>
+                                </select>
+                            </div>
+                        </div>
+                    </template>
+
+                    <button @click="openAddSpeakerModal" :disabled="asrEditingLocked" class="btn btn--ghost btn--sm w-full spk-add">
+                        <i class="fas fa-plus"></i>
+                        <span v-text="t('buttons.addSpeaker')"></span>
+                    </button>
+                </div>
+            </div>

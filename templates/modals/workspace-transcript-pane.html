@@ -1,0 +1,69 @@
+<section class="tw-transcript spk-right" :class="{'tw-phone-hide':workspacePhonePane!=='transcript'}"><div class="tw-context" v-if="workspacePinned.length"><span v-text="t('transcriptWorkspace.splitPinned')"></span><button @click="finishSplitContext" v-text="t('transcriptWorkspace.resumeSpeaker')"></button></div>
+                <div class="spk-filter">
+                    <template v-if="selectedSpeaker">
+                        <span :class="speakerColor(selectedSpeaker)" class="spk-dot"></span>
+                        <span class="t-body-strong truncate">${ labelOf(selectedSpeaker) }</span>
+                        <span class="t-meta hidden sm:inline" v-text="speakerMeta(selectedSpeaker)"></span>
+                        <div class="spk-filter-actions">
+                            <template v-if="!onlySelectedSpeaker && selectedSpeakerTurns.length > 0">
+                                <button class="btn btn--icon btn--sm" @click="goToTurn(-1)"
+                                        :title="t('speakerModal.previousTurn')" :aria-label="t('speakerModal.previousTurn')">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                                <span class="pill-status pill-status--info tabular-nums">${ currentTurn + 1 } / ${ selectedSpeakerTurns.length }</span>
+                                <button class="btn btn--icon btn--sm" @click="goToTurn(1)"
+                                        :title="t('speakerModal.nextTurn')" :aria-label="t('speakerModal.nextTurn')">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </template>
+                            <button v-if="onlySelectedSpeaker" class="btn btn--quiet btn--sm" @click="showAllSegments"
+                                    v-text="t('speakerModal.showAll')"></button>
+                            <button v-else class="btn btn--quiet btn--sm" @click="showOnlySelectedSpeaker"
+                                    v-text="t('speakerModal.onlyThisSpeaker')"></button>
+                            <button class="btn btn--icon btn--sm" @click="clearSelectedSpeaker"
+                                    :title="t('speakerModal.clearSelection')" :aria-label="t('speakerModal.clearSelection')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <span v-else class="t-meta" v-text="t('speakerModal.selectHint')"></span>
+                </div>
+
+                <!-- Transcript -->
+                <div ref="speakerModalTranscriptRef" data-testid="workspace-transcript"
+                     class="speaker-modal-transcript custom-scrollbar"
+                     style="flex: 1 1 auto; min-height: 0; overflow-y: auto;">
+                    <div v-if="speakerModalData.isJson">
+                        <div v-for="segment in workspaceVisibleSegments"
+                             :key="workspaceSegmentKey(segment.index)"
+                             v-memo="[segment.index, segment.speakerId, segment.sentence, segment.start, segment.end, speakerMap[segment.speakerId]?.name, selectedSpeaker === segment.speakerId, !!selectedSpeaker, onlySelectedSpeaker, playingSegmentIndex === segment.index, editingSpeakerIndex === segment.index, workspaceMode==='editor' && asrSelectedIndex===segment.index, asrEditingLocked]" class="speaker-segment spk-seg group"
+                             :class="{ 'tw-editing':workspaceMode==='editor' && segment.index===asrSelectedIndex, 'is-playing': playingSegmentIndex === segment.index, 'is-dimmed': selectedSpeaker && !onlySelectedSpeaker && selectedSpeaker !== segment.speakerId }"
+                             :data-segment-index="segment.index" :data-list-index="segment.index">
+                            <span class="tw-number">${ segment.index+1 }</span><button v-if="segment.start !== null" class="spk-seg-time" @click="playModalSegment(segment)"
+                                    :title="t('speakerModal.play')">${ formatSegmentClock(segment.start) }–${ formatSegmentClock(segment.end) }</button>
+                            <span v-else></span>
+                            <span :class="[speakerColor(segment.speakerId), 'speaker-tag']"
+                                  class="spk-seg-speaker" :title="segment.speakerId">${ labelOf(segment.speakerId) }</span>
+                            <span class="spk-seg-text" @click="playModalSegment(segment)">${ segment.sentence }</span>
+                            <span class="spk-seg-actions">
+                                <button @click.stop="openSpeakerChangeDropdown(segment.index)" :disabled="asrEditingLocked" class="btn btn--icon btn--sm"
+                                        :title="t('speakerModal.changeSpeaker')" :aria-label="t('speakerModal.changeSpeaker')">
+                                    <i class="fas fa-user-edit text-[10px]"></i>
+                                </button>
+                                <button @click.stop="openSegmentEditor(segment.index)" :disabled="asrEditingLocked" :data-testid="'workspace-edit-'+segment.index" class="btn btn--icon btn--sm"
+                                        :title="t('speakerModal.editText')" :aria-label="t('speakerModal.editText')">
+                                    <i class="fas fa-edit text-[10px]"></i>
+                                </button>
+                            </span>
+                            <div v-if="editingSpeakerIndex === segment.index" class="spk-seg-reassign" @click.stop>
+                                <select class="field field--sm" :aria-label="t('speakerModal.changeSpeaker')"
+                                        @change="changeSpeaker(segment.index, $event.target.value)">
+                                    <option value="" v-text="t('speakerModal.changeSpeaker')"></option>
+                                    <option v-for="id in orderedSpeakers" :key="id" :value="id" :disabled="id === segment.speakerId">${ labelOf(id) }</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="whitespace-pre-wrap text-sm text-[var(--text-primary)]">${ speakerModalData.plainText }</div>
+                </div>
+            <div class="tw-list-actions"><button @click="addSegment" :disabled="asrEditingLocked" class="btn btn--ghost" v-text="t('asrWorkplace.append')"></button></div></section>

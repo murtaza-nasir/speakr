@@ -995,6 +995,19 @@ html.dark select.field {
     animation: modalFadeIn 140ms ease-out;
 }
 
+/* The workspace remains mounted beneath auxiliary dialogs. Equal z-indexes
+   otherwise let its later template position cover their controls. Keep the
+   existing inline voice-dialog layer (80) and body suggestion layer (100). */
+.transcript-workspace-open > .modal-overlay:not([data-testid="asr-editor"]) {
+    z-index: 60;
+}
+
+/* Organizer dialogs live outside Vue and can be opened from the upload dialog. */
+#app.transcript-workspace-open ~ #organizerModals > .modal-overlay,
+#app.transcript-workspace-open ~ .modal-overlay {
+    z-index: 70;
+}
+
 html.dark .modal-overlay {
     background: rgba(0, 0, 0, 0.7);
 }

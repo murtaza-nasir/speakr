@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useFindReplace } from './find-replace.js';
 
 const ref = (value) => ({ value });
 
-function editor({ segments = null, text = '' } = {}) {
+function editor({ segments = null, text = '', utils = {} } = {}) {
     const state = {
         findReplace: { open: true, find: '', replace: '', matchCase: false, wholeWord: false, current: -1 },
         showAsrEditorModal: ref(!!segments),
@@ -14,11 +14,34 @@ function editor({ segments = null, text = '' } = {}) {
         asrEditorHighlightIndex: ref(null),
     };
     const toasts = [];
-    const api = useFindReplace(state, { showToast: (m) => toasts.push(m), t: (k, p) => (p ? `${k}:${p.count}` : k) });
+    const api = useFindReplace(state, { showToast: (m) => toasts.push(m), t: (k, p) => (p ? `${k}:${p.count}` : k), ...utils });
     return { state, api, toasts };
 }
 
 describe('find and replace in the transcript editors (#440)', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('opens the matched segment before selecting text in its detail panel', async () => {
+        let selected = -1;
+        const field = { blur: vi.fn(), focus: vi.fn(), setSelectionRange: vi.fn() };
+        vi.stubGlobal('document', { querySelector: vi.fn(() => selected === 1 ? field : null) });
+        const openFindReplaceSegment = vi.fn(async (index) => { selected = index; });
+        const { state, api } = editor({ segments: ['other', 'the match'], utils: { openFindReplaceSegment } });
+        state.findReplace.find = 'match';
+        api.goToMatch(1);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(openFindReplaceSegment).toHaveBeenCalledWith(1);
+        expect(field.setSelectionRange).toHaveBeenCalledWith(4, 9);
+    });
+
+    it('does not replace a locked draft or an unapplied ASR proposal', () => {
+        const { state, api } = editor({ segments: ['cat cat'], utils: { canReplaceTranscript: () => false } });
+        Object.assign(state.findReplace, { find: 'cat', replace: 'dog', current: 0 });
+        api.replaceCurrentMatch();
+        api.replaceAllMatches();
+        expect(state.editingSegments.value[0].sentence).toBe('cat cat');
+    });
     it('counts matches across segments', () => {
         const { state, api } = editor({ segments: ['Acme agreed', 'acme and ACME', 'none'] });
         state.findReplace.find = 'acme';

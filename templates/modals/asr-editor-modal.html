@@ -1,179 +1,92 @@
-<!-- ASR Editor Modal -->
-<div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="modal-overlay">
-    <div @click="closeAllSpeakerSuggestions" class="modal-panel modal-panel--xl">
-        <div class="modal-header">
-            <h3 class="modal-title" v-text="t('modal.editAsrTranscription')"></h3>
-            <span v-if="asrEditorSaveFlash" class="pill-status pill-status--success">
-                <i class="fas fa-check-circle"></i>
-                <span v-text="t('asrEditor.saved')"></span>
-            </span>
-            <button @click="findReplace.open ? closeFindReplace() : openFindReplace()" class="modal-close ml-auto" :title="t('findReplace.open')"><i class="fas fa-search"></i></button>
-            <button @click="closeAsrEditorModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
-        </div>
-
-        <!-- Audio Player Section -->
-        <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
-            <!-- Show message if audio has been deleted -->
-            <div v-if="selectedRecording.audio_deleted_at"
-                 class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
-                <i class="fas fa-info-circle"></i>
-                <span v-text="t('help.audioDeletedMessage')"></span>
-            </div>
-            <!-- Show message for incognito recordings -->
-            <div v-else-if="selectedRecording.incognito"
-                 class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
-                <i class="fas fa-user-secret"></i>
-                <span>Audio not stored in incognito mode</span>
-            </div>
-            <!-- Custom Audio Player (Independent from main player) -->
-            <div v-else class="flex items-center gap-3">
-                <audio ref="asrEditorAudioRef" class="hidden"
-                       :key="'asr-editor-' + selectedRecording.id"
-                       :src="'/audio/' + selectedRecording.id"
-                       :volume="playerVolume"
-                       @play="handleModalAudioPlayPause"
-                       @pause="handleModalAudioPlayPause"
-                       @timeupdate="handleModalAudioTimeUpdate"
-                       @loadedmetadata="handleModalAudioLoadedMetadata"
-                       @ended="modalAudioIsPlaying = false">
-                </audio>
-                <!-- Play/Pause -->
-                <button @click="$refs.asrEditorAudioRef?.paused ? $refs.asrEditorAudioRef.play() : $refs.asrEditorAudioRef.pause()"
-                        class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
-                        :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
-                    <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-sm" :style="!modalAudioIsPlaying ? 'margin-left: 2px' : ''"></i>
-                </button>
-                <!-- Time -->
-                <div class="flex flex-col items-end flex-shrink-0 leading-none">
-                    <span class="text-sm text-[var(--text-primary)] font-mono">${ formatAudioTime(modalAudioCurrentTime) }</span>
-                    <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(modalAudioDuration) }</span>
-                </div>
-                <!-- Progress Bar -->
-                <div class="flex-1 h-2 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
-                     @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.currentTime = pct * modalAudioDuration; }">
-                    <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
-                         :style="{ width: modalAudioProgressPercent + '%' }">
-                    </div>
-                </div>
-                <!-- Volume -->
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.muted = !$refs.asrEditorAudioRef.muted)"
-                            class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
-                        <i :class="playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
-                    </button>
-                    <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
-                           @input="(e) => { if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.volume = parseFloat(e.target.value); }"
-                           class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
-                </div>
-                <!-- Speed Control (compact - tap to cycle) -->
-                <button @click="cycleModalPlaybackRate(); if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.playbackRate = modalPlaybackRate"
-                        class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                        title="Playback speed (tap to change)">
-                    <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
-                </button>
-            </div>
-        </div>
-
-        {% include 'components/find-replace-bar.html' %}
-
-        <!-- Editor table uses VIRTUAL SCROLLING with fixed itemHeight=44
-             (set in app.modular.js's asrEditorVirtualScroll). This
-             modal is spreadsheet-like — every row carries the same
-             single-line inputs and a textarea capped at max-h-20 (80
-             px), so row heights are bounded and uniform enough for
-             the fixed-height estimate to be accurate. The variable-
-             height tricks the speaker modal uses (content-visibility
-             + bounded hydration) are overkill here and were caught
-             introducing CLS shifts of ~3.0 in the editor — exactly
-             the regression we were trying to avoid. -->
-        <div ref="asrEditorRef" class="flex-grow overflow-y-auto custom-scrollbar" @scroll="closeAllSpeakerSuggestions(); onAsrEditorScroll($event)">
-            <table class="min-w-full asr-editor-table border border-[var(--border-primary)]">
-                <thead class="sticky top-0 z-10">
-                    <tr class="text-xs uppercase text-[var(--text-muted)]">
-                        <th class="w-40 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.speakerCount')"></th>
-                        <th class="w-20 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.startTime')"></th>
-                        <th class="w-20 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.endTime')"></th>
-                        <th class="text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.sentence')"></th>
-                        <th class="w-24 text-center py-2 px-1 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]"><span class="sr-only" v-text="t('help.actions')"></span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Virtual scroll spacer (top) -->
-                    <tr v-if="asrEditorSpacerBefore > 0"><td colspan="5" :style="{ height: asrEditorSpacerBefore + 'px', padding: 0 }"></td></tr>
-
-                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" :data-segment-index="segment._originalIndex" :class="['hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]', { 'asr-editor-row--highlighted': asrEditorHighlightIndex === segment._originalIndex }]">
-                        <td class="border-r border-[var(--border-primary)] align-middle">
-                            <div class="relative h-full">
-                                <div class="flex items-center h-full">
-                                    <input type="text" v-model="editingSegments[segment._originalIndex].speaker"
-                                           @input="openSpeakerSuggestions(segment._originalIndex, { filter: true })"
-                                           @focus="openSpeakerSuggestions(segment._originalIndex)"
-                                           @click.stop="openSpeakerSuggestions(segment._originalIndex)"
-                                           class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
-                                    <button type="button" @click.stop="openSpeakerSuggestions(segment._originalIndex)"
-                                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                                        <i class="fas fa-chevron-down text-xs"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <teleport to="body">
-                                <div v-if="isDropdownOpen(segment._originalIndex)"
-                                     class="fixed z-[100] w-40 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                     :style="getDropdownPosition(segment._originalIndex)">
-                                    <div v-for="speaker in editingSegments[segment._originalIndex].filteredSpeakers" :key="speaker" @mousedown.prevent="selectSegmentSpeaker(segment._originalIndex, speaker)" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] text-sm">${speaker}</div>
-                                    <div @mousedown.prevent="openEditSpeakersModal" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-accent)] text-sm text-[var(--text-accent)] border-t border-[var(--border-primary)] flex items-center">
-                                        <i class="fas fa-user-edit mr-2"></i> <span v-text="t('buttons.editSpeakers')"></span>
-                                    </div>
-                                </div>
-                            </teleport>
-                        </td>
-                        <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
-                        </td>
-                        <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
-                        </td>
-                        <td class="border-r border-[var(--border-primary)] align-top">
-                            <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
-                        </td>
-                        <td class="px-1 text-center align-middle">
-                            <div class="flex items-center justify-center gap-1">
-                                <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.currentTime = segment.start_time, $refs.asrEditorAudioRef.play())" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
-                                    <i class="fas fa-play text-xs"></i>
-                                </button>
-                                <button @click="addSegmentBelow(segment._originalIndex)" class="p-1.5 rounded hover:bg-green-600/20 text-[var(--text-muted)] hover:text-green-500 transition-colors" :title="t('help.addSegmentBelow')">
-                                    <i class="fas fa-plus text-xs"></i>
-                                </button>
-                                <button @click="removeSegment(segment._originalIndex)" class="p-1.5 rounded hover:bg-red-600/20 text-[var(--text-muted)] hover:text-red-500 transition-colors" :title="t('help.deleteSegment')">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- Virtual scroll spacer (bottom) -->
-                    <tr v-if="asrEditorSpacerAfter > 0"><td colspan="5" :style="{ height: asrEditorSpacerAfter + 'px', padding: 0 }"></td></tr>
-                </tbody>
-            </table>
-            <div class="py-4 flex justify-center">
-                <button @click="addSegment" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] flex items-center text-sm">
-                    <i class="fas fa-plus mr-2"></i> <span v-text="t('buttons.addSegment')"></span>
-                </button>
-            </div>
-        </div>
-        <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-between items-center border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-            <span class="text-xs text-[var(--text-muted)] hidden sm:inline-flex items-center gap-1.5">
-                <i class="fas fa-keyboard text-[10px]"></i>
-                <span v-text="t('asrEditor.ctrlSHint')"></span>
-            </span>
-            <div class="flex justify-end gap-2 ml-auto">
-                <button @click="closeAsrEditorModal" class="btn btn--ghost" v-text="t('common.cancel')"></button>
-                <button @click="saveAsrTranscription(true)" class="btn btn--ghost" :title="t('asrEditor.saveWithoutClosing')">
-                    <i class="fas fa-save text-xs"></i>
-                    <span v-text="t('common.save')"></span>
-                </button>
-                <button @click="saveAsrTranscription(false)" class="btn btn--primary" v-text="t('buttons.saveChanges')"></button>
-            </div>
-        </div>
-    </div>
+<!-- Shared speaker/transcript list and tools for one selected draft segment. -->
+<div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="modal-overlay" data-testid="asr-editor">
+ <div class="modal-panel modal-panel--xl sw-workplace spk-modal tw-workspace">
+  <div class="sw-content" :inert="asrCloseDecision || !!asrDeleteCandidate">
+  <header class="modal-header">
+   <h3 class="modal-title" v-text="t('transcriptWorkspace.title')"></h3>
+   <button @click="findReplace.open ? closeFindReplace() : openFindReplace()" class="modal-close ml-auto" :title="t('findReplace.open')"><i class="fas fa-search"></i></button>
+<button data-testid="asr-editor-close" @click="closeAsrEditorModal" class="modal-close" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
+  </header>
+{% include 'components/find-replace-bar.html' %}
+  <div v-if="modalSpeakers.length > 16" class="banner banner--warn"><i class="fas fa-exclamation-triangle"></i><span v-text="t('help.moreSpeakersThanColors')"></span><span v-text="t('help.youHaveXSpeakers', {count:modalSpeakers.length})"></span></div>
+  <div class="sw-transport">
+   <template v-if="asrCanPlay">
+    <component :is="selectedRecording.mime_type?.startsWith('video/') ? 'video' : 'audio'" ref="asrEditorAudioRef" :class="selectedRecording.mime_type?.startsWith('video/') ? (speakerModalVideoCollapsed ? 'tw-video tw-video-collapsed' : 'tw-video') : 'hidden'" :key="'asr-editor-'+selectedRecording.id" :src="'/audio/'+selectedRecording.id"
+      @play="handleModalAudioPlayPause" @pause="handleModalAudioPlayPause"
+      @timeupdate="handleModalAudioTimeUpdate($event); handleAsrWorkplaceTimeUpdate($event); onModalTimeUpdate($event)"
+      @loadedmetadata="handleModalAudioLoadedMetadata($event); handleAsrWorkplaceMetadata($event)" @ended="modalAudioIsPlaying=false"></component>
+    <button type="button" data-testid="asr-play" class="btn btn--primary" @click="playAsrWorkplace" :aria-label="modalAudioIsPlaying ? t('asrWorkplace.pause') : t('asrWorkplace.play')"><i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'"></i></button>
+    <label class="sw-playmode"><span class="sr-only" v-text="t('asrWorkplace.playMode')"></span><select data-testid="asr-play-mode" :value="asrPlaybackMode" @change="setAsrPlaybackMode($event.target.value)">
+     <option value="segment" v-text="t('asrWorkplace.onlySegment')"></option><option value="marker" :disabled="!asrCanPlayMarker" v-text="t(asrCanPlayMarker ? 'asrWorkplace.fromMarker' : 'asrWorkplace.markerRequired')"></option>
+     <option value="fromHere" v-text="t('asrWorkplace.fromHere')"></option><option value="recording" v-text="t('asrWorkplace.wholeRecording')"></option>
+    </select></label>
+    <span class="sw-playtime">${ formatAudioTime(modalAudioCurrentTime) } / ${ formatAudioTime(asrDuration || 0) }</span>
+    <input data-testid="asr-seek" class="sw-seek" type="range" min="0" :max="asrDuration || 0" step="0.01" :value="modalAudioCurrentTime" @input="seekAsrWorkplace" :aria-label="t('asrWorkplace.seek')" />
+    <button class="btn btn--ghost" @click="toggleAsrMute" :aria-label="t('asrWorkplace.mute')" :aria-pressed="asrMuted"><i :class="asrMuted || asrVolume===0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'"></i></button>
+    <input class="sw-volume" type="range" min="0" max="1" step="0.05" :value="asrVolume" @input="setAsrVolume" :aria-label="t('asrWorkplace.volume')" />
+    <select data-testid="asr-speed" :value="modalPlaybackRate" @change="modalPlaybackRate=Number($event.target.value); $refs.asrEditorAudioRef.playbackRate=modalPlaybackRate" :aria-label="t('asrWorkplace.speed')"><option v-for="speed in playbackSpeeds" :key="speed" :value="speed">${ speed }×</option></select>
+    <button v-if="selectedRecording.mime_type?.startsWith('video/')" @click="toggleSpeakerModalVideo" class="btn btn--ghost" :aria-label="t(speakerModalVideoCollapsed ? 'speakerModal.showVideo' : 'speakerModal.hideVideo')"><i class="fas fa-video"></i></button>
+   </template>
+   <p v-else class="sw-note" v-text="t(selectedRecording.incognito ? 'asrWorkplace.incognitoAudio' : 'asrWorkplace.audioUnavailable')"></p>
+  </div>
+  <nav class="tw-tabs" role="tablist"><button v-if="workspaceMode==='speakers'" @click="workspacePhonePane='speakers'" :aria-selected="workspacePhonePane==='speakers'" role="tab" v-text="t('speakerModal.speakersTab')"></button><button @click="workspacePhonePane='transcript'" :aria-selected="workspacePhonePane==='transcript'" role="tab" v-text="t('speakerModal.transcriptTab')"></button><button v-if="workspaceMode==='editor'" @click="workspacePhonePane='editor'" :aria-selected="workspacePhonePane==='editor'" role="tab" v-text="t('transcriptWorkspace.editor')"></button></nav>
+<div class="sw-body tw-layout" :class="{'tw-edit-mode':workspaceMode==='editor'}">
+{% include 'modals/workspace-speaker-pane.html' %}
+{% include 'modals/workspace-transcript-pane.html' %}
+<main v-show="workspaceMode==='editor'" data-testid="workspace-editor" class="sw-detail tw-editor custom-scrollbar" :class="{'tw-phone-hide':workspacePhonePane!=='editor'}">
+    <template v-if="asrSelectedSegment">
+     <div class="sw-detail-heading"><button data-testid="workspace-back" @click="backToWorkspaceSpeakers" class="btn btn--ghost btn--sm" v-text="t('transcriptWorkspace.back')"></button><strong>${ t('asrWorkplace.segment') } ${ asrSelectedIndex+1 } / ${ editingSegments.length }</strong><div class="sw-nav"><button @click="navigateWorkspaceSegment(-1)" :disabled="!canNavigateWorkspaceSegment(-1) || asrCloseDecision" :aria-label="t('asrWorkplace.previous')" class="btn btn--ghost">←</button><button @click="navigateWorkspaceSegment(1)" :disabled="!canNavigateWorkspaceSegment(1) || asrCloseDecision" :aria-label="t('asrWorkplace.next')" class="btn btn--ghost">→</button></div></div>
+     <fieldset class="sw-fields" :disabled="asrEditingLocked" data-testid="asr-detail" :data-segment-index="asrSelectedIndex">
+      <div class="sw-meta">
+       <label class="sw-speaker-field"><span v-text="t('help.speakerName')"></span><div class="sw-speaker-input"><asr-speaker-input :key="asrSegmentKey(asrSelectedIndex)" data-testid="asr-segment-speaker" :model-value="workspaceSpeakerName(asrSelectedSegment.speaker)" @update:model-value="editAsrSpeaker(asrSelectedIndex,$event)" :options="asrSpeakerOptions" :disabled="asrEditingLocked" :label="t('help.speakerName')"></asr-speaker-input><button type="button" @click="openEditSpeakersModal" :title="t('asrWorkplace.speakers')" :aria-label="t('asrWorkplace.speakers')" class="btn btn--ghost"><i class="fas fa-users"></i></button></div></label>
+       <label><span v-text="t('help.startTime')"></span><input data-testid="asr-start" type="number" min="0" step="0.01" v-model.number="asrSelectedSegment.start_time" />
+        <button type="button" class="sw-boundary" data-testid="asr-extend-start" @click="extendAsrBoundary('start_time')" :disabled="!!asrBoundaryExtension('start_time').error" :title="t('asrWorkplace.'+(asrBoundaryExtension('start_time').error || 'extendStart'))" v-text="t('asrWorkplace.extendStart')"></button>
+       </label>
+       <label><span v-text="t('help.endTime')"></span><input data-testid="asr-end" type="number" min="0" step="0.01" v-model.number="asrSelectedSegment.end_time" />
+        <button type="button" class="sw-boundary" data-testid="asr-extend-end" @click="extendAsrBoundary('end_time')" :disabled="!!asrBoundaryExtension('end_time').error" :title="t('asrWorkplace.'+(asrBoundaryExtension('end_time').error || 'extendEnd'))" v-text="t(asrSelectedIndex===editingSegments.length-1 ? 'asrWorkplace.extendToRecordingEnd' : 'asrWorkplace.extendEnd')"></button>
+       </label>
+      </div>
+      <label class="sw-text-label"><span v-text="t('help.sentence')"></span><textarea dir="auto" data-testid="asr-segment-text" v-model="asrSelectedSegment.sentence" rows="5" :readonly="segmentTranscription?.status==='done'"
+       @click="captureSplitSelection(asrSelectedIndex,$event)" @select="captureSplitSelection(asrSelectedIndex,$event)" @keyup="captureSplitSelection(asrSelectedIndex,$event)" @input="captureSplitSelection(asrSelectedIndex,$event); autoResizeTextarea($event)" @keydown="handleSplitKeydown(asrSelectedIndex,$event)"></textarea></label>
+     </fieldset>
+      <div class="sw-main-actions">
+{% include 'modals/asr-segment-actions.html' ignore missing %}
+       <button data-testid="asr-split-segment" @mousedown.prevent @click="splitSegmentAtCursor(asrSelectedIndex)" :disabled="asrEditingLocked || !canSplitSegment(asrSelectedIndex)" :title="splitSegmentTitle(asrSelectedIndex)" class="btn btn--primary"><i class="fas fa-scissors"></i><span v-text="t('asrWorkplace.split')"></span></button>
+       <details class="sw-more"><summary v-text="t('asrWorkplace.more')"></summary><div><button @click="addSegmentBelow(asrSelectedIndex)" :disabled="asrEditingLocked" class="btn btn--ghost" v-text="t('help.addSegmentBelow')"></button><button @click="requestAsrDelete(asrSelectedIndex)" :disabled="asrEditingLocked" class="btn btn--ghost" v-text="t('help.deleteSegment')"></button></div></details>
+      </div>
+     <p class="sw-note" data-testid="asr-split-hint" v-text="t(spectrogram && spectrogram.marker!==null ? 'asrSpectrogram.splitHint' : 'asrEditor.splitHint')"></p>
+     <section v-if="asrSplitPreview" data-testid="asr-split-preview" class="sw-preview">
+      <strong v-text="t('asrWorkplace.splitPreview')"></strong><p class="sw-note" v-text="t(asrSplitPreview.exact ? 'asrWorkplace.exactBoundary' : 'asrWorkplace.approximateBoundary')"></p>
+      <div class="sw-preview-parts"><article v-for="(part,i) in asrSplitPreview.parts" :key="i"><small>${ part.start_time.toFixed(2) }–${ part.end_time.toFixed(2) }</small><label><span v-text="t('help.speakerName')"></span><asr-speaker-input :data-testid="'asr-split-speaker-'+i" v-model="part.speaker" :options="asrSpeakerOptions" :disabled="asrEditingLocked" :label="t('help.speakerName')"></asr-speaker-input></label><p v-text="part.sentence"></p></article></div>
+      <button data-testid="asr-confirm-split" @click="confirmAsrSplit" :disabled="asrEditingLocked" class="btn btn--primary" v-text="t('asrWorkplace.confirmSplit')"></button><button @click="cancelAsrSplit" class="btn btn--ghost" v-text="t('buttons.cancel')"></button>
+     </section>
+{% include 'modals/asr-segment-panels.html' ignore missing %}
+    </template>
+    <div v-else class="sw-empty"><p v-text="t('asrWorkplace.empty')"></p><button @click="addSegment" :disabled="asrEditingLocked" class="btn btn--primary" v-text="t('buttons.addSegment')"></button></div>
+   </main>
+  </div>
+  <div class="tw-options"><label><input type="checkbox" v-model="regenerateSummaryAfterSpeakerUpdate" :disabled="!asrCanEdit || selectedRecording.incognito"><span v-text="t('help.regenerateSummaryAfterNames')"></span></label>{% include 'modals/workspace-speaker-actions.html' %}</div><footer class="sw-footer">
+   <span role="status" aria-live="polite" data-testid="asr-save-status" :class="{'sw-error':asrSaveState==='error'}" v-text="t('asrWorkplace.status_'+asrSaveState)"></span>
+   <span role="status" class="sw-error" v-if="Object.values(workspaceFollowUp).includes('failed')" v-text="t('transcriptWorkspace.followUpFailed')"></span>
+   <span role="status" class="sw-error" v-else-if="Object.values(workspaceFollowUp).includes('unknown')" v-text="t('transcriptWorkspace.followUpUnknown')"></span>
+   <button v-if="workspaceFollowUp.summary==='failed'" data-testid="workspace-retry-summary" @click="retryWorkspaceSummary" :disabled="!asrCanEdit || asrDirty || workspaceRetryingSummary || selectedRecording.incognito" class="btn btn--ghost" v-text="t('transcriptWorkspace.retrySummary')"></button>
+   <span class="sw-autosave" v-if="editorAutosave" v-text="t('asrWorkplace.autosave')"></span>
+   <button @click="closeAsrEditorModal" class="btn btn--ghost" v-text="t('buttons.close')"></button>
+   <div class="sw-save-group"><button data-testid="asr-save" @click="saveAsrTranscription(true)" :disabled="!asrCanEdit || asrSaveState==='saving' || asrCloseDecision" class="btn btn--primary" v-text="t('common.save')"></button><details><summary :aria-label="t('asrWorkplace.saveOptions')">▾</summary><button data-testid="asr-save-close" @click="saveAsrTranscription(false)" :disabled="!asrCanEdit || asrSaveState==='saving'" class="btn btn--primary" v-text="t('asrWorkplace.saveClose')"></button></details></div>
+  </footer>
+  </div>
+  <div v-if="asrCloseDecision" @keydown="handleAsrDecisionKeydown" class="sw-close-shade" data-testid="asr-close-decision" role="alertdialog" aria-modal="true" :aria-label="t('asrWorkplace.unsaved')">
+   <div class="sw-close-box"><strong v-text="t('asrWorkplace.unsaved')"></strong><p v-text="t('asrWorkplace.closeHint')"></p>
+    <button data-testid="asr-keep-editing" @click="keepAsrEditing" class="btn btn--ghost" v-text="t('asrWorkplace.keepEditing')"></button>
+    <button data-testid="asr-discard" @click="discardAsrDraft" :disabled="asrSaveState==='saving'" class="btn btn--ghost" v-text="t('asrWorkplace.discard')"></button>
+    <button @click="saveAsrTranscription(false)" :disabled="!asrCanEdit || asrSaveState==='saving'" class="btn btn--primary" v-text="t('asrWorkplace.saveClose')"></button>
+   </div>
+  </div>
+  <div v-if="asrDeleteCandidate" @keydown="handleAsrDecisionKeydown" class="sw-close-shade" data-testid="asr-delete-decision" role="alertdialog" aria-modal="true" :aria-label="t('help.deleteSegment')">
+   <div class="sw-close-box"><strong v-text="t('help.deleteSegment')"></strong><p v-text="t('asrWorkplace.deleteHint')"></p><p v-text="asrDeleteCandidate.sentence" class="sw-list-preview"></p>
+    <button data-testid="asr-delete-cancel" @click="cancelAsrDelete" class="btn btn--ghost" v-text="t('buttons.cancel')"></button>
+    <button data-testid="asr-delete-confirm" @click="confirmAsrDelete" class="btn btn--primary" v-text="t('help.deleteSegment')"></button>
+   </div>
+  </div>
+ </div>
 </div>

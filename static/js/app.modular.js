@@ -12,6 +12,7 @@ import { useTranscription } from './modules/composables/transcription.js';
 import { useFindReplace } from './modules/composables/find-replace.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
+import { useTranscriptWorkspace } from './modules/composables/transcriptWorkspace.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
@@ -20,6 +21,7 @@ import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtu
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
+import { AsrSpeakerInput } from './modules/components/asr-speaker-input.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -27,6 +29,7 @@ import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
+import { restoreScrollTop } from './modules/utils/scroll-restoration.js';
 import {
     detectPlatform,
     getAudioCapabilities,
@@ -743,6 +746,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
             const showAsrEditorModal = ref(false);
+            // #app is Vue's mount container; bindings on it are not compiled.
+            // Keep its dialog layer tied to the editor's lifetime instead.
+            watch(showAsrEditorModal, open => {
+                document.getElementById('app')?.classList.toggle('transcript-workspace-open', open);
+            }, { flush: 'sync' });
+            onUnmounted(() => document.getElementById('app')?.classList.remove('transcript-workspace-open'));
             // Placeholder refs — the actual hydration Sets are wired up
             // later (after speakerModalTranscriptRef and asrEditorRef are
             // declared). Declared here so the rest of this state block
@@ -2612,7 +2621,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const modalsComposable = useModals(state, utils);
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
-            const findReplaceComposable = useFindReplace(state, utils);
+            const findReplaceComposable = useFindReplace(state, {...utils,
+                scrollAsrEditorToIndex: (...args) => utils.scrollAsrEditorToIndex?.(...args),
+                canReplaceTranscript: () => selectedRecording.value?.can_edit !== false &&
+                    selectedRecording.value?.is_read_only !== true &&
+                    (!showAsrEditorModal.value || (!transcriptionComposable.asrEditingLocked?.value &&
+                        transcriptionComposable.segmentTranscription?.value?.status !== 'done')),
+                openFindReplaceSegment: async (index) => {
+                    if (transcriptionComposable.asrEditingLocked?.value ||
+                        transcriptionComposable.segmentTranscription?.value?.status === 'done') return false;
+                    if (utils.workspace?.active()) {
+                        if (!speakerModalComposable.visibleModalSegments.value.some(segment => segment.index === index))
+                            speakerModalComposable.showAllSegments();
+                        await utils.workspace.openEditor(index);
+                    } else await transcriptionComposable.selectAsrSegment(index);
+                }
+            });
             const chatComposable = useChat(state, utils);
             const pwaComposable = usePWA(state, utils);
             const notificationsComposable = useNotifications(state, utils);
@@ -2690,7 +2714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Virtual scroll for ASR editor modal (uses editingSegments)
             const asrEditorVirtualScroll = useVirtualScroll({
                 items: editingSegments,
-                itemHeight: 44,  // Table row height
+                itemHeight: 76,  // Bounded two-line workplace segment preview
                 containerRef: asrEditorRef,
                 overscan: 10
             });
@@ -2762,15 +2786,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Scroll to the target row but offset upward so the row lands
             // comfortably below the sticky table header (~2 rows of clearance)
             // instead of being clipped at the top.
-            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
+            utils.scrollAsrEditorToIndex = (index) => {
+                if (utils.workspace?.active()) speakerModalTranscriptRef.value?.querySelector(`[data-segment-index="${index}"]`)?.scrollIntoView({block:'nearest'});
+                else asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
+            };
             utils.setAsrEditorScrollTop = (scrollTop) => {
-                if (asrEditorRef.value) {
-                    asrEditorRef.value.scrollTop = scrollTop;
+                const container = asrEditorRef.value || speakerModalTranscriptRef.value;
+                if (container) {
+                    restoreScrollTop(container, scrollTop);
                 }
             };
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
+            utils.canEditAsrDraft = () => !transcriptionComposable.asrEditingLocked?.value;
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
             const speakerModalComposable = useSpeakerModal(state, utils);
+            const transcriptWorkspaceComposable = useTranscriptWorkspace(state, utils, transcriptionComposable, speakersComposable, speakerModalComposable);
+            utils.openWorkspace = transcriptionComposable.openAsrEditorModal;
+            utils.closeWorkspace = transcriptionComposable.closeAsrEditorModal;
+            utils.saveWorkspace = transcriptionComposable.saveAsrTranscription;
+            utils.persistLocalTranscript = transcriptionComposable.saveTranscriptionContent;
+            utils.releaseWorkspacePlayback = transcriptionComposable.releaseAsrWorkplacePlayback;
 
             // Recording ids in the order the sidebar shows them, for
             // Shift-click span selection.
@@ -4551,6 +4586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...findReplaceComposable,
                 ...speakersComposable,
                 ...speakerModalComposable,
+                ...transcriptWorkspaceComposable,
                 ...chatComposable,
                 ...tagsComposable,
                 ...foldersComposable,
@@ -4586,5 +4622,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return window.i18n.tc(key, count, params);
     });
 
+    app.component('asr-speaker-input', AsrSpeakerInput);
     app.mount('#app');
 });
