@@ -22,7 +22,7 @@ werkzeug==3.1.9
 gunicorn==23.0.0
 python-dotenv==1.2.4
 markdown==3.11.1
-pytz==2024.1
+pytz==2026.5
 # IANA timezone data for zoneinfo when the OS has none (#412)
 tzdata==2025.2
 Babel==2.18.0
