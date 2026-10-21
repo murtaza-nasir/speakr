@@ -24,7 +24,7 @@ python-dotenv==1.2.4
 markdown==3.11.1
 pytz==2024.1
 # IANA timezone data for zoneinfo when the OS has none (#412)
-tzdata==2025.2
+tzdata==2026.5
 Babel==2.18.0
 bleach==6.4.0
 python-docx==1.2.0
