@@ -230,6 +230,14 @@ TRANSCRIPTION_MODEL=vibevoice
 
 If your vLLM server requires authentication, also set `TRANSCRIPTION_API_KEY`. Configure the text generation model as described above for summaries and chat features.
 
+#### For Tencent Cloud ASR (Chinese and English Meetings)
+
+Use `TRANSCRIPTION_CONNECTOR=tencent_asr` with `TENCENT_SECRET_ID` and
+`TENCENT_SECRET_KEY`. This native connector supports Tencent recording-file
+recognition, timestamps, speaker labels and hotwords, without an ASR bridge
+container or local GPU. See the [Tencent ASR setup guide](../advanced/tencent-asr.md)
+for engines, large files, resource packages and retry limitations.
+
 #### For AssemblyAI (Cloud-Based Diarization)
 
 AssemblyAI is a cloud transcription provider with strong speaker diarization on long, multi-speaker recordings. It is not OpenAI-compatible (it uses its own asynchronous upload-and-poll API), so it has a dedicated connector. It ingests files up to 10 hours in a single job, so the app does not chunk for it. New accounts get free credits and no credit card is required to create an API key.

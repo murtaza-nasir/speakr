@@ -50,6 +50,7 @@ class ConnectorRegistry:
         from .connectors.alibaba_funasr import AlibabaFunASRConnector
         from .connectors.mossland import MosslandTranscriptionConnector
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
+        from .connectors.tencent_asr import TencentASRConnector
         from .connectors.openasr import OpenASRTranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
@@ -61,6 +62,7 @@ class ConnectorRegistry:
         self.register('funasr', AlibabaFunASRConnector)
         self.register('mossland', MosslandTranscriptionConnector)
         self.register('assemblyai', AssemblyAITranscriptionConnector)
+        self.register('tencent_asr', TencentASRConnector)
         self.register('openasr', OpenASRTranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
@@ -350,6 +352,17 @@ class ConnectorRegistry:
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
                 'base_url': base_url or 'https://api.mosi.cn',
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'moss-transcribe-diarize'),
+            }
+
+        elif connector_name == 'tencent_asr':
+            return {
+                'secret_id': os.environ.get('TENCENT_SECRET_ID', ''),
+                'secret_key': os.environ.get('TENCENT_SECRET_KEY', ''),
+                'model': os.environ.get('TENCENT_ASR_MODEL', '16k_zh_en_meeting'),
+                'timeout': os.environ.get('TENCENT_ASR_TIMEOUT', '1800'),
+                'poll_interval': os.environ.get('TENCENT_ASR_POLL_INTERVAL', '5'),
+                'hotword_id': os.environ.get('TENCENT_ASR_HOTWORD_ID', ''),
+                'diarize': os.environ.get('ASR_DIARIZE', 'true').lower() == 'true',
             }
 
         elif connector_name == 'assemblyai':
