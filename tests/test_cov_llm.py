@@ -227,12 +227,31 @@ def test_call_llm_completion_response_format_passthrough(monkeypatch):
     assert fake.create.call_args.kwargs["response_format"] == {"type": "json_object"}
 
 
+@pytest.mark.parametrize("preference", [None, "none"])
+def test_local_reasoning_preference_is_opt_in(monkeypatch, preference):
+    fake = install_client(monkeypatch, return_value=make_completion("direct answer"))
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "qwen3.5:9b-speakr")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "http://127.0.0.1:11435/v1")
+    monkeypatch.delenv("GPT5_FORCE_MODE", raising=False)
+    if preference is None:
+        monkeypatch.delenv("TEXT_MODEL_REASONING_EFFORT", raising=False)
+    else:
+        monkeypatch.setenv("TEXT_MODEL_REASONING_EFFORT", preference)
+    call_llm_completion([{"role": "user", "content": "q"}])
+    arguments = fake.create.call_args.kwargs
+    if preference is None:
+        assert "reasoning_effort" not in arguments
+    else:
+        assert arguments["reasoning_effort"] == preference
+
+
 def test_call_llm_completion_gpt5_branch(monkeypatch):
     fake = install_client(monkeypatch, return_value=make_completion("ok"))
     monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
     monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-5")
     monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://api.openai.com/v1")
     monkeypatch.setenv("GPT5_REASONING_EFFORT", "high")
+    monkeypatch.setenv("TEXT_MODEL_REASONING_EFFORT", "none")
     monkeypatch.setenv("GPT5_VERBOSITY", "low")
     call_llm_completion([{"role": "user", "content": "q"}], max_tokens=200)
     kwargs = fake.create.call_args.kwargs

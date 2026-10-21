@@ -282,6 +282,12 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
             "stream": stream
         }
 
+        # Preserve the local Qwen runtime's explicit reasoning preference.
+        # GPT-5-specific configuration below retains precedence for GPT-5.
+        local_reasoning = os.environ.get("TEXT_MODEL_REASONING_EFFORT")
+        if local_reasoning:
+            completion_args["reasoning_effort"] = local_reasoning
+
         # Add stream_options to get usage in final chunk for streaming
         # Some LLM servers don't support this OpenAI-specific option
         if stream and ENABLE_STREAM_OPTIONS:
