@@ -362,7 +362,6 @@ class ConnectorRegistry:
                 'timeout': os.environ.get('TENCENT_ASR_TIMEOUT', '1800'),
                 'poll_interval': os.environ.get('TENCENT_ASR_POLL_INTERVAL', '5'),
                 'hotword_id': os.environ.get('TENCENT_ASR_HOTWORD_ID', ''),
-                'state_dir': os.environ.get('TENCENT_ASR_STATE_DIR') or None,
                 'staging_prefix': os.environ.get('TENCENT_ASR_STAGING_PREFIX', 'tencent-asr'),
                 'diarize': os.environ.get('ASR_DIARIZE', 'true').lower() == 'true',
             }

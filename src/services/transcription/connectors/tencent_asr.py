@@ -6,7 +6,6 @@ import hmac
 import io
 import json
 import logging
-import os
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -18,20 +17,20 @@ import httpx
 from ..base import (BaseTranscriptionConnector, ConnectorSpecifications,
                     TranscriptionCapability, TranscriptionResponse, TranscriptionSegment)
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
-from ..tencent_state import locked_checkpoint, prune_checkpoints
 
 logger = logging.getLogger(__name__)
 HOST = 'asr.tencentcloudapi.com'
 INLINE_LIMIT = 5 * 1024 * 1024
 FILE_LIMIT = 1024 * 1024 * 1024
 MODELS = ('16k_zh_en_meeting', '16k_zh_en_2.0')
-# Tencent keeps task results for 24 hours, so a checkpoint is no use for
-# recovery after that; it is removed a day later.
-CHECKPOINT_MAX_AGE = 2 * 24 * 3600
+# Tencent keeps task results for 24 hours and may reuse task IDs after that,
+# so an older saved task is not queried.
+TASK_MAX_AGE = 23 * 3600
 
 
 class TencentASRConnector(BaseTranscriptionConnector):
     PROVIDER_NAME = 'tencent_asr'
+    SUPPORTS_TASK_RESUME = True
     CAPABILITIES = {TranscriptionCapability.DIARIZATION,
                     TranscriptionCapability.TIMESTAMPS, TranscriptionCapability.HOTWORDS}
     SPECIFICATIONS = ConnectorSpecifications(
@@ -55,7 +54,6 @@ class TencentASRConnector(BaseTranscriptionConnector):
             raise ConfigurationError('Tencent requires 0 < poll_interval <= timeout <= 10800 seconds')
         self.hotword_id = self.config.get('hotword_id', '').strip()
         self.default_diarize = self.config.get('diarize', True)
-        self.state_dir = self.config.get('state_dir')
         self.staging_prefix = (self.config.get('staging_prefix') or 'tencent-asr').strip('/')
         if not self.staging_prefix or '..' in self.staging_prefix.split('/'):
             raise ConfigurationError('Tencent staging prefix must be a nonempty object prefix without ..')
@@ -131,17 +129,13 @@ class TencentASRConnector(BaseTranscriptionConnector):
             params['HotwordId'] = self.hotword_id
         return params
 
-    def _stage(self, path, request, state=None, save=None):
+    def _stage(self, path, request):
         from src.services.storage import get_storage_service, parse_locator
         storage = get_storage_service()
         if not storage.s3:
             raise ConfigurationError('Tencent audio over 5 MiB requires Speakr S3 storage with a publicly reachable endpoint')
         key = self.staging_prefix + '/' + uuid4().hex + Path(request.filename).suffix
         locator = parse_locator(storage.s3.build_locator(key))
-        if state is not None:
-            state['staging_locator'] = storage.s3.build_locator(key)
-            state['staging_endpoint'] = storage.s3.endpoint_url
-            save()  # Remember the key even if the worker dies during upload.
         try:
             storage.s3.upload_local_file(path, key, content_type=request.mime_type or 'application/octet-stream', acl='private')
             url = storage.s3.presign_get_url(locator, expires_seconds=86400)
@@ -176,44 +170,59 @@ class TencentASRConnector(BaseTranscriptionConnector):
                     raise
             time.sleep(min(self.poll_interval, max(0, deadline - time.monotonic())))
         raise TranscriptionError(f'Tencent task {task_id}: polling timed out. The remote task may still be running; '
-                                 'retry the same recording to resume polling the saved task.')
+                                 'a retry of this job resumes polling the same task.')
 
-    def _state_directory(self):
-        if self.state_dir:
-            return self.state_dir
-        # Next to the SQLite database on the instance volume, as for the
-        # generated secret key; Flask's instance_path (/app/instance) is not a
-        # volume and is lost when the container is recreated.
-        uri = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
-        if uri.startswith('sqlite:///'):
-            base = os.path.dirname(uri.split('sqlite:///', 1)[1]) or '.'
-        else:
-            base = '/data/instance'
-        return os.path.join(base, 'tencent-tasks')
-
-    def _cleanup_checkpoint(self, state, save):
-        if not state.get('staging_locator'):
+    @staticmethod
+    def _cleanup_saved(locator_value):
+        """Delete a staged object known only from a saved task."""
+        if not locator_value:
             return
         from src.services.storage import get_storage_service, parse_locator
         storage = get_storage_service().s3
-        if not storage or storage.endpoint_url != state.get('staging_endpoint'):
-            logger.warning('Tencent staging cleanup deferred: original storage endpoint is unavailable')
-            return
-        if self._cleanup(storage, parse_locator(state['staging_locator'])):
-            state.pop('staging_locator', None)
-            state.pop('staging_endpoint', None)
-            save()
+        if storage:
+            TencentASRConnector._cleanup(storage, parse_locator(locator_value))
 
     def transcribe(self, request):
         params = self._parameters(request)
+        saved = request.provider_task or {}
+        with httpx.Client(timeout=httpx.Timeout(60, connect=15), follow_redirects=False) as client:
+            task_id = saved.get('task_id')
+            if saved.get('submitting') and not task_id:
+                # A retry of a job whose submission had no clear outcome:
+                # Tencent may have accepted it, and submitting again could
+                # charge twice. A reprocess starts a new job and submits.
+                raise TranscriptionError(
+                    'Tencent ASR: an earlier submission of this recording had no clear outcome and may have been '
+                    'accepted. Check the Tencent ASR console, then reprocess the recording to submit it again.')
+            if task_id and time.time() - saved.get('submitted_at', 0) >= TASK_MAX_AGE:
+                logger.warning('Tencent ASR: saved task %s is too old to query; submitting the audio again', task_id)
+                self._cleanup_saved(saved.get('staging_locator'))
+                task_id = None
+            if task_id:
+                logger.info('Tencent ASR: resuming task %s', task_id)
+                result = self._poll(client, task_id)
+                self._cleanup_saved(saved.get('staging_locator'))
+            else:
+                task_id, storage, locator = self._submit(client, request, params)
+                result = self._poll(client, task_id)
+                # The task has finished, so Tencent no longer needs the audio.
+                if storage:
+                    self._cleanup(storage, locator)
+            if result['Status'] == 3:
+                raise TranscriptionError(f'Tencent task {task_id} failed; check the ASR console for details')
+            return self._parse_result(result, params['EngineModelType'], request.diarize)
+
+    def _submit(self, client, request, params):
+        """Send the audio; return the task ID and the staged object, if any."""
+        save_task = request.save_provider_task or (lambda task: None)
         try:
             request.audio_file.seek(0)
         except (AttributeError, OSError, io.UnsupportedOperation):
             pass
-        # Spool without transcoding; hash original bytes to identify safe retries.
+        storage = locator = None
+        # The original bytes are sent; nothing is transcoded.
         with tempfile.TemporaryDirectory(prefix='speakr_tencent_') as directory:
             path = Path(directory) / 'audio'
-            digest = hashlib.sha256()
             size = 0
             with path.open('wb') as output:
                 while True:
@@ -224,68 +233,36 @@ class TencentASRConnector(BaseTranscriptionConnector):
                     if size > FILE_LIMIT:
                         raise TranscriptionError('Tencent ASR: audio exceeds 1 GiB URL limit')
                     output.write(chunk)
-                    digest.update(chunk)
             if not size:
                 raise TranscriptionError('Tencent ASR: empty audio file')
-            identity = json.dumps([self.secret_id, digest.hexdigest(), params], sort_keys=True)
-            fingerprint = hashlib.sha256(identity.encode()).hexdigest()
-            directory = self._state_directory()
-            for locator in prune_checkpoints(directory, CHECKPOINT_MAX_AGE):
-                logger.warning('Tencent ASR: expired checkpoint removed; its staging object %s was not '
-                               'deleted and is left to the bucket lifecycle rule', locator)
-            with locked_checkpoint(directory, fingerprint) as (state, save):
-                state.update(source_sha256=digest.hexdigest(), source_bytes=size)
-                save()
-                if state.get('status') in ('completed', 'failed'):
-                    self._cleanup_checkpoint(state, save)
-                    if state['status'] == 'failed':
-                        raise TranscriptionError('Saved Tencent task failed; inspect the checkpoint before explicitly starting another billable task')
-                    return self._parse_result(state['result'], params['EngineModelType'], request.diarize)
-                if state.get('status') == 'submitting':
-                    raise TranscriptionError('Tencent submission outcome is uncertain. Check the ASR console and saved checkpoint; automatic resubmission is blocked to prevent duplicate charges')
-                with httpx.Client(timeout=httpx.Timeout(60, connect=15), follow_redirects=False) as client:
-                    task_id = state.get('task_id')
-                    if task_id:
-                        if time.time() - state['submitted_at'] >= 23 * 3600:
-                            raise TranscriptionError('Saved Tencent task is nearing its 24-hour expiry; automatic resubmission is blocked. Check the ASR console')
-                        logger.info('Resuming Tencent ASR task: %s', task_id)
-                    else:
-                        # A previous interrupted upload has no ASR task yet.
-                        self._cleanup_checkpoint(state, save)
-                        if state.get('staging_locator'):
-                            raise TranscriptionError('Previous Tencent staging cleanup is pending; check object storage before retrying')
-                        state.update(status='preparing')
-                        save()
-                        if size <= INLINE_LIMIT:
-                            params.update(SourceType=1, Data=base64.b64encode(path.read_bytes()).decode(), DataLen=size)
-                        else:
-                            _, _, url = self._stage(str(path), request, state, save)
-                            params.update(SourceType=0, Url=url)
-                        state.update(status='submitting', submitted_at=time.time())
-                        save()  # Crash after this point must not silently submit twice.
-                        try:
-                            result = self._call(client, 'CreateRecTask', params)
-                        except ProviderError as exc:
-                            if exc.status_code and 400 <= exc.status_code < 500:
-                                state['status'] = 'rejected'
-                                save()
-                                self._cleanup_checkpoint(state, save)
-                            raise
-                        except httpx.HTTPError:
-                            raise TranscriptionError('Tencent ASR network error. Submission was not retried; its outcome is uncertain. Check the ASR console') from None
-                        task_id = result.get('TaskId')
-                        if not isinstance(task_id, int) or isinstance(task_id, bool):
-                            raise ProviderError('Tencent submit returned no task ID; automatic resubmission is blocked', provider=self.PROVIDER_NAME)
-                        state.update(status='pending', task_id=task_id)
-                        save()
-                        logger.info('Tencent ASR task submitted: %s', task_id)
-                    result = self._poll(client, task_id)
-                    state.update(status='completed' if result['Status'] == 2 else 'failed', result=result)
-                    save()  # Keep result before deleting the only cloud audio copy.
-                    self._cleanup_checkpoint(state, save)
-                    if result['Status'] == 3:
-                        raise TranscriptionError(f'Tencent task {task_id} failed; check the ASR console for details')
-                    return self._parse_result(result, params['EngineModelType'], request.diarize)
+            if size <= INLINE_LIMIT:
+                params.update(SourceType=1, Data=base64.b64encode(path.read_bytes()).decode(), DataLen=size)
+            else:
+                storage, locator, url = self._stage(str(path), request)
+                params.update(SourceType=0, Url=url)
+        staging = getattr(locator, 'raw', None)
+        # Saved before sending: when no answer arrives, Tencent may still have
+        # accepted the task, and a retry of this job must not submit it again.
+        save_task({'submitting': True, 'staging_locator': staging})
+        try:
+            result = self._call(client, 'CreateRecTask', params)
+        except ProviderError as exc:
+            if exc.status_code and 400 <= exc.status_code < 500:
+                # A definite rejection: nothing was accepted.
+                save_task(None)
+                if storage:
+                    self._cleanup(storage, locator)
+            raise
+        except httpx.HTTPError:
+            raise TranscriptionError('Tencent ASR network error during submission. The submission was not retried; '
+                                     'Tencent may have accepted it. Check the ASR console before reprocessing '
+                                     'the recording.') from None
+        task_id = result.get('TaskId')
+        if not isinstance(task_id, int) or isinstance(task_id, bool):
+            raise ProviderError('Tencent submit returned no task ID', provider=self.PROVIDER_NAME)
+        save_task({'task_id': task_id, 'submitted_at': time.time(), 'staging_locator': staging})
+        logger.info('Tencent ASR task submitted: %s', task_id)
+        return task_id, storage, locator
 
     def _parse_result(self, result, model, diarize):
         segments = []

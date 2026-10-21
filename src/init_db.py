@@ -344,6 +344,8 @@ def _run_migrations(app, engine):
         # Add is_new_upload column to processing_job table for tracking upload vs reprocessing jobs
         if add_column_if_not_exists(engine, 'processing_job', 'is_new_upload', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added is_new_upload column to processing_job table")
+        if add_column_if_not_exists(engine, 'processing_job', 'provider_task', 'TEXT'):
+            app.logger.info("Added provider_task column to processing_job table")
 
         if add_column_if_not_exists(engine, 'tag', 'group_id', 'INTEGER'):
             app.logger.info("Added group_id column to tag table")

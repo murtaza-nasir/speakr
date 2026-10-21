@@ -82,49 +82,25 @@ The API limits URL jobs to 1 GiB and five hours. The operator should configure
 expiration and incomplete-multipart-upload cleanup on this prefix only;
 Speakr does not change bucket lifecycle policies automatically.
 
-Live validation used an unchanged 9.64 MB WebM recording (598.74 seconds) in
-a private COS object: downloaded bytes matched SHA-256, anonymous access was
-denied, Tencent returned 176 timestamped segments, and deletion was verified.
-This is a functional test, not an accuracy or performance benchmark.
-
 ## Failures and retries
 
-Checkpoints are stored in `tencent-tasks/` next to the SQLite database
-(`/data/instance/tencent-tasks` in Docker), or in `TENCENT_ASR_STATE_DIR` when
-set. Keep that directory on persistent storage.
-It contains task IDs, object locators and completed transcription results, but
-not credentials or signed URLs. Treat it as private application data. Every
-worker serving the same instance must share it; per-file OS locks prevent
-concurrent submission. Distributed deployments need filesystem lock semantics
-and are not validated by this connector.
+When Tencent accepts a task, its task ID is saved with the processing job. If
+polling times out, an error occurs or Speakr restarts while the task runs, the
+job is retried automatically and the saved task is polled again; the audio is
+not submitted a second time. Reprocessing a recording starts a new job, and the
+audio is submitted again, which can create another billable task.
 
-An identical audio file, ASR account and recognition parameters reuse the saved
-task. After a polling failure or worker restart, retrying the recording resumes
-polling rather than submitting again. Completed results are reused; results are
-saved before deleting staging audio. Failed cleanup retains its locator and is
-retried when that recording is processed again, with bucket lifecycle cleanup
-as a fallback. There is no new background polling thread: recovery occurs when
-Speakr's job queue or the user invokes transcription again.
+If no answer arrives while the audio is being submitted, Tencent may still have
+accepted the task. That job is not retried automatically, and the recording
+shows an error. Check the Tencent ASR console for the task before reprocessing
+the recording.
 
-**Ambiguous submissions never retry automatically.** If the worker dies after
-starting submission but before saving the returned task ID, the checkpoint
-blocks further submission until an operator reconciles it with Tencent's
-console. Tasks older than 23 hours also stop instead of querying a potentially
-reused task ID (Tencent retains results for 24 hours). A known provider rejection
-can be retried after fixing configuration or quota. Failed remote tasks require
-operator review.
+A saved task older than 23 hours is not queried, since Tencent keeps results for
+24 hours; the audio is submitted again on that retry. A task that failed on
+Tencent's side is not submitted again automatically: check the console, then
+reprocess the recording.
 
-Checkpoints are removed two days after their last update, since Tencent keeps
-task results for 24 hours. A checkpoint holds the transcription result, so
-deleting a recording in Speakr leaves that copy for at most two days. After a
-blocked checkpoint expires, processing the recording again submits a new
-billable task. An expired checkpoint whose staging object was never deleted is
-noted in the log; the bucket lifecycle rule removes the object.
-
-To intentionally request fresh recognition with unchanged settings, stop work
-on that recording, confirm the old remote task is finished and clean up any
-staging locator, then back up/remove only its matching checkpoint JSON. This
-explicit operation can create another billable task. A user-facing reset action
-is not included yet.
+Staged audio is deleted when its task finishes. The bucket lifecycle rule
+removes objects left after an uncertain submission or an interrupted worker.
 
 API reference: [CreateRecTask](https://cloud.tencent.com/document/api/1093/37823).

@@ -13,9 +13,9 @@ from src.services.transcription.exceptions import ConfigurationError, ProviderEr
 
 
 @pytest.fixture
-def connector(tmp_path):
+def connector():
     return mod.TencentASRConnector({'secret_id': 'test-id', 'secret_key': 'test-secret',
-                                   'poll_interval': .001, 'timeout': .5, 'state_dir': str(tmp_path)})
+                                   'poll_interval': .001, 'timeout': .5})
 
 
 def request(data=b'audio', **kwargs):
@@ -126,7 +126,6 @@ def test_large_file_uses_private_staging_and_cleans_terminal(connector, monkeypa
         assert mod.Path(path).read_bytes() == b'123456'
         return storage, locator, 'https://bucket/file?signed=PRIVATE'
     monkeypatch.setattr(connector, '_stage', stage)
-    monkeypatch.setattr(connector, '_cleanup_checkpoint', lambda state, save: storage.delete(locator, missing_ok=True) if state.get('status') in ('completed','failed') else None)
     calls = transport(monkeypatch, [{'Data': {'TaskId': 42}}, {'Data': {'Status': status, 'Result': 'text'}}])
     if status == 2:
         assert connector.transcribe(request(b'123456')).text == 'text'
@@ -209,7 +208,6 @@ def test_submission_rejection_removes_staging(connector, monkeypatch):
     monkeypatch.setattr(mod, 'INLINE_LIMIT', 5)
     storage = Mock()
     monkeypatch.setattr(connector, '_stage', lambda *args: (storage, 'locator', 'https://bucket/file'))
-    monkeypatch.setattr(connector, '_cleanup_checkpoint', lambda state, save: storage.delete('locator', missing_ok=True) if state.get('status') == 'rejected' else None)
     transport(monkeypatch, [{'Error': {'Code': 'AuthFailure.SecretIdNotFound'}}])
     with pytest.raises(ProviderError):
         connector.transcribe(request(b'123456'))
@@ -228,3 +226,35 @@ def test_unknown_speaker_not_fabricated(connector):
         {'FinalSentence': 'one', 'SpeakerId': -1}, {'FinalSentence': 'two'}]}, mod.MODELS[0], True)
     assert not result.has_diarization()
     assert result.segments[0].start_time is None
+
+
+def test_cos_client_configuration_and_private_upload(tmp_path):
+    from unittest.mock import patch
+    from src.services.storage.s3 import S3StorageBackend
+    backend=S3StorageBackend(bucket='test-123',region='ap-hongkong',
+                             endpoint_url='https://cos.ap-hongkong.myqcloud.com')
+    with patch('boto3.client') as factory:
+        backend._create_client()
+        config=factory.call_args.kwargs['config']
+        assert config.s3['addressing_style']=='virtual'
+        assert config.request_checksum_calculation=='when_required'
+        assert config.response_checksum_validation=='when_required'
+    path=tmp_path/'audio.webm'
+    path.write_bytes(b'original audio unchanged')
+    fake=Mock()
+    with patch.object(backend,'_get_client',return_value=fake), patch.object(backend,'stat'):
+        backend.upload_local_file(str(path),'recordings/audio.webm',acl='private')
+        fake.upload_file.assert_called_once_with(str(path),'test-123','recordings/audio.webm',ExtraArgs={'ACL':'private'})
+    assert path.read_bytes()==b'original audio unchanged'
+
+
+def test_webm_pipeline_preserves_original_even_when_compression_enabled(tmp_path,monkeypatch):
+    import src.utils.audio_conversion as conversion
+    p=tmp_path/'meeting.webm'
+    p.write_bytes(b'original webm bytes')
+    monkeypatch.setattr(conversion,'AUDIO_COMPRESS_UPLOADS',True)
+    monkeypatch.setattr(conversion,'get_codec_info',Mock(side_effect=AssertionError('must not inspect or convert')))
+    result=conversion.convert_if_needed(str(p),connector_specs=mod.TencentASRConnector.SPECIFICATIONS)
+    assert result.output_path==str(p)
+    assert not result.was_compressed and not result.was_converted
+    assert p.read_bytes()==b'original webm bytes'

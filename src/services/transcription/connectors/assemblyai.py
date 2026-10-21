@@ -45,6 +45,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,               # word_boost
     }
     PROVIDER_NAME = "assemblyai"
+    SUPPORTS_TASK_RESUME = True
 
     # AssemblyAI's own speech models. The transcription-model that reaches a
     # connector can be resolved from shared settings (env, admin default, tag /
@@ -175,6 +176,13 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
 
     def transcribe(self, request: TranscriptionRequest) -> TranscriptionResponse:
         try:
+            saved_id = (request.provider_task or {}).get('transcript_id')
+            if saved_id:
+                # A retry of the same job: poll the transcript AssemblyAI
+                # already accepted instead of paying for another one.
+                logger.info("AssemblyAI: resuming transcript %s", saved_id)
+                with self._client() as client:
+                    return self._parse_result(self._poll(client, saved_id))
             audio_bytes = self._read_audio(request)
             with self._client() as client:
                 audio_url = self._upload(client, audio_bytes)
@@ -191,6 +199,8 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
                 transcript_id = resp.json().get('id')
                 if not transcript_id:
                     raise ProviderError("AssemblyAI submit returned no transcript id", provider=self.PROVIDER_NAME)
+                if request.save_provider_task:
+                    request.save_provider_task({'transcript_id': transcript_id})
                 result = self._poll(client, transcript_id)
             return self._parse_result(result)
         except (TranscriptionError, ConfigurationError):

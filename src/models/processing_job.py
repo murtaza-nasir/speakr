@@ -34,6 +34,11 @@ class ProcessingJob(db.Model):
     # Track if this is a new upload (vs reprocessing) - for cleanup on failure
     is_new_upload = db.Column(db.Boolean, default=False, nullable=False)
 
+    # JSON: the task a submit-and-poll transcription service accepted for this
+    # job, so a retry polls it instead of submitting (and paying) again. See
+    # src/services/transcription/provider_tasks.py.
+    provider_task = db.Column(db.Text, nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
     started_at = db.Column(db.DateTime, nullable=True)
