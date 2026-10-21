@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {openRecordingByTitle} from './helpers.mjs';
+const base='http://127.0.0.1:8906',out='output/playwright/asr-workplace-spectrum-refinements';await mkdir(out,{recursive:true});
+const browser=await chromium.launch(),c=await browser.newContext({viewport:{width:1024,height:960},locale:'ru-RU',reducedMotion:'reduce',recordVideo:{dir:out}}),p=await c.newPage(),errors=[],requests=[];
+p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().includes('/spectrogram'))requests.push({method:r.method(),url:r.url(),body:r.method()==='POST'?r.postDataJSON():null});});
+const field=id=>p.getByTestId(id),snapshot=()=>p.evaluate(()=>{const v=document.querySelector('#app')._vnode.component.proxy.spectrogram;return {window:v.window,url:v.url,span:v.span,error:v.error};});
+try{
+ assert((await(await c.request.get(base+'/__asr-split-ready')).json()).isolated);
+ const f=await(await c.request.post(base+'/__asr-split-fixture',{data:{spectrogram:true,count:2}})).json();await p.goto(base,{waitUntil:'domcontentloaded'});await openRecordingByTitle(p,f.title);await p.locator('button[title="Редактировать транскрипт"]:visible').first().click();await field('asr-show-spectrogram').click();await field('asr-spectrogram-plot').waitFor();
+ await p.evaluate(()=>document.querySelector('#app')._vnode.component.proxy.navigateSpectrogram(.25/8));assert.equal((await snapshot()).span,.25);
+ await field('asr-spectrogram-panel').scrollIntoViewIfNeeded();const before=await snapshot();let requested=false,complete;
+ await p.route('**/tiles/7?*',async route=>{requested=true;await new Promise(r=>{complete=r;});await route.fulfill({status:503,contentType:'application/json',body:'{"code":"unavailable"}'});});
+ const count=requests.length;await field('asr-spectrogram-scroll').evaluate(e=>{e.scrollLeft=e.scrollWidth-e.clientWidth;});await p.waitForFunction(()=>document.querySelector('#app')._vnode.component.proxy.spectrogram.tilesLoading);
+ for(let i=0;i<30&&!requested;i++)await p.waitForTimeout(20);assert(requested);
+ const pending=await snapshot();assert.deepEqual(pending.window,before.window);assert.equal(pending.url,before.url);assert(await field('asr-spectrogram-plot').isVisible());await p.screenshot({path:out+'/cache-read-pending.png'});complete();
+ await field('asr-spectrogram-error').waitFor();const failed=await snapshot();assert.deepEqual(failed.window,before.window);assert.equal(failed.url,before.url);assert(await field('asr-spectrogram-plot').isVisible());await p.screenshot({path:out+'/cache-read-failed.png'});await p.unroute('**/tiles/7?*');
+ assert.equal(requests.slice(count).filter(r=>r.url.endsWith('/prepare')).length,0);
+ await p.route('**/preparations/*?lease=*',route=>route.fulfill({status:410,contentType:'application/json',body:'{"code":"expired"}'}));
+ const resumeCount=requests.length;await p.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await field('asr-spectrogram-error').filter({hasText:'больше недоступна'}).waitFor();
+ assert.equal((await snapshot()).error,'expired');assert.equal(requests.slice(resumeCount).filter(r=>r.url.endsWith('/prepare')).length,0);assert(await field('asr-spectrogram-plot').isVisible());await p.screenshot({path:out+'/cache-expired.png'});await p.unroute('**/preparations/*?lease=*');
+ await field('asr-spectrogram-error').getByRole('button',{name:'Повторить',exact:true}).click();await field('asr-spectrogram-status').waitFor({state:'hidden',timeout:60000});assert.equal((await snapshot()).error,'');assert(await field('asr-spectrogram-plot').isVisible());assert.deepEqual(errors,[]);
+ let deletionRequested=false,releaseDeletion;
+ await p.route('**/preparations/*/lease',async route=>{if(route.request().method()!=='DELETE')return route.continue();deletionRequested=true;await new Promise(r=>{releaseDeletion=r;});await route.continue();});
+ const openCount=requests.filter(r=>r.url.endsWith('/prepare')).length;
+ await p.evaluate(()=>{window.__pendingSpectrumOpen=document.querySelector('#app')._vnode.component.proxy.openSpectrogram(0);});
+ for(let i=0;i<30&&!deletionRequested;i++)await p.waitForTimeout(20);assert(deletionRequested);
+ await p.locator('[data-list-index="1"]').click();assert.equal(await field('asr-detail').getAttribute('data-segment-index'),'1');releaseDeletion();await p.evaluate(()=>window.__pendingSpectrumOpen);await p.unroute('**/preparations/*/lease');
+ assert.equal(await field('asr-spectrogram-panel').count(),0);assert.equal(requests.filter(r=>r.url.endsWith('/prepare')).length,openCount);
+ await field('asr-show-spectrogram').click();await field('asr-spectrogram-plot').waitFor();assert((await field('asr-spectrogram-panel').innerText()).includes('10.00–18.00'));assert.deepEqual(errors,[]);
+ await writeFile(out+'/cache-errors-results.json',JSON.stringify({result:'PASS',pendingRetainsImage:true,failedNativePanRetainsImage:true,expiryWithoutHiddenPrepare:true,explicitRetry:true,lateDeletionCannotReopenOldSelection:true,errors,requests},null,2));console.log('PASS native scrollbar cache failure, lifecycle expiry, retry and delayed-selection guard');
+}finally{await p.close();const video=p.video();await c.close();await video.saveAs(out+'/cache-errors.webm');await browser.close();}

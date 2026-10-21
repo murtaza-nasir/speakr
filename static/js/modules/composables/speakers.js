@@ -722,7 +722,14 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Edit Speakers Modal
     // =========================================
 
+    let editNamesToken = 0, editNamesContext = null;
+    const namesContextCurrent = context => !!context && context.recordingId === selectedRecording.value?.id &&
+        context.asr === !!state.showAsrEditorModal?.value && (!context.asr ||
+            (context.draft === editingSegments.value && utils.canEditAsrDraft?.() !== false));
     const openEditSpeakersModal = async () => {
+        const token = ++editNamesToken;
+        const context = {recordingId:selectedRecording.value?.id, asr:!!state.showAsrEditorModal?.value, draft:editingSegments.value};
+        editNamesContext = context;
         // Close any open suggestions
         editingSegments.value.forEach(seg => seg.showSuggestions = false);
         // Copy current speakers to editing list with original and current properties
@@ -734,17 +741,21 @@ export function useSpeakers(state, utils, processedTranscription) {
         try {
             const response = await fetch('/speakers');
             const speakers = await response.json();
+            if (token !== editNamesToken || !namesContextCurrent(context)) return;
             // Keep full objects with id and name for autocomplete dropdown
             databaseSpeakers.value = speakers;
         } catch (e) {
+            if (token !== editNamesToken || !namesContextCurrent(context)) return;
             console.error('Failed to fetch speakers:', e);
             databaseSpeakers.value = [];
         }
+        if (token !== editNamesToken || !namesContextCurrent(context)) return;
         editingSpeakerSuggestions.value = {};
         showEditSpeakersModal.value = true;
     };
 
     const closeEditSpeakersModal = () => {
+        editNamesToken++; editNamesContext = null;
         showEditSpeakersModal.value = false;
         editingSpeakersList.value = [];
     };
@@ -787,7 +798,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
     const getEditSpeakerDropdownPosition = (index) => {
         // Find the input element for this index and calculate position
-        const inputs = document.querySelectorAll('[class*="edit-speakers-modal"] input[placeholder="New name..."], .max-w-md input[placeholder="New name..."]');
+        const inputs = document.querySelectorAll('[data-testid="asr-speaker-names"] input');
         if (inputs[index]) {
             const rect = inputs[index].getBoundingClientRect();
             return {
@@ -800,6 +811,9 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     const saveEditingSpeakers = async () => {
+        if (!namesContextCurrent(editNamesContext) || selectedRecording.value?.can_edit === false || selectedRecording.value?.is_read_only === true) {
+            closeEditSpeakersModal(); return;
+        }
         const map = {};
         editingSpeakersList.value.forEach(item => {
             if (item.original && item.current) {
@@ -808,13 +822,14 @@ export function useSpeakers(state, utils, processedTranscription) {
         });
 
         // Update ASR editor state if it's open
-        if (editingSegments.value.length > 0) {
+        if (state.showAsrEditorModal?.value) {
             // Build new list of available speakers
             const newSpeakers = new Set();
 
             // Apply renames to all segments
             editingSegments.value.forEach(segment => {
                 if (map[segment.speaker]) {
+                    if (segment.speaker !== map[segment.speaker]) delete segment.speaker_id;
                     segment.speaker = map[segment.speaker];
                 }
                 newSpeakers.add(segment.speaker);
@@ -845,6 +860,10 @@ export function useSpeakers(state, utils, processedTranscription) {
             await saveSpeakerNames();
         }
     };
+
+    Vue.watch?.(() => [selectedRecording.value?.id, state.showAsrEditorModal?.value, editingSegments.value, utils.canEditAsrDraft?.()], () => {
+        if (editNamesContext && !namesContextCurrent(editNamesContext)) closeEditSpeakersModal();
+    });
 
     // =========================================
     // Edit Text Modal

@@ -181,3 +181,28 @@ def test_a_merge_moves_the_links(world):
             merge_speakers(world["dana"], [world["omar"]], world["user"])
     segs = _stored(world["new"])
     assert [(s["speaker"], s.get("speaker_id")) for s in segs[:2]] == [("Dana", world["dana"]), ("Dana", world["dana"])]
+
+
+def test_asr_save_relinks_split_parts_and_reports_server_transcript(world):
+    # A split inherits metadata; assigning a different person must not retain the old link.
+    parts = [
+        {"speaker": "Dana", "speaker_id": world["dana"], "sentence": "First.", "start_time": 0, "end_time": 2, "extra": {"keep": True}},
+        {"speaker": "Omar Haddad", "speaker_id": world["dana"], "sentence": "Reply.", "start_time": 2, "end_time": 4},
+        {"speaker": "Visitor", "speaker_id": world["dana"], "sentence": "Unknown.", "start_time": 4, "end_time": 6},
+    ]
+    with _Client(app) as client:
+        with client.session_transaction() as session:
+            session["_user_id"] = str(world["user"])
+            session["_fresh"] = True
+        with patch("src.api.recordings.export_recording"), patch("src.services.webhook_dispatch._global_enabled", return_value=True), patch("src.services.webhook_dispatch.enqueue_event") as emit:
+            response = client.post(f"/recording/{world['new']}/update_transcription", json={"transcription": json.dumps(parts)})
+            assert response.status_code == 200, response.get_json()
+            stored = json.loads(response.json["recording"]["transcription"])
+            assert stored[0]["speaker_id"] == world["dana"]
+            assert stored[1]["speaker_id"] == world["omar"]
+            assert "speaker_id" not in stored[2]
+            assert stored[0]["extra"] == {"keep": True}
+            events = [c for c in emit.call_args_list if len(c.args) > 2 and c.args[2] == "recording.updated"]
+            assert len(events) == 1
+    canonical = _transcript(world, world["new"])["segments"]
+    assert [(p["speaker"], p["speaker_id"]) for p in canonical] == [("Dana", world["dana"]), ("Omar Haddad", world["omar"]), ("Visitor", None)]

@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install -r tests/requirements.txt pytest pytest-cov
 
       - name: Run test suite
         env:
@@ -89,7 +89,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-timeout
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install -r tests/requirements.txt pytest pytest-timeout
 
       - name: Run test suite on PostgreSQL
         env:

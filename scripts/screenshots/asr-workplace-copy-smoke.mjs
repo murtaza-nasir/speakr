@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import {chromium} from 'playwright';
+import {openRecordingByTitle} from './helpers.mjs';
+const base=process.env.SPEAKR_COPY_URL||'http://127.0.0.1:8903',out=path.resolve(process.env.SPEAKR_COPY_OUT||'output/playwright/asr-workplace');
+assert(['8903','8908'].includes(new URL(base).port));
+await mkdir(out,{recursive:true});
+const browser=await chromium.launch(),context=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:960}});
+try {
+ const f=await (await context.request.post(base+'/__asr-workplace-copy')).json();assert(f.copied_database);
+ const get=async()=> (await context.request.get(`${base}/api/recordings/${f.id}`)).json();
+ const before=await get(),original=JSON.parse(before.transcription);
+ const index=original.findIndex(s=>s.sentence?.length>20 && s.end_time-s.start_time>.1);assert(index>=0);
+ const page=await context.newPage();await page.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
+ await openRecordingByTitle(page,f.title);await page.locator('button[title="Редактировать транскрипт"]:visible').first().click();
+ const field=id=>page.getByTestId(id);
+ await field('asr-editor-scroll').evaluate((e,i)=>{e.scrollTop=i*76;e.dispatchEvent(new Event('scroll'));},index);
+ await page.locator(`[data-list-index="${index}"]`).click();
+ await field('asr-segment-text').evaluate(e=>{e.focus();const n=Math.floor(e.value.length/2);e.setSelectionRange(n,n);e.dispatchEvent(new Event('select',{bubbles:true}));});
+ await field('asr-segment-text').press('Control+Enter');await field('asr-split-preview').waitFor();
+ await field('asr-split-speaker-1').fill('Проверка рабочего места');await field('asr-confirm-split').click();
+ const boundary=Number(await field('asr-start').inputValue());
+ await field('asr-start').fill(String(boundary+.01));await field('asr-extend-start').click();assert.equal(Number(await field('asr-start').inputValue()),boundary);
+ await page.locator(`[data-list-index="${index}"]`).click();await field('asr-end').fill(String(boundary-.01));await field('asr-extend-end').click();assert.equal(Number(await field('asr-end').inputValue()),boundary);
+ await page.locator(`[data-list-index="${index+1}"]`).click();
+ await field('asr-save').click();await field('asr-save-status').filter({hasText:'Сохранено'}).waitFor();
+ const after=await get(),stored=JSON.parse(after.transcription);assert.equal(stored.length,original.length+1);
+ for(const key of ['id','title','audio_duration','audio_deleted_at','resolved_hotwords','resolved_initial_prompt','transcription_language'])assert.deepEqual(after[key],before[key]);
+ const metadata=({speaker,speaker_id,sentence,start_time,end_time,...rest})=>rest;
+ assert.deepEqual(metadata(stored[index]),metadata(original[index]));assert.deepEqual(metadata(stored[index+1]),metadata(original[index]));
+ assert.equal(stored[index+1].speaker,'Проверка рабочего места');assert.equal(stored[index].end_time,stored[index+1].start_time);
+ assert.equal(stored[index].start_time,original[index].start_time);assert.equal(stored[index+1].end_time,original[index].end_time);
+ // Canonical links may be backfilled on save; all sibling text and timing must survive.
+ const content=s=>({speaker:s.speaker,sentence:s.sentence,start_time:s.start_time,end_time:s.end_time});
+ assert.deepEqual(stored.slice(0,index).map(content),original.slice(0,index).map(content));
+ assert.deepEqual(stored.slice(index+2).map(content),original.slice(index+1).map(content));
+ await page.reload({waitUntil:'domcontentloaded',timeout:120000});await openRecordingByTitle(page,f.title);await page.locator('button[title="Редактировать транскрипт"]:visible').first().click();
+ await field('asr-editor-scroll').evaluate((e,i)=>{e.scrollTop=i*76;e.dispatchEvent(new Event('scroll'));},index+1);
+ await page.locator(`[data-list-index="${index+1}"]`).click();
+ assert.equal(await field('asr-segment-speaker').inputValue(),'Проверка рабочего места');
+ assert.equal(await field('asr-start').inputValue(),String(stored[index+1].start_time));
+ assert.equal(await field('asr-end').inputValue(),String(stored[index+1].end_time));
+ const exported=await context.request.get(`${base}/recording/${f.id}/download/transcript`);assert.equal(exported.status(),200);assert((await exported.text()).includes('Проверка рабочего места'));
+ await writeFile(path.join(out,'copied-db-results.json'),JSON.stringify({result:'PASS',copiedDatabase:true,recordingId:f.id,originalSegments:original.length,savedSegments:stored.length,splitIndex:index,metadataPreserved:true,siblingsPreserved:true,reloadReopen:true,boundaryCommands:true,export:true},null,2));
+ console.log('PASS copied DB migrations, save, reload, reopen, metadata and siblings');
+} finally {await context.close();await browser.close();}

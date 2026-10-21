@@ -2,8 +2,8 @@
  * Find and replace in the transcript editors (#440).
  *
  * Works on the open editor: the sentences of the segment editor, or the text
- * of the plain transcript editor. Changes are made to the editor's copy, so
- * Cancel still discards them.
+ * of the plain transcript editor. Changes follow that editor's normal draft
+ * saving policy, including autosave when enabled.
  */
 
 import { buildMatcher, findMatches, replaceAllIn, replaceAt } from '../utils/find-replace.js';
@@ -48,9 +48,12 @@ export function useFindReplace(state, utils) {
     };
 
     // Show the match in the editor: scroll its row into view and select it.
-    const revealMatch = (match) => {
+    const revealMatch = async (match) => {
         if (!match || typeof document === 'undefined') return;
         if (openEditor() === 'segments') {
+            const segment = editingSegments.value[match.index];
+            if (utils.openFindReplaceSegment && await utils.openFindReplaceSegment(match.index) === false) return;
+            if (openEditor() !== 'segments' || editingSegments.value[match.index] !== segment) return;
             if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = match.index;
             if (utils.scrollAsrEditorToIndex) utils.scrollAsrEditorToIndex(match.index);
         }
@@ -78,6 +81,7 @@ export function useFindReplace(state, utils) {
 
     // Replace the current match, then show the one after it.
     const replaceCurrentMatch = () => {
+        if (utils.canReplaceTranscript && !utils.canReplaceTranscript()) return;
         const matches = findReplaceMatches.value;
         if (!matches.length) return;
         if (findReplace.current < 0 || findReplace.current >= matches.length) {
@@ -97,6 +101,7 @@ export function useFindReplace(state, utils) {
     };
 
     const replaceAllMatches = () => {
+        if (utils.canReplaceTranscript && !utils.canReplaceTranscript()) return;
         const m = matcher();
         let total = 0;
         editorTexts().forEach((text, index) => {

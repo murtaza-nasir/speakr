@@ -54,7 +54,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install -r tests/requirements.txt pytest pytest-cov
 
       - name: Run full test suite (gates the release)
         env:
@@ -110,7 +110,7 @@ jobs:
 
       - name: Install Playwright
         run: |
-          pip install pytest playwright
+          pip install -r tests/requirements.txt pytest playwright
           python -m playwright install --with-deps chromium
 
       - name: Browser smoke test against the image

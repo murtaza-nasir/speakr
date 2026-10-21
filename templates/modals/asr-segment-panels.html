@@ -1,0 +1,90 @@
+        <section v-if="spectrogram" data-testid="asr-spectrogram-panel" class="sw-tools sw-spectrum-panel py-2 border-b border-[var(--border-primary)] flex-shrink-0 text-xs text-[var(--text-secondary)]">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <strong><span v-text="t('asrSpectrogram.title')"></span> · ${ spectrogram.speaker } · ${ spectrogram.segmentStart.toFixed(2) }–${ spectrogram.segmentEnd.toFixed(2) } s</strong>
+                <button type="button" @mousedown.prevent @click="closeSpectrogram(true,false)" :aria-label="t('buttons.close')" class="p-1 rounded hover:bg-[var(--bg-tertiary)]"><i class="fas fa-times"></i></button>
+            </div>
+            <div v-if="spectrogram.loading" class="py-2 flex items-center gap-2" role="status" data-testid="asr-spectrogram-status"><i class="fas fa-spinner fa-spin"></i><span v-text="t(spectrogram.url ? 'asrSpectrogram.preparing' : 'asrSpectrogram.loading')"></span><button type="button" @click="cancelSpectrogramPreparation" class="btn btn--ghost" v-text="t('buttons.cancel')"></button></div>
+            <div v-if="spectrogram.error" class="py-3" role="alert" data-testid="asr-spectrogram-error">
+                <span v-text="t('asrSpectrogram.error_' + spectrogram.error)"></span>
+                <button type="button" @click="retrySpectrogram" class="btn btn--ghost ml-2" v-text="t('common.retry')"></button>
+            </div>
+            <div class="flex gap-1">
+                <div data-testid="asr-spectrogram-axis" :style="{height:spectrogramStripStyle().height}" class="sw-spectrum-axis flex flex-col justify-between font-mono text-[var(--text-muted)] flex-shrink-0">
+                    <label class="sw-spectrum-frequency" :title="t('asrSpectrogram.frequency') + ': ' + (spectrogram.frequency === 'full' ? t('asrSpectrogram.fullFrequency') : '0–' + Number(spectrogram.frequency)/1000 + ' kHz')">
+                        <span id="asr-spectrogram-upper-frequency" data-testid="asr-spectrogram-upper-frequency" v-text="spectrogramFrequencyLabel()"></span><i aria-hidden="true" class="fas fa-chevron-down"></i>
+                        <select data-testid="asr-spectrogram-frequency" :aria-label="t('asrSpectrogram.frequency')" aria-describedby="asr-spectrogram-upper-frequency" :value="spectrogram.frequency" @change="setSpectrogramFrequency($event.target.value)">
+                            <option value="2000">0–2 kHz</option><option value="4000">0–4 kHz</option><option value="8000">0–8 kHz</option>
+                            <option value="full" v-text="t('asrSpectrogram.fullFrequency')"></option>
+                        </select>
+                    </label>
+                    <span v-if="spectrogram.channels === 2">0 / ${ Number((spectrogram.maxFrequency / 1000).toFixed(2)) }</span><span>0 kHz</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div :data-testid="spectrogram.url ? 'asr-spectrogram-plot' : 'asr-spectrogram-loading-plot'" role="slider" :tabindex="spectrogram.url ? 0 : -1"
+                         :aria-label="t('asrSpectrogram.marker')" aria-describedby="asr-spectrogram-upper-frequency" :aria-valuemin="spectrogram.segmentStart" :aria-valuemax="spectrogram.segmentEnd"
+                         :aria-valuenow="Number.isFinite(spectrogram.marker) ? spectrogram.marker : undefined"
+                         @click="clickSpectrogram"
+                         @keydown.left.prevent="adjustSpectrogramMarker(-0.01)" @keydown.right.prevent="adjustSpectrogramMarker(0.01)"
+                         class="relative h-28 sm:h-40 bg-black cursor-crosshair overflow-hidden rounded">
+                        <div :ref="spectrogramViewportRef" data-testid="asr-spectrogram-scroll" class="sw-spectrum-scroll" @scroll="spectrogramScroll">
+                            <div class="sw-spectrum-strip" :style="spectrogramStripStyle()">
+                                <img v-for="tile in spectrogramTiles()" :key="tile.index" :src="tile.url" :alt="t('asrSpectrogram.title')" draggable="false" class="sw-spectrum-tile" :style="{left:tile.left+'px',width:tile.width+'px',height:'100%'}" />
+                            </div>
+                        </div>
+                        <span v-if="spectrogram.channels === 2" class="absolute left-1 top-0 text-white font-mono pointer-events-none">L</span>
+                        <span v-if="spectrogram.channels === 2" class="absolute left-1 text-white font-mono pointer-events-none" :style="{top:parseFloat(spectrogramStripStyle().height)/2+'px'}">R</span>
+                        <div class="absolute inset-y-0 left-0 bg-black/50 pointer-events-none" :style="{width:spectrogramContextPercent('left')+'%'}"></div>
+                        <div class="absolute inset-y-0 right-0 bg-black/50 pointer-events-none" :style="{width:spectrogramContextPercent('right')+'%'}"></div>
+                        <div v-if="spectrogramPlayheadPercent() !== null" class="absolute inset-y-0 border-l border-white pointer-events-none" :style="{left:spectrogramPlayheadPercent()+'%'}"></div>
+                        <div v-if="spectrogramMarkerPercent() !== null" data-testid="asr-spectrogram-marker" class="absolute inset-y-0 border-l-2 border-cyan-300 pointer-events-none" :style="{left:spectrogramMarkerPercent()+'%'}"></div>
+                    </div>
+                    <div class="flex justify-between font-mono text-[var(--text-muted)] mt-0.5" data-testid="asr-spectrogram-window"><span>${ spectrogram.window.start.toFixed(2) } s</span><span>${ spectrogram.window.end.toFixed(2) } s</span></div>
+                </div>
+            </div>
+            <div class="sw-spectrum-brightness" data-testid="asr-spectrogram-brightness-controls" @click.stop @keydown.stop>
+                <label for="asr-spectrum-gain" v-text="t('asrSpectrogram.brightness')" :title="t('asrSpectrogram.brightnessHint')"></label>
+                <input id="asr-spectrum-gain" data-testid="asr-spectrogram-gain" type="range" min="0" max="40" step="5"
+                       :value="spectrogram.draftGainDb" :aria-label="t('asrSpectrogram.brightness')"
+                       :aria-valuetext="'+' + spectrogram.draftGainDb + ' ' + t('asrSpectrogram.decibels')"
+                       :title="t('asrSpectrogram.brightnessHint')" @pointerdown="beginSpectrogramGainPointer" @pointercancel="cancelSpectrogramGainDraft"
+                       @keydown="spectrogram.gainKeyboard=true" @input="draftSpectrogramGain($event.target.value)"
+                       @change="spectrogram.gainKeyboard ? queueSpectrogramGain() : commitSpectrogramGain()" />
+                <output data-testid="asr-spectrogram-gain-value" for="asr-spectrum-gain">+${ spectrogram.draftGainDb } ${ t('asrSpectrogram.decibels') }</output>
+                <button data-testid="asr-spectrogram-gain-reset" type="button" class="btn btn--ghost" @click="resetSpectrogramGain"
+                        :disabled="spectrogram.draftGainDb===0 && spectrogram.gainDb===0" v-text="t('asrSpectrogram.resetBrightness')"></button>
+            </div>
+            <p v-if="spectrogram.url && spectrogram.appliedGainDb !== spectrogram.draftGainDb" data-testid="asr-spectrogram-applied-gain" role="status" class="sw-note">
+                <span v-if="spectrogram.loading" v-text="t('asrSpectrogram.updatingBrightness')"></span>
+                <span v-text="t('asrSpectrogram.displayedBrightness')"></span> +${ spectrogram.appliedGainDb } ${ t('asrSpectrogram.decibels') }
+            </p>
+            <div class="flex flex-wrap items-center gap-1 mt-1">
+                <button type="button" data-testid="asr-spectrogram-zoom-out" @click="navigateSpectrogram(2)" :disabled="!canZoomSpectrogram(2)" :title="t('asrSpectrogram.zoomOut')" :aria-label="t('asrSpectrogram.zoomOut')" class="btn btn--ghost px-2 py-1">−</button>
+                <button type="button" data-testid="asr-spectrogram-zoom-in" @click="navigateSpectrogram(0.5)" :disabled="!canZoomSpectrogram(0.5)" :title="t('asrSpectrogram.zoomIn')" :aria-label="t('asrSpectrogram.zoomIn')" class="btn btn--ghost px-2 py-1">+</button>
+                <button type="button" data-testid="asr-spectrogram-fit" @click="fitSpectrogram" :disabled="!canFitSpectrogram()" :title="t('asrSpectrogram.fit')" :aria-label="t('asrSpectrogram.fit')" class="btn btn--ghost px-2 py-1" v-text="t('asrSpectrogram.fit')"></button>
+                <button type="button" data-testid="asr-spectrogram-previous" @click="navigateSpectrogram(1,-1)" :disabled="!spectrogram.url || spectrogram.error==='expired'" :title="t('asrSpectrogram.previous')" class="btn btn--ghost px-2 py-1">←</button>
+                <button type="button" data-testid="asr-spectrogram-next" @click="navigateSpectrogram(1,1)" :disabled="!spectrogram.url || spectrogram.error==='expired'" :title="t('asrSpectrogram.next')" class="btn btn--ghost px-2 py-1">→</button>
+                <button type="button" data-testid="asr-spectrogram-play" @click="playAsrSpectrum(false)" :disabled="!asrSpectrumPlaying(false) && (!spectrogram.url || !asrCanPlay)" :aria-label="t(asrSpectrumAction(false))" class="btn btn--ghost px-2 py-1"><i :class="asrSpectrumPlaying(false) ? 'fas fa-pause mr-1' : 'fas fa-play mr-1'"></i><span v-text="t(asrSpectrumAction(false))"></span></button>
+                <button type="button" data-testid="asr-spectrogram-play-marker" @click="playAsrSpectrum(true)" :disabled="!asrSpectrumPlaying(true) && (!spectrogram.url || !asrCanPlayMarker || !asrCanPlay)" :aria-label="t(asrSpectrumAction(true))" class="btn btn--ghost px-2 py-1"><i :class="asrSpectrumPlaying(true) ? 'fas fa-pause mr-1' : 'fas fa-play mr-1'"></i><span v-text="t(asrSpectrumAction(true))"></span></button>
+                <label class="inline-flex items-center gap-1"><span v-text="t('asrSpectrogram.marker')"></span>
+                    <input type="number" step="0.01" data-testid="asr-spectrogram-time" :value="Number.isFinite(spectrogram.marker) ? spectrogram.marker : ''" @input="setSpectrogramMarker($event.target.value)" class="w-24 p-1 rounded bg-[var(--bg-input)] border border-[var(--border-primary)]" />
+                </label>
+                <button type="button" @click="resetSpectrogramMarker" class="btn btn--ghost px-2 py-1" v-text="t('asrSpectrogram.reset')"></button>
+            </div>
+            <p v-if="spectrogram.markerError" role="alert" v-text="t('asrSpectrogram.invalidMarker')"></p>
+            <p v-else-if="spectrogram.marker !== null && spectrogramMarkerPercent() === null" v-text="t('asrSpectrogram.offscreen')"></p>
+        </section>
+        <section v-if="segmentTranscription" data-testid="asr-retranscription-panel" class="sw-tools py-2 border-b border-[var(--border-primary)] text-xs text-[var(--text-secondary)]">
+            <div class="flex items-center justify-between gap-2 mb-1"><strong><span v-text="t('asrSegment.title')"></span> · ${ segmentTranscription.speaker } · ${ segmentTranscription.start.toFixed(2) }–${ segmentTranscription.end.toFixed(2) } s</strong>
+                <button type="button" @click="closeSegmentTranscription(true)" :aria-label="t('buttons.close')" class="p-1"><i class="fas fa-times"></i></button></div>
+            <div v-if="segmentTranscription.status === 'running'" role="status" class="py-2"><i class="fas fa-spinner fa-spin mr-2"></i><span v-text="t('asrSegment.running')"></span>
+                <button type="button" @click="closeSegmentTranscription(true)" class="btn btn--ghost ml-2" v-text="t('buttons.cancel')"></button></div>
+            <div v-else-if="segmentTranscription.status === 'failed'" role="alert" data-testid="asr-retranscription-error" class="py-2">
+                <span v-text="t('asrSegment.error_' + segmentTranscription.error)"></span>
+                <button type="button" @click="retrySegmentTranscription" class="btn btn--ghost ml-2" v-text="t('common.retry')"></button></div>
+            <div v-else-if="segmentTranscription.status === 'done'">
+                <strong v-text="t('asrSegment.original')"></strong><p class="max-h-12 overflow-y-auto whitespace-pre-wrap mb-1" v-text="segmentTranscription.original"></p>
+                <label><span v-text="t('asrSegment.proposal')"></span><textarea dir="auto" data-testid="asr-retranscription-proposal" v-model="segmentTranscription.proposal" :disabled="asrEditingLocked" rows="3" class="block w-full px-2 py-1 mt-1 rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] resize-y max-h-32"></textarea></label>
+                <div class="flex flex-wrap gap-1 mt-1"><button type="button" data-testid="asr-retranscription-apply" @click="applySegmentTranscription" :disabled="!canApplySegmentTranscription()" class="btn btn--primary disabled:opacity-40" v-text="t('asrSegment.apply')"></button>
+                    <button type="button" @click="closeSegmentTranscription(true)" class="btn btn--ghost" v-text="t('buttons.cancel')"></button></div>
+            </div>
+        </section>
