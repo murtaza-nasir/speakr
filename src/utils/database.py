@@ -322,6 +322,22 @@ def create_index_if_not_exists(engine, index_name, table_name, columns, unique=F
     return True
 
 
+def drop_index_if_exists(engine, index_name, table_name):
+    """Drop an index if it exists. Returns True if it was dropped."""
+    inspector = inspect(engine)
+    if table_name not in inspector.get_table_names():
+        return False
+    if index_name not in [idx['name'] for idx in inspector.get_indexes(table_name)]:
+        return False
+    with engine.connect() as conn:
+        if engine.name == 'mysql':
+            conn.execute(text(f'DROP INDEX {index_name} ON `{table_name}`'))
+        else:
+            conn.execute(text(f'DROP INDEX {index_name}'))
+        conn.commit()
+    return True
+
+
 def drop_not_null(engine, table_name, column_name):
     """
     Make an existing NOT NULL column nullable.

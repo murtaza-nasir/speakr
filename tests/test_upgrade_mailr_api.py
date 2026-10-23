@@ -152,7 +152,8 @@ def test_upload_idempotency_and_external_refs(tmp_path, fixture):
     _upgrade(db_path)
     con = sqlite3.connect(db_path)
     assert "upload_idempotency_key" in _columns(con, "recording")
-    assert "ix_recording_user_idem" in {r[1] for r in con.execute("PRAGMA index_list('recording')")}
+    indexes = {r[1]: r[2] for r in con.execute("PRAGMA index_list('recording')")}
+    assert indexes.get("ux_recording_user_idem") == 1 and "ix_recording_user_idem" not in indexes
     assert {"recording_id", "user_id", "system", "kind", "ref", "url", "label"} <= _columns(con, "recording_external_ref")
     con.close()
 

@@ -20,6 +20,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from email.utils import encode_rfc2231
 from urllib.parse import quote
 
@@ -2224,12 +2225,16 @@ def ingest_uploaded_recording(
     success_status=202,
     reuse_duplicate=False,
     prepare=None,
+    on_conflict=None,
 ):
     """Run an uploaded file through Speakr's standard ingestion pipeline.
 
-    prepare(recording), when given, runs before the recording is first
-    committed, so fields it sets (API v1 participants, references, the
-    idempotency key) arrive with the recording itself.
+    prepare(recording), when given, runs before the file is stored and the
+    recording is first committed, so fields it sets (API v1 participants,
+    references, the idempotency key) arrive with the recording itself.
+    on_conflict(), when given, answers an upload whose rows hit a unique
+    index (a concurrent retry with the same idempotency key, #476) with a
+    response, or None for the usual error.
     """
     try:
         if uploaded_file is None:
@@ -2844,6 +2849,8 @@ def ingest_uploaded_recording(
         )
         db.session.add(recording)
         db.session.flush()  # Assign recording.id without committing transaction yet
+        if prepare is not None:
+            prepare(recording)
 
         storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
         stored_object = storage.upload_local_file(
@@ -2866,9 +2873,6 @@ def ingest_uploaded_recording(
                 added_at=datetime.utcnow()
             )
             db.session.add(new_association)
-
-        if prepare is not None:
-            prepare(recording)
 
         db.session.commit()
 
@@ -2932,6 +2936,18 @@ def ingest_uploaded_recording(
             'effective_limit_mb': limit_mb,
             'audio_only_mode': audio_only_mode,
         }), 413
+    except IntegrityError as e:
+        # Another upload committed the same unique key first (#476): keep
+        # nothing of this one and let the caller answer with that recording.
+        db.session.rollback()
+        if 'filepath' in locals() and filepath and os.path.exists(filepath):
+            os.remove(filepath)
+        replay = on_conflict() if on_conflict is not None else None
+        if replay is not None:
+            current_app.logger.info("Upload lost a race on a unique key; answering with the earlier recording")
+            return replay
+        current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error during file upload: {e}", exc_info=True)

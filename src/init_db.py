@@ -26,7 +26,7 @@ from src.utils import (
     migration_lock,
     run_once,
 )
-from src.utils.database import ensure_migration_ledger
+from src.utils.database import drop_index_if_exists, ensure_migration_ledger
 
 # Configuration
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
@@ -189,6 +189,32 @@ def _migration_section(app, failures, name):
             )
 
 
+def unique_upload_idempotency_key(app, engine):
+    """One recording per upload idempotency key (#476).
+
+    The first index was not unique, so overlapping retries could store a key
+    twice: older duplicates lose their key (the newest keeps replaying), then
+    the unique index replaces the old one. NULLs are distinct, so unkeyed
+    recordings never clash.
+    """
+    if 'ux_recording_user_idem' not in {i['name'] for i in inspect(engine).get_indexes('recording')}:
+        with engine.begin() as conn:
+            dupes = conn.execute(text(
+                'SELECT user_id, upload_idempotency_key, MAX(id) FROM recording '
+                'WHERE upload_idempotency_key IS NOT NULL '
+                'GROUP BY user_id, upload_idempotency_key HAVING COUNT(*) > 1')).fetchall()
+            for user_id, key, keep in dupes:
+                conn.execute(text(
+                    'UPDATE recording SET upload_idempotency_key = NULL '
+                    'WHERE user_id = :u AND upload_idempotency_key = :k AND id < :keep'),
+                    {'u': user_id, 'k': key, 'keep': keep})
+        if dupes:
+            app.logger.info(f"Cleared {len(dupes)} duplicated upload idempotency keys")
+        create_index_if_not_exists(engine, 'ux_recording_user_idem', 'recording',
+                                   'user_id, upload_idempotency_key', unique=True)
+    drop_index_if_exists(engine, 'ix_recording_user_idem', 'recording')
+
+
 def _run_migrations(app, engine):
     """Apply every schema migration. Assumes the migration lock is held."""
     failures = []
@@ -290,7 +316,7 @@ def _run_migrations(app, engine):
         # Idempotent API uploads (mailr spec G8).
         if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
             app.logger.info("Added upload_idempotency_key column to recording table")
-        create_index_if_not_exists(engine, 'ix_recording_user_idem', 'recording', 'user_id, upload_idempotency_key')
+        unique_upload_idempotency_key(app, engine)
         # Chunks are read and deleted by recording, in order (D#441)
         create_index_if_not_exists(engine, 'ix_transcript_chunk_recording', 'transcript_chunk',
                                    'recording_id, chunk_index')

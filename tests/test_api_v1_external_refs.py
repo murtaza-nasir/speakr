@@ -253,6 +253,9 @@ def test_an_old_key_does_not_replay(world):
     with _no_media_tools():
         second = _upload(world, idempotency_key="msg-old")
     assert second.status_code == 202 and second.get_json()["id"] != first.get_json()["id"]
+    with app.app_context():
+        keys = {r.id: r.upload_idempotency_key for r in Recording.query.filter_by(user_id=world["owner"])}
+    assert keys[first.get_json()["id"]] is None and keys[second.get_json()["id"]] == "msg-old"
 
 
 def test_strict_and_lenient_tags(world):

@@ -3834,16 +3834,30 @@ def upload_recording():
     key = (form.get('idempotency_key') or '').strip() or None
     if key is not None and len(key) > 100:
         return jsonify({'error': 'idempotency_key must be 1 to 100 characters', 'code': 'invalid_parameter'}), 400
-    if key:
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+
+    def _replay():
         earlier = (Recording.query
                    .filter(Recording.user_id == current_user.id, Recording.upload_idempotency_key == key,
-                           Recording.created_at >= datetime.utcnow() - timedelta(hours=24))
+                           Recording.created_at >= cutoff)
                    .order_by(Recording.id.desc()).first())
-        if earlier is not None:
-            data = earlier.to_dict(viewer_user=current_user)
-            data['external_refs'] = [r.to_dict() for r in xr.refs_for(earlier.id, current_user.id)]
-            data['idempotent_replay'] = True
-            return jsonify(data), 200
+        if earlier is None:
+            return None
+        data = earlier.to_dict(viewer_user=current_user)
+        data['external_refs'] = [r.to_dict() for r in xr.refs_for(earlier.id, current_user.id)]
+        data['idempotent_replay'] = True
+        return jsonify(data), 200
+
+    if key:
+        replay = _replay()
+        if replay is not None:
+            return replay
+        # The key is unique per user (#476): one older than 24 hours is
+        # cleared so this upload can take it.
+        Recording.query.filter(Recording.user_id == current_user.id, Recording.upload_idempotency_key == key,
+                               Recording.created_at < cutoff).update({'upload_idempotency_key': None},
+                                                                     synchronize_session=False)
+        db.session.commit()
 
     # Report tags and folders the upload cannot use (the pipeline drops them).
     def _usable(item):
@@ -3878,7 +3892,7 @@ def upload_recording():
             xr.add(recording, current_user.id, clean)
 
     response = ingest_uploaded_recording(owner=current_user, uploaded_file=request.files.get('file'),
-                                         form=form, prepare=_prepare)
+                                         form=form, prepare=_prepare, on_conflict=_replay if key else None)
     body, status = (response if isinstance(response, tuple) else (response, response.status_code))
     if status in (200, 201, 202):
         data = body.get_json() or {}
