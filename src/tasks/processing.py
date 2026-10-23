@@ -2745,9 +2745,8 @@ Title:"""
         if user_output_language:
             system_message_content += f" Ensure your response is in {user_output_language}."
 
-        # Use call_llm_completion without user_id tracking for incognito
-        completion = client.chat.completions.create(
-            model=TEXT_MODEL_NAME,
+        # No user_id, so nothing is tracked for incognito
+        completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}
@@ -2820,9 +2819,8 @@ Summarization Instructions:
 
         current_app.logger.info(f"[Incognito] Generating summary...")
 
-        # Use client directly without user tracking for incognito
-        completion = client.chat.completions.create(
-            model=TEXT_MODEL_NAME,
+        # No user_id, so nothing is tracked for incognito
+        completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}

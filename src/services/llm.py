@@ -8,7 +8,7 @@ import json
 import time
 import logging
 import httpx
-from openai import OpenAI, APITimeoutError
+from openai import OpenAI, APITimeoutError, BadRequestError
 
 # Use standard logging instead of current_app.logger for context independence
 logger = logging.getLogger(__name__)
@@ -84,6 +84,30 @@ CHAT_MODEL_NAME = os.environ.get("CHAT_MODEL_NAME")
 CHAT_GPT5_REASONING_EFFORT = os.environ.get("CHAT_GPT5_REASONING_EFFORT")
 CHAT_GPT5_VERBOSITY = os.environ.get("CHAT_GPT5_VERBOSITY")
 
+# Provider-specific request parameters, as a JSON object merged into the body
+# of every request to the model (OpenAI SDK extra_body). Reasoning controls
+# differ by provider and model (reasoning_effort, OpenRouter's reasoning
+# object, chat_template_kwargs on vLLM), so they are set here, not mapped.
+def _parse_extra_body(env_var):
+    """Return (parameters, error) for a JSON object in env_var."""
+    raw = os.environ.get(env_var, "").strip()
+    if not raw:
+        return {}, None
+    try:
+        value = json.loads(raw)
+    except ValueError as e:
+        return {}, f"{env_var} is not valid JSON ({e})"
+    if not isinstance(value, dict):
+        return {}, f"{env_var} must be a JSON object, such as {{\"reasoning_effort\": \"low\"}}"
+    return value, None
+
+
+TEXT_MODEL_EXTRA_BODY, TEXT_MODEL_EXTRA_BODY_ERROR = _parse_extra_body("TEXT_MODEL_EXTRA_BODY")
+CHAT_MODEL_EXTRA_BODY, CHAT_MODEL_EXTRA_BODY_ERROR = _parse_extra_body("CHAT_MODEL_EXTRA_BODY")
+for _error in (TEXT_MODEL_EXTRA_BODY_ERROR, CHAT_MODEL_EXTRA_BODY_ERROR):
+    if _error:
+        logger.error(f"{_error}; requests to that model will fail until it is corrected.")
+
 # Streaming options - disable for LLM servers that don't support OpenAI's stream_options
 ENABLE_STREAM_OPTIONS = os.environ.get("ENABLE_STREAM_OPTIONS", "true").lower() == "true"
 
@@ -130,6 +154,11 @@ def get_chat_config():
             # A separate chat model does not inherit GPT5_FORCE_MODE: it may
             # be a different (non-GPT-5) model than the main text model.
             'gpt5_force': _gpt5_mode_forced("CHAT_GPT5_FORCE_MODE"),
+            # Like GPT5_FORCE_MODE, the text model's parameters are not
+            # inherited: they may not suit a different model or server.
+            'extra_body': CHAT_MODEL_EXTRA_BODY,
+            'extra_body_variable': 'CHAT_MODEL_EXTRA_BODY',
+            'extra_body_error': CHAT_MODEL_EXTRA_BODY_ERROR,
         }
     return {
         'api_key': TEXT_MODEL_API_KEY,
@@ -138,6 +167,9 @@ def get_chat_config():
         'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
         'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium"),
         'gpt5_force': _gpt5_mode_forced(),
+        'extra_body': TEXT_MODEL_EXTRA_BODY,
+        'extra_body_variable': 'TEXT_MODEL_EXTRA_BODY',
+        'extra_body_error': TEXT_MODEL_EXTRA_BODY_ERROR,
     }
 
 
@@ -206,6 +238,26 @@ try:
 except Exception as chat_client_init_e:
     logger.warning(f"Failed to initialize chat client, falling back to main client: {chat_client_init_e}")
     chat_client = client
+
+
+def _add_extra_body(completion_args, extra_body, error):
+    """Merge the configured request parameters into completion_args.
+
+    They are applied last, so they take precedence over the parameters set
+    above (temperature, max_tokens, the GPT-5 settings)."""
+    if error:
+        raise ValueError(error)
+    if extra_body:
+        completion_args["extra_body"] = dict(extra_body)
+
+
+def _log_rejected_parameters(error, variable, extra_body):
+    """Name the request parameters setting when the provider rejects a request."""
+    if extra_body and isinstance(error, BadRequestError):
+        logger.error(
+            f"The model server rejected the request. {variable} adds "
+            f"{', '.join(sorted(extra_body))}; check that the server accepts these parameters."
+        )
 
 
 def is_gpt5_model(model_name):
@@ -313,6 +365,8 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if response_format:
             completion_args["response_format"] = response_format
 
+        _add_extra_body(completion_args, TEXT_MODEL_EXTRA_BODY, TEXT_MODEL_EXTRA_BODY_ERROR)
+
         # Make the resolved max_tokens visible in logs so users can confirm
         # their SUMMARY_MAX_TOKENS / CHAT_MAX_TOKENS / etc. settings actually
         # took effect for a given operation. The "key" used here is
@@ -373,6 +427,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         raise
     except Exception as e:
         logger.error(f"LLM API call failed: {e}")
+        _log_rejected_parameters(e, 'TEXT_MODEL_EXTRA_BODY', TEXT_MODEL_EXTRA_BODY)
         raise
 
 
@@ -402,9 +457,6 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
     if not effective_client:
         raise ValueError("Chat LLM client not initialized")
-
-    if not chat_config['api_key']:
-        raise ValueError("Chat model API key not configured")
 
     # Check budget before making the call
     if user_id and operation_type:
@@ -461,6 +513,8 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
             if tool_choice:
                 completion_args["tool_choice"] = tool_choice
 
+        _add_extra_body(completion_args, chat_config['extra_body'], chat_config['extra_body_error'])
+
         # Visibility: surface the resolved budget per call so admins can
         # confirm CHAT_MAX_TOKENS or per-call overrides took effect.
         budget_key = 'max_completion_tokens' if using_gpt5 else 'max_tokens'
@@ -514,6 +568,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         raise
     except Exception as e:
         logger.error(f"Chat LLM API call failed: {e}")
+        _log_rejected_parameters(e, chat_config['extra_body_variable'], chat_config['extra_body'])
         raise
 
 

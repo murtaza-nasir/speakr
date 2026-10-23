@@ -142,7 +142,7 @@ def test_incognito_title_and_summary_use_the_resolved_values(ctx):
 
     fake_client = MagicMock()
     fake_client.chat.completions.create.side_effect = fake
-    with patch.object(processing, 'client', fake_client):
+    with patch.object(processing, 'client', fake_client), patch('src.services.llm.client', fake_client):
         processing._generate_incognito_title('Some transcript text about budgets.')
         processing.generate_incognito_summary('Some transcript text about budgets.')
     assert seen == [0.15, 0.0]

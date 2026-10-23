@@ -463,15 +463,16 @@ def test_call_chat_completion_no_client(monkeypatch):
         call_chat_completion([{"role": "user", "content": "hi"}])
 
 
-def test_call_chat_completion_no_api_key(monkeypatch):
+def test_call_chat_completion_without_api_key(monkeypatch):
+    """A local server often needs no key (#403), for chat as for summaries."""
     fake = FakeClient(return_value=make_completion("ok"))
     monkeypatch.setattr(llm, "chat_client", fake)
     monkeypatch.setattr(llm, "client", fake)
     monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
     monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
     monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", None)
-    with pytest.raises(ValueError, match="API key not configured"):
-        call_chat_completion([{"role": "user", "content": "hi"}])
+    response = call_chat_completion([{"role": "user", "content": "hi"}])
+    assert response.choices[0].message.content == "ok"
 
 
 def test_call_chat_completion_success(monkeypatch):

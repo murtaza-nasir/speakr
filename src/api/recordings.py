@@ -3195,8 +3195,6 @@ def chat_incognito():
         from src.services.recording_chat import build_chat_messages
         messages, _ = build_chat_messages(recording, current_user, user_message, message_history)
 
-        # Get model info
-        chat_model = os.environ.get('TEXT_MODEL_NAME', os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini'))
         user_id = current_user.id
 
         current_app.logger.info(f"[Incognito Chat] User {user_id} sending message")
@@ -3207,12 +3205,8 @@ def chat_incognito():
         def generate():
             """Stream the chat response."""
             try:
-                response = chat_client.chat.completions.create(
-                    model=chat_model,
-                    messages=messages,
-                    temperature=chat_temperature,
-                    stream=True
-                )
+                # No user_id, so nothing is tracked for incognito
+                response = call_chat_completion(messages, temperature=chat_temperature, stream=True)
 
                 for chunk in response:
                     if chunk.choices and len(chunk.choices) > 0:

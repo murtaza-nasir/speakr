@@ -201,7 +201,7 @@ def test_incognito_titles_use_the_user_level(ctx):
 
     fake_client = MagicMock()
     fake_client.chat.completions.create.side_effect = fake_create
-    with patch("src.tasks.processing.client", new=fake_client):
+    with patch("src.tasks.processing.client", new=fake_client), patch("src.services.llm.client", new=fake_client):
         processing._generate_incognito_title(TRANSCRIPT, user=user)
     assert '- Start with the date' in calls[-1][1]["content"]
 

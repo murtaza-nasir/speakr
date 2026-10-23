@@ -376,6 +376,33 @@ After changing model configuration:
 4. Test the chat feature
 5. Monitor logs for any errors or warnings
 
+## Provider-Specific Request Parameters
+
+Reasoning ("thinking") is controlled differently by each provider, and some models think by default, which makes summaries and titles slower and more expensive. `TEXT_MODEL_EXTRA_BODY` holds a JSON object whose fields are added to every request to the text model. `CHAT_MODEL_EXTRA_BODY` is the same setting for a separately configured chat model.
+
+```bash
+# Turn off thinking for a Qwen3 model on vLLM, SGLang or llama.cpp
+TEXT_MODEL_EXTRA_BODY={"chat_template_kwargs": {"enable_thinking": false}}
+```
+
+The fields are sent unchanged, so they must be ones your provider and model accept:
+
+| Provider | Example |
+|----------|---------|
+| OpenRouter, any reasoning model | `{"reasoning": {"effort": "low"}}`, or `{"reasoning": {"enabled": false}}` to turn reasoning off |
+| OpenAI (o-series, GPT-5) | `{"reasoning_effort": "minimal"}` |
+| vLLM, SGLang or llama.cpp, Qwen3 and similar models | `{"chat_template_kwargs": {"enable_thinking": false}}` |
+| vLLM, gpt-oss | `{"reasoning_effort": "low"}` |
+
+The name of the `chat_template_kwargs` field depends on the model's chat template and is given on the model card.
+
+- The fields are added after Speakr's own parameters and replace any with the same name, including the GPT-5 settings and `max_tokens`.
+- When chat uses the text model, `TEXT_MODEL_EXTRA_BODY` applies to chat as well. A separately configured chat model does not inherit it.
+- In `.env`, the JSON is written without surrounding quotes.
+- If the value is not a JSON object, requests to that model fail with an error that names the variable.
+- When a provider rejects a request, the log lists the fields added by this setting. Some servers ignore fields they do not recognise, so compare response times or token counts before and after a change to confirm its effect.
+- Reasoning tokens are counted as completion tokens in the token statistics. The reasoning text is not stored with summaries, titles or chat answers.
+
 ## Environment Variables Reference
 
 ```bash
@@ -417,6 +444,11 @@ CHAT_MODEL_NAME=openai/gpt-4o
 # Chat-specific GPT-5 settings (optional - falls back to GPT5_* if not set)
 CHAT_GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 CHAT_GPT5_VERBOSITY=medium          # low, medium, high
+
+# Provider-specific request parameters, a JSON object (optional)
+# See Provider-Specific Request Parameters above
+TEXT_MODEL_EXTRA_BODY={"reasoning": {"effort": "low"}}
+CHAT_MODEL_EXTRA_BODY={"reasoning": {"effort": "low"}}
 ```
 
 ## Prefix-Cache-Friendly Prompts (`PREFIX_CACHE_OPTIMIZED_PROMPTS`)
