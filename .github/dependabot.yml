@@ -17,6 +17,10 @@
 # and the images install psycopg2 (#450). The move to 2.1 and psycopg 3 is
 # planned for January 2027, once the 2.1 series has settled; remove the
 # ignore entry then. 2.0 patch releases still arrive in the group.
+#
+# sentence-transformers (embeddings image) stays on 2.x until the move to
+# transformers 5, also planned for January 2027 (see the transformers entries
+# in scripts/audit-exceptions.txt); both are upgraded and tested together.
 version: 2
 updates:
   - package-ecosystem: pip
@@ -34,6 +38,8 @@ updates:
         versions: [">=1.7.0"]
       - dependency-name: sqlalchemy
         versions: [">=2.1"]
+      - dependency-name: sentence-transformers
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
     schedule:
