@@ -648,8 +648,14 @@ def csrf_token_aware_check():
     # Note that csrf._exempt_blueprints holds Blueprint OBJECTS, so we
     # resolve the request's blueprint name through app.blueprints, the
     # same way Flask-WTF's own protect() hook does.
+    #
+    # These exemptions exist for token clients. A request that carries a
+    # browser session or remember-me cookie is signed in by that cookie,
+    # so it still needs a CSRF token here, which the web UI sends (#478).
     if app.blueprints.get(request.blueprint) in csrf._exempt_blueprints:
-        return
+        remember_cookie = app.config.get('REMEMBER_COOKIE_NAME', 'remember_token')
+        if not session.get('_user_id') and remember_cookie not in request.cookies:
+            return
 
     # View-level registration-time exemptions (e.g. share_target).
     # Flask-WTF identifies exempt views by f"{__module__}.{__name__}";
@@ -989,7 +995,7 @@ app.register_blueprint(system_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(api_v1_bp)
-csrf.exempt(api_v1_bp)  # API v1 uses token auth, not CSRF
+csrf.exempt(api_v1_bp)  # token clients only; browser sessions still need CSRF (#478)
 
 # Recording sessions (#287 c/d): the streaming client POSTs binary chunk
 # bodies via fetch with the session cookie. CSRF tokens are easy to attach
