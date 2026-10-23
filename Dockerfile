@@ -46,10 +46,10 @@ RUN PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
 ###############################################################################
 FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS ffmpeg-stage
 
-ARG BTBN_TAG=autobuild-2026-10-13-13-05
-ARG FFMPEG_VER=n8.1.3-18-g46d899d7a0
-ARG FFMPEG_SHA256_amd64=b3506f47a71a2f8cff8c0775112bf02a8a49035e3994232aa5f218058328e0e7
-ARG FFMPEG_SHA256_arm64=bb5477906594f7b02f84fedaa2dc3d503bb14166fc4acb2f3175be0488967e43
+ARG BTBN_TAG=autobuild-2026-10-23-13-04
+ARG FFMPEG_VER=n8.1.3-24-g92611900bb
+ARG FFMPEG_SHA256_amd64=d0eb612b8994407f78413e2929cb4b073bc699c8ab79e198b31624736fdc2f93
+ARG FFMPEG_SHA256_arm64=7853da3848e22eddc9a5077c7965abf62cf9e6f7ff95191b7d29f53155b5fd90
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
     && rm -rf /var/lib/apt/lists/* \
@@ -110,6 +110,13 @@ WORKDIR /app
 # Copy static ffmpeg binaries (~150MB vs ~450MB from apt)
 COPY --from=ffmpeg-stage /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=ffmpeg-stage /usr/local/bin/ffprobe /usr/local/bin/ffprobe
+
+# The base image's setuptools is only needed to install packages, and its
+# vendored copies of wheel and jaraco.context carry advisories. It is removed
+# before the locked packages are copied in, so the lite image has none (pytz
+# falls back when pkg_resources is missing) and the full image keeps only the
+# version its lock pins for torch.
+RUN pip uninstall -y -q setuptools
 
 # Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
