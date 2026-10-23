@@ -105,6 +105,24 @@ def _remove_orphaned_user_new(engine, app):
         app.logger.warning(f"Could not clean up orphaned user_new table: {e}")
 
 
+def _remove_orphaned_speaker_rows(engine, app):
+    """Delete speaker snippets and voice samples whose speaker or recording is gone.
+
+    SQLite does not enforce ON DELETE CASCADE, and before #475 "delete all
+    speakers" did not remove these rows itself.
+    """
+    with engine.begin() as conn:
+        snippets = conn.execute(text(
+            'DELETE FROM speaker_snippet WHERE speaker_id NOT IN (SELECT id FROM speaker) '
+            'OR recording_id NOT IN (SELECT id FROM recording)')).rowcount
+        samples = conn.execute(text(
+            'DELETE FROM speaker_voice_sample '
+            'WHERE speaker_id NOT IN (SELECT id FROM speaker)')).rowcount
+    if snippets or samples:
+        app.logger.info(f"Removed {snippets} orphaned speaker snippet(s) "
+                        f"and {samples} orphaned voice sample(s)")
+
+
 def initialize_database(app):
     """
     Initialize database schema and run migrations.
@@ -1165,6 +1183,14 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Transcript speaker linking skipped, retried next start: {e}")
+
+        # "Delete all speakers" used to leave the speakers' snippets behind (#475).
+        try:
+            run_once(engine, '0004_remove_orphaned_speaker_rows',
+                     lambda eng: _remove_orphaned_speaker_rows(eng, app), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Orphaned speaker row cleanup skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

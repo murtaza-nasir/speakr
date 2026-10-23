@@ -220,8 +220,13 @@ def delete_speaker(speaker_id):
 def delete_all_speakers():
     """Delete all speakers for the current user."""
     try:
-        # Bulk delete skips ORM cascades, so the voice samples go first.
+        # Bulk delete skips ORM cascades, and SQLite does not enforce the
+        # ON DELETE CASCADE rules, so the snippets and voice samples go first (#475).
         from src.models import SpeakerVoiceSample
+        from src.models.speaker_snippet import SpeakerSnippet
+        speaker_ids = db.session.query(Speaker.id).filter_by(user_id=current_user.id)
+        SpeakerSnippet.query.filter(SpeakerSnippet.speaker_id.in_(speaker_ids)).delete(
+            synchronize_session=False)
         SpeakerVoiceSample.query.filter_by(user_id=current_user.id).delete()
         deleted_count = Speaker.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
