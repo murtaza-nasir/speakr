@@ -110,9 +110,11 @@ TEXT_MODEL_API_KEY=sk-or-v1-your-key-here
 TEXT_MODEL_NAME=openai/gpt-4o-mini
 ```
 
-If you prefer to use OpenAI directly for text generation, simply change the base URL to `https://api.openai.com/v1` and use your OpenAI API key. You can also use local models through Ollama or LM Studio by pointing to `http://localhost:11434/v1` or similar.
+If you prefer to use OpenAI directly for text generation, simply change the base URL to `https://api.openai.com/v1` and use your OpenAI API key. You can also use local models through Ollama, LM Studio, vLLM or llama.cpp by pointing to `http://localhost:11434/v1` or similar. A local server without authentication needs no key, so `TEXT_MODEL_API_KEY` can be left out.
 
-> **Tip:** For advanced model configuration options—including GPT-5 support, separate chat model settings for different service tiers, and cost optimization strategies—see the [Model Configuration](../admin-guide/model-configuration.md) guide.
+Many current models reason before they answer, which makes summaries and titles slower and, on paid services, more expensive. The reasoning effort, or whether the model reasons at all, can be set with `TEXT_MODEL_EXTRA_BODY`; the field to use differs by provider and model, as listed in [Provider-Specific Request Parameters](../admin-guide/model-configuration.md#provider-specific-request-parameters).
+
+> **Tip:** For advanced model configuration options—including GPT-5 support, reasoning settings for each provider, separate chat model settings for different service tiers, and cost optimization strategies—see the [Model Configuration](../admin-guide/model-configuration.md) guide.
 
 #### For Legacy OpenAI Whisper API
 
@@ -236,7 +238,7 @@ Use `TRANSCRIPTION_CONNECTOR=tencent_asr` with `TENCENT_SECRET_ID` and
 `TENCENT_SECRET_KEY`. This native connector supports Tencent recording-file
 recognition, timestamps, speaker labels and hotwords, without an ASR bridge
 container or local GPU. See the [Tencent ASR setup guide](../advanced/tencent-asr.md)
-for engines, large files, resource packages and retry limitations.
+for engines, large files, resource packages and how failed jobs are retried.
 
 #### For AssemblyAI (Cloud-Based Diarization)
 

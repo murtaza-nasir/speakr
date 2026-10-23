@@ -59,6 +59,8 @@ TEXT_MODEL_API_KEY=sk-your_openai_api_key
 TEXT_MODEL_NAME=gpt-4o-mini
 ```
 
+A local server such as Ollama, vLLM or llama.cpp works as well: set `TEXT_MODEL_BASE_URL` to its address (for example `http://localhost:11434/v1`) and leave out `TEXT_MODEL_API_KEY` if the server needs no key. To change how much a model reasons, or to turn reasoning off, see [Provider-Specific Request Parameters](admin-guide/model-configuration.md#provider-specific-request-parameters).
+
 For OpenAI's latest GPT-5 models (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`), you must use the OpenAI API directly. See the [Model Configuration Guide](admin-guide/model-configuration.md) for detailed GPT-5 setup.
 
 ### Required: Transcription Service

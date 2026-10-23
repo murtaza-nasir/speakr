@@ -116,6 +116,10 @@ Network speed affects transcription time since audio must upload to API services
 
 The choice of transcription model impacts speed. Whisper Large is more accurate but slower than Whisper Base. If speed matters more than perfect accuracy, consider using a smaller model through your API settings.
 
+### Slow Summaries and Titles With a Reasoning Model
+
+Models that reason before answering, such as Qwen3, GPT-5 or DeepSeek, can take many times longer than the answer alone requires, and on paid services the reasoning tokens are billed as output. Summaries and titles rarely benefit from long reasoning. Lower the reasoning effort or turn reasoning off with `TEXT_MODEL_EXTRA_BODY`, using the field your provider accepts; see [Provider-Specific Request Parameters](admin-guide/model-configuration.md#provider-specific-request-parameters). Compare the response time or the token counts in the [system statistics](admin-guide/statistics.md) before and after the change, since some local servers ignore fields they do not recognise.
+
 ### Recordings Stuck After Restart
 
 If Speakr crashed or restarted while recordings were processing, they automatically resume on next startup. The job queue persists to the database, so no uploads are lost. Check the logs for "Recovered orphaned jobs" messages confirming jobs were resumed.
@@ -167,7 +171,7 @@ Since v0.10.4-alpha the stock image runs threaded gunicorn workers (3 processes 
 
 ### Chat Responses End Mid-Sentence
 
-If a chat or Inquire response stops abruptly with a note that the output token limit was reached, the model hit the configured `CHAT_MAX_TOKENS` ceiling (default 2000). This is common with reasoning models, whose hidden reasoning tokens share the same budget as the visible answer. Ask the model to continue from where it stopped, or raise `CHAT_MAX_TOKENS` in your `.env`. Before v0.10.3-alpha these truncated responses were displayed as if they had completed normally; they are now flagged explicitly.
+If a chat or Inquire response stops abruptly with a note that the output token limit was reached, the model hit the configured `CHAT_MAX_TOKENS` ceiling (default 2000). This is common with reasoning models, whose hidden reasoning tokens share the same budget as the visible answer. Ask the model to continue from where it stopped, raise `CHAT_MAX_TOKENS` in your `.env`, or lower the model's reasoning effort with `TEXT_MODEL_EXTRA_BODY` (or `CHAT_MODEL_EXTRA_BODY` for a separate chat model), as described in [Provider-Specific Request Parameters](admin-guide/model-configuration.md#provider-specific-request-parameters). Before v0.10.3-alpha these truncated responses were displayed as if they had completed normally; they are now flagged explicitly.
 
 ### Speaker Identification Not Working
 

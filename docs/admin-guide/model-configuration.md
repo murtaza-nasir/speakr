@@ -409,7 +409,7 @@ The name of the `chat_template_kwargs` field depends on the model's chat templat
 # Required: API endpoint
 TEXT_MODEL_BASE_URL=https://api.openai.com/v1
 
-# Required: API key
+# API key (can be left out for a local server without authentication)
 TEXT_MODEL_API_KEY=your_api_key_here
 
 # Required: Model identifier

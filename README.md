@@ -40,7 +40,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Hands-off intake** - a watched "black hole" folder auto-imports and processes any audio dropped into it, with optional per-user subfolders named by user id or username.
 
 ### Transcribe
-- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, AssemblyAI, OpenASR, Alibaba FunASR, or any custom ASR webservice. The right connector is auto-detected from your configuration.
+- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, AssemblyAI, Tencent Cloud ASR, OpenASR, Alibaba FunASR, or any custom ASR webservice. The right connector is auto-detected from your configuration.
 - **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
 - **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
 - **Custom vocabulary and hotwords** (most effective with the WhisperX backend) - bias the transcriber toward names, jargon, and acronyms it would otherwise mishear; configurable globally, per tag / folder, or right in the upload and in-app recording dialogs, with reusable saved templates.
@@ -148,7 +148,7 @@ docker compose up -d
 
 **Required API Keys:**
 - `TRANSCRIPTION_API_KEY` - For speech-to-text (OpenAI) or `ASR_BASE_URL` for self-hosted
-- `TEXT_MODEL_API_KEY` - For summaries, titles, and chat (OpenRouter or OpenAI)
+- `TEXT_MODEL_API_KEY` - For summaries, titles, and chat (OpenRouter or OpenAI; not needed for a local server without authentication)
 
 ### Transcription Options
 
@@ -162,6 +162,7 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
 | **MOSI/Mossland MOSS** | Hosted API key | Yes (built-in) | No |
 | **AssemblyAI** | Just API key | Yes (built-in) | No |
+| **Tencent Cloud ASR** | API keys (+ S3/COS bucket for files over 5 MiB) | Yes (built-in) | No |
 | **OpenASR** | Self-hosted server | Yes (built-in) | No |
 | **Alibaba FunASR** | API key + OSS bucket | Yes (built-in) | No |
 | **Legacy Whisper** | Just API key | No | No |
@@ -208,6 +209,14 @@ TRANSCRIPTION_CONNECTOR=assemblyai
 TRANSCRIPTION_API_KEY=your-assemblyai-key
 ```
 Handles multi-hour, multi-speaker files in a single job. New accounts get free credits with no card required.
+
+**Tencent Cloud ASR (Chinese and English meetings):**
+```bash
+TRANSCRIPTION_CONNECTOR=tencent_asr
+TENCENT_SECRET_ID=your-secret-id
+TENCENT_SECRET_KEY=your-secret-key
+```
+Files over 5 MiB are passed to Tencent through an S3-compatible bucket such as Tencent COS. See the [Tencent ASR guide](https://murtaza-nasir.github.io/speakr/advanced/tencent-asr) for engines and storage.
 
 > **PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 
