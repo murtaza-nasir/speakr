@@ -181,3 +181,34 @@ def test_every_recording_status_the_backend_can_set_has_a_label():
     # The set the backend actually assigns, from the model's own comment.
     for status in ('PENDING', 'PROCESSING', 'SUMMARIZING', 'COMPLETED', 'FAILED'):
         assert status.lower() in english, f'status.{status.lower()} is missing'
+
+
+# translate('server.a.b') in Python code: text the server produces in the
+# user's interface language (#477). The browser scan above does not see it.
+SERVER_PATTERN = re.compile(r"""\btranslate\(\s*['"](server\.[\w.]+)['"]""")
+
+
+def _server_keys_used():
+    found = {}
+    for path in _walk('src', '.py'):
+        text = open(path, encoding='utf-8').read()
+        for key in SERVER_PATTERN.findall(text):
+            found.setdefault(key, set()).add(os.path.relpath(path, REPO))
+    return found
+
+
+def test_every_server_key_used_in_src_exists_in_english():
+    english = _flatten(_load('en'))
+    used = _server_keys_used()
+    assert len(used) > 50, f'only {len(used)} server keys found in src/; the scanner is broken'
+
+    missing = {k: v for k, v in used.items() if k not in english}
+    assert not missing, 'translate() keys absent from en.json:\n' + '\n'.join(
+        f'  {k}  <- {", ".join(sorted(paths))}' for k, paths in sorted(missing.items()))
+
+
+def test_every_server_key_in_english_is_used():
+    """server.* keys are only read from Python, so an unused one is dead weight."""
+    used = _server_keys_used()
+    unused = sorted(k for k in _flatten(_load('en')) if k.startswith('server.') and k not in used)
+    assert not unused, f'server keys in en.json that no translate() call uses: {unused}'

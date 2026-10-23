@@ -17,6 +17,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.localization import translate
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
@@ -52,7 +53,7 @@ def init_inquire_helpers(**kwargs):
 def inquire():
     # Check if inquire mode is enabled
     if not ENABLE_INQUIRE_MODE:
-        flash('Inquire mode is not enabled on this server.', 'warning')
+        flash(translate('server.flash.inquireDisabled'), 'warning')
         return redirect(url_for('recordings.index'))
 
     # Check if user is a group admin

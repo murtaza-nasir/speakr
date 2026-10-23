@@ -1,13 +1,16 @@
 """
-Server-side localization utilities for export templates.
+Server-side localization utilities.
 
-This module provides utilities to load localized labels from
-static/locales/*.json files for use in export templates.
+This module loads localized strings from static/locales/*.json, the catalogs
+the browser uses, for export templates and, through translate(), for text
+produced on the server (flash messages, account emails).
 """
 
 import json
 import os
+import re
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
 from datetime import datetime
@@ -208,7 +211,92 @@ def format_datetime_localized(dt: datetime, language: str) -> str:
     return f"{date_part}{connector}{time_part}"
 
 
+FALLBACK_LANGUAGE = 'en'
+# {{name}}, the placeholder syntax interpolate() in static/js/i18n.js fills.
+_PLACEHOLDER_RE = re.compile(r'\{\{(\w+)\}\}')
+
+
+@lru_cache(maxsize=1)
+def available_languages() -> tuple:
+    """Codes of the shipped locale files, e.g. ('de', 'en', ..., 'pt-BR', 'zh')."""
+    return tuple(sorted(p.stem for p in get_locales_dir().glob('*.json')))
+
+
+def match_language(code: Optional[str]) -> Optional[str]:
+    """
+    Map a language code to a shipped locale, or None when none fits.
+
+    Case is ignored and '_' is read as '-'. A region without its own catalog
+    falls back to the base language ('de-AT' -> 'de', 'zh-CN' -> 'zh'), and a
+    base language to its only regional catalog ('pt' -> 'pt-BR').
+    """
+    if not code or not isinstance(code, str):
+        return None
+    shipped = {lang.lower(): lang for lang in available_languages()}
+    code = code.strip().replace('_', '-').lower()
+    base = code.split('-')[0]
+    if code in shipped or base in shipped:
+        return shipped.get(code) or shipped[base]
+    regional = [lang for key, lang in shipped.items() if key.split('-')[0] == base]
+    return regional[0] if len(regional) == 1 else None
+
+
+def request_language() -> str:
+    """
+    Language for text produced in the current request.
+
+    The signed-in user's interface language comes first, then the
+    Accept-Language header. Outside a request, English is used.
+    """
+    from flask import has_request_context, request
+    if not has_request_context():
+        return FALLBACK_LANGUAGE
+    try:
+        from flask_login import current_user
+        if current_user and current_user.is_authenticated:
+            language = match_language(getattr(current_user, 'ui_language', None))
+            if language:
+                return language
+    except Exception:  # app without a login manager
+        pass
+    # best_match also pairs 'de-AT' with 'de' and 'pt' with 'pt-BR'.
+    return request.accept_languages.best_match(available_languages()) or FALLBACK_LANGUAGE
+
+
+def _lookup(catalog: dict, key: str) -> Optional[str]:
+    value = catalog
+    for part in key.split('.'):
+        if not isinstance(value, dict) or part not in value:
+            return None
+        value = value[part]
+    return value if isinstance(value, str) and value else None
+
+
+def translate(key: str, language: Optional[str] = None, **params) -> str:
+    """
+    Translate a dotted catalog key on the server, as i18n.t() does in the browser.
+
+    Args:
+        key: Dotted key, e.g. 'server.flash.passwordUpdated'
+        language: Language code; defaults to request_language()
+        **params: Values for {{name}} placeholders
+
+    Returns:
+        The string in that language, else in English, else the key itself.
+    """
+    language = (match_language(language) if language else request_language()) or FALLBACK_LANGUAGE
+    text = _lookup(load_locale(language), key)
+    if text is None and language != FALLBACK_LANGUAGE:
+        text = _lookup(load_locale(FALLBACK_LANGUAGE), key)
+    if text is None:
+        logger.warning("Translation not found for key: %s", key)
+        return key
+    return _PLACEHOLDER_RE.sub(
+        lambda m: str(params[m.group(1)]) if m.group(1) in params else m.group(0), text)
+
+
 def clear_locale_cache():
     """Clear the locale cache (useful for testing or hot-reloading)."""
     global _locale_cache
     _locale_cache = {}
+    available_languages.cache_clear()

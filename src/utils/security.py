@@ -10,6 +10,8 @@ import secrets
 from wtforms.validators import ValidationError
 from urllib.parse import urlparse
 
+from src.utils.localization import translate
+
 
 # The value the app historically fell back to when SECRET_KEY was unset. It is
 # a public constant in the source, so it must never be accepted at runtime.
@@ -110,15 +112,15 @@ def password_check(form, field):
     """
     password = field.data
     if len(password) < 8:
-        raise ValidationError('Password must be at least 8 characters long.')
+        raise ValidationError(translate('server.password.tooShort'))
     if not re.search(r'[A-Z]', password):
-        raise ValidationError('Password must contain at least one uppercase letter.')
+        raise ValidationError(translate('server.password.needsUppercase'))
     if not re.search(r'[a-z]', password):
-        raise ValidationError('Password must contain at least one lowercase letter.')
+        raise ValidationError(translate('server.password.needsLowercase'))
     if not re.search(r'[0-9]', password):
-        raise ValidationError('Password must contain at least one number.')
+        raise ValidationError(translate('server.password.needsNumber'))
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-        raise ValidationError('Password must contain at least one special character.')
+        raise ValidationError(translate('server.password.needsSpecial'))
 
 
 # --- URL Security ---

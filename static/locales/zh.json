@@ -2328,5 +2328,97 @@
   "usageMeters": {
     "tokenTooltip": "本月 AI 令牌：{{used}} / {{budget}}",
     "storageTooltip": "存储：{{used}} / {{quota}}"
+  },
+  "server": {
+    "email": {
+      "common": {
+        "contactAdmin": "如有疑问，请联系您的管理员。",
+        "copyLink": "或将此链接复制并粘贴到浏览器中：",
+        "footer": "此邮件由 Speakr 发送。如有疑问，请联系您的管理员。",
+        "greeting": "{{name}}，您好：",
+        "tagline": "AI 驱动的音频转录",
+        "textFooter": "此邮件由 Speakr 发送 - {{tagline}}。"
+      },
+      "reset": {
+        "button": "重置密码",
+        "expiry": "此链接将在 1 小时后失效。",
+        "heading": "重置您的密码",
+        "ignore": "如果您没有申请重置密码，请忽略此邮件。您的密码不会改变。",
+        "intro": "我们收到了重置您的 Speakr 账户密码的请求。请点击下方按钮设置新密码。",
+        "subject": "重置您的密码 - Speakr",
+        "textIntro": "我们收到了重置您的 Speakr 账户密码的请求。请打开下方链接设置新密码："
+      },
+      "verify": {
+        "button": "验证邮箱地址",
+        "expiry": "此链接将在 24 小时后失效。",
+        "heading": "验证您的邮箱地址",
+        "ignore": "如果您没有在 Speakr 上创建账户，请忽略此邮件。",
+        "intro": "欢迎使用 Speakr！请验证您的邮箱地址，以完成注册并开始转录您的音频录音。",
+        "subject": "验证您的邮箱地址 - Speakr",
+        "textLink": "点击此处进行验证："
+      }
+    },
+    "flash": {
+      "accountCreated": "您的账户已创建！现在可以登录了。",
+      "accountCreatedVerificationFailed": "您的账户已创建，但验证邮件发送失败。请联系支持人员。",
+      "accountUpdated": "账户信息已更新！",
+      "adminAccessDenied": "您没有访问管理页面的权限。",
+      "currentPasswordIncorrect": "当前密码不正确。",
+      "currentPasswordRequired": "请输入当前密码。",
+      "emailAlreadyVerified": "您的邮箱已验证。",
+      "emailRequired": "请输入邮箱地址。",
+      "emailServiceNotConfigured": "邮件服务未配置。",
+      "emailVerificationDisabled": "未启用邮箱验证。",
+      "exportTemplateSeparators": "文件名模板不能包含路径分隔符（/ 或 \\）。",
+      "groupAccessDenied": "您没有访问群组管理的权限。",
+      "inquireDisabled": "此服务器未启用 Inquire 模式。",
+      "loginFailed": "登录失败。请检查邮箱和密码。",
+      "loginRequired": "请登录后访问此页面。",
+      "newPasswordMismatch": "新密码与确认密码不一致。",
+      "newPasswordRequired": "请输入新密码和确认密码。",
+      "noLocalPassword": "此账户未设置本地密码。如需添加，请在登录页面使用“忘记密码”链接并输入您的邮箱地址；通过重置邮件即可安全地设置密码。",
+      "passwordFieldsRequired": "两个密码字段均为必填项。",
+      "passwordLoginDisabled": "密码登录已停用。请使用 SSO 登录。",
+      "passwordManagementDisabled": "密码管理已停用。请使用 SSO 登录。",
+      "passwordResetDone": "您的密码已重置。现在可以使用新密码登录。",
+      "passwordResetSentIfExists": "如果存在使用此邮箱的账户，密码重置链接已发送。",
+      "passwordResetUnavailable": "密码重置不可用。请联系管理员。",
+      "passwordUpdated": "您的密码已更新！",
+      "passwordsDoNotMatch": "两次输入的密码不一致。",
+      "registrationDisabled": "注册当前已停用。请联系管理员。",
+      "registrationRestricted": "注册受到限制。请联系管理员。",
+      "resetLinkInvalid": "密码重置链接无效或已过期。",
+      "ssoAlreadyLinked": "此 SSO 账户已关联到其他用户。",
+      "ssoClientFailed": "无法初始化 SSO 客户端。请查看服务器日志。",
+      "ssoLinkUserNotFound": "无法关联账户：未找到用户。",
+      "ssoLinked": "SSO 账户关联成功。",
+      "ssoLoginFailed": "SSO 登录失败。请重试。",
+      "ssoLoginIncomplete": "无法完成 SSO 登录。请重试。",
+      "ssoMissingSubject": "SSO 响应中未包含主体标识符。",
+      "ssoNotConfigured": "SSO 未配置。请联系管理员。",
+      "ssoNotLinked": "您的账户未关联 SSO。",
+      "ssoUnlinkNoPassword": "无法解除 SSO 关联：您尚未设置密码。请在登录页面使用“忘记密码”链接并输入您的邮箱地址，以获取用于设置密码的链接。",
+      "ssoUnlinked": "SSO 账户已解除关联。",
+      "useSsoLogin": "此账户使用 SSO 登录。请使用 SSO 登录。",
+      "userNotFound": "未找到用户。",
+      "verificationCooldown": "请等待 {{seconds}} 秒后再申请新的验证邮件。",
+      "verificationLinkInvalid": "验证链接无效或已过期。",
+      "verificationResent": "新的验证邮件已发送。",
+      "verificationSendFailed": "验证邮件发送失败。请稍后重试。",
+      "verificationSentIfExists": "如果存在使用此邮箱的账户，验证链接已发送。"
+    },
+    "password": {
+      "needsLowercase": "密码必须至少包含一个小写字母。",
+      "needsNumber": "密码必须至少包含一个数字。",
+      "needsSpecial": "密码必须至少包含一个特殊字符。",
+      "needsUppercase": "密码必须至少包含一个大写字母。",
+      "tooShort": "密码长度必须至少为 8 个字符。"
+    },
+    "sso": {
+      "autoRegistrationDisabled": "SSO 自动注册已停用",
+      "domainNotAllowed": "此邮箱域名不允许通过 SSO 注册",
+      "emailNotVerified": "SSO 邮箱地址未经验证",
+      "missingSubject": "SSO 用户信息中不包含 'sub'"
+    }
   }
 }

@@ -2328,5 +2328,97 @@
   "usageMeters": {
     "tokenTooltip": "Tokens de IA neste mês: {{used}} de {{budget}}",
     "storageTooltip": "Armazenamento: {{used}} de {{quota}}"
+  },
+  "server": {
+    "email": {
+      "common": {
+        "contactAdmin": "Em caso de dúvidas, entre em contato com o seu administrador.",
+        "copyLink": "Ou copie e cole este link no seu navegador:",
+        "footer": "Este e-mail foi enviado pelo Speakr. Em caso de dúvidas, entre em contato com o seu administrador.",
+        "greeting": "Olá, {{name}},",
+        "tagline": "Transcrição de áudio com IA",
+        "textFooter": "Este e-mail foi enviado pelo Speakr - {{tagline}}."
+      },
+      "reset": {
+        "button": "Redefinir senha",
+        "expiry": "Este link expira em 1 hora.",
+        "heading": "Redefina sua senha",
+        "ignore": "Se você não solicitou a redefinição de senha, pode ignorar este e-mail. Sua senha permanecerá a mesma.",
+        "intro": "Recebemos uma solicitação para redefinir a senha da sua conta do Speakr. Clique no botão abaixo para criar uma nova senha.",
+        "subject": "Redefina sua senha - Speakr",
+        "textIntro": "Recebemos uma solicitação para redefinir a senha da sua conta do Speakr. Abra o link abaixo para criar uma nova senha:"
+      },
+      "verify": {
+        "button": "Verificar endereço de e-mail",
+        "expiry": "Este link expira em 24 horas.",
+        "heading": "Verifique seu endereço de e-mail",
+        "ignore": "Se você não criou uma conta no Speakr, pode ignorar este e-mail.",
+        "intro": "Bem-vindo ao Speakr! Para concluir seu cadastro e começar a transcrever suas gravações de áudio, verifique seu endereço de e-mail.",
+        "subject": "Verifique seu endereço de e-mail - Speakr",
+        "textLink": "Clique aqui para verificar:"
+      }
+    },
+    "flash": {
+      "accountCreated": "Sua conta foi criada! Agora você já pode entrar.",
+      "accountCreatedVerificationFailed": "Sua conta foi criada, mas não foi possível enviar o e-mail de verificação. Entre em contato com o suporte.",
+      "accountUpdated": "Dados da conta atualizados com sucesso!",
+      "adminAccessDenied": "Você não tem permissão para acessar a página de administração.",
+      "currentPasswordIncorrect": "A senha atual está incorreta.",
+      "currentPasswordRequired": "A senha atual é obrigatória.",
+      "emailAlreadyVerified": "Seu e-mail já foi verificado.",
+      "emailRequired": "O endereço de e-mail é obrigatório.",
+      "emailServiceNotConfigured": "O serviço de e-mail não está configurado.",
+      "emailVerificationDisabled": "A verificação de e-mail não está ativada.",
+      "exportTemplateSeparators": "O modelo de nome de arquivo não pode conter separadores de caminho (/ ou \\).",
+      "groupAccessDenied": "Você não tem permissão para acessar o gerenciamento de grupos.",
+      "inquireDisabled": "O modo Inquire não está ativado neste servidor.",
+      "loginFailed": "Não foi possível entrar. Verifique o e-mail e a senha.",
+      "loginRequired": "Entre para acessar esta página.",
+      "newPasswordMismatch": "A nova senha e a confirmação não coincidem.",
+      "newPasswordRequired": "A nova senha e a confirmação são obrigatórias.",
+      "noLocalPassword": "Esta conta não tem uma senha local definida. Para adicionar uma, use o link \"Esqueceu a senha\" na página de login com o seu endereço de e-mail; o e-mail de redefinição permitirá definir uma senha com segurança.",
+      "passwordFieldsRequired": "Os dois campos de senha são obrigatórios.",
+      "passwordLoginDisabled": "O login com senha está desativado. Entre com SSO.",
+      "passwordManagementDisabled": "O gerenciamento de senhas está desativado. Use o SSO para entrar.",
+      "passwordResetDone": "Sua senha foi redefinida. Agora você pode entrar com a nova senha.",
+      "passwordResetSentIfExists": "Se existir uma conta com este e-mail, um link de redefinição de senha foi enviado.",
+      "passwordResetUnavailable": "A redefinição de senha não está disponível. Entre em contato com o administrador.",
+      "passwordUpdated": "Sua senha foi atualizada!",
+      "passwordsDoNotMatch": "As senhas não coincidem.",
+      "registrationDisabled": "O cadastro está desativado no momento. Entre em contato com o administrador.",
+      "registrationRestricted": "O cadastro é restrito. Entre em contato com o administrador.",
+      "resetLinkInvalid": "O link de redefinição de senha é inválido ou expirou.",
+      "ssoAlreadyLinked": "Esta conta SSO já está vinculada a outro usuário.",
+      "ssoClientFailed": "Não foi possível inicializar o cliente SSO. Verifique os logs do servidor.",
+      "ssoLinkUserNotFound": "Não foi possível vincular a conta: usuário não encontrado.",
+      "ssoLinked": "Conta SSO vinculada com sucesso.",
+      "ssoLoginFailed": "Falha no login com SSO. Tente novamente.",
+      "ssoLoginIncomplete": "Não foi possível concluir o login com SSO. Tente novamente.",
+      "ssoMissingSubject": "A resposta do SSO não incluiu um identificador de sujeito.",
+      "ssoNotConfigured": "O SSO não está configurado. Entre em contato com o administrador.",
+      "ssoNotLinked": "Sua conta não está vinculada ao SSO.",
+      "ssoUnlinkNoPassword": "Não é possível desvincular o SSO: você não tem uma senha definida. Use o link \"Esqueceu a senha\" na página de login com o seu endereço de e-mail para receber um link que permite definir uma senha.",
+      "ssoUnlinked": "Conta SSO desvinculada com sucesso.",
+      "useSsoLogin": "Esta conta usa login com SSO. Entre com SSO.",
+      "userNotFound": "Usuário não encontrado.",
+      "verificationCooldown": "Aguarde {{seconds}} segundos antes de solicitar outro e-mail de verificação.",
+      "verificationLinkInvalid": "O link de verificação é inválido ou expirou.",
+      "verificationResent": "Um novo e-mail de verificação foi enviado.",
+      "verificationSendFailed": "Não foi possível enviar o e-mail de verificação. Tente novamente mais tarde.",
+      "verificationSentIfExists": "Se existir uma conta com este e-mail, um link de verificação foi enviado."
+    },
+    "password": {
+      "needsLowercase": "A senha deve conter pelo menos uma letra minúscula.",
+      "needsNumber": "A senha deve conter pelo menos um número.",
+      "needsSpecial": "A senha deve conter pelo menos um caractere especial.",
+      "needsUppercase": "A senha deve conter pelo menos uma letra maiúscula.",
+      "tooShort": "A senha deve ter pelo menos 8 caracteres."
+    },
+    "sso": {
+      "autoRegistrationDisabled": "O cadastro automático via SSO está desativado",
+      "domainNotAllowed": "O domínio de e-mail não é permitido para cadastro via SSO",
+      "emailNotVerified": "O endereço de e-mail do SSO não está verificado",
+      "missingSubject": "As informações do usuário do SSO não incluem 'sub'"
+    }
   }
 }

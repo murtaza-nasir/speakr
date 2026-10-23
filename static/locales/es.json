@@ -2328,5 +2328,97 @@
   "usageMeters": {
     "tokenTooltip": "Tokens de IA este mes: {{used}} de {{budget}}",
     "storageTooltip": "Almacenamiento: {{used}} de {{quota}}"
+  },
+  "server": {
+    "email": {
+      "common": {
+        "contactAdmin": "Si tiene preguntas, póngase en contacto con su administrador.",
+        "copyLink": "O copie y pegue este enlace en su navegador:",
+        "footer": "Este correo fue enviado por Speakr. Si tiene preguntas, póngase en contacto con su administrador.",
+        "greeting": "Hola, {{name}}:",
+        "tagline": "Transcripción de audio con IA",
+        "textFooter": "Este correo fue enviado por Speakr - {{tagline}}."
+      },
+      "reset": {
+        "button": "Restablecer contraseña",
+        "expiry": "Este enlace caducará en 1 hora.",
+        "heading": "Restablezca su contraseña",
+        "ignore": "Si no solicitó restablecer la contraseña, puede ignorar este correo. Su contraseña no cambiará.",
+        "intro": "Recibimos una solicitud para restablecer la contraseña de su cuenta de Speakr. Haga clic en el botón de abajo para crear una nueva contraseña.",
+        "subject": "Restablezca su contraseña - Speakr",
+        "textIntro": "Recibimos una solicitud para restablecer la contraseña de su cuenta de Speakr. Abra el siguiente enlace para crear una nueva contraseña:"
+      },
+      "verify": {
+        "button": "Verificar dirección de correo",
+        "expiry": "Este enlace caducará en 24 horas.",
+        "heading": "Verifique su dirección de correo electrónico",
+        "ignore": "Si no creó una cuenta en Speakr, puede ignorar este correo.",
+        "intro": "¡Bienvenido a Speakr! Para completar el registro y empezar a transcribir sus grabaciones de audio, verifique su dirección de correo electrónico.",
+        "subject": "Verifique su dirección de correo electrónico - Speakr",
+        "textLink": "Haga clic aquí para verificar:"
+      }
+    },
+    "flash": {
+      "accountCreated": "¡Su cuenta ha sido creada! Ya puede iniciar sesión.",
+      "accountCreatedVerificationFailed": "Su cuenta ha sido creada, pero no pudimos enviar el correo de verificación. Póngase en contacto con soporte.",
+      "accountUpdated": "¡Datos de la cuenta actualizados correctamente!",
+      "adminAccessDenied": "No tiene permiso para acceder a la página de administración.",
+      "currentPasswordIncorrect": "La contraseña actual es incorrecta.",
+      "currentPasswordRequired": "La contraseña actual es obligatoria.",
+      "emailAlreadyVerified": "Su correo electrónico ya ha sido verificado.",
+      "emailRequired": "La dirección de correo electrónico es obligatoria.",
+      "emailServiceNotConfigured": "El servicio de correo no está configurado.",
+      "emailVerificationDisabled": "La verificación de correo electrónico no está habilitada.",
+      "exportTemplateSeparators": "La plantilla de nombre de archivo no puede contener separadores de ruta (/ o \\).",
+      "groupAccessDenied": "No tiene permiso para acceder a la gestión de grupos.",
+      "inquireDisabled": "El modo Inquire no está habilitado en este servidor.",
+      "loginFailed": "No se pudo iniciar sesión. Compruebe el correo electrónico y la contraseña.",
+      "loginRequired": "Inicie sesión para acceder a esta página.",
+      "newPasswordMismatch": "La nueva contraseña y la confirmación no coinciden.",
+      "newPasswordRequired": "La nueva contraseña y la confirmación son obligatorias.",
+      "noLocalPassword": "Esta cuenta no tiene una contraseña local. Para añadir una, use el enlace «¿Olvidó su contraseña?» de la página de inicio de sesión con su dirección de correo; el correo de restablecimiento le permitirá establecer una contraseña de forma segura.",
+      "passwordFieldsRequired": "Ambos campos de contraseña son obligatorios.",
+      "passwordLoginDisabled": "El inicio de sesión con contraseña está deshabilitado. Inicie sesión con SSO.",
+      "passwordManagementDisabled": "La gestión de contraseñas está deshabilitada. Use SSO para iniciar sesión.",
+      "passwordResetDone": "Su contraseña ha sido restablecida. Ya puede iniciar sesión con su nueva contraseña.",
+      "passwordResetSentIfExists": "Si existe una cuenta con este correo, se ha enviado un enlace para restablecer la contraseña.",
+      "passwordResetUnavailable": "El restablecimiento de contraseña no está disponible. Póngase en contacto con el administrador.",
+      "passwordUpdated": "¡Su contraseña ha sido actualizada!",
+      "passwordsDoNotMatch": "Las contraseñas no coinciden.",
+      "registrationDisabled": "El registro está deshabilitado actualmente. Póngase en contacto con el administrador.",
+      "registrationRestricted": "El registro está restringido. Póngase en contacto con el administrador.",
+      "resetLinkInvalid": "El enlace para restablecer la contraseña no es válido o ha caducado.",
+      "ssoAlreadyLinked": "Esta cuenta SSO ya está vinculada a otro usuario.",
+      "ssoClientFailed": "No se pudo inicializar el cliente SSO. Revise los registros del servidor.",
+      "ssoLinkUserNotFound": "No se pudo vincular la cuenta: usuario no encontrado.",
+      "ssoLinked": "Cuenta SSO vinculada correctamente.",
+      "ssoLoginFailed": "Error al iniciar sesión con SSO. Inténtelo de nuevo.",
+      "ssoLoginIncomplete": "No se pudo completar el inicio de sesión con SSO. Inténtelo de nuevo.",
+      "ssoMissingSubject": "La respuesta de SSO no incluía un identificador de sujeto.",
+      "ssoNotConfigured": "SSO no está configurado. Póngase en contacto con el administrador.",
+      "ssoNotLinked": "Su cuenta no está vinculada a SSO.",
+      "ssoUnlinkNoPassword": "No se puede desvincular SSO: no tiene una contraseña establecida. Use el enlace «¿Olvidó su contraseña?» de la página de inicio de sesión con su dirección de correo para recibir un enlace que le permita establecer una contraseña.",
+      "ssoUnlinked": "Cuenta SSO desvinculada correctamente.",
+      "useSsoLogin": "Esta cuenta usa inicio de sesión SSO. Inicie sesión con SSO.",
+      "userNotFound": "Usuario no encontrado.",
+      "verificationCooldown": "Espere {{seconds}} segundos antes de solicitar otro correo de verificación.",
+      "verificationLinkInvalid": "El enlace de verificación no es válido o ha caducado.",
+      "verificationResent": "Se ha enviado un nuevo correo de verificación.",
+      "verificationSendFailed": "No se pudo enviar el correo de verificación. Inténtelo de nuevo más tarde.",
+      "verificationSentIfExists": "Si existe una cuenta con este correo, se ha enviado un enlace de verificación."
+    },
+    "password": {
+      "needsLowercase": "La contraseña debe contener al menos una letra minúscula.",
+      "needsNumber": "La contraseña debe contener al menos un número.",
+      "needsSpecial": "La contraseña debe contener al menos un carácter especial.",
+      "needsUppercase": "La contraseña debe contener al menos una letra mayúscula.",
+      "tooShort": "La contraseña debe tener al menos 8 caracteres."
+    },
+    "sso": {
+      "autoRegistrationDisabled": "El registro automático con SSO está deshabilitado",
+      "domainNotAllowed": "El dominio de correo no está permitido para el registro con SSO",
+      "emailNotVerified": "La dirección de correo de SSO no está verificada",
+      "missingSubject": "La información de usuario de SSO no incluye 'sub'"
+    }
   }
 }

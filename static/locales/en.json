@@ -2328,5 +2328,97 @@
   "usageMeters": {
     "tokenTooltip": "AI tokens this month: {{used}} of {{budget}}",
     "storageTooltip": "Storage: {{used}} of {{quota}}"
+  },
+  "server": {
+    "email": {
+      "common": {
+        "contactAdmin": "If you have questions, please contact your administrator.",
+        "copyLink": "Or copy and paste this link into your browser:",
+        "footer": "This email was sent by Speakr. If you have questions, please contact your administrator.",
+        "greeting": "Hi {{name}},",
+        "tagline": "AI-Powered Audio Transcription",
+        "textFooter": "This email was sent by Speakr - {{tagline}}."
+      },
+      "reset": {
+        "button": "Reset Password",
+        "expiry": "This link will expire in 1 hour.",
+        "heading": "Reset Your Password",
+        "ignore": "If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.",
+        "intro": "We received a request to reset your Speakr account password. Click the button below to create a new password.",
+        "subject": "Reset your password - Speakr",
+        "textIntro": "We received a request to reset your Speakr account password. Click the link below to create a new password:"
+      },
+      "verify": {
+        "button": "Verify Email Address",
+        "expiry": "This link will expire in 24 hours.",
+        "heading": "Verify Your Email Address",
+        "ignore": "If you didn't create an account on Speakr, you can safely ignore this email.",
+        "intro": "Welcome to Speakr! To complete your registration and start transcribing your audio recordings, please verify your email address.",
+        "subject": "Verify your email address - Speakr",
+        "textLink": "Click here to verify:"
+      }
+    },
+    "flash": {
+      "accountCreated": "Your account has been created! You can now log in.",
+      "accountCreatedVerificationFailed": "Your account has been created, but we could not send a verification email. Please contact support.",
+      "accountUpdated": "Account details updated successfully!",
+      "adminAccessDenied": "You do not have permission to access the admin page.",
+      "currentPasswordIncorrect": "Current password is incorrect.",
+      "currentPasswordRequired": "Current password is required.",
+      "emailAlreadyVerified": "Your email has already been verified.",
+      "emailRequired": "Email address is required.",
+      "emailServiceNotConfigured": "Email service is not configured.",
+      "emailVerificationDisabled": "Email verification is not enabled.",
+      "exportTemplateSeparators": "The filename template cannot contain path separators (/ or \\).",
+      "groupAccessDenied": "You do not have permission to access group management.",
+      "inquireDisabled": "Inquire mode is not enabled on this server.",
+      "loginFailed": "Login unsuccessful. Please check email and password.",
+      "loginRequired": "Please log in to access this page.",
+      "newPasswordMismatch": "New password and confirmation do not match.",
+      "newPasswordRequired": "New password and confirmation are required.",
+      "noLocalPassword": "This account has no local password set. To add one, use the Forgot Password link on the login page with your email address; the reset email will let you set a password securely.",
+      "passwordFieldsRequired": "Both password fields are required.",
+      "passwordLoginDisabled": "Password login is disabled. Please sign in with SSO.",
+      "passwordManagementDisabled": "Password management is disabled. Please use SSO to sign in.",
+      "passwordResetDone": "Your password has been reset. You can now log in with your new password.",
+      "passwordResetSentIfExists": "If an account exists with this email, a password reset link has been sent.",
+      "passwordResetUnavailable": "Password reset is not available. Please contact the administrator.",
+      "passwordUpdated": "Your password has been updated!",
+      "passwordsDoNotMatch": "Passwords do not match.",
+      "registrationDisabled": "Registration is currently disabled. Please contact the administrator.",
+      "registrationRestricted": "Registration is restricted. Please contact the administrator.",
+      "resetLinkInvalid": "The password reset link is invalid or has expired.",
+      "ssoAlreadyLinked": "This SSO account is already linked to another user.",
+      "ssoClientFailed": "Failed to initialize SSO client. Check server logs.",
+      "ssoLinkUserNotFound": "Could not link account: user not found.",
+      "ssoLinked": "SSO account linked successfully.",
+      "ssoLoginFailed": "SSO login failed. Please try again.",
+      "ssoLoginIncomplete": "Could not complete SSO login. Please try again.",
+      "ssoMissingSubject": "SSO response did not include a subject identifier.",
+      "ssoNotConfigured": "SSO is not configured. Please contact the administrator.",
+      "ssoNotLinked": "Your account is not linked to SSO.",
+      "ssoUnlinkNoPassword": "Cannot unlink SSO: you have no password set. Use the Forgot Password link on the login page with your email address to receive a reset link that lets you set a password.",
+      "ssoUnlinked": "SSO account unlinked successfully.",
+      "useSsoLogin": "This account uses SSO login. Please sign in with SSO.",
+      "userNotFound": "User not found.",
+      "verificationCooldown": "Please wait {{seconds}} seconds before requesting another verification email.",
+      "verificationLinkInvalid": "The verification link is invalid or has expired.",
+      "verificationResent": "A new verification email has been sent.",
+      "verificationSendFailed": "Failed to send verification email. Please try again later.",
+      "verificationSentIfExists": "If an account exists with this email, a verification link has been sent."
+    },
+    "password": {
+      "needsLowercase": "Password must contain at least one lowercase letter.",
+      "needsNumber": "Password must contain at least one number.",
+      "needsSpecial": "Password must contain at least one special character.",
+      "needsUppercase": "Password must contain at least one uppercase letter.",
+      "tooShort": "Password must be at least 8 characters long."
+    },
+    "sso": {
+      "autoRegistrationDisabled": "SSO auto-registration is disabled",
+      "domainNotAllowed": "Email domain is not allowed for SSO sign-up",
+      "emailNotVerified": "SSO email address is not verified",
+      "missingSubject": "SSO userinfo does not include 'sub'"
+    }
   }
 }

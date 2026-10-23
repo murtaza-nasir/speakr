@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.localization import translate
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
@@ -62,7 +63,7 @@ def admin():
     ).first() is not None
 
     if not current_user.is_admin and not is_team_admin:
-        flash('You do not have permission to access the admin page.', 'danger')
+        flash(translate('server.flash.adminAccessDenied'), 'danger')
         return redirect(url_for('recordings.index'))
 
     # Redirect group admins to their dedicated management page
@@ -90,7 +91,7 @@ def group_management():
     ).first() is not None
 
     if not is_team_admin:
-        flash('You do not have permission to access group management.', 'danger')
+        flash(translate('server.flash.groupAccessDenied'), 'danger')
         return redirect(url_for('recordings.index'))
 
     # If they're a full admin, redirect to main admin dashboard

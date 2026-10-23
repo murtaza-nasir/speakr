@@ -922,7 +922,8 @@ def handle_unauthorized():
     # (flash the login message, redirect to the login view with ?next=).
     from flask_login.utils import login_url as _login_url
     if login_manager.login_message:
-        flash(login_manager.login_message, category=login_manager.login_message_category)
+        from src.utils.localization import translate
+        flash(translate('server.flash.loginRequired'), category=login_manager.login_message_category)
     return redirect(_login_url(url_for(login_manager.login_view), request.url))
 
 

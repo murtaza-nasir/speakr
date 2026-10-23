@@ -2328,5 +2328,97 @@
   "usageMeters": {
     "tokenTooltip": "Tokens IA ce mois-ci : {{used}} sur {{budget}}",
     "storageTooltip": "Stockage : {{used}} sur {{quota}}"
+  },
+  "server": {
+    "email": {
+      "common": {
+        "contactAdmin": "Pour toute question, veuillez contacter votre administrateur.",
+        "copyLink": "Ou copiez et collez ce lien dans votre navigateur :",
+        "footer": "Cet e-mail a été envoyé par Speakr. Pour toute question, veuillez contacter votre administrateur.",
+        "greeting": "Bonjour {{name}},",
+        "tagline": "Transcription audio par IA",
+        "textFooter": "Cet e-mail a été envoyé par Speakr - {{tagline}}."
+      },
+      "reset": {
+        "button": "Réinitialiser le mot de passe",
+        "expiry": "Ce lien expirera dans 1 heure.",
+        "heading": "Réinitialisez votre mot de passe",
+        "ignore": "Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet e-mail. Votre mot de passe restera inchangé.",
+        "intro": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte Speakr. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe.",
+        "subject": "Réinitialisez votre mot de passe - Speakr",
+        "textIntro": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte Speakr. Ouvrez le lien ci-dessous pour créer un nouveau mot de passe :"
+      },
+      "verify": {
+        "button": "Vérifier l'adresse e-mail",
+        "expiry": "Ce lien expirera dans 24 heures.",
+        "heading": "Vérifiez votre adresse e-mail",
+        "ignore": "Si vous n'avez pas créé de compte sur Speakr, vous pouvez ignorer cet e-mail.",
+        "intro": "Bienvenue sur Speakr ! Pour finaliser votre inscription et commencer à transcrire vos enregistrements audio, veuillez vérifier votre adresse e-mail.",
+        "subject": "Vérifiez votre adresse e-mail - Speakr",
+        "textLink": "Cliquez ici pour vérifier :"
+      }
+    },
+    "flash": {
+      "accountCreated": "Votre compte a été créé ! Vous pouvez maintenant vous connecter.",
+      "accountCreatedVerificationFailed": "Votre compte a été créé, mais l'e-mail de vérification n'a pas pu être envoyé. Veuillez contacter le support.",
+      "accountUpdated": "Informations du compte mises à jour !",
+      "adminAccessDenied": "Vous n'avez pas l'autorisation d'accéder à la page d'administration.",
+      "currentPasswordIncorrect": "Le mot de passe actuel est incorrect.",
+      "currentPasswordRequired": "Le mot de passe actuel est requis.",
+      "emailAlreadyVerified": "Votre adresse e-mail a déjà été vérifiée.",
+      "emailRequired": "L'adresse e-mail est requise.",
+      "emailServiceNotConfigured": "Le service d'e-mail n'est pas configuré.",
+      "emailVerificationDisabled": "La vérification de l'adresse e-mail n'est pas activée.",
+      "exportTemplateSeparators": "Le modèle de nom de fichier ne peut pas contenir de séparateurs de chemin (/ ou \\).",
+      "groupAccessDenied": "Vous n'avez pas l'autorisation d'accéder à la gestion des groupes.",
+      "inquireDisabled": "Le mode Inquire n'est pas activé sur ce serveur.",
+      "loginFailed": "Échec de la connexion. Veuillez vérifier l'adresse e-mail et le mot de passe.",
+      "loginRequired": "Veuillez vous connecter pour accéder à cette page.",
+      "newPasswordMismatch": "Le nouveau mot de passe et sa confirmation ne correspondent pas.",
+      "newPasswordRequired": "Le nouveau mot de passe et sa confirmation sont requis.",
+      "noLocalPassword": "Ce compte n'a pas de mot de passe local. Pour en ajouter un, utilisez le lien « Mot de passe oublié » de la page de connexion avec votre adresse e-mail ; l'e-mail de réinitialisation vous permettra de définir un mot de passe en toute sécurité.",
+      "passwordFieldsRequired": "Les deux champs de mot de passe sont requis.",
+      "passwordLoginDisabled": "La connexion par mot de passe est désactivée. Veuillez vous connecter avec le SSO.",
+      "passwordManagementDisabled": "La gestion des mots de passe est désactivée. Veuillez utiliser le SSO pour vous connecter.",
+      "passwordResetDone": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+      "passwordResetSentIfExists": "Si un compte existe avec cette adresse e-mail, un lien de réinitialisation du mot de passe a été envoyé.",
+      "passwordResetUnavailable": "La réinitialisation du mot de passe n'est pas disponible. Veuillez contacter l'administrateur.",
+      "passwordUpdated": "Votre mot de passe a été mis à jour !",
+      "passwordsDoNotMatch": "Les mots de passe ne correspondent pas.",
+      "registrationDisabled": "L'inscription est actuellement désactivée. Veuillez contacter l'administrateur.",
+      "registrationRestricted": "L'inscription est restreinte. Veuillez contacter l'administrateur.",
+      "resetLinkInvalid": "Le lien de réinitialisation du mot de passe est invalide ou a expiré.",
+      "ssoAlreadyLinked": "Ce compte SSO est déjà lié à un autre utilisateur.",
+      "ssoClientFailed": "Impossible d'initialiser le client SSO. Consultez les journaux du serveur.",
+      "ssoLinkUserNotFound": "Impossible de lier le compte : utilisateur introuvable.",
+      "ssoLinked": "Compte SSO lié avec succès.",
+      "ssoLoginFailed": "Échec de la connexion SSO. Veuillez réessayer.",
+      "ssoLoginIncomplete": "Impossible de finaliser la connexion SSO. Veuillez réessayer.",
+      "ssoMissingSubject": "La réponse SSO ne contenait pas d'identifiant de sujet.",
+      "ssoNotConfigured": "Le SSO n'est pas configuré. Veuillez contacter l'administrateur.",
+      "ssoNotLinked": "Votre compte n'est pas lié au SSO.",
+      "ssoUnlinkNoPassword": "Impossible de délier le SSO : aucun mot de passe n'est défini. Utilisez le lien « Mot de passe oublié » de la page de connexion avec votre adresse e-mail pour recevoir un lien permettant de définir un mot de passe.",
+      "ssoUnlinked": "Compte SSO délié avec succès.",
+      "useSsoLogin": "Ce compte utilise la connexion SSO. Veuillez vous connecter avec le SSO.",
+      "userNotFound": "Utilisateur introuvable.",
+      "verificationCooldown": "Veuillez patienter {{seconds}} secondes avant de demander un nouvel e-mail de vérification.",
+      "verificationLinkInvalid": "Le lien de vérification est invalide ou a expiré.",
+      "verificationResent": "Un nouvel e-mail de vérification a été envoyé.",
+      "verificationSendFailed": "Impossible d'envoyer l'e-mail de vérification. Veuillez réessayer plus tard.",
+      "verificationSentIfExists": "Si un compte existe avec cette adresse e-mail, un lien de vérification a été envoyé."
+    },
+    "password": {
+      "needsLowercase": "Le mot de passe doit contenir au moins une lettre minuscule.",
+      "needsNumber": "Le mot de passe doit contenir au moins un chiffre.",
+      "needsSpecial": "Le mot de passe doit contenir au moins un caractère spécial.",
+      "needsUppercase": "Le mot de passe doit contenir au moins une lettre majuscule.",
+      "tooShort": "Le mot de passe doit comporter au moins 8 caractères."
+    },
+    "sso": {
+      "autoRegistrationDisabled": "L'inscription automatique par SSO est désactivée",
+      "domainNotAllowed": "Le domaine de l'adresse e-mail n'est pas autorisé pour l'inscription par SSO",
+      "emailNotVerified": "L'adresse e-mail SSO n'est pas vérifiée",
+      "missingSubject": "Les informations utilisateur SSO ne contiennent pas 'sub'"
+    }
   }
 }

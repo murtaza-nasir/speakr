@@ -129,6 +129,8 @@ The Preferences tab is the home for display and editor behaviour settings that s
 
 Three language settings shape your Speakr experience. The interface language dropdown immediately transforms all menus, buttons, and messages to your chosen language; the transcription language field sets a default ISO 639-1 code that the recognition service uses to optimise accuracy when auto-detect is too slow or ambiguous; and the preferred output language controls the language of titles, summaries, and chat responses regardless of the source audio's language. Leaving the transcription language on **Auto-detect** is the right default for multilingual content.
 
+The interface language also applies to the notices shown after account actions, such as signing in, saving settings or changing a password, and to the email verification and password reset messages. Error messages returned by the API are still in English. Text without a translation for the selected language is shown in English.
+
 These settings used to live on the Account Information tab. They moved here so all preferences that affect your day-to-day Speakr experience live in one place.
 
 ### Timezone

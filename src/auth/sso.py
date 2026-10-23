@@ -7,6 +7,7 @@ from flask import current_app
 
 from src.database import db
 from src.models import User
+from src.utils.localization import translate
 
 # Keep a single OAuth client instance
 _oauth: Optional[OAuth] = None
@@ -182,13 +183,13 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
     name_claim = cfg["name_claim"]
 
     if not subject:
-        raise ValueError("SSO userinfo does not include 'sub'")
+        raise ValueError(translate('server.sso.missingSubject'))
 
     if not cfg["auto_register"] and not User.query.filter_by(sso_subject=subject).first():
-        raise PermissionError("SSO auto-registration is disabled")
+        raise PermissionError(translate('server.sso.autoRegistrationDisabled'))
 
     if email and not is_domain_allowed(email):
-        raise PermissionError("Email domain is not allowed for SSO sign-up")
+        raise PermissionError(translate('server.sso.domainNotAllowed'))
 
     # Existing by subject — already linked, so no email trust is involved.
     # This path is unaffected by require_verified_email (an already-linked user
@@ -204,7 +205,7 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
     # unverified email so a malicious/misconfigured IdP can't take over an
     # account (or provision under someone else's address) by asserting it.
     if email and cfg["require_verified_email"] and not _claim_is_truthy(userinfo.get("email_verified")):
-        raise PermissionError("SSO email address is not verified")
+        raise PermissionError(translate('server.sso.emailNotVerified'))
 
     # Existing by email: attach SSO
     if email:

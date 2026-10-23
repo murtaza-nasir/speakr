@@ -20,6 +20,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
+from src.utils.localization import translate
 from src.auth.sso import (
     init_sso_client,
     is_sso_enabled,
@@ -185,7 +186,7 @@ def register():
     allow_registration = os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
 
     if not allow_registration:
-        flash('Registration is currently disabled. Please contact the administrator.', 'danger')
+        flash(translate('server.flash.registrationDisabled'), 'danger')
         return redirect(url_for('auth.login'))
 
     if current_user.is_authenticated:
@@ -195,7 +196,7 @@ def register():
     if form.validate_on_submit():
         # Check if email domain is allowed
         if not is_registration_domain_allowed(form.email.data):
-            flash('Registration is restricted. Please contact the administrator.', 'danger')
+            flash(translate('server.flash.registrationRestricted'), 'danger')
             return render_template('register.html', title='Register', form=form)
 
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -225,10 +226,10 @@ def register():
                                      action='verification')
             else:
                 # Email failed to send, but account was created
-                flash('Your account has been created, but we could not send a verification email. Please contact support.', 'warning')
+                flash(translate('server.flash.accountCreatedVerificationFailed'), 'warning')
                 return redirect(url_for('auth.login'))
 
-        flash('Your account has been created! You can now log in.', 'success')
+        flash(translate('server.flash.accountCreated'), 'success')
         return redirect(url_for('auth.login'))
 
     return render_template('register.html', title='Register', form=form)
@@ -253,7 +254,7 @@ def login():
         if user and user.password:
             # Check if password login is disabled for non-admins
             if password_login_disabled and not user.is_admin:
-                flash('Password login is disabled. Please sign in with SSO.', 'warning')
+                flash(translate('server.flash.passwordLoginDisabled'), 'warning')
             elif bcrypt.check_password_hash(user.password, form.password.data):
                 # Check email verification if required
                 if is_email_verification_required() and not user.email_verified:
@@ -271,11 +272,11 @@ def login():
                     return redirect(url_for('recordings.index'))
                 return redirect(next_page) if next_page else redirect(url_for('recordings.index'))
             else:
-                flash('Login unsuccessful. Please check email and password.', 'danger')
+                flash(translate('server.flash.loginFailed'), 'danger')
         elif user and not user.password:
-            flash('This account uses SSO login. Please sign in with SSO.', 'warning')
+            flash(translate('server.flash.useSsoLogin'), 'warning')
         else:
-            flash('Login unsuccessful. Please check email and password.', 'danger')
+            flash(translate('server.flash.loginFailed'), 'danger')
 
     return render_template(
         'login.html',
@@ -291,12 +292,12 @@ def login():
 @rate_limit("10 per minute")
 def sso_login():
     if not is_sso_enabled():
-        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        flash(translate('server.flash.ssoNotConfigured'), 'danger')
         return redirect(url_for('auth.login'))
 
     oauth = get_sso_client() or init_sso_client(current_app)
     if not oauth:
-        flash('Failed to initialize SSO client. Check server logs.', 'danger')
+        flash(translate('server.flash.ssoClientFailed'), 'danger')
         return redirect(url_for('auth.login'))
 
     next_url = request.args.get('next')
@@ -314,12 +315,12 @@ def sso_login():
 @rate_limit("20 per minute")
 def sso_callback():
     if not is_sso_enabled():
-        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        flash(translate('server.flash.ssoNotConfigured'), 'danger')
         return redirect(url_for('auth.login'))
 
     oauth = get_sso_client() or init_sso_client(current_app)
     if not oauth:
-        flash('Failed to initialize SSO client. Check server logs.', 'danger')
+        flash(translate('server.flash.ssoClientFailed'), 'danger')
         return redirect(url_for('auth.login'))
 
     try:
@@ -327,12 +328,12 @@ def sso_callback():
         userinfo = resolve_userinfo(oauth, token)
     except Exception as e:
         current_app.logger.warning(f"SSO callback error: {e}")
-        flash('SSO login failed. Please try again.', 'danger')
+        flash(translate('server.flash.ssoLoginFailed'), 'danger')
         return redirect(url_for('auth.login'))
 
     subject = userinfo.get('sub')
     if not subject:
-        flash('SSO response did not include a subject identifier.', 'danger')
+        flash(translate('server.flash.ssoMissingSubject'), 'danger')
         return redirect(url_for('auth.login'))
 
     link_user_id = session.pop('sso_link_user_id', None)
@@ -343,19 +344,19 @@ def sso_callback():
     if link_user_id:
         target_user = db.session.get(User, int(link_user_id))
         if not target_user:
-            flash('Could not link account: user not found.', 'danger')
+            flash(translate('server.flash.ssoLinkUserNotFound'), 'danger')
             return redirect(url_for('auth.account'))
 
         existing = User.query.filter_by(sso_subject=subject).first()
         if existing and existing.id != target_user.id:
-            flash('This SSO account is already linked to another user.', 'danger')
+            flash(translate('server.flash.ssoAlreadyLinked'), 'danger')
             return redirect(url_for('auth.account'))
 
         update_user_profile_from_claims(target_user, userinfo)
         target_user.sso_provider = cfg.get('provider_name', 'SSO')
         target_user.sso_subject = subject
         db.session.commit()
-        flash('SSO account linked successfully.', 'success')
+        flash(translate('server.flash.ssoLinked'), 'success')
         return redirect(url_for('auth.account'))
 
     try:
@@ -368,7 +369,7 @@ def sso_callback():
         return redirect(url_for('auth.login'))
     except Exception as e:
         current_app.logger.warning(f"SSO login error: {e}")
-        flash('Could not complete SSO login. Please try again.', 'danger')
+        flash(translate('server.flash.ssoLoginIncomplete'), 'danger')
         return redirect(url_for('auth.login'))
 
     login_user(user, remember=remember)
@@ -382,7 +383,7 @@ def sso_callback():
 @login_required
 def sso_link():
     if not is_sso_enabled():
-        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        flash(translate('server.flash.ssoNotConfigured'), 'danger')
         return redirect(url_for('auth.account'))
 
     session['sso_link_user_id'] = current_user.id
@@ -395,22 +396,17 @@ def sso_link():
 @login_required
 def sso_unlink():
     if not current_user.sso_subject:
-        flash('Your account is not linked to SSO.', 'warning')
+        flash(translate('server.flash.ssoNotLinked'), 'warning')
         return redirect(url_for('auth.account'))
 
     if not current_user.password:
-        flash(
-            'Cannot unlink SSO: you have no password set. Use the Forgot Password '
-            'link on the login page with your email address to receive a reset link '
-            'that lets you set a password.',
-            'danger',
-        )
+        flash(translate('server.flash.ssoUnlinkNoPassword'), 'danger')
         return redirect(url_for('auth.account'))
 
     current_user.sso_provider = None
     current_user.sso_subject = None
     db.session.commit()
-    flash('SSO account unlinked successfully.', 'success')
+    flash(translate('server.flash.ssoUnlinked'), 'success')
     return redirect(url_for('auth.account'))
 
 
@@ -431,16 +427,16 @@ def verify_email(token):
     user_id = verify_email_token(token)
 
     if user_id is None:
-        flash('The verification link is invalid or has expired.', 'danger')
+        flash(translate('server.flash.verificationLinkInvalid'), 'danger')
         return redirect(url_for('auth.login'))
 
     user = db.session.get(User, user_id)
     if not user:
-        flash('User not found.', 'danger')
+        flash(translate('server.flash.userNotFound'), 'danger')
         return redirect(url_for('auth.login'))
 
     if user.email_verified:
-        flash('Your email has already been verified.', 'info')
+        flash(translate('server.flash.emailAlreadyVerified'), 'info')
         return redirect(url_for('auth.login'))
 
     # Verify the email
@@ -456,35 +452,35 @@ def verify_email(token):
 def resend_verification():
     """Resend verification email."""
     if not is_email_verification_enabled():
-        flash('Email verification is not enabled.', 'danger')
+        flash(translate('server.flash.emailVerificationDisabled'), 'danger')
         return redirect(url_for('auth.login'))
 
     if not is_smtp_configured():
-        flash('Email service is not configured.', 'danger')
+        flash(translate('server.flash.emailServiceNotConfigured'), 'danger')
         return redirect(url_for('auth.login'))
 
     # Get email from session (set during failed login) or form
     email = User.normalize_email(session.get('unverified_email') or request.form.get('email'))
 
     if not email:
-        flash('Email address is required.', 'danger')
+        flash(translate('server.flash.emailRequired'), 'danger')
         return redirect(url_for('auth.login'))
 
     user = User.find_by_email(email)
 
     if not user:
         # Don't reveal if user exists
-        flash('If an account exists with this email, a verification link has been sent.', 'info')
+        flash(translate('server.flash.verificationSentIfExists'), 'info')
         return redirect(url_for('auth.login'))
 
     if user.email_verified:
-        flash('Your email has already been verified.', 'info')
+        flash(translate('server.flash.emailAlreadyVerified'), 'info')
         return redirect(url_for('auth.login'))
 
     # Check cooldown
     can_resend, remaining = can_resend_verification(user)
     if not can_resend:
-        flash(f'Please wait {remaining} seconds before requesting another verification email.', 'warning')
+        flash(translate('server.flash.verificationCooldown', seconds=remaining), 'warning')
         return render_template('auth/check_email.html',
                              title='Check Your Email',
                              email=email,
@@ -492,9 +488,9 @@ def resend_verification():
                              show_resend=True)
 
     if send_verification_email(user):
-        flash('A new verification email has been sent.', 'success')
+        flash(translate('server.flash.verificationResent'), 'success')
     else:
-        flash('Failed to send verification email. Please try again later.', 'danger')
+        flash(translate('server.flash.verificationSendFailed'), 'danger')
 
     return render_template('auth/check_email.html',
                          title='Check Your Email',
@@ -513,14 +509,14 @@ def forgot_password():
         return redirect(url_for('recordings.index'))
 
     if not is_smtp_configured():
-        flash('Password reset is not available. Please contact the administrator.', 'warning')
+        flash(translate('server.flash.passwordResetUnavailable'), 'warning')
         return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
         email = User.normalize_email(request.form.get('email'))
 
         if not email:
-            flash('Email address is required.', 'danger')
+            flash(translate('server.flash.emailRequired'), 'danger')
             return render_template('auth/forgot_password.html', title='Forgot Password')
 
         user = User.find_by_email(email)
@@ -543,7 +539,7 @@ def forgot_password():
             if can_resend:
                 send_password_reset_email(user)
 
-        flash('If an account exists with this email, a password reset link has been sent.', 'info')
+        flash(translate('server.flash.passwordResetSentIfExists'), 'info')
         return render_template('auth/check_email.html',
                              title='Check Your Email',
                              email=email,
@@ -562,12 +558,12 @@ def reset_password(token):
     user_id = verify_reset_token(token)
 
     if user_id is None:
-        flash('The password reset link is invalid or has expired.', 'danger')
+        flash(translate('server.flash.resetLinkInvalid'), 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     user = db.session.get(User, user_id)
     if not user:
-        flash('User not found.', 'danger')
+        flash(translate('server.flash.userNotFound'), 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     # Single-use enforcement: the itsdangerous token is only signature+expiry
@@ -577,7 +573,7 @@ def reset_password(token):
     # reset request no longer matches and is rejected immediately.
     stored_token = user.password_reset_token or ''
     if not stored_token or not hmac.compare_digest(stored_token, token):
-        flash('The password reset link is invalid or has expired.', 'danger')
+        flash(translate('server.flash.resetLinkInvalid'), 'danger')
         return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
@@ -585,11 +581,11 @@ def reset_password(token):
         confirm_password = request.form.get('confirm_password')
 
         if not password or not confirm_password:
-            flash('Both password fields are required.', 'danger')
+            flash(translate('server.flash.passwordFieldsRequired'), 'danger')
             return render_template('auth/reset_password.html', title='Reset Password', token=token)
 
         if password != confirm_password:
-            flash('Passwords do not match.', 'danger')
+            flash(translate('server.flash.passwordsDoNotMatch'), 'danger')
             return render_template('auth/reset_password.html', title='Reset Password', token=token)
 
         # Validate password
@@ -613,7 +609,7 @@ def reset_password(token):
 
         db.session.commit()
 
-        flash('Your password has been reset. You can now log in with your new password.', 'success')
+        flash(translate('server.flash.passwordResetDone'), 'success')
         return redirect(url_for('auth.login'))
 
     return render_template('auth/reset_password.html', title='Reset Password', token=token)
@@ -809,7 +805,7 @@ def account():
                 error_msg = 'The filename template cannot contain path separators (/ or \\).'
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
                     return jsonify({'success': False, 'error': error_msg}), 400
-                flash(error_msg, 'danger')
+                flash(translate('server.flash.exportTemplateSeparators'), 'danger')
                 return redirect(url_for('auth.account'))
             # Empty string = use the default template (recording_{{id}})
             current_user.export_filename_template = template_value if template_value else None
@@ -821,7 +817,7 @@ def account():
             return jsonify({'success': True, 'message': 'Account details updated successfully!'})
 
         # Regular form submission with redirect
-        flash('Account details updated successfully!', 'success')
+        flash(translate('server.flash.accountUpdated'), 'success')
 
         # Preserve the active tab when redirecting
         if 'summary_prompt' in request.form:
@@ -1009,7 +1005,7 @@ def change_password():
     sso_config = get_sso_config()
     password_login_disabled = is_sso_enabled() and sso_config.get('disable_password_login', False)
     if password_login_disabled and not current_user.is_admin:
-        flash('Password management is disabled. Please use SSO to sign in.', 'warning')
+        flash(translate('server.flash.passwordManagementDisabled'), 'warning')
         return redirect(url_for('auth.account'))
 
     current_password = request.form.get('current_password')
@@ -1032,26 +1028,20 @@ def change_password():
     # We redirect them there instead of letting this endpoint set the
     # password without any second factor.
     if not has_existing_password:
-        flash(
-            'This account has no local password set. To add one, use the '
-            'Forgot Password link on the login page with your email '
-            'address; the reset email will let you set a password '
-            'securely.',
-            'warning',
-        )
+        flash(translate('server.flash.noLocalPassword'), 'warning')
         return redirect(url_for('auth.account'))
 
     # Validate form data - current password only required if user has one
     if has_existing_password and not current_password:
-        flash('Current password is required.', 'danger')
+        flash(translate('server.flash.currentPasswordRequired'), 'danger')
         return redirect(url_for('auth.account'))
 
     if not new_password or not confirm_password:
-        flash('New password and confirmation are required.', 'danger')
+        flash(translate('server.flash.newPasswordRequired'), 'danger')
         return redirect(url_for('auth.account'))
 
     if new_password != confirm_password:
-        flash('New password and confirmation do not match.', 'danger')
+        flash(translate('server.flash.newPasswordMismatch'), 'danger')
         return redirect(url_for('auth.account'))
 
     # Custom validation for new password
@@ -1064,7 +1054,7 @@ def change_password():
     # Verify current password only if user has one
     if has_existing_password:
         if not bcrypt.check_password_hash(current_user.password, current_password):
-            flash('Current password is incorrect.', 'danger')
+            flash(translate('server.flash.currentPasswordIncorrect'), 'danger')
             return redirect(url_for('auth.account'))
 
     # Update password
@@ -1079,9 +1069,12 @@ def change_password():
     remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
     current_user.end_all_sessions()
     db.session.commit()
-    login_user(current_user, remember=remembered)
+    # The real object, not the proxy: login_user stores what it is given as
+    # the request's user, and a stored proxy resolves to itself, so any later
+    # current_user access (the translated flash below) would recurse forever.
+    login_user(current_user._get_current_object(), remember=remembered)
 
-    flash('Your password has been updated!', 'success')
+    flash(translate('server.flash.passwordUpdated'), 'success')
     return redirect(url_for('auth.account'))
 
 

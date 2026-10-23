@@ -19,6 +19,8 @@ from typing import Optional
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask import current_app, url_for
 
+from src.utils.localization import match_language, translate
+
 logger = logging.getLogger(__name__)
 
 # Token expiry times
@@ -215,12 +217,14 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str = No
         return False
 
 
-def _get_email_template(content_html: str, content_text: str, subject: str) -> tuple[str, str]:
+def _get_email_template(content_html: str, content_text: str, subject: str,
+                        language: str = 'en') -> tuple[str, str]:
     """
-    Wrap content in the Speakr email template.
+    Wrap content in the Speakr email template, its own text in ``language``.
 
     Returns (html_body, text_body)
     """
+    tagline = translate('server.email.common.tagline', language)
     # Points at the image _send_email attaches. When the logo cannot be read
     # the attachment is skipped and this src resolves to nothing, so the alt
     # text carries the brand instead of a broken-image icon.
@@ -259,7 +263,7 @@ def _get_email_template(content_html: str, content_text: str, subject: str) -> t
                                 </tr>
                                 <tr>
                                     <td style="padding-top: 8px;">
-                                        <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 14px;">AI-Powered Audio Transcription</p>
+                                        <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 14px;">{_h(tagline)}</p>
                                     </td>
                                 </tr>
                             </table>
@@ -280,10 +284,10 @@ def _get_email_template(content_html: str, content_text: str, subject: str) -> t
                                 <tr>
                                     <td style="text-align: center;">
                                         <p style="color: #6b7280; font-size: 12px; margin: 0 0 8px 0;">
-                                            This email was sent by Speakr. If you have questions, please contact your administrator.
+                                            {_h(translate('server.email.common.footer', language))}
                                         </p>
                                         <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-                                            &copy; {datetime.utcnow().year} Speakr &middot; AI-Powered Audio Transcription
+                                            &copy; {datetime.utcnow().year} Speakr &middot; {_h(tagline)}
                                         </p>
                                     </td>
                                 </tr>
@@ -305,11 +309,16 @@ def _get_email_template(content_html: str, content_text: str, subject: str) -> t
 {content_text}
 
 ---
-This email was sent by Speakr - AI-Powered Audio Transcription.
-If you have questions, please contact your administrator.
+{translate('server.email.common.textFooter', language, tagline=tagline)}
+{translate('server.email.common.contactAdmin', language)}
 """
 
     return html_body, text_body
+
+
+def _recipient_language(user) -> str:
+    """The recipient's interface language, for mail sent outside their own session."""
+    return match_language(getattr(user, 'ui_language', None)) or 'en'
 
 
 def send_verification_email(user) -> bool:
@@ -340,43 +349,50 @@ def send_verification_email(user) -> bool:
     # Build verification URL
     verify_url = _account_link('auth.verify_email', token=token)
 
-    subject = "Verify your email address - Speakr"
+    language = _recipient_language(user)
+    subject = translate('server.email.verify.subject', language)
+    greeting = translate('server.email.common.greeting', language, name=user.username)
+    intro = translate('server.email.verify.intro', language)
+    button = translate('server.email.verify.button', language)
+    copy_link = translate('server.email.common.copyLink', language)
+    expiry = translate('server.email.verify.expiry', language)
+    ignore = translate('server.email.verify.ignore', language)
 
     content_html = f"""
-<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Verify Your Email Address</h2>
+<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">{_h(translate('server.email.verify.heading', language))}</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">{_h(greeting)}</p>
 
 <p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
-    Welcome to Speakr! To complete your registration and start transcribing your audio recordings, please verify your email address.
+    {_h(intro)}
 </p>
 
 <div style="text-align: center; margin: 32px 0;">
-    <a href="{verify_url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
+    <a href="{verify_url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">{_h(button)}</a>
 </div>
 
-<p style="color: #6b7280; font-size: 14px; margin: 24px 0 8px 0;">Or copy and paste this link into your browser:</p>
+<p style="color: #6b7280; font-size: 14px; margin: 24px 0 8px 0;">{_h(copy_link)}</p>
 <p style="word-break: break-all; color: #2563eb; font-size: 14px; margin: 0; padding: 12px; background-color: #f3f4f6; border-radius: 6px;">{verify_url}</p>
 
 <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
     <p style="color: #9ca3af; font-size: 13px; margin: 0;">
-        <strong>This link will expire in 24 hours.</strong><br>
-        If you didn't create an account on Speakr, you can safely ignore this email.
+        <strong>{_h(expiry)}</strong><br>
+        {_h(ignore)}
     </p>
 </div>
 """
 
-    content_text = f"""Hi {user.username},
+    content_text = f"""{greeting}
 
-Welcome to Speakr! To complete your registration and start transcribing your audio recordings, please verify your email address.
+{intro}
 
-Click here to verify: {verify_url}
+{translate('server.email.verify.textLink', language)} {verify_url}
 
-This link will expire in 24 hours.
+{expiry}
 
-If you didn't create an account on Speakr, you can safely ignore this email."""
+{ignore}"""
 
-    html_body, text_body = _get_email_template(content_html, content_text, subject)
+    html_body, text_body = _get_email_template(content_html, content_text, subject, language)
     return _send_email(user.email, subject, html_body, text_body)
 
 
@@ -404,22 +420,28 @@ def send_password_reset_email(user) -> bool:
     # Build reset URL
     reset_url = _account_link('auth.reset_password', token=token)
 
-    subject = "Reset your password - Speakr"
+    language = _recipient_language(user)
+    subject = translate('server.email.reset.subject', language)
+    greeting = translate('server.email.common.greeting', language, name=user.username)
+    button = translate('server.email.reset.button', language)
+    copy_link = translate('server.email.common.copyLink', language)
+    expiry = translate('server.email.reset.expiry', language)
+    ignore = translate('server.email.reset.ignore', language)
 
     content_html = f"""
-<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Reset Your Password</h2>
+<h2 style="color: #1f2937; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">{_h(translate('server.email.reset.heading', language))}</h2>
 
-<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">Hi {_h(user.username)},</p>
+<p style="color: #374151; margin: 0 0 16px 0; font-size: 16px;">{_h(greeting)}</p>
 
 <p style="color: #374151; margin: 0 0 24px 0; font-size: 16px;">
-    We received a request to reset your Speakr account password. Click the button below to create a new password.
+    {_h(translate('server.email.reset.intro', language))}
 </p>
 
 <div style="text-align: center; margin: 32px 0;">
-    <a href="{reset_url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reset Password</a>
+    <a href="{reset_url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">{_h(button)}</a>
 </div>
 
-<p style="color: #6b7280; font-size: 14px; margin: 24px 0 8px 0;">Or copy and paste this link into your browser:</p>
+<p style="color: #6b7280; font-size: 14px; margin: 24px 0 8px 0;">{_h(copy_link)}</p>
 <p style="word-break: break-all; color: #2563eb; font-size: 14px; margin: 0; padding: 12px; background-color: #f3f4f6; border-radius: 6px;">{reset_url}</p>
 
 <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
@@ -430,8 +452,8 @@ def send_password_reset_email(user) -> bool:
             </td>
             <td>
                 <p style="color: #9ca3af; font-size: 13px; margin: 0;">
-                    <strong style="color: #6b7280;">This link will expire in 1 hour.</strong><br>
-                    If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                    <strong style="color: #6b7280;">{_h(expiry)}</strong><br>
+                    {_h(ignore)}
                 </p>
             </td>
         </tr>
@@ -439,17 +461,17 @@ def send_password_reset_email(user) -> bool:
 </div>
 """
 
-    content_text = f"""Hi {user.username},
+    content_text = f"""{greeting}
 
-We received a request to reset your Speakr account password. Click the link below to create a new password:
+{translate('server.email.reset.textIntro', language)}
 
 {reset_url}
 
-This link will expire in 1 hour.
+{expiry}
 
-If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged."""
+{ignore}"""
 
-    html_body, text_body = _get_email_template(content_html, content_text, subject)
+    html_body, text_body = _get_email_template(content_html, content_text, subject, language)
     return _send_email(user.email, subject, html_body, text_body)
 
 
