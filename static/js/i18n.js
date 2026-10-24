@@ -136,6 +136,21 @@ class I18n {
     }
 
     /**
+     * The interface locale as a language tag for Intl and the toLocale*String
+     * methods, so dates and numbers follow the selected language (#480).
+     * Undefined, which Intl reads as the browser default, when the stored code
+     * is not a valid tag: Intl throws on one, and a date should still render.
+     * @returns {string|undefined}
+     */
+    getIntlLocale() {
+        try {
+            return Intl.getCanonicalLocales(this.currentLocale)[0];
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    /**
      * Get available locales
      * @returns {Array} List of available locale codes
      */
@@ -240,7 +255,7 @@ class I18n {
      */
     formatDate(date, options = {}) {
         const d = date instanceof Date ? date : new Date(date);
-        return new Intl.DateTimeFormat(this.currentLocale, options).format(d);
+        return new Intl.DateTimeFormat(this.getIntlLocale(), options).format(d);
     }
 
     /**
@@ -250,7 +265,7 @@ class I18n {
      * @returns {string} Formatted number string
      */
     formatNumber(number, options = {}) {
-        return new Intl.NumberFormat(this.currentLocale, options).format(number);
+        return new Intl.NumberFormat(this.getIntlLocale(), options).format(number);
     }
 
     /**

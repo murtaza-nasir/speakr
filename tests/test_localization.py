@@ -212,3 +212,73 @@ def test_every_server_key_in_english_is_used():
     used = _server_keys_used()
     unused = sorted(k for k in _flatten(_load('en')) if k.startswith('server.') and k not in used)
     assert not unused, f'server keys in en.json that no translate() call uses: {unused}'
+
+
+# Dates, times and numbers follow the interface language (#480). A
+# toLocale*String call or an Intl formatter that passes no locale, undefined,
+# [], navigator.language or a hardcoded 'en-US' uses the browser language or
+# English whatever the user selected. Numbers count too: the scanner cannot tell
+# a Date receiver from a number, and both should follow the interface locale.
+# Intl.DateTimeFormat().resolvedOptions() is time zone detection, not
+# formatting, and stays allowed.
+LOCALE_OPT_OUT = re.compile(
+    r"""(?:\.toLocale(?:Date|Time)?String"""
+    r"""|\bIntl\.(?:DateTimeFormat|NumberFormat|RelativeTimeFormat|PluralRules|ListFormat|DisplayNames))"""
+    r"""\(\s*(?:\)(?!\s*\.resolvedOptions\b)|undefined\b|\[\s*\]|navigator\.languages?\b|(['"])en-US\1)""")
+
+
+def _locale_opt_outs():
+    found = []
+    paths = list(_walk('static/js', '.js', skip=('.test.js',))) + list(_walk('templates', '.html'))
+    for path in paths:
+        text = open(path, encoding='utf-8').read()
+        for m in LOCALE_OPT_OUT.finditer(text):
+            line = text.count('\n', 0, m.start()) + 1
+            found.append(f'{os.path.relpath(path, REPO)}:{line}: {m.group(0)}')
+    return found
+
+
+def test_no_date_or_number_formatting_ignores_the_interface_locale():
+    offenders = _locale_opt_outs()
+    assert not offenders, (
+        'locale-less date/number formatting (pass window.i18n?.getIntlLocale(), '
+        'or uiLocale() in a Vue template):\n' + '\n'.join(f'  {o}' for o in offenders))
+
+
+@pytest.mark.parametrize('call', [
+    'x.toLocaleDateString(undefined, {})',
+    'x.toLocaleTimeString([], {})',
+    'x.toLocaleTimeString([ ], {})',
+    "x.toLocaleDateString('en-US')",
+    'x.toLocaleDateString("en-US", {})',
+    'x.toLocaleDateString()',
+    'x.toLocaleTimeString()',
+    'n.toLocaleString()',
+    'x.toLocaleString(\n    undefined, opts)',
+    'x.toLocaleString(navigator.language)',
+    'new Intl.NumberFormat(undefined, { notation: "compact" })',
+    'new Intl.DateTimeFormat().format(d)',
+    "new Intl.RelativeTimeFormat('en-US')",
+])
+def test_locale_scanner_matches_the_opt_outs(call):
+    """A broken regex would make the guard above pass while checking nothing."""
+    assert LOCALE_OPT_OUT.search(call), call
+
+
+@pytest.mark.parametrize('call', [
+    'x.toLocaleDateString(window.i18n?.getIntlLocale(), {})',
+    'x.toLocaleString(uiLocale())',
+    'x.toLocaleTimeString(locale, {})',
+    'x.toLocaleDateString(undefinedLocale)',
+    "x.toLocaleDateString('de', {})",
+    "x.toLocaleDateString('en-GB')",
+    'new Intl.NumberFormat(uiLocale(), {})',
+    'Intl.DateTimeFormat().resolvedOptions().timeZone',
+    'Intl.DateTimeFormat()\n    .resolvedOptions().timeZone',
+    'x.toLocaleUpperCase()',
+    'a.localeCompare(b)',
+])
+def test_locale_scanner_allows_a_resolved_locale(call):
+    """The guard targets the opt-out, not every call: an explicit locale, time
+    zone detection and unrelated locale methods pass."""
+    assert not LOCALE_OPT_OUT.search(call), call

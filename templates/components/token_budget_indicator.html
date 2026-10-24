@@ -5,7 +5,7 @@
      :class="tokenBudget.has_budget && tokenBudget.storage && tokenBudget.storage.has_quota ? 'usage-meters--stacked' : ''">
     <div v-if="tokenBudget.has_budget"
          class="usage-meter flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-default"
-         :title="t('usageMeters.tokenTooltip', { used: (tokenBudget.usage || 0).toLocaleString(), budget: (tokenBudget.budget || 0).toLocaleString() })">
+         :title="t('usageMeters.tokenTooltip', { used: (tokenBudget.usage || 0).toLocaleString(uiLocale()), budget: (tokenBudget.budget || 0).toLocaleString(uiLocale()) })">
         <i class="fas fa-coins text-[10px]"
            :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}"></i>
         <span :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}">${ tokenBudget.percentage }%</span>

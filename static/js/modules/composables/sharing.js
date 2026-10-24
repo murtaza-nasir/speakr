@@ -49,21 +49,25 @@ export function useSharing(state, utils) {
             const diffMs = now - date;
             const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+            // The interface locale picks the words and the 12/24-hour clock (#480).
+            const locale = window.i18n?.getIntlLocale();
+            const time = () => date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+
             // If today
             if (diffDays === 0) {
-                return 'Today at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                return (utils.t ? utils.t('sidebar.today') : 'Today') + ', ' + time();
             }
             // If yesterday
             else if (diffDays === 1) {
-                return 'Yesterday at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                return (utils.t ? utils.t('sidebar.yesterday') : 'Yesterday') + ', ' + time();
             }
             // If within last week
             else if (diffDays < 7) {
-                return date.toLocaleDateString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true });
+                return date.toLocaleDateString(locale, { weekday: 'long', hour: 'numeric', minute: '2-digit' });
             }
             // Otherwise show full date
             else {
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
             }
         } catch (e) {
             console.error('Error formatting date:', e);

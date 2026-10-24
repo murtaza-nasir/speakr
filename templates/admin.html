@@ -345,7 +345,7 @@
                             <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                                 <div>
                                     <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.created')}</p>
-                                    <p class="font-semibold text-[var(--text-primary)]" v-text="overview ? overview.activity.created.toLocaleString() : '—'"></p>
+                                    <p class="font-semibold text-[var(--text-primary)]" v-text="overview ? overview.activity.created.toLocaleString(uiLocale()) : '—'"></p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.medianProcessing')}</p>
@@ -369,7 +369,7 @@
                                             <dt class="flex items-center gap-1.5 text-[var(--text-secondary)] truncate">
                                                 <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" :style="{ background: s.color }"></span><span v-text="s.label"></span>
                                             </dt>
-                                            <dd class="font-semibold text-[var(--text-primary)]" v-text="(s.value || 0).toLocaleString()"></dd>
+                                            <dd class="font-semibold text-[var(--text-primary)]" v-text="(s.value || 0).toLocaleString(uiLocale())"></dd>
                                         </div>
                                     </template>
                                 </dl>
@@ -493,9 +493,9 @@
                                                 <span class="block truncate max-w-[16rem] text-[var(--text-primary)]" :title="m.model" v-text="m.model || '—'"></span>
                                                 <span class="text-xs text-[var(--text-muted)]" v-text="t('adminDashboard.statsPage.kind.' + m.kind)"></span>
                                             </td>
-                                            <td class="py-1.5 pr-3 text-right tabular-nums" v-text="m.requests.toLocaleString()"></td>
+                                            <td class="py-1.5 pr-3 text-right tabular-nums" v-text="m.requests.toLocaleString(uiLocale())"></td>
                                             <td class="py-1.5 pr-3 text-right tabular-nums whitespace-nowrap"
-                                                v-text="m.kind === 'transcription' ? t('adminDashboard.statsPage.minutesShort', { count: Math.round(m.minutes).toLocaleString() }) : formatCompact(m.tokens)"></td>
+                                                v-text="m.kind === 'transcription' ? t('adminDashboard.statsPage.minutesShort', { count: Math.round(m.minutes).toLocaleString(uiLocale()) }) : formatCompact(m.tokens)"></td>
                                             <td class="py-1.5 text-right tabular-nums whitespace-nowrap" v-text="formatModelCost(m)"></td>
                                         </tr>
                                     </tbody>
@@ -529,7 +529,7 @@
                                            :class="(u.token_pct || 0) >= 100 || (u.minutes_pct || 0) >= 100 || (u.storage_pct || 0) >= 100 ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-warn-strong)]'"
                                            :title="t('adminDashboard.statsPage.nearBudget')"></i>
                                     </td>
-                                    <td class="py-2 px-3 text-right tabular-nums" v-text="u.recordings.toLocaleString()"></td>
+                                    <td class="py-2 px-3 text-right tabular-nums" v-text="u.recordings.toLocaleString(uiLocale())"></td>
                                     <td class="py-2 px-3 text-right min-w-[7rem]">
                                         <span class="tabular-nums whitespace-nowrap" v-text="formatFileSize(u.storage)"></span><span v-if="u.storage_quota" class="text-xs text-[var(--text-muted)] whitespace-nowrap"> / <span v-text="formatFileSize(u.storage_quota)"></span></span>
                                         <div v-if="u.storage_quota" class="w-full bg-[var(--bg-secondary)] rounded-full h-1 mt-1">
@@ -544,7 +544,7 @@
                                         </div>
                                     </td>
                                     <td class="py-2 px-3 text-right min-w-[8rem]">
-                                        <span class="tabular-nums" v-text="u.minutes_month.toLocaleString()"></span><span v-if="u.minutes_budget" class="text-xs text-[var(--text-muted)]"> / <span v-text="u.minutes_budget.toLocaleString()"></span></span>
+                                        <span class="tabular-nums" v-text="u.minutes_month.toLocaleString(uiLocale())"></span><span v-if="u.minutes_budget" class="text-xs text-[var(--text-muted)]"> / <span v-text="u.minutes_budget.toLocaleString(uiLocale())"></span></span>
                                         <div v-if="u.minutes_budget" class="w-full bg-[var(--bg-secondary)] rounded-full h-1 mt-1">
                                             <div class="h-1 rounded-full" :class="budgetBarClass(u.minutes_pct)" :style="{ width: Math.min(u.minutes_pct || 0, 100) + '%' }"></div>
                                         </div>
@@ -687,13 +687,13 @@
                                                 <i class="fas fa-infinity mr-1"></i> ${t('adminDashboard.noLimit')}
                                             </span>
                             <span v-else-if="setting.key === 'transcript_length_limit'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.characters')}
+                                ${ Number(setting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.characters')}
                             </span>
                             <span v-else-if="setting.key === 'max_file_size_mb'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.megabytes')}
+                                ${ Number(setting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.megabytes')}
                             </span>
                             <span v-else-if="setting.key === 'asr_timeout_seconds'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.seconds')}
+                                ${ Number(setting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')}
                             </span>
                                             <span v-else-if="setting.value && setting.value.length > 80" class="text-[var(--text-muted)] italic">${ setting.value.substring(0, 80) }...</span>
                                             <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
@@ -1170,7 +1170,7 @@ Summarization Instructions:
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-sm text-[var(--text-muted)]">Embedding API tokens</p>
-                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_tokens || 0).toLocaleString() }</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_tokens || 0).toLocaleString(uiLocale()) }</p>
                                     <p class="text-xs text-[var(--text-muted)] mt-1">${ inquireStatus.embedding_usage && inquireStatus.embedding_usage.request_count || 0 } API requests</p>
                                 </div>
                                 <i class="fas fa-coins text-3xl text-[var(--text-accent)] opacity-50"></i>
@@ -1291,7 +1291,7 @@ Summarization Instructions:
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
-                                            ${ parseInstant(group.created_at).toLocaleDateString() }
+                                            ${ parseInstant(group.created_at).toLocaleDateString(uiLocale()) }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                             <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" title="Manage Members">
@@ -1423,7 +1423,7 @@ Summarization Instructions:
                         <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.tokenBudgetHelp')}</p>
                         <div v-if="editingUser.monthly_token_budget && editingUser.current_token_usage !== undefined" class="mt-2">
                             <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
-                                <span>${t('adminDashboard.currentUsage')}: ${ editingUser.current_token_usage?.toLocaleString() || 0 } ${t('adminDashboard.tokens')}</span>
+                                <span>${t('adminDashboard.currentUsage')}: ${ editingUser.current_token_usage?.toLocaleString(uiLocale()) || 0 } ${t('adminDashboard.tokens')}</span>
                                 <span :class="{'text-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100}">${ editingUser.token_usage_percentage || 0 }%</span>
                             </div>
                             <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
@@ -1523,13 +1523,13 @@ Summarization Instructions:
                                 ${t('adminDashboard.noLimit')}
                             </span>
                             <span v-else-if="editingSetting.key === 'transcript_length_limit'">
-                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.characters')}
+                                ${ Number(editingSetting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.characters')}
                             </span>
                             <span v-else-if="editingSetting.key === 'max_file_size_mb'">
-                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.megabytes')}
+                                ${ Number(editingSetting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.megabytes')}
                             </span>
                             <span v-else-if="editingSetting.key === 'asr_timeout_seconds'">
-                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.seconds')} (${ Math.round(Number(editingSetting.value) / 60) } ${t('adminDashboard.minutes')})
+                                ${ Number(editingSetting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')} (${ Math.round(Number(editingSetting.value) / 60) } ${t('adminDashboard.minutes')})
                             </span>
                             <span v-else>${ editingSetting.value || t('adminDashboard.notSet') }</span>
                         </div>
@@ -1598,7 +1598,7 @@ Summarization Instructions:
                                     </div>
                                 </div>
                                 <div class="text-sm text-[var(--text-muted)]">
-                                    ${t('adminDashboard.total')}: <span class="font-medium text-[var(--text-primary)]">${ (settingTimeoutMinutes * 60 + settingTimeoutSeconds).toLocaleString() } ${t('adminDashboard.seconds')}</span>
+                                    ${t('adminDashboard.total')}: <span class="font-medium text-[var(--text-primary)]">${ (settingTimeoutMinutes * 60 + settingTimeoutSeconds).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')}</span>
                                 </div>
                                 <small class="text-[var(--text-muted)]">${t('adminDashboard.timeoutRecommendation')}</small>
                             </div>
@@ -2505,8 +2505,8 @@ Summarization Instructions:
 
                 const formatCompact = (n) => {
                     n = Number(n) || 0;
-                    if (n < 1000) return n.toLocaleString();
-                    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+                    if (n < 1000) return n.toLocaleString(window.i18n?.getIntlLocale());
+                    return new Intl.NumberFormat(window.i18n?.getIntlLocale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n);
                 };
                 const formatCost = (v) => {
                     v = Number(v) || 0;
@@ -2533,7 +2533,7 @@ Summarization Instructions:
                 const formatDay = (iso) => {
                     if (!iso) return '';
                     const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
                 };
                 const _change = (cur, prev) => {
                     if (!prev) return cur ? _t('adminDashboard.statsPage.newInRange') : _t('adminDashboard.statsPage.noChange');
@@ -2547,16 +2547,16 @@ Summarization Instructions:
                     const costLocal = o.ai_cost.current === 0 && overview.value.usage.models_local;
                     return [
                         { key: 'recordings', icon: 'fas fa-file-audio', label: _t('adminDashboard.statsPage.recordings'),
-                          value: o.recordings.current.toLocaleString(), note: _change(o.recordings.current, o.recordings.previous) },
+                          value: o.recordings.current.toLocaleString(window.i18n?.getIntlLocale()), note: _change(o.recordings.current, o.recordings.previous) },
                         { key: 'audio', icon: 'fas fa-microphone', label: _t('adminDashboard.statsPage.audioTranscribed'),
                           value: formatMinutes(o.audio_minutes.current), note: _change(o.audio_minutes.current, o.audio_minutes.previous) },
                         { key: 'requests', icon: 'fas fa-comments', label: _t('adminDashboard.statsPage.aiRequests'),
-                          value: o.ai_requests.current.toLocaleString(), note: _change(o.ai_requests.current, o.ai_requests.previous) },
+                          value: o.ai_requests.current.toLocaleString(window.i18n?.getIntlLocale()), note: _change(o.ai_requests.current, o.ai_requests.previous) },
                         { key: 'cost', icon: 'fas fa-dollar-sign', label: _t('adminDashboard.statsPage.aiCost'),
                           value: costLocal ? _t('adminDashboard.tokenUsage.local') : formatCost(o.ai_cost.current),
                           note: costLocal ? '' : _change(o.ai_cost.current, o.ai_cost.previous) },
                         { key: 'users', icon: 'fas fa-users', label: _t('adminDashboard.statsPage.activeUsers'),
-                          value: o.active_users.current.toLocaleString(), note: _t('adminDashboard.statsPage.ofTotal', { total: o.active_users.total }) },
+                          value: o.active_users.current.toLocaleString(window.i18n?.getIntlLocale()), note: _t('adminDashboard.statsPage.ofTotal', { total: o.active_users.total }) },
                         { key: 'storage', icon: 'fas fa-database', label: _t('adminDashboard.totalStorage'),
                           value: formatFileSize(o.storage), note: _t('adminDashboard.statsPage.allRecordings', { count: stats.value.total_recordings || 0 }) },
                     ];
@@ -2626,6 +2626,7 @@ Summarization Instructions:
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            locale: window.i18n?.getIntlLocale(),
                             plugins: {
                                 legend: { display: legend, position: 'bottom', labels: { color: textColor, boxWidth: 10, boxHeight: 10 } },
                                 tooltip: { mode: 'index', intersect: false,
@@ -2642,7 +2643,7 @@ Summarization Instructions:
                 };
                 const _dayLabel = (iso) => {
                     const [y, m, d] = String(iso).split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short', day: 'numeric' });
                 };
                 const renderStatsCharts = () => {
                     const o = overview.value;
@@ -2669,7 +2670,7 @@ Summarization Instructions:
 
                     const months = o.usage.monthly;
                     const monthLabels = months.map((m, i) => {
-                        const name = new Date(m.year, m.month - 1, 1).toLocaleDateString(undefined, { month: 'short' });
+                        const name = new Date(m.year, m.month - 1, 1).toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short' });
                         return i === 0 || m.month === 1 ? `${name} ${m.year}` : name;
                     });
                     _bar('statsMonthlyCostChart', monthLabels, [
@@ -2836,7 +2837,7 @@ Summarization Instructions:
                     // Guard against unparseable input so we never render the
                     // literal "Invalid Date Invalid Date".
                     if (isNaN(date.getTime())) return t('adminDashboard.never');
-                    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale());
                 };
                 
                 const getSettingDescription = (setting) => {
@@ -4053,6 +4054,8 @@ Summarization Instructions:
                 return {
                     // i18n - bind to i18n instance to maintain context
                     t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                    // The interface locale for toLocale*String calls in the template (#480)
+                    uiLocale: () => window.i18n?.getIntlLocale(),
 
                     // State
                     isTeamAdminOnly,

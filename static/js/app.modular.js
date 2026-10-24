@@ -2061,7 +2061,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (isNaN(date.getTime())) {
                         return dateString;
                     }
-                    return date.toLocaleDateString(undefined, {
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale(), {
                         year: 'numeric', month: 'short', day: 'numeric',
                         hour: '2-digit', minute: '2-digit'
                     });
@@ -2086,9 +2086,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const now = new Date();
                     const isCurrentYear = date.getFullYear() === now.getFullYear();
                     if (isCurrentYear) {
-                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                        return date.toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short', day: 'numeric' });
                     }
-                    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
                 } catch (e) {
                     return dateString;
                 }
@@ -2151,9 +2151,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!dateString) return '';
                 const date = new Date(dateString);
                 if (timeOnly) {
-                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return date.toLocaleTimeString(window.i18n?.getIntlLocale(), { hour: '2-digit', minute: '2-digit' });
                 }
-                return date.toLocaleString([], {
+                return date.toLocaleString(window.i18n?.getIntlLocale(), {
                     weekday: 'short', month: 'short', day: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -4486,6 +4486,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Utilities
                 formatFileSize,
+                // The interface locale for toLocale*String calls in templates (#480)
+                uiLocale: () => window.i18n?.getIntlLocale(),
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,

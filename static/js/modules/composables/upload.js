@@ -897,7 +897,7 @@ export function useUpload(state, utils) {
             if (data.duplicate_warning) {
                 const warning = data.duplicate_warning;
                 const existingDate = warning.existing_created_at
-                    ? utils.parseServerInstant(warning.existing_created_at).toLocaleDateString()
+                    ? utils.parseServerInstant(warning.existing_created_at).toLocaleDateString(window.i18n?.getIntlLocale())
                     : '';
                 const existingName = warning.existing_title || 'Unknown';
                 showToast(

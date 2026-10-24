@@ -22,7 +22,7 @@
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
                 <div class="t-label">${ t('stats.words') }</div>
-                <div class="t-subhead mt-1" v-text="recordingStats.total.words.toLocaleString()"></div>
+                <div class="t-subhead mt-1" v-text="recordingStats.total.words.toLocaleString(uiLocale())"></div>
             </div>
         </div>
 
@@ -60,7 +60,7 @@
                         </div>
                         <div>
                             <div class="t-label">${ t('stats.words') }</div>
-                            <div class="text-sm font-medium mt-0.5" v-text="row.words.toLocaleString()"></div>
+                            <div class="text-sm font-medium mt-0.5" v-text="row.words.toLocaleString(uiLocale())"></div>
                         </div>
                     </div>
                     <div v-if="row.wpm" class="mt-2 pt-2 border-t border-[var(--border-secondary)] flex items-center justify-between t-meta">

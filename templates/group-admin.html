@@ -177,7 +177,7 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
-                                            ${ parseInstant(group.created_at).toLocaleDateString() }
+                                            ${ parseInstant(group.created_at).toLocaleDateString(uiLocale()) }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                             <button @click="openManageTeamModal(group)" class="text-blue-500 hover:text-blue-700" title="Manage Members">
@@ -1532,6 +1532,8 @@
                 return {
                     // i18n - bind to i18n instance to maintain context
                     t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                    // The interface locale for toLocale*String calls in the template (#480)
+                    uiLocale: () => window.i18n?.getIntlLocale(),
 
                     // State
                     isTeamAdminOnly,

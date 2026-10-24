@@ -1197,7 +1197,7 @@
                             s = s.replace(' ', 'T') + 'Z';
                         }
                         const date = new Date(s);
-                        return date.toLocaleDateString();
+                        return date.toLocaleDateString(window.i18n?.getIntlLocale());
                     };
 
                     // For INSTANT timestamps (e.g. share created_at): backend sends
@@ -1209,7 +1209,7 @@
                             s = s.replace(' ', 'T') + 'Z';
                         }
                         const date = new Date(s);
-                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return date.toLocaleDateString(window.i18n?.getIntlLocale()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale(), { hour: '2-digit', minute: '2-digit' });
                     };
 
                     // Smart scrolling functions
@@ -1313,6 +1313,8 @@
                     return {
                         // i18n - bind to i18n instance to maintain context
                         t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                        // components/header-controls.html formats numbers with this (#480)
+                        uiLocale: () => window.i18n?.getIntlLocale(),
 
                         // Shared header controls (components/header-controls.html)
                         ...headerNotifications,

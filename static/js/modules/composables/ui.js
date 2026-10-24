@@ -909,7 +909,7 @@ export function useUI(state, utils, processedTranscription) {
                 hour: '2-digit',
                 minute: '2-digit'
             };
-            return date.toLocaleString(undefined, options);
+            return date.toLocaleString(window.i18n?.getIntlLocale(), options);
         } catch (e) {
             return dateTimeStr;
         }

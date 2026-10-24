@@ -19,7 +19,7 @@
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
                 <div class="t-label">${ t('stats.words') }</div>
-                <div class="t-heading mt-1">${ recordingStats.total.words.toLocaleString() }</div>
+                <div class="t-heading mt-1">${ recordingStats.total.words.toLocaleString(uiLocale()) }</div>
             </div>
         </div>
 
@@ -57,7 +57,7 @@
                         <td class="py-2 px-3 font-mono text-right">${ row.durationLabel }</td>
                         <td class="py-2 px-3 text-right">${ row.pct.toFixed(1) }%</td>
                         <td class="py-2 px-3 text-right">${ row.turns }</td>
-                        <td class="py-2 px-3 text-right">${ row.words.toLocaleString() }</td>
+                        <td class="py-2 px-3 text-right">${ row.words.toLocaleString(uiLocale()) }</td>
                         <td class="py-2 px-3 text-right">${ row.wpm || '—' }</td>
                     </tr>
                     <!-- Silence row -->

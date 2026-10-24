@@ -49,7 +49,7 @@ export function useTokens({ showToast, setGlobalError }) {
     const formatTokenDate = (dateString) => {
         if (!dateString) return 'Never';
         const date = parseServerInstant(dateString);
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        return date.toLocaleDateString(window.i18n?.getIntlLocale()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale());
     };
 
     const getTokenStatus = (token) => {

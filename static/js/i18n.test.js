@@ -108,3 +108,39 @@ describe('i18n bootstrap', () => {
         expect(events.map(e => e.type)).toEqual(['i18nReady', 'localeChanged']);
     });
 });
+
+describe('interface locale for dates and numbers (#480)', () => {
+    const at = new Date(Date.UTC(2026, 9, 17, 14, 30));
+
+    it('returns the selected language as an Intl tag', () => {
+        for (const code of ['en', 'de', 'es', 'fr', 'ru', 'zh', 'pt-BR']) {
+            const { i18n } = load({ bootstrap: { locale: code, translations: { [code]: {}, en: EN } } });
+            expect(i18n.getIntlLocale()).toBe(code);
+            expect(() => new Intl.DateTimeFormat(i18n.getIntlLocale())).not.toThrow();
+        }
+    });
+
+    it('falls back to the browser default for a code Intl rejects', () => {
+        const { i18n } = load({ bootstrap: { locale: 'en', translations: { en: EN } }, saved: 'not a tag!' });
+        expect(i18n.getLocale()).toBe('not a tag!');
+        expect(i18n.getIntlLocale()).toBeUndefined();
+        expect(() => i18n.formatDate(at, { timeZone: 'UTC' })).not.toThrow();
+        expect(() => i18n.formatNumber(1.5)).not.toThrow();
+    });
+
+    it('formats dates and numbers in the interface language, not the browser one', () => {
+        const { i18n } = load({ bootstrap: { locale: 'de', translations: { de: DE, en: EN } } });
+        const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' };
+        expect(i18n.formatDate(at, opts)).toBe('17. Okt.');
+        expect(at.toLocaleDateString(i18n.getIntlLocale(), opts)).toBe('17. Okt.');
+        expect(at.toLocaleTimeString(i18n.getIntlLocale(), { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' })).toBe('14:30');
+        expect(i18n.formatNumber(1234.5)).toBe('1.234,5');
+    });
+
+    it('keeps the English formats for English', () => {
+        const { i18n } = load({ bootstrap: { locale: 'en', translations: { en: EN } } });
+        expect(i18n.formatDate(at, { month: 'short', day: 'numeric', timeZone: 'UTC' })).toBe('Oct 17');
+        expect(at.toLocaleTimeString(i18n.getIntlLocale(), { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' })).toMatch(/^2:30\sPM$/); // ICU may use a narrow no-break space
+        expect(i18n.formatNumber(1234.5)).toBe('1,234.5');
+    });
+});
