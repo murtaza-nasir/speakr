@@ -2024,7 +2024,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // Localized number and units (#481)
-            const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
+            // Without i18n.js (not loaded yet) the page still shows a size.
+            const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
 
             // Parse a backend INSTANT timestamp. The backend stores/serializes
             // naive UTC (no zone designator); new Date() would parse a zoneless
@@ -2056,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (isNaN(date.getTime())) {
                         return dateString;
                     }
-                    return date.toLocaleDateString(window.i18n?.getIntlLocale(), {
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale?.(), {
                         year: 'numeric', month: 'short', day: 'numeric',
                         hour: '2-digit', minute: '2-digit'
                     });
@@ -2081,9 +2082,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const now = new Date();
                     const isCurrentYear = date.getFullYear() === now.getFullYear();
                     if (isCurrentYear) {
-                        return date.toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short', day: 'numeric' });
+                        return date.toLocaleDateString(window.i18n?.getIntlLocale?.(), { month: 'short', day: 'numeric' });
                     }
-                    return date.toLocaleDateString(window.i18n?.getIntlLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale?.(), { year: 'numeric', month: 'short', day: 'numeric' });
                 } catch (e) {
                     return dateString;
                 }
@@ -2146,9 +2147,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!dateString) return '';
                 const date = new Date(dateString);
                 if (timeOnly) {
-                    return date.toLocaleTimeString(window.i18n?.getIntlLocale(), { hour: '2-digit', minute: '2-digit' });
+                    return date.toLocaleTimeString(window.i18n?.getIntlLocale?.(), { hour: '2-digit', minute: '2-digit' });
                 }
-                return date.toLocaleString(window.i18n?.getIntlLocale(), {
+                return date.toLocaleString(window.i18n?.getIntlLocale?.(), {
                     weekday: 'short', month: 'short', day: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -4482,7 +4483,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Utilities
                 formatFileSize,
                 // The interface locale for toLocale*String calls in templates (#480)
-                uiLocale: () => window.i18n?.getIntlLocale(),
+                uiLocale: () => window.i18n?.getIntlLocale?.(),
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,

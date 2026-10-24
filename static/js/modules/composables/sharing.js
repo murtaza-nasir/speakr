@@ -50,7 +50,7 @@ export function useSharing(state, utils) {
             const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
             // The interface locale picks the words and the 12/24-hour clock (#480).
-            const locale = window.i18n?.getIntlLocale();
+            const locale = window.i18n?.getIntlLocale?.();
             const time = () => date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 
             // If today

@@ -90,7 +90,7 @@ async function mountGlobalHeader() {
             return {
                 t,
                 // components/header-controls.html formats numbers with this (#480)
-                uiLocale: () => window.i18n?.getIntlLocale(),
+                uiLocale: () => window.i18n?.getIntlLocale?.(),
                 ...notifications,
                 isUserMenuOpen,
                 tokenBudget,

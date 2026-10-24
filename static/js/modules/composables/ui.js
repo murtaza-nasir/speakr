@@ -318,7 +318,8 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     // Format file size: localized number and units (#481)
-    const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
+    // Without i18n.js (not loaded yet) the page still shows a size.
+    const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
 
     // Format status
     const formatStatus = (status) => {
@@ -903,7 +904,7 @@ export function useUI(state, utils, processedTranscription) {
                 hour: '2-digit',
                 minute: '2-digit'
             };
-            return date.toLocaleString(window.i18n?.getIntlLocale(), options);
+            return date.toLocaleString(window.i18n?.getIntlLocale?.(), options);
         } catch (e) {
             return dateTimeStr;
         }

@@ -241,7 +241,7 @@ def _locale_opt_outs():
 def test_no_date_or_number_formatting_ignores_the_interface_locale():
     offenders = _locale_opt_outs()
     assert not offenders, (
-        'locale-less date/number formatting (pass window.i18n?.getIntlLocale(), '
+        'locale-less date/number formatting (pass window.i18n?.getIntlLocale?.(), '
         'or uiLocale() in a Vue template):\n' + '\n'.join(f'  {o}' for o in offenders))
 
 
@@ -266,7 +266,7 @@ def test_locale_scanner_matches_the_opt_outs(call):
 
 
 @pytest.mark.parametrize('call', [
-    'x.toLocaleDateString(window.i18n?.getIntlLocale(), {})',
+    'x.toLocaleDateString(window.i18n?.getIntlLocale?.(), {})',
     'x.toLocaleString(uiLocale())',
     'x.toLocaleTimeString(locale, {})',
     'x.toLocaleDateString(undefinedLocale)',
@@ -340,6 +340,35 @@ def test_file_size_call_sites_delegate_to_i18n(path):
     """Positive control: removing a copy must not leave the page without one."""
     text = open(os.path.join(REPO, path), encoding='utf-8').read()
     assert 'window.i18n.formatFileSize(' in text, path
+    # Guarded: the page still renders before i18n.js has loaded.
+    assert 'window.i18n?.formatFileSize ?' in text, path
+
+
+# static/sw.js serves i18n.js stale-while-revalidate while the ES modules load
+# fresh, so a page can run against an older i18n.js. A method that file may
+# lack is called as window.i18n?.method?.(): getIntlLocale() is new in #480.
+UNGUARDED_I18N_CALL = re.compile(r'\bi18n\??\.getIntlLocale\(')
+
+
+def test_new_i18n_methods_are_called_guarded():
+    offenders = []
+    paths = list(_walk('static/js', '.js', skip=('.test.js',))) + list(_walk('templates', '.html'))
+    for path in paths:
+        rel = os.path.relpath(path, REPO)
+        if rel == 'static/js/i18n.js':
+            continue
+        text = open(path, encoding='utf-8').read()
+        offenders += [f'{rel}:{text.count(chr(10), 0, m.start()) + 1}' for m in UNGUARDED_I18N_CALL.finditer(text)]
+    assert not offenders, 'call as window.i18n?.getIntlLocale?.():\n' + '\n'.join(f'  {o}' for o in offenders)
+
+
+@pytest.mark.parametrize('snippet,matches', [
+    ('x.toLocaleString(window.i18n?.getIntlLocale())', True),
+    ('x.toLocaleString(window.i18n.getIntlLocale())', True),
+    ('x.toLocaleString(window.i18n?.getIntlLocale?.())', False),
+])
+def test_unguarded_i18n_call_scanner(snippet, matches):
+    assert bool(UNGUARDED_I18N_CALL.search(snippet)) is matches
 
 
 def test_every_locale_has_every_file_size_unit():

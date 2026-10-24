@@ -67,7 +67,7 @@
 
     function fmt(dt) {
         if (!dt) return '—';
-        try { return parseServerInstant(dt).toLocaleString(window.i18n?.getIntlLocale()); } catch (_) { return String(dt); }
+        try { return parseServerInstant(dt).toLocaleString(window.i18n?.getIntlLocale?.()); } catch (_) { return String(dt); }
     }
 
     function statusBadge(wh) {

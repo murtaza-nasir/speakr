@@ -3252,8 +3252,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const activeFilter = searchInput ? searchInput.value : '';
 
                 speakersTabData.forEach(speaker => {
-                    const createdDate = parseInstant(speaker.created_at).toLocaleDateString(window.i18n?.getIntlLocale());
-                    const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString(window.i18n?.getIntlLocale());
+                    const createdDate = parseInstant(speaker.created_at).toLocaleDateString(window.i18n?.getIntlLocale?.());
+                    const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString(window.i18n?.getIntlLocale?.());
 
                     // Voice profile status
                     const hasVoiceProfile = speaker.embedding_count && speaker.embedding_count > 0;
@@ -4354,7 +4354,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (!dateString) return '';
                 const d = parseInstant(dateString);
                 if (isNaN(d.getTime())) return dateString;
-                return d.toLocaleString(window.i18n?.getIntlLocale());
+                return d.toLocaleString(window.i18n?.getIntlLocale?.());
             }
 
             // ---- AJAX form submission for the settings forms --------
@@ -4606,8 +4606,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const div = document.createElement('div');
             div.className = 'flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-accent)] transition-colors duration-200';
             
-            const createdDate = parseInstant(speaker.created_at).toLocaleDateString(window.i18n?.getIntlLocale());
-            const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString(window.i18n?.getIntlLocale());
+            const createdDate = parseInstant(speaker.created_at).toLocaleDateString(window.i18n?.getIntlLocale?.());
+            const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString(window.i18n?.getIntlLocale?.());
             
             div.innerHTML = `
                 <div class="flex-1">
@@ -6274,8 +6274,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 activeTokensList.innerHTML = activeTokens.map(token => {
                     const statusClass = getTokenStatusClass(token);
                     const status = getTokenStatus(token);
-                    const createdDate = parseInstant(token.created_at).toLocaleDateString(window.i18n?.getIntlLocale());
-                    const lastUsed = token.last_used_at ? parseInstant(token.last_used_at).toLocaleDateString(window.i18n?.getIntlLocale()) : null;
+                    const createdDate = parseInstant(token.created_at).toLocaleDateString(window.i18n?.getIntlLocale?.());
+                    const lastUsed = token.last_used_at ? parseInstant(token.last_used_at).toLocaleDateString(window.i18n?.getIntlLocale?.()) : null;
 
                     return `
                         <div class="bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200">
@@ -6319,7 +6319,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     ${token.expires_at ? `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
                                             <i class="fas fa-hourglass-half"></i>
-                                            Expires ${parseInstant(token.expires_at).toLocaleDateString(window.i18n?.getIntlLocale())}
+                                            Expires ${parseInstant(token.expires_at).toLocaleDateString(window.i18n?.getIntlLocale?.())}
                                         </span>
                                     ` : `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
@@ -6352,7 +6352,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 s = s.replace(' ', 'T') + 'Z';
             }
             const date = new Date(s);
-            return date.toLocaleDateString(window.i18n?.getIntlLocale()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale());
+            return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
         }
 
         function getTokenStatus(token) {

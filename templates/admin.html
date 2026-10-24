@@ -2505,8 +2505,8 @@ Summarization Instructions:
 
                 const formatCompact = (n) => {
                     n = Number(n) || 0;
-                    if (n < 1000) return n.toLocaleString(window.i18n?.getIntlLocale());
-                    return new Intl.NumberFormat(window.i18n?.getIntlLocale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+                    if (n < 1000) return n.toLocaleString(window.i18n?.getIntlLocale?.());
+                    return new Intl.NumberFormat(window.i18n?.getIntlLocale?.(), { notation: 'compact', maximumFractionDigits: 1 }).format(n);
                 };
                 const formatCost = (v) => {
                     v = Number(v) || 0;
@@ -2533,7 +2533,7 @@ Summarization Instructions:
                 const formatDay = (iso) => {
                     if (!iso) return '';
                     const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale?.(), { day: 'numeric', month: 'short', year: 'numeric' });
                 };
                 const _change = (cur, prev) => {
                     if (!prev) return cur ? _t('adminDashboard.statsPage.newInRange') : _t('adminDashboard.statsPage.noChange');
@@ -2547,16 +2547,16 @@ Summarization Instructions:
                     const costLocal = o.ai_cost.current === 0 && overview.value.usage.models_local;
                     return [
                         { key: 'recordings', icon: 'fas fa-file-audio', label: _t('adminDashboard.statsPage.recordings'),
-                          value: o.recordings.current.toLocaleString(window.i18n?.getIntlLocale()), note: _change(o.recordings.current, o.recordings.previous) },
+                          value: o.recordings.current.toLocaleString(window.i18n?.getIntlLocale?.()), note: _change(o.recordings.current, o.recordings.previous) },
                         { key: 'audio', icon: 'fas fa-microphone', label: _t('adminDashboard.statsPage.audioTranscribed'),
                           value: formatMinutes(o.audio_minutes.current), note: _change(o.audio_minutes.current, o.audio_minutes.previous) },
                         { key: 'requests', icon: 'fas fa-comments', label: _t('adminDashboard.statsPage.aiRequests'),
-                          value: o.ai_requests.current.toLocaleString(window.i18n?.getIntlLocale()), note: _change(o.ai_requests.current, o.ai_requests.previous) },
+                          value: o.ai_requests.current.toLocaleString(window.i18n?.getIntlLocale?.()), note: _change(o.ai_requests.current, o.ai_requests.previous) },
                         { key: 'cost', icon: 'fas fa-dollar-sign', label: _t('adminDashboard.statsPage.aiCost'),
                           value: costLocal ? _t('adminDashboard.tokenUsage.local') : formatCost(o.ai_cost.current),
                           note: costLocal ? '' : _change(o.ai_cost.current, o.ai_cost.previous) },
                         { key: 'users', icon: 'fas fa-users', label: _t('adminDashboard.statsPage.activeUsers'),
-                          value: o.active_users.current.toLocaleString(window.i18n?.getIntlLocale()), note: _t('adminDashboard.statsPage.ofTotal', { total: o.active_users.total }) },
+                          value: o.active_users.current.toLocaleString(window.i18n?.getIntlLocale?.()), note: _t('adminDashboard.statsPage.ofTotal', { total: o.active_users.total }) },
                         { key: 'storage', icon: 'fas fa-database', label: _t('adminDashboard.totalStorage'),
                           value: formatFileSize(o.storage), note: _t('adminDashboard.statsPage.allRecordings', { count: stats.value.total_recordings || 0 }) },
                     ];
@@ -2626,7 +2626,7 @@ Summarization Instructions:
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            locale: window.i18n?.getIntlLocale(),
+                            locale: window.i18n?.getIntlLocale?.(),
                             plugins: {
                                 legend: { display: legend, position: 'bottom', labels: { color: textColor, boxWidth: 10, boxHeight: 10 } },
                                 tooltip: { mode: 'index', intersect: false,
@@ -2643,7 +2643,7 @@ Summarization Instructions:
                 };
                 const _dayLabel = (iso) => {
                     const [y, m, d] = String(iso).split('-').map(Number);
-                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short', day: 'numeric' });
+                    return new Date(y, m - 1, d).toLocaleDateString(window.i18n?.getIntlLocale?.(), { month: 'short', day: 'numeric' });
                 };
                 const renderStatsCharts = () => {
                     const o = overview.value;
@@ -2670,7 +2670,7 @@ Summarization Instructions:
 
                     const months = o.usage.monthly;
                     const monthLabels = months.map((m, i) => {
-                        const name = new Date(m.year, m.month - 1, 1).toLocaleDateString(window.i18n?.getIntlLocale(), { month: 'short' });
+                        const name = new Date(m.year, m.month - 1, 1).toLocaleDateString(window.i18n?.getIntlLocale?.(), { month: 'short' });
                         return i === 0 || m.month === 1 ? `${name} ${m.year}` : name;
                     });
                     _bar('statsMonthlyCostChart', monthLabels, [
@@ -2837,7 +2837,7 @@ Summarization Instructions:
                     // Guard against unparseable input so we never render the
                     // literal "Invalid Date Invalid Date".
                     if (isNaN(date.getTime())) return t('adminDashboard.never');
-                    return date.toLocaleDateString(window.i18n?.getIntlLocale()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale());
+                    return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
                 };
                 
                 const getSettingDescription = (setting) => {
@@ -3498,7 +3498,8 @@ Summarization Instructions:
                 };
 
                 // Localized number and units (#481)
-                const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
+                // Without i18n.js (not loaded yet) the page still shows a size.
+                const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
                 
                 const toggleDarkMode = () => {
                     isDarkMode.value = !isDarkMode.value;
@@ -4048,7 +4049,7 @@ Summarization Instructions:
                     // i18n - bind to i18n instance to maintain context
                     t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
                     // The interface locale for toLocale*String calls in the template (#480)
-                    uiLocale: () => window.i18n?.getIntlLocale(),
+                    uiLocale: () => window.i18n?.getIntlLocale?.(),
 
                     // State
                     isTeamAdminOnly,

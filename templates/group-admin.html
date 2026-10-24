@@ -1472,7 +1472,8 @@
                 };
 
                 // Localized number and units (#481)
-                const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
+                // Without i18n.js (not loaded yet) the page still shows a size.
+                const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
                 
                 const toggleDarkMode = () => {
                     isDarkMode.value = !isDarkMode.value;
@@ -1526,7 +1527,7 @@
                     // i18n - bind to i18n instance to maintain context
                     t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
                     // The interface locale for toLocale*String calls in the template (#480)
-                    uiLocale: () => window.i18n?.getIntlLocale(),
+                    uiLocale: () => window.i18n?.getIntlLocale?.(),
 
                     // State
                     isTeamAdminOnly,
