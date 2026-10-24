@@ -1031,7 +1031,8 @@
     "bytes": "{{count}} Б",
     "gigabytes": "{{count}} ГБ",
     "kilobytes": "{{count}} КБ",
-    "megabytes": "{{count}} МБ"
+    "megabytes": "{{count}} МБ",
+    "terabytes": "{{count}} ТБ"
   },
   "floatingChat": {
     "dockLeft": "Закрепить слева",

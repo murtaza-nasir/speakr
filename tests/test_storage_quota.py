@@ -249,7 +249,22 @@ def test_the_header_meter_reports_storage_only_with_a_quota(world):
     _login(client, u)
     storage = client.get("/api/user/token-budget").get_json()["storage"]
     assert storage["has_quota"] is True and storage["percentage"] == 90.0
-    assert storage["used_label"] == "9.0 MB" and storage["quota_label"] == "10.0 MB"
+    assert storage["used_label"] == "9 MB" and storage["quota_label"] == "10 MB"
     free = world["user"]()
     _login(client, free)
     assert client.get("/api/user/token-budget").get_json()["storage"]["has_quota"] is False
+
+
+def test_storage_figures_follow_the_interface_language(world):
+    """The header meter and the Account page format sizes for the user's
+    interface language (#481): a decimal comma in German."""
+    u = world["user"](quota_mb=10)
+    u.ui_language = "de"
+    db.session.commit()
+    world["rec"](u, int(1.5 * MB))
+    client = app.test_client()
+    _login(client, u)
+    storage = client.get("/api/user/token-budget").get_json()["storage"]
+    assert storage["used_label"] == "1,5 MB" and storage["quota_label"] == "10 MB"
+    page = client.get("/account").get_data(as_text=True)
+    assert '"used": "1,5 MB", "quota": "10 MB"' in page

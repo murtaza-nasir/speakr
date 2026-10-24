@@ -15,6 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.version import get_version
+from src.utils.localization import format_file_size
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
 from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
@@ -101,7 +102,8 @@ def save_user_preferences():
 
 
 def _storage_meter(user):
-    """Storage against the quota; has_quota is False without one."""
+    """Storage against the quota; has_quota is False without one. The labels
+    are in the interface language's number format (#481)."""
     try:
         from src.services.storage_quota import usage
         u = usage(user)
@@ -109,14 +111,11 @@ def _storage_meter(user):
         current_app.logger.warning(f"Could not read storage usage for user {user.id}: {e}")
         return {'has_quota': False}
 
-    def label(n):
-        return f"{n / 1073741824:.1f} GB" if n >= 1073741824 else f"{n / 1048576:.1f} MB"
-
     if not u['quota_bytes']:
         return {'has_quota': False, 'used_bytes': u['used_bytes']}
     return {'has_quota': True, 'used_bytes': u['used_bytes'], 'quota_bytes': u['quota_bytes'],
-            'percentage': u['percentage'], 'used_label': label(u['used_bytes']),
-            'quota_label': label(u['quota_bytes'])}
+            'percentage': u['percentage'], 'used_label': format_file_size(u['used_bytes']),
+            'quota_label': format_file_size(u['quota_bytes'])}
 
 
 @system_bp.route('/api/user/token-budget', methods=['GET'])

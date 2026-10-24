@@ -282,3 +282,69 @@ def test_locale_scanner_allows_a_resolved_locale(call):
     """The guard targets the opt-out, not every call: an explicit locale, time
     zone detection and unrelated locale methods pass."""
     assert not LOCALE_OPT_OUT.search(call), call
+
+
+# File sizes have one formatter per side (#481): i18n.formatFileSize() in the
+# browser and format_file_size() in src/utils/localization.py, both with the
+# fileSize.* units. A local copy with its own unit list ('B', 'KB', ...) is how
+# the dot decimal and "0 Bytes" came back on five pages.
+LOCAL_SIZE_UNITS = re.compile(r"""\[\s*['"](?:B|Bytes)['"]\s*,\s*['"]KB['"]""")
+SIZE_FORMATTER_OWNERS = {'static/js/i18n.js', 'src/utils/localization.py'}
+
+
+def _local_size_formatters():
+    found = []
+    paths = (list(_walk('static/js', '.js', skip=('.test.js',))) + list(_walk('templates', '.html'))
+             + list(_walk('src', '.py')))
+    for path in paths:
+        rel = os.path.relpath(path, REPO)
+        if rel in SIZE_FORMATTER_OWNERS:
+            continue
+        text = open(path, encoding='utf-8').read()
+        for m in LOCAL_SIZE_UNITS.finditer(text):
+            found.append(f'{rel}:{text.count(chr(10), 0, m.start()) + 1}')
+    return found
+
+
+# The API's own byte labels (used_human in /api/v1) stay English on purpose:
+# API clients parse them, and they do not render in the interface.
+API_SIZE_FORMATTERS = {'src/api/api_v1.py'}
+
+
+def test_no_local_file_size_formatter():
+    offenders = [o for o in _local_size_formatters() if o.split(':')[0] not in API_SIZE_FORMATTERS]
+    assert not offenders, (
+        'file sizes formatted outside i18n.formatFileSize / format_file_size:\n'
+        + '\n'.join(f'  {o}' for o in offenders))
+
+
+@pytest.mark.parametrize('snippet,matches', [
+    ("const sizes = ['B', 'KB', 'MB', 'GB'];", True),
+    ('const sizes = ["Bytes", "KB", "MB", "GB", "TB"];', True),
+    ("for unit in ['B', 'KB', 'MB', 'GB']:", True),
+    ("const units = ['bytes', 'kilobytes', 'megabytes'];", False),
+    ("t('fileSize.kilobytes')", False),
+])
+def test_size_formatter_scanner(snippet, matches):
+    """Same guard against a regex that silently matches nothing."""
+    assert bool(LOCAL_SIZE_UNITS.search(snippet)) is matches
+
+
+@pytest.mark.parametrize('path', [
+    'static/js/app.modular.js',
+    'static/js/modules/composables/ui.js',
+    'templates/admin.html',
+    'templates/group-admin.html',
+])
+def test_file_size_call_sites_delegate_to_i18n(path):
+    """Positive control: removing a copy must not leave the page without one."""
+    text = open(os.path.join(REPO, path), encoding='utf-8').read()
+    assert 'window.i18n.formatFileSize(' in text, path
+
+
+def test_every_locale_has_every_file_size_unit():
+    units = {'bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes'}
+    for lang in _languages():
+        table = _load(lang).get('fileSize', {})
+        assert set(table) == units, f'{lang}.json fileSize has {sorted(table)}'
+        assert all('{{count}}' in v for v in table.values()), f'{lang}.json fileSize lacks {{{{count}}}}'

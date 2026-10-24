@@ -317,14 +317,8 @@ export function useUI(state, utils, processedTranscription) {
         }
     };
 
-    // Format file size
-    const formatFileSize = (bytes) => {
-        if (!bytes) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
+    // Format file size: localized number and units (#481)
+    const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
 
     // Format status
     const formatStatus = (status) => {

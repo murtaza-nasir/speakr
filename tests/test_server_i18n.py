@@ -16,7 +16,9 @@ import pytest
 from src.app import app, db
 from src.models import User
 from src.services import email as email_service
-from src.utils.localization import match_language, request_language, translate
+from src.utils.localization import (
+    format_file_size, format_number, match_language, request_language, translate,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +65,43 @@ def test_translate_unknown_language_falls_back_to_english():
 ])
 def test_match_language_maps_region_codes(code, expected):
     assert match_language(code) == expected
+
+
+# ---------------------------------------------------------------------------
+# format_number() / format_file_size(): the browser's i18n.formatNumber and
+# i18n.formatFileSize on the server (#481), same cases as static/js/i18n.test.js
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('lang,expected', [
+    ('en', '1.4 MB'), ('zh', '1.4 MB'), ('de', '1,4 MB'), ('es', '1,4 MB'),
+    ('fr', '1,4 MB'), ('pt-BR', '1,4 MB'), ('ru', '1,4 МБ'),
+])
+def test_file_size_uses_the_languages_decimal_separator(lang, expected):
+    assert format_file_size(1464812, lang) == expected
+
+
+@pytest.mark.parametrize('size,expected', [
+    (0, '0 B'), (None, '0 B'), (-5, '0 B'), (1023, '1023 B'), (1024, '1 KB'),
+    (1536000, '1,5 MB'), (9 * 1024 ** 2, '9 MB'), (1024 ** 2 - 1, '1 MB'),
+    (1024 ** 3 - 1024, '1 GB'), (1024 ** 3, '1 GB'), (int(2.5 * 1024 ** 4), '2,5 TB'),
+    (1024 ** 5, '1024 TB'),
+])
+def test_file_size_units_and_rounding(size, expected):
+    assert format_file_size(size, 'de') == expected
+
+
+def test_format_number_groups_and_rounds_in_the_language():
+    assert format_number(1234567, 'en') == '1,234,567'
+    assert format_number(1234567, 'de') == '1.234.567'
+    assert format_number(1234.25, 'de', max_fraction_digits=1) == '1.234,3'  # half up
+    assert format_number(9.0, 'en', max_fraction_digits=1) == '9'
+    assert format_number(1234, 'xx') == '1,234'  # unknown language: English
+
+
+def test_format_number_uses_the_request_language_by_default():
+    with app.test_request_context('/', headers={'Accept-Language': 'de'}):
+        assert format_number(1234.5, max_fraction_digits=1) == '1.234,5'
+        assert format_file_size(1536000) == '1,5 MB'
 
 
 def test_outside_a_request_the_language_is_english():

@@ -10,6 +10,7 @@ import json
 import os
 import re
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
@@ -263,6 +264,11 @@ def request_language() -> str:
     return request.accept_languages.best_match(available_languages()) or FALLBACK_LANGUAGE
 
 
+def _resolve_language(language: Optional[str]) -> str:
+    """A shipped locale for the given code, else for the current request."""
+    return (match_language(language) if language else request_language()) or FALLBACK_LANGUAGE
+
+
 def _lookup(catalog: dict, key: str) -> Optional[str]:
     value = catalog
     for part in key.split('.'):
@@ -284,7 +290,7 @@ def translate(key: str, language: Optional[str] = None, **params) -> str:
     Returns:
         The string in that language, else in English, else the key itself.
     """
-    language = (match_language(language) if language else request_language()) or FALLBACK_LANGUAGE
+    language = _resolve_language(language)
     text = _lookup(load_locale(language), key)
     if text is None and language != FALLBACK_LANGUAGE:
         text = _lookup(load_locale(FALLBACK_LANGUAGE), key)
@@ -293,6 +299,43 @@ def translate(key: str, language: Optional[str] = None, **params) -> str:
         return key
     return _PLACEHOLDER_RE.sub(
         lambda m: str(params[m.group(1)]) if m.group(1) in params else m.group(0), text)
+
+
+def format_number(value, language: Optional[str] = None, max_fraction_digits: int = 0,
+                  grouping: bool = True) -> str:
+    """
+    A number in the interface language's notation, as i18n.formatNumber()
+    does in the browser: '1,234.5' in English, '1.234,5' in German (#481).
+
+    Rounds half up to at most max_fraction_digits and drops trailing zeros.
+    """
+    from babel import Locale
+    from babel.numbers import format_decimal
+    language = _resolve_language(language)
+    rounded = Decimal(value).quantize(Decimal(1).scaleb(-max_fraction_digits), rounding=ROUND_HALF_UP)
+    pattern = ('#,##0' if grouping else '0') + ('.' + '#' * max_fraction_digits if max_fraction_digits else '')
+    return format_decimal(rounded, format=pattern, locale=Locale.parse(language, sep='-'))
+
+
+_FILE_SIZE_UNITS = ('bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes')
+
+
+def format_file_size(size, language: Optional[str] = None) -> str:
+    """
+    A byte count with the fileSize.* units, as i18n.formatFileSize() does in
+    the browser: 1024-based, at most one decimal, e.g. '1.5 MB' or '1,5 MB'.
+    """
+    size = max(Decimal(size or 0), Decimal(0))
+    unit = 0
+    while unit < len(_FILE_SIZE_UNITS) - 1 and size >= 1024 ** (unit + 1):
+        unit += 1
+    # 1023.97 KB would round to "1024 KB"; that is 1 MB.
+    if unit < len(_FILE_SIZE_UNITS) - 1 and (size / 1024 ** unit).quantize(
+            Decimal('0.1'), rounding=ROUND_HALF_UP) >= 1024:
+        unit += 1
+    # No grouping, as in the browser: German "1.023 B" reads as 1.023.
+    count = format_number(size / 1024 ** unit, language, max_fraction_digits=1, grouping=False)
+    return translate(f'fileSize.{_FILE_SIZE_UNITS[unit]}', language, count=count)
 
 
 def clear_locale_cache():

@@ -144,3 +144,45 @@ describe('interface locale for dates and numbers (#480)', () => {
         expect(i18n.formatNumber(1234.5)).toBe('1,234.5');
     });
 });
+
+describe('file sizes (#481)', () => {
+    // The shipped catalogs, so a missing fileSize.* key fails here too.
+    const catalog = (code) => JSON.parse(readFileSync(fileURLToPath(new URL(`../locales/${code}.json`, import.meta.url)), 'utf8'));
+    const sizes = (code) => {
+        const translations = { en: catalog('en') };
+        translations[code] = catalog(code);
+        return load({ bootstrap: { locale: code, translations } }).i18n;
+    };
+
+    it('uses the decimal separator of the interface language', () => {
+        expect(sizes('de').formatFileSize(1464812)).toBe('1,4 MB');
+        expect(sizes('en').formatFileSize(1464812)).toBe('1.4 MB');
+        for (const code of ['es', 'fr', 'pt-BR']) expect(sizes(code).formatFileSize(1464812)).toBe('1,4 MB');
+        expect(sizes('zh').formatFileSize(1464812)).toBe('1.4 MB');
+        expect(sizes('ru').formatFileSize(1464812)).toBe('1,4 МБ');
+    });
+
+    it('keeps zero, whole units and the unit boundaries', () => {
+        const de = sizes('de');
+        expect(de.formatFileSize(0)).toBe('0 B');
+        expect(de.formatFileSize(1023)).toBe('1023 B');
+        expect(de.formatFileSize(1024)).toBe('1 KB');
+        expect(de.formatFileSize(1536000)).toBe('1,5 MB');
+        expect(de.formatFileSize(1024 ** 3)).toBe('1 GB');
+        expect(de.formatFileSize(2.5 * 1024 ** 4)).toBe('2,5 TB');
+        expect(de.formatFileSize(1024 ** 5)).toBe('1024 TB');
+    });
+
+    it('rounds to one decimal and moves up a unit when the rounding reaches 1024', () => {
+        const en = sizes('en');
+        expect(en.formatFileSize(1530000)).toBe('1.5 MB'); // 1.459 MB
+        expect(en.formatFileSize(9 * 1024 ** 2)).toBe('9 MB');
+        expect(en.formatFileSize(1024 ** 2 - 1)).toBe('1 MB'); // 1023.999 KB
+        expect(en.formatFileSize(1024 ** 3 - 1024)).toBe('1 GB'); // 1023.999 MB
+    });
+
+    it('reads a missing or invalid size as zero', () => {
+        const en = sizes('en');
+        for (const value of [null, undefined, NaN, 'x', -5]) expect(en.formatFileSize(value)).toBe('0 B');
+    });
+});

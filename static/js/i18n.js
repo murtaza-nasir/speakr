@@ -269,24 +269,22 @@ class I18n {
     }
 
     /**
-     * Format file size with appropriate unit
+     * Format file size with appropriate unit, at most one decimal, in the
+     * interface language's number format: "1.5 MB", "1,5 MB" in German (#481).
+     * src/utils/localization.py format_file_size() is the server-side twin.
      * @param {number} bytes - Size in bytes
      * @returns {string} Formatted file size
      */
     formatFileSize(bytes) {
-        const units = ['bytes', 'kilobytes', 'megabytes', 'gigabytes'];
-        const unitValues = [1, 1024, 1048576, 1073741824];
-        
-        let unitIndex = 0;
-        for (let i = unitValues.length - 1; i >= 0; i--) {
-            if (bytes >= unitValues[i]) {
-                unitIndex = i;
-                break;
-            }
-        }
-        
-        const value = Math.round(bytes / unitValues[unitIndex] * 10) / 10;
-        return this.t(`fileSize.${units[unitIndex]}`, { count: value });
+        const units = ['bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes'];
+        const size = Math.max(Number(bytes) || 0, 0);
+        let unit = 0;
+        while (unit < units.length - 1 && size >= 1024 ** (unit + 1)) unit++;
+        // 1023.97 KB would round to "1024 KB"; that is 1 MB.
+        if (unit < units.length - 1 && Math.round(size / 1024 ** unit * 10) / 10 >= 1024) unit++;
+        // No grouping: below 1 PB the count is under 1024, and German "1.023 B" reads as 1.023.
+        const count = this.formatNumber(size / 1024 ** unit, { maximumFractionDigits: 1, useGrouping: false });
+        return this.t(`fileSize.${units[unit]}`, { count });
     }
 
     /**

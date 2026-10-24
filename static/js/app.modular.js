@@ -2023,13 +2023,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modalAudioIsPlaying.value = false;
             };
 
-            const formatFileSize = (bytes) => {
-                if (!bytes) return '0 B';
-                const k = 1024;
-                const sizes = ['B', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            };
+            // Localized number and units (#481)
+            const formatFileSize = (bytes) => window.i18n.formatFileSize(bytes);
 
             // Parse a backend INSTANT timestamp. The backend stores/serializes
             // naive UTC (no zone designator); new Date() would parse a zoneless

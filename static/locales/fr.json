@@ -1031,7 +1031,8 @@
     "bytes": "{{count}} B",
     "gigabytes": "{{count}} GB",
     "kilobytes": "{{count}} KB",
-    "megabytes": "{{count}} MB"
+    "megabytes": "{{count}} MB",
+    "terabytes": "{{count}} TB"
   },
   "floatingChat": {
     "dockLeft": "Ancrer à gauche",

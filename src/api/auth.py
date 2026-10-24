@@ -20,7 +20,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
-from src.utils.localization import translate
+from src.utils.localization import format_file_size, format_number, translate
 from src.auth.sso import (
     init_sso_client,
     is_sso_enabled,
@@ -633,9 +633,8 @@ def _storage_usage(user):
 
 def _usage_limits(user):
     """AI tokens and transcription minutes this month, and storage, each
-    against its limit when one is set, for the Account page (#413)."""
-    def size(n):
-        return f"{n / 1073741824:.1f} GB" if n >= 1073741824 else f"{n / 1048576:.1f} MB"
+    against its limit when one is set, for the Account page (#413). The
+    numbers are in the interface language's notation (#481)."""
 
     def row(key, label_key, icon, used, limit, fmt):
         pct = round(used / limit * 100, 1) if limit else None
@@ -647,7 +646,7 @@ def _usage_limits(user):
         from src.services.token_tracking import token_tracker
         rows.append(row('tokens', 'account.aiTokensMonth', 'fa-coins',
                         int(token_tracker.get_monthly_usage(user.id) or 0), user.monthly_token_budget,
-                        lambda n: f"{int(n):,}"))
+                        lambda n: format_number(int(n))))
     except Exception as e:
         current_app.logger.warning(f"Could not read token usage for user {user.id}: {e}")
     try:
@@ -655,12 +654,13 @@ def _usage_limits(user):
         seconds = int(transcription_tracker.get_monthly_usage(user.id) or 0)
         budget = user.monthly_transcription_budget
         rows.append(row('transcription', 'account.transcriptionMonth', 'fa-microphone',
-                        seconds // 60, (budget // 60) if budget else None, lambda n: f"{int(n):,} min"))
+                        seconds // 60, (budget // 60) if budget else None,
+                        lambda n: translate('adminDashboard.statsPage.minutesShort', count=format_number(int(n)))))
     except Exception as e:
         current_app.logger.warning(f"Could not read transcription usage for user {user.id}: {e}")
     storage = _storage_usage(user)
     if storage:
-        rows.append(row('storage', 'account.storage', 'fa-hdd', storage['used_bytes'], storage['quota_bytes'], size))
+        rows.append(row('storage', 'account.storage', 'fa-hdd', storage['used_bytes'], storage['quota_bytes'], format_file_size))
     return rows
 
 

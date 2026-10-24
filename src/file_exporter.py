@@ -436,18 +436,6 @@ def format_duration(seconds):
         return f"{secs}s"
 
 
-def format_file_size(bytes_size):
-    """Format file size in bytes to human-readable string."""
-    if not bytes_size:
-        return ""
-
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if bytes_size < 1024:
-            return f"{bytes_size:.1f} {unit}"
-        bytes_size /= 1024
-    return f"{bytes_size:.1f} TB"
-
-
 def get_user_export_template(user, recording=None):
     """
     Get the export template to use for a recording.
@@ -583,7 +571,7 @@ def generate_from_template(recording, user, template_str, labels, user_language,
     Returns:
         Rendered markdown string
     """
-    from src.utils.localization import format_date_localized, format_datetime_localized
+    from src.utils.localization import format_date_localized, format_datetime_localized, format_file_size
     # Dates in exported text are the owner's local time (#412).
     from src.utils.timezones import to_user_local
     def _local(dt):
@@ -595,7 +583,7 @@ def generate_from_template(recording, user, template_str, labels, user_language,
         'meeting_date': format_date_localized(_local(recording.meeting_date), user_language) if recording.meeting_date else '',
         'created_at': format_datetime_localized(_local(recording.created_at), user_language) if recording.created_at else '',
         'original_filename': recording.original_filename or '',
-        'file_size': format_file_size(recording.file_size) if recording.file_size else '',
+        'file_size': format_file_size(recording.file_size, user_language) if recording.file_size else '',
         'participants': recording.participants or '',
         'tags': ', '.join([tag.name for tag in recording.tags]) if recording.tags else '',
         'transcription_duration': format_duration(recording.transcription_duration_seconds) if recording.transcription_duration_seconds else '',
@@ -635,7 +623,7 @@ def generate_default_markdown(recording, user, labels, user_language,
     Returns:
         Rendered markdown string
     """
-    from src.utils.localization import format_date_localized, format_datetime_localized
+    from src.utils.localization import format_date_localized, format_datetime_localized, format_file_size
     # Dates in exported text are the owner's local time (#412).
     from src.utils.timezones import to_user_local
     def _local(dt):
@@ -664,7 +652,7 @@ def generate_default_markdown(recording, user, labels, user_language,
         lines.append(f"- **{labels.get('originalFile', 'Original File')}:** {recording.original_filename}")
 
     if recording.file_size:
-        lines.append(f"- **{labels.get('fileSize', 'File Size')}:** {format_file_size(recording.file_size)}")
+        lines.append(f"- **{labels.get('fileSize', 'File Size')}:** {format_file_size(recording.file_size, user_language)}")
 
     if recording.participants:
         lines.append(f"- **{labels.get('participants', 'Participants')}:** {recording.participants}")
