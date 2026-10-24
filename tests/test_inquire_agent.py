@@ -257,6 +257,10 @@ def test_list_recordings_and_metadata(data):
         assert titles == ['Weekly Sync', 'Old Planning']  # newest first
         res = ia.tool_list_recordings(ctx, {'participant': 'Alice'})
         assert res['total_in_scope'] == 1
+        # #485: '%' and '_' in a participant filter are literal
+        assert ia.tool_list_recordings(ctx, {'participant': 'A%e'})['total_in_scope'] == 0
+        assert ia.tool_list_recordings(ctx, {'participant': 'Al_ce'})['total_in_scope'] == 0
+        assert ia.resolve_allowed_recording_ids(data['owner'], {'speaker_names': ['A%e']}) == set()
         meta = ia.tool_get_recording_metadata(ctx, {'recording_id': data['r1']})
         assert meta['has_summary'] is True and meta['has_notes'] is True
 

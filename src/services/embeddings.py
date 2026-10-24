@@ -31,6 +31,7 @@ if cosine_similarity is None:
 
 from src.database import db
 from src.models import Recording, TranscriptChunk, InternalShare, RecordingTag
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
@@ -645,7 +646,7 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
             if filters.get('speaker_names'):
                 # Filter by the participants field on the recording.
                 speaker_conditions = [
-                    Recording.participants.ilike(f'%{speaker_name}%')
+                    Recording.participants.ilike(contains_pattern(speaker_name), escape=LIKE_ESCAPE)
                     for speaker_name in filters['speaker_names']
                 ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
@@ -691,7 +692,7 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
             # Filter: match ANY keyword (OR) to get candidates
             text_conditions = []
             for word in query_words:
-                text_conditions.append(TranscriptChunk.content.ilike(f'%{word}%'))
+                text_conditions.append(TranscriptChunk.content.ilike(contains_pattern(word), escape=LIKE_ESCAPE))
             chunks_query = chunks_query.filter(or_(*text_conditions))
 
             # Rank IN SQL before limiting. The previous code applied
@@ -702,13 +703,13 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
             # full phrase counting double so exact-phrase hits always
             # outrank scattered single-word matches.
             score_expr = sum(
-                case((TranscriptChunk.content.ilike(f'%{word}%'), 1), else_=0)
+                case((TranscriptChunk.content.ilike(contains_pattern(word), escape=LIKE_ESCAPE), 1), else_=0)
                 for word in query_words
             )
             phrase = query.lower().strip()
             if len(query_words) > 1 and len(phrase) >= 5:
                 score_expr = score_expr + case(
-                    (TranscriptChunk.content.ilike(f'%{phrase}%'), len(query_words)),
+                    (TranscriptChunk.content.ilike(contains_pattern(phrase), escape=LIKE_ESCAPE), len(query_words)),
                     else_=0,
                 )
             chunks = (chunks_query
@@ -818,7 +819,7 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
             if filters.get('speaker_names'):
                 # Filter by the participants field on the recording.
                 speaker_conditions = [
-                    Recording.participants.ilike(f'%{speaker_name}%')
+                    Recording.participants.ilike(contains_pattern(speaker_name), escape=LIKE_ESCAPE)
                     for speaker_name in filters['speaker_names']
                 ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))

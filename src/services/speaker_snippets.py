@@ -14,6 +14,7 @@ Key functions:
 import json
 from src.database import db
 from src.models import Speaker, SpeakerSnippet, Recording
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 
 MAX_SNIPPETS_PER_SPEAKER = 7
 MAX_SNIPPETS_PER_RECORDING = 2
@@ -165,7 +166,8 @@ def _generate_dynamic_snippets(speaker_id, limit=3):
 
     name_variants = {json.dumps(speaker.name), json.dumps(speaker.name, ensure_ascii=False)}
     recordings = base_query\
-        .filter(db.or_(*[Recording.transcription.contains(v) for v in name_variants]))\
+        .filter(db.or_(*[Recording.transcription.like(contains_pattern(v), escape=LIKE_ESCAPE)
+                         for v in name_variants]))\
         .order_by(Recording.created_at.desc())\
         .limit(10).all()
 

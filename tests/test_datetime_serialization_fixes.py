@@ -260,6 +260,40 @@ def test_snippets_found_when_speaker_only_in_older_recordings():
                 _cleanup(user)
 
 
+def test_snippet_lookup_matches_underscore_in_name_literally():
+    # #485: '_' in the speaker name is not a wildcard, so recordings of a
+    # similarly named speaker cannot fill the ten candidate slots
+    from src.services.speaker_snippets import get_speaker_snippets
+
+    with app.app_context():
+        user, cu = _get_or_create_test_user("_lit")
+        speaker = Speaker(name="Old_Timer", user_id=user.id)
+        db.session.add(speaker)
+        db.session.commit()
+
+        base = datetime(2026, 1, 1, 12, 0, 0)
+        rec_match = Recording(user_id=user.id, title="Old Match", status="COMPLETED", created_at=base,
+                              transcription=json.dumps([
+                                  {"speaker": "Old_Timer", "sentence": "This is a long enough sentence.",
+                                   "start_time": 5.0, "end_time": 12.0}]))
+        created = [rec_match]
+        lookalike = json.dumps([{"speaker": "OldXTimer", "sentence": "A different speaker entirely.",
+                                 "start_time": 1.0, "end_time": 6.0}])
+        for i in range(12):
+            created.append(Recording(user_id=user.id, title=f"Lookalike {i}", status="COMPLETED",
+                                     transcription=lookalike, created_at=base + timedelta(days=i + 1)))
+        db.session.add_all(created)
+        db.session.commit()
+
+        try:
+            snippets = get_speaker_snippets(speaker.id, limit=3)
+            assert [s["recording_id"] for s in snippets] == [rec_match.id]
+        finally:
+            _cleanup(*created, speaker)
+            if cu:
+                _cleanup(user)
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

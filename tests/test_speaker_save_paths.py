@@ -145,3 +145,13 @@ def test_search_top_lists_most_used_without_a_query(ctx):
     names = [s["name"] for s in c.get("/speakers/search?top=1").get_json()]
     assert names == ["Frequent", "Middle", "Rare"]
     assert [s["name"] for s in c.get("/speakers/search?q=mid&top=1").get_json()] == ["Middle"]
+
+
+def test_search_matches_percent_and_underscore_literally(ctx):
+    user = _user()
+    for name in ("Dana_Ops", "DanaXOps", "Team 100%", "Team 1000"):
+        db.session.add(Speaker(name=name, user_id=user.id, use_count=1))
+    db.session.commit()
+    c = _client(user)
+    assert [s["name"] for s in c.get("/speakers/search", query_string={"q": "a_o"}).get_json()] == ["Dana_Ops"]
+    assert [s["name"] for s in c.get("/speakers/search", query_string={"q": "100%"}).get_json()] == ["Team 100%"]

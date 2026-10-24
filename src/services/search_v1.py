@@ -15,6 +15,7 @@ from datetime import datetime
 from sqlalchemy import func, or_
 
 from src.database import db
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 
 FIELDS = ('title', 'participants', 'notes', 'summary', 'transcript')
 WEIGHTS = {'title': 1.0, 'summary': 0.9, 'notes': 0.8, 'participants': 0.8, 'transcript': 0.7}
@@ -38,11 +39,6 @@ def parse_terms(query):
         if term and term.lower() not in (t.lower() for t in terms):
             terms.append(term)
     return terms
-
-
-def _like(term):
-    escaped = term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-    return f'%{escaped}%'
 
 
 def _spans(text, terms):
@@ -140,8 +136,8 @@ def candidate_query(user, terms, fields, recording_ids=None, tag_id=None, folder
     columns = {'title': Recording.title, 'participants': Recording.participants, 'notes': Recording.notes,
                'summary': Recording.summary, 'transcript': Recording.transcription}
     for term in terms:
-        pattern = _like(term)
-        query = query.filter(or_(*[columns[f].ilike(pattern, escape='\\') for f in fields]))
+        pattern = contains_pattern(term)
+        query = query.filter(or_(*[columns[f].ilike(pattern, escape=LIKE_ESCAPE) for f in fields]))
     return query.order_by(when.desc(), Recording.id.desc()), when
 
 

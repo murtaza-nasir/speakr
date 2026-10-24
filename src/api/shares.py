@@ -20,6 +20,7 @@ from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404
 from src.utils.mime import served_media_mime, sandbox_media_response
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 
 # Configuration from environment
 ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
@@ -388,7 +389,7 @@ def search_users():
             # If usernames are shown, allow partial match (autocomplete)
             users = User.query.filter(
                 User.id != current_user.id,
-                User.username.ilike(f'%{query}%')
+                User.username.ilike(contains_pattern(query), escape=LIKE_ESCAPE)
             ).limit(10).all()
         else:
             # If usernames are hidden (privacy mode), require exact match only

@@ -17,6 +17,7 @@ from src.models import *
 from src.utils import *
 from src.utils.ffmpeg_utils import extract_audio_segment, FFmpegError, FFmpegNotFoundError
 from src.utils.ffprobe import get_codec_info, FFProbeError
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
@@ -90,7 +91,7 @@ def search_speakers():
 
         stmt = Speaker.query.filter_by(user_id=current_user.id)
         if query:
-            stmt = stmt.filter(Speaker.name.ilike(f'%{query}%'))
+            stmt = stmt.filter(Speaker.name.ilike(contains_pattern(query), escape=LIKE_ESCAPE))
         speakers = stmt.order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
                        .limit(10)\
                        .all()

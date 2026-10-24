@@ -840,6 +840,21 @@ def test_basic_search_speaker_filter(api_emb):
         assert all(c.recording_id == rec.id for c, _ in results)
 
 
+def test_basic_search_percent_and_underscore_are_literal(api_emb):
+    # #485: the keyword fallback and its speaker filter match literally
+    with app.app_context():
+        user = _make_user()
+        rec = _make_recording(user, transcription="seed", participants="Dana 100%")
+        other = _make_recording(user, transcription="seed", participants="Dana 1000")
+        _seed_chunks(api_emb, user, rec, ["budget up 50% this year"])
+        _seed_chunks(api_emb, user, other, ["budget of 500 units"])
+        hits = api_emb.basic_text_search_chunks(user.id, "50%", top_k=5)
+        assert [c.recording_id for c, _ in hits] == [rec.id]
+        hits = api_emb.basic_text_search_chunks(
+            user.id, "budget", filters={"speaker_names": ["Dana 100%"]}, top_k=5)
+        assert {c.recording_id for c, _ in hits} == {rec.id}
+
+
 def test_basic_search_date_filter(api_emb):
     import datetime as _dt
     with app.app_context():

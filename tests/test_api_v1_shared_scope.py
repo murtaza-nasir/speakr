@@ -104,6 +104,19 @@ def test_filters_on_the_shared_list(world):
     assert _ids(_get(world, f"/api/v1/recordings?scope=all&owner_id={world['me']}")) == {world["mine"]}
 
 
+def test_list_search_is_literal(world):
+    # #485: % and _ in q are literal on the v1 list too
+    with app.app_context():
+        recs = [Recording(user_id=world["me"], title=title, status="COMPLETED", original_filename="g.wav")
+                for title in ("Budget 50% target", "Budget 500 units", "under_score plan", "underXscore plan")]
+        db.session.add_all(recs)
+        db.session.commit()
+        percent, units, underscore, x_score = (r.id for r in recs)
+    assert _ids(_get(world, "/api/v1/recordings?q=50%25")) == {percent}
+    assert _ids(_get(world, "/api/v1/recordings?q=under_score")) == {underscore}
+    assert _ids(_get(world, "/api/v1/recordings?q=budget")) == {world["mine"], percent, units}
+
+
 def test_sharing_off_gives_nothing_shared(world):
     with patch("src.app.ENABLE_INTERNAL_SHARING", False):
         assert _get(world, "/api/v1/recordings?scope=shared")["recordings"] == []

@@ -1244,11 +1244,12 @@ def list_recordings():
 
     # Search filter
     if search_query:
-        search_pattern = f'%{search_query}%'
+        from src.utils.search import LIKE_ESCAPE, contains_pattern
+        search_pattern = contains_pattern(search_query)
         query = query.filter(
             or_(
-                Recording.title.ilike(search_pattern),
-                Recording.participants.ilike(search_pattern)
+                Recording.title.ilike(search_pattern, escape=LIKE_ESCAPE),
+                Recording.participants.ilike(search_pattern, escape=LIKE_ESCAPE)
             )
         )
 

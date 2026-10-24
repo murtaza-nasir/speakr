@@ -467,6 +467,28 @@ def test_users_search_403_when_internal_sharing_disabled():
     _cleanup_ids([user], [])
 
 
+def test_users_search_matches_underscore_literally():
+    """#485: with usernames shown, '_' and '%' in the query are literal."""
+    tok = uuid.uuid4().hex[:8]
+    with _db():
+        searcher = _setup_user("srch_lit")
+        ids = []
+        for name in (f"{tok}_a_b", f"{tok}_aXb", f"{tok}_50%", f"{tok}_500"):
+            u = User(username=name, email=f"{name.replace('%', 'p')}@local.test", password="x")
+            db.session.add(u)
+            db.session.commit()
+            ids.append(u.id)
+    try:
+        with _internal_enabled(), _flag("SHOW_USERNAMES_IN_UI", True, shares_module):
+            client = _client_for(searcher)
+            names = lambda q: {u["username"] for u in
+                               client.get("/api/users/search", query_string={"q": q}).get_json()}
+            assert names(f"{tok}_a_b") == {f"{tok}_a_b"}
+            assert names(f"{tok}_50%") == {f"{tok}_50%"}
+    finally:
+        _cleanup_ids([searcher, *ids], [])
+
+
 def test_can_share_publicly_requires_login():
     resp = _anon_client().get("/api/permissions/can-share-publicly")
     assert resp.status_code in (302, 401), resp.status_code

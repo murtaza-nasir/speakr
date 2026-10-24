@@ -55,6 +55,7 @@ from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.filenames import shorten_filename
+from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
@@ -105,9 +106,7 @@ def _blank_column_condition(column):
 def _prefixed_column_condition(column, prefixes):
     # Escape LIKE metacharacters in the literal prefixes so a '_' or '%' in a
     # prefix (e.g. 'ERROR_JSON:') matches literally instead of as a wildcard.
-    def _esc(p):
-        return p.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-    return db.or_(*[column.like(f'{_esc(prefix)}%', escape='\\') for prefix in prefixes])
+    return db.or_(*[column.like(f'{escape_like(prefix)}%', escape=LIKE_ESCAPE) for prefix in prefixes])
 
 
 def _transcription_error_condition():
@@ -1698,7 +1697,8 @@ def get_recordings_paginated():
                 for speaker_filter in speaker_filters:
                     # Replace underscores back to spaces for matching
                     speaker_name = speaker_filter.replace('_', ' ')
-                    speaker_conditions.append(Recording.participants.ilike(f'%{speaker_name}%'))
+                    speaker_conditions.append(Recording.participants.ilike(
+                        contains_pattern(speaker_name), escape=LIKE_ESCAPE))
                 stmt = stmt.where(db.or_(*speaker_conditions))
 
             # Apply text search
@@ -1709,14 +1709,16 @@ def get_recordings_paginated():
                 # - For owned recordings: search Recording.notes
                 # - For shared recordings: search SharedRecordingState.personal_notes
 
+                # Every character typed is matched literally (#485)
+                pattern = contains_pattern(text_query)
                 text_conditions = [
-                    Recording.title.ilike(f'%{text_query}%'),
-                    Recording.participants.ilike(f'%{text_query}%'),
-                    Recording.transcription.ilike(f'%{text_query}%'),
+                    Recording.title.ilike(pattern, escape=LIKE_ESCAPE),
+                    Recording.participants.ilike(pattern, escape=LIKE_ESCAPE),
+                    Recording.transcription.ilike(pattern, escape=LIKE_ESCAPE),
                     # Search owner's notes for owned recordings
                     db.and_(
                         Recording.user_id == current_user.id,
-                        Recording.notes.ilike(f'%{text_query}%')
+                        Recording.notes.ilike(pattern, escape=LIKE_ESCAPE)
                     )
                 ]
 
@@ -1725,7 +1727,7 @@ def get_recordings_paginated():
                 shared_notes_subq = select(SharedRecordingState.recording_id).where(
                     db.and_(
                         SharedRecordingState.user_id == current_user.id,
-                        SharedRecordingState.personal_notes.ilike(f'%{text_query}%')
+                        SharedRecordingState.personal_notes.ilike(pattern, escape=LIKE_ESCAPE)
                     )
                 ).scalar_subquery()
 

@@ -27,6 +27,7 @@ from datetime import datetime, time as dtime
 
 from src.database import db
 from src.models import Folder, Recording, RecordingTag, Tag, User
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.embeddings import (
     get_accessible_recording_ids,
     semantic_search_chunks,
@@ -132,7 +133,7 @@ def resolve_allowed_recording_ids(user_id, filters):
         q = q.filter(Recording.folder_id.in_(filters['folder_ids']))
     if filters.get('speaker_names'):
         q = q.filter(db.or_(*[
-            Recording.participants.ilike(f'%{name}%')
+            Recording.participants.ilike(contains_pattern(name), escape=LIKE_ESCAPE)
             for name in filters['speaker_names']
         ]))
     # Local calendar days of the user, as UTC bounds (#412).
@@ -301,7 +302,7 @@ def tool_search_transcripts(ctx, args):
 def tool_list_recordings(ctx, args):
     q = Recording.query.filter(Recording.id.in_(ctx.allowed_ids))
     if args.get('participant'):
-        q = q.filter(Recording.participants.ilike(f"%{args['participant']}%"))
+        q = q.filter(Recording.participants.ilike(contains_pattern(args['participant']), escape=LIKE_ESCAPE))
     from src.utils.timezones import local_date_bounds, user_timezone_by_id
     _zone = user_timezone_by_id(ctx.user_id)
     _bounds = {}
