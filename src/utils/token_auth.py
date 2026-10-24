@@ -231,6 +231,12 @@ def require_scope(*scopes):
 
     def decorator(f):
         state = {'limiter': None, 'limited': None}
+        # A route limit from a lazy rate_limit() decorator under this one
+        # (src/api/api_v1.py). Its own wrapper would run a second limiter check
+        # per request, and each check counts every limit of the route, so the
+        # route limit joins this stack instead and the view runs unwrapped.
+        route_limit = getattr(f, '_rate_limit', None)
+        route_view = getattr(f, '__wrapped__', None) if route_limit else None
 
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -243,13 +249,16 @@ def require_scope(*scopes):
                     # against the account. The token budget is counted per
                     # route, as before; the account budget is one shared bucket
                     # per kind across all routes.
+                    target = f
+                    if route_view is not None:
+                        target = limiter.limit(route_limit, **getattr(f, '_rate_limit_options', {}))(route_view)
                     per_token = limiter.limit(
                         lambda: _RATE_LIMITS[category], key_func=token_rate_key,
                         exempt_when=lambda: not is_token_request(),
                         scope=lambda endpoint: f"token-{category}",
                         error_message=lambda: (f"Rate limit reached for this token: "
                                                f"{_RATE_LIMITS[category]} ({category} requests)."),
-                    )(f)
+                    )(target)
                     state['limited'] = limiter.shared_limit(
                         lambda: _USER_RATE_LIMITS[category], scope=f"user-{category}",
                         key_func=user_rate_key,

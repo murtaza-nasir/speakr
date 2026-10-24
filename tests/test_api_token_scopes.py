@@ -269,10 +269,12 @@ def live_limiter():
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
     import src.app as app_module
+    from src.api import api_v1
     from src.utils import token_auth as ta
     live = Limiter(get_remote_address, storage_uri="memory://", enabled=True)
     live.init_app(Flask("limiter-host"))
-    with patch.object(app_module, "limiter", live), \
+    # The route limits in api_v1 use the same limiter, as in the app.
+    with patch.object(app_module, "limiter", live), patch.object(api_v1, "limiter", live), \
          patch.dict(ta._RATE_LIMITS, {"read": "3 per minute", "write": "2 per minute"}), \
          patch.dict(ta._USER_RATE_LIMITS, {"read": "5 per minute", "write": "4 per minute"}):
         yield live
@@ -327,6 +329,50 @@ def test_the_account_budget_spans_routes_and_kinds_stay_apart(world, live_limite
 def test_session_traffic_is_not_held_by_token_budgets(world, live_limiter):
     c = _session(world)
     assert {c.get("/api/v1/recordings").status_code for _ in range(8)} == {200}
+
+
+def _codes(send, n):
+    return [send().status_code for _ in range(n)]
+
+
+def test_the_asr_upload_limit_counts_each_request_once(live_limiter):
+    """520 units a minute at 52 per request: ten uploads, not five."""
+    c = app.test_client()
+
+    def send():
+        # A wrong secret is refused after the limit has counted the request.
+        return c.post("/api/v1/integrations/asr-voice-recorder/upload", data={"secret": "wrong"},
+                      content_type="multipart/form-data", environ_base={"REMOTE_ADDR": "203.0.113.48"})
+    assert _codes(send, 11) == [401] * 10 + [429]
+
+
+def test_the_search_limit_counts_each_request_once(world, live_limiter):
+    from src.utils import token_auth as ta
+    plain = world["token"](None)
+    with patch.dict(ta._RATE_LIMITS, {"read": "100 per minute"}), \
+         patch.dict(ta._USER_RATE_LIMITS, {"read": "100 per minute"}):
+        with app.app_context():
+            c = _Client(app, app.response_class)
+            codes = _codes(lambda: c.get("/api/v1/search?q=x", headers=_h(plain)), 31)
+    assert codes == [400] * 30 + [429]   # API_SEARCH_RATE_LIMIT: 30 per minute
+
+
+@pytest.mark.parametrize("token_limit,account_limit,code", [
+    ("4 per minute", "100 per minute", "token_rate_limit_exceeded"),
+    ("100 per minute", "4 per minute", "account_rate_limit_exceeded"),
+])
+def test_token_and_account_budgets_count_once_on_a_route_with_its_own_limit(world, live_limiter, token_limit,
+                                                                            account_limit, code):
+    from src.utils import token_auth as ta
+    plain = world["token"](None)
+    with patch.dict(ta._RATE_LIMITS, {"read": token_limit}), \
+         patch.dict(ta._USER_RATE_LIMITS, {"read": account_limit}):
+        with app.app_context():
+            c = _Client(app, app.response_class)
+            codes = _codes(lambda: c.get("/api/v1/search?q=x", headers=_h(plain)), 4)
+            refused = c.get("/api/v1/search?q=x", headers=_h(plain))
+    assert codes == [400] * 4
+    assert refused.status_code == 429 and refused.get_json()["code"] == code
 
 
 # ------------------------------------------------------------ token cap
