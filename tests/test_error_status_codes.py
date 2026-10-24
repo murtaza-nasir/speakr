@@ -33,3 +33,10 @@ def test_real_status_codes_are_still_recognised(text, kind):
 
 def test_a_longer_number_is_not_a_status_code():
     assert format_error_for_user("used 1429 tokens, then the request failed")["type"] != "rate_limit"
+
+
+def test_ffmpeg_wording_for_an_unreadable_file_is_a_format_error():
+    # #482: FFmpeg says neither "corrupt" nor "unsupported format".
+    text = ("Compression of x.mp3 to mp3 failed: ffmpeg version n8.1.3 ... "
+            "Error opening input files: Invalid data found when processing input")
+    assert format_error_for_user(text)["type"] == "format"

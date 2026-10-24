@@ -435,6 +435,92 @@ def test_normal_api_upload_still_returns_202(tmp_path):
             _cleanup_user(user)
 
 
+_FFMPEG_FAILURE = (
+    "Compression of x_voice.m4a to mp3 failed: ffmpeg version n8.1.3 configuration: --enable-gpl\n"
+    "Error opening input file /data/uploads/_staging/x_voice.m4a.\n"
+    "Error opening input files: Invalid data found when processing input"
+)
+
+
+def _post_api(client, token, payload, filename="voice.m4a", **fields):
+    return client.post(
+        "/api/v1/recordings/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        data={"file": (io.BytesIO(payload), filename), **fields},
+        content_type="multipart/form-data",
+    )
+
+
+@pytest.mark.parametrize("route", ["api", "asr"])
+def test_undecodable_upload_returns_400_without_ffmpeg_details(tmp_path, route):
+    from src.utils.ffmpeg_utils import FFmpegError
+    with app.app_context():
+        user = _user("asr_undecodable")
+        _, token = _token(user)
+        client = app.test_client()
+        try:
+            with _upload_mocks(str(tmp_path)) as (_, enqueue, webhook), \
+                 patch("src.api.recordings.get_codec_info", side_effect=FFProbeError("unprobeable")), \
+                 patch("src.api.recordings.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
+                if route == "api":
+                    response = _post_api(client, token, b"This is not audio.\n", idempotency_key="k-482")
+                else:
+                    response = _post(client, secret=token, payload=b"This is not audio.\n")
+
+            assert response.status_code == 400
+            assert response.get_json()["code"] == "audio_decode_failed"
+            text = response.get_data(as_text=True).lower()
+            assert "ffmpeg" not in text and "_staging" not in text and str(tmp_path).lower() not in text
+            assert list(tmp_path.iterdir()) == []
+            assert enqueue.call_count == 0 and webhook.call_count == 0
+            assert Recording.query.filter_by(user_id=user.id).count() == 0
+        finally:
+            _cleanup_user(user)
+
+
+@pytest.mark.parametrize("route", ["api", "asr"])
+def test_empty_upload_returns_400_before_conversion(tmp_path, route):
+    with app.app_context():
+        user = _user("asr_empty")
+        _, token = _token(user)
+        client = app.test_client()
+        try:
+            with _upload_mocks(str(tmp_path)), \
+                 patch("src.api.recordings.convert_if_needed") as convert:
+                if route == "api":
+                    response = _post_api(client, token, b"")
+                else:
+                    response = _post(client, secret=token, payload=b"")
+
+            assert response.status_code == 400
+            assert response.get_json()["code"] == "empty_file"
+            assert convert.call_count == 0
+            assert list(tmp_path.iterdir()) == []
+            assert Recording.query.filter_by(user_id=user.id).count() == 0
+        finally:
+            _cleanup_user(user)
+
+
+def test_retry_after_a_rejected_upload_with_the_same_key_succeeds(tmp_path):
+    """A refused upload creates no recording, so its idempotency key stays free."""
+    from src.utils.ffmpeg_utils import FFmpegError
+    with app.app_context():
+        user = _user("asr_retry_key")
+        _, token = _token(user)
+        client = app.test_client()
+        try:
+            with _upload_mocks(str(tmp_path)):
+                with patch("src.api.recordings.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
+                    refused = _post_api(client, token, b"broken", idempotency_key="k-retry")
+                accepted = _post_api(client, token, b"real-audio", idempotency_key="k-retry")
+            assert refused.status_code == 400
+            assert accepted.status_code == 202
+            recording = db.session.get(Recording, accepted.get_json()["id"])
+            assert recording.upload_idempotency_key == "k-retry"
+        finally:
+            _cleanup_user(user)
+
+
 def test_asr_upload_rate_cost_bounds_requests_and_declared_bytes_before_parsing():
     for declared_mib, expected_cost in ((5, 52), (100, 100)):
         with app.test_request_context(

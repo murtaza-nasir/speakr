@@ -27,7 +27,7 @@ from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy, TokenBudgetExceeded
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError
-from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
+from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, VIDEO_PASSTHROUGH_ASR
@@ -2691,7 +2691,17 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
     except Exception as e:
         current_app.logger.error(f"[Incognito] Transcription failed: {str(e)}", exc_info=True)
-        result['error'] = str(e)
+        # FFmpeg's output names its build and the temp path (#482): the
+        # response gets a fixed message instead.
+        if isinstance(e, FFmpegNotFoundError):
+            result['error'] = 'Audio conversion tool (FFmpeg) not found on server.'
+        elif isinstance(e, FFmpegTimeoutError):
+            result['error'] = 'Audio conversion timed out.'
+        elif isinstance(e, FFmpegError):
+            result['error'] = AUDIO_DECODE_FAILED_MESSAGE
+            result['error_code'] = 'audio_decode_failed'
+        else:
+            result['error'] = str(e)
         result['processing_time_seconds'] = int(time.time() - start_time)
         return result
 

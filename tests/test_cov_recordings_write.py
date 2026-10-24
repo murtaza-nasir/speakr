@@ -29,6 +29,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import User, Recording, Tag, Folder, RecordingTag, SystemSetting
+from src.utils.ffmpeg_utils import AUDIO_DECODE_FAILED_MESSAGE
+from src.utils.ffprobe import FFProbeError
 
 app.config["WTF_CSRF_ENABLED"] = False
 
@@ -618,7 +620,17 @@ def test_upload_requires_login():
         assert resp.status_code in (302, 401)
 
 
-def test_upload_ffmpeg_error_returns_500():
+# What FFmpeg prints when it cannot open an upload: its build banner and the
+# absolute staging path, neither of which may reach the client (#482).
+_FFMPEG_FAILURE = (
+    "Compression of 20261024195609_abc_not-audio.mp3 to mp3 failed: ffmpeg version n8.1.3 "
+    "Copyright (c) 2000-2026 the FFmpeg developers\n  configuration: --enable-gpl\n"
+    "Error opening input file /data/uploads/_staging/20261024195609_abc_not-audio.mp3.\n"
+    "Error opening input files: Invalid data found when processing input"
+)
+
+
+def test_upload_ffmpeg_error_returns_400_without_ffmpeg_details():
     with app.app_context():
         user = _mk_user("up_ffmpeg")
         client = app.test_client()
@@ -627,16 +639,124 @@ def test_upload_ffmpeg_error_returns_500():
         from src.utils.ffmpeg_utils import FFmpegError
         fake_storage = _FakeStorage(staging)
         with patch("src.api.recordings.get_storage_service", return_value=fake_storage), \
-             patch("src.api.recordings.get_codec_info",
-                   return_value={"has_video": False, "audio_codec": "flac"}), \
+             patch("src.api.recordings.get_codec_info", side_effect=FFProbeError("unprobeable")), \
              patch("src.api.recordings.convert_if_needed",
-                   side_effect=FFmpegError("boom")), \
-             patch("src.services.job_queue.job_queue.enqueue", return_value=1):
+                   side_effect=FFmpegError(_FFMPEG_FAILURE)), \
+             patch("src.services.job_queue.job_queue.enqueue", return_value=1) as enqueue:
+            resp = _do_upload(client, filename="not-audio.mp3", payload=b"This is not audio.\n")
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert body["code"] == "audio_decode_failed"
+        assert body["error"] == AUDIO_DECODE_FAILED_MESSAGE
+        text = resp.get_data(as_text=True).lower()
+        assert "ffmpeg" not in text
+        assert "/data/uploads" not in text and "_staging" not in text and staging.lower() not in text
+        assert os.listdir(staging) == []
+        assert enqueue.call_count == 0
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        _cleanup(user)
+
+
+def test_upload_empty_file_is_rejected_before_conversion():
+    with app.app_context():
+        user = _mk_user("up_empty")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging), \
+             patch("src.api.recordings.get_codec_info") as probe, \
+             patch("src.api.recordings.convert_if_needed") as convert:
+            resp = _do_upload(client, filename="empty.mp3", payload=b"")
+        assert resp.status_code == 400
+        assert resp.get_json() == {"error": "The uploaded file is empty.", "code": "empty_file"}
+        assert probe.call_count == 0
+        assert convert.call_count == 0
+        assert os.listdir(staging) == []
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        _cleanup(user)
+
+
+def test_upload_conversion_timeout_is_a_server_error():
+    with app.app_context():
+        user = _mk_user("up_ff_timeout")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        from src.utils.ffmpeg_utils import FFmpegTimeoutError
+        with _upload_mocks(staging), \
+             patch("src.api.recordings.convert_if_needed",
+                   side_effect=FFmpegTimeoutError("Compression of x.flac to mp3 timed out after 3600s")):
+            resp = _do_upload(client, filename="long.flac")
+        assert resp.status_code == 500
+        assert resp.get_json() == {"error": "Audio conversion timed out.", "code": "audio_conversion_timeout"}
+        assert os.listdir(staging) == []
+        _cleanup(user)
+
+
+def test_upload_ffmpeg_missing_stays_500_and_removes_staging_copy():
+    with app.app_context():
+        user = _mk_user("up_ff_missing")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        from src.utils.ffmpeg_utils import FFmpegNotFoundError
+        with _upload_mocks(staging), \
+             patch("src.api.recordings.convert_if_needed", side_effect=FFmpegNotFoundError("no ffmpeg")):
             resp = _do_upload(client, filename="a.flac")
         assert resp.status_code == 500
-        # An error payload is returned; the exact wording (convert-specific vs
-        # the generic upload handler) is an implementation detail.
-        assert resp.get_json().get("error")
+        assert resp.get_json() == {"error": "Audio conversion tool (FFmpeg) not found on server."}
+        assert os.listdir(staging) == []
+        _cleanup(user)
+
+
+def test_upload_unexpected_error_removes_staging_copy():
+    with app.app_context():
+        user = _mk_user("up_unexpected")
+        client = app.test_client()
+        _login(client, user)
+        staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
+        with _upload_mocks(staging), \
+             patch("src.api.recordings.resolve_transcription_params",
+                   side_effect=RuntimeError("secret internal detail")):
+            resp = _do_upload(client)
+        assert resp.status_code == 500
+        assert resp.get_json() == {"error": "An unexpected error occurred during upload."}
+        assert os.listdir(staging) == []
+        _cleanup(user)
+
+
+def test_incognito_empty_file_returns_400():
+    with app.app_context():
+        user = _mk_user("inc_empty")
+        client = app.test_client()
+        _login(client, user)
+        with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
+             patch("src.tasks.processing.transcribe_incognito") as transcribe:
+            resp = client.post("/api/recordings/incognito",
+                               data={"file": (io.BytesIO(b""), "empty.mp3")},
+                               content_type="multipart/form-data")
+        assert resp.status_code == 400
+        assert resp.get_json()["code"] == "empty_file"
+        assert transcribe.call_count == 0
+        _cleanup(user)
+
+
+def test_incognito_decode_failure_returns_400():
+    with app.app_context():
+        user = _mk_user("inc_decode")
+        client = app.test_client()
+        _login(client, user)
+        with patch("src.api.recordings.ENABLE_INCOGNITO_MODE", True), \
+             patch("src.tasks.processing.transcribe_incognito",
+                   return_value={"error": AUDIO_DECODE_FAILED_MESSAGE,
+                                 "error_code": "audio_decode_failed"}):
+            resp = client.post("/api/recordings/incognito",
+                               data={"file": (io.BytesIO(b"This is not audio."), "x.mp4")},
+                               content_type="multipart/form-data")
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert body["code"] == "audio_decode_failed"
+        assert body["incognito"] is True
         _cleanup(user)
 
 

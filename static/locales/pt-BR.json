@@ -864,6 +864,7 @@
     "selectBody": "Escolha uma na barra lateral ou inicie uma nova gravação."
   },
   "errors": {
+    "audioDecodeFailedGuidance": "Não foi possível ler o arquivo como áudio. Ele pode estar danificado ou em um formato não suportado. Converta-o para MP3 ou WAV e envie-o novamente.",
     "audioExtractionFailed": "Falha na Extração de Áudio",
     "audioExtractionFailedGuidance": "Tente converter o arquivo para um formato de áudio padrão (MP3, WAV) antes de enviar.",
     "audioExtractionFailedMessage": "Não foi possível extrair áudio do arquivo enviado.",
@@ -878,6 +879,7 @@
     "connectionErrorMessage": "Não foi possível conectar ao serviço de transcrição.",
     "convertFormatGuidance": "Converta para MP3 ou WAV antes de enviar",
     "convertStandardGuidance": "Converter para formato de áudio padrão",
+    "emptyFileGuidance": "O arquivo está vazio. Verifique o arquivo original e envie-o novamente.",
     "enableChunkingGuidance": "Ative o chunking nas configurações de administrador, ou diminua o tamanho por chunk se já estiver ativado; caso contrário, comprima o arquivo de origem",
     "fallbackMessage": "Ocorreu um erro",
     "fallbackTitle": "Erro",
@@ -929,6 +931,7 @@
     "shareTarget_queue_failed": "O áudio compartilhado foi salvo, mas não pôde ser enfileirado para transcrição.",
     "shareTarget_save_failed": "Speakr não conseguiu salvar o áudio compartilhado. Faça o upload diretamente.",
     "shareTarget_too_large": "O arquivo de áudio compartilhado excede o limite de upload do Speakr.",
+    "shareTarget_unreadable": "Não foi possível ler o arquivo compartilhado como áudio. Ele pode estar vazio, danificado ou em um formato não suportado.",
     "splitAudioGuidance": "Tente dividir o áudio em partes menores",
     "statusCheckFailed": "Não foi possível verificar o status da gravação (HTTP {{status}}).",
     "summaryFailed": "Falha ao gerar o resumo. Tente novamente.",

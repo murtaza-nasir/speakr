@@ -115,6 +115,8 @@ ERROR_PATTERNS = [
             r'could not.*decode',
             r'audio.*corrupt',
             r'not.*valid.*audio',
+            # FFmpeg's wording for a file it cannot open
+            r'invalid data found when processing input',
         ],
         'title': 'Invalid Audio Format',
         'message': 'The audio file format is not supported or the file may be corrupted.',

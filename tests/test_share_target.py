@@ -94,6 +94,22 @@ def test_share_target_missing_file_redirects_with_error_flag():
         db.session.commit()
 
 
+def test_share_target_empty_file_redirects_with_unreadable_flag():
+    with app.app_context():
+        user = _setup_user("share_empty")
+        client = app.test_client()
+        _login(client, user)
+        with _no_media_tools():
+            resp = client.post("/share-target",
+                               data={"shared_audio": (io.BytesIO(b""), "memo.m4a")},
+                               content_type="multipart/form-data", follow_redirects=False)
+        assert resp.status_code == 302
+        assert "share_target_error=unreadable" in resp.headers.get("Location", "")
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        db.session.delete(user)
+        db.session.commit()
+
+
 def test_share_target_creates_recording_and_enqueues_job():
     with app.app_context():
         user = _setup_user("share_ok")

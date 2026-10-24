@@ -864,6 +864,7 @@
     "selectBody": "从侧边栏中选择一个，或开始新的录音。"
   },
   "errors": {
+    "audioDecodeFailedGuidance": "无法将该文件读取为音频。文件可能已损坏或格式不受支持。请将其转换为 MP3 或 WAV 后重新上传。",
     "audioExtractionFailed": "音频提取失败",
     "audioExtractionFailedGuidance": "请尝试将文件转换为标准音频格式（MP3、WAV）后再上传。",
     "audioExtractionFailedMessage": "无法从上传的文件中提取音频。",
@@ -878,6 +879,7 @@
     "connectionErrorMessage": "无法连接到转录服务。",
     "convertFormatGuidance": "上传前请转换为 MP3 或 WAV",
     "convertStandardGuidance": "请转换为标准音频格式",
+    "emptyFileGuidance": "该文件为空。请检查原始文件后重新上传。",
     "enableChunkingGuidance": "在管理员设置中启用分块上传；如已启用,请降低每块的大小,否则请压缩源文件",
     "fallbackMessage": "发生错误",
     "fallbackTitle": "错误",
@@ -929,6 +931,7 @@
     "shareTarget_queue_failed": "共享的音频已保存,但无法加入转录队列。",
     "shareTarget_save_failed": "Speakr 无法保存共享的音频。请改为直接上传。",
     "shareTarget_too_large": "共享的音频文件超过 Speakr 的上传限制。",
+    "shareTarget_unreadable": "无法将共享的文件读取为音频。文件可能为空、已损坏或格式不受支持。",
     "splitAudioGuidance": "请尝试将音频拆分为更小的部分",
     "statusCheckFailed": "无法检查录音状态（HTTP {{status}}）。",
     "summaryFailed": "摘要生成失败。请重试。",

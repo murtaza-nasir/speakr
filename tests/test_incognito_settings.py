@@ -67,3 +67,24 @@ def test_incognito_resolves_language_hotwords_and_admin_prompt(user, tmp_path):
     assert request.language == "de"
     assert request.hotwords == "Speakr"
     assert request.prompt == "A planning meeting."
+
+
+def test_incognito_decode_failure_reports_a_fixed_message(user, tmp_path):
+    """FFmpeg's output (build banner, temp path) stays out of the result (#482)."""
+    from src.utils.ffmpeg_utils import AUDIO_DECODE_FAILED_MESSAGE, FFmpegError
+    video = tmp_path / "a.mp4"
+    video.write_bytes(b"not a video")
+    connector = MagicMock(PROVIDER_NAME="test", supports_diarization=False)
+    with app.app_context():
+        u = db.session.get(User, user)
+        registry = MagicMock()
+        registry.get_active_connector.return_value = connector
+        with patch("src.services.transcription.get_registry", return_value=registry), \
+             patch.object(proc, "is_video_file", return_value=True), \
+             patch.object(proc, "VIDEO_PASSTHROUGH_ASR", False), \
+             patch.object(proc, "extract_audio_from_video",
+                          side_effect=FFmpegError("ffmpeg version n8.1.3 ... Error opening input file /tmp/tmpx.mp4")):
+            result = proc.transcribe_incognito(str(video), "a.mp4", language="", user=u)
+    assert result["error"] == AUDIO_DECODE_FAILED_MESSAGE
+    assert result["error_code"] == "audio_decode_failed"
+    assert connector.transcribe.call_count == 0

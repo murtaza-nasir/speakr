@@ -864,6 +864,7 @@
     "selectBody": "Pick one from the sidebar or start a new recording."
   },
   "errors": {
+    "audioDecodeFailedGuidance": "The file could not be read as audio. It may be damaged or in an unsupported format. Convert it to MP3 or WAV and upload it again.",
     "audioExtractionFailed": "Audio Extraction Failed",
     "audioExtractionFailedGuidance": "Try converting the file to a standard audio format (MP3, WAV) before uploading.",
     "audioExtractionFailedMessage": "Could not extract audio from the uploaded file.",
@@ -878,6 +879,7 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
+    "emptyFileGuidance": "The file is empty. Check the original file and upload it again.",
     "enableChunkingGuidance": "Enable chunking in your admin settings, or lower the per-chunk size if it is already enabled; otherwise compress the source file",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
@@ -929,6 +931,7 @@
     "shareTarget_queue_failed": "The shared audio was saved but could not be queued for transcription.",
     "shareTarget_save_failed": "Speakr could not save the shared audio. Please try uploading directly.",
     "shareTarget_too_large": "The shared audio file is larger than Speakr's upload limit.",
+    "shareTarget_unreadable": "The shared file could not be read as audio. It may be empty, damaged or in an unsupported format.",
     "splitAudioGuidance": "Try splitting the audio into smaller parts",
     "statusCheckFailed": "Could not check the recording status (HTTP {{status}}).",
     "summaryFailed": "Summary generation failed. Please try again.",

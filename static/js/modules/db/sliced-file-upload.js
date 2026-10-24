@@ -397,6 +397,7 @@ async function finalize(sessionId, formData, tokenRef, options) {
         const error = new Error(body?.error
             || `Upload could not be finalized (HTTP ${result.status})`);
         error.status = result.status;
+        error.code = body?.code;
         error.resumable = finalizeCouldStillLand(result.status);
         throw error;
     }

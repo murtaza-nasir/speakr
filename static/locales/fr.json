@@ -864,6 +864,7 @@
     "selectBody": "Choisissez-en un dans la barre latérale ou lancez un nouvel enregistrement."
   },
   "errors": {
+    "audioDecodeFailedGuidance": "Le fichier n'a pas pu être lu comme audio. Il est peut-être endommagé ou dans un format non pris en charge. Convertissez-le en MP3 ou WAV et envoyez-le à nouveau.",
     "audioExtractionFailed": "Échec de l’extraction audio",
     "audioExtractionFailedGuidance": "Essayez de convertir le fichier dans un format audio standard (MP3, WAV) avant l’envoi.",
     "audioExtractionFailedMessage": "Impossible d’extraire l’audio du fichier envoyé.",
@@ -878,6 +879,7 @@
     "connectionErrorMessage": "Impossible de se connecter au service de transcription.",
     "convertFormatGuidance": "Convertissez en MP3 ou WAV avant l’envoi",
     "convertStandardGuidance": "Convertissez en format audio standard",
+    "emptyFileGuidance": "Le fichier est vide. Vérifiez le fichier d'origine et envoyez-le à nouveau.",
     "enableChunkingGuidance": "Activez le découpage dans vos paramètres d'administration ou réduisez la taille par chunk s'il est déjà activé ; sinon, compressez le fichier source",
     "fallbackMessage": "Une erreur est survenue",
     "fallbackTitle": "Erreur",
@@ -929,6 +931,7 @@
     "shareTarget_queue_failed": "L'audio partagé a été enregistré mais n'a pas pu être mis en file pour transcription.",
     "shareTarget_save_failed": "Speakr n'a pas pu enregistrer l'audio partagé. Veuillez l'envoyer directement.",
     "shareTarget_too_large": "Le fichier audio partagé dépasse la limite d'envoi de Speakr.",
+    "shareTarget_unreadable": "Le fichier partagé n'a pas pu être lu comme audio. Il est peut-être vide, endommagé ou dans un format non pris en charge.",
     "splitAudioGuidance": "Essayez de diviser l’audio en parties plus petites",
     "statusCheckFailed": "Le statut de l'enregistrement n'a pas pu être vérifié (HTTP {{status}}).",
     "summaryFailed": "La génération du résumé a échoué. Veuillez réessayer.",

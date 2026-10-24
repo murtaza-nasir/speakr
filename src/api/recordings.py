@@ -41,7 +41,9 @@ from src.services.transcription_defaults import (
 )
 from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
-from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
+from src.utils.ffmpeg_utils import (
+    AUDIO_DECODE_FAILED_MESSAGE, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError,
+)
 from src.utils.titles import resolve_upload_title, upload_title_source
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
@@ -2201,7 +2203,10 @@ def share_target():
     data = resp.get_json(silent=True) or {}
     if status >= 400 or not data.get('id'):
         current_app.logger.warning(f"share-target ingest failed ({status}): {data.get('error')}")
-        error = {413: 'too_large', 507: 'storage_quota'}.get(status, 'save_failed')
+        if data.get('code') in ('audio_decode_failed', 'empty_file'):
+            error = 'unreadable'
+        else:
+            error = {413: 'too_large', 507: 'storage_quota'}.get(status, 'save_failed')
         return redirect(url_for('recordings.index') + f'?share_target_error={error}')
 
     return redirect(url_for('recordings.index') + f"?share_target=ok&recording_id={data['id']}")
@@ -2215,6 +2220,24 @@ def upload_file():
         uploaded_file=request.files.get('file'),
         form=request.form,
     )
+
+
+EMPTY_FILE_MESSAGE = 'The uploaded file is empty.'
+
+
+def _discard_staging(path):
+    """Remove an upload's staging copy when the upload fails.
+
+    A file handed to storage has already left the staging directory, so
+    after that point this finds nothing to remove.
+    """
+    if not path:
+        return
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        current_app.logger.warning(f"Could not remove staging file {path}: {e}")
 
 
 def ingest_uploaded_recording(
@@ -2238,6 +2261,7 @@ def ingest_uploaded_recording(
     index (a concurrent retry with the same idempotency key, #476) with a
     response, or None for the usual error.
     """
+    filepath = None
     try:
         if uploaded_file is None:
             return jsonify({'error': 'No file provided'}), 400
@@ -2367,6 +2391,13 @@ def ingest_uploaded_recording(
         file.save(filepath)
         current_app.logger.info(f"File saved to {filepath}")
 
+        # An empty part has nothing to decode: refuse it before the probe and
+        # the conversion (#482).
+        if os.path.getsize(filepath) == 0:
+            current_app.logger.info(f"Upload refused for user {owner.id}: the file is empty")
+            _discard_staging(filepath)
+            return jsonify({'error': EMPTY_FILE_MESSAGE, 'code': 'empty_file'}), 400
+
         # Compute file hash on the ORIGINAL upload before any conversion/compression.
         # Lossy re-encoding (e.g. FLAC→MP3) produces different bytes each run,
         # so hashing after conversion would miss duplicates.
@@ -2409,11 +2440,7 @@ def ingest_uploaded_recording(
             # the retry's staging copy is never needed for job recovery. Remove
             # it before enqueueing to avoid leaking one full file each time a
             # temporarily unavailable queue makes ASR retry the delivery.
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except OSError:
-                pass
+            _discard_staging(filepath)
 
             existing_job = ProcessingJob.query.filter_by(
                 recording_id=existing.id,
@@ -2554,10 +2581,20 @@ def ingest_uploaded_recording(
 
             except FFmpegNotFoundError as e:
                 current_app.logger.error(f"FFmpeg not found: {e}")
+                _discard_staging(filepath)
                 return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
+            except FFmpegTimeoutError as e:
+                # A timeout is the server's limit, not proof the file is bad.
+                current_app.logger.error(f"FFmpeg conversion timed out for {filepath}: {e}")
+                _discard_staging(filepath)
+                return jsonify({'error': 'Audio conversion timed out.',
+                                'code': 'audio_conversion_timeout'}), 500
             except FFmpegError as e:
+                # The probe is allowed to fail, so a payload that is not audio
+                # at all is first refused here, as the client's error.
                 current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
-                return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
+                _discard_staging(filepath)
+                return jsonify({'error': AUDIO_DECODE_FAILED_MESSAGE, 'code': 'audio_decode_failed'}), 400
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
@@ -2579,11 +2616,7 @@ def ingest_uploaded_recording(
             and final_file_size > regular_limit_mb * 1024 * 1024
             and not chunking_will_handle_large_audio
         ):
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except OSError:
-                pass
+            _discard_staging(filepath)
             current_app.logger.warning(
                 f"Audio-only extraction left {final_file_size/1024/1024:.1f}MB of audio, "
                 f"which exceeds regular limit {regular_limit_mb}MB and chunking is off. "
@@ -2912,11 +2945,7 @@ def ingest_uploaded_recording(
         return jsonify(response_data), success_status
 
     except RequestEntityTooLarge:
-        try:
-            if 'filepath' in locals() and filepath and os.path.exists(filepath):
-                os.remove(filepath)
-        except OSError:
-            pass
+        _discard_staging(filepath)
         # Report the effective limit that fired (regular vs audio-only)
         # so the frontend can show the right message. effective_limit_mb
         # is set at the top of the function before the size check.
@@ -2942,8 +2971,7 @@ def ingest_uploaded_recording(
         # Another upload committed the same unique key first (#476): keep
         # nothing of this one and let the caller answer with that recording.
         db.session.rollback()
-        if 'filepath' in locals() and filepath and os.path.exists(filepath):
-            os.remove(filepath)
+        _discard_staging(filepath)
         replay = on_conflict() if on_conflict is not None else None
         if replay is not None:
             current_app.logger.info("Upload lost a race on a unique key; answering with the earlier recording")
@@ -2952,6 +2980,7 @@ def ingest_uploaded_recording(
         return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
     except Exception as e:
         db.session.rollback()
+        _discard_staging(filepath)
         current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
 
@@ -3038,6 +3067,9 @@ def upload_incognito():
         file_size = file.tell()
         file.seek(0)
 
+        if file_size == 0:
+            return jsonify({'incognito': True, 'error': EMPTY_FILE_MESSAGE, 'code': 'empty_file'}), 400
+
         # Mirror the regular /upload route's option-B size policy:
         # video files (by extension) use the larger video cap because
         # incognito always extracts audio (it never retains the video
@@ -3114,6 +3146,12 @@ def upload_incognito():
 
         if result.get('error'):
             current_app.logger.error(f"[Incognito] Transcription failed: {result['error']}")
+            if result.get('error_code') == 'audio_decode_failed':
+                return jsonify({
+                    'incognito': True,
+                    'error': result['error'],
+                    'code': 'audio_decode_failed',
+                }), 400
             return jsonify({
                 'incognito': True,
                 'error': result['error']

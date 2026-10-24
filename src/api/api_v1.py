@@ -483,7 +483,7 @@ OPENAPI_SPEC = {
                         }
                     }
                 },
-                "responses": {"202": {"description": "Upload accepted and queued"}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes)"}}
+                "responses": {"202": {"description": "Upload accepted and queued"}, "400": {"description": "Invalid parameters, or a file that cannot be ingested (code empty_file or audio_decode_failed)"}, "507": {"description": "The upload would exceed the user's storage quota (code storage_quota_exceeded, with used_bytes, quota_bytes and file_bytes)"}}
             }
         },
         "/integrations/asr-voice-recorder/upload": {
@@ -519,7 +519,7 @@ OPENAPI_SPEC = {
                 },
                 "responses": {
                     "200": {"description": "Connection test passed, recording accepted, or an idempotent retry matched an existing recording"},
-                    "400": {"description": "Upload metadata was provided without a file, or the multipart request is invalid"},
+                    "400": {"description": "Upload metadata was provided without a file, the multipart request is invalid, or the file cannot be ingested (code empty_file or audio_decode_failed)"},
                     "401": {"description": "Missing, invalid, expired, or revoked API token"},
                     "413": {"description": "Upload exceeds the configured size limit"},
                     "429": {"description": "Too many upload attempts"},

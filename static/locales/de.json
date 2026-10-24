@@ -864,6 +864,7 @@
     "selectBody": "Wählen Sie eine aus der Seitenleiste oder starten Sie eine neue Aufnahme."
   },
   "errors": {
+    "audioDecodeFailedGuidance": "Die Datei konnte nicht als Audio gelesen werden. Sie ist möglicherweise beschädigt oder hat ein nicht unterstütztes Format. Konvertieren Sie sie in MP3 oder WAV und laden Sie sie erneut hoch.",
     "audioExtractionFailed": "Audio-Extraktion fehlgeschlagen",
     "audioExtractionFailedGuidance": "Versuchen Sie, die Datei vor dem Hochladen in ein Standard-Audioformat (MP3, WAV) zu konvertieren.",
     "audioExtractionFailedMessage": "Audio konnte nicht aus der hochgeladenen Datei extrahiert werden.",
@@ -878,6 +879,7 @@
     "connectionErrorMessage": "Konnte keine Verbindung zum Transkriptionsdienst herstellen.",
     "convertFormatGuidance": "Vor dem Hochladen in MP3 oder WAV konvertieren",
     "convertStandardGuidance": "In ein Standard-Audioformat konvertieren",
+    "emptyFileGuidance": "Die Datei ist leer. Prüfen Sie die Originaldatei und laden Sie sie erneut hoch.",
     "enableChunkingGuidance": "Aktivieren Sie Chunking in den Admin-Einstellungen oder verkleinern Sie die Chunk-Größe, falls bereits aktiviert; andernfalls komprimieren Sie die Quelldatei",
     "fallbackMessage": "Ein Fehler ist aufgetreten",
     "fallbackTitle": "Fehler",
@@ -929,6 +931,7 @@
     "shareTarget_queue_failed": "Die geteilte Audiodatei wurde gespeichert, konnte aber nicht zur Transkription eingereiht werden.",
     "shareTarget_save_failed": "Speakr konnte die geteilte Audiodatei nicht speichern. Bitte direkt hochladen.",
     "shareTarget_too_large": "Die geteilte Audiodatei überschreitet Speakrs Upload-Limit.",
+    "shareTarget_unreadable": "Die geteilte Datei konnte nicht als Audio gelesen werden. Sie ist möglicherweise leer, beschädigt oder hat ein nicht unterstütztes Format.",
     "splitAudioGuidance": "Versuchen Sie, die Audiodatei in kleinere Teile aufzuteilen",
     "statusCheckFailed": "Der Aufnahmestatus konnte nicht abgefragt werden (HTTP {{status}}).",
     "summaryFailed": "Zusammenfassung fehlgeschlagen. Bitte erneut versuchen.",

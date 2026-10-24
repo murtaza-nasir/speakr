@@ -339,6 +339,22 @@ An upload that would exceed the user's storage quota is refused with `507 Insuff
 
 `GET /api/v1/users/me` includes the same figures under `storage`, and `/api/v1/capabilities` lists `storage_quota`.
 
+A file that cannot be ingested is refused with `400`. No recording is created and the file is not kept:
+
+| Code | Meaning |
+|------|---------|
+| `empty_file` | The file part has no content. |
+| `audio_decode_failed` | The file cannot be decoded as audio or video, for example a text file with an `.mp3` extension or a damaged file. |
+
+```json
+{
+  "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format.",
+  "code": "audio_decode_failed"
+}
+```
+
+A conversion that runs longer than `FFMPEG_TIMEOUT_SECONDS` is a server error: `500` with the code `audio_conversion_timeout`.
+
 **Example:**
 
 ```bash
@@ -390,6 +406,8 @@ When saving the webhook destination, ASR first sends an authenticated connection
   "idempotent_replay": false
 }
 ```
+
+An empty or undecodable file is refused with `400` and the codes `empty_file` or `audio_decode_failed`, as on [Upload Recording](#upload-recording).
 
 If ASR retries the same completed file with matching filename, note, and recording date for the same user, Speakr returns the existing recording with `idempotent_replay: true` instead of queueing another transcription. Identical audio submitted with different metadata remains a distinct recording. Simultaneous first deliveries are not a strict exactly-once guarantee.
 

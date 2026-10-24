@@ -25,6 +25,13 @@ except (TypeError, ValueError):
     FFMPEG_TIMEOUT_SECONDS = 3600
 
 
+# What a client is told when FFmpeg cannot decode its upload (#482). The
+# exception text stays in the log: FFmpeg's output names its build and the
+# path of the file.
+AUDIO_DECODE_FAILED_MESSAGE = ('The uploaded file could not be read as audio. '
+                               'It may be corrupt or in an unsupported format.')
+
+
 class FFmpegError(Exception):
     """Custom exception for FFmpeg-related errors."""
     pass
@@ -32,6 +39,15 @@ class FFmpegError(Exception):
 
 class FFmpegNotFoundError(FFmpegError):
     """Raised when FFmpeg executable is not found."""
+    pass
+
+
+class FFmpegTimeoutError(FFmpegError):
+    """Raised when an FFmpeg command runs past FFMPEG_TIMEOUT_SECONDS.
+
+    A timeout says nothing about the input, so callers that answer a client
+    can tell it apart from a file FFmpeg could not decode.
+    """
     pass
 
 
@@ -562,7 +578,7 @@ def _run_ffmpeg_command(cmd: list, operation_description: str) -> None:
         # hanging forever on a stalled/adversarial input.
         error_msg = f"{operation_description} timed out after {FFMPEG_TIMEOUT_SECONDS}s"
         current_app.logger.error(f"FFmpeg error: {error_msg}")
-        raise FFmpegError(error_msg)
+        raise FFmpegTimeoutError(error_msg)
 
     except subprocess.CalledProcessError as e:
         error_msg = f"{operation_description} failed: {decode_ffmpeg_output(e.stderr)}"

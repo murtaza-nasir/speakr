@@ -143,7 +143,7 @@ const parseUnformattedError = (text) => {
             type: 'service_error'
         },
         {
-            patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio'],
+            patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio', 'invalid data found when processing input'],
             title: _t('errors.invalidAudioFormat', 'Invalid Audio Format'),
             message: _t('errors.invalidAudioFormatMessage', 'The audio file format is not supported or the file may be corrupted.'),
             guidance: _t('errors.invalidAudioFormatGuidance', 'Try converting the audio to MP3 or WAV format before uploading.'),
