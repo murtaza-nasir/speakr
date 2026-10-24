@@ -335,7 +335,41 @@ def test_chunking_logic():
 # TEST SECTION 5: Codec Handling
 # =============================================================================
 
+_RELOADED_PREFIXES = ('src.utils', 'src.config')
+
+
+def _restore_modules(saved):
+    """Put back the modules a fresh import replaced, and their package attributes.
+
+    Without this, every later test file sees two copies of src.utils.*: the app
+    and its blueprints keep the classes they imported (FFmpegError, for one),
+    while patch("src.utils....") and new imports reach the fresh copies, so an
+    `except FFmpegError` in src/api/recordings.py no longer matches the
+    exception a test raises.
+    """
+    for name in [n for n in sys.modules if n.startswith(_RELOADED_PREFIXES)]:
+        del sys.modules[name]
+    sys.modules.update(saved)
+    for name, module in saved.items():
+        parent, _, child = name.rpartition('.')
+        if parent in sys.modules:
+            setattr(sys.modules[parent], child, module)
+
+
 def test_codec_handling():
+    saved = {n: m for n, m in sys.modules.items() if n.startswith(_RELOADED_PREFIXES)}
+    saved_codecs = os.environ.get('AUDIO_UNSUPPORTED_CODECS')
+    try:
+        _check_codec_handling()
+    finally:
+        if saved_codecs is None:
+            os.environ.pop('AUDIO_UNSUPPORTED_CODECS', None)
+        else:
+            os.environ['AUDIO_UNSUPPORTED_CODECS'] = saved_codecs
+        _restore_modules(saved)
+
+
+def _check_codec_handling():
     """Test codec handling with connector specifications."""
     print("\n=== Testing Codec Handling ===")
 
