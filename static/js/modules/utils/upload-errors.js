@@ -5,7 +5,9 @@
  * The server's `code` decides when there is one (#482): the message text can
  * already be localized, and an unreadable file must not fall through to the
  * generic "try reprocessing the recording", since no recording was created.
- * Without a code, the message text is matched against the patterns below.
+ * An incognito transcription error carries the server's error type instead
+ * (src/utils/error_formatting.py); its message is a fixed English text.
+ * Without either, the message text is matched against the patterns below.
  */
 
 import { errorTextMatches } from './error-patterns.js';
@@ -17,10 +19,22 @@ const CODE_KEYS = {
     storage_quota_exceeded: ['storageQuota.title', 'storageQuota.guidance'],
 };
 
-export function getFriendlyError(errorMessage, t, code) {
+const TYPE_KEYS = {
+    size_limit: ['errors.fileTooLargeTitle', 'errors.enableChunkingGuidance'],
+    timeout: ['errors.processingTimeout', 'errors.splitAudioGuidance'],
+    auth: ['errors.authenticationError', 'errors.checkApiKeyGuidance'],
+    rate_limit: ['errors.rateLimitExceeded', 'errors.waitAndRetryGuidance'],
+    connection: ['errors.connectionError', 'errors.checkNetworkGuidance'],
+    service_error: ['errors.serviceUnavailable', 'errors.tryAgainLaterGuidance'],
+    format: ['errors.invalidAudioFormat', 'errors.convertFormatGuidance'],
+    extraction: ['errors.audioExtractionFailed', 'errors.convertStandardGuidance'],
+};
+
+export function getFriendlyError(errorMessage, t, code, errorType) {
     const _t = t || ((key) => key);
-    if (code && CODE_KEYS[code]) {
-        const [title, guidance] = CODE_KEYS[code];
+    const keys = (code && CODE_KEYS[code]) || (errorType && TYPE_KEYS[errorType]);
+    if (keys) {
+        const [title, guidance] = keys;
         return { title: _t(title), guidance: _t(guidance) };
     }
     if (!errorMessage) return { title: _t('errors.processingError'), message: _t('errors.processingErrorMessage') };

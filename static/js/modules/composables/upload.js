@@ -1171,6 +1171,7 @@ export function useUpload(state, utils) {
             if (!response.ok || data.error) {
                 const err = new Error(data.error || `Processing failed with status ${response.status}`);
                 err.code = data.code;
+                err.errorType = data.error_type;
                 throw err;
             }
 
@@ -1223,7 +1224,7 @@ export function useUpload(state, utils) {
 
         } catch (error) {
             console.error('[Incognito] Processing failed:', error);
-            const friendlyErr = getFriendlyError(error.message, t, error.code);
+            const friendlyErr = getFriendlyError(error.message, t, error.code, error.errorType);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
             fileItem.status = 'failed';
             fileItem.error = error.message;

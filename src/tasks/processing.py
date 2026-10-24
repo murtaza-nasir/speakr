@@ -2607,6 +2607,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 actual_filepath = conversion_result.output_path
                 actual_content_type = conversion_result.mime_type
                 actual_filename = os.path.basename(conversion_result.output_path)
+            except FFmpegError:
+                # A file FFmpeg cannot decode is refused as on upload (#482),
+                # not sent to the transcription service as it is.
+                raise
             except Exception as e:
                 current_app.logger.warning(f"[Incognito] Audio conversion check failed: {e}, proceeding with original")
 
@@ -2713,7 +2717,14 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             result['error'] = AUDIO_DECODE_FAILED_MESSAGE
             result['error_code'] = 'audio_decode_failed'
         else:
-            result['error'] = str(e)
+            # The service's own text can carry upstream detail. The answer is
+            # the plain explanation a failed job shows for a known kind of
+            # error, and a fixed message otherwise.
+            from src.utils.error_formatting import format_error_for_user
+            formatted = format_error_for_user(str(e))
+            known = formatted['is_known'] or formatted['type'] != 'unknown'
+            result['error'] = formatted['message'] if known else 'The transcription could not be completed.'
+            result['error_type'] = formatted['type']
         result['processing_time_seconds'] = int(time.time() - start_time)
         return result
 

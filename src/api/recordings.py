@@ -3161,7 +3161,8 @@ def upload_incognito():
                 }), 400
             return jsonify({
                 'incognito': True,
-                'error': result['error']
+                'error': result['error'],
+                'error_type': result.get('error_type'),
             }), 500
 
         # Optionally generate summary

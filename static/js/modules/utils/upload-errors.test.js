@@ -25,6 +25,12 @@ describe('getFriendlyError', () => {
         expect(getFriendlyError(ffmpeg, t).title).toBe('errors.invalidAudioFormat');
     });
 
+    it('names an incognito transcription error by its server type', () => {
+        expect(getFriendlyError('The transcription service rejected the API credentials.', t, undefined, 'auth'))
+            .toEqual({ title: 'errors.authenticationError', guidance: 'errors.checkApiKeyGuidance' });
+        expect(getFriendlyError('Too many requests', t, undefined, 'unknown').title).toBe('errors.rateLimitExceeded');
+    });
+
     it('falls back to the message text for an unknown code', () => {
         expect(getFriendlyError('Upload timed out', t, 'something_new').title).toBe('errors.processingTimeout');
         expect(getFriendlyError('odd failure', t).title).toBe('errors.processingError');

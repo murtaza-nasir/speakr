@@ -115,8 +115,8 @@ def _fake_probe(filename, cmd='ffprobe', timeout=None):
                                            "duration": "30.0"}}
 
 
-def _post_incognito_video(user_id, ffmpeg):
-    """POST a video to the incognito route; only ffmpeg/ffprobe and the ASR service are faked."""
+def _post_incognito_video(user_id, ffmpeg, filename="meeting.mp4", probe=_fake_probe, transcribe=None):
+    """POST a file to the incognito route; only ffmpeg/ffprobe and the ASR service are faked."""
     connector = MagicMock(PROVIDER_NAME="test", supports_diarization=False, default_diarize=False)
     connector.specifications = MagicMock(max_duration_seconds=1800, handles_chunking_internally=False,
                                          recommended_chunk_seconds=600, unsupported_codecs=[],
@@ -124,6 +124,8 @@ def _post_incognito_video(user_id, ffmpeg):
     response = MagicMock(text="hello world transcript", segments=None, speakers=None, speaker_embeddings=None)
     response.has_diarization.return_value = False
     connector.transcribe.return_value = response
+    if transcribe is not None:
+        connector.transcribe.side_effect = transcribe
     registry = MagicMock()
     registry.get_active_connector.return_value = connector
     client = app.test_client()
@@ -133,10 +135,10 @@ def _post_incognito_video(user_id, ffmpeg):
          patch("src.services.transcription.get_registry", return_value=registry), \
          patch.object(proc, "VIDEO_PASSTHROUGH_ASR", False), \
          patch.object(proc, "chunking_service", None), patch.object(proc, "client", None), \
-         patch("src.utils.ffprobe.probe", side_effect=_fake_probe), \
+         patch("src.utils.ffprobe.probe", side_effect=probe), \
          patch("src.utils.ffmpeg_utils.subprocess.run", side_effect=ffmpeg) as run:
         resp = client.post("/api/recordings/incognito",
-                           data={"file": (io.BytesIO(b"\x00" * 4096), "meeting.mp4")},
+                           data={"file": (io.BytesIO(b"\x00" * 4096), filename)},
                            content_type="multipart/form-data")
     return resp, run, connector
 
@@ -170,3 +172,46 @@ def test_incognito_video_extraction_failure_keeps_ffmpeg_output_out(user):
     text = resp.get_data(as_text=True).lower()
     assert "ffmpeg" not in text and "/tmp/" not in text
     assert connector.transcribe.call_count == 0
+
+
+def _unprobeable(filename, cmd='ffprobe', timeout=None):
+    from src.utils.ffprobe import FFProbeError
+    raise FFProbeError("Invalid data found when processing input")
+
+
+def test_incognito_undecodable_audio_is_refused_not_transcribed(user):
+    """The audio branch: a file FFmpeg cannot convert is not sent to the service as it is."""
+    def ffmpeg(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd, output=b"", stderr=_FFMPEG_BANNER)
+
+    resp, run, connector = _post_incognito_video(user, ffmpeg, filename="not-audio.mp3", probe=_unprobeable)
+    assert run.call_count >= 1   # the conversion was attempted with the real chain
+    assert resp.status_code == 400
+    assert resp.get_json()["code"] == "audio_decode_failed"
+    text = resp.get_data(as_text=True).lower()
+    assert "ffmpeg" not in text and "/tmp/" not in text
+    assert connector.transcribe.call_count == 0
+
+
+def _ffmpeg_ok(cmd, **kwargs):
+    with open(cmd[-1], "wb") as out:
+        out.write(b"\xff\xfb" * 1024)
+    return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+
+@pytest.mark.parametrize("upstream,error_type,message", [
+    ("Error code: 401 - {'error': 'invalid api key sk-live-abc123 for org acme-internal'}", "auth",
+     "The transcription service rejected the API credentials."),
+    ("worker 10.0.0.7 traceback: KeyError 'segments' in /srv/asr/app.py", "unknown",
+     "The transcription could not be completed."),
+])
+def test_incognito_service_errors_return_no_upstream_text(user, upstream, error_type, message):
+    def transcribe(request):
+        raise RuntimeError(upstream)
+
+    resp, _, _ = _post_incognito_video(user, _ffmpeg_ok, transcribe=transcribe)
+    assert resp.status_code == 500
+    body = resp.get_json()
+    assert body["error"] == message and body["error_type"] == error_type
+    text = resp.get_data(as_text=True)
+    assert "sk-live" not in text and "10.0.0.7" not in text and "/srv/" not in text
