@@ -166,6 +166,27 @@ _RATE_LIMITS = {
 }
 
 
+def _doubled(limit_string):
+    """The same limit with twice the requests, or None when it cannot be parsed."""
+    from limits import parse_many
+    try:
+        items = parse_many(limit_string)
+    except ValueError:
+        return None
+    return '; '.join(
+        f"{2 * item.amount} per {'' if item.multiples == 1 else f'{item.multiples} '}{item.GRANULARITY.name}"
+        for item in items)
+
+
+# Account-wide limits (#484): all tokens of one user draw on one budget per
+# kind, so another token adds no throughput. The default is twice the
+# per-token limit, so a client with a single token is held by its token limit.
+_USER_RATE_LIMITS = {
+    kind: os.environ.get(f'API_USER_RATE_LIMIT_{kind.upper()}') or _doubled(limit) or limit
+    for kind, limit in _RATE_LIMITS.items()
+}
+
+
 def _rate_category(scopes):
     if 'process' in scopes:
         return 'process'
@@ -183,6 +204,15 @@ def token_rate_key():
     return get_remote_address()
 
 
+def user_rate_key():
+    """Rate-limit key for the account budget: the owner of the token."""
+    api_token = current_api_token()
+    if api_token is not None:
+        return f"user:{api_token.user_id}"
+    from flask_limiter.util import get_remote_address
+    return get_remote_address()
+
+
 def is_token_request():
     """True when this request is authenticated by an API token (not a session)."""
     return current_api_token() is not None
@@ -190,28 +220,46 @@ def is_token_request():
 
 def require_scope(*scopes):
     """Mark a view with the scopes a scoped token needs, and apply the per-token
-    rate limit for its kind (read, write or process).
+    and the per-account rate limits for its kind (read, write or process).
 
     require_scope() with no scopes accepts any valid token. The check itself runs
     in the before_request hook in src/app.py, before the view, so a refused
     request has no side effect. Full tokens and sessions are not restricted.
     """
     required = frozenset(scopes)
-    limit_string = _RATE_LIMITS[_rate_category(set(scopes))]
+    category = _rate_category(set(scopes))
 
     def decorator(f):
-        state = {'limited': None}
+        state = {'limiter': None, 'limited': None}
 
         @wraps(f)
         def wrapper(*args, **kwargs):
             from src.app import limiter
             if limiter is not None and getattr(limiter, 'enabled', True):
-                if state['limited'] is None:
-                    state['limited'] = limiter.limit(
-                        limit_string, key_func=token_rate_key,
+                if state['limiter'] is not limiter:
+                    # Both limits register under the view's name, so one check
+                    # evaluates the two. With equal windows the token limit is
+                    # checked first, and a request it refuses is not counted
+                    # against the account. The token budget is counted per
+                    # route, as before; the account budget is one shared bucket
+                    # per kind across all routes.
+                    per_token = limiter.limit(
+                        lambda: _RATE_LIMITS[category], key_func=token_rate_key,
                         exempt_when=lambda: not is_token_request(),
-                        scope=lambda endpoint: f"token-{_rate_category(set(scopes))}",
+                        scope=lambda endpoint: f"token-{category}",
+                        error_message=lambda: (f"Rate limit reached for this token: "
+                                               f"{_RATE_LIMITS[category]} ({category} requests)."),
                     )(f)
+                    state['limited'] = limiter.shared_limit(
+                        lambda: _USER_RATE_LIMITS[category], scope=f"user-{category}",
+                        key_func=user_rate_key,
+                        exempt_when=lambda: not is_token_request(),
+                        override_defaults=False,
+                        error_message=lambda: (f"Rate limit reached for your account: "
+                                               f"{_USER_RATE_LIMITS[category]} ({category} requests), "
+                                               f"shared by all your API tokens."),
+                    )(per_token)
+                    state['limiter'] = limiter
                 return state['limited'](*args, **kwargs)
             return f(*args, **kwargs)
 

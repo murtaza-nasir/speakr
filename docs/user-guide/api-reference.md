@@ -2042,15 +2042,34 @@ All endpoints return consistent error responses:
 
 ## Rate Limits
 
-Requests made with an API token are limited per token, so two integrations on the same machine do not share a limit. Each token has one budget per kind of request:
+Requests made with an API token are held by two limits for each kind of request:
 
-| Kind | Endpoints | Default limit | Setting |
-|------|-----------|---------------|---------|
-| Read | Endpoints that need only `read` | 120 requests/minute | `API_TOKEN_RATE_LIMIT_READ` |
-| Write | Endpoints that need `write`, `upload`, `share`, `delete`, `webhooks` or `account` | 30 requests/minute | `API_TOKEN_RATE_LIMIT_WRITE` |
-| Process | Endpoints that need `process` | 10 requests/minute | `API_TOKEN_RATE_LIMIT_PROCESS` |
+- **Token limit.** Each token has its own budget, counted separately for each endpoint, so two integrations with their own tokens do not share it.
+- **Account limit.** All tokens of one account draw on one budget across all endpoints, so a further token adds no throughput.
 
-The limits apply to full-access and scoped tokens alike. A request over the limit gets `429` with a `Retry-After` header in seconds, and responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. Requests from the web interface keep the per-address limits of the application.
+| Kind | Endpoints | Token limit | Account limit |
+|------|-----------|-------------|---------------|
+| Read | Endpoints that need only `read` | 120 requests/minute (`API_TOKEN_RATE_LIMIT_READ`) | 240 requests/minute (`API_USER_RATE_LIMIT_READ`) |
+| Write | Endpoints that need `write`, `upload`, `share`, `delete`, `webhooks` or `account` | 30 requests/minute (`API_TOKEN_RATE_LIMIT_WRITE`) | 60 requests/minute (`API_USER_RATE_LIMIT_WRITE`) |
+| Process | Endpoints that need `process` | 10 requests/minute (`API_TOKEN_RATE_LIMIT_PROCESS`) | 20 requests/minute (`API_USER_RATE_LIMIT_PROCESS`) |
+
+An account limit that is not set is twice the token limit of the same kind, so a client with a single token on one endpoint is held by its token limit. The limits apply to full-access and scoped tokens alike. A request that the token limit refuses does not count against the account limit.
+
+A request over a limit gets `429` with a `Retry-After` header in seconds. The body names the limit that ran out:
+
+```json
+{
+  "error": "Rate limit reached for your account: 240 per minute (read requests), shared by all your API tokens.",
+  "code": "account_rate_limit_exceeded",
+  "limit": "240 per 1 minute"
+}
+```
+
+`code` is `token_rate_limit_exceeded` for the token limit and `account_rate_limit_exceeded` for the account limit. Responses also carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`; while no limit is exceeded, these headers describe the token limit only. Base a client on the `429` body, not on the header values.
+
+Requests from the web interface keep the per-address limits of the application (1000 per hour and 5000 per day). The [ASR Voice Recorder upload](#asr-voice-recorder-upload) carries its token in the form body, so neither limit applies to it; that endpoint keeps its own per-address limit.
+
+**Several worker processes.** By default each worker process keeps its own counters in memory. The standard image runs three gunicorn workers, so every limit, the login and registration limits included, allows up to about three times its configured value. Set `RATELIMIT_STORAGE_URI` to a shared backend, for example `redis://redis:6379/0` or `memcached://memcached:11211`, to make the limits exact. The standard image does not include the client library for either backend; an image that uses one needs the `redis` or `pymemcache` Python package, and Speakr does not start with a backend URI whose client is missing. While the backend is unreachable, counting falls back to memory in each process.
 
 ---
 

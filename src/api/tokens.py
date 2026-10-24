@@ -5,6 +5,7 @@ This blueprint handles creating, listing, and revoking API tokens
 for user authentication.
 """
 
+import os
 import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
@@ -16,6 +17,13 @@ from src.utils.token_auth import hash_token
 
 # Create blueprint
 tokens_bp = Blueprint('tokens', __name__, url_prefix='/api/tokens')
+
+# Active tokens an account may hold (#484); 0 means no limit. Tokens an
+# account already holds above the limit stay valid.
+try:
+    API_MAX_TOKENS_PER_USER = max(0, int(os.environ.get('API_MAX_TOKENS_PER_USER', '10')))
+except ValueError:
+    API_MAX_TOKENS_PER_USER = 10
 
 # Extensions (injected after app initialization)
 bcrypt = None
@@ -110,6 +118,20 @@ def create_token():
         scopes_value, error = parse_scopes(data.get('scopes'))
         if error:
             return jsonify({'error': error, 'code': 'invalid_parameter'}), 400
+
+    if API_MAX_TOKENS_PER_USER:
+        now = datetime.utcnow()
+        active = (APIToken.query.filter_by(user_id=current_user.id, revoked=False)
+                  .filter(db.or_(APIToken.expires_at.is_(None), APIToken.expires_at > now))
+                  .count())
+        if active >= API_MAX_TOKENS_PER_USER:
+            return jsonify({
+                'error': (f'An account can hold at most {API_MAX_TOKENS_PER_USER} active API tokens. '
+                          f'Revoke a token you no longer use to create a new one.'),
+                'code': 'token_limit_reached',
+                'max_tokens': API_MAX_TOKENS_PER_USER,
+                'active_tokens': active,
+            }), 409
 
     # Generate the token
     plaintext_token = generate_token()

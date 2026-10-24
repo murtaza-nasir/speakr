@@ -550,7 +550,15 @@ bcrypt = Bcrypt()
 bcrypt.init_app(app)
 # Rate-limit headers, including Retry-After on 429 (mailr spec G1).
 app.config.setdefault("RATELIMIT_HEADERS_ENABLED", True)
-limiter.init_app(app)  # Initialize the limiter (uses in-memory storage by default)
+# The default in-memory storage counts in each gunicorn worker separately, so
+# every limit is in effect multiplied by the number of workers. A shared
+# backend (redis://, memcached://) makes the limits exact (#484).
+# While that backend is unreachable, counting falls back to memory instead of
+# failing the request.
+if os.environ.get("RATELIMIT_STORAGE_URI"):
+    app.config.setdefault("RATELIMIT_STORAGE_URI", os.environ["RATELIMIT_STORAGE_URI"])
+    app.config.setdefault("RATELIMIT_IN_MEMORY_FALLBACK_ENABLED", True)
+limiter.init_app(app)
 
 
 from flask_limiter.errors import RateLimitExceeded as _RateLimitExceeded
@@ -573,6 +581,18 @@ def _rate_limit_exceeded(e):
             retry = int(e.limit.limit.get_expiry())
         except Exception:
             retry = 60
+    from src.utils.token_auth import is_token_request, user_rate_key
+    if is_token_request():
+        # API clients get JSON that says which budget ran out: the token's own
+        # or the one all tokens of the account share (#484).
+        from flask import jsonify
+        account = getattr(e.limit, 'key_func', None) is user_rate_key
+        resp = jsonify({
+            'error': e.description,
+            'code': 'account_rate_limit_exceeded' if account else 'token_rate_limit_exceeded',
+            'limit': str(e.limit.limit),
+        })
+        resp.status_code = 429
     resp.headers["Retry-After"] = str(retry)
     return resp
 

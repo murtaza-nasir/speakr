@@ -203,6 +203,21 @@ Click the trash icon next to any token to revoke it immediately. Revoked tokens:
 !!! tip "Best Practice"
     Revoke tokens you no longer need. If you suspect a token has been compromised, revoke it immediately and create a new one.
 
+## Limits
+
+By default an account can hold up to 10 active tokens. Revoked and expired tokens do not count, and revoking a token frees its slot at once. Creating a token beyond the limit gives `409` with `"code": "token_limit_reached"`.
+
+Requests made with a token are held by a limit for the token and by a limit for the whole account, so spreading work over more tokens adds no throughput. [Rate Limits](api-reference.md#rate-limits) lists the values.
+
+Administrators set these limits with environment variables:
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `API_MAX_TOKENS_PER_USER` | `10` | Active tokens per account; `0` means no limit. Tokens above a lowered limit keep working. |
+| `API_TOKEN_RATE_LIMIT_READ`, `API_TOKEN_RATE_LIMIT_WRITE`, `API_TOKEN_RATE_LIMIT_PROCESS` | `120 per minute`, `30 per minute`, `10 per minute` | Budget of each token, per endpoint. |
+| `API_USER_RATE_LIMIT_READ`, `API_USER_RATE_LIMIT_WRITE`, `API_USER_RATE_LIMIT_PROCESS` | Twice the token limit of the same kind | Budget that all tokens of an account share across endpoints. |
+| `RATELIMIT_STORAGE_URI` | Memory of each worker process | Shared storage for the counters, such as `redis://redis:6379/0`. Without it, each of the three worker processes of the standard image counts separately, so a limit allows up to about three times its value. |
+
 ## Security Best Practices
 
 ### Do's
@@ -282,9 +297,13 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 - Check if the recording belongs to your account
 - With `"code": "insufficient_scope"`, the token lacks a scope the route needs. The answer lists `required_scopes` and the token's own `token_scopes`. Create a token with the missing scope.
 
+### 409 Conflict When Creating a Token
+
+- With `"code": "token_limit_reached"`, the account already holds the maximum number of active tokens (`API_MAX_TOKENS_PER_USER`, default 10; `0` means no limit). Revoked and expired tokens do not count. Revoke a token you no longer use, and the slot is free at once. Tokens created before an administrator lowered the limit keep working.
+
 ### 429 Too Many Requests
 
-- The token sent more requests than its limit allows (see [Rate Limits](api-reference.md#rate-limits)). Wait the number of seconds in the `Retry-After` header.
+- With `"code": "token_rate_limit_exceeded"`, the token sent more requests than its own limit allows. With `"code": "account_rate_limit_exceeded"`, all tokens of the account together reached the account limit, and another token does not help (see [Rate Limits](api-reference.md#rate-limits)). Wait the number of seconds in the `Retry-After` header.
 
 ---
 

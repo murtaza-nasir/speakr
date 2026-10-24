@@ -6517,6 +6517,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
+                    // The account holds as many active tokens as the server allows (#484).
+                    if (errorData.code === 'token_limit_reached') {
+                        const key = 'apiTokens.limitReached';
+                        const text = window.i18n ? window.i18n.t(key, { max: errorData.max_tokens }) : key;
+                        showToast(text !== key ? text : errorData.error, 'error');
+                        return;
+                    }
                     throw new Error(errorData.error || 'Failed to create token');
                 }
 

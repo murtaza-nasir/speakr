@@ -451,6 +451,7 @@
     "description": "创建和管理 API 令牌以编程方式访问您的账户",
     "expires": "过期时间",
     "lastUsed": "最后使用",
+    "limitReached": "您的账户已有 {{max}} 个有效的 API 令牌，已达上限。请撤销一个不再使用的令牌后再创建新令牌。",
     "neverUsed": "从未使用",
     "noExpiration": "永不过期",
     "noTokens": "没有 API 令牌",

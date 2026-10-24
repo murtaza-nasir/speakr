@@ -451,6 +451,7 @@
     "description": "Create and manage API tokens for programmatic access to your account",
     "expires": "Expires",
     "lastUsed": "Last used",
+    "limitReached": "Your account already has {{max}} active API tokens, the most it can hold. Revoke a token you no longer use to create a new one.",
     "neverUsed": "Never used",
     "noExpiration": "No expiration",
     "noTokens": "No API Tokens",

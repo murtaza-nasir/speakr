@@ -248,6 +248,131 @@ def test_rate_limits_are_per_token():
     assert ta._rate_category({"write"}) == "write" and ta._rate_category({"delete"}) == "write"
 
 
+def test_the_account_budget_defaults_to_twice_the_token_budget():
+    from src.utils import token_auth as ta
+    assert ta._doubled("120 per minute") == "240 per minute"
+    assert ta._doubled("10/second; 100 per 5 minutes") == "20 per second; 200 per 5 minute"
+    assert ta._doubled("not a limit") is None
+    if not any(os.environ.get(f"API_USER_RATE_LIMIT_{k}") for k in ("READ", "WRITE", "PROCESS")):
+        assert ta._USER_RATE_LIMITS == {k: ta._doubled(v) for k, v in ta._RATE_LIMITS.items()}
+
+
+@pytest.fixture
+def live_limiter():
+    """An enabled limiter with small budgets in place of the suite's disabled one.
+
+    RATELIMIT_ENABLED is false under test, so the app's own limiter was never
+    set up; this one is initialised on a throwaway app and counts in memory.
+    Token budget 3, account budget 5 (read); 2 and 4 (write).
+    """
+    from flask import Flask
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    import src.app as app_module
+    from src.utils import token_auth as ta
+    live = Limiter(get_remote_address, storage_uri="memory://", enabled=True)
+    live.init_app(Flask("limiter-host"))
+    with patch.object(app_module, "limiter", live), \
+         patch.dict(ta._RATE_LIMITS, {"read": "3 per minute", "write": "2 per minute"}), \
+         patch.dict(ta._USER_RATE_LIMITS, {"read": "5 per minute", "write": "4 per minute"}):
+        yield live
+
+
+def _read(c, plain, path="/api/v1/recordings"):
+    return c.get(path, headers=_h(plain))
+
+
+def test_tokens_of_one_account_share_the_account_budget(world, live_limiter):
+    first, second = world["token"](None), world["token"](["read"])
+    with app.app_context():
+        c = _Client(app, app.response_class)
+        assert [_read(c, first).status_code for _ in range(3)] == [200, 200, 200]
+        over_token = _read(c, first)
+        assert [_read(c, second).status_code for _ in range(2)] == [200, 200]
+        over_account = _read(c, second)
+    # The first token runs out of its own budget; that refusal is not counted
+    # against the account, which the second token then exhausts at 5.
+    assert over_token.status_code == 429 and over_token.headers.get("Retry-After")
+    assert over_token.get_json()["code"] == "token_rate_limit_exceeded"
+    assert "this token" in over_token.get_json()["error"]
+    assert over_account.status_code == 429 and over_account.headers.get("Retry-After")
+    body = over_account.get_json()
+    assert body["code"] == "account_rate_limit_exceeded"
+    assert "your account" in body["error"] and body["limit"] == "5 per 1 minute"
+
+
+def test_a_single_token_meets_its_own_budget_first(world, live_limiter):
+    plain = world["token"](None)
+    with app.app_context():
+        c = _Client(app, app.response_class)
+        codes = [_read(c, plain).status_code for _ in range(4)]
+        refused = _read(c, plain)
+    assert codes == [200, 200, 200, 429]
+    assert refused.get_json()["code"] == "token_rate_limit_exceeded"
+
+
+def test_the_account_budget_spans_routes_and_kinds_stay_apart(world, live_limiter):
+    plain = world["token"](None)
+    with app.app_context():
+        c = _Client(app, app.response_class)
+        # The token budget is counted per route, the account budget across them.
+        codes = [_read(c, plain).status_code for _ in range(3)]
+        codes += [_read(c, plain, "/api/v1/tags").status_code for _ in range(3)]
+        write = c.patch(f"/api/v1/recordings/{world['rec']}", json={"title": "Still allowed"},
+                        headers=_h(plain))
+    assert codes == [200, 200, 200, 200, 200, 429]
+    assert write.status_code == 200
+
+
+def test_session_traffic_is_not_held_by_token_budgets(world, live_limiter):
+    c = _session(world)
+    assert {c.get("/api/v1/recordings").status_code for _ in range(8)} == {200}
+
+
+# ------------------------------------------------------------ token cap
+
+def test_the_token_cap_refuses_another_active_token_until_one_is_revoked(world):
+    from datetime import datetime, timedelta
+    from src.api import tokens as tokens_api
+    c = _session(world)
+    with app.app_context():
+        # A revoked or an expired token does not take a slot.
+        for kwargs in ({"revoked": True}, {"expires_at": datetime.utcnow() - timedelta(days=1)}):
+            t = APIToken(user_id=world["user"], token_hash=hash_token(secrets.token_urlsafe(16)), name="old",
+                         **kwargs)
+            db.session.add(t)
+            db.session.commit()
+            world["tokens"].append(t.id)
+    with patch.object(tokens_api, "API_MAX_TOKENS_PER_USER", 2):
+        made = [c.post("/api/tokens", json={"name": f"t{i}"}) for i in range(2)]
+        refused = c.post("/api/tokens", json={"name": "t3"})
+        assert c.delete(f"/api/tokens/{made[0].get_json()['id']}").status_code == 200
+        after_revoke = c.post("/api/tokens", json={"name": "t3"})
+    assert [r.status_code for r in made] == [201, 201]
+    assert refused.status_code == 409
+    body = refused.get_json()
+    assert body["code"] == "token_limit_reached" and body["max_tokens"] == 2 and body["active_tokens"] == 2
+    assert "Revoke" in body["error"]
+    assert after_revoke.status_code == 201
+
+
+def test_tokens_above_a_lowered_cap_keep_working(world):
+    from src.api import tokens as tokens_api
+    plains = [world["token"](None) for _ in range(3)]
+    with patch.object(tokens_api, "API_MAX_TOKENS_PER_USER", 1):
+        assert _session(world).post("/api/tokens", json={"name": "x"}).status_code == 409
+        with app.app_context():
+            c = _Client(app, app.response_class)
+            assert {_read(c, p).status_code for p in plains} == {200}
+
+
+def test_a_token_cap_of_zero_means_no_limit(world):
+    from src.api import tokens as tokens_api
+    c = _session(world)
+    with patch.object(tokens_api, "API_MAX_TOKENS_PER_USER", 0):
+        assert {c.post("/api/tokens", json={"name": f"t{i}"}).status_code for i in range(4)} == {201}
+
+
 def test_a_token_never_carries_over_to_the_next_request(world):
     """g outlives a request when a caller holds an app context; the token must not."""
     plain = world["token"](None)

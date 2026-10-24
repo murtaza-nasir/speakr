@@ -451,6 +451,7 @@
     "description": "Erstellen und verwalten Sie API-Token für den programmgesteuerten Zugriff auf Ihr Konto",
     "expires": "Läuft ab",
     "lastUsed": "Zuletzt verwendet",
+    "limitReached": "Ihr Konto hat bereits {{max}} aktive API-Tokens, die Höchstzahl. Widerrufen Sie ein nicht mehr benötigtes Token, um ein neues zu erstellen.",
     "neverUsed": "Nie verwendet",
     "noExpiration": "Kein Ablaufdatum",
     "noTokens": "Keine API-Token",

@@ -451,6 +451,7 @@
     "description": "Crie e gerencie tokens de API para acesso programático à sua conta",
     "expires": "Expira",
     "lastUsed": "Último uso",
+    "limitReached": "Sua conta já tem {{max}} tokens de API ativos, o máximo permitido. Revogue um token que você não usa mais para criar um novo.",
     "neverUsed": "Nunca usado",
     "noExpiration": "Sem expiração",
     "noTokens": "Nenhum Token de API",

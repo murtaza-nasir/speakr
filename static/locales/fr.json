@@ -451,6 +451,7 @@
     "description": "Créez et gérez des jetons API pour l'accès programmatique à votre compte",
     "expires": "Expire",
     "lastUsed": "Dernière utilisation",
+    "limitReached": "Votre compte possède déjà {{max}} jetons d'API actifs, le maximum autorisé. Révoquez un jeton que vous n'utilisez plus pour en créer un nouveau.",
     "neverUsed": "Jamais utilisé",
     "noExpiration": "Pas d'expiration",
     "noTokens": "Aucun jeton API",
