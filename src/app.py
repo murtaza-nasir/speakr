@@ -827,6 +827,12 @@ def inject_help_center_link():
     }
 
 @app.context_processor
+def inject_registration_flag():
+    """The login page offers the register link only when /register accepts (#479)."""
+    from src.api.auth import registration_enabled
+    return {'registration_enabled': registration_enabled()}
+
+@app.context_processor
 def inject_group_admin_status():
     """Inject is_group_admin flag and the admin-group list into all templates.
 

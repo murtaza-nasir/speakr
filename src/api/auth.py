@@ -124,6 +124,16 @@ class LoginForm(FlaskForm):
 
 # --- Helper Functions ---
 
+def registration_enabled() -> bool:
+    """Whether self-service registration is open (ALLOW_REGISTRATION).
+
+    The /register route and the login page's register link both ask this, so
+    the page never advertises a route that refuses (#479). Read per request:
+    the environment can change under the test suite.
+    """
+    return os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
+
+
 def is_registration_domain_allowed(email: str) -> bool:
     """Check if email domain is allowed for registration.
 
@@ -182,10 +192,7 @@ def record_timezone():
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @rate_limit("10 per minute")
 def register():
-    # Check if registration is allowed
-    allow_registration = os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
-
-    if not allow_registration:
+    if not registration_enabled():
         flash(translate('server.flash.registrationDisabled'), 'danger')
         return redirect(url_for('auth.login'))
 

@@ -483,6 +483,36 @@ def test_register_blocked_by_disallowed_domain(cleanup_users):
     assert User.query.filter_by(email=email).first() is None
 
 
+# The login page and the /register route must agree on every value (#479):
+# only 'true' in any case opens registration, unset defaults to open, and any
+# other value ('false', 'yes', '1', '') closes it.
+_REGISTRATION_VALUES = [
+    ('true', True), ('True', True), ('TRUE', True), (None, True),
+    ('false', False), ('False', False), ('FALSE', False),
+    ('yes', False), ('1', False), ('', False),
+]
+
+
+@pytest.mark.parametrize('value,enabled', _REGISTRATION_VALUES)
+def test_registration_enabled_helper(value, enabled):
+    with _envset(ALLOW_REGISTRATION=value):
+        assert auth_mod.registration_enabled() is enabled
+
+
+@pytest.mark.parametrize('value,enabled', _REGISTRATION_VALUES)
+def test_login_register_link_matches_register_route(value, enabled):
+    with _envset(ALLOW_REGISTRATION=value):
+        client = app.test_client()
+        page = client.get('/login')
+        assert page.status_code == 200
+        link_shown = b'Register here' in page.data
+        assert link_shown is enabled
+        assert (b'href="/register"' in page.data) is enabled
+        # The link is shown exactly when the route it points to accepts.
+        route = client.get('/register')
+        assert (route.status_code == 200) is enabled
+
+
 def test_is_registration_domain_allowed_helper(app_ctx):
     with _envset(REGISTRATION_ALLOWED_DOMAINS='example.com'):
         assert auth_mod.is_registration_domain_allowed('a@example.com') is True
