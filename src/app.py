@@ -245,6 +245,40 @@ def has_recording_access(recording, user, require_edit=False, require_reshare=Fa
     return True
 
 
+def editable_recording_ids(recordings, user, share_map):
+    """has_recording_access(..., require_edit=True) for a page of recordings.
+
+    share_map is {recording_id: InternalShare} of the user's shares for these
+    recordings. Returns the ids the user may edit, with one query in all for
+    the group-admin rule instead of one per row (D#483).
+    """
+    editable = {r.id for r in recordings if r.user_id == user.id}
+    if not ENABLE_INTERNAL_SHARING:
+        return editable
+    needs_admin = []
+    for recording in recordings:
+        share = share_map.get(recording.id)
+        if recording.id in editable or not share:
+            continue
+        if share.can_edit:
+            editable.add(recording.id)
+        else:
+            needs_admin.append(recording.id)
+    if needs_admin:
+        editable.update(rid for (rid,) in db.session.query(RecordingTag.recording_id).join(
+            Tag, RecordingTag.tag_id == Tag.id
+        ).join(
+            GroupMembership, Tag.group_id == GroupMembership.group_id
+        ).filter(
+            RecordingTag.recording_id.in_(needs_admin),
+            GroupMembership.user_id == user.id,
+            GroupMembership.role == 'admin',
+            Tag.group_id.isnot(None),
+            db.or_(Tag.auto_share_on_apply == True, Tag.share_with_group_lead == True)
+        ).distinct())
+    return editable
+
+
 def get_user_recording_status(recording, user):
     """
     Get the inbox and highlighted status for a recording from a user's perspective.
@@ -990,7 +1024,7 @@ client, chunking_service, version = initialize_config(app)
 init_auth_extensions(bcrypt, csrf, limiter)
 init_tokens_helpers(bcrypt, csrf, limiter)
 init_shares_helpers(has_recording_access)
-init_recordings_helpers(has_recording_access=has_recording_access, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
+init_recordings_helpers(has_recording_access=has_recording_access, editable_recording_ids=editable_recording_ids, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
 init_tags_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_folders_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_groups_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)

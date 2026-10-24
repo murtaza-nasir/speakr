@@ -116,7 +116,7 @@ class Recording(db.Model):
         """Get tags ordered by the order they were added to this recording."""
         return [assoc.tag for assoc in sorted(self.tag_associations, key=lambda x: x.order)]
 
-    def get_visible_tags(self, viewer_user):
+    def get_visible_tags(self, viewer_user, member_group_ids=None):
         """
         Get tags that are visible to a specific user viewing this recording.
 
@@ -129,6 +129,9 @@ class Recording(db.Model):
 
         Args:
             viewer_user: User object viewing the recording (or None for backward compatibility)
+            member_group_ids: optional set of the viewer's group ids, when a list
+                has read them once for its page (see group_ids_of); otherwise
+                each group tag costs one membership query
 
         Returns:
             List of Tag objects visible to the viewer
@@ -147,10 +150,13 @@ class Recording(db.Model):
         for tag in self.tags:
             # Group tags: visible if viewer is a member of the group
             if tag.group_id:
-                membership = GroupMembership.query.filter_by(
-                    group_id=tag.group_id,
-                    user_id=viewer_user.id
-                ).first()
+                if member_group_ids is not None:
+                    membership = tag.group_id in member_group_ids
+                else:
+                    membership = GroupMembership.query.filter_by(
+                        group_id=tag.group_id,
+                        user_id=viewer_user.id
+                    ).first()
                 if membership:
                     visible_tags.append(tag)
             # Personal tags: visible only to tag creator
@@ -307,7 +313,7 @@ class Recording(db.Model):
             }
         return None
 
-    def _serialize_tags_and_folder(self, viewer_user, share_map=None):
+    def _serialize_tags_and_folder(self, viewer_user, share_map=None, batch=None):
         """Build (tags, folder, folder_id) for a viewer, applying #314 rules.
 
         For a recording the viewer does NOT own, only the tag/folder that GRANTED
@@ -318,13 +324,20 @@ class Recording(db.Model):
 
         share_map: optional {recording_id: InternalShare} to avoid an N+1 query
         in list views; falls back to a per-recording lookup when not provided.
+        batch: optional RecordingListBatch with the page's visible tags and
+        tag/folder counts (D#483).
         """
-        visible_tags = self.get_visible_tags(viewer_user)
+        if batch is not None:
+            visible_tags = batch.visible_tags(self)
+            tag_dict, folder_dict = batch.tag_dict, batch.folder_dict
+        else:
+            visible_tags = self.get_visible_tags(viewer_user)
+            tag_dict, folder_dict = (lambda tag: tag.to_dict()), (lambda folder: folder.to_dict())
         is_foreign = viewer_user is not None and self.user_id != viewer_user.id
 
         if not is_foreign:
-            tags = [tag.to_dict() for tag in visible_tags] if visible_tags else []
-            folder = self.folder.to_dict() if self.folder else None
+            tags = [tag_dict(tag) for tag in visible_tags] if visible_tags else []
+            folder = folder_dict(self.folder) if self.folder else None
             return tags, folder, self.folder_id
 
         from src.models.sharing import InternalShare
@@ -341,11 +354,11 @@ class Recording(db.Model):
         if reason_tag_id:
             for tag in visible_tags:
                 if tag.id == reason_tag_id:
-                    td = tag.to_dict()
+                    td = tag_dict(tag)
                     td['is_foreign'] = True
                     tags.append(td)
         if reason_folder_id and self.folder_id == reason_folder_id and self.folder:
-            folder = self.folder.to_dict()
+            folder = folder_dict(self.folder)
             folder['is_foreign'] = True
             return tags, folder, self.folder_id
         return tags, None, None
@@ -355,7 +368,7 @@ class Recording(db.Model):
         value = self.updated_at or self.created_at
         return value.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if value else None
 
-    def to_list_dict(self, viewer_user=None, duplicate_info_map=None, share_map=None):
+    def to_list_dict(self, viewer_user=None, duplicate_info_map=None, share_map=None, batch=None):
         """
         Lightweight dict for list views - excludes expensive HTML conversions.
 
@@ -363,21 +376,33 @@ class Recording(db.Model):
             viewer_user: User viewing the recording (for tag visibility filtering)
             share_map: optional {recording_id: InternalShare} for #314 share-reason
                 resolution without an N+1 query.
+            batch: optional RecordingListBatch (src/services/recording_list.py)
+                built for viewer_user over the page: share counts, duplicates,
+                visible tags and tag/folder counts come from it instead of
+                per-row queries (D#483).
         """
         # Import here to avoid circular dependencies
         from src.models.sharing import InternalShare, Share
 
-        # Count internal shares for this recording
-        shared_with_count = db.session.query(func.count(InternalShare.id)).filter(
-            InternalShare.recording_id == self.id
-        ).scalar() or 0
+        if batch is not None:
+            shared_with_count = batch.shared_with_counts.get(self.id, 0)
+            public_share_count = batch.public_share_counts.get(self.id, 0)
+            duplicate_info = batch.duplicate_info(self)
+            if share_map is None:
+                share_map = batch.share_map
+        else:
+            # Count internal shares for this recording
+            shared_with_count = db.session.query(func.count(InternalShare.id)).filter(
+                InternalShare.recording_id == self.id
+            ).scalar() or 0
 
-        # Count public shares (link shares) for this recording
-        public_share_count = db.session.query(func.count(Share.id)).filter(
-            Share.recording_id == self.id
-        ).scalar() or 0
+            # Count public shares (link shares) for this recording
+            public_share_count = db.session.query(func.count(Share.id)).filter(
+                Share.recording_id == self.id
+            ).scalar() or 0
+            duplicate_info = self._dup_from_map_or_query(duplicate_info_map)
 
-        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map)
+        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map, batch)
 
         return {
             'id': self.id,
@@ -408,7 +433,7 @@ class Recording(db.Model):
             'folder_id': folder_id_ser,
             'folder': folder_ser,
             'tags': tags_ser,
-            'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
+            'duplicate_info': duplicate_info,
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
             'audio_duration': self.get_audio_duration(),

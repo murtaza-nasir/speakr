@@ -67,6 +67,9 @@ def share_details(recordings, user):
     states = {s.recording_id: s for s in SharedRecordingState.query.filter(
         SharedRecordingState.recording_id.in_(shared_ids), SharedRecordingState.user_id == user.id)}
     owners = {u.id: u for u in User.query.filter(User.id.in_({r.user_id for r in recordings if r.id in shares}))}
+    # Group memberships once for the page, not one query per group tag (D#483)
+    from src.services.recording_list import group_ids_of
+    member_group_ids = group_ids_of(user, [r for r in recordings if r.id in shares])
     show = _show_usernames()
     details = {}
     for r in recordings:
@@ -86,7 +89,8 @@ def share_details(recordings, user):
             'is_inbox': bool(state.is_inbox) if state and state.is_inbox is not None else True,
             'is_highlighted': bool(state.is_highlighted) if state else False,
             'is_archived': bool(state.is_archived) if state and state.is_archived is not None else False,
-            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.get_visible_tags(user)],
+            'tags': [{'id': t.id, 'name': t.name, 'color': t.color}
+                     for t in r.get_visible_tags(user, member_group_ids)],
         }
     return details
 

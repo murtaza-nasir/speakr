@@ -134,8 +134,14 @@ class Folder(db.Model):
         """Check if this is a group-scoped folder."""
         return self.group_id is not None
 
-    def to_dict(self):
-        """Convert model to dictionary representation."""
+    def to_dict(self, recording_count=None):
+        """Convert model to dictionary representation.
+
+        recording_count: the folder's recording count when the caller has
+        counted it already (list pages count all their folders at once).
+        """
+        if recording_count is None:
+            recording_count = len(self.recordings) if self.recordings else 0
         return {
             'id': self.id,
             'name': self.name,
@@ -160,7 +166,7 @@ class Folder(db.Model):
             'export_template_id': self.export_template_id,
             'export_template_name': self.export_template.name if self.export_template else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'recording_count': len(self.recordings) if self.recordings else 0
+            'recording_count': recording_count
         }
 
 
@@ -222,8 +228,14 @@ class Tag(db.Model):
         """Check if this is a group-scoped tag."""
         return self.group_id is not None
 
-    def to_dict(self):
-        """Convert model to dictionary representation."""
+    def to_dict(self, recording_count=None):
+        """Convert model to dictionary representation.
+
+        recording_count: the tag's recording count when the caller has
+        counted it already (list pages count all their tags at once).
+        """
+        if recording_count is None:
+            recording_count = len(self.recording_associations)
         return {
             'id': self.id,
             'name': self.name,
@@ -250,5 +262,5 @@ class Tag(db.Model):
             'is_auto_process': self.is_auto_process or False,
             'auto_process_folder_name': self.auto_process_folder_name,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'recording_count': len(self.recording_associations)
+            'recording_count': recording_count
         }

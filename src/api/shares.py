@@ -652,31 +652,39 @@ def get_shared_with_me():
         return jsonify({'error': 'Internal sharing is not enabled'}), 403
 
     try:
-        # Get shares where current user is the recipient
-        shares = InternalShare.query.filter_by(shared_with_user_id=current_user.id).all()
+        # Get shares where current user is the recipient, with their
+        # recordings and owners, and the rows' lookups read once (D#483)
+        from sqlalchemy.orm import selectinload
+        from src.services.recording_list import RecordingListBatch, list_load_options
+        shares = InternalShare.query.filter_by(shared_with_user_id=current_user.id).options(
+            selectinload(InternalShare.recording).options(*list_load_options()),
+            selectinload(InternalShare.owner),
+        ).all()
+        listed = [s for s in shares if s.recording and s.recording.status == 'COMPLETED']
+        batch = RecordingListBatch([s.recording for s in listed], current_user,
+                                   {s.recording_id: s for s in listed})
 
         result = []
-        for share in shares:
+        for share in listed:
             recording = share.recording
-            if recording and recording.status == 'COMPLETED':
-                rec_data = recording.to_list_dict(viewer_user=current_user)
-                # Mark as shared recording with owner info
-                rec_data['is_shared'] = True
-                rec_data['owner_username'] = share.owner.username if SHOW_USERNAMES_IN_UI else None
-                # Don't show outgoing share counts for recordings you don't own
-                rec_data['shared_with_count'] = 0
-                rec_data['public_share_count'] = 0
-                # Check if recording has group tags (among visible tags)
-                visible_tags = recording.get_visible_tags(current_user)
-                rec_data['has_group_tags'] = any(tag.is_group_tag for tag in visible_tags) if visible_tags else False
-                rec_data['share_info'] = {
-                    'share_id': share.id,
-                    'owner_username': share.owner.username if SHOW_USERNAMES_IN_UI else None,
-                    'can_edit': share.can_edit,
-                    'can_reshare': share.can_reshare,
-                    'shared_at': share.created_at.isoformat()
-                }
-                result.append(rec_data)
+            rec_data = recording.to_list_dict(viewer_user=current_user, batch=batch)
+            # Mark as shared recording with owner info
+            rec_data['is_shared'] = True
+            rec_data['owner_username'] = share.owner.username if SHOW_USERNAMES_IN_UI else None
+            # Don't show outgoing share counts for recordings you don't own
+            rec_data['shared_with_count'] = 0
+            rec_data['public_share_count'] = 0
+            # Check if recording has group tags (among visible tags)
+            visible_tags = batch.visible_tags(recording)
+            rec_data['has_group_tags'] = any(tag.is_group_tag for tag in visible_tags) if visible_tags else False
+            rec_data['share_info'] = {
+                'share_id': share.id,
+                'owner_username': share.owner.username if SHOW_USERNAMES_IN_UI else None,
+                'can_edit': share.can_edit,
+                'can_reshare': share.can_reshare,
+                'shared_at': share.created_at.isoformat()
+            }
+            result.append(rec_data)
 
         return jsonify(result)
 

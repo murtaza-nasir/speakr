@@ -178,6 +178,7 @@ def reindex_recording_chunks_async(recording_id):
 
 # Global helpers (will be injected from app)
 has_recording_access = None
+editable_recording_ids = None
 get_user_recording_status = None
 set_user_recording_status = None
 enrich_recording_dict_with_user_status = None
@@ -188,8 +189,9 @@ chunking_service = None
 
 def init_recordings_helpers(**kwargs):
     """Initialize helper functions and extensions from app."""
-    global has_recording_access, get_user_recording_status, set_user_recording_status, enrich_recording_dict_with_user_status, bcrypt, csrf, limiter, chunking_service
+    global has_recording_access, editable_recording_ids, get_user_recording_status, set_user_recording_status, enrich_recording_dict_with_user_status, bcrypt, csrf, limiter, chunking_service
     has_recording_access = kwargs.get('has_recording_access')
+    editable_recording_ids = kwargs.get('editable_recording_ids')
     get_user_recording_status = kwargs.get('get_user_recording_status')
     set_user_recording_status = kwargs.get('set_user_recording_status')
     enrich_recording_dict_with_user_status = kwargs.get('enrich_recording_dict_with_user_status')
@@ -1760,8 +1762,10 @@ def get_recordings_paginated():
         offset = (page - 1) * per_page
         stmt = stmt.offset(offset).limit(per_page)
 
-        # Execute query
-        recordings = db.session.execute(stmt).scalars().all()
+        # Execute query. Tags, folders and their names load for the whole
+        # page, and the long text columns the list never shows stay behind (D#483).
+        from src.services.recording_list import RecordingListBatch, list_load_options
+        recordings = db.session.execute(stmt.options(*list_load_options())).scalars().all()
 
         # Batch-load this viewer's shares for the page so serialization can resolve
         # the #314 share-reason tag/folder without an N+1 query.
@@ -1774,31 +1778,35 @@ def get_recordings_paginated():
             ).all():
                 share_map[s.recording_id] = s
 
+        # What the rows need beyond their own columns, read once for the page
+        # rather than per row (D#483)
+        batch = RecordingListBatch(recordings, current_user, share_map)
+        editable_ids = editable_recording_ids(recordings, current_user, share_map)
+
         # Enrich recordings with sharing metadata
         enriched_recordings = []
         for recording in recordings:
-            rec_dict = recording.to_list_dict(viewer_user=current_user, share_map=share_map)
+            rec_dict = recording.to_list_dict(viewer_user=current_user, share_map=share_map, batch=batch)
 
             # Add sharing metadata
             is_owner = recording.user_id == current_user.id
             rec_dict['is_owner'] = is_owner
 
             # Get per-user status (owner uses Recording fields, recipients use SharedRecordingState)
-            user_inbox, user_highlighted = get_user_recording_status(recording, current_user)
+            user_inbox, user_highlighted = batch.user_status(recording)
             rec_dict['is_inbox'] = user_inbox
             rec_dict['is_highlighted'] = user_highlighted
-            from src.services.recording_state import get_user_archived
-            rec_dict['is_archived'] = get_user_archived(recording, current_user)
+            rec_dict['is_archived'] = batch.user_archived(recording)
 
-            # Add edit permission info (uses has_recording_access which checks group admin status)
-            rec_dict['can_edit'] = has_recording_access(recording, current_user, require_edit=True)
+            # Add edit permission info (has_recording_access rules, group admins included)
+            rec_dict['can_edit'] = recording.id in editable_ids
 
             # Add delete permission info (only owner can delete)
             rec_dict['can_delete'] = is_owner and (USERS_CAN_DELETE or current_user.is_admin)
 
             if not is_owner:
                 # This is a shared recording - get owner info and share permissions
-                owner = db.session.get(User, recording.user_id)
+                owner = batch.owners.get(recording.user_id)
                 rec_dict['owner_username'] = owner.username if owner else "Unknown"
                 rec_dict['is_shared'] = True
                 # Don't show outgoing share count for recordings you don't own
@@ -1826,8 +1834,7 @@ def get_recordings_paginated():
                 rec_dict['is_shared'] = False
 
             # Check if recording has group tags (among visible tags)
-            visible_tags = recording.get_visible_tags(current_user)
-            has_group_tags = any(tag.is_group_tag for tag in visible_tags)
+            has_group_tags = any(tag.is_group_tag for tag in batch.visible_tags(recording))
             rec_dict['has_group_tags'] = has_group_tags
 
             enriched_recordings.append(rec_dict)
@@ -3393,8 +3400,11 @@ def get_inbox_recordings():
             Recording.status.in_(['PENDING', 'PROCESSING', 'SUMMARIZING'])
         ).order_by(Recording.created_at.desc())
 
-        recordings = db.session.execute(stmt).scalars().all()
-        return jsonify([recording.to_list_dict(viewer_user=current_user) for recording in recordings])
+        # Page lookups read once, not per row (D#483)
+        from src.services.recording_list import RecordingListBatch, list_load_options
+        recordings = db.session.execute(stmt.options(*list_load_options())).scalars().all()
+        batch = RecordingListBatch(recordings, current_user)
+        return jsonify([recording.to_list_dict(viewer_user=current_user, batch=batch) for recording in recordings])
     except Exception as e:
         current_app.logger.error(f"Error fetching inbox recordings: {e}")
         return jsonify({'error': str(e)}), 500
@@ -3420,8 +3430,11 @@ def get_archived_recordings():
             Recording.audio_deleted_at.is_not(None)
         ).order_by(Recording.audio_deleted_at.desc())
 
-        recordings = db.session.execute(stmt).scalars().all()
-        return jsonify([recording.to_list_dict(viewer_user=current_user) for recording in recordings])
+        # Page lookups read once, not per row (D#483)
+        from src.services.recording_list import RecordingListBatch, list_load_options
+        recordings = db.session.execute(stmt.options(*list_load_options())).scalars().all()
+        batch = RecordingListBatch(recordings, current_user)
+        return jsonify([recording.to_list_dict(viewer_user=current_user, batch=batch) for recording in recordings])
     except Exception as e:
         current_app.logger.error(f"Error fetching archived recordings: {e}")
         return jsonify({'error': str(e)}), 500
