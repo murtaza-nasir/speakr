@@ -265,8 +265,13 @@ def require_scope(*scopes):
         # (src/api/api_v1.py). Its own wrapper would run a second limiter check
         # per request, and each check counts every limit of the route, so the
         # route limit joins this stack instead and the view runs unwrapped.
-        route_limit = getattr(f, '_rate_limit', None)
-        route_view = getattr(f, '__wrapped__', None) if route_limit else None
+        # Only when f is that wrapper itself: a decorator in between (an
+        # access check, say) inherits its attributes through functools.wraps
+        # and must not be skipped.
+        route_limit = route_view = None
+        if getattr(f, '_rate_limit_wrapper', None) is f:
+            route_limit = f._rate_limit
+            route_view = f.__wrapped__
 
         @wraps(f)
         def wrapper(*args, **kwargs):

@@ -413,6 +413,29 @@ def test_concurrent_first_requests_register_the_limits_once(world, live_limiter)
     assert sorted(codes) == [200, 200, 200, 429, 429, 429]
 
 
+def test_a_decorator_between_require_scope_and_rate_limit_is_never_skipped(live_limiter):
+    """functools.wraps copies _rate_limit onto a decorator above rate_limit();
+    require_scope may unwrap only rate_limit's own wrapper."""
+    from functools import wraps
+    from src.api.api_v1 import rate_limit
+    from src.utils.token_auth import require_scope
+
+    def deny(f):
+        @wraps(f)
+        def check(*args, **kwargs):
+            return "denied"
+        return check
+
+    def view():
+        return "view ran"
+
+    guarded = require_scope("read")(deny(rate_limit("5 per minute")(view)))
+    direct = require_scope("read")(rate_limit("5 per minute")(view))
+    with app.test_request_context("/"):
+        assert guarded() == "denied"
+        assert direct() == "view ran"
+
+
 # ------------------------------------------------------------ token cap
 
 def test_the_token_cap_refuses_another_active_token_until_one_is_revoked(world):

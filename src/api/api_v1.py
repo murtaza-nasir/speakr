@@ -93,6 +93,10 @@ def rate_limit(limit_string, **limit_options):
 
         wrapper._rate_limit = limit_string
         wrapper._rate_limit_options = limit_options
+        # functools.wraps copies these attributes onto any decorator above;
+        # this one points at this wrapper only, so require_scope can tell it
+        # apart from a decorator that merely inherited them.
+        wrapper._rate_limit_wrapper = wrapper
         return wrapper
     return decorator
 
