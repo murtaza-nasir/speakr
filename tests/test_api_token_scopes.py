@@ -375,6 +375,41 @@ def test_token_and_account_budgets_count_once_on_a_route_with_its_own_limit(worl
     assert refused.status_code == 429 and refused.get_json()["code"] == code
 
 
+def test_registering_the_limits_again_still_counts_each_request_once(world, live_limiter):
+    """A second registration on the same limiter (two threads that both saw the
+    route unregistered) must not add a second copy of each limit."""
+    plain = world["token"](None)
+    view = app.view_functions["api_v1.list_recordings"]
+    with app.app_context():
+        c = _Client(app, app.response_class)
+        first = _read(c, plain)
+        view._limit_state["limiter"] = None     # as the thread that lost the race sees it
+        rest = [_read(c, plain).status_code for _ in range(3)]
+    assert [first.status_code] + rest == [200, 200, 200, 429]   # token budget 3
+
+
+def test_concurrent_first_requests_register_the_limits_once(world, live_limiter):
+    import threading
+    plain = world["token"](None)
+    barrier = threading.Barrier(6)
+    codes = []
+
+    def first_request():
+        with app.app_context():
+            c = _Client(app, app.response_class)
+            barrier.wait()
+            codes.append(_read(c, plain, "/api/v1/tags").status_code)
+
+    threads = [threading.Thread(target=first_request) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    # Token budget 3 on this route: three pass, three are refused, whatever
+    # the interleaving; a doubled registration would let only one through.
+    assert sorted(codes) == [200, 200, 200, 429, 429, 429]
+
+
 # ------------------------------------------------------------ token cap
 
 def test_the_token_cap_refuses_another_active_token_until_one_is_revoked(world):

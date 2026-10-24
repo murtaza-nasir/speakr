@@ -7,6 +7,7 @@ allowing users to authenticate with Bearer tokens instead of session cookies.
 
 import hashlib
 import os
+import threading
 from datetime import datetime
 from functools import wraps
 from flask import request, g, has_request_context
@@ -229,8 +230,32 @@ def require_scope(*scopes):
     required = frozenset(scopes)
     category = _rate_category(set(scopes))
 
+    # Built once, so a second registration (another limiter in tests) yields
+    # limits equal to the first and Flask-Limiter keeps one of each.
+    def token_limit():
+        return _RATE_LIMITS[category]
+
+    def user_limit():
+        return _USER_RATE_LIMITS[category]
+
+    def is_exempt():
+        return not is_token_request()
+
+    def token_scope(endpoint):
+        return f"token-{category}"
+
+    def token_message():
+        return f"Rate limit reached for this token: {_RATE_LIMITS[category]} ({category} requests)."
+
+    def user_message():
+        return (f"Rate limit reached for your account: {_USER_RATE_LIMITS[category]} "
+                f"({category} requests), shared by all your API tokens.")
+
     def decorator(f):
         state = {'limiter': None, 'limited': None}
+        # gthread workers serve the first requests of a route at the same time;
+        # registering the limits twice would count every request twice.
+        lock = threading.Lock()
         # A route limit from a lazy rate_limit() decorator under this one
         # (src/api/api_v1.py). Its own wrapper would run a second limiter check
         # per request, and each check counts every limit of the route, so the
@@ -243,36 +268,33 @@ def require_scope(*scopes):
             from src.app import limiter
             if limiter is not None and getattr(limiter, 'enabled', True):
                 if state['limiter'] is not limiter:
-                    # Both limits register under the view's name, so one check
-                    # evaluates the two. With equal windows the token limit is
-                    # checked first, and a request it refuses is not counted
-                    # against the account. The token budget is counted per
-                    # route, as before; the account budget is one shared bucket
-                    # per kind across all routes.
-                    target = f
-                    if route_view is not None:
-                        target = limiter.limit(route_limit, **getattr(f, '_rate_limit_options', {}))(route_view)
-                    per_token = limiter.limit(
-                        lambda: _RATE_LIMITS[category], key_func=token_rate_key,
-                        exempt_when=lambda: not is_token_request(),
-                        scope=lambda endpoint: f"token-{category}",
-                        error_message=lambda: (f"Rate limit reached for this token: "
-                                               f"{_RATE_LIMITS[category]} ({category} requests)."),
-                    )(target)
-                    state['limited'] = limiter.shared_limit(
-                        lambda: _USER_RATE_LIMITS[category], scope=f"user-{category}",
-                        key_func=user_rate_key,
-                        exempt_when=lambda: not is_token_request(),
-                        override_defaults=False,
-                        error_message=lambda: (f"Rate limit reached for your account: "
-                                               f"{_USER_RATE_LIMITS[category]} ({category} requests), "
-                                               f"shared by all your API tokens."),
-                    )(per_token)
-                    state['limiter'] = limiter
+                    with lock:
+                        if state['limiter'] is not limiter:
+                            state['limited'] = _register(limiter)
+                            state['limiter'] = limiter
                 return state['limited'](*args, **kwargs)
             return f(*args, **kwargs)
 
+        def _register(limiter):
+            # Both limits register under the view's name, so one check
+            # evaluates the two. With equal windows the token limit is checked
+            # first, and a request it refuses is not counted against the
+            # account. The token budget is counted per route, as before; the
+            # account budget is one shared bucket per kind across all routes.
+            target = f
+            if route_view is not None:
+                target = limiter.limit(route_limit, **getattr(f, '_rate_limit_options', {}))(route_view)
+            per_token = limiter.limit(
+                token_limit, key_func=token_rate_key, exempt_when=is_exempt,
+                scope=token_scope, error_message=token_message,
+            )(target)
+            return limiter.shared_limit(
+                user_limit, scope=f"user-{category}", key_func=user_rate_key,
+                exempt_when=is_exempt, override_defaults=False, error_message=user_message,
+            )(per_token)
+
         wrapper._required_scopes = required
+        wrapper._limit_state = state
         return wrapper
     return decorator
 
