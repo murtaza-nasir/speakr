@@ -2042,10 +2042,10 @@ All endpoints return consistent error responses:
 
 ## Rate Limits
 
-Requests made with an API token are held by two limits for each kind of request:
+Requests made with an API token are held by two limits for each kind of request. Both are counted separately for each endpoint:
 
-- **Token limit.** Each token has its own budget, counted separately for each endpoint, so two integrations with their own tokens do not share it.
-- **Account limit.** All tokens of one account draw on one budget across all endpoints, so a further token adds no throughput.
+- **Token limit.** Each token has its own budget, so two integrations with their own tokens do not share it.
+- **Account limit.** On each endpoint, all tokens of one account draw on one budget, so a further token adds no throughput there.
 
 | Kind | Endpoints | Token limit | Account limit |
 |------|-----------|-------------|---------------|
@@ -2053,13 +2053,13 @@ Requests made with an API token are held by two limits for each kind of request:
 | Write | Endpoints that need `write`, `upload`, `share`, `delete`, `webhooks` or `account` | 30 requests/minute (`API_TOKEN_RATE_LIMIT_WRITE`) | 60 requests/minute (`API_USER_RATE_LIMIT_WRITE`) |
 | Process | Endpoints that need `process` | 10 requests/minute (`API_TOKEN_RATE_LIMIT_PROCESS`) | 20 requests/minute (`API_USER_RATE_LIMIT_PROCESS`) |
 
-An account limit that is not set is twice the token limit of the same kind, so a client with a single token on one endpoint is held by its token limit. The limits apply to full-access and scoped tokens alike. A request that the token limit refuses does not count against the account limit.
+An account limit that is not set is twice the token limit of the same kind, so a client with a single token is held by its token limit. Because both limits are per endpoint, a client that polls several endpoints, such as a mail client during a sync, is never refused by the account limit while each endpoint stays within its token limit. The limits apply to full-access and scoped tokens alike. A request that the token limit refuses does not count against the account limit.
 
 A request over a limit gets `429` with a `Retry-After` header in seconds. The body names the limit that ran out:
 
 ```json
 {
-  "error": "Rate limit reached for your account: 240 per minute (read requests), shared by all your API tokens.",
+  "error": "Rate limit reached for your account: 240 per minute (read requests on this endpoint), shared by all your API tokens.",
   "code": "account_rate_limit_exceeded",
   "limit": "240 per 1 minute"
 }

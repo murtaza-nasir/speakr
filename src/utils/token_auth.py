@@ -179,9 +179,11 @@ def _doubled(limit_string):
         for item in items)
 
 
-# Account-wide limits (#484): all tokens of one user draw on one budget per
-# kind, so another token adds no throughput. The default is twice the
-# per-token limit, so a client with a single token is held by its token limit.
+# Account limits (#484): on each endpoint, all tokens of one user draw on one
+# budget per kind, so another token adds no throughput there. Like the token
+# budget it is counted per endpoint, so a client that polls several endpoints
+# is not held by it. The default is twice the per-token limit, so a client
+# with a single token is held by its token limit.
 _USER_RATE_LIMITS = {
     kind: os.environ.get(f'API_USER_RATE_LIMIT_{kind.upper()}') or _doubled(limit) or limit
     for kind, limit in _RATE_LIMITS.items()
@@ -247,9 +249,12 @@ def require_scope(*scopes):
     def token_message():
         return f"Rate limit reached for this token: {_RATE_LIMITS[category]} ({category} requests)."
 
+    def user_scope(endpoint):
+        return f"user-{category}"
+
     def user_message():
         return (f"Rate limit reached for your account: {_USER_RATE_LIMITS[category]} "
-                f"({category} requests), shared by all your API tokens.")
+                f"({category} requests on this endpoint), shared by all your API tokens.")
 
     def decorator(f):
         state = {'limiter': None, 'limited': None}
@@ -279,8 +284,8 @@ def require_scope(*scopes):
             # Both limits register under the view's name, so one check
             # evaluates the two. With equal windows the token limit is checked
             # first, and a request it refuses is not counted against the
-            # account. The token budget is counted per route, as before; the
-            # account budget is one shared bucket per kind across all routes.
+            # account. Both are counted per route: the bucket is the endpoint
+            # plus the token or the user.
             target = f
             if route_view is not None:
                 target = limiter.limit(route_limit, **getattr(f, '_rate_limit_options', {}))(route_view)
@@ -288,9 +293,9 @@ def require_scope(*scopes):
                 token_limit, key_func=token_rate_key, exempt_when=is_exempt,
                 scope=token_scope, error_message=token_message,
             )(target)
-            return limiter.shared_limit(
-                user_limit, scope=f"user-{category}", key_func=user_rate_key,
-                exempt_when=is_exempt, override_defaults=False, error_message=user_message,
+            return limiter.limit(
+                user_limit, key_func=user_rate_key, exempt_when=is_exempt,
+                scope=user_scope, error_message=user_message,
             )(per_token)
 
         wrapper._required_scopes = required

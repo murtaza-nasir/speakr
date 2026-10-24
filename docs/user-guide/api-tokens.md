@@ -207,7 +207,7 @@ Click the trash icon next to any token to revoke it immediately. Revoked tokens:
 
 By default an account can hold up to 10 active tokens. Revoked and expired tokens do not count, and revoking a token frees its slot at once. Creating a token beyond the limit gives `409` with `"code": "token_limit_reached"`.
 
-Requests made with a token are held by a limit for the token and by a limit for the whole account, so spreading work over more tokens adds no throughput. [Rate Limits](api-reference.md#rate-limits) lists the values.
+Requests made with a token are held by a limit for the token and by a limit for the whole account, both counted per endpoint, so spreading work over more tokens adds no throughput on an endpoint. [Rate Limits](api-reference.md#rate-limits) lists the values.
 
 Administrators set these limits with environment variables:
 
@@ -215,7 +215,7 @@ Administrators set these limits with environment variables:
 |----------|---------|---------|
 | `API_MAX_TOKENS_PER_USER` | `10` | Active tokens per account; `0` means no limit. Tokens above a lowered limit keep working. |
 | `API_TOKEN_RATE_LIMIT_READ`, `API_TOKEN_RATE_LIMIT_WRITE`, `API_TOKEN_RATE_LIMIT_PROCESS` | `120 per minute`, `30 per minute`, `10 per minute` | Budget of each token, per endpoint. |
-| `API_USER_RATE_LIMIT_READ`, `API_USER_RATE_LIMIT_WRITE`, `API_USER_RATE_LIMIT_PROCESS` | Twice the token limit of the same kind | Budget that all tokens of an account share across endpoints. |
+| `API_USER_RATE_LIMIT_READ`, `API_USER_RATE_LIMIT_WRITE`, `API_USER_RATE_LIMIT_PROCESS` | Twice the token limit of the same kind | Budget that all tokens of an account share, per endpoint. |
 | `RATELIMIT_STORAGE_URI` | Memory of each worker process | Shared storage for the counters, such as `redis://redis:6379/0`. Without it, each of the three worker processes of the standard image counts separately, so a limit allows up to about three times its value. |
 
 ## Security Best Practices
@@ -303,7 +303,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ### 429 Too Many Requests
 
-- With `"code": "token_rate_limit_exceeded"`, the token sent more requests than its own limit allows. With `"code": "account_rate_limit_exceeded"`, all tokens of the account together reached the account limit, and another token does not help (see [Rate Limits](api-reference.md#rate-limits)). Wait the number of seconds in the `Retry-After` header.
+- With `"code": "token_rate_limit_exceeded"`, the token sent more requests than its own limit allows. With `"code": "account_rate_limit_exceeded"`, all tokens of the account together reached the account limit on that endpoint, and another token does not help (see [Rate Limits](api-reference.md#rate-limits)). Wait the number of seconds in the `Retry-After` header.
 
 ---
 

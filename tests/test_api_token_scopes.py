@@ -313,16 +313,19 @@ def test_a_single_token_meets_its_own_budget_first(world, live_limiter):
     assert refused.get_json()["code"] == "token_rate_limit_exceeded"
 
 
-def test_the_account_budget_spans_routes_and_kinds_stay_apart(world, live_limiter):
+def test_one_token_polling_several_endpoints_is_never_held_by_the_account(world, live_limiter):
+    """Both budgets are per endpoint: a sync client at its token limit on each
+    of three endpoints (9 reads, account budget 5) meets only its token limit."""
     plain = world["token"](None)
+    paths = ["/api/v1/recordings", "/api/v1/tags", "/api/v1/users/me"]
     with app.app_context():
         c = _Client(app, app.response_class)
-        # The token budget is counted per route, the account budget across them.
-        codes = [_read(c, plain).status_code for _ in range(3)]
-        codes += [_read(c, plain, "/api/v1/tags").status_code for _ in range(3)]
+        codes = [_read(c, plain, path).status_code for path in paths for _ in range(3)]
+        refused = _read(c, plain, "/api/v1/tags")
         write = c.patch(f"/api/v1/recordings/{world['rec']}", json={"title": "Still allowed"},
                         headers=_h(plain))
-    assert codes == [200, 200, 200, 200, 200, 429]
+    assert codes == [200] * 9
+    assert refused.status_code == 429 and refused.get_json()["code"] == "token_rate_limit_exceeded"
     assert write.status_code == 200
 
 
