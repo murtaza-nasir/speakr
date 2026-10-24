@@ -1214,7 +1214,7 @@ You must respond with valid JSON format only."""
         db.session.rollback()
 
 
-def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True):
+def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True, allow_debug_copy=True):
     """Extract audio from video containers using FFmpeg.
 
     Behavior depends on AUDIO_COMPRESS_UPLOADS setting AND codec support:
@@ -1226,6 +1226,8 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
         video_filepath: Path to input video file
         output_format: Audio format ('mp3', 'wav', 'flac', 'copy'), default 'mp3'
         cleanup_original: If True, deletes original video after extraction
+        allow_debug_copy: Passed to the FFmpeg helper; incognito passes False so
+            no PRESERVE_TEMP_AUDIO copy outlives the request
 
     Returns:
         tuple: (audio_filepath, mime_type)
@@ -1262,7 +1264,8 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 output_format=AUDIO_CODEC,
                 bitrate=AUDIO_BITRATE,
                 cleanup_original=cleanup_original,
-                copy_stream=False
+                copy_stream=False,
+                allow_debug_copy=allow_debug_copy,
             )
         elif can_copy_stream:
             # Copy audio stream without re-encoding (fast, preserves quality)
@@ -1271,7 +1274,8 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 video_filepath,
                 output_format='copy',
                 cleanup_original=cleanup_original,
-                copy_stream=True
+                copy_stream=True,
+                allow_debug_copy=allow_debug_copy,
             )
         else:
             # Codec not supported - must re-encode for compatibility
@@ -1281,7 +1285,8 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 output_format=AUDIO_CODEC,
                 bitrate=AUDIO_BITRATE,
                 cleanup_original=cleanup_original,
-                copy_stream=False
+                copy_stream=False,
+                allow_debug_copy=allow_debug_copy,
             )
 
         current_app.logger.info(f"Successfully extracted audio to {audio_filepath}")
@@ -1289,10 +1294,10 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
 
     except FFmpegNotFoundError as e:
         current_app.logger.error(str(e))
-        raise Exception("Audio conversion tool (FFmpeg) not found on server.")
+        raise Exception("Audio conversion tool (FFmpeg) not found on server.") from e
     except FFmpegError as e:
         current_app.logger.error(f"FFmpeg audio extraction failed for {video_filepath}: {str(e)}")
-        raise Exception(f"Audio extraction failed: {str(e)}")
+        raise Exception(f"Audio extraction failed: {str(e)}") from e
     except Exception as e:
         current_app.logger.error(f"Error extracting audio from {video_filepath}: {str(e)}")
         raise
@@ -2566,7 +2571,14 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                         _incognito_derived_files.append(audio_filepath)
                 except Exception as e:
                     current_app.logger.error(f"[Incognito] Failed to extract audio from video: {e}")
-                    raise
+                    # The message carries FFmpeg's output (its build and the
+                    # temp path): answer from the FFmpeg error it wraps, or
+                    # with a fixed message (#482).
+                    if isinstance(e, FFmpegError):
+                        raise
+                    if isinstance(e.__cause__, FFmpegError):
+                        raise e.__cause__ from None
+                    raise Exception("Audio extraction failed.") from e
 
         # Convert audio format if needed
         if video_passthrough_active:
