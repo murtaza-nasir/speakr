@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 import mimetypes
 from werkzeug.utils import secure_filename
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError, has_audio_stream
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed
 from src.utils.filenames import shorten_filename
@@ -426,8 +426,10 @@ class FileMonitor:
                 # Check if this is a video file (for video retention logic)
                 has_video = codec_info.get('has_video', False) if codec_info else False
 
-                # Video passthrough or retention: skip conversion for videos
-                if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video:
+                # Video passthrough or retention: skip conversion for videos.
+                # A video without an audio track goes through conversion,
+                # which refuses it, as without these settings.
+                if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video and has_audio_stream(codec_info):
                     self.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
                     final_path = destination_path
                 else:

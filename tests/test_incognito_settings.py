@@ -88,7 +88,7 @@ def test_incognito_decode_failure_reports_a_fixed_message(user, tmp_path):
         registry = MagicMock()
         registry.get_active_connector.return_value = connector
         with patch("src.services.transcription.get_registry", return_value=registry), \
-             patch.object(proc, "is_video_file", return_value=True), \
+             patch.object(proc, "get_codec_info", return_value={"has_video": True, "has_audio": True}), \
              patch.object(proc, "VIDEO_PASSTHROUGH_ASR", False), \
              patch.object(proc, "extract_audio_from_video",
                           side_effect=FFmpegError("ffmpeg version n8.1.3 ... Error opening input file /tmp/tmpx.mp4")):

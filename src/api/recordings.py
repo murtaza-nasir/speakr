@@ -58,7 +58,10 @@ from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.filenames import shorten_filename
 from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
+from src.utils.ffprobe import (
+    get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError,
+    has_audio_stream, probe_rejected_input,
+)
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
@@ -2498,6 +2501,7 @@ def ingest_uploaded_recording(
         file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
         probe_timeout = max(10, min(60, int(file_size_mb / 10)))  # 10s min, scales ~1s per 10MB, 60s max
         codec_info = None
+        probe_error = None
         try:
             codec_info = get_codec_info(filepath, timeout=probe_timeout)
             current_app.logger.info(
@@ -2508,6 +2512,7 @@ def ingest_uploaded_recording(
         except FFProbeError as e:
             current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
             codec_info = None
+            probe_error = e
             # #340: a browser MediaRecorder can produce a .webm whose EBML header
             # isn't at the front (chunk-order artifact, seen on crash-recovered
             # recordings). If so, trim to the real header and re-probe before we
@@ -2516,6 +2521,7 @@ def ingest_uploaded_recording(
                 repaired_info = try_repair_malformed_webm(filepath, timeout=probe_timeout)
                 if repaired_info is not None:
                     codec_info = repaired_info
+                    probe_error = None
                     current_app.logger.info(f"Recovered malformed WebM header for {original_filename}; probe succeeded after trim")
 
         # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
@@ -2544,17 +2550,30 @@ def ingest_uploaded_recording(
                     effective_limit_mb = regular_limit_mb
                     is_likely_video_by_ext = False
                     raise RequestEntityTooLarge()
-                has_video = True
-                current_app.logger.info(
-                    f"Probe failed but file extension '{file_ext}' indicates video — "
-                    f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
-                )
+                if probe_error is not None and probe_rejected_input(probe_error):
+                    # ffprobe read the file and could not make sense of it.
+                    # Only a probe that did not finish is trusted to the
+                    # extension: this file goes through conversion, which
+                    # refuses it with audio_decode_failed, as without these
+                    # settings (#482).
+                    current_app.logger.info(
+                        f"ffprobe could not read '{file_ext}' upload; converting it as audio"
+                    )
+                else:
+                    has_video = True
+                    current_app.logger.info(
+                        f"Probe failed but file extension '{file_ext}' indicates video — "
+                        f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
+                    )
         # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
         # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
         # sends video directly to the ASR endpoint — left untouched here.
+        # A video without an audio track has nothing to transcribe: it goes
+        # through conversion, which refuses it, as without these settings.
         keep_video_for_this_upload = (
             ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
             and has_video
+            and (codec_info is None or has_audio_stream(codec_info))
         )
         # An audio file uploaded to be joined is decoded and re-encoded by the
         # merge job anyway, so converting it here would only delay the upload

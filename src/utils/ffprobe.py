@@ -28,6 +28,33 @@ class FFProbeError(Exception):
     pass
 
 
+class FFProbeTimeoutError(FFProbeError):
+    """Raised when ffprobe runs past its timeout.
+
+    A timeout says nothing about the input (a large MP4 with its index at the
+    end can take long to probe), unlike a file ffprobe cannot read.
+    """
+    pass
+
+
+class FFProbeNotFoundError(FFProbeError):
+    """Raised when the ffprobe executable is not found."""
+    pass
+
+
+def has_audio_stream(codec_info: Dict[str, Any]) -> bool:
+    """True when the probed file has at least one audio stream."""
+    return bool(codec_info.get('has_audio') or codec_info.get('audio_codec'))
+
+
+def probe_rejected_input(error: FFProbeError) -> bool:
+    """True when ffprobe ran to completion and could not read the file.
+
+    A timeout or a missing ffprobe says nothing about the file itself.
+    """
+    return not isinstance(error, (FFProbeTimeoutError, FFProbeNotFoundError))
+
+
 def probe(filename: str, cmd: str = 'ffprobe', timeout: Optional[int] = None) -> Dict[str, Any]:
     """
     Run ffprobe on the specified file and return a JSON representation of the output.
@@ -68,9 +95,9 @@ def probe(filename: str, cmd: str = 'ffprobe', timeout: Optional[int] = None) ->
     except subprocess.TimeoutExpired:
         if p:
             p.kill()
-        raise FFProbeError(f'ffprobe timed out after {timeout} seconds')
+        raise FFProbeTimeoutError(f'ffprobe timed out after {timeout} seconds')
     except FileNotFoundError:
-        raise FFProbeError('ffprobe command not found. Please ensure ffmpeg is installed.')
+        raise FFProbeNotFoundError('ffprobe command not found. Please ensure ffmpeg is installed.')
     except json.JSONDecodeError as e:
         raise FFProbeError(f'Failed to parse ffprobe output: {e}')
 

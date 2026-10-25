@@ -26,7 +26,7 @@ from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, Gr
 from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy, TokenBudgetExceeded
 from src.utils import extract_json_object, safe_json_loads
-from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError
+from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError, has_audio_stream, probe_rejected_input
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
@@ -2543,14 +2543,19 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         actual_content_type = mime_type
 
         # Check if file is video and needs audio extraction
+        # A video without an audio track, and a file ffprobe read and
+        # rejected, go through conversion, which refuses them with
+        # audio_decode_failed (#482). Only a probe that did not finish falls
+        # back to the extension.
         is_video = False
         try:
-            is_video = is_video_file(filepath, timeout=10)
+            _codec_info = get_codec_info(filepath, timeout=10)
+            is_video = bool(_codec_info.get('has_video')) and has_audio_stream(_codec_info)
         except FFProbeError as e:
             current_app.logger.warning(f"[Incognito] Failed to probe file: {e}")
-            # Check by extension
-            video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
-            is_video = any(original_filename.lower().endswith(ext) for ext in video_extensions)
+            if not probe_rejected_input(e):
+                video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
+                is_video = any(original_filename.lower().endswith(ext) for ext in video_extensions)
 
         video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR
 
