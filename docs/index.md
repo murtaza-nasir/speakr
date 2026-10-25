@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.15-alpha: security fixes, find and replace, notes in summaries"
-    Seven security fixes, find and replace in the transcript editors, notes given to the summarizer, and a folder filter in Inquire. Set `APP_BASE_URL` if Speakr sends email.
+!!! success "Latest Release: v0.10.16-alpha: Tencent Cloud ASR, interface language, API limits"
+    A Tencent Cloud ASR connector, dates, times and file sizes in the interface language, account-wide API limits and faster recording lists.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.15-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.16-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.16-alpha - Tencent Cloud ASR, interface language, API limits"
+    One column and seven indexes are added at startup; no configuration changes are required.
+
+    - **Transcription** - A Tencent Cloud ASR connector with speaker diarization (#427), and request parameters for the text and chat models.
+    - **Language** - Dates, times, numbers, percentages and file sizes follow the interface language (#477, #480, #481).
+    - **API** - Account-wide limits and a cap on active tokens (discussion #484), and a CSRF check on the token API (#478).
+    - **Fixes** - Faster recording lists (discussion #483), clear errors for unreadable uploads (#482), and #475, #476, #479, #485.
+
 !!! info "Version 0.10.15-alpha - Security fixes, find and replace, notes in summaries"
     Two columns and one index are added at startup. Set `APP_BASE_URL` if Speakr sends email, and `TRUSTED_PROXY_HOPS=0` if no reverse proxy is in front of it.
 
@@ -144,15 +152,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Processing** - Recordings stuck in QUEUED or SUMMARIZING can be reset, and a transcript is no longer lost when reprocessing cannot be queued (#420, #423, #424).
     - **Errors** - The exception line of a failed WhisperX request is kept (#422), and "Authentication Error" is no longer shown for an ID that contains "401".
 
-!!! info "Version 0.10.13-alpha - Storage quotas, shared transcripts, right-to-left text"
-    One new column and one new setting are added at startup; nothing is limited until an administrator sets a quota.
-
-    - **Storage** - Per-user storage quotas with a default for new accounts; usage under Account and in the header (#413).
-    - **Sharing** - Shared Transcripts lists public links, shares with people and groups, and recordings shared with you (#416).
-    - **Fixes** - Right-to-left text (#414), speaker counts from `.env` (#415), local language models without an API key.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.12 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.13 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
