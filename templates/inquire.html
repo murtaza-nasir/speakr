@@ -611,12 +611,12 @@
                                  conversation context is, so compaction never
                                  feels like silent memory loss. -->
                             <span v-if="contextUsage >= 50" class="flex items-center gap-1.5"
-                                  :title="'Conversation context: ' + contextUsage + '% — older messages are summarized when it fills up'">
+                                  :title="'Conversation context: ' + formatPercent(contextUsage) + ' — older messages are summarized when it fills up'">
                                 <span class="inline-block w-16 h-1 rounded-full overflow-hidden" style="background: var(--bg-tertiary);">
                                     <span class="block h-full rounded-full"
                                           :style="{ width: contextUsage + '%', background: 'var(--bg-accent)' }"></span>
                                 </span>
-                                <span v-text="contextUsage + '%'"></span>
+                                <span v-text="formatPercent(contextUsage)"></span>
                             </span>
                             <span v-if="hasActiveFilters" style="color: var(--text-accent);">
                                 <i class="fas fa-filter mr-1"></i>${t('inquire.filtersActive')}
@@ -1315,6 +1315,7 @@
                         t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
                         // components/header-controls.html formats numbers with this (#480)
                         uiLocale: () => window.i18n?.getIntlLocale?.(),
+                        formatPercent: (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`),
 
                         // Shared header controls (components/header-controls.html)
                         ...headerNotifications,

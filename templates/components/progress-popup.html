@@ -99,7 +99,7 @@
                         ]"></i>
                         <span class="text-xs font-medium truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
                         <span v-if="item.status === 'uploading' && item.progress !== null"
-                              class="text-xs font-bold text-blue-500">${item.progress}%</span>
+                              class="text-xs font-bold text-blue-500">${ formatPercent(item.progress) }</span>
                         <span v-else :class="[
                             'text-xs font-medium px-1.5 py-0.5 rounded',
                             item.status === 'uploading' ? 'bg-blue-500/20 text-blue-500' :

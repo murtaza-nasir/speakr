@@ -91,6 +91,7 @@ async function mountGlobalHeader() {
                 t,
                 // components/header-controls.html formats numbers with this (#480)
                 uiLocale: () => window.i18n?.getIntlLocale?.(),
+                formatPercent: (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`),
                 ...notifications,
                 isUserMenuOpen,
                 tokenBudget,

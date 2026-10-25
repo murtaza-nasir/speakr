@@ -8,7 +8,7 @@
          :title="t('usageMeters.tokenTooltip', { used: (tokenBudget.usage || 0).toLocaleString(uiLocale()), budget: (tokenBudget.budget || 0).toLocaleString(uiLocale()) })">
         <i class="fas fa-coins text-[10px]"
            :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}"></i>
-        <span :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}">${ tokenBudget.percentage }%</span>
+        <span :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}">${ formatPercent(tokenBudget.percentage) }</span>
         <div class="w-12 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
             <div class="h-full rounded-full transition-all duration-300 bg-[var(--text-accent)]"
                  :style="{
@@ -23,7 +23,7 @@
        :title="t('usageMeters.storageTooltip', { used: tokenBudget.storage.used_label, quota: tokenBudget.storage.quota_label })">
         <i class="fas fa-hdd text-[10px]"
            :style="tokenBudget.storage.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.storage.percentage >= 80 ? {color: '#f59e0b'} : {}"></i>
-        <span :style="tokenBudget.storage.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.storage.percentage >= 80 ? {color: '#f59e0b'} : {}">${ tokenBudget.storage.percentage }%</span>
+        <span :style="tokenBudget.storage.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.storage.percentage >= 80 ? {color: '#f59e0b'} : {}">${ formatPercent(tokenBudget.storage.percentage) }</span>
         <div class="w-12 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
             <div class="h-full rounded-full transition-all duration-300 bg-[var(--text-accent)]"
                  :style="{

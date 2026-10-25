@@ -143,10 +143,10 @@
                                             @mousedown.prevent
                                             @click="chooseName(entry.id, topVoiceMatch(entry.id).name)"
                                             class="spk-voice-pill"
-                                            :title="t('speakerModal.voiceMatchTitle', { name: topVoiceMatch(entry.id).name, similarity: topVoiceMatch(entry.id).similarity })">
+                                            :title="t('speakerModal.voiceMatchTitle', { name: topVoiceMatch(entry.id).name, similarity: formatNumber(topVoiceMatch(entry.id).similarity) })">
                                         <i class="fas fa-waveform-lines text-[9px]"></i>
                                         <span class="truncate max-w-[80px]">${ topVoiceMatch(entry.id).name }</span>
-                                        <span class="opacity-75">${ topVoiceMatch(entry.id).similarity }%</span>
+                                        <span class="opacity-75">${ formatPercent(topVoiceMatch(entry.id).similarity) }</span>
                                     </button>
                                 </div>
 
@@ -162,7 +162,7 @@
                                         @click="chooseName(entry.id, option.name)">
                                         <i class="fas" :class="option.source === 'voice' ? 'fa-waveform-lines' : 'fa-user'"></i>
                                         <span class="spk-option-name">${ option.name }</span>
-                                        <span v-if="option.source === 'voice'" class="t-meta" v-text="t('speakerModal.voiceMatch') + ' ' + option.similarity + '%'"></span>
+                                        <span v-if="option.source === 'voice'" class="t-meta" v-text="t('speakerModal.voiceMatch') + ' ' + formatPercent(option.similarity)"></span>
                                         <span v-else-if="option.taken" class="t-meta" v-text="t('speakerModal.alreadyAssigned')"></span>
                                         <span v-else class="t-meta" v-text="tc('speakerModal.usedTimes', option.useCount, { count: option.useCount })"></span>
                                     </li>

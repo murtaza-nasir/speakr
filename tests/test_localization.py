@@ -371,6 +371,38 @@ def test_unguarded_i18n_call_scanner(snippet, matches):
     assert bool(UNGUARDED_I18N_CALL.search(snippet)) is matches
 
 
+# Percentages shown as text follow the interface language too (#480): a
+# template that writes ${ x }% or ${ x.toFixed(1) }%, or appends '%' in a
+# v-text or :title, shows "12.5%" in German. formatPercent() (i18n.formatPercent)
+# gives "12,5 %". Bar widths (:style, style=) are layout and stay as they are.
+PERCENT_TEXT = re.compile(r"""\$\{[^}]*\}\s*%|(?:v-text|:title|:aria-label)="[^"]*\+\s*'%""")
+
+
+def test_no_percentage_text_ignores_the_interface_locale():
+    offenders = []
+    for path in _walk('templates', '.html'):
+        text = open(path, encoding='utf-8').read()
+        for m in PERCENT_TEXT.finditer(text):
+            line = text[text.rfind(chr(10), 0, m.start()) + 1:text.find(chr(10), m.end())]
+            if 'window.i18n?.formatPercent ?' in line:
+                continue  # the fallback of a guarded formatPercent, for a page without i18n.js
+            offenders.append(f'{os.path.relpath(path, REPO)}:{text.count(chr(10), 0, m.start()) + 1}: {m.group(0)}')
+    assert not offenders, 'format percentages with formatPercent():\n' + '\n'.join(f'  {o}' for o in offenders)
+
+
+@pytest.mark.parametrize('snippet,matches', [
+    ('<span>${ row.pct.toFixed(1) }%</span>', True),
+    ('<span>${ tokenBudget.percentage }%</span>', True),
+    ("""<span v-text="contextUsage + '%'"></span>""", True),
+    (':title="\'Context: \' + contextUsage + \'% used\'"', True),
+    ('<span>${ formatPercent(row.pct) }</span>', False),
+    (':style="{ width: row.pct + \'%\' }"', False),
+    ('style="width: {{ [pct, 100]|min }}%"', False),
+])
+def test_percentage_text_scanner(snippet, matches):
+    assert bool(PERCENT_TEXT.search(snippet)) is matches
+
+
 def test_every_locale_has_every_file_size_unit():
     units = {'bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes'}
     for lang in _languages():

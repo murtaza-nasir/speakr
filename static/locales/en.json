@@ -2008,6 +2008,7 @@
     "speaker": "Speaker",
     "time": "Time",
     "pctAudio": "% of audio",
+    "pctOfAudio": "{{pct}} of audio",
     "wpm": "WPM",
     "silence": "Silence",
     "noStatsTitle": "No stats yet",

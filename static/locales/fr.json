@@ -2008,6 +2008,7 @@
     "speaker": "Intervenant",
     "time": "Temps",
     "pctAudio": "% de l'audio",
+    "pctOfAudio": "{{pct}} de l'audio",
     "wpm": "MPM",
     "silence": "Silence",
     "noStatsTitle": "Pas encore de statistiques",

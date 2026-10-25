@@ -2026,6 +2026,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Localized number and units (#481)
             // Without i18n.js (not loaded yet) the page still shows a size.
             const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
+            const formatPercent = (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`);
+            const formatNumber = (n, options) => (window.i18n?.formatNumber ? window.i18n.formatNumber(n, options) : String(n));
 
             // Parse a backend INSTANT timestamp. The backend stores/serializes
             // naive UTC (no zone designator); new Date() would parse a zoneless
@@ -4482,6 +4484,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Utilities
                 formatFileSize,
+                formatPercent,
+                formatNumber,
                 // The interface locale for toLocale*String calls in templates (#480)
                 uiLocale: () => window.i18n?.getIntlLocale?.(),
                 parseServerInstant,

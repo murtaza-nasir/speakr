@@ -269,6 +269,20 @@ class I18n {
     }
 
     /**
+     * Format a percentage in the interface language: "12.5%", "12,5 %" in
+     * German (#480). The value is on the 0-100 scale, as every caller holds
+     * it: formatPercent(12.5) is 12.5 %, not 1250 %.
+     * @param {number} percent - Percentage, 0-100 (more is allowed)
+     * @param {object} options - Intl.NumberFormat options; at most one decimal by default
+     * @returns {string} Formatted percentage
+     */
+    formatPercent(percent, options = {}) {
+        const value = Number(percent);
+        return this.formatNumber(Number.isFinite(value) ? value / 100 : 0,
+            { maximumFractionDigits: 1, ...options, style: 'percent' });
+    }
+
+    /**
      * Format file size with appropriate unit, at most one decimal, in the
      * interface language's number format: "1.5 MB", "1,5 MB" in German (#481).
      * src/utils/localization.py format_file_size() is the server-side twin.

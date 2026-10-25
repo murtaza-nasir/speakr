@@ -186,3 +186,36 @@ describe('file sizes (#481)', () => {
         for (const value of [null, undefined, NaN, 'x', -5]) expect(en.formatFileSize(value)).toBe('0 B');
     });
 });
+
+describe('percentages (#480)', () => {
+    const pct = (code) => load({ bootstrap: { locale: code, translations: { en: EN } } }).i18n;
+    // ICU puts a no-break space (U+00A0) or a narrow one (U+202F) before % in some languages.
+    const plain = (s) => s.replace(/[\u00a0\u202f]/g, ' ');
+
+    it('uses the separator and the % spacing of the interface language', () => {
+        expect(pct('en').formatPercent(12.5)).toBe('12.5%');
+        expect(plain(pct('de').formatPercent(12.5))).toBe('12,5 %');
+        expect(plain(pct('fr').formatPercent(12.5))).toBe('12,5 %');
+        expect(plain(pct('es').formatPercent(12.5))).toBe('12,5 %');
+        expect(plain(pct('ru').formatPercent(12.5))).toBe('12,5 %');
+        expect(pct('pt-BR').formatPercent(12.5)).toBe('12,5%');
+        expect(pct('zh').formatPercent(12.5)).toBe('12.5%');
+    });
+
+    it('takes the value on the 0-100 scale with at most one decimal by default', () => {
+        const en = pct('en');
+        expect(en.formatPercent(0)).toBe('0%');
+        expect(en.formatPercent(100)).toBe('100%');
+        expect(en.formatPercent(150)).toBe('150%');
+        expect(en.formatPercent(33.333)).toBe('33.3%');
+        expect(en.formatPercent(7)).toBe('7%');
+        expect(en.formatPercent(12.345, { maximumFractionDigits: 2 })).toBe('12.35%');
+    });
+
+    it('signs a change when asked and reads an invalid value as zero', () => {
+        const en = pct('en');
+        expect(en.formatPercent(12, { signDisplay: 'exceptZero' })).toBe('+12%');
+        expect(en.formatPercent(-4, { signDisplay: 'exceptZero' })).toBe('-4%');
+        for (const value of [null, undefined, NaN, 'x']) expect(en.formatPercent(value)).toBe('0%');
+    });
+});

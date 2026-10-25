@@ -2008,6 +2008,7 @@
     "speaker": "Говорящий",
     "time": "Время",
     "pctAudio": "% аудио",
+    "pctOfAudio": "{{pct}} аудио",
     "wpm": "слов/мин",
     "silence": "Тишина",
     "noStatsTitle": "Статистики пока нет",

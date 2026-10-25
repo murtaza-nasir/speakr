@@ -52,7 +52,7 @@
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <div>
                             <div class="t-label">${ t('stats.pctAudio') }</div>
-                            <div class="text-sm font-medium mt-0.5">${ row.pct.toFixed(1) }%</div>
+                            <div class="text-sm font-medium mt-0.5">${ formatPercent(row.pct) }</div>
                         </div>
                         <div>
                             <div class="t-label">${ t('stats.turns') }</div>
@@ -79,9 +79,8 @@
                     <div class="h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden mb-2">
                         <div class="h-full" :style="{ width: recordingStats.silence.pct.toFixed(1) + '%', background: 'var(--text-muted)' }"></div>
                     </div>
-                    <div class="t-meta text-center">
-                        ${ recordingStats.silence.pct.toFixed(1) }% ${ t('stats.pctAudio') }
-                    </div>
+                    <div class="t-meta text-center"
+                         v-text="t('stats.pctOfAudio', { pct: formatPercent(recordingStats.silence.pct) })"></div>
                 </div>
             </div>
         </div>

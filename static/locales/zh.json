@@ -2008,6 +2008,7 @@
     "speaker": "发言人",
     "time": "时间",
     "pctAudio": "占音频比例",
+    "pctOfAudio": "占音频 {{pct}}",
     "wpm": "字/分",
     "silence": "静默",
     "noStatsTitle": "暂无统计数据",

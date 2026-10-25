@@ -117,7 +117,8 @@ export function useSpeakerModal(state, utils) {
         const agg = speakerStats.value.bySpeaker[id];
         if (!agg) return t('speakerModal.noSegmentsYet');
         if (!speakerStats.value.hasTimes) return tc('speakerModal.segmentCount', agg.segments, { count: agg.segments });
-        return t('speakerModal.speakingTime', { time: formatClock(agg.seconds), share: agg.share });
+        const share = window.i18n?.formatNumber ? window.i18n.formatNumber(agg.share) : agg.share;
+        return t('speakerModal.speakingTime', { time: formatClock(agg.seconds), share });
     };
 
     const speakerShare = (id) => speakerStats.value.bySpeaker[id]?.share || 0;

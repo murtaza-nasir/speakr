@@ -55,7 +55,7 @@
                             </div>
                         </td>
                         <td class="py-2 px-3 font-mono text-right">${ row.durationLabel }</td>
-                        <td class="py-2 px-3 text-right">${ row.pct.toFixed(1) }%</td>
+                        <td class="py-2 px-3 text-right">${ formatPercent(row.pct) }</td>
                         <td class="py-2 px-3 text-right">${ row.turns }</td>
                         <td class="py-2 px-3 text-right">${ row.words.toLocaleString(uiLocale()) }</td>
                         <td class="py-2 px-3 text-right">${ row.wpm || '—' }</td>
@@ -70,7 +70,7 @@
                             </div>
                         </td>
                         <td class="py-2 px-3 font-mono text-right">${ recordingStats.silence.durationLabel }</td>
-                        <td class="py-2 px-3 text-right">${ recordingStats.silence.pct.toFixed(1) }%</td>
+                        <td class="py-2 px-3 text-right">${ formatPercent(recordingStats.silence.pct) }</td>
                         <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
                         <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
                         <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>

@@ -354,7 +354,7 @@
                                 <div>
                                     <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.statsPage.failureRate')}</p>
                                     <p class="font-semibold" :class="overview && overview.activity.failed ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-primary)]'"
-                                       v-text="overview && overview.activity.failure_rate != null ? t('adminDashboard.statsPage.failedOf', { failed: overview.activity.failed, total: overview.activity.created, pct: overview.activity.failure_rate }) : '—'"></p>
+                                       v-text="overview && overview.activity.failure_rate != null ? t('adminDashboard.statsPage.failedOf', { failed: overview.activity.failed, total: overview.activity.created, pct: formatNumber(overview.activity.failure_rate, { maximumFractionDigits: 1 }) }) : '—'"></p>
                                 </div>
                             </div>
                         </div>
@@ -1158,7 +1158,7 @@ Summarization Instructions:
                                         <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2.5">
                                             <div class="bg-[var(--text-accent)] h-2.5 rounded-full" :style="{width: getProcessingProgress() + '%'}"></div>
                                         </div>
-                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ getProcessingProgress() }% ${t('adminDashboard.complete')}</p>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ formatPercent(getProcessingProgress()) } ${t('adminDashboard.complete')}</p>
                                     </div>
                                 </div>
                                 <i class="fas fa-tasks text-3xl text-[var(--text-accent)] opacity-50"></i>
@@ -1424,7 +1424,7 @@ Summarization Instructions:
                         <div v-if="editingUser.monthly_token_budget && editingUser.current_token_usage !== undefined" class="mt-2">
                             <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
                                 <span>${t('adminDashboard.currentUsage')}: ${ editingUser.current_token_usage?.toLocaleString(uiLocale()) || 0 } ${t('adminDashboard.tokens')}</span>
-                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100}">${ editingUser.token_usage_percentage || 0 }%</span>
+                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100}">${ formatPercent(editingUser.token_usage_percentage || 0) }</span>
                             </div>
                             <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
                                 <div class="h-2 rounded-full" :class="{'bg-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'bg-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100, 'bg-[var(--text-success-strong)]': editingUser.token_usage_percentage < 80}" :style="{width: Math.min(editingUser.token_usage_percentage || 0, 100) + '%'}"></div>
@@ -1438,7 +1438,7 @@ Summarization Instructions:
                         <div v-if="editingUser.monthly_transcription_budget && editingUser.current_transcription_usage !== undefined" class="mt-2">
                             <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
                                 <span>${t('adminDashboard.currentUsageMinutes')}: ${ editingUser.current_transcription_usage_minutes || 0 } ${t('adminDashboard.minutes')}</span>
-                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.transcription_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.transcription_usage_percentage >= 80 && editingUser.transcription_usage_percentage < 100}">${ editingUser.transcription_usage_percentage || 0 }%</span>
+                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.transcription_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.transcription_usage_percentage >= 80 && editingUser.transcription_usage_percentage < 100}">${ formatPercent(editingUser.transcription_usage_percentage || 0) }</span>
                             </div>
                             <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
                                 <div class="h-2 rounded-full" :class="{'bg-[var(--text-danger-strong)]': editingUser.transcription_usage_percentage >= 100, 'bg-[var(--text-warn-strong)]': editingUser.transcription_usage_percentage >= 80 && editingUser.transcription_usage_percentage < 100, 'bg-[var(--text-success-strong)]': editingUser.transcription_usage_percentage < 80}" :style="{width: Math.min(editingUser.transcription_usage_percentage || 0, 100) + '%'}"></div>
@@ -1453,7 +1453,7 @@ Summarization Instructions:
                         <div class="mt-2">
                             <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
                                 <span>${t('adminDashboard.storageUsedLabel')}: ${ formatFileSize(editingUser.storage_used || 0) }</span>
-                                <span v-if="editingUser.storage_quota_mb" :class="storagePctClass(storagePct(editingUser))">${ storagePct(editingUser) }%</span>
+                                <span v-if="editingUser.storage_quota_mb" :class="storagePctClass(storagePct(editingUser))">${ formatPercent(storagePct(editingUser)) }</span>
                             </div>
                             <div v-if="editingUser.storage_quota_mb" class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
                                 <div class="h-2 rounded-full" :class="budgetBarClass(storagePct(editingUser))" :style="{width: Math.min(storagePct(editingUser), 100) + '%'}"></div>
@@ -2539,7 +2539,11 @@ Summarization Instructions:
                     if (!prev) return cur ? _t('adminDashboard.statsPage.newInRange') : _t('adminDashboard.statsPage.noChange');
                     const pct = Math.round((cur - prev) / prev * 100);
                     if (pct === 0) return _t('adminDashboard.statsPage.noChange');
-                    return _t('adminDashboard.statsPage.vsPrevious', { pct: (pct > 0 ? '+' : '') + pct + '%' });
+                    return _t('adminDashboard.statsPage.vsPrevious', {
+                        pct: window.i18n?.formatPercent
+                            ? window.i18n.formatPercent(pct, { signDisplay: 'exceptZero' })
+                            : (pct > 0 ? '+' : '') + pct + '%',
+                    });
                 };
                 const overviewCards = computed(() => {
                     const o = overview.value && overview.value.overview;
@@ -3500,6 +3504,8 @@ Summarization Instructions:
                 // Localized number and units (#481)
                 // Without i18n.js (not loaded yet) the page still shows a size.
                 const formatFileSize = (bytes) => (window.i18n?.formatFileSize ? window.i18n.formatFileSize(bytes) : `${Number(bytes) || 0} bytes`);
+                const formatPercent = (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`);
+                const formatNumber = (n, options) => (window.i18n?.formatNumber ? window.i18n.formatNumber(n, options) : String(n));
                 
                 const toggleDarkMode = () => {
                     isDarkMode.value = !isDarkMode.value;
@@ -4164,6 +4170,8 @@ Summarization Instructions:
                     toggleAdminStatus,
                     togglePublicSharingPermission,
                     formatFileSize,
+                    formatPercent,
+                    formatNumber,
                     toggleDarkMode,
 
                     // Group Management methods
