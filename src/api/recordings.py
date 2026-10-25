@@ -1451,13 +1451,15 @@ def get_recordings():
             return jsonify([])  # Return empty array if not logged in
 
         # Filter recordings by the current user
+        from src.services.recording_list import RecordingListBatch, full_load_options
         stmt = select(Recording).where(Recording.user_id == current_user.id).order_by(Recording.created_at.desc())
-        recordings = db.session.execute(stmt).scalars().all()
+        recordings = db.session.execute(stmt.options(*full_load_options())).scalars().all()
         # Pre-batch the duplicate-info groupings so we don't run a
         # per-row query inside each recording's to_dict() call.
         dup_map = Recording.get_duplicate_info_map(current_user.id)
+        batch = RecordingListBatch(recordings, current_user, duplicates=False)
         return jsonify([
-            recording.to_dict(viewer_user=current_user, duplicate_info_map=dup_map)
+            recording.to_dict(viewer_user=current_user, duplicate_info_map=dup_map, batch=batch)
             for recording in recordings
         ])
     except Exception as e:

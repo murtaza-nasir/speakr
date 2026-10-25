@@ -15,6 +15,10 @@ The statement tests count every SQL statement of one request and require
 the same count for 25 and for 100 rows, under STATEMENT_BOUND; the v1 list
 and shared-with-me are held to the same rule.
 
+GET /recordings (the full to_dict of every owned recording), the tag and
+folder lists and the Shared Transcripts overview are compared with frozen
+copies of their per-row code in the same way, and held to the same rule.
+
 SHARED-DB: everything is created under fresh users and removed afterwards;
 assertions are scoped to this module's viewers.
 """
@@ -22,22 +26,24 @@ assertions are scoped to this module's viewers.
 import json
 import os
 import sys
+import threading
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import src.api.folders as folders_module
 import src.api.recordings as rec_module
 import src.api.shares as shares_module
 from src.app import app, db
 from src.models import (
-    APIToken, ExportTemplate, Folder, Group, GroupMembership, InternalShare, NamingTemplate, Recording,
-    RecordingTag, Share, SharedRecordingState, Tag, User,
+    APIToken, Event, ExportTemplate, Folder, Group, GroupMembership, InternalShare, NamingTemplate, Recording,
+    RecordingTag, Share, SharedRecordingState, SystemSetting, Tag, User,
 )
 from src.utils.token_auth import hash_token
 
@@ -61,11 +67,18 @@ STATEMENT_BOUND = 20
 
 @contextmanager
 def count_statements():
-    """Collect every SQL statement sent to the database inside the block."""
+    """Collect every SQL statement this thread sends to the database inside the block.
+
+    The test client serves the request in the calling thread. Statements of
+    background threads (the webhook dispatcher polls the same engine) are
+    left out, so a poll during the request does not change the count.
+    """
     statements = []
+    thread = threading.get_ident()
 
     def _before(conn, cursor, statement, parameters, context, executemany):
-        statements.append(statement)
+        if threading.get_ident() == thread:
+            statements.append(statement)
 
     with app.app_context():
         engine = db.engine
@@ -81,6 +94,17 @@ def sharing_on():
     with patch("src.app.ENABLE_INTERNAL_SHARING", True), \
          patch.object(rec_module, "ENABLE_INTERNAL_SHARING", True), \
          patch.object(shares_module, "ENABLE_INTERNAL_SHARING", True):
+        yield
+
+
+@contextmanager
+def folders_on():
+    real = SystemSetting.get_setting
+
+    def get_setting(key, default_value=None):
+        return True if key == 'enable_folders' else real(key, default_value)
+
+    with patch.object(SystemSetting, "get_setting", staticmethod(get_setting)):
         yield
 
 
@@ -117,7 +141,7 @@ def _cleanup(user_ids, group_ids):
         db.session.rollback()
         rec_ids = [r for (r,) in db.session.query(Recording.id).filter(Recording.user_id.in_(user_ids))]
         if rec_ids:
-            for model in (RecordingTag, Share, InternalShare, SharedRecordingState):
+            for model in (RecordingTag, Share, InternalShare, SharedRecordingState, Event):
                 model.query.filter(model.recording_id.in_(rec_ids)).delete(synchronize_session=False)
             Recording.query.filter(Recording.id.in_(rec_ids)).delete(synchronize_session=False)
         Tag.query.filter(Tag.user_id.in_(user_ids)).delete(synchronize_session=False)
@@ -326,6 +350,7 @@ def world():
         _tag(c, t_personal, 0)
         _tag(e, t_member, 0)
         _tag(e, t_personal, 1)
+        db.session.add(Event(recording_id=a.id, title="Kickoff", start_datetime=base, location="Room 1"))
         _share(a, o1, can_edit=True)
         _share(a, o2)
         db.session.add(Share(recording_id=a.id, user_id=viewer.id))
@@ -484,7 +509,9 @@ def _build_scenario(kind, n):
                     db.session.flush()
                     rec.folder_id = folder.id
                     rec.file_hash = f"hash{i // 2}-{viewer.id}"    # pairs of duplicates
+                    rec.notes = f"notes {i}"
                     _tag(rec, tag, 0)
+                    db.session.add(Event(recording_id=rec.id, title=f"e{i}", start_datetime=base))
         else:
             group = Group(name=f"{_PREFIX}_sc_{uuid.uuid4().hex[:8]}")
             db.session.add(group)
@@ -556,6 +583,223 @@ def test_v1_and_shared_with_me_statements_do_not_grow_with_rows(kind):
         print(kind, counts)
         for (name, n), count in counts.items():
             assert count == counts[name, 25], (name, counts)
+            assert count <= STATEMENT_BOUND
+    finally:
+        _cleanup(small_users + large_users, small_groups + large_groups)
+
+
+# --------------------------------------------------------------------------- #
+# GET /recordings, tag and folder lists, Shared Transcripts overview
+# --------------------------------------------------------------------------- #
+
+def _legacy_get_recordings(viewer_id):
+    """GET /recordings before the batching, verbatim."""
+    with app.app_context():
+        current_user = db.session.get(User, viewer_id)
+        stmt = select(Recording).where(Recording.user_id == current_user.id).order_by(Recording.created_at.desc())
+        recordings = db.session.execute(stmt).scalars().all()
+        dup_map = Recording.get_duplicate_info_map(current_user.id)
+        return json.loads(json.dumps([
+            recording.to_dict(viewer_user=current_user, duplicate_info_map=dup_map)
+            for recording in recordings
+        ]))
+
+
+def _legacy_tags(viewer_id):
+    """GET /api/tags before the batching, verbatim."""
+    with app.app_context():
+        current_user = db.session.get(User, viewer_id)
+        user_tags = Tag.query.filter_by(user_id=current_user.id, group_id=None).order_by(Tag.name).all()
+        memberships = GroupMembership.query.filter_by(user_id=current_user.id).all()
+        team_roles = {m.group_id: m.role for m in memberships}
+        team_ids = list(team_roles.keys())
+        team_tags = []
+        if team_ids:
+            team_tags = Tag.query.filter(Tag.group_id.in_(team_ids)).order_by(Tag.name).all()
+        result = []
+        for tag in user_tags:
+            tag_dict = tag.to_dict()
+            tag_dict['can_edit'] = True
+            tag_dict['user_role'] = None
+            result.append(tag_dict)
+        for tag in team_tags:
+            tag_dict = tag.to_dict()
+            user_role = team_roles.get(tag.group_id, 'member')
+            tag_dict['can_edit'] = (user_role == 'admin')
+            tag_dict['user_role'] = user_role
+            result.append(tag_dict)
+        return json.loads(json.dumps(result))
+
+
+def _legacy_folders(viewer_id):
+    """GET /api/folders before the batching, verbatim (folders enabled)."""
+    with app.app_context():
+        current_user = db.session.get(User, viewer_id)
+        user_folders = Folder.query.filter_by(user_id=current_user.id, group_id=None).order_by(Folder.name).all()
+        memberships = GroupMembership.query.filter_by(user_id=current_user.id).all()
+        team_roles = {m.group_id: m.role for m in memberships}
+        team_ids = list(team_roles.keys())
+        team_folders = []
+        if team_ids:
+            team_folders = Folder.query.filter(Folder.group_id.in_(team_ids)).order_by(Folder.name).all()
+        result = []
+        for folder in user_folders:
+            folder_dict = folder.to_dict()
+            folder_dict['can_edit'] = True
+            folder_dict['user_role'] = None
+            result.append(folder_dict)
+        for folder in team_folders:
+            folder_dict = folder.to_dict()
+            user_role = team_roles.get(folder.group_id, 'member')
+            folder_dict['can_edit'] = (user_role == 'admin')
+            folder_dict['user_role'] = user_role
+            result.append(folder_dict)
+        return json.loads(json.dumps(result))
+
+
+def _legacy_overview(viewer_id):
+    """GET /api/shares/overview before the batching, verbatim apart from the
+    id tie-breakers both versions now use for shares created in the same instant."""
+    from src.api.shares import ENABLE_PUBLIC_SHARING, SHOW_USERNAMES_IN_UI
+    ENABLE_INTERNAL_SHARING = shares_module.ENABLE_INTERNAL_SHARING
+    with app.app_context():
+        current_user = db.session.get(User, viewer_id)
+
+        def _source(share):
+            if share.source_type == 'group_tag' and share.source_tag is not None:
+                return {'type': 'group_tag', 'name': share.source_tag.name}
+            if share.source_type == 'group_folder' and share.source_folder_id:
+                folder = db.session.get(Folder, share.source_folder_id)
+                return {'type': 'group_folder', 'name': folder.name if folder else None}
+            return {'type': 'manual', 'name': None}
+
+        public_links = [s.to_dict() for s in
+                        Share.query.filter_by(user_id=current_user.id)
+                        .order_by(Share.created_at.desc(), Share.id.desc()).all()]
+        shared_by_me, shared_with_me = [], []
+        if ENABLE_INTERNAL_SHARING:
+            by_recording = {}
+            for share in (InternalShare.query.filter_by(owner_id=current_user.id)
+                          .order_by(InternalShare.created_at.desc(), InternalShare.id.desc()).all()):
+                recording = share.recording
+                if recording is None:
+                    continue
+                entry = by_recording.setdefault(recording.id, {
+                    'recording_id': recording.id,
+                    'recording_title': recording.title or recording.original_filename or f'#{recording.id}',
+                    'recipients': [],
+                })
+                source = _source(share)
+                entry['recipients'].append({
+                    'share_id': share.id,
+                    'user_id': share.shared_with_user_id,
+                    'username': share.shared_with.username if share.shared_with else None,
+                    'can_edit': bool(share.can_edit),
+                    'can_reshare': bool(share.can_reshare),
+                    'source': source,
+                    'revocable': source['type'] == 'manual',
+                    'created_at': share.created_at.isoformat() if share.created_at else None,
+                })
+            shared_by_me = list(by_recording.values())
+
+            for share in (InternalShare.query.filter_by(shared_with_user_id=current_user.id)
+                          .order_by(InternalShare.created_at.desc(), InternalShare.id.desc()).all()):
+                recording = share.recording
+                if recording is None:
+                    continue
+                shared_with_me.append({
+                    'share_id': share.id,
+                    'recording_id': recording.id,
+                    'recording_title': recording.title or recording.original_filename or f'#{recording.id}',
+                    'owner_username': share.owner.username if SHOW_USERNAMES_IN_UI and share.owner else None,
+                    'can_edit': bool(share.can_edit),
+                    'can_reshare': bool(share.can_reshare),
+                    'source': _source(share),
+                    'status': recording.status,
+                    'created_at': share.created_at.isoformat() if share.created_at else None,
+                })
+
+        return json.loads(json.dumps({
+            'public_sharing_enabled': ENABLE_PUBLIC_SHARING,
+            'internal_sharing_enabled': ENABLE_INTERNAL_SHARING,
+            'public_links': public_links,
+            'shared_by_me': shared_by_me,
+            'shared_with_me': shared_with_me,
+        }))
+
+
+def test_get_recordings_matches_the_per_row_path(world):
+    w = world
+    rows = _get(w["viewer"], "/recordings")
+    assert [r["id"] for r in rows] == [w[k] for k in ("v2", "v1", "e", "d", "c", "b", "a")]
+    assert rows == _legacy_get_recordings(w["viewer"])
+    a = rows[-1]
+    assert a["events"][0]["title"] == "Kickoff" and a["notes"] == "owner notes" and a["transcription"] == "hello"
+    assert [t["name"] for t in a["tags"]] == ["Personal", "TeamTag"] and a["tags"][0]["recording_count"] == 4
+    assert (a["shared_with_count"], a["public_share_count"]) == (2, 1)
+    assert a["duplicate_info"]["total_copies"] == 2 and a["folder"]["recording_count"] == 4
+
+
+def test_tag_and_folder_lists_match_the_per_row_path(world):
+    w = world
+    tags = _get(w["viewer"], "/api/tags")
+    assert tags == _legacy_tags(w["viewer"])
+    by_name = {t["name"]: t for t in tags}
+    assert by_name["Personal"]["recording_count"] == 4 and by_name["Personal"]["naming_template_name"] == "Naming T"
+    assert by_name["TeamTag"]["recording_count"] == 3 and by_name["AdminTag"]["can_edit"] is True
+    assert "Outsiders" not in by_name
+    with folders_on():
+        folders = _get(w["viewer"], "/api/folders")
+        assert folders == _legacy_folders(w["viewer"])
+        by_name = {f["name"]: f for f in folders}
+        assert by_name["MyFolder"]["recording_count"] == 4 and by_name["MyFolder"]["export_template_name"] == "Export T"
+        assert by_name["TeamFolder"]["recording_count"] == 2 and by_name["TeamFolder"]["can_edit"] is False
+        with app.app_context():
+            group_id = db.session.get(Folder, w["f_group"]).group_id
+            legacy_folders = json.loads(json.dumps(
+                [f.to_dict() for f in sorted(Folder.query.filter_by(group_id=group_id).all(), key=lambda f: f.id)]))
+            legacy_tags = json.loads(json.dumps(
+                [t.to_dict() for t in sorted(Tag.query.filter_by(group_id=group_id).all(), key=lambda t: t.id)]))
+        assert _get(w["viewer"], f"/api/groups/{group_id}/folders")["folders"] == legacy_folders
+    assert _get(w["viewer"], f"/api/groups/{group_id}/tags")["tags"] == legacy_tags
+    assert [t["name"] for t in legacy_tags] == ["TeamTag"]
+
+
+def test_shares_overview_matches_the_per_row_path(world):
+    w = world
+    for show in (False, True):
+        with patch.object(shares_module, "SHOW_USERNAMES_IN_UI", show):
+            body = _get(w["viewer"], "/api/shares/overview")
+            assert body == _legacy_overview(w["viewer"])
+    assert [e["recording_id"] for e in body["shared_by_me"]] == [w["a"]]
+    assert len(body["shared_by_me"][0]["recipients"]) == 2 and len(body["public_links"]) == 1
+    sources = {s["recording_id"]: s["source"] for s in body["shared_with_me"]}
+    assert sources[w["s2"]] == {"type": "group_tag", "name": "AdminTag"}
+    assert sources[w["s5"]] == {"type": "group_folder", "name": "TeamFolder"}
+    assert sources[w["s1"]] == {"type": "manual", "name": None}
+
+
+@pytest.mark.parametrize("kind", ["owned_rich", "shared_rich"])
+def test_full_list_tag_folder_and_overview_statements_do_not_grow_with_rows(kind):
+    small_viewer, small_users, small_groups = _build_scenario(kind, 25)
+    large_viewer, large_users, large_groups = _build_scenario(kind, 100)
+    paths = ["/api/tags", "/api/folders", "/api/shares/overview"]
+    if kind.startswith("owned"):
+        paths.append("/recordings")
+    try:
+        counts = {}
+        with sharing_on(), folders_on():
+            for viewer, n in ((small_viewer, 25), (large_viewer, 100)):
+                for path in paths:
+                    resp = lambda: _get(viewer, path)
+                    resp()
+                    with count_statements() as statements:
+                        body = resp()
+                    assert body, path
+                    counts[path, n] = len(statements)
+        print(kind, counts)
+        for (path, n), count in counts.items():
+            assert count == counts[path, 25], (path, counts)
             assert count <= STATEMENT_BOUND
     finally:
         _cleanup(small_users + large_users, small_groups + large_groups)

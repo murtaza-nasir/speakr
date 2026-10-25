@@ -460,7 +460,7 @@ class Recording(db.Model):
             return {'total_copies': entry['total_copies'], 'copies': copies}
         return self.get_duplicate_info()
 
-    def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None, share_map=None):
+    def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None, share_map=None, batch=None):
         """
         Full dict with optional HTML conversion for notes/summary.
 
@@ -469,24 +469,38 @@ class Recording(db.Model):
             viewer_user: User viewing the recording (for tag visibility filtering)
             share_map: optional {recording_id: InternalShare} for #314 share-reason
                 resolution without an N+1 query.
+            batch: optional RecordingListBatch built for viewer_user over the
+                list: share counts, duplicates, visible tags, tag/folder counts
+                and the viewer's notes come from it instead of per-row queries.
+                A duplicate_info_map, when given, still decides duplicate_info.
         """
         # Import here to avoid circular dependencies
         from src.models.sharing import InternalShare, Share
 
-        # Count internal shares for this recording
-        shared_with_count = db.session.query(func.count(InternalShare.id)).filter(
-            InternalShare.recording_id == self.id
-        ).scalar() or 0
+        if batch is not None:
+            shared_with_count = batch.shared_with_counts.get(self.id, 0)
+            public_share_count = batch.public_share_counts.get(self.id, 0)
+            if share_map is None:
+                share_map = batch.share_map
+            user_notes = batch.user_notes(self) if viewer_user is not None else self.notes
+            duplicate_info = (self._dup_from_map_or_query(duplicate_info_map) if duplicate_info_map is not None
+                              else batch.duplicate_info(self))
+        else:
+            # Count internal shares for this recording
+            shared_with_count = db.session.query(func.count(InternalShare.id)).filter(
+                InternalShare.recording_id == self.id
+            ).scalar() or 0
 
-        # Count public shares (link shares) for this recording
-        public_share_count = db.session.query(func.count(Share.id)).filter(
-            Share.recording_id == self.id
-        ).scalar() or 0
+            # Count public shares (link shares) for this recording
+            public_share_count = db.session.query(func.count(Share.id)).filter(
+                Share.recording_id == self.id
+            ).scalar() or 0
 
-        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map)
+            # Get user-specific notes
+            user_notes = self.get_user_notes(viewer_user)
+            duplicate_info = self._dup_from_map_or_query(duplicate_info_map)
 
-        # Get user-specific notes
-        user_notes = self.get_user_notes(viewer_user)
+        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map, batch)
 
         data = {
             'id': self.id,
@@ -522,7 +536,7 @@ class Recording(db.Model):
             'prompt_variables': self.prompt_variables or {},
             'resolved_hotwords': self.resolved_hotwords,
             'resolved_initial_prompt': self.resolved_initial_prompt,
-            'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
+            'duplicate_info': duplicate_info,
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
             'keep_audio_only': self.keep_audio_only,

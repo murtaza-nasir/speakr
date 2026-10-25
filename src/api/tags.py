@@ -138,7 +138,9 @@ def init_tags_helpers(**kwargs):
 def get_tags():
     """Get all tags for the current user, including group tags they have access to."""
     # Get user's personal tags
-    user_tags = Tag.query.filter_by(user_id=current_user.id, group_id=None).order_by(Tag.name).all()
+    from src.services.recording_list import tag_dicts, tag_load_options
+    user_tags = (Tag.query.filter_by(user_id=current_user.id, group_id=None)
+                 .options(*tag_load_options()).order_by(Tag.name).all())
 
     # Get user's team memberships with roles
     memberships = GroupMembership.query.filter_by(user_id=current_user.id).all()
@@ -148,21 +150,22 @@ def get_tags():
     # Get group tags for all teams the user is a member of
     team_tags = []
     if team_ids:
-        team_tags = Tag.query.filter(Tag.group_id.in_(team_ids)).order_by(Tag.name).all()
+        team_tags = Tag.query.filter(Tag.group_id.in_(team_ids)).options(*tag_load_options()).order_by(Tag.name).all()
 
     # Build response with edit permissions
     result = []
+    dicts = dict(zip([t.id for t in user_tags + team_tags], tag_dicts(user_tags + team_tags)))
 
     # Personal tags - user can always edit their own
     for tag in user_tags:
-        tag_dict = tag.to_dict()
+        tag_dict = dicts[tag.id]
         tag_dict['can_edit'] = True
         tag_dict['user_role'] = None
         result.append(tag_dict)
 
     # Group tags - only admins can edit
     for tag in team_tags:
-        tag_dict = tag.to_dict()
+        tag_dict = dicts[tag.id]
         user_role = team_roles.get(tag.group_id, 'member')
         tag_dict['can_edit'] = (user_role == 'admin')
         tag_dict['user_role'] = user_role
@@ -588,9 +591,10 @@ def get_group_tags(group_id):
         return jsonify({'error': 'You must be a team member to view group tags'}), 403
 
     # Get all group tags
-    tags = Tag.query.filter_by(group_id=group_id).all()
+    from src.services.recording_list import tag_dicts, tag_load_options
+    tags = Tag.query.filter_by(group_id=group_id).options(*tag_load_options()).order_by(Tag.id).all()
 
-    return jsonify({'tags': [tag.to_dict() for tag in tags]})
+    return jsonify({'tags': tag_dicts(tags)})
 
 
 

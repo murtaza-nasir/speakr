@@ -50,7 +50,9 @@ def get_folders():
         return jsonify([])
 
     # Get user's personal folders
-    user_folders = Folder.query.filter_by(user_id=current_user.id, group_id=None).order_by(Folder.name).all()
+    from src.services.recording_list import folder_dicts, folder_load_options
+    user_folders = (Folder.query.filter_by(user_id=current_user.id, group_id=None)
+                    .options(*folder_load_options()).order_by(Folder.name).all())
 
     # Get user's team memberships with roles
     memberships = GroupMembership.query.filter_by(user_id=current_user.id).all()
@@ -60,21 +62,23 @@ def get_folders():
     # Get group folders for all teams the user is a member of
     team_folders = []
     if team_ids:
-        team_folders = Folder.query.filter(Folder.group_id.in_(team_ids)).order_by(Folder.name).all()
+        team_folders = (Folder.query.filter(Folder.group_id.in_(team_ids))
+                        .options(*folder_load_options()).order_by(Folder.name).all())
 
     # Build response with edit permissions
     result = []
+    dicts = dict(zip([f.id for f in user_folders + team_folders], folder_dicts(user_folders + team_folders)))
 
     # Personal folders - user can always edit their own
     for folder in user_folders:
-        folder_dict = folder.to_dict()
+        folder_dict = dicts[folder.id]
         folder_dict['can_edit'] = True
         folder_dict['user_role'] = None
         result.append(folder_dict)
 
     # Group folders - only admins can edit
     for folder in team_folders:
-        folder_dict = folder.to_dict()
+        folder_dict = dicts[folder.id]
         user_role = team_roles.get(folder.group_id, 'member')
         folder_dict['can_edit'] = (user_role == 'admin')
         folder_dict['user_role'] = user_role
@@ -445,9 +449,10 @@ def get_group_folders(group_id):
         return jsonify({'error': 'You must be a team member to view group folders'}), 403
 
     # Get all group folders
-    folders = Folder.query.filter_by(group_id=group_id).all()
+    from src.services.recording_list import folder_dicts, folder_load_options
+    folders = Folder.query.filter_by(group_id=group_id).options(*folder_load_options()).order_by(Folder.id).all()
 
-    return jsonify({'folders': [folder.to_dict() for folder in folders]})
+    return jsonify({'folders': folder_dicts(folders)})
 
 
 @folders_bp.route('/api/recordings/<int:recording_id>/folder', methods=['PUT'])

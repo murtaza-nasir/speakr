@@ -276,22 +276,43 @@ def get_shares_overview():
     The list predates internal sharing and showed public links only. It now
     has what the user shared (public links, and recordings shared with people
     and groups) and what was shared with them.
+
+    The recordings, users, source tags and source folders of the shares are
+    read once per list (D#483), with only the recording columns shown here.
     """
+    from sqlalchemy.orm import joinedload, load_only, selectinload
+    folders = {}
+
     def _source(share):
         if share.source_type == 'group_tag' and share.source_tag is not None:
             return {'type': 'group_tag', 'name': share.source_tag.name}
         if share.source_type == 'group_folder' and share.source_folder_id:
-            folder = db.session.get(Folder, share.source_folder_id)
+            folder = folders.get(share.source_folder_id)
             return {'type': 'group_folder', 'name': folder.name if folder else None}
         return {'type': 'manual', 'name': None}
 
+    def _internal(*criteria):
+        shares = (InternalShare.query.filter(*criteria)
+                  .options(selectinload(InternalShare.recording).load_only(
+                               Recording.id, Recording.title, Recording.original_filename, Recording.status),
+                           joinedload(InternalShare.shared_with), joinedload(InternalShare.owner),
+                           joinedload(InternalShare.source_tag))
+                  .order_by(InternalShare.created_at.desc(), InternalShare.id.desc()).all())
+        wanted = {s.source_folder_id for s in shares
+                  if s.source_type == 'group_folder' and s.source_folder_id and s.source_folder_id not in folders}
+        if wanted:
+            folders.update({f.id: f for f in Folder.query.filter(Folder.id.in_(sorted(wanted)))})
+        return shares
+
     public_links = [s.to_dict() for s in
-                    Share.query.filter_by(user_id=current_user.id).order_by(Share.created_at.desc()).all()]
+                    Share.query.filter_by(user_id=current_user.id)
+                    .options(selectinload(Share.recording).load_only(
+                        Recording.id, Recording.title, Recording.audio_deleted_at))
+                    .order_by(Share.created_at.desc(), Share.id.desc()).all()]
     shared_by_me, shared_with_me = [], []
     if ENABLE_INTERNAL_SHARING:
         by_recording = {}
-        for share in (InternalShare.query.filter_by(owner_id=current_user.id)
-                      .order_by(InternalShare.created_at.desc()).all()):
+        for share in _internal(InternalShare.owner_id == current_user.id):
             recording = share.recording
             if recording is None:
                 continue
@@ -315,8 +336,7 @@ def get_shares_overview():
             })
         shared_by_me = list(by_recording.values())
 
-        for share in (InternalShare.query.filter_by(shared_with_user_id=current_user.id)
-                      .order_by(InternalShare.created_at.desc()).all()):
+        for share in _internal(InternalShare.shared_with_user_id == current_user.id):
             recording = share.recording
             if recording is None:
                 continue

@@ -3,9 +3,11 @@
 Serializing a page one row at a time cost several queries per row: the two
 share counts, the duplicate copies, the viewer's inbox/star/archive state,
 tag visibility, and the tag and folder recording counts. RecordingListBatch
-reads each of them once for the page. Recording.to_list_dict takes it as
-``batch``; without one it keeps its per-row queries, which single-row
-callers still use, so both paths must give the same payload.
+reads each of them once for the page. Recording.to_list_dict and
+Recording.to_dict take it as ``batch``; without one they keep their per-row
+queries, which single-row callers still use, so both paths must give the
+same payload. tag_dicts and folder_dicts do the same for the tag and folder
+lists.
 """
 
 from sqlalchemy import func
@@ -25,16 +27,43 @@ _LIST_DEFERRED = (
 )
 
 
+def tag_load_options():
+    """Loader options for a Tag query whose rows go through Tag.to_dict."""
+    return [joinedload(Tag.group), joinedload(Tag.naming_template), joinedload(Tag.export_template)]
+
+
+def folder_load_options():
+    """Loader options for a Folder query whose rows go through Folder.to_dict."""
+    return [joinedload(Folder.group), joinedload(Folder.naming_template), joinedload(Folder.export_template)]
+
+
+def _tags_and_folder_options():
+    return [
+        selectinload(Recording.tag_associations).joinedload(RecordingTag.tag).options(*tag_load_options()),
+        selectinload(Recording.folder).options(*folder_load_options()),
+    ]
+
+
 def list_load_options():
     """Loader options for a page query whose rows go through to_list_dict."""
-    names = (joinedload(Tag.group), joinedload(Tag.naming_template), joinedload(Tag.export_template))
-    folder_names = (joinedload(Folder.group), joinedload(Folder.naming_template),
-                    joinedload(Folder.export_template))
-    return [
-        selectinload(Recording.tag_associations).joinedload(RecordingTag.tag).options(*names),
-        selectinload(Recording.folder).options(*folder_names),
-        *(defer(column) for column in _LIST_DEFERRED),
-    ]
+    return [*_tags_and_folder_options(), *(defer(column) for column in _LIST_DEFERRED)]
+
+
+def full_load_options():
+    """Loader options for a list query whose rows go through to_dict."""
+    return [*_tags_and_folder_options(), selectinload(Recording.events)]
+
+
+def tag_dicts(tags):
+    """Tag.to_dict for each tag, with the recording counts read in one query."""
+    counts = _counts(RecordingTag.tag_id, sorted({t.id for t in tags}))
+    return [tag.to_dict(recording_count=counts.get(tag.id, 0)) for tag in tags]
+
+
+def folder_dicts(folders):
+    """Folder.to_dict for each folder, with the recording counts read in one query."""
+    counts = _counts(Recording.folder_id, sorted({f.id for f in folders}))
+    return [folder.to_dict(recording_count=counts.get(folder.id, 0)) for folder in folders]
 
 
 def group_ids_of(viewer, recordings):
@@ -57,10 +86,11 @@ class RecordingListBatch:
     """The lookups for one page of recordings seen by one viewer.
 
     share_map is {recording_id: InternalShare} of the viewer's shares for the
-    page, when the caller has already read it.
+    page, when the caller has already read it. duplicates=False skips the
+    duplicate lookup for a caller that passes its own duplicate_info_map.
     """
 
-    def __init__(self, recordings, viewer, share_map=None):
+    def __init__(self, recordings, viewer, share_map=None, duplicates=True):
         self.viewer = viewer
         ids = [r.id for r in recordings]
         foreign = [r for r in recordings if r.user_id != viewer.id]
@@ -85,7 +115,7 @@ class RecordingListBatch:
         owner_ids = sorted({r.user_id for r in foreign if r.user_id is not None})
         self.owners = {u.id: u for u in User.query.filter(User.id.in_(owner_ids))} if owner_ids else {}
 
-        self._duplicates = self._load_duplicates(recordings)
+        self._duplicates = self._load_duplicates(recordings) if duplicates else {}
 
         member_group_ids = group_ids_of(viewer, recordings)
         self._visible = {r.id: r.get_visible_tags(viewer, member_group_ids) for r in recordings}
@@ -147,6 +177,13 @@ class RecordingListBatch:
             return (recording.is_inbox, recording.is_highlighted)
         state = self.states.get(recording.id)
         return (state.is_inbox, state.is_highlighted) if state else (True, False)
+
+    def user_notes(self, recording):
+        """Recording.get_user_notes for the viewer."""
+        if recording.user_id == self.viewer.id:
+            return recording.notes
+        state = self.states.get(recording.id)
+        return state.personal_notes if state else None
 
     def user_archived(self, recording):
         """get_user_archived for the viewer."""
