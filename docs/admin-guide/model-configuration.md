@@ -615,16 +615,18 @@ EMBEDDING_MODEL=voyage-4-lite
 # EMBEDDING_DIMENSIONS=1024  # optional; must be supported by the model
 ```
 
-Speakr recognizes the exact `api.voyageai.com` hostname and uses Voyage's
-encoding and `output_dimension` parameters. Recording chunks use
-`input_type=document`; searches use `input_type=query`. Other hosts retain
-OpenAI-compatible request semantics. A proxy under another hostname must
-provide an OpenAI-compatible interface. No Voyage SDK or local model is needed.
-Meeting text and search queries are sent to Voyage for embedding.
+When `EMBEDDING_BASE_URL` points at `api.voyageai.com`, requests are sent in
+Voyage's format: `EMBEDDING_DIMENSIONS` is sent as `output_dimension`, recording
+chunks are sent with `input_type=document` and searches with `input_type=query`.
+Requests to any other host, including a proxy for Voyage, keep the
+OpenAI-compatible format. No Voyage SDK or local model is required. Meeting text
+and search queries are sent to Voyage for embedding. If Voyage refuses the
+configured dimension, indexing fails and searches use text search until the
+setting is corrected.
 
 After changing embedding providers, models, or dimensions, use **Admin →
-Vector Store → Re-embed all** to rebuild existing vectors. Do not retranscribe
-audio merely to rebuild the search index.
+Vector Store → Re-embed all recordings** to rebuild existing vectors. Audio does
+not need to be transcribed again.
 
 API mode does not require sentence-transformers to be installed, so the lightweight Docker image (`learnedmachine/speakr:lite`) can now run full semantic search by combining `EMBEDDING_BASE_URL` with any compatible provider. The lite image already ships `openai` and `scikit-learn`, so no further dependencies are needed.
 
