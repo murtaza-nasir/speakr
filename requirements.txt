@@ -4,7 +4,7 @@ SQLAlchemy>=2.0,<2.1
 flask-login==0.6.3
 flask-wtf==1.3.0
 flask-bcrypt==1.0.1
-Flask-Limiter==4.1.1
+Flask-Limiter[redis]==4.1.1
 flask-openapi3>=3.0.0
 pydantic>=2.14.1
 # authlib 1.7.x ships an OAuth client change that mis-handles the

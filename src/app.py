@@ -586,7 +586,8 @@ bcrypt.init_app(app)
 app.config.setdefault("RATELIMIT_HEADERS_ENABLED", True)
 # The default in-memory storage counts in each gunicorn worker separately, so
 # every limit is in effect multiplied by the number of workers. A shared
-# backend (redis://, memcached://) makes the limits exact (#484).
+# backend (redis:// with the bundled client; memcached:// needs pymemcache)
+# makes the limits exact (#484).
 # While that backend is unreachable, counting falls back to memory instead of
 # failing the request.
 if os.environ.get("RATELIMIT_STORAGE_URI"):

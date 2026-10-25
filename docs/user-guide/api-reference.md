@@ -2069,7 +2069,15 @@ A request over a limit gets `429` with a `Retry-After` header in seconds. The bo
 
 Requests from the web interface keep the per-address limits of the application (1000 per hour and 5000 per day). The [ASR Voice Recorder upload](#asr-voice-recorder-upload) carries its token in the form body, so neither limit applies to it; that endpoint keeps its own per-address limit.
 
-**Several worker processes.** By default each worker process keeps its own counters in memory. The standard image runs three gunicorn workers, so every limit, the login and registration limits included, allows up to about three times its configured value. Set `RATELIMIT_STORAGE_URI` to a shared backend, for example `redis://redis:6379/0` or `memcached://memcached:11211`, to make the limits exact. The standard image does not include the client library for either backend; an image that uses one needs the `redis` or `pymemcache` Python package, and Speakr does not start with a backend URI whose client is missing. While the backend is unreachable, counting falls back to memory in each process.
+**Several worker processes.** By default the counters are kept in the memory of each worker process. The standard image starts three gunicorn workers, so each limit, the login and registration limits included, is in effect up to about three times its configured value. With `RATELIMIT_STORAGE_URI` set to a Redis or Valkey server, the limits are exact. The image includes the Redis client. The server is run as a separate container, for example in the same Docker Compose file as Speakr:
+
+```yaml
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+```
+
+with `RATELIMIT_STORAGE_URI=redis://redis:6379/0` in `.env`. The counters need no persistence, so no volume is required. While the server is unreachable, counting falls back to the memory of each process and requests are served as before. A Memcached URI (`memcached://`) is also accepted, in an image with the `pymemcache` package added; Speakr does not start with a backend URI whose client is missing.
 
 ---
 

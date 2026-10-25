@@ -216,7 +216,7 @@ Administrators set these limits with environment variables:
 | `API_MAX_TOKENS_PER_USER` | `10` | Active tokens per account; `0` means no limit. Tokens above a lowered limit keep working. |
 | `API_TOKEN_RATE_LIMIT_READ`, `API_TOKEN_RATE_LIMIT_WRITE`, `API_TOKEN_RATE_LIMIT_PROCESS` | `120 per minute`, `30 per minute`, `10 per minute` | Budget of each token, per endpoint. |
 | `API_USER_RATE_LIMIT_READ`, `API_USER_RATE_LIMIT_WRITE`, `API_USER_RATE_LIMIT_PROCESS` | Twice the token limit of the same kind | Budget that all tokens of an account share, per endpoint. |
-| `RATELIMIT_STORAGE_URI` | Memory of each worker process | Shared storage for the counters, such as `redis://redis:6379/0`. Without it, each of the three worker processes of the standard image counts separately, so a limit allows up to about three times its value. |
+| `RATELIMIT_STORAGE_URI` | Memory of each worker process | Shared storage for the counters, such as a Redis server at `redis://redis:6379/0` (see [Rate Limits](api-reference.md#rate-limits)). Without it, the counts of the three worker processes of the standard image are kept separately, so each limit is in effect up to about three times its value. |
 
 ## Security Best Practices
 
