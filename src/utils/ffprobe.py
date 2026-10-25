@@ -213,6 +213,10 @@ def get_codec_info(filename: str, timeout: Optional[int] = None) -> Dict[str, An
                     result['channels'] = stream.get('channels')
             
             elif codec_type == 'video':
+                # Cover art embedded in an audio file (MP3, M4A, FLAC) is a
+                # one-frame video stream marked attached_pic; it is not video.
+                if (stream.get('disposition') or {}).get('attached_pic'):
+                    continue
                 result['has_video'] = True
                 if result['video_codec'] is None:  # Use first video stream
                     result['video_codec'] = codec_name

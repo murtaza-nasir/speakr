@@ -187,6 +187,37 @@ def test_real_video_with_audio_has_its_audio_extracted_without_retention(user, t
     assert not storage.uploaded[0][0].endswith(".mp4")   # the extracted audio
 
 
+
+def _ffmpeg_mp3_with_cover(path):
+    """Write a one-second MP3 with an embedded cover picture."""
+    subprocess.run(["ffmpeg", "-v", "error", "-y",
+                    "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+                    "-f", "lavfi", "-i", "color=c=red:size=64x64",
+                    "-map", "0:a", "-map", "1:v", "-frames:v", "1", "-c:a", "libmp3lame",
+                    "-c:v", "mjpeg", "-disposition:v", "attached_pic", str(path)],
+                   check=True, capture_output=True)
+    return path.read_bytes()
+
+
+@needs_ffmpeg
+def test_cover_art_is_not_a_video_stream(tmp_path):
+    from src.utils.ffprobe import get_codec_info
+    _ffmpeg_mp3_with_cover(tmp_path / "song.mp3")
+    info = get_codec_info(str(tmp_path / "song.mp3"))
+    assert info["has_audio"] is True
+    assert info["has_video"] is False and info["video_codec"] is None
+
+
+@needs_ffmpeg
+def test_mp3_with_cover_art_is_kept_as_audio_under_retention(user, tmp_path):
+    payload = _ffmpeg_mp3_with_cover(tmp_path / "song.mp3")
+    resp, storage, enqueue, leftovers = _upload(user, payload, "song.mp3", retention=True)
+    assert resp.status_code in (200, 202), resp.get_data(as_text=True)
+    assert enqueue.call_count == 1
+    with app.app_context():
+        rec = Recording.query.filter_by(user_id=user).one()
+        assert not (rec.mime_type or "").startswith("video/"), rec.mime_type
+
 def test_a_probe_that_timed_out_still_trusts_the_video_extension(user):
     """A large MP4 can be slow to probe: it is kept as a video, as before."""
     with patch("src.api.recordings.convert_if_needed") as convert, \
