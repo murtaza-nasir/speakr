@@ -7,6 +7,7 @@ import re
 import json
 import time
 import random
+from urllib.parse import urlsplit
 import numpy as np
 from flask import current_app
 from sqlalchemy.orm import joinedload
@@ -54,6 +55,8 @@ except (TypeError, ValueError):
 # When EMBEDDING_BASE_URL is set, embeddings are produced via an OpenAI-
 # compatible /v1/embeddings call rather than locally.
 USE_API_EMBEDDINGS = bool(EMBEDDING_BASE_URL)
+# Match the official host, never a substring in a path or lookalike domain.
+_USE_VOYAGE_API = urlsplit(EMBEDDING_BASE_URL).hostname == "api.voyageai.com"
 
 # Identifier persisted to system_setting so the dimensionality compatibility
 # check covers both "model changed" and "provider changed" scenarios.
@@ -157,7 +160,7 @@ def _is_dimensions_rejection(exc):
     return 'dimension' in str(exc).lower()
 
 
-def _api_embed(texts, user_id=None):
+def _api_embed(texts, user_id=None, input_type="document"):
     """Call the OpenAI-compatible embeddings endpoint and return numpy vectors.
 
     Retries on transient errors (rate limits, timeouts, 5xx, connection
@@ -188,7 +191,7 @@ def _api_embed(texts, user_id=None):
     if len(texts) > batch_size:
         out = []
         for i in range(0, len(texts), batch_size):
-            part = _api_embed(texts[i:i + batch_size], user_id=user_id)
+            part = _api_embed(texts[i:i + batch_size], user_id=user_id, input_type=input_type)
             if len(part) != len(texts[i:i + batch_size]):
                 return []
             out.extend(part)
@@ -203,12 +206,19 @@ def _api_embed(texts, user_id=None):
             "Embedding API in failure cooldown; skipping call and using fallback")
         return []
 
-    # encoding_format='float' explicitly: OpenAI SDK v2 defaults to base64,
-    # which some OpenAI-compatible providers cannot produce; float is the
-    # format every compatible provider accepts.
-    kwargs = {'input': texts, 'model': EMBEDDING_MODEL, 'encoding_format': 'float'}
-    if EMBEDDING_DIMENSIONS is not None and not _dimensions_rejected:
-        kwargs['dimensions'] = EMBEDDING_DIMENSIONS
+    if _USE_VOYAGE_API:
+        # Voyage accepts null/base64, not OpenAI's "float". Explicit null
+        # requests JSON floats and prevents the SDK's implicit base64 path.
+        extra_body = {'input_type': input_type}
+        if EMBEDDING_DIMENSIONS is not None:
+            extra_body['output_dimension'] = EMBEDDING_DIMENSIONS
+        kwargs = {'input': texts, 'model': EMBEDDING_MODEL,
+                  'encoding_format': None, 'extra_body': extra_body}
+    else:
+        # Explicit floats also work with providers that cannot emit base64.
+        kwargs = {'input': texts, 'model': EMBEDDING_MODEL, 'encoding_format': 'float'}
+        if EMBEDDING_DIMENSIONS is not None and not _dimensions_rejected:
+            kwargs['dimensions'] = EMBEDDING_DIMENSIONS
 
     last_exc = None
     for attempt in range(1, _API_EMBED_MAX_ATTEMPTS + 1):
@@ -777,7 +787,7 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
         # the API call to the searching user so embedding cost tracking shows
         # who issued the query.
         if USE_API_EMBEDDINGS:
-            api_vectors = _api_embed([query], user_id=user_id)
+            api_vectors = _api_embed([query], user_id=user_id, input_type="query")
             if not api_vectors:
                 return basic_text_search_chunks(user_id, query, filters, top_k)
             query_embedding = api_vectors[0]
