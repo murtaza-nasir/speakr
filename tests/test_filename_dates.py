@@ -262,3 +262,33 @@ def test_settings_save_and_validation():
         finally:
             db.session.delete(user)
             db.session.commit()
+
+
+# ===========================================================================
+# UTC-marked times (#486)
+# ===========================================================================
+
+@pytest.mark.parametrize('name', [
+    'recording-2026-10-25T11-43-00-000Z.webm',
+    'recording-2026-10-25T11:43:00.000Z.webm',
+    '2026-10-25T11-43Z.mp3',
+    '20261025_1143Z.m4a',
+])
+def test_utc_suffix_is_not_shifted(name):
+    expected = datetime(2026, 10, 25, 11, 43)
+    assert parse_filename_date(name, 'auto', tz_offset_minutes=-480) == expected
+    assert parse_filename_date(name, 'auto', tz_name='Asia/Shanghai') == expected
+
+
+def test_local_time_without_suffix_still_shifted():
+    assert parse_filename_date('recording-2026-10-25T19-43-00.webm', 'auto',
+                               tz_name='Asia/Shanghai') == datetime(2026, 10, 25, 11, 43)
+
+
+def test_z_starting_a_word_is_not_utc():
+    assert parse_filename_date('2026-10-25 1143 Zoom call.mp3', 'auto',
+                               tz_offset_minutes=-480) == datetime(2026, 10, 25, 3, 43)
+
+
+def test_date_only_with_z_keeps_noon_anchor():
+    assert parse_filename_date('2026-10-25Z.mp3', 'auto') == datetime(2026, 10, 25, 12, 0)

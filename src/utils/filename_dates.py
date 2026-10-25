@@ -14,6 +14,8 @@ storage. Callers pass ``tz_offset_minutes`` in JavaScript
 UTC; positive west of UTC). When no offset is known, date-only matches
 are anchored at 12:00 UTC so the calendar date survives rendering in any
 viewer timezone, and time-bearing matches are treated as already UTC.
+A time followed by a ``Z`` suffix (an ISO 8601 UTC time, as in the names of
+Speakr's own browser recordings) is UTC already and is not shifted (#486).
 """
 
 import re
@@ -57,6 +59,10 @@ PRESET_PATTERNS = {
 AUTO_PRESET_ORDER = ('yyyymmdd_hhmm', 'yyyy-mm-dd', 'yyyymmdd', 'yymmdd_hhmm')
 
 VALID_PATTERN_KEYS = ('auto',) + tuple(PRESET_PATTERNS.keys()) + ('custom',)
+
+# Optional seconds and fraction, then the ISO 8601 "Z" marker, right after
+# the matched time: 11-43-00-000Z, 11:43:00.000Z, 1143Z.
+_UTC_SUFFIX = re.compile(r'(?:[-:._]?\d{2}(?:[-.,]\d{1,9})?)?Z(?![A-Za-z])')
 
 _MIN_YEAR = 1970
 _MAX_YEAR = 2100
@@ -138,6 +144,9 @@ def parse_filename_date(filename: str, pattern_key: str = 'auto',
         parsed = _build_datetime(groups)
         if parsed is None:
             continue
+
+        if _has_time(groups) and _UTC_SUFFIX.match(stem, match.end()):
+            return parsed
 
         # Local wall-clock -> naive UTC per the storage convention. A named zone
         # (the browser's IANA zone) gives the offset that applied on that date,
