@@ -31,6 +31,13 @@ class Share(db.Model):
     user = db.relationship('User', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
     recording = db.relationship('Recording', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
 
+    # The recording lists count links by recording and the Shared
+    # Transcripts list reads them by user (D#483)
+    __table_args__ = (
+        db.Index('ix_share_recording_id', 'recording_id'),
+        db.Index('ix_share_user_id', 'user_id'),
+    )
+
     def to_dict(self):
         """Convert model to dictionary representation."""
         return {
@@ -77,8 +84,14 @@ class InternalShare(db.Model):
     owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('shared_recordings', lazy=True, cascade='all, delete'))
     shared_with = db.relationship('User', foreign_keys=[shared_with_user_id], backref=db.backref('received_shares', lazy=True, cascade='all, delete'))
 
-    # Unique constraint: can't share same recording with same user twice
-    __table_args__ = (db.UniqueConstraint('recording_id', 'shared_with_user_id', name='unique_recording_share'),)
+    # Unique constraint: can't share same recording with same user twice.
+    # The recording lists find a user's shares by recipient and the Shared
+    # Transcripts list by owner (D#483).
+    __table_args__ = (
+        db.UniqueConstraint('recording_id', 'shared_with_user_id', name='unique_recording_share'),
+        db.Index('ix_internal_share_shared_with_user_id', 'shared_with_user_id'),
+        db.Index('ix_internal_share_owner_id', 'owner_id'),
+    )
 
     def to_dict(self):
         """Convert model to dictionary representation."""
@@ -224,8 +237,12 @@ class SharedRecordingState(db.Model):
     recording = db.relationship('Recording', backref=db.backref('user_states', lazy=True, cascade='all, delete-orphan'))
     user = db.relationship('User', backref=db.backref('recording_states', lazy=True, cascade='all, delete-orphan'))
 
-    # Unique constraint: one state per user per recording
-    __table_args__ = (db.UniqueConstraint('recording_id', 'user_id', name='unique_user_recording_state'),)
+    # Unique constraint: one state per user per recording. The starred and
+    # inbox filters of the recording list read a user's states (D#483).
+    __table_args__ = (
+        db.UniqueConstraint('recording_id', 'user_id', name='unique_user_recording_state'),
+        db.Index('ix_shared_recording_state_user_id', 'user_id'),
+    )
 
     def to_dict(self):
         """Convert model to dictionary representation."""

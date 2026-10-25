@@ -320,6 +320,17 @@ def _run_migrations(app, engine):
         # Chunks are read and deleted by recording, in order (D#441)
         create_index_if_not_exists(engine, 'ix_transcript_chunk_recording', 'transcript_chunk',
                                    'recording_id, chunk_index')
+        # The recording lists and the Shared Transcripts list read shares,
+        # tag links and per-user states by these columns (D#483)
+        for index_name, table_name, columns in (
+            ('ix_share_recording_id', 'share', 'recording_id'),
+            ('ix_share_user_id', 'share', 'user_id'),
+            ('ix_internal_share_shared_with_user_id', 'internal_share', 'shared_with_user_id'),
+            ('ix_internal_share_owner_id', 'internal_share', 'owner_id'),
+            ('ix_shared_recording_state_user_id', 'shared_recording_state', 'user_id'),
+            ('ix_recording_tags_tag_id', 'recording_tags', 'tag_id'),
+        ):
+            create_index_if_not_exists(engine, index_name, table_name, columns)
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):

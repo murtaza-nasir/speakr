@@ -75,6 +75,9 @@ class RecordingTag(db.Model):
     added_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     order = db.Column(db.Integer, nullable=False, default=0)
 
+    # The primary key starts with recording_id; tag counts read by tag (D#483)
+    __table_args__ = (db.Index('ix_recording_tags_tag_id', 'tag_id'),)
+
     # Relationships
     recording = db.relationship('Recording', back_populates='tag_associations')
     tag = db.relationship('Tag', back_populates='recording_associations')
