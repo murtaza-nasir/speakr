@@ -811,7 +811,13 @@
     "playerPositionBottom": "En bas",
     "playerPositionBottomHelp": "Lecteur ancré sous les colonnes de transcription et de résumé. Par défaut.",
     "playerPositionTop": "En haut",
-    "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées."
+    "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées.",
+    "recordingsListSection": "Recordings list",
+    "defaultSortHelp": "Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.",
+    "defaultSortCreated": "Date added",
+    "defaultSortCreatedHelp": "When the recording was uploaded or imported. Default.",
+    "defaultSortMeeting": "Meeting date",
+    "defaultSortMeetingHelp": "When the meeting took place, from the recording's own date."
   },
   "duration": {
     "hours": "{{count}} heure",

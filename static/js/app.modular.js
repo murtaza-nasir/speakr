@@ -2,6 +2,7 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 
 // Import composables
 import { useRecordings } from './modules/composables/recordings.js';
+import { resolveInitialSort } from './modules/utils/sort-preference.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
@@ -328,12 +329,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Enhanced Search & Organization State ---
             // Restore the sort choice from a previous session so users do not
             // have to switch to Meeting date every time they open the app
-            // (discussion #263). Validate against the known set so a stale or
-            // tampered localStorage value cannot put us in an unknown state.
-            const _savedSortBy = localStorage.getItem('recordingsSortBy');
-            const sortBy = ref((_savedSortBy === 'meeting_date' || _savedSortBy === 'created_at')
-                ? _savedSortBy
-                : 'created_at');
+            // (discussion #263). A browser that has not chosen yet starts from the
+            // account's default sort (Account > Preferences), then 'created_at'.
+            // Unknown values are ignored, so a stale or tampered localStorage
+            // value cannot put us in an unknown state.
+            const sortBy = ref(resolveInitialSort(
+                localStorage.getItem('recordingsSortBy'),
+                document.getElementById('app')?.dataset.defaultRecordingSort));
             const selectedTagFilter = ref(null);
 
             // --- UI State ---

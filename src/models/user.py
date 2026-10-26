@@ -121,6 +121,9 @@ class User(db.Model, UserMixin):
     # 'top' renders it above the columns so it sits closer to the
     # title bar. User-configurable from the Display tab in settings.
     audio_player_position = db.Column(db.String(10), default='bottom')
+    # Sort the recordings list opens with in a browser that has not saved its own
+    # choice yet: 'created_at' (date added) or 'meeting_date'. NULL means 'created_at'.
+    default_recording_sort = db.Column(db.String(16), nullable=True)
     # Raised when the password is set (#437), which signs the account out of
     # every browser: the login id that Flask-Login keeps in the session and
     # the remember-me cookie carries it, and an id with an older value is

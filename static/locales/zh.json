@@ -811,7 +811,13 @@
     "playerPositionBottom": "底部",
     "playerPositionBottomHelp": "播放器固定在转录和摘要栏下方。默认。",
     "playerPositionTop": "顶部",
-    "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。"
+    "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。",
+    "recordingsListSection": "Recordings list",
+    "defaultSortHelp": "Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.",
+    "defaultSortCreated": "Date added",
+    "defaultSortCreatedHelp": "When the recording was uploaded or imported. Default.",
+    "defaultSortMeeting": "Meeting date",
+    "defaultSortMeetingHelp": "When the meeting took place, from the recording's own date."
   },
   "duration": {
     "hours": "{{count}} 小时",
