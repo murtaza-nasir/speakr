@@ -253,6 +253,15 @@ The AssemblyAI endpoint is fixed, so the shared `TRANSCRIPTION_BASE_URL` and `TR
 
 If polling times out or Speakr restarts while AssemblyAI is working on a recording, the job is retried automatically and the same transcript is polled again; the audio is not uploaded and billed a second time. Reprocessing a recording submits it again.
 
+#### For Apify audio-transcriber (Cloud, bring your own Apify token)
+
+The Apify connector runs the [pennydata/audio-transcriber](https://apify.com/pennydata/audio-transcriber) Whisper Actor on your own Apify account. It returns the transcript text (no diarization; segment timestamps are used if the Actor returns them) and suits recordings that transcribe within Apify's synchronous 5 minute window.
+
+```bash
+TRANSCRIPTION_CONNECTOR=apify_audio_transcriber
+APIFY_TOKEN=your-apify-api-token
+```
+
 ### Step 4: Configure System Settings
 
 One of Speakr's conveniences is automatic admin account creation. Instead of going through a registration process, you define the admin credentials in your environment file, and Speakr creates the account automatically on first startup. This ensures you can log in immediately without any additional setup steps:

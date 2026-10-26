@@ -11,6 +11,7 @@ from .vibevoice import VibeVoiceTranscriptionConnector
 from .alibaba_funasr import AlibabaFunASRConnector
 from .mossland import MosslandTranscriptionConnector
 from .openasr import OpenASRTranscriptionConnector
+from .apify_audio_transcriber import ApifyAudioTranscriberConnector
 from .tencent_asr import TencentASRConnector
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     'AlibabaFunASRConnector',
     'MosslandTranscriptionConnector',
     'OpenASRTranscriptionConnector',
+    'ApifyAudioTranscriberConnector',
     'TencentASRConnector',
 ]

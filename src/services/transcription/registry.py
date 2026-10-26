@@ -52,6 +52,7 @@ class ConnectorRegistry:
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
         from .connectors.tencent_asr import TencentASRConnector
         from .connectors.openasr import OpenASRTranscriptionConnector
+        from .connectors.apify_audio_transcriber import ApifyAudioTranscriberConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -64,6 +65,7 @@ class ConnectorRegistry:
         self.register('assemblyai', AssemblyAITranscriptionConnector)
         self.register('tencent_asr', TencentASRConnector)
         self.register('openasr', OpenASRTranscriptionConnector)
+        self.register('apify_audio_transcriber', ApifyAudioTranscriberConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -381,6 +383,13 @@ class ConnectorRegistry:
                 # AssemblyAI would reject). Account default when blank; a
                 # comma-separated list becomes an ordered speech_models fallback.
                 'model': os.environ.get('ASSEMBLYAI_SPEECH_MODEL', ''),
+            }
+
+        elif connector_name == 'apify_audio_transcriber':
+            return {
+                'api_key': os.environ.get('APIFY_TOKEN', ''),
+                'model': os.environ.get('APIFY_AUDIO_TRANSCRIBER_ACTOR', ''),
+                'timeout': os.environ.get('APIFY_AUDIO_TRANSCRIBER_TIMEOUT', '290'),
             }
 
         elif connector_name == 'openasr':
