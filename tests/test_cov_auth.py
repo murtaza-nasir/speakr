@@ -325,6 +325,67 @@ def test_account_preferences_invalid_audio_position_falls_back(cleanup_users):
     assert refreshed.audio_player_position == 'bottom'
 
 
+def test_account_preferences_persist_default_recording_sort(cleanup_users):
+    user = _mk_user(cleanup_users)
+    uid = user.id
+    assert user.default_recording_sort is None  # existing accounts keep the date-added default
+    with _client_logged_in_as(user) as client:
+        client.post('/account', data={
+            'preferences_form': '1',
+            'ui_language': 'en',
+            'default_recording_sort': 'meeting_date',
+        })
+    assert db.session.get(User, uid).default_recording_sort == 'meeting_date'
+
+
+def test_account_preferences_unknown_default_recording_sort_resets_it(cleanup_users):
+    user = _mk_user(cleanup_users)
+    uid = user.id
+    user.default_recording_sort = 'meeting_date'
+    db.session.commit()
+    with _client_logged_in_as(user) as client:
+        client.post('/account', data={
+            'preferences_form': '1',
+            'ui_language': 'en',
+            'default_recording_sort': 'title',
+        })
+    assert db.session.get(User, uid).default_recording_sort is None
+
+
+def test_account_preferences_without_the_field_keep_default_recording_sort(cleanup_users):
+    # Other tabs submit the same form without this field and must not clear it.
+    user = _mk_user(cleanup_users)
+    uid = user.id
+    user.default_recording_sort = 'meeting_date'
+    db.session.commit()
+    with _client_logged_in_as(user) as client:
+        client.post('/account', data={'preferences_form': '1', 'ui_language': 'en'})
+    assert db.session.get(User, uid).default_recording_sort == 'meeting_date'
+
+
+def test_default_recording_sort_reaches_the_page_and_the_account_form(cleanup_users):
+    import re
+    user = _mk_user(cleanup_users)
+    user.default_recording_sort = 'meeting_date'
+    db.session.commit()
+    with _client_logged_in_as(user) as client:
+        index = client.get('/').get_data(as_text=True)
+        account = client.get('/account').get_data(as_text=True)
+    assert 'data-default-recording-sort="meeting_date"' in index
+    assert re.search(r'value="meeting_date"\s+checked', account)
+    assert not re.search(r'value="created_at"\s+checked', account)
+
+
+def test_default_recording_sort_defaults_to_date_added_for_existing_accounts(cleanup_users):
+    import re
+    user = _mk_user(cleanup_users)
+    with _client_logged_in_as(user) as client:
+        index = client.get('/').get_data(as_text=True)
+        account = client.get('/account').get_data(as_text=True)
+    assert 'data-default-recording-sort="created_at"' in index
+    assert re.search(r'value="created_at"\s+checked', account)
+
+
 def test_account_prompts_branch_persists_summary_prompt(cleanup_users):
     user = _mk_user(cleanup_users)
     uid = user.id

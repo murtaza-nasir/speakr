@@ -1275,6 +1275,29 @@
                                         </span>
                                     </label>
                                 </div>
+
+                                <!-- Which sort the recordings list opens with in a browser
+                                     that has not saved its own choice. The Sort menu in the
+                                     list still overrides it per browser. -->
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="display.recordingsListSection">Recordings list</h3>
+                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.defaultSortHelp">Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.</p>
+                                {% set dsort = current_user.default_recording_sort or 'created_at' %}
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                        <input type="radio" name="default_recording_sort" value="created_at" {% if dsort != 'meeting_date' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.defaultSortCreated">Date added</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.defaultSortCreatedHelp">When the recording was uploaded or imported. Default.</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                        <input type="radio" name="default_recording_sort" value="meeting_date" {% if dsort == 'meeting_date' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.defaultSortMeeting">Meeting date</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.defaultSortMeetingHelp">When the meeting took place, from the recording's own date.</span>
+                                        </span>
+                                    </label>
+                                </div>
                             </div>
 
                         </form>

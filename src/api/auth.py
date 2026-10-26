@@ -739,6 +739,11 @@ def account():
             if 'audio_player_position' in request.form:
                 pos = request.form.get('audio_player_position', 'bottom')
                 current_user.audio_player_position = pos if pos in ('bottom', 'top') else 'bottom'
+            # Default recording sort: same "only if submitted" rule as above. Anything
+            # other than the two known sorts is stored as NULL, which means 'created_at'.
+            if 'default_recording_sort' in request.form:
+                sort = request.form.get('default_recording_sort')
+                current_user.default_recording_sort = sort if sort in ('created_at', 'meeting_date') else None
 
             ui_lang = request.form.get('ui_language')
             transcription_lang = request.form.get('transcription_language')

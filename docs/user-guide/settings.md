@@ -169,6 +169,8 @@ The setting only appears when your administrator has configured email delivery a
 
 **Audio player position (desktop only).** Choose whether the persistent audio player sits at the **bottom** of the recording detail surface (default — spans the transcription + right rail with a single-row layout) or at the **top** (above the metadata and content area). The setting is saved on your account and takes effect on every recording. Mobile is unaffected; the mobile audio player always sits between the content area and the bottom navigation.
 
+**Recordings list sort.** Choose whether the recordings list opens sorted and grouped by **Date added** (the default) or by **Meeting date**. The setting is saved on your account. It is the starting point for any browser that has not picked a sort yet: choosing a sort from the Sort menu in the list overrides it, and that choice is remembered per browser.
+
 ## Shared Transcripts Tab
 
 ![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
