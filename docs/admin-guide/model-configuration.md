@@ -428,9 +428,10 @@ TITLE_MAX_TOKENS=200
 # Optional: Maximum tokens for event extraction from transcripts (default: 4000)
 EVENT_MAX_TOKENS=4000
 
-# Optional: Prefix-cache-friendly title/summary prompts (default: false)
-# Only useful on self-hosted backends with automatic prefix caching. See below.
+# Optional: Prefix-cache-friendly title/summary prompts (default: false). See below.
 PREFIX_CACHE_OPTIMIZED_PROMPTS=false
+# Optional: cache breakpoints for Anthropic models (default: false). See below.
+TEXT_MODEL_CACHE_BREAKPOINTS=false
 
 # GPT-5 specific (only used with GPT-5 models and OpenAI API)
 GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
@@ -453,7 +454,7 @@ CHAT_MODEL_EXTRA_BODY={"reasoning": {"effort": "low"}}
 
 ## Prefix-Cache-Friendly Prompts (`PREFIX_CACHE_OPTIMIZED_PROMPTS`)
 
-**Default: `false`. Opt-in. Only relevant for self-hosted text-generation backends.**
+**Default: `false`. Opt-in.**
 
 For each recording, Speakr makes two LLM calls over the same transcript
 back-to-back: title generation, then summary generation. By default these two
@@ -475,14 +476,15 @@ trailing instructions.
 
 **When to enable it:**
 
-- You self-host the text model on a backend with automatic prefix caching, and
-- Your transcripts are large (long diarized meetings), so prefill dominates the
-  title+summary cost.
+- You self-host the text model on a backend with automatic prefix caching, or
+  you use a hosted model with prompt caching (OpenAI models cache a shared
+  prefix automatically; Anthropic models also need
+  `TEXT_MODEL_CACHE_BREAKPOINTS`, described below), and
+- Your transcripts are large (long diarized meetings), so the transcript
+  dominates the title and summary cost.
 
 **When to leave it off (the default):**
 
-- You use a hosted API (OpenRouter, OpenAI, etc.) — prefix caching there is
-  opaque/automatic and this flag gives no benefit.
 - You want the exact upstream prompt wording. With the flag off, prompts are
   unchanged.
 
@@ -523,6 +525,39 @@ vllm serve <model> \
 A note on what to expect: the very first call over a transcript is always a cache
 miss and reports zero cached tokens; the saving appears on the second call that
 reuses the prefix.
+
+### Cache breakpoints for Anthropic models (`TEXT_MODEL_CACHE_BREAKPOINTS`)
+
+**Default: `false`. Used only together with `PREFIX_CACHE_OPTIMIZED_PROMPTS=true`.**
+
+Anthropic models, called directly or through OpenRouter, cache a prompt only up
+to an explicit `cache_control` breakpoint. Without one, the transcript is billed
+in full on both the title and the summary call.
+
+```bash
+PREFIX_CACHE_OPTIMIZED_PROMPTS=true
+TEXT_MODEL_CACHE_BREAKPOINTS=true
+```
+
+With both settings on, the user message of the title and summary calls is sent
+as two text parts: the shared transcript block, marked with
+`"cache_control": {"type": "ephemeral"}`, and the task instructions. The text of
+the prompt is unchanged. The title call writes the transcript to the cache, and
+the summary call a few seconds later reads it at a tenth of the input price.
+Anthropic charges 1.25 times the input price for a cache write, so a call with
+no second call within five minutes, such as a summary regenerated on its own,
+costs slightly more on its transcript part. Prompts shorter than the model's
+minimum cacheable length (about 1,000 to 4,000 tokens, depending on the model)
+are not cached.
+
+The cache reads and writes are recorded and shown under **System Statistics →
+Usage and Cost**.
+
+Enable this setting only for a provider that accepts a list of text parts in a
+message and the `cache_control` field. Through OpenRouter, other models accept
+the request and ignore the field. Some local and OpenAI-compatible servers
+reject it; with such a server, the title and summary calls fail until the
+setting is turned off.
 
 ## Per-Upload, Per-Tag, Per-Folder Transcription Models
 

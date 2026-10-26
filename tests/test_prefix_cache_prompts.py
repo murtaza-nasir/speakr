@@ -207,3 +207,85 @@ def test_flag_off_keeps_upstream_prompts(app_with_recording):
 
     # And they do NOT share the transcript-first prefix.
     assert _shared_region(title_msgs["user"]) is None
+
+
+# ---------------------------------------------------------------------------
+# Cache breakpoints (TEXT_MODEL_CACHE_BREAKPOINTS, #488)
+# ---------------------------------------------------------------------------
+
+def _joined(content):
+    """The text of a user message, whether a string or a list of text parts."""
+    if isinstance(content, str):
+        return content
+    return "".join(part["text"] for part in content)
+
+
+def test_breakpoints_split_shared_prefix_into_marked_part(app_with_recording):
+    """Both flags on: title and summary send the shared prefix as their first
+    text part, marked with cache_control, and the same text as without the
+    breakpoints."""
+    app, db, user, recording, created_user = app_with_recording
+
+    with patch.object(processing, "PREFIX_CACHE_OPTIMIZED_PROMPTS", True), \
+         patch.object(processing, "TEXT_MODEL_CACHE_BREAKPOINTS", False):
+        plain_title, plain_summary = _run_both_calls(app, recording, user)
+    with patch.object(processing, "PREFIX_CACHE_OPTIMIZED_PROMPTS", True), \
+         patch.object(processing, "TEXT_MODEL_CACHE_BREAKPOINTS", True):
+        title_msgs, summary_msgs = _run_both_calls(app, recording, user)
+
+    for msgs, plain in ((title_msgs, plain_title), (summary_msgs, plain_summary)):
+        content = msgs["user"]
+        assert isinstance(content, list) and len(content) == 2
+        assert content[0]["cache_control"] == {"type": "ephemeral"}
+        assert "cache_control" not in content[1]
+        assert content[0]["text"] == _shared_region(plain["user"])
+        assert _joined(content) == plain["user"]
+        assert msgs["system"] == plain["system"]
+
+    assert title_msgs["user"][0] == summary_msgs["user"][0]
+
+
+def test_breakpoints_without_prefix_layout_change_nothing(app_with_recording):
+    """TEXT_MODEL_CACHE_BREAKPOINTS alone leaves the upstream string prompts."""
+    app, db, user, recording, created_user = app_with_recording
+
+    with patch.object(processing, "PREFIX_CACHE_OPTIMIZED_PROMPTS", False), \
+         patch.object(processing, "TEXT_MODEL_CACHE_BREAKPOINTS", False):
+        plain_title, plain_summary = _run_both_calls(app, recording, user)
+    with patch.object(processing, "PREFIX_CACHE_OPTIMIZED_PROMPTS", False), \
+         patch.object(processing, "TEXT_MODEL_CACHE_BREAKPOINTS", True):
+        title_msgs, summary_msgs = _run_both_calls(app, recording, user)
+
+    assert title_msgs == plain_title
+    assert summary_msgs == plain_summary
+    assert isinstance(title_msgs["user"], str) and isinstance(summary_msgs["user"], str)
+
+
+def test_breakpoint_request_body_through_openai_sdk():
+    """The text parts reach the server as written, with cache_control on the
+    first part only."""
+    import json
+    import httpx
+    from openai import OpenAI
+    import src.services.llm as llm
+
+    bodies = []
+
+    def handle(request):
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={
+            "id": "x", "object": "chat.completion", "created": 0, "model": "m",
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "content": "ok"}}],
+        })
+
+    fake = OpenAI(api_key="test-only", base_url="https://openrouter.example/api/v1", max_retries=0,
+                  http_client=httpx.Client(transport=httpx.MockTransport(handle)))
+    content = [
+        {"type": "text", "text": "Transcript:\n\"\"\"\nhello\n\"\"\"\n\n", "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "Task: produce ONE title."},
+    ]
+    with patch.object(llm, "client", fake):
+        llm.call_llm_completion([{"role": "system", "content": "s"}, {"role": "user", "content": content}])
+
+    assert bodies[0]["messages"][1]["content"] == content

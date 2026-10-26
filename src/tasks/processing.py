@@ -67,6 +67,15 @@ PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
     'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
 ).lower() == 'true'
 
+# Anthropic models (directly or through OpenRouter) cache only up to an
+# explicit cache_control breakpoint (#488). With this on, the shared prefix is
+# sent as its own text part carrying the breakpoint; the text is unchanged, so
+# automatic prefix caching elsewhere still applies. Only used together with
+# PREFIX_CACHE_OPTIMIZED_PROMPTS.
+TEXT_MODEL_CACHE_BREAKPOINTS = os.environ.get(
+    'TEXT_MODEL_CACHE_BREAKPOINTS', 'false'
+).lower() == 'true'
+
 # Longest notes text given to the summarizer (#440)
 SUMMARY_NOTES_LIMIT = 8000
 
@@ -87,6 +96,24 @@ def _shared_user_prefix(transcript_text):
     including the transcript itself, which is the expensive part.
     """
     return f'Transcript:\n"""\n{transcript_text}\n"""\n\n'
+
+
+def _user_content(prompt_text, transcript_text):
+    """User-message content for a prompt that may start with the shared prefix.
+
+    A plain string, except with PREFIX_CACHE_OPTIMIZED_PROMPTS and
+    TEXT_MODEL_CACHE_BREAKPOINTS both on: then two text parts, the shared
+    prefix marked with cache_control and the rest of the prompt (#488).
+    """
+    if not (PREFIX_CACHE_OPTIMIZED_PROMPTS and TEXT_MODEL_CACHE_BREAKPOINTS):
+        return prompt_text
+    prefix = _shared_user_prefix(transcript_text)
+    if not prompt_text.startswith(prefix):
+        return prompt_text
+    return [
+        {"type": "text", "text": prefix, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": prompt_text[len(prefix):]},
+    ]
 
 
 # Maximum length for user-visible error_message text. The Recording.error_message
@@ -563,7 +590,7 @@ Title:"""
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
-                {"role": "user", "content": prompt_text}
+                {"role": "user", "content": _user_content(prompt_text, transcript_text)}
             ],
             temperature=llm_temperature,
             # TITLE_MAX_TOKENS lets reasoning-model users (e.g. Kimi K2) raise
@@ -834,7 +861,7 @@ Summarization Instructions:
             completion = call_llm_completion(
                 messages=[
                     {"role": "system", "content": system_message_content},
-                    {"role": "user", "content": prompt_text}
+                    {"role": "user", "content": _user_content(prompt_text, transcript_text)}
                 ],
                 temperature=llm_temperature,
                 max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
