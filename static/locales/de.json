@@ -1160,12 +1160,12 @@
     "playerPositionBottomHelp": "Player unter den Transkript- und Zusammenfassungsspalten verankert. Standard.",
     "playerPositionTop": "Oben",
     "playerPositionTopHelp": "Der Player sitzt über den Spalten, direkt unter dem Titel und der Metadatenleiste.",
-    "recordingsListSection": "Recordings list",
-    "defaultSortHelp": "Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.",
-    "defaultSortCreated": "Date added",
-    "defaultSortCreatedHelp": "When the recording was uploaded or imported. Default.",
-    "defaultSortMeeting": "Meeting date",
-    "defaultSortMeetingHelp": "When the meeting took place, from the recording's own date."
+    "recordingsListSection": "Aufnahmeliste",
+    "defaultSortHelp": "Legen Sie fest, wie die Liste sortiert und gruppiert wird, wenn Sie Speakr in einem Browser öffnen, in dem Sie noch keine Sortierung gewählt haben. Das Sortiermenü in der Liste hat in diesem Browser weiterhin Vorrang.",
+    "defaultSortCreated": "Erstellungsdatum",
+    "defaultSortCreatedHelp": "Zeitpunkt des Hochladens oder Imports der Aufnahme. Standard.",
+    "defaultSortMeeting": "Meeting-Datum",
+    "defaultSortMeetingHelp": "Zeitpunkt der Besprechung, aus dem Datum der Aufnahme."
   },
   "duration": {
     "hours": "{{count}} Stunde",

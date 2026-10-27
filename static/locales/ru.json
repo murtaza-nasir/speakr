@@ -1160,12 +1160,12 @@
     "playerPositionBottomHelp": "Плеер закреплён под столбцами расшифровки и резюме. По умолчанию.",
     "playerPositionTop": "Вверху",
     "playerPositionTopHelp": "Плеер располагается над столбцами, прямо под заголовком и панелью метаданных.",
-    "recordingsListSection": "Recordings list",
-    "defaultSortHelp": "Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.",
-    "defaultSortCreated": "Date added",
-    "defaultSortCreatedHelp": "When the recording was uploaded or imported. Default.",
-    "defaultSortMeeting": "Meeting date",
-    "defaultSortMeetingHelp": "When the meeting took place, from the recording's own date."
+    "recordingsListSection": "Список записей",
+    "defaultSortHelp": "Выберите, как сортируется и группируется список при открытии Speakr в браузере, где вы ещё не выбрали сортировку. Меню сортировки в списке по-прежнему имеет приоритет в этом браузере.",
+    "defaultSortCreated": "Дата создания",
+    "defaultSortCreatedHelp": "Когда запись была загружена или импортирована. По умолчанию.",
+    "defaultSortMeeting": "Дата встречи",
+    "defaultSortMeetingHelp": "Когда состоялась встреча, по дате самой записи."
   },
   "duration": {
     "hours": "{{count}} час",
