@@ -2023,7 +2023,7 @@ All endpoints return consistent error responses:
 }
 ```
 
-`code` is a machine-readable value, present on newer errors (for example `insufficient_scope`, `invalid_parameter`, `not_found`).
+`error` is written in the interface language of the account that owns the token (Account > Interface Language), and in English when none is set. `code` is a machine-readable value that is the same in every language, for example `insufficient_scope`, `invalid_parameter` or `not_found`. A client is built on `code` and the HTTP status, not on the text of `error`. Errors that pass on the text of an unexpected exception carry no `code`.
 
 **Common HTTP Status Codes:**
 

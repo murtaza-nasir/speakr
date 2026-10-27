@@ -21,6 +21,7 @@ from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 speakers_bp = Blueprint('speakers', __name__)
@@ -112,7 +113,7 @@ def create_speaker():
         name = data.get('name', '').strip()
         
         if not name:
-            return jsonify({'error': 'Speaker name is required'}), 400
+            return jsonify(api_error('speaker_name_required')), 400
         
         # Check if speaker already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
@@ -150,18 +151,18 @@ def update_speaker(speaker_id):
     try:
         speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
         if not speaker:
-            return jsonify({'error': 'Speaker not found'}), 404
+            return jsonify(api_error('speaker_not_found')), 404
 
         data = request.json
         new_name = data.get('name', '').strip()
 
         if not new_name:
-            return jsonify({'error': 'Speaker name cannot be empty'}), 400
+            return jsonify(api_error('speaker_name_empty')), 400
 
         # Check if another speaker with this name already exists for this user
         existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=new_name).first()
         if existing_speaker and existing_speaker.id != speaker_id:
-            return jsonify({'error': f'A speaker named "{new_name}" already exists'}), 400
+            return jsonify(api_error('speaker_name_exists', name=new_name)), 400
 
         # Store old name for updating transcript chunks and recordings
         old_name = speaker.name
@@ -203,7 +204,7 @@ def delete_speaker(speaker_id):
     try:
         speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
         if not speaker:
-            return jsonify({'error': 'Speaker not found'}), 404
+            return jsonify(api_error('speaker_not_found')), 404
 
         db.session.delete(speaker)
         db.session.commit()
@@ -261,14 +262,14 @@ def get_speaker_suggestions(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
+            return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user, require_edit=False):
-            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            return jsonify(api_error('recording_access_denied')), 403
 
         # Get speaker embeddings from recording
         if not recording.speaker_embeddings:
-            return jsonify({'suggestions': {}, 'message': 'No speaker embeddings available'}), 200
+            return jsonify({'suggestions': {}, 'message': translate('server.apiMessage.noSpeakerEmbeddings')}), 200
 
         # Matching compares each voice with every voice variant of each
         # person, within the recording's embedding space. The threshold is
@@ -301,7 +302,7 @@ def get_snippets(speaker_id):
         # Verify speaker belongs to user
         speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
         if not speaker:
-            return jsonify({'error': 'Speaker not found'}), 404
+            return jsonify(api_error('speaker_not_found')), 404
 
         limit = int(request.args.get('limit', 5))
         snippets = get_speaker_snippets(speaker_id, limit)
@@ -330,7 +331,7 @@ def get_speaker_recordings(speaker_id):
         # Verify speaker belongs to user
         speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
         if not speaker:
-            return jsonify({'error': 'Speaker not found'}), 404
+            return jsonify(api_error('speaker_not_found')), 404
 
         recordings = get_speaker_recordings_with_snippets(speaker_id)
 
@@ -354,7 +355,7 @@ def list_voice_samples(speaker_id):
     from src.services.voice_profiles import voice_summary, effective_space, current_space_id
     speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
     if not speaker:
-        return jsonify({'error': 'Speaker not found'}), 404
+        return jsonify(api_error('speaker_not_found')), 404
     rows = SpeakerVoiceSample.query.filter_by(speaker_id=speaker.id).all()
     titles = {}
     rec_ids = [r.recording_id for r in rows if r.recording_id]
@@ -390,10 +391,10 @@ def delete_voice_sample(speaker_id, sample_id):
     from src.services import voice_profiles as vp
     speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
     if not speaker:
-        return jsonify({'error': 'Speaker not found'}), 404
+        return jsonify(api_error('speaker_not_found')), 404
     sample = SpeakerVoiceSample.query.filter_by(id=sample_id, speaker_id=speaker.id).first()
     if not sample:
-        return jsonify({'error': 'Sample not found'}), 404
+        return jsonify(api_error('sample_not_found')), 404
     try:
         db.session.delete(sample)
         db.session.flush()
@@ -405,7 +406,7 @@ def delete_voice_sample(speaker_id, sample_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error removing voice sample {sample_id}: {e}")
-        return jsonify({'error': 'Could not remove the sample'}), 500
+        return jsonify(api_error('sample_remove_failed')), 500
 
 
 @speakers_bp.route('/speakers/<int:speaker_id>/clear_embeddings', methods=['POST'])
@@ -421,7 +422,7 @@ def clear_speaker_embeddings(speaker_id):
         # Verify speaker belongs to user
         speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
         if not speaker:
-            return jsonify({'error': 'Speaker not found'}), 404
+            return jsonify(api_error('speaker_not_found')), 404
 
         # Clear all embeddings. NOTE: the matchable vector lives in the
         # `average_embedding` column (and the history in `embeddings_history`)
@@ -442,7 +443,7 @@ def clear_speaker_embeddings(speaker_id):
 
         return jsonify({
             'success': True,
-            'message': f'Voice profile cleared for {speaker.name}',
+            'message': translate('server.apiMessage.voiceProfileCleared', name=speaker.name),
             'speaker': {
                 'id': speaker.id,
                 'name': speaker.name,
@@ -481,18 +482,18 @@ def get_snippet_audio(recording_id):
         # Get the recording
         recording = db.session.get(Recording, recording_id)
         if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
+            return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user, require_edit=False):
-            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            return jsonify(api_error('recording_access_denied')), 403
 
         if recording.audio_deleted_at:
-            return jsonify({'error': 'Audio file has been deleted'}), 410
+            return jsonify(api_error('audio_deleted')), 410
 
         from src.services.storage import get_storage_service
         storage = get_storage_service()
         if not recording.audio_path or not storage.exists(recording.audio_path):
-            return jsonify({'error': 'Audio file not found'}), 404
+            return jsonify(api_error('audio_file_not_found')), 404
 
         try:
             with storage.materialize(recording.audio_path) as materialized:
@@ -554,17 +555,17 @@ def get_snippet_audio(recording_id):
                 os.unlink(output_path)
             except:
                 pass
-            return jsonify({'error': 'FFmpeg not found on server'}), 500
+            return jsonify(api_error('ffmpeg_missing')), 500
         except FFmpegError as e:
             current_app.logger.error(f"FFmpeg error extracting snippet: {e}")
             try:
                 os.unlink(output_path)
             except:
                 pass
-            return jsonify({'error': 'Failed to extract audio snippet'}), 500
+            return jsonify(api_error('snippet_extraction_failed')), 500
 
     except ValueError:
-        return jsonify({'error': 'Invalid start time or duration'}), 400
+        return jsonify(api_error('invalid_snippet_range')), 400
     except Exception as e:
         current_app.logger.error(f"Error serving audio snippet: {e}")
         return jsonify({'error': str(e)}), 500
@@ -592,15 +593,15 @@ def merge_speaker_profiles():
         preview = data.get('preview', False)
 
         if not target_id:
-            return jsonify({'error': 'target_id is required'}), 400
+            return jsonify(api_error('target_id_required')), 400
 
         if not source_ids or not isinstance(source_ids, list):
-            return jsonify({'error': 'source_ids must be a non-empty list'}), 400
+            return jsonify(api_error('invalid_source_ids')), 400
 
         # Validate speakers can be merged
-        can_merge, error_msg = can_merge_speakers([target_id] + source_ids, current_user.id)
+        can_merge, error_code = can_merge_speakers([target_id] + source_ids, current_user.id)
         if not can_merge:
-            return jsonify({'error': error_msg}), 400
+            return jsonify(api_error(error_code)), 400
 
         if preview:
             # Just return preview statistics
@@ -614,7 +615,8 @@ def merge_speaker_profiles():
             merged_speaker = merge_speakers(target_id, source_ids, current_user.id)
             return jsonify({
                 'success': True,
-                'message': f'Successfully merged {len(source_ids)} speaker(s) into {merged_speaker.name}',
+                'message': translate('server.apiMessage.speakersMerged',
+                                     count=len(source_ids), name=merged_speaker.name),
                 'speaker': merged_speaker.to_dict(),
                 'recordings_updated': getattr(merged_speaker, 'recordings_updated', 0)
             })

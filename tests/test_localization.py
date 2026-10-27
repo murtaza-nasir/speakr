@@ -186,6 +186,13 @@ def test_every_recording_status_the_backend_can_set_has_a_label():
 # translate('server.a.b') in Python code: text the server produces in the
 # user's interface language (#477). The browser scan above does not see it.
 SERVER_PATTERN = re.compile(r"""\btranslate\(\s*['"](server\.[\w.]+)['"]""")
+# api_error('code') reads server.apiError.<code>.
+API_ERROR_PATTERN = re.compile(r"""\bapi_error\(\s*['"](\w+)['"]""")
+# Error codes that helpers return or raise (ReprocessError('code'),
+# webhook_url_problem, can_merge_speakers ...) reach api_error() or
+# translate(f'server.apiError.{code}') as values; each still appears in src/
+# as a quoted literal.
+CODE_LITERAL = re.compile(r"""['"]([a-z][a-z0-9]*(?:_[a-z0-9]+)+)['"]""")
 
 
 def _server_keys_used():
@@ -194,7 +201,16 @@ def _server_keys_used():
         text = open(path, encoding='utf-8').read()
         for key in SERVER_PATTERN.findall(text):
             found.setdefault(key, set()).add(os.path.relpath(path, REPO))
+        for code in API_ERROR_PATTERN.findall(text):
+            found.setdefault(f'server.apiError.{code}', set()).add(os.path.relpath(path, REPO))
     return found
+
+
+def _error_code_literals():
+    codes = set()
+    for path in _walk('src', '.py'):
+        codes.update(CODE_LITERAL.findall(open(path, encoding='utf-8').read()))
+    return codes
 
 
 def test_every_server_key_used_in_src_exists_in_english():
@@ -210,7 +226,9 @@ def test_every_server_key_used_in_src_exists_in_english():
 def test_every_server_key_in_english_is_used():
     """server.* keys are only read from Python, so an unused one is dead weight."""
     used = _server_keys_used()
-    unused = sorted(k for k in _flatten(_load('en')) if k.startswith('server.') and k not in used)
+    codes = _error_code_literals()
+    unused = sorted(k for k in _flatten(_load('en')) if k.startswith('server.') and k not in used
+                    and not (k.startswith('server.apiError.') and k.rsplit('.', 1)[1] in codes))
     assert not unused, f'server keys in en.json that no translate() call uses: {unused}'
 
 
@@ -409,3 +427,35 @@ def test_every_locale_has_every_file_size_unit():
         table = _load(lang).get('fileSize', {})
         assert set(table) == units, f'{lang}.json fileSize has {sorted(table)}'
         assert all('{{count}}' in v for v in table.values()), f'{lang}.json fileSize lacks {{{{count}}}}'
+
+
+# API responses (#477): an 'error' or 'message' in a response comes from the
+# catalogs, through api_error('code') or translate('server.apiMessage.key'),
+# so a new handler cannot return a fixed English string.
+API_LITERAL = re.compile(r"""['"](?:error|message)['"]\s*:\s*[fFrR]?['"]""")
+
+
+def _api_literals():
+    found = []
+    paths = list(_walk('src/api', '.py')) + [os.path.join(REPO, 'src', 'app.py')]
+    for path in paths:
+        for number, line in enumerate(open(path, encoding='utf-8'), 1):
+            if API_LITERAL.search(line) and not line.lstrip().startswith('#'):
+                found.append(f'{os.path.relpath(path, REPO)}:{number}: {line.strip()}')
+    return found
+
+
+def test_no_fixed_english_error_or_message_in_api_responses():
+    offenders = _api_literals()
+    assert not offenders, 'use api_error() or translate():\n' + '\n'.join(f'  {o}' for o in offenders)
+
+
+@pytest.mark.parametrize('snippet,matches', [
+    ("return jsonify({'error': 'Recording not found'}), 404", True),
+    ('return jsonify({"message": f"Deleted {n} tags"})', True),
+    ("return jsonify(api_error('recording_not_found')), 404", False),
+    ("return jsonify({'message': translate('server.apiMessage.tagDeleted')})", False),
+    ("return jsonify({'error': str(e)}), 500", False),
+])
+def test_api_literal_scanner(snippet, matches):
+    assert bool(API_LITERAL.search(snippet)) is matches

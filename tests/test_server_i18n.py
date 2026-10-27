@@ -1,8 +1,9 @@
-"""Server-generated text in the user's interface language (#477, part 1).
+"""Server-generated text in the user's interface language (#477).
 
 translate() resolves the same static/locales/*.json catalogs the browser uses.
-Flash messages and the verification and password-reset emails go through it;
-Budget messages follow the budget owner's language.
+Flash messages, the verification and password-reset emails, budget messages
+and API error and info messages go through it. API errors also carry a code
+that is the same in every language.
 """
 
 import os
@@ -17,7 +18,7 @@ from src.app import app, db
 from src.models import User
 from src.services import email as email_service
 from src.utils.localization import (
-    format_file_size, format_number, format_percent, match_language, request_language, translate,
+    api_error, format_file_size, format_number, format_percent, match_language, request_language, translate,
 )
 
 
@@ -283,3 +284,69 @@ def test_transcription_budget_messages_use_the_users_language(make_user):
     assert not can and msg.startswith('Месячный лимит транскрипции превышен (90/60 мин).')
     assert _budget(transcription_tracker, en, 54 * 60, 'monthly_transcription_budget', 60 * 60)[2] == (
         'Warning: 90% of monthly transcription budget used.')
+
+
+# ---------------------------------------------------------------------------
+# API errors (#477): `error` in the interface language, `code` the same in
+# every language. A response that already had a code keeps it.
+# ---------------------------------------------------------------------------
+
+def _session_client(uid):
+    client = app.test_client()
+    with client.session_transaction() as s:
+        s['_user_id'] = str(uid)
+        s['_fresh'] = True
+    return client
+
+
+@pytest.mark.parametrize('lang,text', [
+    ('de', 'Aufnahme nicht gefunden'), ('fr', 'Enregistrement introuvable'),
+    (None, 'Recording not found'),
+    # An unknown saved language falls back to Accept-Language (ru here).
+    ('xx', 'Запись не найдена'),
+])
+def test_api_error_follows_the_users_language_with_a_stable_code(make_user, lang, text):
+    uid = make_user(lang)
+    prev = app.config.get('WTF_CSRF_ENABLED')
+    app.config['WTF_CSRF_ENABLED'] = False
+    try:
+        resp = _session_client(uid).post('/recording/999999999/update_speakers', json={},
+                                         headers={'Accept-Language': 'ru'} if lang else {})
+    finally:
+        app.config['WTF_CSRF_ENABLED'] = prev
+    assert resp.status_code == 404
+    assert resp.get_json() == {'error': text, 'code': 'recording_not_found'}
+
+
+def test_api_v1_token_error_keeps_its_existing_code(make_user):
+    import secrets
+    from src.models import APIToken
+    from src.utils.token_auth import hash_token
+    uid = make_user('de')
+    plain = f'tok-{secrets.token_urlsafe(16)}'
+    with app.app_context():
+        db.session.add(APIToken(user_id=uid, token_hash=hash_token(plain), name='i18n'))
+        db.session.commit()
+    resp = app.test_client().get('/api/v1/recordings/999999999/external-refs',
+                                 headers={'Authorization': f'Bearer {plain}'})
+    assert resp.status_code == 404
+    assert resp.get_json() == {'error': 'Aufnahme nicht gefunden', 'code': 'not_found'}
+    with app.app_context():
+        APIToken.query.filter_by(user_id=uid).delete()
+        db.session.commit()
+
+
+def test_api_error_for_anonymous_request_uses_accept_language():
+    with app.test_request_context('/', headers={'Accept-Language': 'es-MX,es;q=0.9'}):
+        assert api_error('recording_not_found') == {
+            'error': translate('server.apiError.recording_not_found', 'es'), 'code': 'recording_not_found'}
+        assert api_error('recording_not_found')['error'] != 'Recording not found'
+
+
+def test_every_api_error_code_is_a_snake_case_key():
+    import json
+    import re
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           'static', 'locales', 'en.json'), encoding='utf-8') as f:
+        codes = json.load(f)['server']['apiError']
+    assert codes and all(re.fullmatch(r'[a-z][a-z0-9_]*', c) for c in codes)

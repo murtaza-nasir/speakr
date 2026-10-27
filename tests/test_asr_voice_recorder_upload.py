@@ -151,7 +151,7 @@ def test_missing_invalid_expired_and_revoked_secrets_share_one_error(tmp_path):
             for secret in (None, "not-a-token", expired, revoked):
                 response = _post(client, secret=secret)
                 assert response.status_code == 401
-                assert response.get_json() == {"error": "Authentication failed"}
+                assert response.get_json() == {"error": "Authentication failed", "code": "authentication_failed"}
             assert Recording.query.filter_by(user_id=user.id).count() == 0
         finally:
             _cleanup_user(user)
@@ -170,7 +170,7 @@ def test_oversized_body_is_rejected_before_multipart_authentication():
                 content_type="multipart/form-data",
             )
         assert response.status_code == 413
-        assert response.get_json() == {"error": "File too large"}
+        assert response.get_json() == {"error": "File too large", "code": "file_too_large"}
 
 
 def test_session_or_header_cannot_replace_multipart_secret(tmp_path):
@@ -376,7 +376,7 @@ def test_missing_file_after_valid_auth_returns_400():
                 content_type="multipart/form-data",
             )
             assert response.status_code == 400
-            assert response.get_json() == {"error": "No file provided"}
+            assert response.get_json() == {"error": "No file provided", "code": "no_file_provided"}
         finally:
             _cleanup_user(user)
 

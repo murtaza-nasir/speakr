@@ -217,7 +217,7 @@ class TestProcessAutoDeletion(RetentionTestBase):
 
     def test_disabled_returns_error(self):
         stats, _ = self._run(enabled=False)
-        self.assertEqual(stats, {'error': 'Auto-deletion is not enabled'})
+        self.assertEqual(stats, {'error': 'Auto-deletion is not enabled', 'code': 'auto_deletion_disabled'})
 
     def test_full_delete_removes_old_recording_and_audio(self):
         rec = self.make_recording(age_days=100, audio_path='user/old.mp3')

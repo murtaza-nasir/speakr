@@ -34,6 +34,7 @@ from src.services.embeddings import (
     basic_text_search_chunks,
 )
 from src.services.llm import call_chat_completion, TokenBudgetExceeded, get_chat_config
+from src.utils.localization import translate
 
 # ---------------------------------------------------------------------------
 # Configuration (read live so tests and admins can tweak without restart)
@@ -880,7 +881,7 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         usage_pct = min(int(est * 100 / budget), 100)
         yield _sse({'context_usage': usage_pct})
         if est > budget * 0.6 and len(history) > KEEP_VERBATIM_MESSAGES:
-            yield _sse({'status': 'compacting', 'message': 'Summarizing earlier conversation...'})
+            yield _sse({'status': 'compacting', 'message': translate('server.apiMessage.summarizingConversation')})
             memory, history, folded = compact_history(user_id, memory, history)
             if folded:
                 yield _sse({'context_compacted': {'memory': memory, 'keep_last': KEEP_VERBATIM_MESSAGES}})

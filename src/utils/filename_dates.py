@@ -178,21 +178,21 @@ def parse_filename_date(filename: str, pattern_key: str = 'auto',
 
 def validate_custom_regex(custom_regex: str) -> Optional[str]:
     """
-    Validate a user-supplied custom regex. Returns an error message string,
-    or None when the regex is acceptable.
+    Validate a user-supplied custom regex. Returns an error message string
+    in the interface language (#477), or None when the regex is acceptable.
     """
+    from src.utils.localization import translate
     if not custom_regex or not custom_regex.strip():
-        return 'Custom pattern is required when the custom option is selected.'
+        return translate('server.apiError.custom_date_pattern_required')
     if len(custom_regex) > 500:
-        return 'Custom pattern is too long (max 500 characters).'
+        return translate('server.apiError.custom_date_pattern_too_long')
     try:
         compiled = re.compile(custom_regex)
     except re.error as e:
-        return f'Invalid regular expression: {e}'
+        return translate('server.apiError.invalid_regular_expression', detail=str(e))
     required = {'year', 'month', 'day'}
     missing = required - set(compiled.groupindex.keys())
     if missing:
-        return ('Custom pattern must define named groups (?P<year>...), '
-                '(?P<month>...) and (?P<day>...); missing: '
-                + ', '.join(sorted(missing)))
+        return translate('server.apiError.custom_date_pattern_missing_groups',
+                         groups=', '.join(sorted(missing)))
     return None

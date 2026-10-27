@@ -288,6 +288,10 @@ def is_using_openai_api():
 
 
 
+class LLMNotConfiguredError(ValueError):
+    """No text model is configured; the API answers with text_model_not_configured."""
+
+
 def call_llm_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None,
                         user_id=None, operation_type=None):
     """
@@ -306,7 +310,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         OpenAI completion object or generator (if streaming)
     """
     if not client:
-        raise ValueError("No text model is configured. Set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service.")
+        raise LLMNotConfiguredError("No text model is configured. Set TEXT_MODEL_BASE_URL, and TEXT_MODEL_API_KEY for a hosted service.")
 
     # Check budget before making the call
     if user_id and operation_type:

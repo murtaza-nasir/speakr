@@ -21,6 +21,7 @@ from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.search import LIKE_ESCAPE, contains_pattern
+from src.utils.localization import api_error, translate
 
 # Configuration from environment
 ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
@@ -160,7 +161,7 @@ def get_shared_audio(public_id):
         share = active_share_or_404(public_id)
         recording = share.recording
         if not recording or not recording.audio_path:
-            return jsonify({'error': 'Recording or audio file not found'}), 404
+            return jsonify(api_error('recording_or_audio_not_found')), 404
         serve_mime = served_media_mime(recording.mime_type, recording.audio_path)
         delivery = get_storage_service().get_audio_delivery(
             recording.audio_path,
@@ -173,7 +174,7 @@ def get_shared_audio(public_id):
             return redirect(delivery.url, code=302)
         if not delivery.local_path or not os.path.exists(delivery.local_path):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
-            return jsonify({'error': 'Audio file missing from server'}), 404
+            return jsonify(api_error('audio_file_missing')), 404
         return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except HTTPException:
         # Let first_or_404() (and any other HTTP error) keep its real status —
@@ -181,7 +182,7 @@ def get_shared_audio(public_id):
         raise
     except Exception as e:
         current_app.logger.error(f"Error serving shared audio for public_id {public_id}: {e}", exc_info=True)
-        return jsonify({'error': 'An unexpected error occurred.'}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @shares_bp.route('/api/recording/<int:recording_id>/share', methods=['GET'])
@@ -190,7 +191,7 @@ def get_existing_share(recording_id):
     """Check if a share already exists for this recording."""
     recording = db.session.get(Recording, recording_id)
     if not recording or recording.user_id != current_user.id:
-        return jsonify({'error': 'Recording not found or you do not have permission to view it.'}), 404
+        return jsonify(api_error('recording_not_found_or_no_view')), 404
 
     existing_share = Share.query.filter_by(
         recording_id=recording.id,
@@ -218,18 +219,18 @@ def create_share(recording_id):
     """Create a public share link for a recording."""
     # Check if public sharing is globally enabled
     if not ENABLE_PUBLIC_SHARING:
-        return jsonify({'error': 'Public sharing is not enabled on this server'}), 403
+        return jsonify(api_error('public_sharing_disabled')), 403
 
     # Check if user has permission to create public shares
     if not current_user.can_share_publicly:
-        return jsonify({'error': 'You do not have permission to create public share links. Contact your administrator.'}), 403
+        return jsonify(api_error('public_share_not_permitted')), 403
 
     if not request.is_secure:
-        return jsonify({'error': 'Sharing is only available over a secure (HTTPS) connection.'}), 403
+        return jsonify(api_error('sharing_https_required')), 403
 
     recording = db.session.get(Recording, recording_id)
     if not recording or recording.user_id != current_user.id:
-        return jsonify({'error': 'Recording not found or you do not have permission to share it.'}), 404
+        return jsonify(api_error('recording_not_found_or_no_share')), 404
 
     data = request.json
     share_summary = data.get('share_summary', True)
@@ -247,7 +248,7 @@ def create_share(recording_id):
             'share_url': share_url,
             'share': share.to_dict(),
             'existing': True,
-            'message': 'Using existing share link for this recording'
+            'message': translate('server.apiMessage.existingShareLinkUsed')
         }), 200
 
     share_url = url_for('shares.view_shared_recording', public_id=share.public_id, _external=True)
@@ -394,7 +395,7 @@ def delete_share(share_id):
 def search_users():
     """Search for users by username (for internal sharing)."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     query = request.args.get('q', '').strip()
 
@@ -430,7 +431,7 @@ def search_users():
 def share_recording_internal(recording_id):
     """Share a recording with another user internally."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
         data = request.json
@@ -439,28 +440,28 @@ def share_recording_internal(recording_id):
         can_reshare = data.get('can_reshare', False)
 
         if not shared_with_user_id:
-            return jsonify({'error': 'User ID is required'}), 400
+            return jsonify(api_error('user_id_required')), 400
 
         # Check recording exists and user has permission to share it
         recording = db.session.get(Recording, recording_id)
         if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
+            return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user, require_reshare=True):
-            return jsonify({'error': 'You do not have permission to share this recording'}), 403
+            return jsonify(api_error('recording_share_denied')), 403
 
         # Check target user exists
         target_user = db.session.get(User, shared_with_user_id)
         if not target_user:
-            return jsonify({'error': 'Target user not found'}), 404
+            return jsonify(api_error('target_user_not_found')), 404
 
         # Prevent sharing back to owner (circular share)
         if shared_with_user_id == recording.user_id:
-            return jsonify({'error': 'Cannot share a recording with its owner'}), 400
+            return jsonify(api_error('share_with_owner')), 400
 
         # Prevent sharing with self
         if shared_with_user_id == current_user.id:
-            return jsonify({'error': 'Cannot share a recording with yourself'}), 400
+            return jsonify(api_error('share_with_self')), 400
 
         # Check if already shared
         existing_share = InternalShare.query.filter_by(
@@ -469,16 +470,16 @@ def share_recording_internal(recording_id):
         ).first()
 
         if existing_share:
-            return jsonify({'error': 'Recording already shared with this user'}), 409
+            return jsonify(api_error('already_shared')), 409
 
         # PERMISSION VALIDATION: Validate that current user can grant the requested permissions
         requested_permissions = {'can_edit': can_edit, 'can_reshare': can_reshare}
-        is_valid, error_message = InternalShare.validate_reshare_permissions(
+        is_valid, error_code = InternalShare.validate_reshare_permissions(
             recording, current_user, requested_permissions
         )
 
         if not is_valid:
-            return jsonify({'error': error_message}), 403
+            return jsonify(api_error(error_code)), 403
 
         # Get current user's permissions for audit log
         actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
@@ -538,7 +539,7 @@ def share_recording_internal(recording_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error sharing recording internally: {e}", exc_info=True)
-        return jsonify({'error': 'An unexpected error occurred'}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @shares_bp.route('/api/recordings/<int:recording_id>/shares-internal', methods=['GET'])
@@ -546,15 +547,15 @@ def share_recording_internal(recording_id):
 def get_internal_shares(recording_id):
     """Get list of users a recording is shared with, including owner."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     # Check recording exists and user has permission to view shares
     recording = db.session.get(Recording, recording_id)
     if not recording:
-        return jsonify({'error': 'Recording not found'}), 404
+        return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_reshare=True):
-        return jsonify({'error': 'You do not have permission to view shares for this recording'}), 403
+        return jsonify(api_error('shares_view_denied')), 403
 
     # Get all internal shares
     shares = InternalShare.query.filter_by(recording_id=recording_id).all()
@@ -588,15 +589,15 @@ def get_internal_shares(recording_id):
 def revoke_internal_share(share_id):
     """Revoke an internal share with cascade revocation."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     share = db.session.get(InternalShare, share_id)
     if not share:
-        return jsonify({'error': 'Share not found'}), 404
+        return jsonify(api_error('share_not_found')), 404
 
     # Only owner can revoke
     if share.owner_id != current_user.id:
-        return jsonify({'error': 'You do not have permission to revoke this share'}), 403
+        return jsonify(api_error('share_revoke_denied')), 403
 
     recording_id = share.recording_id
     revoked_user_id = share.shared_with_user_id
@@ -661,7 +662,7 @@ def revoke_internal_share(share_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error revoking internal share: {e}", exc_info=True)
-        return jsonify({'error': 'An unexpected error occurred'}), 500
+        return jsonify(api_error('unexpected_error')), 500
 
 
 @shares_bp.route('/api/recordings/shared-with-me', methods=['GET'])
@@ -669,7 +670,7 @@ def revoke_internal_share(share_id):
 def get_shared_with_me():
     """Get recordings that have been shared with the current user."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
         # Get shares where current user is the recipient, with their

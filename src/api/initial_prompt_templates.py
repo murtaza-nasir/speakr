@@ -13,6 +13,7 @@ from flask_login import login_required, current_user
 
 from src.database import db
 from src.models import InitialPromptTemplate
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 initial_prompt_templates_bp = Blueprint('initial_prompt_templates', __name__)
@@ -35,7 +36,7 @@ def create_initial_prompt_template():
     hotwords = (data.get('hotwords') or '') if data else ''
     # A template needs a name and at least one of prompt / hotwords.
     if not data or not data.get('name') or not (prompt.strip() or hotwords.strip()):
-        return jsonify({'error': 'Name and a prompt or hotwords are required'}), 400
+        return jsonify(api_error('name_and_prompt_required')), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -69,11 +70,11 @@ def update_initial_prompt_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -105,7 +106,7 @@ def delete_initial_prompt_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     db.session.delete(template)
     db.session.commit()
@@ -119,7 +120,7 @@ def create_default_initial_prompt_templates():
     """Seed a few starter initial-prompt templates if the user has none."""
     existing = InitialPromptTemplate.query.filter_by(user_id=current_user.id).count()
     if existing > 0:
-        return jsonify({'message': 'User already has templates'}), 200
+        return jsonify({'message': translate('server.apiMessage.userAlreadyHasTemplates')}), 200
 
     starters = [
         ('Business meeting',

@@ -14,6 +14,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models import APIToken
 from src.utils.token_auth import hash_token
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 tokens_bp = Blueprint('tokens', __name__, url_prefix='/api/tokens')
@@ -109,7 +110,7 @@ def create_token():
 
     # Validate expiration
     if not isinstance(expires_in_days, int) or expires_in_days < 0:
-        return jsonify({'error': 'expires_in_days must be a non-negative integer'}), 400
+        return jsonify(api_error('invalid_expires_in_days')), 400
 
     # Scopes (mailr spec G1). Absent = a full token, as before scopes existed.
     scopes_value = None
@@ -126,8 +127,7 @@ def create_token():
                   .count())
         if active >= API_MAX_TOKENS_PER_USER:
             return jsonify({
-                'error': (f'An account can hold at most {API_MAX_TOKENS_PER_USER} active API tokens. '
-                          f'Revoke a token you no longer use to create a new one.'),
+                'error': translate('server.apiError.token_limit_reached', max=API_MAX_TOKENS_PER_USER),
                 'code': 'token_limit_reached',
                 'max_tokens': API_MAX_TOKENS_PER_USER,
                 'active_tokens': active,
@@ -182,13 +182,13 @@ def revoke_token(token_id):
     ).first()
 
     if not api_token:
-        return jsonify({'error': 'Token not found'}), 404
+        return jsonify(api_error('token_not_found')), 404
 
     # Delete the token
     db.session.delete(api_token)
     db.session.commit()
 
-    return jsonify({'message': 'Token revoked successfully'}), 200
+    return jsonify({'message': translate('server.apiMessage.tokenRevoked')}), 200
 
 
 @tokens_bp.route('/<int:token_id>', methods=['PATCH'])
@@ -214,12 +214,12 @@ def update_token(token_id):
     ).first()
 
     if not api_token:
-        return jsonify({'error': 'Token not found'}), 404
+        return jsonify(api_error('token_not_found')), 404
 
     data = request.get_json() or {}
     new_name = data.get('name')
     if 'scopes' not in data and not new_name:
-        return jsonify({'error': 'name is required'}), 400
+        return jsonify(api_error('name_required')), 400
 
     # Scopes can only be narrowed (mailr spec G1): a wider set needs a new
     # token, so a stolen session cannot silently widen an integration token.
@@ -232,7 +232,7 @@ def update_token(token_id):
         new = None if new_value is None else frozenset(__import__('json').loads(new_value))
         widening = (new is None and current is not None) or (current is not None and not new <= current)
         if widening:
-            return jsonify({'error': 'Scopes can only be narrowed; create a new token for more access',
+            return jsonify({'error': translate('server.apiError.scope_narrow_only'),
                             'code': 'invalid_parameter'}), 400
         api_token.scopes = new_value
 

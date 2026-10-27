@@ -9,6 +9,7 @@ from flask import current_app
 from src.database import db
 from src.models import Recording, RecordingTag, Tag
 from src.services.storage import get_storage_service
+from src.utils.localization import api_error
 
 ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
 GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
@@ -88,7 +89,7 @@ def process_auto_deletion():
         Dictionary with deletion statistics
     """
     if not ENABLE_AUTO_DELETION:
-        return {'error': 'Auto-deletion is not enabled'}
+        return api_error('auto_deletion_disabled')
 
     # Check if any retention policy exists (global or tag-level)
     has_global_retention = GLOBAL_RETENTION_DAYS > 0

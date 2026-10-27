@@ -266,30 +266,42 @@ def _http_post(url, **kwargs):
     return ssrf_guarded_session().post(url, **kwargs)
 
 
-def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
+def is_url_safe_for_webhook(url: str, allow_http: bool = False, language=None) -> tuple:
     """Validate a webhook URL.
 
     Returns ``(ok: bool, reason: str)``. ``ok`` is False when the URL
     points at a private/loopback/link-local IP (unless the
     ``WEBHOOK_INTRANET_HOST_ALLOWLIST`` regex matches the hostname), or
-    uses an unsupported scheme.
+    uses an unsupported scheme. ``reason`` is in ``language``, else the
+    interface language of the current request (#477).
     """
+    problem = webhook_url_problem(url, allow_http)
+    if problem is None:
+        return True, ''
+    from src.utils.localization import translate
+    code, params = problem
+    return False, translate(f'server.apiError.{code}', language, **params)
+
+
+def webhook_url_problem(url: str, allow_http: bool = False):
+    """The check behind is_url_safe_for_webhook: None for a safe URL, else
+    (server.apiError code, placeholder values)."""
     if not url:
-        return False, 'URL is required'
+        return 'url_required', {}
     try:
         parsed = urlparse(url)
     except Exception:
-        return False, 'URL could not be parsed'
+        return 'webhook_url_unparseable', {}
 
     scheme = (parsed.scheme or '').lower()
     if scheme not in ('http', 'https'):
-        return False, 'Scheme must be http or https'
+        return 'webhook_url_bad_scheme', {}
     if scheme == 'http' and not allow_http:
-        return False, 'http:// URLs require allow_http=true'
+        return 'webhook_url_http_not_allowed', {}
 
     host = parsed.hostname
     if not host:
-        return False, 'URL is missing a host'
+        return 'webhook_url_missing_host', {}
 
     # Always resolve and inspect every address the hostname maps to,
     # THEN decide whether the allowlist permits a private/loopback IP.
@@ -302,7 +314,7 @@ def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
     try:
         addrinfos = socket.getaddrinfo(host, None)
     except socket.gaierror:
-        return False, f'DNS resolution failed for {host!r}'
+        return 'webhook_dns_failed', {'host': host}
 
     allowlist = _intranet_host_allowlist()
     host_lower = host.lower()
@@ -315,15 +327,9 @@ def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
         except ValueError:
             continue
         if _is_blocked_ip(ip_str) and not allowlist_matches:
-            return False, (
-                f'URL resolves to a private/loopback address ({ip_str}); '
-                'set WEBHOOK_INTRANET_HOST_ALLOWLIST to permit this host '
-                'explicitly, or use a public URL. The allowlist regex '
-                'should be anchored (e.g. r"^(localhost|.*\\.intra)$") '
-                'so it cannot be tricked by lookalike hostnames.'
-            )
+            return 'webhook_url_private_address', {'ip': ip_str}
 
-    return True, ''
+    return None
 
 
 # ---- Signing & headers -----------------------------------------------------
@@ -528,7 +534,9 @@ def _post_delivery(delivery: WebhookDelivery, webhook: Webhook) -> tuple:
     # an internal target would otherwise be an exfiltration channel). A transient
     # DNS failure is NOT treated as a block — no resolution means no connection
     # and thus no SSRF; we let requests surface it as a normal network error.
-    safe, reason = is_url_safe_for_webhook(webhook.url, allow_http=bool(webhook.allow_http))
+    # English: the reason goes into the stored delivery log, and the check
+    # below matches its text.
+    safe, reason = is_url_safe_for_webhook(webhook.url, allow_http=bool(webhook.allow_http), language='en')
     if not safe and 'resolves to a private' in reason:
         return None, None, f'blocked at delivery: {reason}'[:500]
 

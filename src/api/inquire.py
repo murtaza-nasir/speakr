@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.utils.localization import translate
+from src.utils.localization import translate, api_error
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
@@ -79,7 +79,7 @@ def inquire():
 def get_inquire_sessions():
     """Get all inquire sessions for the current user."""
     if not ENABLE_INQUIRE_MODE:
-        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+        return jsonify(api_error('inquire_disabled')), 403
     try:
         sessions = InquireSession.query.filter_by(user_id=current_user.id).order_by(InquireSession.last_used.desc()).all()
         return jsonify([session.to_dict() for session in sessions])
@@ -94,11 +94,11 @@ def get_inquire_sessions():
 def create_inquire_session():
     """Create a new inquire session with filters."""
     if not ENABLE_INQUIRE_MODE:
-        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+        return jsonify(api_error('inquire_disabled')), 403
     try:
         data = request.json
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            return jsonify(api_error('no_data_provided')), 400
         
         session = InquireSession(
             user_id=current_user.id,
@@ -126,15 +126,15 @@ def create_inquire_session():
 def inquire_search():
     """Perform semantic search within filtered transcriptions."""
     if not ENABLE_INQUIRE_MODE:
-        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+        return jsonify(api_error('inquire_disabled')), 403
     try:
         data = request.json
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            return jsonify(api_error('no_data_provided')), 400
         
         query = data.get('query')
         if not query:
-            return jsonify({'error': 'No query provided'}), 400
+            return jsonify(api_error('no_query_provided')), 400
         
         # Build filters from request
         filters = {}
@@ -841,21 +841,21 @@ Order your response with notes from the most recent meetings first. Always use p
 def inquire_chat():
     """Chat with filtered transcriptions using RAG."""
     if not ENABLE_INQUIRE_MODE:
-        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+        return jsonify(api_error('inquire_disabled')), 403
     try:
         data = request.json
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            return jsonify(api_error('no_data_provided')), 400
         
         user_message = data.get('message')
         message_history = data.get('message_history', [])
         
         if not user_message:
-            return jsonify({'error': 'No message provided'}), 400
+            return jsonify(api_error('no_message_provided')), 400
         
         # Check if OpenRouter client is available
         if client is None:
-            return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
+            return jsonify(api_error('chat_openrouter_not_configured')), 503
         
         return Response(inquire_stream(current_user, data), mimetype='text/event-stream')
 
@@ -870,7 +870,7 @@ def inquire_chat():
 def get_available_filters():
     """Get available filter options for the user (includes shared recordings)."""
     if not ENABLE_INQUIRE_MODE:
-        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+        return jsonify(api_error('inquire_disabled')), 403
     try:
         # Get user's personal tags
         user_tags = Tag.query.filter_by(user_id=current_user.id, group_id=None).all()

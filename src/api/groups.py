@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 groups_bp = Blueprint('groups', __name__)
@@ -50,7 +51,7 @@ def sync_team_tag_shares(group_id):
     # Verify group exists
     group = db.session.get(Group, group_id)
     if not group:
-        return jsonify({'error': 'Group not found'}), 404
+        return jsonify(api_error('group_not_found')), 404
 
     # Verify user is a group admin
     membership = GroupMembership.query.filter_by(
@@ -60,10 +61,10 @@ def sync_team_tag_shares(group_id):
     ).first()
 
     if not membership:
-        return jsonify({'error': 'Only group admins can sync shares'}), 403
+        return jsonify(api_error('share_sync_admin_only')), 403
 
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Internal sharing is not enabled'}), 403
+        return jsonify(api_error('internal_sharing_disabled')), 403
 
     # Get all group tags with auto-sharing enabled
     group_tags = Tag.query.filter(
@@ -138,7 +139,8 @@ def sync_team_tag_shares(group_id):
         'success': True,
         'shares_created': shares_created,
         'recordings_processed': recordings_processed,
-        'message': f'Created {shares_created} new shares across {recordings_processed} recordings'
+        'message': translate('server.apiMessage.sharesSynced', sharesCreated=shares_created,
+                             recordingsProcessed=recordings_processed)
     })
 
 
@@ -154,7 +156,7 @@ def get_teams():
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     # If full admin, return all groups; if group admin, return only their groups
     if current_user.is_admin:
@@ -176,22 +178,22 @@ def get_teams():
 def create_team():
     """Create a new group (admin only)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Groups require internal sharing to be enabled. Please set ENABLE_INTERNAL_SHARING=true in your configuration.'}), 403
+        return jsonify(api_error('groups_require_internal_sharing')), 403
 
     data = request.get_json()
     name = data.get('name', '').strip()
     description = data.get('description', '').strip()
 
     if not name:
-        return jsonify({'error': 'Group name is required'}), 400
+        return jsonify(api_error('group_name_required')), 400
 
     # Check if group name already exists
     existing = Group.query.filter_by(name=name).first()
     if existing:
-        return jsonify({'error': 'A group with this name already exists'}), 400
+        return jsonify(api_error('group_name_exists')), 400
 
     group = Group(name=name, description=description)
     db.session.add(group)
@@ -208,7 +210,7 @@ def get_team(group_id):
     """Get group details (admin or group admin)."""
     group = db.session.get(Group, group_id)
     if not group:
-        return jsonify({'error': 'Group not found'}), 404
+        return jsonify(api_error('group_not_found')), 404
 
     # Check if user is admin OR admin of this specific group
     is_group_admin = GroupMembership.query.filter_by(
@@ -218,7 +220,7 @@ def get_team(group_id):
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     group_dict = group.to_dict()
     group_dict['members'] = [m.to_dict() for m in group.memberships]
@@ -232,7 +234,7 @@ def update_team(group_id):
     """Update group (admin or group admin)."""
     group = db.session.get(Group, group_id)
     if not group:
-        return jsonify({'error': 'Group not found'}), 404
+        return jsonify(api_error('group_not_found')), 404
 
     # Check if user is admin OR admin of this specific group
     is_group_admin = GroupMembership.query.filter_by(
@@ -242,7 +244,7 @@ def update_team(group_id):
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     data = request.get_json()
     name = data.get('name', '').strip()
@@ -252,7 +254,7 @@ def update_team(group_id):
         # Check if new name conflicts with another group
         existing = Group.query.filter(Group.name == name, Group.id != group_id).first()
         if existing:
-            return jsonify({'error': 'A group with this name already exists'}), 400
+            return jsonify(api_error('group_name_exists')), 400
         group.name = name
 
     group.description = description
@@ -268,11 +270,11 @@ def update_team(group_id):
 def delete_team(group_id):
     """Delete group (admin only)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     group = db.session.get(Group, group_id)
     if not group:
-        return jsonify({'error': 'Group not found'}), 404
+        return jsonify(api_error('group_not_found')), 404
 
     group_name = group.name
     db.session.delete(group)
@@ -288,11 +290,11 @@ def delete_team(group_id):
 def add_team_member(group_id):
     """Add a member to a group (admin or group admin)."""
     if not ENABLE_INTERNAL_SHARING:
-        return jsonify({'error': 'Groups require internal sharing to be enabled. Please set ENABLE_INTERNAL_SHARING=true in your configuration.'}), 403
+        return jsonify(api_error('groups_require_internal_sharing')), 403
 
     group = db.session.get(Group, group_id)
     if not group:
-        return jsonify({'error': 'Group not found'}), 404
+        return jsonify(api_error('group_not_found')), 404
 
     # Check if user is admin OR admin of this specific group
     is_group_admin = GroupMembership.query.filter_by(
@@ -302,26 +304,26 @@ def add_team_member(group_id):
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     data = request.get_json()
     user_id = data.get('user_id')
     role = data.get('role', 'member')
 
     if not user_id:
-        return jsonify({'error': 'User ID is required'}), 400
+        return jsonify(api_error('user_id_required')), 400
 
     if role not in ['admin', 'member']:
-        return jsonify({'error': 'Role must be "admin" or "member"'}), 400
+        return jsonify(api_error('invalid_group_role')), 400
 
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify(api_error('user_not_found')), 404
 
     # Check if already a member
     existing = GroupMembership.query.filter_by(group_id=group_id, user_id=user_id).first()
     if existing:
-        return jsonify({'error': 'User is already a member of this group'}), 400
+        return jsonify(api_error('already_group_member')), 400
 
     membership = GroupMembership(group_id=group_id, user_id=user_id, role=role)
     db.session.add(membership)
@@ -338,7 +340,7 @@ def update_team_member(group_id, user_id):
     """Update group member role (admin or group admin)."""
     membership = GroupMembership.query.filter_by(group_id=group_id, user_id=user_id).first()
     if not membership:
-        return jsonify({'error': 'Membership not found'}), 404
+        return jsonify(api_error('membership_not_found')), 404
 
     # Check if user is admin OR admin of this specific group
     is_group_admin = GroupMembership.query.filter_by(
@@ -348,13 +350,13 @@ def update_team_member(group_id, user_id):
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     data = request.get_json()
     role = data.get('role')
 
     if role not in ['admin', 'member']:
-        return jsonify({'error': 'Role must be "admin" or "member"'}), 400
+        return jsonify(api_error('invalid_group_role')), 400
 
     membership.role = role
     db.session.commit()
@@ -370,7 +372,7 @@ def remove_team_member(group_id, user_id):
     """Remove a member from a group (admin or group admin)."""
     membership = GroupMembership.query.filter_by(group_id=group_id, user_id=user_id).first()
     if not membership:
-        return jsonify({'error': 'Membership not found'}), 404
+        return jsonify(api_error('membership_not_found')), 404
 
     # Check if user is admin OR admin of this specific group
     is_group_admin = GroupMembership.query.filter_by(
@@ -380,7 +382,7 @@ def remove_team_member(group_id, user_id):
     ).first() is not None
 
     if not current_user.is_admin and not is_group_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     username = membership.user.username
     group_name = membership.group.name

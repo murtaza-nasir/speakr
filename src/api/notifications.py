@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 
 from src.services import notifications as notification_service
+from src.utils.localization import api_error
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -42,7 +43,7 @@ def mark_notifications_read():
     data = request.get_json(silent=True) or {}
     ids = data.get('ids')
     if ids is not None and not isinstance(ids, list):
-        return jsonify({'error': 'ids must be a list'}), 400
+        return jsonify(api_error('invalid_ids_list')), 400
 
     marked = notification_service.mark_read(current_user, ids)
     return jsonify({
@@ -60,7 +61,7 @@ def dismiss_notification(notification_id):
     is not something to confirm to a user who does not own it.
     """
     if not notification_service.dismiss(current_user, notification_id):
-        return jsonify({'error': 'Notification not found'}), 404
+        return jsonify(api_error('notification_not_found')), 404
     return jsonify({
         'dismissed': notification_id,
         'unread_count': notification_service.unread_count(current_user),

@@ -334,13 +334,14 @@ def can_merge_speakers(speaker_ids, user_id):
         user_id: ID of the user
 
     Returns:
-        tuple: (bool, str) - (can_merge, error_message)
+        tuple: (bool, str) - (can_merge, error code): the code is a
+        server.apiError key (#477), '' when the merge can go ahead
     """
     if len(speaker_ids) < 2:
-        return False, "Need at least 2 speakers to merge"
+        return False, 'merge_needs_two_speakers'
 
     if len(speaker_ids) != len(set(speaker_ids)):
-        return False, "Duplicate speaker IDs provided"
+        return False, 'duplicate_speaker_ids'
 
     speakers = Speaker.query.filter(
         Speaker.id.in_(speaker_ids),
@@ -348,6 +349,6 @@ def can_merge_speakers(speaker_ids, user_id):
     ).all()
 
     if len(speakers) != len(speaker_ids):
-        return False, "Some speakers don't exist or don't belong to user"
+        return False, 'speakers_not_found_or_not_owned'
 
     return True, ""

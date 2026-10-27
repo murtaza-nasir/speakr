@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.utils.localization import translate
+from src.utils.localization import translate, api_error
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
@@ -116,7 +116,7 @@ def admin_get_users():
     ).first() is not None
 
     if not current_user.is_admin and not is_team_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     if current_user.is_admin:
         users = User.query.all()
@@ -196,35 +196,35 @@ def admin_get_users():
 def admin_add_user():
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
     
     # Validate required fields
     required_fields = ['username', 'email', 'password']
     for field in required_fields:
         if field not in data:
-            return jsonify({'error': f'Missing required field: {field}'}), 400
+            return jsonify(api_error('missing_required_field', field=field)), 400
     
     # The username column holds 20 characters; PostgreSQL refuses a longer
     # value, which gave a 500 instead of this message
     if not 2 <= len(str(data['username']).strip()) <= 20:
-        return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
+        return jsonify(api_error('invalid_username_length')), 400
 
     # Check if username or email already exists
     if User.query.filter_by(username=data['username']).first():
-        return jsonify({'error': 'Username already exists'}), 400
+        return jsonify(api_error('username_exists')), 400
     
     email = User.normalize_email(data['email'])
     if User.find_by_email(email):
-        return jsonify({'error': 'Email already exists'}), 400
+        return jsonify(api_error('email_exists')), 400
 
     try:
         storage_quota = _quota_mb(data['storage_quota_mb']) if 'storage_quota_mb' in data else default_quota_mb()
     except (TypeError, ValueError):
-        return jsonify({'error': 'The storage quota must be a positive number of MB.'}), 400
+        return jsonify(api_error('invalid_storage_quota')), 400
 
     # Create new user
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
@@ -266,23 +266,23 @@ def admin_add_user():
 def admin_update_user(user_id):
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify(api_error('user_not_found')), 404
     
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
     
     # Update user fields
     if 'username' in data and data['username'] != user.username:
         if not 2 <= len(str(data['username']).strip()) <= 20:
-            return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
+            return jsonify(api_error('invalid_username_length')), 400
         # Check if username already exists
         if User.query.filter_by(username=data['username']).first():
-            return jsonify({'error': 'Username already exists'}), 400
+            return jsonify(api_error('username_exists')), 400
         user.username = data['username']
     
     if 'email' in data:
@@ -291,7 +291,7 @@ def admin_update_user(user_id):
             # Case-insensitive existence check against other accounts.
             existing = User.find_by_email(new_email)
             if existing and existing.id != user.id:
-                return jsonify({'error': 'Email already exists'}), 400
+                return jsonify(api_error('email_exists')), 400
             user.email = new_email
     
     if 'password' in data and data['password']:
@@ -306,7 +306,7 @@ def admin_update_user(user_id):
         if user.is_admin and not new_is_admin:
             other_admins = User.query.filter(User.is_admin.is_(True), User.id != user.id).count()
             if other_admins == 0:
-                return jsonify({'error': 'Cannot remove admin rights from the last remaining admin.'}), 400
+                return jsonify(api_error('last_admin_demotion')), 400
         user.is_admin = new_is_admin
 
     if 'can_share_publicly' in data:
@@ -332,7 +332,7 @@ def admin_update_user(user_id):
         try:
             user.storage_quota_mb = _quota_mb(data['storage_quota_mb'])
         except (TypeError, ValueError):
-            return jsonify({'error': 'The storage quota must be a positive number of MB.'}), 400
+            return jsonify(api_error('invalid_storage_quota')), 400
 
     db.session.commit()
     if user.id == current_user.id and data.get('password'):
@@ -378,15 +378,15 @@ def admin_update_user(user_id):
 def admin_delete_user(user_id):
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     # Prevent deleting self
     if user_id == current_user.id:
-        return jsonify({'error': 'Cannot delete your own account'}), 400
+        return jsonify(api_error('cannot_delete_self')), 400
     
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify(api_error('user_not_found')), 404
     
     # Delete user's recordings and audio files
     total_chunks = 0
@@ -425,22 +425,22 @@ def admin_delete_user(user_id):
 def admin_toggle_admin(user_id):
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     # Prevent changing own admin status
     if user_id == current_user.id:
-        return jsonify({'error': 'Cannot change your own admin status'}), 400
+        return jsonify(api_error('cannot_change_own_admin')), 400
     
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify(api_error('user_not_found')), 404
 
     # Guard against demoting the last remaining admin (defence in depth; the
     # self-status check above already prevents the acting admin demoting itself).
     if user.is_admin:
         other_admins = User.query.filter(User.is_admin.is_(True), User.id != user.id).count()
         if other_admins == 0:
-            return jsonify({'error': 'Cannot remove admin rights from the last remaining admin.'}), 400
+            return jsonify(api_error('last_admin_demotion')), 400
 
     # Toggle admin status
     user.is_admin = not user.is_admin
@@ -465,7 +465,7 @@ def _quota_mb(value):
 def admin_get_stats():
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     # Get total users
     total_users = User.query.count()
@@ -571,7 +571,7 @@ def admin_get_stats():
 def admin_get_stats_overview():
     """Everything the System Statistics tab shows, for the last 7, 30 or 90 days."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     from src.services.admin_stats import build_overview
     return jsonify(build_overview(request.args.get('days', 30, type=int)))
 
@@ -583,7 +583,7 @@ def admin_get_stats_overview():
 def admin_get_token_stats():
     """Get overall token usage statistics."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.models import TokenUsage
@@ -661,7 +661,7 @@ def admin_get_token_stats():
 def admin_get_daily_token_stats():
     """Get daily token usage for charts (last 30 days)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         days = request.args.get('days', 30, type=int)
@@ -684,7 +684,7 @@ def admin_get_daily_token_stats():
 def admin_get_monthly_token_stats():
     """Get monthly token usage for charts (last 12 months)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         months = request.args.get('months', 12, type=int)
@@ -706,7 +706,7 @@ def admin_get_monthly_token_stats():
 def admin_get_user_token_stats():
     """Get per-user token usage for current month."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         user_stats = token_tracker.get_user_stats()
@@ -728,7 +728,7 @@ def admin_get_user_token_stats():
 def admin_get_transcription_stats():
     """Get overall transcription usage statistics."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         # Get today's usage
@@ -767,7 +767,7 @@ def admin_get_transcription_stats():
 def admin_get_daily_transcription_stats():
     """Get daily transcription usage for charts (last 30 days)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         days = request.args.get('days', 30, type=int)
@@ -790,7 +790,7 @@ def admin_get_daily_transcription_stats():
 def admin_get_monthly_transcription_stats():
     """Get monthly transcription usage for charts (last 12 months)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         months = request.args.get('months', 12, type=int)
@@ -812,7 +812,7 @@ def admin_get_monthly_transcription_stats():
 def admin_get_user_transcription_stats():
     """Get per-user transcription usage for current month."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         user_stats = transcription_tracker.get_user_stats()
@@ -834,7 +834,7 @@ def admin_get_user_transcription_stats():
 def admin_get_llm_temperatures():
     """Effective sampling temperatures, with their source (#411)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     from src.services.llm_settings import temperatures_status
     return jsonify({'temperatures': temperatures_status()})
 
@@ -848,14 +848,14 @@ def admin_set_llm_temperatures():
     value, so the built-in default applies again.
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     from src.services.llm_settings import TEMPERATURES, parse_temperature, setting_key, temperatures_status
     values = (request.get_json(silent=True) or {}).get('values')
     if not isinstance(values, dict) or not values:
-        return jsonify({'error': 'values must be an object of temperatures'}), 400
+        return jsonify(api_error('invalid_temperature_values')), 400
     unknown = [k for k in values if k not in TEMPERATURES]
     if unknown:
-        return jsonify({'error': f"Unknown temperature: {', '.join(unknown)}"}), 400
+        return jsonify(api_error('unknown_temperature', names=', '.join(unknown))), 400
     parsed = {}
     for kind, raw in values.items():
         if raw is None or (isinstance(raw, str) and not raw.strip()):
@@ -863,7 +863,7 @@ def admin_set_llm_temperatures():
             continue
         value = parse_temperature(raw)
         if value is None or isinstance(raw, bool):
-            return jsonify({'error': f'{kind} temperature must be a number between 0 and 2', 'field': kind}), 400
+            return jsonify({**api_error('invalid_temperature', kind=kind), 'field': kind}), 400
         parsed[kind] = value
     for kind, value in parsed.items():
         key = setting_key(kind)
@@ -882,7 +882,7 @@ def admin_set_llm_temperatures():
 def admin_get_settings():
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     settings = SystemSetting.query.all()
     return jsonify([setting.to_dict() for setting in settings])
@@ -894,11 +894,11 @@ def admin_get_settings():
 def admin_update_setting():
     # Check if user is admin
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
     
     key = data.get('key')
     value = data.get('value')
@@ -906,32 +906,32 @@ def admin_update_setting():
     setting_type = data.get('setting_type', 'string')
     
     if not key:
-        return jsonify({'error': 'Setting key is required'}), 400
+        return jsonify(api_error('setting_key_required')), 400
     
     # Validate setting type
     valid_types = ['string', 'integer', 'boolean', 'float']
     if setting_type not in valid_types:
-        return jsonify({'error': f'Invalid setting type. Must be one of: {", ".join(valid_types)}'}), 400
+        return jsonify(api_error('invalid_setting_type', types=', '.join(valid_types))), 400
     
     # Validate value based on type
     if setting_type == 'integer':
         try:
             int(value) if value is not None and value != '' else None
         except (ValueError, TypeError):
-            return jsonify({'error': 'Value must be a valid integer'}), 400
+            return jsonify(api_error('invalid_integer_value')), 400
     elif setting_type == 'float':
         try:
             float(value) if value is not None and value != '' else None
         except (ValueError, TypeError):
-            return jsonify({'error': 'Value must be a valid number'}), 400
+            return jsonify(api_error('invalid_number_value')), 400
     elif setting_type == 'boolean':
         if value not in ['true', 'false', '1', '0', 'yes', 'no', True, False, 1, 0]:
-            return jsonify({'error': 'Value must be a valid boolean (true/false, 1/0, yes/no)'}), 400
+            return jsonify(api_error('invalid_boolean_value')), 400
     
     if key == 'default_timezone':
         from src.utils.timezones import is_valid_timezone
         if not is_valid_timezone(value):
-            return jsonify({'error': 'Value must be a valid IANA timezone, for example Europe/Berlin'}), 400
+            return jsonify(api_error('invalid_timezone_value')), 400
 
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
@@ -968,7 +968,7 @@ def admin_update_setting():
 def run_auto_deletion():
     """Admin endpoint to manually trigger auto-deletion process."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     try:
         stats = process_auto_deletion()
@@ -984,7 +984,7 @@ def run_auto_deletion():
 def get_auto_deletion_stats():
     """Get statistics about recordings eligible for auto-deletion."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     try:
         stats = {
@@ -1049,11 +1049,11 @@ def get_auto_deletion_stats():
 def preview_auto_deletion():
     """Preview what would be deleted without actually deleting (dry-run)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
+        return jsonify(api_error('admin_required')), 403
 
     try:
         if not ENABLE_AUTO_DELETION:
-            return jsonify({'error': 'Auto-deletion is not enabled'}), 400
+            return jsonify(api_error('auto_deletion_disabled')), 400
 
         # Check ALL completed recordings (per-recording retention)
         all_recordings = Recording.query.filter(
@@ -1122,7 +1122,7 @@ def preview_auto_deletion():
 def migrate_existing_recordings_api():
     """API endpoint to migrate existing recordings for inquire mode (admin only)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized. Admin access required.'}), 403
+        return jsonify(api_error('unauthorized_admin_required')), 403
     
     try:
         # Count recordings that need processing
@@ -1138,7 +1138,7 @@ def migrate_existing_recordings_api():
         if len(recordings_needing_processing) == 0:
             return jsonify({
                 'success': True,
-                'message': 'All recordings are already processed for inquire mode',
+                'message': translate('server.apiMessage.inquireAllProcessed'),
                 'processed': 0,
                 'total': len(completed_recordings)
             })
@@ -1164,7 +1164,8 @@ def migrate_existing_recordings_api():
         
         return jsonify({
             'success': True,
-            'message': f'Processed {processed} recordings. {remaining} remaining.',
+            'message': translate('server.apiMessage.inquireProcessedRemaining',
+                                 processed=processed, remaining=remaining),
             'processed': processed,
             'errors': errors,
             'remaining': remaining,
@@ -1184,7 +1185,7 @@ def migrate_existing_recordings_api():
 def admin_get_auto_process_status():
     """Get the status of the automated file processing system."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     try:
         _, _, get_file_monitor_status = get_file_monitor_functions()
@@ -1215,12 +1216,12 @@ def admin_get_auto_process_status():
 def admin_start_auto_process():
     """Start the automated file processing system."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     try:
         start_file_monitor, _, _ = get_file_monitor_functions()
         start_file_monitor()
-        return jsonify({'success': True, 'message': 'Auto-processing started'})
+        return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStarted')})
     except Exception as e:
         current_app.logger.error(f"Error starting auto-process: {e}")
         return jsonify({'error': str(e)}), 500
@@ -1232,12 +1233,12 @@ def admin_start_auto_process():
 def admin_stop_auto_process():
     """Stop the automated file processing system."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     try:
         _, stop_file_monitor, _ = get_file_monitor_functions()
         stop_file_monitor()
-        return jsonify({'success': True, 'message': 'Auto-processing stopped'})
+        return jsonify({'success': True, 'message': translate('server.apiMessage.autoProcessingStopped')})
     except Exception as e:
         current_app.logger.error(f"Error stopping auto-process: {e}")
         return jsonify({'error': str(e)}), 500
@@ -1249,18 +1250,18 @@ def admin_stop_auto_process():
 def admin_update_auto_process_config():
     """Update auto-processing configuration (requires restart)."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
     
     try:
         data = request.json
         if not data:
-            return jsonify({'error': 'No configuration data provided'}), 400
+            return jsonify(api_error('no_configuration_data')), 400
         
         # This endpoint would typically update environment variables or config files
         # For now, we'll just return the current config and note that restart is required
         return jsonify({
             'success': True, 
-            'message': 'Configuration updated. Restart required to apply changes.',
+            'message': translate('server.apiMessage.configUpdatedRestartRequired'),
             'note': 'Environment variables need to be updated manually and application restarted.'
         })
         
@@ -1275,12 +1276,12 @@ def admin_update_auto_process_config():
 def admin_trigger_auto_process():
     """Trigger an immediate auto-process scan cycle."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.file_monitor import file_monitor
         if not file_monitor or not file_monitor.running:
-            return jsonify({'error': 'Auto-processing is not running'}), 400
+            return jsonify(api_error('auto_processing_not_running')), 400
 
         import threading
         def run_scan():
@@ -1298,7 +1299,7 @@ def admin_trigger_auto_process():
         thread = threading.Thread(target=run_scan, daemon=True)
         thread.start()
 
-        return jsonify({'success': True, 'message': 'Scan triggered'})
+        return jsonify({'success': True, 'message': translate('server.apiMessage.scanTriggered')})
 
     except Exception as e:
         current_app.logger.error(f"Error triggering auto-process scan: {e}")
@@ -1317,14 +1318,14 @@ def admin_discover_transcription_models():
     implement list_models() or the upstream is unreachable.
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.services.transcription import get_registry
         registry = get_registry()
         connector = registry.get_active_connector()
         if not connector:
-            return jsonify({'error': 'No active transcription connector'}), 503
+            return jsonify(api_error('no_transcription_connector')), 503
 
         connector_name = registry.get_active_connector_name()
         try:
@@ -1334,7 +1335,7 @@ def admin_discover_transcription_models():
                 'connector': connector_name,
                 'supported': False,
                 'models': [],
-                'message': f'{connector_name} does not expose a model discovery endpoint.',
+                'message': translate('server.apiMessage.modelDiscoveryUnsupported', connector=connector_name),
             })
 
         return jsonify({
@@ -1358,7 +1359,7 @@ def admin_get_visible_models():
     so the admin UI can pre-populate its form.
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.models import SystemSetting
@@ -1398,7 +1399,7 @@ def admin_save_visible_models():
             "default_model": "..." | null }
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.models import SystemSetting
@@ -1407,7 +1408,7 @@ def admin_save_visible_models():
         data = request.json or {}
         options = data.get('options', [])
         if not isinstance(options, list):
-            return jsonify({'error': 'options must be a list'}), 400
+            return jsonify(api_error('invalid_options_list')), 400
 
         # Normalise each option into {value, label}.
         normalised = []
@@ -1470,7 +1471,7 @@ def admin_process_recordings_for_inquire():
         max_recordings (int, optional): cap the number processed in one call
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         data = request.json or {}
@@ -1518,10 +1519,8 @@ def admin_process_recordings_for_inquire():
         if total_to_process == 0:
             return jsonify({
                 'success': True,
-                'message': (
-                    'No recordings to re-embed.' if force
-                    else 'All recordings are already processed for inquire mode.'
-                ),
+                'message': translate('server.apiMessage.noRecordingsToReembed' if force
+                                     else 'server.apiMessage.inquireAllProcessed'),
                 'processed': 0,
                 'total': 0,
                 'force': force,
@@ -1617,10 +1616,15 @@ def admin_process_recordings_for_inquire():
             except Exception as e:
                 current_app.logger.warning(f"Failed to refresh embedding_identifier after re-embed: {e}")
 
-        verb = 'Re-embedded' if force else 'Processed'
+        if force:
+            message = translate('server.apiMessage.embeddingsReembeddedCount',
+                                processed=processed, total=total_to_process)
+        else:
+            message = translate('server.apiMessage.embeddingsProcessedCount',
+                                processed=processed, total=total_to_process)
         return jsonify({
             'success': True,
-            'message': f'{verb} {processed} out of {total_to_process} recordings.',
+            'message': message,
             'processed': processed,
             'total': total_to_process,
             'failed': failed,
@@ -1639,7 +1643,7 @@ def admin_process_recordings_for_inquire():
 def admin_inquire_status():
     """Get the status of recordings for inquire mode."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     try:
         from src.services.embeddings import (
@@ -1738,7 +1742,7 @@ def admin_voice_embedding_status():
     is never done on a page load.
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     from src.services.voice_embedding_check import get_status
     return jsonify(get_status(current_app))
@@ -1749,7 +1753,7 @@ def admin_voice_embedding_status():
 def admin_voice_embedding_check():
     """Re-run the check now, regardless of whether the backend looks changed."""
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     from src.services.voice_embedding_check import check_voice_embeddings
     result = check_voice_embeddings(current_app, force=True)
@@ -1768,7 +1772,7 @@ def admin_voice_embedding_rebaseline():
     by restoring the old backend.
     """
     if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+        return jsonify(api_error('unauthorized')), 403
 
     from src.services.voice_embedding_check import rebaseline
     result = rebaseline(current_app)

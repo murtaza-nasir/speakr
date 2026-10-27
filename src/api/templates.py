@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 templates_bp = Blueprint('templates', __name__)
@@ -58,7 +59,7 @@ def create_transcript_template():
     """Create a new transcript template."""
     data = request.json
     if not data or not data.get('name') or not data.get('template'):
-        return jsonify({'error': 'Name and template are required'}), 400
+        return jsonify(api_error('name_and_template_required')), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -92,11 +93,11 @@ def update_transcript_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -127,7 +128,7 @@ def delete_transcript_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     db.session.delete(template)
     db.session.commit()
@@ -143,7 +144,7 @@ def create_default_templates():
     existing_templates = TranscriptTemplate.query.filter_by(user_id=current_user.id).count()
 
     if existing_templates > 0:
-        return jsonify({'message': 'User already has templates'}), 200
+        return jsonify({'message': translate('server.apiMessage.userAlreadyHasTemplates')}), 200
 
     templates = []
 

@@ -15,7 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.version import get_version
-from src.utils.localization import format_file_size
+from src.utils.localization import format_file_size, api_error, translate
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
 from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
@@ -79,24 +79,24 @@ def save_user_preferences():
     if 'speaker_count_mode' in data:
         mode = data['speaker_count_mode']
         if mode not in ('range', 'single'):
-            return jsonify({'error': 'Invalid speaker_count_mode'}), 400
+            return jsonify(api_error('invalid_speaker_count_mode')), 400
         current_user.speaker_count_mode = mode
 
     # Theme, saved when the user changes it so other devices follow (D#419).
     if 'dark_mode' in data:
         if not isinstance(data['dark_mode'], bool):
-            return jsonify({'error': 'Invalid dark_mode'}), 400
+            return jsonify(api_error('invalid_dark_mode')), 400
         current_user.theme_dark_mode = data['dark_mode']
     if 'color_scheme' in data:
         if data['color_scheme'] not in THEME_COLOR_SCHEMES:
-            return jsonify({'error': 'Invalid color_scheme'}), 400
+            return jsonify(api_error('invalid_color_scheme')), 400
         current_user.theme_color_scheme = data['color_scheme']
 
     db.session.commit()
     
     return jsonify({
         'success': True,
-        'message': 'Preferences saved successfully',
+        'message': translate('server.apiMessage.preferencesSaved'),
         'ui_language': current_user.ui_language
     })
 
@@ -209,7 +209,7 @@ def get_system_info():
         })
     except Exception as e:
         current_app.logger.error(f"Error getting system info: {e}")
-        return jsonify({'error': 'Unable to retrieve system information'}), 500
+        return jsonify(api_error('system_info_unavailable')), 500
 
 # --- Tag API Endpoints ---
 

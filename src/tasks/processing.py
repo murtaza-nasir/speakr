@@ -2743,8 +2743,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # response gets a fixed message instead.
         if isinstance(e, FFmpegNotFoundError):
             result['error'] = 'Audio conversion tool (FFmpeg) not found on server.'
+            result['error_code'] = 'audio_converter_missing'
         elif isinstance(e, FFmpegTimeoutError):
             result['error'] = 'Audio conversion timed out.'
+            result['error_code'] = 'audio_conversion_timeout'
         elif isinstance(e, FFmpegError):
             result['error'] = AUDIO_DECODE_FAILED_MESSAGE
             result['error_code'] = 'audio_decode_failed'

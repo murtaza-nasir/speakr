@@ -15,6 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.services.calendar import generate_ics_content
+from src.utils.localization import api_error
 
 # Create blueprint
 events_bp = Blueprint('events', __name__)
@@ -50,10 +51,10 @@ def get_recording_events(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
+            return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user):
-            return jsonify({'error': 'Unauthorized'}), 403
+            return jsonify(api_error('unauthorized')), 403
 
         events = Event.query.filter_by(recording_id=recording_id).all()
         return jsonify({'events': [event.to_dict() for event in events]})
@@ -70,11 +71,11 @@ def download_event_ics(event_id):
     try:
         event = db.session.get(Event, event_id)
         if not event:
-            return jsonify({'error': 'Event not found'}), 404
+            return jsonify(api_error('event_not_found')), 404
 
         # Check permissions through recording access
         if not has_recording_access(event.recording, current_user):
-            return jsonify({'error': 'Unauthorized'}), 403
+            return jsonify(api_error('unauthorized')), 403
 
         # Generate ICS content
         ics_content = generate_ics_content(event)
@@ -98,15 +99,15 @@ def download_all_events_ics(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
+            return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user):
-            return jsonify({'error': 'Unauthorized'}), 403
+            return jsonify(api_error('unauthorized')), 403
 
         # Get all events for this recording
         events = Event.query.filter_by(recording_id=recording_id).all()
         if not events:
-            return jsonify({'error': 'No events found for this recording'}), 404
+            return jsonify(api_error('no_events_for_recording')), 404
 
         # Same builder as the API v1 download (#412).
         from src.services.calendar import generate_combined_ics
@@ -132,11 +133,11 @@ def delete_event(event_id):
     try:
         event = db.session.get(Event, event_id)
         if not event:
-            return jsonify({'error': 'Event not found'}), 404
+            return jsonify(api_error('event_not_found')), 404
 
         # Check permissions through recording access
         if not has_recording_access(event.recording, current_user):
-            return jsonify({'error': 'Unauthorized'}), 403
+            return jsonify(api_error('unauthorized')), 403
 
         db.session.delete(event)
         db.session.commit()

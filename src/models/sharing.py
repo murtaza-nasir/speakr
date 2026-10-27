@@ -152,7 +152,8 @@ class InternalShare(db.Model):
             requested_permissions: Dict with 'can_edit' and 'can_reshare' flags
 
         Returns:
-            Tuple of (is_valid: bool, error_message: str or None)
+            Tuple of (is_valid: bool, error code: str or None); the code is a
+            server.apiError key (#477)
         """
         # Owner can grant anything
         if recording.user_id == grantor_user.id:
@@ -163,11 +164,11 @@ class InternalShare(db.Model):
 
         # Validate edit permission
         if requested_permissions.get('can_edit', False) and not max_permissions['can_edit']:
-            return False, "You cannot grant edit permission because you do not have edit access"
+            return False, 'reshare_edit_not_permitted'
 
         # Validate reshare permission
         if requested_permissions.get('can_reshare', False) and not max_permissions['can_reshare']:
-            return False, "You cannot grant reshare permission because you do not have reshare access"
+            return False, 'reshare_reshare_not_permitted'
 
         return True, None
 

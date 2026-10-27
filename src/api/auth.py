@@ -20,7 +20,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
-from src.utils.localization import format_file_size, format_number, translate
+from src.utils.localization import format_file_size, format_number, translate, api_error
 from src.auth.sso import (
     init_sso_client,
     is_sso_enabled,
@@ -809,10 +809,10 @@ def account():
             # Path separators would let a template escape the per-user export
             # directory; reject them outright.
             if '/' in template_value or '\\' in template_value:
-                error_msg = 'The filename template cannot contain path separators (/ or \\).'
+                error_msg = translate('server.flash.exportTemplateSeparators')
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
                     return jsonify({'success': False, 'error': error_msg}), 400
-                flash(translate('server.flash.exportTemplateSeparators'), 'danger')
+                flash(error_msg, 'danger')
                 return redirect(url_for('auth.account'))
             # Empty string = use the default template (recording_{{id}})
             current_user.export_filename_template = template_value if template_value else None
@@ -821,7 +821,7 @@ def account():
 
         # Return JSON response for AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
-            return jsonify({'success': True, 'message': 'Account details updated successfully!'})
+            return jsonify({'success': True, 'message': translate('server.apiMessage.accountUpdated')})
 
         # Regular form submission with redirect
         flash(translate('server.flash.accountUpdated'), 'success')
@@ -962,7 +962,7 @@ def update_auto_speaker_labelling():
     data = request.get_json()
 
     if data is None:
-        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
+        return jsonify({'success': False, **api_error('invalid_json')}), 400
 
     # Update enabled state
     if 'enabled' in data:
@@ -974,7 +974,7 @@ def update_auto_speaker_labelling():
         if threshold in ('low', 'medium', 'high'):
             current_user.auto_speaker_labelling_threshold = threshold
         else:
-            return jsonify({'success': False, 'error': 'Invalid threshold value'}), 400
+            return jsonify({'success': False, **api_error('invalid_threshold')}), 400
 
     db.session.commit()
 
@@ -992,7 +992,7 @@ def update_auto_summarization():
     data = request.get_json()
 
     if data is None:
-        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
+        return jsonify({'success': False, **api_error('invalid_json')}), 400
 
     if 'enabled' in data:
         current_user.auto_summarization = bool(data['enabled'])

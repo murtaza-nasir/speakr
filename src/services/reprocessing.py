@@ -15,12 +15,21 @@ IN_PROGRESS = ('QUEUED', 'PROCESSING', 'SUMMARIZING')
 
 
 class ReprocessError(Exception):
-    """A reprocess request that cannot be queued; status is the HTTP status."""
+    """A reprocess request that cannot be queued; status is the HTTP status.
 
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.message = message
+    code is a server.apiError key (#477); message is its text in the
+    interface language, looked up when read (during the request).
+    """
+
+    def __init__(self, code, status=400):
+        super().__init__(code)
+        self.code = code
         self.status = status
+
+    @property
+    def message(self):
+        from src.utils.localization import translate
+        return translate(f'server.apiError.{self.code}')
 
 
 def queue_transcription_reprocess(recording, user, overrides=None):
@@ -37,9 +46,9 @@ def queue_transcription_reprocess(recording, user, overrides=None):
 
     if recording.audio_deleted_at or not recording.audio_path \
             or not get_storage_service().exists(recording.audio_path):
-        raise ReprocessError('Audio file not found for reprocessing', 404)
+        raise ReprocessError('reprocess_audio_not_found', 404)
     if recording.status in IN_PROGRESS:
-        raise ReprocessError('Recording is already being processed', 400)
+        raise ReprocessError('recording_already_processing', 400)
 
     # Settings first: a lookup that raises after the clearing below has
     # committed leaves a QUEUED recording with no job and no transcript,
@@ -65,7 +74,7 @@ def queue_transcription_reprocess(recording, user, overrides=None):
         from src.tasks.processing import _sanitize_error_message
         recording.error_message = _sanitize_error_message(f'Could not queue reprocessing: {e}')
         db.session.commit()
-        raise ReprocessError('Could not queue reprocessing; please try again', 503) from e
+        raise ReprocessError('reprocess_queue_failed', 503) from e
 
 
 def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
@@ -82,13 +91,13 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     from src.utils.prompt_variables import sanitize_variable_values
 
     if not recording.transcription or len(recording.transcription.strip()) < 10:
-        raise ReprocessError('No valid transcription available for summary generation', 400)
+        raise ReprocessError('no_transcription_for_summary', 400)
     if is_transcription_error(recording.transcription):
-        raise ReprocessError('Cannot generate summary: transcription failed. Please reprocess the transcription first.', 400)
+        raise ReprocessError('summary_blocked_transcription_failed', 400)
     if recording.status in ('PROCESSING', 'SUMMARIZING'):
-        raise ReprocessError('Recording is already being processed', 400)
+        raise ReprocessError('recording_already_processing', 400)
     if llm.client is None:
-        raise ReprocessError('Summary service is not available (LLM client not configured)', 503)
+        raise ReprocessError('summary_llm_not_configured', 503)
 
     custom_prompt = (custom_prompt or '').strip() or None
     mode = (prompt_mode or 'replace').strip().lower()

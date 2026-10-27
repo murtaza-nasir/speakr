@@ -65,6 +65,7 @@ from src.database import db
 from src.models import RecordingSession, Recording, User, RECORDING_SESSION_STATUSES
 from src.services.job_queue import job_queue
 from src.services.recording_stitch import byte_join, session_chunk_paths
+from src.utils.localization import api_error
 
 
 recording_sessions_bp = Blueprint('recording_sessions', __name__)
@@ -150,11 +151,11 @@ def _commit_batch_size():
 def _ensure_owned(session):
     """Return None if ok, otherwise a Flask response tuple."""
     if not session:
-        return jsonify({'error': 'Session not found'}), 404
+        return jsonify(api_error('session_not_found')), 404
     if session.user_id != current_user.id:
         # 404 instead of 403 so the existence of other users' sessions is
         # not leaked to the caller.
-        return jsonify({'error': 'Session not found'}), 404
+        return jsonify(api_error('session_not_found')), 404
     return None
 
 
@@ -321,7 +322,7 @@ def _replay_finalize_response(session):
     existing = (db.session.get(Recording, session.finalized_recording_id)
                 if session.finalized_recording_id else None)
     if existing is None or existing.user_id != current_user.id:
-        return jsonify({'error': 'Session was already finalized and its recording no longer exists'}), 409
+        return jsonify(api_error('session_recording_gone')), 409
 
     if existing.status == 'STITCHING':
         try:
@@ -367,26 +368,26 @@ def create_session():
 
     if upload_filename:
         if len(upload_filename) > 255:
-            return jsonify({'error': 'filename must be 255 characters or fewer'}), 400
+            return jsonify(api_error('filename_too_long')), 400
         try:
             total_bytes = int(data.get('total_bytes'))
         except (TypeError, ValueError):
-            return jsonify({'error': 'total_bytes is required for a sliced upload'}), 400
+            return jsonify(api_error('total_bytes_required')), 400
         if total_bytes <= 0:
-            return jsonify({'error': 'total_bytes must be a positive integer'}), 400
+            return jsonify(api_error('invalid_total_bytes')), 400
         mime_type = declared_mime or 'application/octet-stream'
     else:
         mime_type = declared_mime or 'audio/webm'
         if mime_type not in _allowed_mime_types():
             return jsonify({
-                'error': f'Unsupported mime_type {mime_type!r}',
+                **api_error('unsupported_mime_type', mimeType=mime_type),
                 'allowed': sorted(_allowed_mime_types()),
             }), 400
 
     # Per-user quota check before we let them open another session.
     if _user_bytes_in_progress(current_user.id) >= _max_bytes_per_user():
         return jsonify({
-            'error': 'Per-user in-progress recording storage quota exhausted',
+            **api_error('session_quota_exhausted'),
             'quota_bytes': _max_bytes_per_user(),
         }), 507  # Insufficient Storage
 
@@ -417,7 +418,7 @@ def create_session():
         db.session.delete(session)
         db.session.commit()
         current_app.logger.error(f"Could not create session dir: {e}")
-        return jsonify({'error': 'Server could not allocate session storage'}), 500
+        return jsonify(api_error('session_storage_allocation_failed')), 500
 
     expires_at = session.created_at + timedelta(hours=_ttl_hours())
     return jsonify({
@@ -463,7 +464,7 @@ def upload_chunk(session_id, chunk_index):
 
     if session.status != 'recording':
         return jsonify({
-            'error': f'Session is in status {session.status!r}; chunks are no longer accepted',
+            **api_error('session_not_accepting_chunks', status=session.status),
         }), 409
 
     expected_index = session.chunk_count + 1
@@ -481,7 +482,7 @@ def upload_chunk(session_id, chunk_index):
         except Exception:
             pass
         return jsonify({
-            'error': 'Out-of-order chunk',
+            **api_error('chunk_out_of_order'),
             'expected_chunk_index': expected_index,
             'got': chunk_index,
         }), 409
@@ -495,11 +496,11 @@ def upload_chunk(session_id, chunk_index):
         chunk_bytes = request.get_data(cache=False)
 
     if not chunk_bytes:
-        return jsonify({'error': 'Empty chunk body'}), 400
+        return jsonify(api_error('chunk_empty')), 400
 
     if len(chunk_bytes) > _max_chunk_bytes():
         return jsonify({
-            'error': 'Chunk exceeds max_chunk_bytes',
+            **api_error('chunk_too_large'),
             'max_chunk_bytes': _max_chunk_bytes(),
             'got': len(chunk_bytes),
         }), 413
@@ -516,7 +517,7 @@ def upload_chunk(session_id, chunk_index):
     projected = _user_bytes_in_progress(current_user.id) - session.bytes_received + session.bytes_received + len(chunk_bytes)
     if projected > _max_bytes_per_user():
         return jsonify({
-            'error': 'Per-user in-progress recording storage quota would be exceeded',
+            **api_error('session_quota_would_exceed'),
             'quota_bytes': _max_bytes_per_user(),
         }), 507
 
@@ -528,7 +529,7 @@ def upload_chunk(session_id, chunk_index):
             f.write(chunk_bytes)
     except OSError as e:
         current_app.logger.error(f"Could not write chunk {chunk_index} for session {session_id}: {e}")
-        return jsonify({'error': 'Server could not write chunk'}), 500
+        return jsonify(api_error('chunk_write_failed')), 500
 
     session.chunk_count = chunk_index
     session.bytes_received = (session.bytes_received or 0) + len(chunk_bytes)
@@ -573,12 +574,12 @@ def finalize_session(session_id):
 
     if session.is_sliced_upload:
         return jsonify({
-            'error': 'Session is a sliced file upload; finalize it with /finalize-upload',
+            **api_error('session_is_sliced_upload'),
         }), 409
 
     if session.status not in ('recording', 'finalizing'):
         return jsonify({
-            'error': f'Session is in status {session.status!r}; cannot finalize',
+            **api_error('session_cannot_finalize', status=session.status),
         }), 409
 
     # Idempotent replay: the session is already finalizing, so a recording
@@ -588,11 +589,11 @@ def finalize_session(session_id):
         return _replay_finalize_response(session)
 
     if session.chunk_count <= 0:
-        return jsonify({'error': 'No chunks uploaded yet'}), 409
+        return jsonify(api_error('no_chunks_uploaded')), 409
 
     metadata = request.get_json(silent=True) or {}
     if not isinstance(metadata, dict):
-        return jsonify({'error': 'finalize body must be a JSON object'}), 400
+        return jsonify(api_error('invalid_finalize_body')), 400
 
     # Create a placeholder Recording row. The stitch worker will fill in
     # audio_path and file_size after concat completes.
@@ -614,16 +615,16 @@ def finalize_session(session_id):
         from src.models.organization import Folder, GroupMembership
         target = db.session.get(Folder, folder_id)
         if not target:
-            return jsonify({'error': f'Folder {folder_id} not found'}), 404
+            return jsonify(api_error('folder_id_not_found', folderId=folder_id)), 404
         if target.group_id is None:
             if target.user_id != current_user.id:
-                return jsonify({'error': 'No access to target folder'}), 403
+                return jsonify(api_error('target_folder_access_denied')), 403
         else:
             membership = GroupMembership.query.filter_by(
                 user_id=current_user.id, group_id=target.group_id
             ).first()
             if not membership:
-                return jsonify({'error': 'No access to target folder'}), 403
+                return jsonify(api_error('target_folder_access_denied')), 403
         resolved_folder_id = target.id
 
     # Create the placeholder Recording, flip the session to finalizing, and
@@ -724,7 +725,7 @@ def finalize_sliced_upload(session_id):
 
     if not session.is_sliced_upload:
         return jsonify({
-            'error': 'Session is a recorder session; finalize it with /finalize',
+            **api_error('session_is_recorder'),
         }), 409
 
     if session.status == 'finalized':
@@ -732,7 +733,7 @@ def finalize_sliced_upload(session_id):
 
     if session.status not in ('recording', 'finalizing'):
         return jsonify({
-            'error': f'Session is in status {session.status!r}; cannot finalize',
+            **api_error('session_cannot_finalize', status=session.status),
         }), 409
 
     now = datetime.utcnow()
@@ -749,7 +750,7 @@ def finalize_sliced_upload(session_id):
     ).update({'status': 'finalizing', 'last_seen_at': now}, synchronize_session=False)
     if not claimed:
         db.session.rollback()
-        return jsonify({'error': 'Session is already being finalized'}), 409
+        return jsonify(api_error('session_already_finalizing')), 409
     db.session.commit()
 
     dir_path = _session_dir(session.id)
@@ -761,7 +762,7 @@ def finalize_sliced_upload(session_id):
             f'expected {session.upload_total_bytes}'
         ))
         return jsonify({
-            'error': 'Uploaded slices do not add up to the declared file size',
+            **api_error('slice_size_mismatch'),
             'received_bytes': slice_bytes,
             'expected_bytes': session.upload_total_bytes,
         }), 409
@@ -773,7 +774,7 @@ def finalize_sliced_upload(session_id):
         except OSError as e:
             current_app.logger.error(f"Could not join slices for session {session_id}: {e}")
             _fail_sliced_upload(session, f'Could not reassemble slices: {e}')
-            return jsonify({'error': 'Server could not reassemble the uploaded slices'}), 500
+            return jsonify(api_error('slice_reassembly_failed')), 500
 
         from src.api.recordings import ingest_uploaded_recording
         result = ingest_uploaded_recording(
@@ -823,7 +824,7 @@ def _replay_sliced_upload_response(session):
                                 'total': count, 'idempotent_replay': True}), 202
     if existing is None or existing.user_id != current_user.id:
         return jsonify({
-            'error': 'Session was already finalized and its recording no longer exists',
+            **api_error('session_recording_gone'),
         }), 409
     response_data = existing.to_dict(viewer_user=current_user)
     response_data['idempotent_replay'] = True
@@ -861,10 +862,10 @@ def abort_session(session_id):
         return err
 
     if session.status == 'finalized':
-        return jsonify({'error': 'Session already finalized'}), 409
+        return jsonify(api_error('session_already_finalized')), 409
 
     if session.status == 'finalizing' and session.is_sliced_upload:
-        return jsonify({'error': 'Session is being finalized'}), 409
+        return jsonify(api_error('session_finalizing')), 409
 
     session.status = 'aborted'
     session.last_seen_at = datetime.utcnow()

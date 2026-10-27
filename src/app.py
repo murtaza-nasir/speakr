@@ -42,6 +42,7 @@ import logging
 import secrets
 import time
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
+from src.utils.localization import api_error, format_number, translate
 
 # Optional imports for embedding functionality
 try:
@@ -753,7 +754,7 @@ def enforce_token_scopes():
     if api_token is None or api_token.scope_set is None:
         return
     if via_query:
-        resp = jsonify({'error': 'Scoped tokens are accepted only in a header (Authorization: Bearer ...)',
+        resp = jsonify({'error': translate('server.apiError.scoped_token_header_only'),
                         'code': 'invalid_token'})
         resp.status_code = 401
         return resp
@@ -777,16 +778,14 @@ def _csrf_rejection_message(reason):
     (issue #388). Those get a message that names the proxy setting.
     """
     if 'referrer header is missing' in reason:
-        return False, ('The request was rejected because the browser sent no Referer header, '
-                       'which HTTPS requests require. A reverse proxy, browser extension or '
-                       'Referrer-Policy header that removes it causes this.')
+        return False, translate('server.apiError.csrf_referrer_missing')
     if 'referrer does not match' in reason:
-        referrer_host = urlparse(request.referrer or '').netloc or 'unknown'
-        return False, (f'The request was rejected because this page was loaded from '
-                       f'{referrer_host}, but the server received the request for {request.host}. '
-                       f'The reverse proxy must forward the original Host header (or '
-                       f'X-Forwarded-Host), and TRUSTED_PROXY_HOPS must match the number of proxies.')
-    return True, 'Your session has expired. Please reload the page and try again.'
+        referrer_host = urlparse(request.referrer or '').netloc
+        if not referrer_host:
+            return False, translate('server.apiError.csrf_referrer_mismatch_unknown', host=request.host)
+        return False, translate('server.apiError.csrf_referrer_mismatch',
+                                referrerHost=referrer_host, host=request.host)
+    return True, translate('server.apiError.csrf_session_expired')
 
 
 @app.errorhandler(CSRFError)
@@ -823,7 +822,7 @@ def handle_request_entity_too_large(_error):
     """Keep oversized requests JSON-shaped even when parsing fails early."""
     limit_mb = float(app.config['MAX_CONTENT_LENGTH']) / (1024 * 1024)
     return jsonify({
-        'error': f'File too large. Maximum size is {limit_mb:.0f} MB.',
+        **api_error('file_too_large_max', maxSize=format_number(limit_mb)),
         'max_size_mb': limit_mb,
         'effective_limit_mb': limit_mb,
         'audio_only_mode': False,
@@ -974,7 +973,7 @@ def handle_unauthorized():
         or request.args.get('token')
     )
     if request.path.startswith('/api/') or presented_token:
-        response = jsonify({'error': 'Authentication required: missing, invalid, expired, or revoked API token or session'})
+        response = jsonify(api_error('authentication_required'))
         response.status_code = 401
         response.headers['WWW-Authenticate'] = 'Bearer'
         return response

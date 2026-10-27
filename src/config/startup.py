@@ -7,6 +7,7 @@ import time
 import threading
 from datetime import datetime, timedelta
 from flask import current_app
+from src.utils.localization import api_error
 
 ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
 GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
@@ -99,7 +100,7 @@ def get_file_monitor_functions(app):
         def stop_file_monitor():
             pass
         def get_file_monitor_status():
-            return {'running': False, 'error': 'File monitor module not available'}
+            return {'running': False, **api_error('file_monitor_unavailable')}
 
         return start_file_monitor, stop_file_monitor, get_file_monitor_status
 

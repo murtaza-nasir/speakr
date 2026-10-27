@@ -704,7 +704,8 @@ def test_upload_ffmpeg_missing_stays_500_and_removes_staging_copy():
              patch("src.api.recordings.convert_if_needed", side_effect=FFmpegNotFoundError("no ffmpeg")):
             resp = _do_upload(client, filename="a.flac")
         assert resp.status_code == 500
-        assert resp.get_json() == {"error": "Audio conversion tool (FFmpeg) not found on server."}
+        assert resp.get_json() == {"error": "Audio conversion tool (FFmpeg) not found on server.",
+                                   "code": "audio_converter_missing"}
         assert os.listdir(staging) == []
         _cleanup(user)
 
@@ -720,7 +721,8 @@ def test_upload_unexpected_error_removes_staging_copy():
                    side_effect=RuntimeError("secret internal detail")):
             resp = _do_upload(client)
         assert resp.status_code == 500
-        assert resp.get_json() == {"error": "An unexpected error occurred during upload."}
+        assert resp.get_json() == {"error": "An unexpected error occurred during upload.",
+                                   "code": "unexpected_error_upload"}
         assert os.listdir(staging) == []
         _cleanup(user)
 

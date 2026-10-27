@@ -13,6 +13,7 @@ from flask_login import login_required, current_user
 
 from src.database import db
 from src.models import NamingTemplate
+from src.utils.localization import api_error, translate
 
 # Create blueprint
 naming_templates_bp = Blueprint('naming_templates', __name__)
@@ -34,20 +35,20 @@ def create_naming_template():
     """Create a new naming template."""
     data = request.json
     if not data or not data.get('name') or not data.get('template'):
-        return jsonify({'error': 'Name and template are required'}), 400
+        return jsonify(api_error('name_and_template_required')), 400
 
     # Validate regex patterns if provided
     regex_patterns = data.get('regex_patterns', {})
     if regex_patterns:
         if not isinstance(regex_patterns, dict):
-            return jsonify({'error': 'regex_patterns must be a dictionary'}), 400
+            return jsonify(api_error('invalid_regex_patterns')), 400
         # Validate each regex pattern
         import re
         for var_name, pattern in regex_patterns.items():
             try:
                 re.compile(pattern)
             except re.error as e:
-                return jsonify({'error': f'Invalid regex pattern for "{var_name}": {str(e)}'}), 400
+                return jsonify(api_error('invalid_regex_pattern', variable=var_name, detail=str(e))), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -81,7 +82,7 @@ def get_naming_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     return jsonify(template.to_dict())
 
@@ -96,24 +97,24 @@ def update_naming_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     data = request.json
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return jsonify(api_error('no_data_provided')), 400
 
     # Validate regex patterns if provided
     if 'regex_patterns' in data:
         regex_patterns = data['regex_patterns']
         if regex_patterns:
             if not isinstance(regex_patterns, dict):
-                return jsonify({'error': 'regex_patterns must be a dictionary'}), 400
+                return jsonify(api_error('invalid_regex_patterns')), 400
             import re
             for var_name, pattern in regex_patterns.items():
                 try:
                     re.compile(pattern)
                 except re.error as e:
-                    return jsonify({'error': f'Invalid regex pattern for "{var_name}": {str(e)}'}), 400
+                    return jsonify(api_error('invalid_regex_pattern', variable=var_name, detail=str(e))), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -148,15 +149,13 @@ def delete_naming_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     # Check if any tags are using this template
     from src.models import Tag
     tags_using = Tag.query.filter_by(naming_template_id=template_id).count()
     if tags_using > 0:
-        return jsonify({
-            'error': f'Cannot delete template: {tags_using} tag(s) are using this template'
-        }), 400
+        return jsonify(api_error('template_in_use', count=tags_using)), 400
 
     db.session.delete(template)
     db.session.commit()
@@ -171,7 +170,7 @@ def create_default_naming_templates():
     existing_templates = NamingTemplate.query.filter_by(user_id=current_user.id).count()
 
     if existing_templates > 0:
-        return jsonify({'message': 'User already has naming templates'}), 200
+        return jsonify({'message': translate('server.apiMessage.userAlreadyHasNamingTemplates')}), 200
 
     templates = []
 
@@ -260,7 +259,7 @@ def test_naming_template(template_id):
     ).first()
 
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        return jsonify(api_error('template_not_found')), 404
 
     data = request.json or {}
     sample_filename = data.get('filename', 'sample-recording-2026-01-15.mp3')
@@ -326,7 +325,7 @@ def set_default_naming_template():
         ).first()
 
         if not template:
-            return jsonify({'error': 'Template not found'}), 404
+            return jsonify(api_error('template_not_found')), 404
 
     current_user.default_naming_template_id = template_id if template_id else None
     db.session.commit()

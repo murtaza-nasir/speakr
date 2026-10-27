@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from src.database import db
 from src.models.push_subscription import PushSubscription
 import json
+from src.utils.localization import api_error, translate
 
 
 push_bp = Blueprint('push', __name__)
@@ -54,7 +55,7 @@ def subscribe():
     if not config['enabled']:
         return jsonify({
             'success': False,
-            'error': 'Push notifications not available'
+            **api_error('push_unavailable')
         }), 503
 
     try:
@@ -63,7 +64,7 @@ def subscribe():
         if not subscription_data or 'endpoint' not in subscription_data:
             return jsonify({
                 'success': False,
-                'error': 'Invalid subscription data'
+                **api_error('invalid_subscription_data')
             }), 400
 
         # Check if subscription already exists
@@ -75,7 +76,7 @@ def subscribe():
         if existing:
             return jsonify({
                 'success': True,
-                'message': 'Already subscribed',
+                'message': translate('server.apiMessage.alreadySubscribed'),
                 'subscription_id': existing.id
             })
 
@@ -92,7 +93,7 @@ def subscribe():
 
         return jsonify({
             'success': True,
-            'message': 'Subscription saved',
+            'message': translate('server.apiMessage.subscriptionSaved'),
             'subscription_id': subscription.id
         })
 
@@ -101,7 +102,7 @@ def subscribe():
         current_app.logger.error(f"[Push] Subscription error: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'error': 'An unexpected error occurred'
+            **api_error('unexpected_error')
         }), 500
 
 
@@ -111,7 +112,7 @@ def unsubscribe():
     """Remove push subscription for current user"""
     config = _get_vapid_config()
     if not config['enabled']:
-        return jsonify({'success': True, 'message': 'Push notifications not enabled'})
+        return jsonify({'success': True, 'message': translate('server.apiMessage.pushNotificationsNotEnabled')})
 
     try:
         subscription_data = request.json
@@ -119,7 +120,7 @@ def unsubscribe():
         if not subscription_data or 'endpoint' not in subscription_data:
             return jsonify({
                 'success': False,
-                'error': 'Invalid subscription data'
+                **api_error('invalid_subscription_data')
             }), 400
 
         subscription = PushSubscription.query.filter_by(
@@ -132,12 +133,12 @@ def unsubscribe():
             db.session.commit()
             return jsonify({
                 'success': True,
-                'message': 'Subscription removed'
+                'message': translate('server.apiMessage.subscriptionRemoved')
             })
 
         return jsonify({
             'success': False,
-            'error': 'Subscription not found'
+            **api_error('subscription_not_found')
         }), 404
 
     except Exception as e:
@@ -145,7 +146,7 @@ def unsubscribe():
         current_app.logger.error(f"[Push] Unsubscribe error: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'error': 'An unexpected error occurred'
+            **api_error('unexpected_error')
         }), 500
 
 

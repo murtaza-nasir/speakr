@@ -20,18 +20,20 @@ def parse_scopes(value):
     """Validate a requested scope list. Returns (stored_value, error).
 
     stored_value is None for full access, else a JSON list. error is a message
-    for a 400 answer, or None.
+    for a 400 answer in the interface language (#477), or None.
     """
+    from src.utils.localization import translate
     if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
-        return None, 'scopes must be a non-empty list of scope names'
+        return None, translate('server.apiError.invalid_scopes_list')
     requested = {v.strip() for v in value}
     if FULL_SCOPE in requested:
         if len(requested) > 1:
-            return None, "'full' cannot be combined with other scopes"
+            return None, translate('server.apiError.full_scope_not_combinable')
         return None, None
     unknown = sorted(requested - set(TOKEN_SCOPES))
     if unknown:
-        return None, f"Unknown scope(s): {', '.join(unknown)}. Allowed: {', '.join(TOKEN_SCOPES)} or full"
+        return None, translate('server.apiError.unknown_scopes', scopes=', '.join(unknown),
+                               allowed=', '.join(TOKEN_SCOPES))
     return json.dumps(sorted(requested)), None
 
 
