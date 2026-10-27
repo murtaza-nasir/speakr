@@ -2,6 +2,16 @@
  * API client utilities for making HTTP requests
  */
 
+// Translate with an English fallback (i18n may not be loaded).
+function tr(key, fallback, params) {
+    const i18n = (typeof window !== 'undefined') ? window.i18n : null;
+    if (i18n && typeof i18n.t === 'function') {
+        const value = i18n.t(key, params || {});
+        if (value && value !== key) return value;
+    }
+    return fallback;
+}
+
 class APIError extends Error {
     constructor(message, status, data) {
         super(message);
@@ -24,7 +34,7 @@ async function safeJsonParse(response) {
         const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
         const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
         const errorMsg = titleMatch?.[1] || h1Match?.[1] ||
-            `Server returned non-JSON response (status ${response.status})`;
+            tr('errors.serverError', `Server returned non-JSON response (status ${response.status})`, { status: response.status });
         throw new APIError(errorMsg, response.status, { htmlResponse: true });
     }
 
@@ -56,7 +66,7 @@ export async function apiRequest(url, options = {}) {
 
         if (!response.ok) {
             throw new APIError(
-                data.error || 'Request failed',
+                data.error || tr('errors.requestFailed', 'Request failed', { status: response.status }),
                 response.status,
                 data
             );
@@ -94,20 +104,20 @@ export async function uploadFile(url, file, onProgress = null) {
                     const data = JSON.parse(xhr.responseText);
                     resolve(data);
                 } catch (e) {
-                    reject(new Error('Invalid response format'));
+                    reject(new Error(tr('errors.responseUnreadable', 'Invalid response format')));
                 }
             } else {
                 try {
                     const error = JSON.parse(xhr.responseText);
-                    reject(new APIError(error.error || 'Upload failed', xhr.status, error));
+                    reject(new APIError(error.error || tr('errors.uploadFailedWithStatus', 'Upload failed', { status: xhr.status }), xhr.status, error));
                 } catch (e) {
-                    reject(new APIError('Upload failed', xhr.status, null));
+                    reject(new APIError(tr('errors.uploadFailedWithStatus', 'Upload failed', { status: xhr.status }), xhr.status, null));
                 }
             }
         });
 
         xhr.addEventListener('error', () => {
-            reject(new Error('Network error'));
+            reject(new Error(tr('errors.networkErrorDuringUpload', 'Network error')));
         });
 
         xhr.open('POST', url);

@@ -45,7 +45,7 @@
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
             :class="['notes','events','stats'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
         <i class="fas fa-ellipsis-h text-base"></i>
-        <span class="text-[10px] font-medium">More</span>
+        <span class="text-[10px] font-medium" v-text="t('detail.more')"></span>
         <span v-if="['notes','events','stats'].includes(mobileTab)"
               class="absolute top-1 right-3 inline-flex items-center justify-center w-1.5 h-1.5 rounded-full"
               style="background: var(--text-accent);"></span>

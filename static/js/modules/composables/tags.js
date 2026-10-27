@@ -5,6 +5,9 @@
 
 const { computed, ref } = Vue;
 
+// Guarded: the module can run before i18n.js has loaded.
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 export function useTags({
     recordings,
     availableTags,
@@ -74,7 +77,7 @@ export function useTags({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to add tag');
+                throw new Error(errorData.error || t('errors.addTagFailed'));
             }
 
             // Update local recording data
@@ -115,11 +118,11 @@ export function useTags({
                 }
             }
 
-            showToast('Tag added successfully', 'fa-check-circle', 2000, 'success');
+            showToast(t('messages.tagAdded'), 'fa-check-circle', 2000, 'success');
 
         } catch (error) {
             console.error('Error adding tag to recording:', error);
-            setGlobalError(`Failed to add tag: ${error.message}`);
+            setGlobalError(t('errors.addTagFailedDetail', { error: error.message }));
         }
     };
 
@@ -138,7 +141,7 @@ export function useTags({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to remove tag');
+                throw new Error(errorData.error || t('errors.removeTagFailed'));
             }
 
             // Update local recording data
@@ -155,11 +158,11 @@ export function useTags({
                 selectedRecording.value.tags = selectedRecording.value.tags.filter(tag => tag.id !== tagId);
             }
 
-            showToast('Tag removed successfully', 'fa-check-circle', 2000, 'success');
+            showToast(t('messages.tagRemoved'), 'fa-check-circle', 2000, 'success');
 
         } catch (error) {
             console.error('Error removing tag from recording:', error);
-            setGlobalError(`Failed to remove tag: ${error.message}`);
+            setGlobalError(t('errors.removeTagFailedDetail', { error: error.message }));
         }
     };
 
@@ -201,14 +204,14 @@ export function useTags({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to reorder tags');
+                throw new Error(errorData.error || t('errors.reorderTagsFailed'));
             }
 
-            showToast('Tags reordered', 'fa-arrows-alt', 1500, 'success');
+            showToast(t('messages.tagsReordered'), 'fa-arrows-alt', 1500, 'success');
 
         } catch (error) {
             console.error('Error reordering tags:', error);
-            setGlobalError(`Failed to save tag order: ${error.message}`);
+            setGlobalError(t('errors.saveTagOrderFailedDetail', { error: error.message }));
         }
     };
 

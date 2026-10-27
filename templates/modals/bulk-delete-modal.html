@@ -4,28 +4,27 @@
         <div class="modal-header">
             <i class="fas fa-exclamation-triangle text-2xl text-[var(--text-danger)]"></i>
             <div class="flex-1">
-                <h3 class="modal-title">Delete ${ selectedCount } Recording${ selectedCount !== 1 ? 's' : '' }</h3>
-                <div class="modal-subtitle">This action cannot be undone</div>
+                <h3 class="modal-title" v-text="t(selectedCount === 1 ? 'bulkActions.deleteTitle' : 'bulkActions.deleteTitlePlural', { count: selectedCount })"></h3>
+                <div class="modal-subtitle" v-text="t('help.thisActionCannotBeUndone')"></div>
             </div>
             <button @click="closeBulkDeleteModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <p class="t-body mb-3">You are about to permanently delete:</p>
+            <p class="t-body mb-3" v-text="t('bulkActions.aboutToDelete')"></p>
             <ul class="space-y-1 max-h-32 overflow-y-auto t-body">
                 <li v-for="recording in selectedRecordings.slice(0, 5)" :key="recording.id" class="flex items-center gap-2">
                     <i class="fas fa-file-audio text-[var(--text-muted)] text-xs"></i>
-                    <span class="truncate">${ recording.title || 'Untitled' }</span>
+                    <span class="truncate">${ recording.title || t('common.untitled') }</span>
                 </li>
-                <li v-if="selectedRecordings.length > 5" class="t-meta italic">
-                    ...and ${ selectedRecordings.length - 5 } more
-                </li>
+                <li v-if="selectedRecordings.length > 5" class="t-meta italic"
+                    v-text="t('bulkActions.andMore', { count: selectedRecordings.length - 5 })"></li>
             </ul>
         </div>
         <div class="modal-footer">
             <button @click="closeBulkDeleteModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="executeBulkDelete" class="btn btn--danger">
                 <i class="fas fa-trash"></i>
-                <span>Delete All</span>
+                <span v-text="t('buttons.deleteAll')"></span>
             </button>
         </div>
     </div>

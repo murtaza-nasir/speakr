@@ -125,7 +125,7 @@
 
         <main class="flex-grow">
             <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
-                <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Group Management</h2>
+                <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">${ t('groups.title') }</h2>
                 
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -143,9 +143,9 @@
                 <!-- Groups Management -->
                 <div v-show="activeTab === 'groups'">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">Group Management</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${ t('groups.title') }</h3>
                         <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
-                            <i class="fas fa-plus mr-2"></i> Create Group
+                            <i class="fas fa-plus mr-2"></i> ${ t('groups.createTeam') }
                         </button>
                     </div>
 
@@ -155,11 +155,11 @@
                             <table class="min-w-full divide-y divide-[var(--border-primary)]">
                                 <thead class="bg-[var(--bg-tertiary)]">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Group Name</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Description</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Members</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Created</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Actions</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${ t('groups.teamName') }</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${ t('adminDashboard.description') }</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${ t('adminDashboard.members') }</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${ t('adminDashboard.created') }</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${ t('adminDashboard.actions') }</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
@@ -168,31 +168,31 @@
                                             <div class="text-sm font-medium text-[var(--text-primary)]">${ group.name }</div>
                                         </td>
                                         <td class="px-6 py-4">
-                                            <div class="text-sm text-[var(--text-secondary)]">${ group.description || 'No description' }</div>
+                                            <div class="text-sm text-[var(--text-secondary)]">${ group.description || t('adminDashboard.noDescription') }</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-[var(--text-secondary)]">
                                                 <i class="fas fa-users mr-1"></i>
-                                                ${ group.member_count || 0 } members
+                                                ${ group.member_count || 0 } ${ t('adminDashboard.membersCount') }
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
                                             ${ parseInstant(group.created_at).toLocaleDateString(uiLocale()) }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                            <button @click="openManageTeamModal(group)" class="text-blue-500 hover:text-blue-700" title="Manage Members">
+                                            <button @click="openManageTeamModal(group)" class="text-blue-500 hover:text-blue-700" :title="t('tooltips.manageMembers')">
                                                 <i class="fas fa-users-cog"></i>
                                             </button>
-                                            <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" title="Manage Group Tags">
+                                            <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" :title="t('tooltips.manageTeamTags')">
                                                 <i class="fas fa-tags"></i>
                                             </button>
-                                            <button v-if="foldersEnabled" @click="openManageTeamFoldersModal(group)" class="text-emerald-500 hover:text-emerald-700" title="Manage Group Folders">
+                                            <button v-if="foldersEnabled" @click="openManageTeamFoldersModal(group)" class="text-emerald-500 hover:text-emerald-700" :title="t('tooltips.manageTeamFolders')">
                                                 <i class="fas fa-folder"></i>
                                             </button>
-                                            <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit Group">
+                                            <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" :title="t('tooltips.editTeam')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" title="Delete Group">
+                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" :title="t('tooltips.deleteTeam')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -202,9 +202,9 @@
                         </div>
                         <div v-else class="p-8 text-center">
                             <i class="fas fa-users-slash text-4xl text-[var(--text-muted)] mb-3"></i>
-                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? 'You are not an admin of any groups yet' : 'No groups created yet'"></p>
+                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? t('adminDashboard.noGroupsAdmin') : t('adminDashboard.noGroupsCreated')"></p>
                             <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="mt-4 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
-                                <i class="fas fa-plus mr-2"></i> Create Your First Group
+                                <i class="fas fa-plus mr-2"></i> ${ t('adminDashboard.createFirstGroup') }
                             </button>
                         </div>
                     </div>
@@ -218,19 +218,19 @@
         <div v-if="showTeamModal" @click.self="closeTeamModal" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
-                    <button @click="closeTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ editingTeam ? t('groups.editTeam') : t('groups.createTeam') }</h3>
+                    <button @click="closeTeamModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <form @submit.prevent="saveTeam" class="contents">
                     <div class="modal-body">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
-                                <input v-model="teamForm.name" type="text" required class="field w-full" placeholder="Enter group name">
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('groups.teamName') } *</label>
+                                <input v-model="teamForm.name" type="text" required class="field w-full" :placeholder="t('groups.teamNamePlaceholder')">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
-                                <textarea v-model="teamForm.description" rows="3" class="field w-full" placeholder="Optional description"></textarea>
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.description') }</label>
+                                <textarea v-model="teamForm.description" rows="3" class="field w-full" :placeholder="t('groups.optionalDescription')"></textarea>
                             </div>
                             <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
                                 ${ teamError }
@@ -238,8 +238,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" @click="closeTeamModal" class="btn btn--ghost">Cancel</button>
-                        <button type="submit" class="btn btn--primary">${ editingTeam ? 'Update Group' : 'Create Group' }</button>
+                        <button type="button" @click="closeTeamModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                        <button type="submit" class="btn btn--primary">${ editingTeam ? t('groups.updateTeam') : t('groups.createTeam') }</button>
                     </div>
                 </form>
             </div>
@@ -249,18 +249,18 @@
         <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="modal-overlay">
             <div class="modal-panel modal-panel--lg">
                 <div class="modal-header">
-                    <h3 class="modal-title">Manage Group: ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title" v-text="t('groups.manageGroupTitle', { name: currentTeam?.name })"></h3>
+                    <button @click="closeManageTeamModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="modal-body">
                     <!-- Add Member Section -->
                     <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
-                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Add Member</h4>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.addMember') }</h4>
                         <div class="flex space-x-2">
                             <div class="flex-1">
                                 <select v-model="newMemberUserId" class="field w-full">
-                                    <option value="">Select a user...</option>
+                                    <option value="">${ t('groups.selectUser') }</option>
                                     <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                                         ${ user.username } (${ user.email })
                                     </option>
@@ -268,19 +268,19 @@
                             </div>
                             <div>
                                 <select v-model="newMemberRole" class="field">
-                                    <option value="member">Member</option>
-                                    <option value="admin">Admin</option>
+                                    <option value="member">${ t('groups.roleMember') }</option>
+                                    <option value="admin">${ t('groups.roleAdmin') }</option>
                                 </select>
                             </div>
                             <button @click="addTeamMember" :disabled="!newMemberUserId" class="btn btn--primary">
-                                <i class="fas fa-plus"></i> Add
+                                <i class="fas fa-plus"></i> ${ t('unifiedShareModal.add') }
                             </button>
                         </div>
                     </div>
 
                     <!-- Current Members -->
                     <div>
-                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Current Members (${ teamMembers.length })</h4>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" v-text="t('groups.currentMembers', { count: teamMembers.length })"></h4>
                         <div v-if="teamMembers.length > 0" class="space-y-2">
                             <div v-for="member in teamMembers" :key="member.user_id"
                                  class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
@@ -293,17 +293,17 @@
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <select v-model="member.role" @change="updateMemberRole(member)" class="field field--sm">
-                                        <option value="member">Member</option>
-                                        <option value="admin">Admin</option>
+                                        <option value="member">${ t('groups.roleMember') }</option>
+                                        <option value="admin">${ t('groups.roleAdmin') }</option>
                                     </select>
-                                    <button @click="removeTeamMember(member)" class="btn btn--icon btn--danger btn--sm" title="Remove from group">
+                                    <button @click="removeTeamMember(member)" class="btn btn--icon btn--danger btn--sm" :title="t('groups.removeFromGroup')">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div v-else class="text-center py-4 text-[var(--text-muted)]">
-                            No members yet
+                            ${ t('adminDashboard.noMembersYet') }
                         </div>
                     </div>
 
@@ -314,9 +314,9 @@
 
                 <div class="modal-footer modal-footer--between">
                     <button @click="syncTeamShares" class="btn btn--primary">
-                        <i class="fas fa-sync-alt"></i> Sync Group Shares
+                        <i class="fas fa-sync-alt"></i> ${ t('groups.syncTeamShares') }
                     </button>
-                    <button @click="closeManageTeamModal" class="btn btn--ghost">Done</button>
+                    <button @click="closeManageTeamModal" class="btn btn--ghost">${ t('common.done') }</button>
                 </div>
             </div>
         </div>
@@ -325,21 +325,21 @@
         <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">Sync Group Shares</h3>
-                    <button @click="showSyncSharesModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.syncTeamShares') }</h3>
+                    <button @click="showSyncSharesModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-4 text-[var(--text-secondary)]">
-                        This will create shares for all recordings with group tags that have auto-sharing enabled.
+                        ${ t('groups.syncSharesExplain') }
                     </p>
                     <p class="text-[var(--text-muted)] text-sm">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Only missing shares will be created - existing shares won't be duplicated.
+                        ${ t('groups.syncSharesOnlyMissing') }
                     </p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">Cancel</button>
-                    <button @click="confirmSyncShares" class="btn btn--primary"><i class="fas fa-sync-alt"></i> Sync Now</button>
+                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                    <button @click="confirmSyncShares" class="btn btn--primary"><i class="fas fa-sync-alt"></i> ${ t('groups.syncNow') }</button>
                 </div>
             </div>
         </div>
@@ -349,23 +349,23 @@
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
                     <i class="fas fa-check-circle text-green-500"></i>
-                    <h3 class="modal-title">Sync Complete</h3>
-                    <button @click="showSyncResultsModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.syncCompleteTitle') }</h3>
+                    <button @click="showSyncResultsModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="space-y-2">
                         <div class="flex justify-between text-[var(--text-secondary)]">
-                            <span>Shares created:</span>
+                            <span>${ t('groups.sharesCreated') }:</span>
                             <span class="font-semibold">${ syncResults.shares_created }</span>
                         </div>
                         <div class="flex justify-between text-[var(--text-secondary)]">
-                            <span>Recordings processed:</span>
+                            <span>${ t('groups.recordingsProcessed') }:</span>
                             <span class="font-semibold">${ syncResults.recordings_processed }</span>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showSyncResultsModal = false" class="btn btn--primary">Done</button>
+                    <button @click="showSyncResultsModal = false" class="btn btn--primary">${ t('common.done') }</button>
                 </div>
             </div>
         </div>
@@ -374,15 +374,15 @@
         <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm modal-panel--danger">
                 <div class="modal-header">
-                    <h3 class="modal-title">Delete Group</h3>
-                    <button @click="showDeleteTeamModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.deleteTeam') }</h3>
+                    <button @click="showDeleteTeamModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
+                    <p class="text-[var(--text-secondary)]" v-text="t('groups.deleteGroupConfirm', { name: teamToDelete?.name })"></p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">Cancel</button>
-                    <button @click="deleteTeam" class="btn btn--danger">Delete Group</button>
+                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                    <button @click="deleteTeam" class="btn btn--danger">${ t('groups.deleteTeam') }</button>
                 </div>
             </div>
         </div>
@@ -391,8 +391,8 @@
         <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="modal-overlay">
             <div class="modal-panel modal-panel--lg">
                 <div class="modal-header">
-                    <h3 class="modal-title">Manage Tags for ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamTagsModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title" v-text="t('groups.manageTagsTitle', { name: currentTeam?.name })"></h3>
+                    <button @click="closeManageTeamTagsModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
 
@@ -400,22 +400,22 @@
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)]">
-                            ${ editingTeamTagId ? 'Edit Group Tag' : 'Create New Group Tag' }
+                            ${ editingTeamTagId ? t('groups.editTeamTag') : t('groups.createTeamTag') }
                         </h4>
                         <button v-if="editingTeamTagId" @click="cancelEditTeamTag" type="button" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                            <i class="fas fa-times mr-1"></i> Cancel
+                            <i class="fas fa-times mr-1"></i> ${ t('buttons.cancel') }
                         </button>
                     </div>
                     <form @submit.prevent="saveTeamTag" class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tag Name *</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.tagName') }</label>
                                 <input v-model="newTeamTag.name" type="text" required maxlength="50"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                       placeholder="e.g., Project Alpha">
+                                       :placeholder="t('groups.tagNamePlaceholder')">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.color') }</label>
                                 <input v-model="newTeamTag.color" type="color"
                                        class="w-full h-10 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] cursor-pointer">
                             </div>
@@ -424,14 +424,14 @@
                         <!-- Custom Prompt -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Custom Summarization Prompt
-                                <span class="text-[var(--text-muted)] font-normal">- Optional AI instructions</span>
+                                ${ t('reprocessModal.customSummaryPrompt') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalAiInstructions') }</span>
                             </label>
                             <textarea v-model="newTeamTag.custom_prompt" rows="3"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Enter custom instructions for AI summarization (e.g., 'Focus on action items and deadlines')"></textarea>
+                                   :placeholder="t('groups.tagPromptPlaceholder')"></textarea>
                             <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings with this tag will use this prompt for AI summaries and chat.
+                                ${ t('groups.tagPromptHelp') }
                             </p>
                         </div>
                         <!-- Title Prompt (#400) -->
@@ -446,28 +446,28 @@
                         <!-- Transcription Settings -->
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Default Language</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.defaultLanguage') }</label>
                                 <select v-model="newTeamTag.default_language"
                                         class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
-                                    <option value="">Auto-detect</option>
-                                    <option value="en">English</option>
-                                    <option value="es">Spanish</option>
-                                    <option value="fr">French</option>
-                                    <option value="de">German</option>
-                                    <option value="zh">Chinese</option>
-                                    <option value="ja">Japanese</option>
-                                    <option value="pt">Portuguese</option>
-                                    <option value="it">Italian</option>
+                                    <option value="">${ t('languages.autoDetect') }</option>
+                                    <option value="en">${ t('languages.en') }</option>
+                                    <option value="es">${ t('languages.es') }</option>
+                                    <option value="fr">${ t('languages.fr') }</option>
+                                    <option value="de">${ t('languages.de') }</option>
+                                    <option value="zh">${ t('languages.zh') }</option>
+                                    <option value="ja">${ t('languages.ja') }</option>
+                                    <option value="pt">${ t('languages.pt') }</option>
+                                    <option value="it">${ t('languages.it') }</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Min Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.minSpeakers') }</label>
                                 <input v-model.number="newTeamTag.default_min_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="1">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Max Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.maxSpeakers') }</label>
                                 <input v-model.number="newTeamTag.default_max_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="5">
@@ -477,21 +477,19 @@
                         <!-- Retention and Protection -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Retention Period (days)
-                                <span class="text-[var(--text-muted)] font-normal">- Optional override for auto-deletion</span>
+                                ${ t('groups.retentionPeriod') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalRetentionOverride') }</span>
                             </label>
                             <input v-model.number="newTeamTag.retention_days" type="number" min="0" step="1"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Leave empty to use global retention">
-                            <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings with this tag will be deleted after this many days. Leave empty to use global retention (${ globalRetentionDays } days).
-                            </p>
+                                   :placeholder="t('groups.retentionPlaceholder')">
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('groups.retentionHelp', { days: globalRetentionDays })"></p>
                         </div>
                         <div class="flex items-center">
                             <input v-model="newTeamTag.protect_from_deletion" type="checkbox" id="protectFromDeletion"
                                    class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                             <label for="protectFromDeletion" class="text-xs text-[var(--text-secondary)]">
-                                <i class="fas fa-shield-alt mr-1"></i> Protect recordings with this tag from auto-deletion
+                                <i class="fas fa-shield-alt mr-1"></i> ${ t('groups.protectTagHelp') }
                             </label>
                         </div>
                         <div class="space-y-2">
@@ -499,31 +497,31 @@
                                 <input v-model="newTeamTag.auto_share_on_apply" type="checkbox" id="autoShareOnApply"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="autoShareOnApply" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-friends mr-1"></i> Auto-share recordings with all group members when this tag is applied
+                                    <i class="fas fa-user-friends mr-1"></i> ${ t('groups.autoShareTagHelp') }
                                 </label>
                             </div>
                             <div class="flex items-center">
                                 <input v-model="newTeamTag.share_with_group_lead" type="checkbox" id="shareWithGroupLead"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="shareWithGroupLead" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-tie mr-1"></i> Share recordings with group admins when this tag is applied
+                                    <i class="fas fa-user-tie mr-1"></i> ${ t('groups.shareWithAdminsTagHelp') }
                                 </label>
                             </div>
                             <p class="text-xs text-[var(--text-muted)] ml-6">
-                                Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                                ${ t('groups.autoShareNote') }
                             </p>
                         </div>
                         <div v-if="teamTagError" class="text-[var(--text-danger)] text-xs">${ teamTagError }</div>
                         <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm">
                             <i :class="editingTeamTagId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
-                            ${ editingTeamTagId ? 'Update Tag' : 'Create Tag' }
+                            ${ editingTeamTagId ? t('buttons.updateTag') : t('buttons.createTag') }
                         </button>
                     </form>
                 </div>
 
                 <!-- Existing Group Tags -->
                 <div>
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Group Tags</h4>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.teamTags') }</h4>
                     <div v-if="teamTags.length > 0" class="space-y-3">
                         <div v-for="tag in teamTags" :key="tag.id"
                              class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
@@ -534,22 +532,22 @@
                                         <div class="text-sm font-medium text-[var(--text-primary)]">${ tag.name }</div>
                                         <div class="text-xs text-[var(--text-muted)] mt-1 space-x-3">
                                             <span v-if="tag.retention_days">
-                                                <i class="fas fa-clock mr-1"></i> ${ tag.retention_days } day retention
+                                                <i class="fas fa-clock mr-1"></i> ${ tag.retention_days } ${ t('groups.dayRetention') }
                                             </span>
                                             <span v-else>
-                                                <i class="fas fa-globe mr-1"></i> Global retention
+                                                <i class="fas fa-globe mr-1"></i> ${ t('groups.globalRetention') }
                                             </span>
                                             <span v-if="tag.protect_from_deletion" class="text-green-500">
-                                                <i class="fas fa-shield-alt mr-1"></i> Protected
+                                                <i class="fas fa-shield-alt mr-1"></i> ${ t('groups.protected') }
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
-                                    <button @click="editTeamTag(tag)" class="text-blue-500 hover:text-blue-700 px-2 py-1" title="Edit Tag">
+                                    <button @click="editTeamTag(tag)" class="text-blue-500 hover:text-blue-700 px-2 py-1" :title="t('buttons.editTag')">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="deleteTeamTag(tag)" class="text-red-500 hover:text-red-700 px-2 py-1" title="Delete Tag">
+                                    <button @click="deleteTeamTag(tag)" class="text-red-500 hover:text-red-700 px-2 py-1" :title="t('buttons.deleteTag')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -559,21 +557,21 @@
                             <div v-if="tag.custom_prompt || tag.default_language || tag.default_min_speakers || tag.default_max_speakers"
                                  class="mt-2 pt-2 border-t border-[var(--border-secondary)] space-y-1">
                                 <div v-if="tag.custom_prompt" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-comment-dots mr-1"></i> Custom prompt configured
+                                    <i class="fas fa-comment-dots mr-1"></i> ${ t('groups.customPromptConfigured') }
                                 </div>
                                 <div v-if="tag.default_language" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-language mr-1"></i> Language: ${ tag.default_language.toUpperCase() }
+                                    <i class="fas fa-language mr-1"></i> ${ t('metadata.language') }: ${ tag.default_language.toUpperCase() }
                                 </div>
                                 <div v-if="tag.default_min_speakers || tag.default_max_speakers" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-users mr-1"></i> Speakers:
-                                    <span v-if="tag.default_min_speakers">${ tag.default_min_speakers }-</span><span v-if="tag.default_max_speakers">${ tag.default_max_speakers }</span><span v-else>auto</span>
+                                    <i class="fas fa-users mr-1"></i> ${ t('form.speakers') }:
+                                    <span v-if="tag.default_min_speakers">${ tag.default_min_speakers }-</span><span v-if="tag.default_max_speakers">${ tag.default_max_speakers }</span><span v-else>${ t('form.auto') }</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div v-else class="text-center py-8 text-[var(--text-muted)]">
                         <i class="fas fa-tags text-3xl mb-2"></i>
-                        <p class="text-sm">No group tags created yet</p>
+                        <p class="text-sm">${ t('groups.noTeamTags') }</p>
                     </div>
                 </div>
                 </div>
@@ -585,8 +583,8 @@
             <div class="modal-panel modal-panel--lg">
                 <div class="modal-header">
                     <i class="fas fa-folder text-emerald-500"></i>
-                    <h3 class="modal-title">Manage Folders for ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamFoldersModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title" v-text="t('groups.manageFoldersTitle', { name: currentTeam?.name })"></h3>
+                    <button @click="closeManageTeamFoldersModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
 
@@ -594,22 +592,22 @@
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)]">
-                            ${ editingTeamFolderId ? 'Edit Group Folder' : 'Create New Group Folder' }
+                            ${ editingTeamFolderId ? t('groups.editTeamFolder') : t('groups.createTeamFolder') }
                         </h4>
                         <button v-if="editingTeamFolderId" @click="cancelEditTeamFolder" type="button" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                            <i class="fas fa-times mr-1"></i> Cancel
+                            <i class="fas fa-times mr-1"></i> ${ t('buttons.cancel') }
                         </button>
                     </div>
                     <form @submit.prevent="saveTeamFolder" class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Folder Name *</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('folderManagement.folderName') } *</label>
                                 <input v-model="newTeamFolder.name" type="text" required maxlength="50"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                       placeholder="e.g., Client Calls">
+                                       :placeholder="t('groups.folderNamePlaceholder')">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.color') }</label>
                                 <input v-model="newTeamFolder.color" type="color"
                                        class="w-full h-10 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] cursor-pointer">
                             </div>
@@ -618,14 +616,14 @@
                         <!-- Custom Prompt -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Custom Summarization Prompt
-                                <span class="text-[var(--text-muted)] font-normal">- Optional AI instructions</span>
+                                ${ t('reprocessModal.customSummaryPrompt') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalAiInstructions') }</span>
                             </label>
                             <textarea v-model="newTeamFolder.custom_prompt" rows="3"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Enter custom instructions for AI summarization"></textarea>
+                                   :placeholder="t('groups.folderPromptPlaceholder')"></textarea>
                             <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings in this folder will use this prompt (unless overridden by a tag).
+                                ${ t('groups.folderPromptHelp') }
                             </p>
                         </div>
                         <!-- Title Prompt (#400) -->
@@ -640,28 +638,28 @@
                         <!-- Transcription Settings -->
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Default Language</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.defaultLanguage') }</label>
                                 <select v-model="newTeamFolder.default_language"
                                         class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
-                                    <option value="">Auto-detect</option>
-                                    <option value="en">English</option>
-                                    <option value="es">Spanish</option>
-                                    <option value="fr">French</option>
-                                    <option value="de">German</option>
-                                    <option value="zh">Chinese</option>
-                                    <option value="ja">Japanese</option>
-                                    <option value="pt">Portuguese</option>
-                                    <option value="it">Italian</option>
+                                    <option value="">${ t('languages.autoDetect') }</option>
+                                    <option value="en">${ t('languages.en') }</option>
+                                    <option value="es">${ t('languages.es') }</option>
+                                    <option value="fr">${ t('languages.fr') }</option>
+                                    <option value="de">${ t('languages.de') }</option>
+                                    <option value="zh">${ t('languages.zh') }</option>
+                                    <option value="ja">${ t('languages.ja') }</option>
+                                    <option value="pt">${ t('languages.pt') }</option>
+                                    <option value="it">${ t('languages.it') }</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Min Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.minSpeakers') }</label>
                                 <input v-model.number="newTeamFolder.default_min_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="1">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Max Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.maxSpeakers') }</label>
                                 <input v-model.number="newTeamFolder.default_max_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="5">
@@ -671,21 +669,19 @@
                         <!-- Retention and Protection -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Retention Period (days)
-                                <span class="text-[var(--text-muted)] font-normal">- Optional override for auto-deletion</span>
+                                ${ t('groups.retentionPeriod') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalRetentionOverride') }</span>
                             </label>
                             <input v-model.number="newTeamFolder.retention_days" type="number" min="0" step="1"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Leave empty to use global retention">
-                            <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings in this folder will be deleted after this many days. Leave empty to use global retention (${ globalRetentionDays } days).
-                            </p>
+                                   :placeholder="t('groups.retentionPlaceholder')">
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('groups.folderRetentionHelp', { days: globalRetentionDays })"></p>
                         </div>
                         <div class="flex items-center">
                             <input v-model="newTeamFolder.protect_from_deletion" type="checkbox" id="folderProtectFromDeletion"
                                    class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                             <label for="folderProtectFromDeletion" class="text-xs text-[var(--text-secondary)]">
-                                <i class="fas fa-shield-alt mr-1"></i> Protect recordings in this folder from auto-deletion
+                                <i class="fas fa-shield-alt mr-1"></i> ${ t('folderManagement.protectFromDeletionHelp') }
                             </label>
                         </div>
                         <div class="space-y-2">
@@ -693,31 +689,31 @@
                                 <input v-model="newTeamFolder.auto_share_on_apply" type="checkbox" id="folderAutoShareOnApply"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="folderAutoShareOnApply" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-friends mr-1"></i> Auto-share recordings with all group members when added to this folder
+                                    <i class="fas fa-user-friends mr-1"></i> ${ t('folderManagement.autoShareOnApplyHelp') }
                                 </label>
                             </div>
                             <div class="flex items-center">
                                 <input v-model="newTeamFolder.share_with_group_lead" type="checkbox" id="folderShareWithGroupLead"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="folderShareWithGroupLead" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-tie mr-1"></i> Share recordings with group admins when added to this folder
+                                    <i class="fas fa-user-tie mr-1"></i> ${ t('folderManagement.shareWithGroupLeadHelp') }
                                 </label>
                             </div>
                             <p class="text-xs text-[var(--text-muted)] ml-6">
-                                Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                                ${ t('groups.autoShareNote') }
                             </p>
                         </div>
                         <div v-if="teamFolderError" class="text-[var(--text-danger)] text-xs">${ teamFolderError }</div>
                         <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm">
                             <i :class="editingTeamFolderId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
-                            ${ editingTeamFolderId ? 'Update Folder' : 'Create Folder' }
+                            ${ editingTeamFolderId ? t('groups.updateFolder') : t('folderManagement.createFolder') }
                         </button>
                     </form>
                 </div>
 
                 <!-- Existing Group Folders -->
                 <div>
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Group Folders</h4>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.teamFolders') }</h4>
                     <div v-if="teamFolders.length > 0" class="space-y-3">
                         <div v-for="folder in teamFolders" :key="folder.id"
                              class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
@@ -728,25 +724,25 @@
                                         <div class="text-sm font-medium text-[var(--text-primary)]">${ folder.name }</div>
                                         <div class="text-xs text-[var(--text-muted)] mt-1 space-x-3">
                                             <span v-if="folder.retention_days">
-                                                <i class="fas fa-clock mr-1"></i> ${ folder.retention_days } day retention
+                                                <i class="fas fa-clock mr-1"></i> ${ folder.retention_days } ${ t('groups.dayRetention') }
                                             </span>
                                             <span v-else>
-                                                <i class="fas fa-globe mr-1"></i> Global retention
+                                                <i class="fas fa-globe mr-1"></i> ${ t('groups.globalRetention') }
                                             </span>
                                             <span v-if="folder.protect_from_deletion" class="text-green-500">
-                                                <i class="fas fa-shield-alt mr-1"></i> Protected
+                                                <i class="fas fa-shield-alt mr-1"></i> ${ t('groups.protected') }
                                             </span>
                                             <span>
-                                                <i class="fas fa-file-audio mr-1"></i> ${ folder.recording_count || 0 } recordings
+                                                <i class="fas fa-file-audio mr-1"></i> ${ folder.recording_count || 0 } ${ t('folderManagement.recordings') }
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
-                                    <button @click="editTeamFolder(folder)" class="text-blue-500 hover:text-blue-700 px-2 py-1" title="Edit Folder">
+                                    <button @click="editTeamFolder(folder)" class="text-blue-500 hover:text-blue-700 px-2 py-1" :title="t('folderManagement.editFolder')">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="deleteTeamFolder(folder)" class="text-red-500 hover:text-red-700 px-2 py-1" title="Delete Folder">
+                                    <button @click="deleteTeamFolder(folder)" class="text-red-500 hover:text-red-700 px-2 py-1" :title="t('folderManagement.deleteFolder')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -756,21 +752,21 @@
                             <div v-if="folder.custom_prompt || folder.default_language || folder.default_min_speakers || folder.default_max_speakers"
                                  class="mt-2 pt-2 border-t border-[var(--border-secondary)] space-y-1">
                                 <div v-if="folder.custom_prompt" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-comment-dots mr-1"></i> Custom prompt configured
+                                    <i class="fas fa-comment-dots mr-1"></i> ${ t('groups.customPromptConfigured') }
                                 </div>
                                 <div v-if="folder.default_language" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-language mr-1"></i> Language: ${ folder.default_language.toUpperCase() }
+                                    <i class="fas fa-language mr-1"></i> ${ t('metadata.language') }: ${ folder.default_language.toUpperCase() }
                                 </div>
                                 <div v-if="folder.default_min_speakers || folder.default_max_speakers" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-users mr-1"></i> Speakers:
-                                    <span v-if="folder.default_min_speakers">${ folder.default_min_speakers }-</span><span v-if="folder.default_max_speakers">${ folder.default_max_speakers }</span><span v-else>auto</span>
+                                    <i class="fas fa-users mr-1"></i> ${ t('form.speakers') }:
+                                    <span v-if="folder.default_min_speakers">${ folder.default_min_speakers }-</span><span v-if="folder.default_max_speakers">${ folder.default_max_speakers }</span><span v-else>${ t('form.auto') }</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div v-else class="text-center py-8 text-[var(--text-muted)]">
                         <i class="fas fa-folder text-3xl mb-2"></i>
-                        <p class="text-sm">No group folders created yet</p>
+                        <p class="text-sm">${ t('groups.noTeamFolders') }</p>
                     </div>
                 </div>
                 </div>
@@ -913,7 +909,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to save group');
+                            throw new Error(error.error || t('groups.saveFailed'));
                         }
 
                         closeTeamModal();
@@ -941,7 +937,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to delete group');
+                            throw new Error(error.error || t('groups.deleteFailed'));
                         }
 
                         showDeleteTeamModal.value = false;
@@ -973,7 +969,7 @@
                 const loadTeamMembers = async (groupId) => {
                     try {
                         const response = await fetch(`/api/admin/groups/${groupId}`);
-                        if (!response.ok) throw new Error('Failed to load group members');
+                        if (!response.ok) throw new Error(t('groups.loadMembersFailed'));
                         const data = await response.json();
                         teamMembers.value = data.members || [];
                     } catch (error) {
@@ -1002,7 +998,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to add member');
+                            throw new Error(error.error || t('groups.addMemberFailed'));
                         }
 
                         newMemberUserId.value = '';
@@ -1029,7 +1025,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to update role');
+                            throw new Error(error.error || t('groups.updateRoleFailed'));
                         }
                     } catch (error) {
                         teamMemberError.value = error.message;
@@ -1038,7 +1034,7 @@
                 };
 
                 const removeTeamMember = async (member) => {
-                    if (!confirm(`Remove ${member.username} from the group?`)) return;
+                    if (!confirm(t('groups.removeMemberConfirm', { username: member.username }))) return;
 
                     teamMemberError.value = '';
                     try {
@@ -1053,7 +1049,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to remove member');
+                            throw new Error(error.error || t('groups.removeMemberFailed'));
                         }
 
                         await loadTeamMembers(currentTeam.value.id);
@@ -1084,7 +1080,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to sync shares');
+                            throw new Error(error.error || t('groups.syncSharesFailed'));
                         }
 
                         const result = await response.json();
@@ -1130,7 +1126,7 @@
                 const loadTeamTags = async (groupId) => {
                     try {
                         const response = await fetch(`/api/groups/${groupId}/tags`);
-                        if (!response.ok) throw new Error('Failed to load group tags');
+                        if (!response.ok) throw new Error(t('groups.loadTagsFailed'));
                         const data = await response.json();
                         teamTags.value = data.tags || [];
                     } catch (error) {
@@ -1234,7 +1230,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || (editingTeamTagId.value ? 'Failed to update tag' : 'Failed to create tag'));
+                            throw new Error(error.error || (editingTeamTagId.value ? t('groups.updateTagFailed') : t('groups.createTagFailed')));
                         }
 
                         // Reset form and reload
@@ -1259,7 +1255,7 @@
                 };
 
                 const deleteTeamTag = async (tag) => {
-                    if (!confirm(`Delete the tag "${tag.name}"? This will remove the tag from all recordings.`)) return;
+                    if (!confirm(t('groups.deleteTagConfirm', { name: tag.name }))) return;
 
                     teamTagError.value = '';
                     try {
@@ -1274,7 +1270,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to delete tag');
+                            throw new Error(error.error || t('groups.deleteTagFailed'));
                         }
 
                         await loadTeamTags(currentTeam.value.id);
@@ -1315,7 +1311,7 @@
                 const loadTeamFolders = async (groupId) => {
                     try {
                         const response = await fetch(`/api/groups/${groupId}/folders`);
-                        if (!response.ok) throw new Error('Failed to load group folders');
+                        if (!response.ok) throw new Error(t('groups.loadFoldersFailed'));
                         const data = await response.json();
                         teamFolders.value = data.folders || [];
                     } catch (error) {
@@ -1411,7 +1407,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || (editingTeamFolderId.value ? 'Failed to update folder' : 'Failed to create folder'));
+                            throw new Error(error.error || (editingTeamFolderId.value ? t('groups.updateFolderFailed') : t('groups.createFolderFailed')));
                         }
 
                         editingTeamFolderId.value = null;
@@ -1435,7 +1431,7 @@
                 };
 
                 const deleteTeamFolder = async (folder) => {
-                    if (!confirm(`Delete the folder "${folder.name}"? Recordings will be removed from this folder but not deleted.`)) return;
+                    if (!confirm(t('groups.deleteFolderConfirm', { name: folder.name }))) return;
 
                     teamFolderError.value = '';
                     try {
@@ -1450,7 +1446,7 @@
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to delete folder');
+                            throw new Error(error.error || t('groups.deleteFolderFailed'));
                         }
 
                         await loadTeamFolders(currentTeam.value.id);

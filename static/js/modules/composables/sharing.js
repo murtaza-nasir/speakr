@@ -19,6 +19,7 @@ export function useSharing(state, utils) {
     } = state;
 
     const { showToast, setGlobalError } = utils;
+    const t = (key, params = {}) => (utils.t ? utils.t(key, params) : key);
 
     let userSearchTimeout = null;
 
@@ -32,7 +33,7 @@ export function useSharing(state, utils) {
 
     // Helper function to format share dates
     const formatShareDate = (dateString) => {
-        if (!dateString) return 'Unknown date';
+        if (!dateString) return t('sharing.unknownDate');
 
         try {
             // Backend sends naive UTC (isoformat with no zone). new Date() parses
@@ -55,11 +56,11 @@ export function useSharing(state, utils) {
 
             // If today
             if (diffDays === 0) {
-                return (utils.t ? utils.t('sidebar.today') : 'Today') + ', ' + time();
+                return t('sidebar.today') + ', ' + time();
             }
             // If yesterday
             else if (diffDays === 1) {
-                return (utils.t ? utils.t('sidebar.yesterday') : 'Yesterday') + ', ' + time();
+                return t('sidebar.yesterday') + ', ' + time();
             }
             // If within last week
             else if (diffDays < 7) {
@@ -147,7 +148,7 @@ export function useSharing(state, utils) {
                 })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to create share link');
+            if (!response.ok) throw new Error(data.error || t('sharing.createLinkFailed'));
 
             generatedShareLink.value = data.share_url;
             existingShareDetected.value = data.existing && !forceNew;
@@ -169,12 +170,12 @@ export function useSharing(state, utils) {
             }
 
             if (data.existing && !forceNew) {
-                showToast('Using existing share link', 'fa-link');
+                showToast(t('sharing.usingExistingLink'), 'fa-link');
             } else {
-                showToast('Share link created successfully!', 'fa-check-circle');
+                showToast(t('sharing.linkCreated'), 'fa-check-circle');
             }
         } catch (error) {
-            setGlobalError(`Failed to create share link: ${error.message}`);
+            setGlobalError(t('sharing.createLinkFailedWithError', { error: error.message }));
         }
     };
 
@@ -190,7 +191,7 @@ export function useSharing(state, utils) {
         try {
             const response = await fetch(`/api/share/${shareId}`, { method: 'DELETE' });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to delete share');
+            if (!response.ok) throw new Error(data.error || t('sharing.deleteLinkFailed'));
 
             // Remove from the shares list (both modals use different arrays)
             recordingPublicShares.value = recordingPublicShares.value.filter(s => s.id !== shareId);
@@ -199,33 +200,33 @@ export function useSharing(state, utils) {
             // Update the recording's share count in the UI
             await refreshRecordingShareCounts();
 
-            showToast('Share link deleted successfully.', 'fa-check-circle');
+            showToast(t('sharing.linkDeleted'), 'fa-check-circle');
             showShareDeleteModal.value = false;
             shareToDelete.value = null;
         } catch (error) {
-            setGlobalError(`Failed to delete share: ${error.message}`);
+            setGlobalError(t('sharing.deleteLinkFailedWithError', { error: error.message }));
         }
     };
 
     const copyPublicShareLink = (shareUrl) => {
         navigator.clipboard.writeText(shareUrl).then(() => {
-            showToast('Share link copied to clipboard!', 'fa-check-circle');
+            showToast(t('sharing.linkCopied'), 'fa-check-circle');
         }).catch(() => {
-            setGlobalError('Failed to copy link to clipboard');
+            setGlobalError(t('sharing.copyLinkFailed'));
         });
     };
 
     const copyPublicShareLinkWithFeedback = (shareUrl, shareId) => {
         navigator.clipboard.writeText(shareUrl).then(() => {
             copiedShareId.value = shareId;
-            showToast('Share link copied to clipboard!', 'fa-check-circle');
+            showToast(t('sharing.linkCopied'), 'fa-check-circle');
 
             // Reset after delay
             setTimeout(() => {
                 copiedShareId.value = null;
             }, 1500);
         }).catch(() => {
-            setGlobalError('Failed to copy link to clipboard');
+            setGlobalError(t('sharing.copyLinkFailed'));
         });
     };
 
@@ -273,7 +274,7 @@ export function useSharing(state, utils) {
     const copyShareLink = () => {
         if (!generatedShareLink.value) return;
         navigator.clipboard.writeText(generatedShareLink.value).then(() => {
-            showToast('Share link copied to clipboard!');
+            showToast(t('sharing.linkCopied'));
         });
     };
 
@@ -286,7 +287,7 @@ export function useSharing(state, utils) {
 
         navigator.clipboard.writeText(input.value).then(() => {
             copiedShareId.value = shareId;
-            showToast('Share link copied to clipboard!', 'fa-check');
+            showToast(t('sharing.linkCopied'), 'fa-check');
 
             // Apply success state
             button.style.transition = 'background-color 0.2s ease';
@@ -315,7 +316,7 @@ export function useSharing(state, utils) {
         try {
             const response = await fetch('/api/shares/overview');
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to load shared items');
+            if (!response.ok) throw new Error(data.error || t('sharing.loadSharedItemsFailed'));
             userShares.value = data.public_links || [];
             sharesByMe.value = (data.shared_by_me || []).map(r => ({
                 ...r, recipients: r.recipients.map(p => ({ ...p, confirming: false })),
@@ -324,7 +325,7 @@ export function useSharing(state, utils) {
             sharesPublicEnabled.value = data.public_sharing_enabled !== false;
             sharesInternalEnabled.value = !!data.internal_sharing_enabled;
         } catch (error) {
-            setGlobalError(`Failed to load shared items: ${error.message}`);
+            setGlobalError(t('sharing.loadSharedItemsFailedWithError', { error: error.message }));
         } finally {
             isLoadingShares.value = false;
         }
@@ -348,16 +349,16 @@ export function useSharing(state, utils) {
         try {
             const response = await fetch(`/api/internal-shares/${recipient.share_id}`, { method: 'DELETE' });
             const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to revoke share');
+            if (!response.ok) throw new Error(data.error || t('sharing.revokeFailed'));
             entry.recipients = entry.recipients.filter(p => p.share_id !== recipient.share_id);
             if (!entry.recipients.length) {
                 sharesByMe.value = sharesByMe.value.filter(r => r !== entry);
             }
-            showToast(utils.t ? utils.t('sharedTranscripts.accessRevoked') : 'Access revoked', 'fa-user-times');
+            showToast(t('sharedTranscripts.accessRevoked'), 'fa-user-times');
             await refreshRecordingShareCounts();
         } catch (error) {
             recipient.confirming = false;
-            setGlobalError(`Failed to revoke share: ${error.message}`);
+            setGlobalError(t('sharing.revokeFailedWithError', { error: error.message }));
         }
     };
 
@@ -372,10 +373,10 @@ export function useSharing(state, utils) {
                 })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update share');
-            showToast('Share permissions updated.', 'fa-check-circle');
+            if (!response.ok) throw new Error(data.error || t('sharing.updateFailed'));
+            showToast(t('sharing.permissionsUpdated'), 'fa-check-circle');
         } catch (error) {
-            setGlobalError(`Failed to update share: ${error.message}`);
+            setGlobalError(t('sharing.updateFailedWithError', { error: error.message }));
         }
     };
 
@@ -401,14 +402,14 @@ export function useSharing(state, utils) {
             const response = await fetch('/api/users/search?q=');
             if (!response.ok) {
                 if (response.status === 403) {
-                    throw new Error('Internal sharing is not enabled');
+                    throw new Error(t('sharing.internalSharingDisabled'));
                 }
-                throw new Error('Failed to load users');
+                throw new Error(t('sharing.loadUsersFailed'));
             }
             const data = await response.json();
             allUsers.value = data;
         } catch (error) {
-            setGlobalError(`Failed to load users: ${error.message}`);
+            setGlobalError(t('sharing.loadUsersFailedWithError', { error: error.message }));
             allUsers.value = [];
         } finally {
             isLoadingAllUsers.value = false;
@@ -450,14 +451,14 @@ export function useSharing(state, utils) {
                 const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
                 if (!response.ok) {
                     if (response.status === 403) {
-                        throw new Error('Internal sharing is not enabled');
+                        throw new Error(t('sharing.internalSharingDisabled'));
                     }
-                    throw new Error('Failed to search users');
+                    throw new Error(t('sharing.searchUsersFailed'));
                 }
                 const data = await response.json();
                 internalShareSearchResults.value = data;
             } catch (error) {
-                setGlobalError(`Failed to search users: ${error.message}`);
+                setGlobalError(t('sharing.searchUsersFailedWithError', { error: error.message }));
                 internalShareSearchResults.value = [];
             } finally {
                 isSearchingUsers.value = false;
@@ -518,14 +519,14 @@ export function useSharing(state, utils) {
             const response = await fetch(`/api/recordings/${recording.id}/shares-internal`);
             if (!response.ok) {
                 if (response.status === 403) {
-                    throw new Error('Internal sharing is not enabled');
+                    throw new Error(t('sharing.internalSharingDisabled'));
                 }
-                throw new Error('Failed to load shares');
+                throw new Error(t('sharing.loadSharesFailed'));
             }
             const data = await response.json();
             recordingInternalShares.value = data.shares || [];
         } catch (error) {
-            setGlobalError(`Failed to load shares: ${error.message}`);
+            setGlobalError(t('sharing.loadSharesFailedWithError', { error: error.message }));
             recordingInternalShares.value = [];
         } finally {
             isLoadingInternalShares.value = false;
@@ -561,12 +562,12 @@ export function useSharing(state, utils) {
         try {
             const response = await fetch(`/api/recordings/${internalShareRecording.value.id}/shares-internal`);
             if (!response.ok) {
-                throw new Error('Failed to load shares');
+                throw new Error(t('sharing.loadSharesFailed'));
             }
             const data = await response.json();
             recordingInternalShares.value = data.shares || [];
         } catch (error) {
-            setGlobalError(`Failed to reload shares: ${error.message}`);
+            setGlobalError(t('sharing.reloadSharesFailedWithError', { error: error.message }));
         } finally {
             isLoadingInternalShares.value = false;
         }
@@ -577,7 +578,7 @@ export function useSharing(state, utils) {
 
         const username = internalShareUserSearch.value.trim();
         if (!username) {
-            setGlobalError('Please enter a username');
+            setGlobalError(t('sharing.enterUsername'));
             return;
         }
 
@@ -587,15 +588,15 @@ export function useSharing(state, utils) {
             const searchResponse = await fetch(`/api/users/search?q=${encodeURIComponent(username)}`);
             if (!searchResponse.ok) {
                 if (searchResponse.status === 403) {
-                    throw new Error('Internal sharing is not enabled');
+                    throw new Error(t('sharing.internalSharingDisabled'));
                 }
-                throw new Error('Failed to find user');
+                throw new Error(t('sharing.findUserFailed'));
             }
 
             const users = await searchResponse.json();
 
             if (users.length === 0) {
-                setGlobalError(`User "${username}" not found`);
+                setGlobalError(t('sharing.userNotFound', { username }));
                 return;
             }
 
@@ -606,7 +607,7 @@ export function useSharing(state, utils) {
             // Clear input on success
             internalShareUserSearch.value = '';
         } catch (error) {
-            setGlobalError(error.message || 'Failed to share with user');
+            setGlobalError(error.message || t('sharing.shareWithUserFailed'));
         } finally {
             isSearchingUsers.value = false;
         }
@@ -628,11 +629,11 @@ export function useSharing(state, utils) {
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to share recording');
+                throw new Error(data.error || t('sharing.shareRecordingFailed'));
             }
 
-            const displayName = showUsernamesInUI.value ? username : `User #${userId}`;
-            showToast(`Recording shared with ${displayName}`, 'fa-share-alt');
+            const displayName = showUsernamesInUI.value ? username : t('sharing.userNumber', { id: userId });
+            showToast(t('sharing.sharedWithUser', { name: displayName }), 'fa-share-alt');
 
             // Reset permissions for next share
             internalSharePermissions.value = { can_edit: false, can_reshare: false };
@@ -643,7 +644,7 @@ export function useSharing(state, utils) {
             // Update the recording's share count in the UI
             await refreshRecordingShareCounts();
         } catch (error) {
-            setGlobalError(`Failed to share recording: ${error.message}`);
+            setGlobalError(t('sharing.shareRecordingFailedWithError', { error: error.message }));
         }
     };
 
@@ -657,17 +658,17 @@ export function useSharing(state, utils) {
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to revoke share');
+                throw new Error(data.error || t('sharing.revokeFailed'));
             }
 
             recordingInternalShares.value = recordingInternalShares.value.filter(s => s.id !== shareId);
-            const displayName = showUsernamesInUI.value ? username : 'User';
-            showToast(`Access revoked for ${displayName}`, 'fa-user-times');
+            const displayName = showUsernamesInUI.value ? username : t('sharing.userGeneric');
+            showToast(t('sharing.accessRevokedFor', { name: displayName }), 'fa-user-times');
 
             // Update the recording's share count in the UI
             await refreshRecordingShareCounts();
         } catch (error) {
-            setGlobalError(`Failed to revoke share: ${error.message}`);
+            setGlobalError(t('sharing.revokeFailedWithError', { error: error.message }));
         }
     };
 

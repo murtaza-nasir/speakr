@@ -3,7 +3,7 @@
     <div class="modal-panel modal-panel--xs">
         <div class="modal-header">
             <i class="fas fa-calendar-alt text-2xl text-[var(--text-accent)]"></i>
-            <h3 class="modal-title">Select Date &amp; Time</h3>
+            <h3 class="modal-title" v-text="t('datePicker.title')"></h3>
             <button @click="closeDateTimePicker" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
 
@@ -55,7 +55,7 @@
             <!-- Time Selection -->
             <div class="mt-4 pt-4 border-t border-[var(--border-secondary)]">
                 <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">
-                    <i class="fas fa-clock mr-1"></i> Time
+                    <i class="fas fa-clock mr-1"></i> ${ t('datePicker.time') }
                 </label>
                 <div class="flex items-center justify-center gap-2">
                     <select v-model="pickerHour"
@@ -91,13 +91,13 @@
             <!-- Quick Actions -->
             <div class="mt-3 flex flex-wrap gap-2 justify-center">
                 <button @click="setToNow" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
-                    <i class="fas fa-bolt mr-1"></i> Now
+                    <i class="fas fa-bolt mr-1"></i> ${ t('datePicker.now') }
                 </button>
                 <button @click="setToToday" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
-                    <i class="fas fa-calendar-day mr-1"></i> Today
+                    <i class="fas fa-calendar-day mr-1"></i> ${ t('sidebar.today') }
                 </button>
                 <button @click="clearDateTime" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
-                    <i class="fas fa-eraser mr-1"></i> Clear
+                    <i class="fas fa-eraser mr-1"></i> ${ t('datePicker.clear') }
                 </button>
             </div>
         </div>
@@ -105,12 +105,12 @@
         <div class="modal-footer">
             <div class="t-meta flex-1 text-left">
                 <span v-if="pickerSelectedDate" class="t-body-strong">${formatPickerPreview()}</span>
-                <span v-else class="italic">No date selected</span>
+                <span v-else class="italic" v-text="t('datePicker.noDateSelected')"></span>
             </div>
             <button @click="closeDateTimePicker" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="applyDateTime" class="btn btn--primary">
                 <i class="fas fa-check"></i>
-                <span>Apply</span>
+                <span v-text="t('datePicker.apply')"></span>
             </button>
         </div>
     </div>

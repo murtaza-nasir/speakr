@@ -21,7 +21,7 @@ from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.search import LIKE_ESCAPE, contains_pattern
-from src.utils.localization import api_error, translate
+from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
 ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
@@ -151,7 +151,10 @@ def view_shared_recording(public_id):
         'audio_duration': recording.get_audio_duration()
     }
 
-    return render_template('share.html', recording=recording_data, transcript=processed_transcript, readable_mode=READABLE_PUBLIC_LINKS)
+    # The viewer's language for the embedded translations: their interface
+    # language when signed in, otherwise the browser's Accept-Language.
+    return render_template('share.html', recording=recording_data, transcript=processed_transcript,
+                           readable_mode=READABLE_PUBLIC_LINKS, user_language=request_language())
 
 
 @shares_bp.route('/share/audio/<string:public_id>')

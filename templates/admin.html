@@ -171,10 +171,10 @@
                      buttons appear when the strip overflows. Tab IDs
                      not needed (Vue v-show binds the content). -->
                 <div class="tabs-scroller flex-shrink-0" data-tabs-scroller>
-                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" aria-label="Scroll left">
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" :aria-label="t('adminDashboard.scrollLeft')">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <nav class="tabs px-3 sm:px-4" aria-label="Tabs">
+                    <nav class="tabs px-3 sm:px-4" :aria-label="t('adminDashboard.tabsLabel')">
                         <button v-if="!isTeamAdminOnly" @click="activeTab = 'users'"
                                 class="tab"
                                 :class="{ 'is-active': activeTab === 'users' }">
@@ -206,7 +206,7 @@
                             <i class="fas fa-database"></i><span>${t('adminDashboard.vectorStore')}</span>
                         </button>
                     </nav>
-                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right">
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" :aria-label="t('adminDashboard.scrollRight')">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -254,13 +254,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.email }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
-                                        <span v-if="user.is_admin" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">Yes</span>
-                                        <span v-else class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-pending-light)] text-[var(--text-pending-strong)]">No</span>
+                                        <span v-if="user.is_admin" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">${ t('common.yes') }</span>
+                                        <span v-else class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-pending-light)] text-[var(--text-pending-strong)]">${ t('common.no') }</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                         <button @click="togglePublicSharingPermission(user)"
                                                 class="inline-flex items-center"
-                                                :title="user.can_share_publicly ? 'Revoke public sharing permission' : 'Grant public sharing permission'">
+                                                :title="user.can_share_publicly ? t('tooltips.revokePublicSharing') : t('tooltips.grantPublicSharing')">
                                             <span v-if="user.can_share_publicly" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
                                                 <i class="fas fa-check mr-1"></i> ${t('adminDashboard.allowed')}
                                             </span>
@@ -278,7 +278,7 @@
                                             <button @click="editUser(user)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" :title="t('buttons.editUser')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button @click="toggleAdminStatus(user)" :class="user.is_admin ? 'text-[var(--text-warn-strong)]' : 'text-[var(--text-info-strong)]'" :title="user.is_admin ? 'Remove Admin' : 'Make Admin'">
+                                            <button @click="toggleAdminStatus(user)" :class="user.is_admin ? 'text-[var(--text-warn-strong)]' : 'text-[var(--text-info-strong)]'" :title="user.is_admin ? t('tooltips.removeAdmin') : t('tooltips.makeAdmin')">
                                                 <i class="fas" :class="user.is_admin ? 'fa-user-minus' : 'fa-user-shield'"></i>
                                             </button>
                                             <button @click="confirmDeleteUser(user)" class="text-[var(--text-danger)] hover:text-[var(--text-danger-hover)]" :title="t('buttons.deleteUser')">
@@ -290,10 +290,10 @@
                                 <tr v-if="filteredUsers.length === 0">
                                     <td colspan="8" class="px-6 py-4 text-center text-sm text-[var(--text-muted)]">
                                         <div v-if="isLoadingUsers">
-                                            <i class="fas fa-spinner fa-spin mr-2"></i> Loading users...
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> ${ t('adminDashboard.loadingUsers') }
                                         </div>
                                         <div v-else>
-                                            No users found.
+                                            ${ t('unifiedShareModal.noUsersFound') }
                                         </div>
                                     </td>
                                 </tr>
@@ -584,14 +584,14 @@
                             <div class="min-w-0">
                                 <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                                     <i class="fas fa-microphone-lines text-[var(--text-accent)]"></i>
-                                    <span>Transcription Models</span>
+                                    <span>${ t('adminDashboard.transcriptionModels') }</span>
                                 </h4>
-                                <p class="text-xs text-[var(--text-muted)] mt-0.5">Discover models on the active transcription provider, then choose which ones users can pick from at upload time.</p>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${ t('adminDashboard.transcriptionModelsDesc') }</p>
                             </div>
                             <button @click="discoverTranscriptionModels" :disabled="discoveringModels"
                                     class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
                                 <i :class="discoveringModels ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
-                                <span>${ discoveringModels ? 'Discovering…' : 'Discover' }</span>
+                                <span>${ discoveringModels ? t('adminDashboard.discovering') : t('adminDashboard.discover') }</span>
                             </button>
                         </div>
 
@@ -601,8 +601,8 @@
                             <span>${ modelDiscoveryError }</span>
                         </div>
                         <div v-if="modelDiscoveryResult" class="px-4 pt-3 text-xs text-[var(--text-muted)]">
-                            Active connector: <code class="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">${ modelDiscoveryResult.connector }</code>
-                            <span v-if="!modelDiscoveryResult.supported"> · no model-discovery API for this connector; add model IDs manually below</span>
+                            ${ t('adminDashboard.activeConnector') }: <code class="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">${ modelDiscoveryResult.connector }</code>
+                            <span v-if="!modelDiscoveryResult.supported"> · ${ t('adminDashboard.noDiscoveryApi') }</span>
                         </div>
 
                         <!-- Models table -->
@@ -611,11 +611,11 @@
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left t-label">
-                                        <th class="py-2 px-3 w-16">Visible</th>
-                                        <th class="py-2 px-3 w-16">Default</th>
-                                        <th class="py-2 px-3">Model ID</th>
-                                        <th class="py-2 px-3">Label shown to users</th>
-                                        <th class="py-2 px-3 w-24">Source</th>
+                                        <th class="py-2 px-3 w-16">${ t('adminDashboard.modelVisible') }</th>
+                                        <th class="py-2 px-3 w-16">${ t('transcriptTemplates.default') }</th>
+                                        <th class="py-2 px-3">${ t('adminDashboard.modelId') }</th>
+                                        <th class="py-2 px-3">${ t('adminDashboard.modelLabel') }</th>
+                                        <th class="py-2 px-3 w-24">${ t('adminDashboard.modelSource') }</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -624,7 +624,7 @@
                                         <td class="py-2 px-3 text-center"><input type="checkbox" v-model="row.visible" class="h-4 w-4"></td>
                                         <td class="py-2 px-3 text-center"><input type="radio" :value="row.value" v-model="transcriptionDefaultModel" :disabled="!row.visible" class="h-4 w-4"></td>
                                         <td class="py-2 px-3 font-mono text-xs text-[var(--text-primary)]">${ row.value }</td>
-                                        <td class="py-2 px-3"><input type="text" v-model="row.label" class="field field--sm" placeholder="Friendly label"></td>
+                                        <td class="py-2 px-3"><input type="text" v-model="row.label" class="field field--sm" :placeholder="t('adminDashboard.friendlyLabel')"></td>
                                         <td class="py-2 px-3 text-xs text-[var(--text-muted)]">${ row.source }</td>
                                     </tr>
                                 </tbody>
@@ -633,14 +633,14 @@
 
                         <div v-else class="empty">
                             <div class="empty__icon"><i class="fas fa-microphone-lines"></i></div>
-                            <div class="empty__title">No models configured</div>
-                            <div class="empty__body">Click <strong>Discover</strong> to probe the active connector, or add a model ID manually.</div>
+                            <div class="empty__title">${ t('adminDashboard.noModelsConfigured') }</div>
+                            <div class="empty__body">${ t('adminDashboard.noModelsConfiguredHelp') }</div>
                         </div>
 
                         <!-- Action row -->
                         <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
                             <button @click="addManualTranscriptionModel" class="btn btn--ghost btn--sm">
-                                <i class="fas fa-plus"></i><span>Add model ID</span>
+                                <i class="fas fa-plus"></i><span>${ t('adminDashboard.addModelId') }</span>
                             </button>
                             <span v-if="modelSaveMessage" class="text-sm ml-2"
                                   :class="modelSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
@@ -650,7 +650,7 @@
                             <button @click="saveVisibleTranscriptionModels" :disabled="savingModels"
                                     class="btn btn--primary btn--sm ml-auto">
                                 <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                                <span>${ savingModels ? 'Saving…' : 'Save selection' }</span>
+                                <span>${ savingModels ? t('adminDashboard.saving') : t('adminDashboard.saveSelection') }</span>
                             </button>
                         </div>
                     </div>
@@ -677,10 +677,10 @@
                                         <div class="text-sm font-medium text-[var(--text-primary)]">
                                             <span v-if="setting.setting_type === 'boolean'">
                                                 <span v-if="setting.value === 'true'" class="text-[var(--text-success-strong)]">
-                                                    <i class="fas fa-check-circle mr-1"></i> Enabled
+                                                    <i class="fas fa-check-circle mr-1"></i> ${ t('webhooks.enabled') }
                                                 </span>
                                                 <span v-else class="text-[var(--text-danger-strong)]">
-                                                    <i class="fas fa-times-circle mr-1"></i> Disabled
+                                                    <i class="fas fa-times-circle mr-1"></i> ${ t('adminDashboard.disabled') }
                                                 </span>
                                             </span>
                                             <span v-else-if="setting.key === 'transcript_length_limit' && setting.value === '-1'" class="text-[var(--text-info-strong)]">
@@ -708,10 +708,10 @@
                         
                         <div v-if="settings.length === 0" class="text-center py-8">
                             <div v-if="isLoadingSettings">
-                                <i class="fas fa-spinner fa-spin mr-2"></i> Loading settings...
+                                <i class="fas fa-spinner fa-spin mr-2"></i> ${ t('adminDashboard.loadingSettings') }
                             </div>
                             <div v-else class="text-[var(--text-muted)]">
-                                No system settings found.
+                                ${ t('adminDashboard.noSettingsFound') }
                             </div>
                         </div>
                     </div>
@@ -931,7 +931,7 @@
                         </p>
                         <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
                             <li><strong>${t('adminDashboard.tagCustomPrompt')}:</strong> ${t('adminDashboard.tagCustomPromptDesc')}</li>
-                            <li><strong>Folder Custom Prompt:</strong> Applied when recording is in a folder with a custom prompt (if Folders feature enabled)</li>
+                            <li><strong>${t('adminDashboard.folderCustomPrompt')}:</strong> ${t('adminDashboard.folderCustomPromptDesc')}</li>
                             <li><strong>${t('adminDashboard.userCustomPrompt')}:</strong> ${t('adminDashboard.userCustomPromptDesc')}</li>
                             <li><strong>${t('adminDashboard.adminDefaultPrompt')}:</strong> ${t('adminDashboard.adminDefaultPromptDesc')}</li>
                             <li><strong>${t('adminDashboard.systemFallback')}:</strong> ${t('adminDashboard.systemFallbackDesc')}</li>
@@ -960,7 +960,7 @@
                                         <span>${ t('preview.systemReplaced') }</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="pill-status pill-status--warn font-mono">{{example}}</span>
+                                        <span class="pill-status pill-status--warn font-mono">{{ '{{example}}' }}</span>
                                         <span>${ t('preview.userSupplied') }</span>
                                     </span>
                                 </div>
@@ -969,13 +969,13 @@
                                     <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.systemPrompt')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
                                         <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"><span v-html="formatPromptPreview('You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\nContext:\n- Current date: {current_date}')"></span>
-<span v-html="formatPromptPreview('- Recording date: {recording_date}')"></span> <span class="text-[var(--text-muted)]">(if meeting date is set)</span>
-<span v-html="formatPromptPreview('- Recording title: {recording_title}')"></span> <span class="text-[var(--text-muted)]">(if title is set)</span>
-<span v-html="formatPromptPreview('- Folder: {folder_name}')"></span> <span class="text-[var(--text-muted)]">(if recording is in a folder)</span>
-<span v-html="formatPromptPreview('- Tags applied to this transcript by the user: {tag_names}')"></span> <span class="text-[var(--text-muted)]">(if tags exist)</span>
-<span v-html="formatPromptPreview('- Information about the user: Name: {name}, Job title: {job_title}, Company: {company}')"></span> <span class="text-[var(--text-muted)]">(only the fields the user has filled in their account)</span>
+<span v-html="formatPromptPreview('- Recording date: {recording_date}')"></span> <span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.ifMeetingDate') }</span>
+<span v-html="formatPromptPreview('- Recording title: {recording_title}')"></span> <span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.ifTitle') }</span>
+<span v-html="formatPromptPreview('- Folder: {folder_name}')"></span> <span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.ifFolder') }</span>
+<span v-html="formatPromptPreview('- Tags applied to this transcript by the user: {tag_names}')"></span> <span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.ifTags') }</span>
+<span v-html="formatPromptPreview('- Information about the user: Name: {name}, Job title: {job_title}, Company: {company}')"></span> <span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.ifProfile') }</span>
 
-<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory.')"></span> (if language preference is set)</span></pre>
+<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory.')"></span> ${ t('adminDashboard.promptStructure.ifLanguage') }</span></pre>
                                     </div>
                                 </div>
 
@@ -988,14 +988,10 @@
 """
 
 Summarization Instructions:
-<span class="text-[var(--text-muted)]">/* This section is dynamically replaced with one of the following (in order of priority):
-   1. Combined tag prompts (if tags with custom prompts are selected)
-   2. User's personal summarization prompt (if set in account settings)
-   3. Admin default prompt (shown below)
-   4. System fallback prompt */</span>
+<span class="text-[var(--text-muted)]">${ t('adminDashboard.promptStructure.instructionsComment') }</span>
 <span v-if="defaultSummaryPrompt || originalDefaultPrompt" v-html="formatPromptPreview(defaultSummaryPrompt || originalDefaultPrompt)"></span>
 
-<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('{language_directive}')"></span> (e.g., "IMPORTANT: You MUST provide the summary in English. The entire response must be in English." — only added if language preference is set)</span></pre>
+<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('{language_directive}')"></span> ${ t('adminDashboard.promptStructure.languageDirectiveNote') }</span></pre>
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] mt-2">
                                         <i class="fas fa-info-circle mr-1"></i>
@@ -1053,13 +1049,13 @@ Summarization Instructions:
                                 <span class="ml-2 text-[var(--text-primary)] break-all">${ inquireStatus.embedding_model || 'all-MiniLM-L6-v2' }</span>
                             </div>
                             <div>
-                                <span class="text-[var(--text-muted)]">Provider:</span>
+                                <span class="text-[var(--text-muted)]">${ t('adminDashboard.embeddingProvider') }:</span>
                                 <span class="ml-2 text-[var(--text-primary)]">
                                     <template v-if="inquireStatus.embedding_provider === 'api'">
                                         API (${ inquireStatus.embedding_base_url })
                                     </template>
                                     <template v-else>
-                                        Local (sentence-transformers)
+                                        ${ t('adminDashboard.embeddingProviderLocal') }
                                     </template>
                                 </span>
                             </div>
@@ -1075,19 +1071,13 @@ Summarization Instructions:
                         <div class="flex items-start">
                             <i class="fas fa-exclamation-triangle text-[var(--text-warning-strong)] mt-0.5 mr-3"></i>
                             <div class="flex-1">
-                                <p class="font-semibold text-[var(--text-warning-strong)]">Embedding configuration changed</p>
-                                <p class="text-sm text-[var(--text-secondary)] mt-1">
-                                    ${ inquireStatus.total_chunks } stored chunks were embedded with
-                                    <code class="px-1 rounded bg-[var(--bg-tertiary)]">${ inquireStatus.embedding_identifier_stored }</code>,
-                                    but the active configuration is
-                                    <code class="px-1 rounded bg-[var(--bg-tertiary)]">${ inquireStatus.embedding_identifier }</code>.
-                                    Inquire mode will return wrong results until you re-embed all recordings.
-                                </p>
+                                <p class="font-semibold text-[var(--text-warning-strong)]">${ t('adminDashboard.embeddingConfigChanged') }</p>
+                                <p class="text-sm text-[var(--text-secondary)] mt-1" v-text="t('adminDashboard.embeddingConfigChangedDesc', { count: inquireStatus.total_chunks, stored: inquireStatus.embedding_identifier_stored, active: inquireStatus.embedding_identifier })"></p>
                                 <button @click="reembedAllRecordings"
                                         :disabled="isProcessingRecordings"
                                         class="mt-3 px-4 py-2 bg-[var(--bg-warning-strong)] text-white rounded-lg shadow hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
-                                    ${ isProcessingRecordings ? 'Re-embedding...' : 'Re-embed all recordings now' }
+                                    ${ isProcessingRecordings ? t('adminDashboard.reembedding') : t('adminDashboard.reembedAllNow') }
                                 </button>
                             </div>
                         </div>
@@ -1169,9 +1159,9 @@ Summarization Instructions:
                         <div v-if="inquireStatus.embedding_provider === 'api'" class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Embedding API tokens</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${ t('adminDashboard.embeddingApiTokens') }</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_tokens || 0).toLocaleString(uiLocale()) }</p>
-                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ inquireStatus.embedding_usage && inquireStatus.embedding_usage.request_count || 0 } API requests</p>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('adminDashboard.embeddingApiRequests', { count: inquireStatus.embedding_usage && inquireStatus.embedding_usage.request_count || 0 })"></p>
                                 </div>
                                 <i class="fas fa-coins text-3xl text-[var(--text-accent)] opacity-50"></i>
                             </div>
@@ -1180,9 +1170,9 @@ Summarization Instructions:
                         <div v-if="inquireStatus.embedding_provider === 'api'" class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Embedding API cost</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${ t('adminDashboard.embeddingApiCost') }</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">$${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_cost || 0).toFixed(4) }</p>
-                                    <p class="text-xs text-[var(--text-muted)] mt-1" v-if="inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_cost === 0">Provider did not return cost</p>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1" v-if="inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_cost === 0">${ t('adminDashboard.embeddingCostUnavailable') }</p>
                                 </div>
                                 <i class="fas fa-dollar-sign text-3xl text-[var(--text-accent)] opacity-50"></i>
                             </div>
@@ -1220,7 +1210,7 @@ Summarization Instructions:
                                  :class="processingResult.success ? 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]' : 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]'">
                                 <p class="font-medium">${ processingResult.message }</p>
                                 <div v-if="processingResult.failed && processingResult.failed.length > 0" class="mt-2">
-                                    <p class="text-sm font-medium">Failed recordings:</p>
+                                    <p class="text-sm font-medium">${ t('adminDashboard.failedRecordingsLabel') }:</p>
                                     <ul class="text-xs mt-1 space-y-1">
                                         <li v-for="fail in processingResult.failed" :key="fail.id">
                                             ID ${ fail.id }: ${ fail.title } - ${ fail.reason }
@@ -1239,13 +1229,13 @@ Summarization Instructions:
                         <!-- Re-embed all (always available) -->
                         <div class="mt-6 pt-4 border-t border-[var(--border-primary)]">
                             <p class="text-sm text-[var(--text-secondary)] mb-3">
-                                Re-embed every completed recording with the current configuration. Use this after switching <code class="px-1 rounded bg-[var(--bg-tertiary)]">EMBEDDING_MODEL</code> or <code class="px-1 rounded bg-[var(--bg-tertiary)]">EMBEDDING_BASE_URL</code>. Existing chunks are deleted and replaced.
+                                ${ t('adminDashboard.reembedHelp') }
                             </p>
                             <button @click="reembedAllRecordings"
                                     :disabled="isProcessingRecordings || (inquireStatus.processed_for_inquire || 0) === 0"
                                     class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
                                 <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
-                                ${ isProcessingRecordings ? 'Re-embedding...' : 'Re-embed all recordings' }
+                                ${ isProcessingRecordings ? t('adminDashboard.reembedding') : t('adminDashboard.reembedAll') }
                             </button>
                         </div>
                     </div>
@@ -1257,9 +1247,9 @@ Summarization Instructions:
                 <div class="tab-content" :class="{ hidden: activeTab !== 'groups' }">
                   <div class="tab-scroll">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">Group Management</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${ t('groups.title') }</h3>
                         <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="btn btn--primary">
-                            <i class="fas fa-plus mr-2"></i> Create Group
+                            <i class="fas fa-plus mr-2"></i> ${ t('groups.createTeam') }
                         </button>
                     </div>
 
@@ -1294,16 +1284,16 @@ Summarization Instructions:
                                             ${ parseInstant(group.created_at).toLocaleDateString(uiLocale()) }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                            <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" title="Manage Members">
+                                            <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" :title="t('tooltips.manageMembers')">
                                                 <i class="fas fa-users-cog"></i>
                                             </button>
-                                            <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" title="Manage Group Tags">
+                                            <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" :title="t('tooltips.manageTeamTags')">
                                                 <i class="fas fa-tags"></i>
                                             </button>
-                                            <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit Group">
+                                            <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" :title="t('tooltips.editTeam')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-[var(--text-danger)] hover:opacity-80" title="Delete Group">
+                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-[var(--text-danger)] hover:opacity-80" :title="t('tooltips.deleteTeam')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -1337,7 +1327,7 @@ Summarization Instructions:
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
                     <h3 class="modal-title">${t('adminDashboard.addNewUser')}</h3>
-                    <button @click="showAddUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <button @click="showAddUserModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <form @submit.prevent="addUser" class="contents">
                     <div class="modal-body">
@@ -1394,7 +1384,7 @@ Summarization Instructions:
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
                     <h3 class="modal-title">${t('adminDashboard.editUser')}</h3>
-                    <button @click="showEditUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <button @click="showEditUserModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <form @submit.prevent="updateUser" class="contents">
                     <div class="modal-body">
@@ -1462,7 +1452,7 @@ Summarization Instructions:
                     </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" @click="showEditUserModal = false" class="btn btn--ghost">Cancel</button>
+                        <button type="button" @click="showEditUserModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
                         <button type="submit" class="btn btn--primary">${t('adminDashboard.updateUser')}</button>
                     </div>
                 </form>
@@ -1473,15 +1463,15 @@ Summarization Instructions:
         <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">Confirm Delete</h3>
-                    <button @click="showDeleteUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('adminDashboard.confirmDelete') }</h3>
+                    <button @click="showDeleteUserModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the user <span class="font-semibold">${ userToDelete?.username }</span>? This action cannot be undone.</p>
+                    <p class="text-[var(--text-secondary)]" v-text="t('adminDashboard.deleteUserConfirm', { username: userToDelete?.username })"></p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showDeleteUserModal = false" class="btn btn--ghost">Cancel</button>
-                    <button @click="deleteUser" class="btn btn--danger">Delete User</button>
+                    <button @click="showDeleteUserModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                    <button @click="deleteUser" class="btn btn--danger">${ t('buttons.deleteUser') }</button>
                 </div>
             </div>
         </div>
@@ -1490,34 +1480,34 @@ Summarization Instructions:
         <div v-if="showEditSettingModal" class="modal-overlay">
             <div class="modal-panel modal-panel--md">
                 <div class="modal-header">
-                    <h3 class="modal-title">Edit System Setting</h3>
-                    <button @click="showEditSettingModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('adminDashboard.editSystemSetting') }</h3>
+                    <button @click="showEditSettingModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div v-if="editingSetting" class="modal-body space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Setting Key</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.settingKey') }</label>
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md font-mono text-sm">
                             ${ editingSetting.key }
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.description') }</label>
                         <div class="px-3 py-2 text-[var(--text-muted)] text-sm">
-                            ${ editingSetting.description || 'No description available' }
+                            ${ editingSetting.description || t('adminDashboard.noDescriptionAvailable') }
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Type</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.settingType') }</label>
                         <span class="inline-block px-2 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded text-xs">
                             ${ editingSetting.setting_type }
                         </span>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current Value</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.currentValue') }</label>
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md max-h-24 overflow-y-auto text-sm break-words">
                             <span v-if="editingSetting.key === 'transcript_length_limit' && editingSetting.value === '-1'">
                                 ${t('adminDashboard.noLimit')}
@@ -1536,17 +1526,17 @@ Summarization Instructions:
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Value</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">${ t('adminDashboard.newValue') }</label>
                         
                         <!-- Boolean type -->
                         <div v-if="editingSetting.setting_type === 'boolean'" class="flex items-center space-x-4">
                             <label class="flex items-center cursor-pointer">
                                 <input v-model="settingNewValue" type="radio" value="true" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="text-[var(--text-primary)]">Enabled</span>
+                                <span class="text-[var(--text-primary)]">${ t('webhooks.enabled') }</span>
                             </label>
                             <label class="flex items-center cursor-pointer">
                                 <input v-model="settingNewValue" type="radio" value="false" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="text-[var(--text-primary)]">Disabled</span>
+                                <span class="text-[var(--text-primary)]">${ t('adminDashboard.disabled') }</span>
                             </label>
                         </div>
                         
@@ -1556,12 +1546,12 @@ Summarization Instructions:
                             <div v-if="editingSetting.key === 'transcript_length_limit'" class="space-y-2">
                                 <div class="flex items-center space-x-2">
                                     <input v-model="settingUseNoLimit" type="checkbox" id="noLimit" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                    <label for="noLimit" class="text-sm text-[var(--text-secondary)]">No limit (use entire transcript)</label>
+                                    <label for="noLimit" class="text-sm text-[var(--text-secondary)]">${ t('adminDashboard.noLimitUseEntireTranscript') }</label>
                                 </div>
                                 <input v-if="!settingUseNoLimit" v-model.number="settingNewValue" type="number" min="1000" step="1000" 
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
                                        :placeholder="t('form.placeholderCharacterLimit')">
-                                <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">Recommended: 30000-50000 characters for most LLMs</small>
+                                <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">${ t('adminDashboard.transcriptLimitRecommendation') }</small>
                             </div>
                             
                             <!-- Zone picker for default_timezone (#412) -->
@@ -1612,7 +1602,7 @@ Summarization Instructions:
                         <!-- String type -->
                         <textarea v-else v-model="settingNewValue" rows="3"
                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                  :placeholder="'Enter value'"></textarea>
+                                  :placeholder="t('adminDashboard.enterValue')"></textarea>
                     </div>
                     
                     <div v-if="settingError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
@@ -1623,7 +1613,7 @@ Summarization Instructions:
                 <div class="modal-footer">
                     <button @click="showEditSettingModal = false"
                             class="btn btn--ghost">
-                        Cancel
+                        ${ t('buttons.cancel') }
                     </button>
                     <button @click="saveSettingValue"
                             class="btn btn--primary">
@@ -1637,23 +1627,23 @@ Summarization Instructions:
         <div v-if="showTeamModal" @click.self="closeTeamModal" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
-                    <button @click="closeTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ editingTeam ? t('groups.editTeam') : t('groups.createTeam') }</h3>
+                    <button @click="closeTeamModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <form @submit.prevent="saveTeam" class="contents">
                     <div class="modal-body">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('groups.teamName') } *</label>
                             <input v-model="teamForm.name" type="text" required
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                   placeholder="Enter group name">
+                                   :placeholder="t('groups.teamNamePlaceholder')">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${ t('adminDashboard.description') }</label>
                             <textarea v-model="teamForm.description" rows="3"
                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                      placeholder="Optional description"></textarea>
+                                      :placeholder="t('groups.optionalDescription')"></textarea>
                         </div>
                         <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
                             ${ teamError }
@@ -1663,11 +1653,11 @@ Summarization Instructions:
                     <div class="modal-footer">
                         <button type="button" @click="closeTeamModal"
                                 class="btn btn--ghost">
-                            Cancel
+                            ${ t('buttons.cancel') }
                         </button>
                         <button type="submit"
                                 class="btn btn--primary">
-                            ${ editingTeam ? 'Update Group' : 'Create Group' }
+                            ${ editingTeam ? t('groups.updateTeam') : t('groups.createTeam') }
                         </button>
                     </div>
                 </form>
@@ -1678,19 +1668,19 @@ Summarization Instructions:
         <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="modal-overlay">
             <div class="modal-panel modal-panel--lg">
                 <div class="modal-header">
-                    <h3 class="modal-title">Manage Group: ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title" v-text="t('groups.manageGroupTitle', { name: currentTeam?.name })"></h3>
+                    <button @click="closeManageTeamModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
 
                 <!-- Add Member Section -->
                 <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Add Member</h4>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.addMember') }</h4>
                     <div class="flex space-x-2">
                         <div class="flex-1">
                             <select v-model="newMemberUserId"
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="">Select a user...</option>
+                                <option value="">${ t('groups.selectUser') }</option>
                                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
                                     ${ user.username } (${ user.email })
                                 </option>
@@ -1699,20 +1689,20 @@ Summarization Instructions:
                         <div>
                             <select v-model="newMemberRole"
                                     class="px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="member">Member</option>
-                                <option value="admin">Admin</option>
+                                <option value="member">${ t('groups.roleMember') }</option>
+                                <option value="admin">${ t('groups.roleAdmin') }</option>
                             </select>
                         </div>
                         <button @click="addTeamMember" :disabled="!newMemberUserId"
                                 class="btn btn--primary">
-                            <i class="fas fa-plus"></i> Add
+                            <i class="fas fa-plus"></i> ${ t('unifiedShareModal.add') }
                         </button>
                     </div>
                 </div>
 
                 <!-- Current Members -->
                 <div>
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Current Members (${ teamMembers.length })</h4>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" v-text="t('groups.currentMembers', { count: teamMembers.length })"></h4>
                     <div v-if="teamMembers.length > 0" class="space-y-2">
                         <div v-for="member in teamMembers" :key="member.user_id"
                              class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
@@ -1726,11 +1716,11 @@ Summarization Instructions:
                             <div class="flex items-center space-x-2">
                                 <select v-model="member.role" @change="updateMemberRole(member)"
                                         class="px-2 py-1 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                    <option value="member">Member</option>
-                                    <option value="admin">Admin</option>
+                                    <option value="member">${ t('groups.roleMember') }</option>
+                                    <option value="admin">${ t('groups.roleAdmin') }</option>
                                 </select>
                                 <button @click="removeTeamMember(member)"
-                                        class="text-[var(--text-danger)] hover:opacity-80" title="Remove from group">
+                                        class="text-[var(--text-danger)] hover:opacity-80" :title="t('groups.removeFromGroup')">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
@@ -1750,11 +1740,11 @@ Summarization Instructions:
                     <button @click="syncTeamShares"
                             class="btn btn--primary">
                         <i class="fas fa-sync-alt"></i>
-                        Sync Group Shares
+                        ${ t('groups.syncTeamShares') }
                     </button>
                     <button @click="closeManageTeamModal"
                             class="btn btn--primary">
-                        Done
+                        ${ t('common.done') }
                     </button>
                 </div>
             </div>
@@ -1764,22 +1754,22 @@ Summarization Instructions:
         <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">Sync Group Shares</h3>
-                    <button @click="showSyncSharesModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.syncTeamShares') }</h3>
+                    <button @click="showSyncSharesModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                 <p class="mb-4 text-[var(--text-secondary)]">
-                    This will create shares for all recordings with group tags that have auto-sharing enabled.
+                    ${ t('groups.syncSharesExplain') }
                 </p>
                 <p class="text-[var(--text-muted)] text-sm">
                     <i class="fas fa-info-circle mr-1"></i>
-                    Only missing shares will be created - existing shares won't be duplicated.
+                    ${ t('groups.syncSharesOnlyMissing') }
                 </p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">Cancel</button>
+                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
                     <button @click="confirmSyncShares" class="btn btn--primary">
-                        <i class="fas fa-sync-alt mr-2"></i>Sync Now
+                        <i class="fas fa-sync-alt mr-2"></i>${ t('groups.syncNow') }
                     </button>
                 </div>
             </div>
@@ -1790,24 +1780,24 @@ Summarization Instructions:
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
                     <i class="fas fa-check-circle text-green-500"></i>
-                    <h3 class="modal-title">Sync Complete</h3>
-                    <button @click="showSyncResultsModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.syncCompleteTitle') }</h3>
+                    <button @click="showSyncResultsModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                 <div class="space-y-2">
                     <div class="flex justify-between text-[var(--text-secondary)]">
-                        <span>Shares created:</span>
+                        <span>${ t('groups.sharesCreated') }:</span>
                         <span class="font-semibold">${ syncResults.shares_created }</span>
                     </div>
                     <div class="flex justify-between text-[var(--text-secondary)]">
-                        <span>Recordings processed:</span>
+                        <span>${ t('groups.recordingsProcessed') }:</span>
                         <span class="font-semibold">${ syncResults.recordings_processed }</span>
                     </div>
                 </div>
                 </div>
                 <div class="modal-footer">
                     <button @click="showSyncResultsModal = false" class="btn btn--primary">
-                        Done
+                        ${ t('common.done') }
                     </button>
                 </div>
             </div>
@@ -1817,15 +1807,15 @@ Summarization Instructions:
         <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
                 <div class="modal-header">
-                    <h3 class="modal-title">Delete Group</h3>
-                    <button @click="showDeleteTeamModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title">${ t('groups.deleteTeam') }</h3>
+                    <button @click="showDeleteTeamModal = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
+                    <p class="text-[var(--text-secondary)]" v-text="t('groups.deleteGroupConfirm', { name: teamToDelete?.name })"></p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">Cancel</button>
-                    <button @click="deleteTeam" class="btn btn--danger">Delete Group</button>
+                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+                    <button @click="deleteTeam" class="btn btn--danger">${ t('groups.deleteTeam') }</button>
                 </div>
             </div>
         </div>
@@ -1834,8 +1824,8 @@ Summarization Instructions:
         <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="modal-overlay">
             <div class="modal-panel modal-panel--lg">
                 <div class="modal-header">
-                    <h3 class="modal-title">Manage Tags for ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamTagsModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <h3 class="modal-title" v-text="t('groups.manageTagsTitle', { name: currentTeam?.name })"></h3>
+                    <button @click="closeManageTeamTagsModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
 
@@ -1843,22 +1833,22 @@ Summarization Instructions:
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)]">
-                            ${ editingTeamTagId ? 'Edit Group Tag' : 'Create New Group Tag' }
+                            ${ editingTeamTagId ? t('groups.editTeamTag') : t('groups.createTeamTag') }
                         </h4>
                         <button v-if="editingTeamTagId" @click="cancelEditTeamTag" type="button" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                            <i class="fas fa-times mr-1"></i> Cancel
+                            <i class="fas fa-times mr-1"></i> ${ t('buttons.cancel') }
                         </button>
                     </div>
                     <form @submit.prevent="saveTeamTag" class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tag Name *</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.tagName') }</label>
                                 <input v-model="newTeamTag.name" type="text" required maxlength="50"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                       placeholder="e.g., Project Alpha">
+                                       :placeholder="t('groups.tagNamePlaceholder')">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.color') }</label>
                                 <input v-model="newTeamTag.color" type="color"
                                        class="w-full h-10 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] cursor-pointer">
                             </div>
@@ -1867,14 +1857,14 @@ Summarization Instructions:
                         <!-- Custom Prompt -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Custom Summarization Prompt
-                                <span class="text-[var(--text-muted)] font-normal">- Optional AI instructions</span>
+                                ${ t('reprocessModal.customSummaryPrompt') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalAiInstructions') }</span>
                             </label>
                             <textarea v-model="newTeamTag.custom_prompt" rows="3"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Enter custom instructions for AI summarization (e.g., 'Focus on action items and deadlines')"></textarea>
+                                   :placeholder="t('groups.tagPromptPlaceholder')"></textarea>
                             <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings with this tag will use this prompt for AI summaries and chat.
+                                ${ t('groups.tagPromptHelp') }
                             </p>
                         </div>
                         <!-- Title Prompt (#400) -->
@@ -1889,28 +1879,28 @@ Summarization Instructions:
                         <!-- Transcription Settings -->
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Default Language</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.defaultLanguage') }</label>
                                 <select v-model="newTeamTag.default_language"
                                         class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
-                                    <option value="">Auto-detect</option>
-                                    <option value="en">English</option>
-                                    <option value="es">Spanish</option>
-                                    <option value="fr">French</option>
-                                    <option value="de">German</option>
-                                    <option value="zh">Chinese</option>
-                                    <option value="ja">Japanese</option>
-                                    <option value="pt">Portuguese</option>
-                                    <option value="it">Italian</option>
+                                    <option value="">${ t('languages.autoDetect') }</option>
+                                    <option value="en">${ t('languages.en') }</option>
+                                    <option value="es">${ t('languages.es') }</option>
+                                    <option value="fr">${ t('languages.fr') }</option>
+                                    <option value="de">${ t('languages.de') }</option>
+                                    <option value="zh">${ t('languages.zh') }</option>
+                                    <option value="ja">${ t('languages.ja') }</option>
+                                    <option value="pt">${ t('languages.pt') }</option>
+                                    <option value="it">${ t('languages.it') }</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Min Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.minSpeakers') }</label>
                                 <input v-model.number="newTeamTag.default_min_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="1">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Max Speakers</label>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">${ t('editTagModal.maxSpeakers') }</label>
                                 <input v-model.number="newTeamTag.default_max_speakers" type="number" min="1" max="10"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
                                        placeholder="5">
@@ -1920,21 +1910,19 @@ Summarization Instructions:
                         <!-- Retention and Protection -->
                         <div>
                             <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Retention Period (days)
-                                <span class="text-[var(--text-muted)] font-normal">- Optional override for auto-deletion</span>
+                                ${ t('groups.retentionPeriod') }
+                                <span class="text-[var(--text-muted)] font-normal">- ${ t('groups.optionalRetentionOverride') }</span>
                             </label>
                             <input v-model.number="newTeamTag.retention_days" type="number" min="0" step="1"
                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                                   placeholder="Leave empty to use global retention">
-                            <p class="text-xs text-[var(--text-muted)] mt-1">
-                                Recordings with this tag will be deleted after this many days. Leave empty to use global retention (${ globalRetentionDays } days).
-                            </p>
+                                   :placeholder="t('groups.retentionPlaceholder')">
+                            <p class="text-xs text-[var(--text-muted)] mt-1" v-text="t('groups.retentionHelp', { days: globalRetentionDays })"></p>
                         </div>
                         <div class="flex items-center">
                             <input v-model="newTeamTag.protect_from_deletion" type="checkbox" id="protectFromDeletion"
                                    class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                             <label for="protectFromDeletion" class="text-xs text-[var(--text-secondary)]">
-                                <i class="fas fa-shield-alt mr-1"></i> Protect recordings with this tag from auto-deletion
+                                <i class="fas fa-shield-alt mr-1"></i> ${ t('groups.protectTagHelp') }
                             </label>
                         </div>
                         <div class="space-y-2">
@@ -1942,31 +1930,31 @@ Summarization Instructions:
                                 <input v-model="newTeamTag.auto_share_on_apply" type="checkbox" id="autoShareOnApply"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="autoShareOnApply" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-friends mr-1"></i> Auto-share recordings with all group members when this tag is applied
+                                    <i class="fas fa-user-friends mr-1"></i> ${ t('groups.autoShareTagHelp') }
                                 </label>
                             </div>
                             <div class="flex items-center">
                                 <input v-model="newTeamTag.share_with_group_lead" type="checkbox" id="shareWithGroupLead"
                                        class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <label for="shareWithGroupLead" class="text-xs text-[var(--text-secondary)]">
-                                    <i class="fas fa-user-tie mr-1"></i> Share recordings with group admins when this tag is applied
+                                    <i class="fas fa-user-tie mr-1"></i> ${ t('groups.shareWithAdminsTagHelp') }
                                 </label>
                             </div>
                             <p class="text-xs text-[var(--text-muted)] ml-6">
-                                Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                                ${ t('groups.autoShareNote') }
                             </p>
                         </div>
                         <div v-if="teamTagError" class="text-[var(--text-danger)] text-xs">${ teamTagError }</div>
                         <button type="submit" class="btn btn--primary">
                             <i :class="editingTeamTagId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
-                            ${ editingTeamTagId ? 'Update Tag' : 'Create Tag' }
+                            ${ editingTeamTagId ? t('buttons.updateTag') : t('buttons.createTag') }
                         </button>
                     </form>
                 </div>
 
                 <!-- Existing Group Tags -->
                 <div>
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Group Tags</h4>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.teamTags') }</h4>
                     <div v-if="teamTags.length > 0" class="space-y-3">
                         <div v-for="tag in teamTags" :key="tag.id"
                              class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
@@ -1977,22 +1965,22 @@ Summarization Instructions:
                                         <div class="text-sm font-medium text-[var(--text-primary)]">${ tag.name }</div>
                                         <div class="text-xs text-[var(--text-muted)] mt-1 space-x-3">
                                             <span v-if="tag.retention_days">
-                                                <i class="fas fa-clock mr-1"></i> ${ tag.retention_days } day retention
+                                                <i class="fas fa-clock mr-1"></i> ${ tag.retention_days } ${ t('groups.dayRetention') }
                                             </span>
                                             <span v-else>
-                                                <i class="fas fa-globe mr-1"></i> Global retention
+                                                <i class="fas fa-globe mr-1"></i> ${ t('groups.globalRetention') }
                                             </span>
                                             <span v-if="tag.protect_from_deletion" class="text-green-500">
-                                                <i class="fas fa-shield-alt mr-1"></i> Protected
+                                                <i class="fas fa-shield-alt mr-1"></i> ${ t('groups.protected') }
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
-                                    <button @click="editTeamTag(tag)" class="text-[var(--text-accent)] hover:opacity-80 px-2 py-1" title="Edit Tag">
+                                    <button @click="editTeamTag(tag)" class="text-[var(--text-accent)] hover:opacity-80 px-2 py-1" :title="t('buttons.editTag')">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="deleteTeamTag(tag)" class="text-[var(--text-danger)] hover:opacity-80 px-2 py-1" title="Delete Tag">
+                                    <button @click="deleteTeamTag(tag)" class="text-[var(--text-danger)] hover:opacity-80 px-2 py-1" :title="t('buttons.deleteTag')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -2002,21 +1990,21 @@ Summarization Instructions:
                             <div v-if="tag.custom_prompt || tag.default_language || tag.default_min_speakers || tag.default_max_speakers"
                                  class="mt-2 pt-2 border-t border-[var(--border-secondary)] space-y-1">
                                 <div v-if="tag.custom_prompt" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-comment-dots mr-1"></i> Custom prompt configured
+                                    <i class="fas fa-comment-dots mr-1"></i> ${ t('groups.customPromptConfigured') }
                                 </div>
                                 <div v-if="tag.default_language" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-language mr-1"></i> Language: ${ tag.default_language.toUpperCase() }
+                                    <i class="fas fa-language mr-1"></i> ${ t('metadata.language') }: ${ tag.default_language.toUpperCase() }
                                 </div>
                                 <div v-if="tag.default_min_speakers || tag.default_max_speakers" class="text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-users mr-1"></i> Speakers:
-                                    <span v-if="tag.default_min_speakers">${ tag.default_min_speakers }-</span><span v-if="tag.default_max_speakers">${ tag.default_max_speakers }</span><span v-else>auto</span>
+                                    <i class="fas fa-users mr-1"></i> ${ t('form.speakers') }:
+                                    <span v-if="tag.default_min_speakers">${ tag.default_min_speakers }-</span><span v-if="tag.default_max_speakers">${ tag.default_max_speakers }</span><span v-else>${ t('form.auto') }</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div v-else class="text-center py-8 text-[var(--text-muted)]">
                         <i class="fas fa-tags text-3xl mb-2"></i>
-                        <p class="text-sm">No group tags created yet</p>
+                        <p class="text-sm">${ t('groups.noTeamTags') }</p>
                     </div>
                 </div>
                 </div>
@@ -2180,23 +2168,23 @@ Summarization Instructions:
                         const r = await fetch('/admin/transcription/discover-models');
                         const data = await r.json();
                         if (!r.ok) {
-                            modelDiscoveryError.value = data.error || 'Discovery failed';
+                            modelDiscoveryError.value = data.error || t('adminDashboard.discoveryFailed');
                             modelDiscoveryResult.value = null;
                         } else {
                             modelDiscoveryResult.value = data;
                             if (data.supported && (!data.models || data.models.length === 0)) {
-                                modelDiscoveryError.value = 'Connector reports no models. Is the upstream service running?';
+                                modelDiscoveryError.value = t('adminDashboard.discoveryNoModels');
                             }
                         }
                     } catch (e) {
-                        modelDiscoveryError.value = 'Network error: ' + e.message;
+                        modelDiscoveryError.value = t('adminDashboard.networkErrorWithMessage', { error: e.message });
                     } finally {
                         discoveringModels.value = false;
                     }
                 };
 
                 const addManualTranscriptionModel = () => {
-                    const id = window.prompt('Enter the model id (e.g. whisper-1, large-v3, voxtral-mini-latest):');
+                    const id = window.prompt(t('adminDashboard.enterModelIdPrompt'));
                     if (!id) return;
                     manualModelRows.value.push({ value: id.trim(), label: id.trim() });
                 };
@@ -2222,14 +2210,16 @@ Summarization Instructions:
                             body: JSON.stringify({ options: visible, default_model: defaultModel }),
                         });
                         const data = await r.json();
-                        if (!r.ok) throw new Error(data.error || 'Save failed');
+                        if (!r.ok) throw new Error(data.error || t('adminDashboard.saveFailed'));
                         visibleTranscriptionModels.value = data.options || [];
                         transcriptionDefaultModel.value = data.default_model || null;
                         transcriptionDefaultModelSaved.value = data.default_model || null;
                         manualModelRows.value = [];
-                        modelSaveMessage.value = `Saved ${data.options.length} model${data.options.length === 1 ? '' : 's'}.`;
+                        modelSaveMessage.value = data.options.length === 1
+                            ? t('adminDashboard.modelsSavedOne')
+                            : t('adminDashboard.modelsSavedMany', { count: data.options.length });
                     } catch (e) {
-                        modelSaveMessage.value = 'Save failed: ' + e.message;
+                        modelSaveMessage.value = t('messages.saveParticipantsFailed', { error: e.message });
                         modelSaveError.value = true;
                     } finally {
                         savingModels.value = false;
@@ -2351,12 +2341,12 @@ Summarization Instructions:
                         // first because it is the longer pattern; prevents single-brace pass
                         // from biting into the inner {var}.
                         .replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g,
-                            '<span class="pill-status pill-status--warn font-mono" title="User-supplied variable. Filled at upload or reprocess.">{{$1}}</span>')
+                            '<span class="pill-status pill-status--warn font-mono" title="' + _escapeHtml(t('adminDashboard.userVariableTooltip')) + '">{{$1}}</span>')
                         // Blue for {system_var} — replaced by the framework (current_date,
                         // tag_names, transcript_text, ...). Only match identifier-shaped
                         // names so we don't mangle JSON-looking literals.
                         .replace(/\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g,
-                            '<span class="pill-status pill-status--info font-mono" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
+                            '<span class="pill-status pill-status--info font-mono" title="' + _escapeHtml(t('adminDashboard.systemPlaceholderTooltip')) + '">{$1}</span>');
                 };
                 {% endraw %}
                 
@@ -2408,7 +2398,7 @@ Summarization Instructions:
                             headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
                         });
                         const data = await r.json();
-                        if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+                        if (!r.ok) throw new Error(data.error || t('errors.requestFailed', { status: r.status }));
                         voiceEmbedding.value = data;
                     } catch (e) {
                         alert(e.message);   // how every other action on this page reports failure
@@ -2736,7 +2726,7 @@ Summarization Instructions:
                         } else {
                             const num = parseInt(settingNewValue.value);
                             if (isNaN(num) || num < 1000) {
-                                settingError.value = 'Please enter a valid number of at least 1000 characters';
+                                settingError.value = t('adminDashboard.errors.minCharacters');
                                 return;
                             }
                             finalValue = num.toString();
@@ -2744,32 +2734,32 @@ Summarization Instructions:
                     } else if (editingSetting.value.key === 'max_file_size_mb') {
                         const num = parseInt(settingNewValue.value);
                         if (isNaN(num) || num < 1 || num > 10000) {
-                            settingError.value = 'Please enter a valid size between 1 and 10000 MB';
+                            settingError.value = t('adminDashboard.errors.invalidFileSize');
                             return;
                         }
                         finalValue = num.toString();
                     } else if (editingSetting.value.key === 'asr_timeout_seconds') {
                         const totalSeconds = (settingTimeoutMinutes.value * 60) + settingTimeoutSeconds.value;
                         if (totalSeconds < 60) {
-                            settingError.value = 'Timeout must be at least 60 seconds';
+                            settingError.value = t('adminDashboard.errors.minTimeout');
                             return;
                         }
                         if (totalSeconds > 36000) {
-                            settingError.value = 'Timeout cannot exceed 10 hours (36000 seconds)';
+                            settingError.value = t('adminDashboard.errors.maxTimeout');
                             return;
                         }
                         finalValue = totalSeconds.toString();
                     } else if (editingSetting.value.setting_type === 'integer') {
                         const num = parseInt(settingNewValue.value);
                         if (isNaN(num)) {
-                            settingError.value = 'Please enter a valid integer';
+                            settingError.value = t('adminDashboard.errors.invalidInteger');
                             return;
                         }
                         finalValue = num.toString();
                     } else if (editingSetting.value.setting_type === 'float') {
                         const num = parseFloat(settingNewValue.value);
                         if (isNaN(num)) {
-                            settingError.value = 'Please enter a valid number';
+                            settingError.value = t('adminDashboard.errors.invalidNumber');
                             return;
                         }
                         finalValue = num.toString();
@@ -2814,7 +2804,7 @@ Summarization Instructions:
                         
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to update setting');
+                            throw new Error(errorData.error || t('adminDashboard.updateSettingFailed'));
                         }
                         
                         // Reload settings
@@ -2896,7 +2886,7 @@ Summarization Instructions:
                         
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to add user');
+                            throw new Error(errorData.error || t('adminDashboard.addUserFailed'));
                         }
                         
                         // Reset form and close modal
@@ -2967,7 +2957,7 @@ Summarization Instructions:
                         
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to update user');
+                            throw new Error(errorData.error || t('adminDashboard.updateUserFailed'));
                         }
                         
                         // Close modal and reload users
@@ -3003,7 +2993,7 @@ Summarization Instructions:
                         
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to delete user');
+                            throw new Error(errorData.error || t('adminDashboard.deleteUserFailed'));
                         }
                         
                         // Close modal and reload users
@@ -3035,7 +3025,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to toggle admin status');
+                            throw new Error(errorData.error || t('adminDashboard.toggleAdminFailed'));
                         }
 
                         // Reload users
@@ -3066,7 +3056,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to toggle public sharing permission');
+                            throw new Error(errorData.error || t('adminDashboard.togglePublicSharingFailed'));
                         }
 
                         // Reload users
@@ -3131,7 +3121,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to save group');
+                            throw new Error(error.error || t('groups.saveFailed'));
                         }
 
                         closeTeamModal();
@@ -3159,7 +3149,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to delete group');
+                            throw new Error(error.error || t('groups.deleteFailed'));
                         }
 
                         showDeleteTeamModal.value = false;
@@ -3191,7 +3181,7 @@ Summarization Instructions:
                 const loadTeamMembers = async (groupId) => {
                     try {
                         const response = await fetch(`/api/admin/groups/${groupId}`);
-                        if (!response.ok) throw new Error('Failed to load group members');
+                        if (!response.ok) throw new Error(t('groups.loadMembersFailed'));
                         const data = await response.json();
                         teamMembers.value = data.members || [];
                     } catch (error) {
@@ -3220,7 +3210,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to add member');
+                            throw new Error(error.error || t('groups.addMemberFailed'));
                         }
 
                         newMemberUserId.value = '';
@@ -3247,7 +3237,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to update role');
+                            throw new Error(error.error || t('groups.updateRoleFailed'));
                         }
                     } catch (error) {
                         teamMemberError.value = error.message;
@@ -3256,7 +3246,7 @@ Summarization Instructions:
                 };
 
                 const removeTeamMember = async (member) => {
-                    if (!confirm(`Remove ${member.username} from the group?`)) return;
+                    if (!confirm(t('groups.removeMemberConfirm', { username: member.username }))) return;
 
                     teamMemberError.value = '';
                     try {
@@ -3271,7 +3261,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to remove member');
+                            throw new Error(error.error || t('groups.removeMemberFailed'));
                         }
 
                         await loadTeamMembers(currentTeam.value.id);
@@ -3302,7 +3292,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to sync shares');
+                            throw new Error(error.error || t('groups.syncSharesFailed'));
                         }
 
                         const result = await response.json();
@@ -3348,7 +3338,7 @@ Summarization Instructions:
                 const loadTeamTags = async (groupId) => {
                     try {
                         const response = await fetch(`/api/groups/${groupId}/tags`);
-                        if (!response.ok) throw new Error('Failed to load group tags');
+                        if (!response.ok) throw new Error(t('groups.loadTagsFailed'));
                         const data = await response.json();
                         teamTags.value = data.tags || [];
                     } catch (error) {
@@ -3452,7 +3442,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || (editingTeamTagId.value ? 'Failed to update tag' : 'Failed to create tag'));
+                            throw new Error(error.error || (editingTeamTagId.value ? t('groups.updateTagFailed') : t('groups.createTagFailed')));
                         }
 
                         // Reset form and reload
@@ -3477,7 +3467,7 @@ Summarization Instructions:
                 };
 
                 const deleteTeamTag = async (tag) => {
-                    if (!confirm(`Delete the tag "${tag.name}"? This will remove the tag from all recordings.`)) return;
+                    if (!confirm(t('groups.deleteTagConfirm', { name: tag.name }))) return;
 
                     teamTagError.value = '';
                     try {
@@ -3492,7 +3482,7 @@ Summarization Instructions:
 
                         if (!response.ok) {
                             const error = await response.json();
-                            throw new Error(error.error || 'Failed to delete tag');
+                            throw new Error(error.error || t('groups.deleteTagFailed'));
                         }
 
                         await loadTeamTags(currentTeam.value.id);
@@ -3868,7 +3858,7 @@ Summarization Instructions:
                         console.error('Error processing recordings:', error);
                         processingResult.value = {
                             success: false,
-                            message: 'Failed to process recordings. Please try again.'
+                            message: t('adminDashboard.processRecordingsFailed')
                         };
                     } finally {
                         isProcessingRecordings.value = false;
@@ -3877,7 +3867,7 @@ Summarization Instructions:
                 
                 const reembedAllRecordings = async () => {
                     if (isProcessingRecordings.value) return;
-                    if (!confirm('Re-embed every completed recording with the current configuration? Existing chunks will be deleted and rebuilt. This may take a while and (in API mode) will incur cost.')) {
+                    if (!confirm(t('adminDashboard.reembedConfirm'))) {
                         return;
                     }
                     isProcessingRecordings.value = true;
@@ -3897,7 +3887,7 @@ Summarization Instructions:
                         await loadInquireStatus();
                     } catch (error) {
                         console.error('Error re-embedding:', error);
-                        processingResult.value = { success: false, message: 'Failed to re-embed recordings.' };
+                        processingResult.value = { success: false, message: t('adminDashboard.reembedFailed') };
                     } finally {
                         isProcessingRecordings.value = false;
                     }
@@ -3930,7 +3920,7 @@ Summarization Instructions:
                         console.error('Error processing recordings:', error);
                         processingResult.value = {
                             success: false,
-                            message: 'Failed to process recordings. Please try again.'
+                            message: t('adminDashboard.processRecordingsFailed')
                         };
                     } finally {
                         isProcessingRecordings.value = false;

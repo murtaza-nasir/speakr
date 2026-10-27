@@ -350,3 +350,39 @@ def test_every_api_error_code_is_a_snake_case_key():
                            'static', 'locales', 'en.json'), encoding='utf-8') as f:
         codes = json.load(f)['server']['apiError']
     assert codes and all(re.fullmatch(r'[a-z][a-z0-9_]*', c) for c in codes)
+
+
+# ---------------------------------------------------------------------------
+# Form validation messages (#477): fixed when the form class is defined,
+# shown in the language of the request that renders them.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('lang,required,mismatch', [
+    ('de', 'Dieses Feld ist erforderlich.', 'Die Passwörter müssen übereinstimmen.'),
+    ('en', 'This field is required.', 'Passwords must match.'),
+])
+def test_registration_form_errors_follow_accept_language(lang, required, mismatch):
+    prev = app.config.get('WTF_CSRF_ENABLED')
+    app.config['WTF_CSRF_ENABLED'] = False
+    try:
+        with mock.patch.dict(os.environ, {'ALLOW_REGISTRATION': 'true'}):
+            resp = app.test_client().post('/register', data={
+                'username': '', 'email': 'nobody@example.com',
+                'password': 'Aa1!aaaa', 'confirm_password': 'Aa1!aaab'},
+                headers={'Accept-Language': lang})
+    finally:
+        app.config['WTF_CSRF_ENABLED'] = prev
+    html = resp.get_data(as_text=True)
+    assert required in html
+    assert mismatch in html
+
+
+def test_lazy_translation_resolves_when_used():
+    from src.utils.localization import LazyTranslation
+    text = LazyTranslation('server.form.usernameLength', min=2, max=20)
+    with app.test_request_context('/', headers={'Accept-Language': 'fr'}):
+        assert str(text) == "Le nom d'utilisateur doit contenir entre 2 et 20 caractères."
+        # WTForms applies % with its own values; the catalog text is complete.
+        assert text % {'min': 2, 'max': 20, 'length': 1} == str(text)
+    with app.test_request_context('/'):
+        assert str(text) == 'Username must be between 2 and 20 characters long.'

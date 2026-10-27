@@ -9,9 +9,8 @@
             </div>
             <button @click="cancelDelete" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body">
-            Are you sure you want to delete "${recordingToDelete?.title || 'this recording'}"?
-        </div>
+        <div class="modal-body"
+             v-text="recordingToDelete?.title ? t('dialogs.deleteRecording.confirmNamed', { title: recordingToDelete.title }) : t('dialogs.deleteRecording.message')"></div>
         <div class="modal-footer">
             <button @click="cancelDelete" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="deleteRecording" class="btn btn--danger">${ t('buttons.delete') || 'Delete' }</button>

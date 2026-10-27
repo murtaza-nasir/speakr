@@ -301,6 +301,26 @@ def translate(key: str, language: Optional[str] = None, **params) -> str:
         lambda m: str(params[m.group(1)]) if m.group(1) in params else m.group(0), text)
 
 
+class LazyTranslation:
+    """
+    translate() deferred until the text is used: for messages fixed when a
+    module is imported, such as WTForms validator messages, that are shown
+    during a request in that request's language (#477).
+    """
+
+    def __init__(self, key: str, **params):
+        self.key = key
+        self.params = params
+
+    def __str__(self):
+        return translate(self.key, **self.params)
+
+    def __mod__(self, values):
+        # WTForms fills %(min)d-style values into a message; the catalog text
+        # takes its values from params instead.
+        return str(self)
+
+
 def format_number(value, language: Optional[str] = None, max_fraction_digits: int = 0,
                   grouping: bool = True) -> str:
     """

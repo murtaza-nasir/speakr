@@ -104,7 +104,7 @@
                         <!-- Speed -->
                         <button @click.stop="cyclePlaybackRate"
                                 class="px-2 h-8 flex items-center justify-center rounded-lg text-white hover:bg-white/20 transition-all"
-                                title="Playback speed">
+                                :title="t('tooltips.playbackSpeed')">
                             <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
                         </button>
 

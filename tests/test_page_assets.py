@@ -230,3 +230,78 @@ def test_loading_overlay_hides_the_page_from_the_first_paint():
     assert "html.app-loading body > *:not(.app-loading-overlay)" in overlay
     loader_js = open(os.path.join(ROOT, "static", "js", "loading.js"), encoding="utf-8").read()
     assert "document.documentElement.classList.remove('app-loading')" in loader_js
+
+
+# --- Public share page ----------------------------------------------------------
+
+@pytest.fixture
+def shared_recording():
+    """A recording with a public link, owned by a German-speaking user."""
+    from src.models import Recording, Share
+    with app.app_context():
+        s = uuid.uuid4().hex[:8]
+        owner = User(username=f"ps_{s}", email=f"ps_{s}@local.test", password="x", ui_language="de")
+        db.session.add(owner)
+        db.session.commit()
+        rec = Recording(user_id=owner.id, title="Share page test", audio_path="/tmp/x.mp3", status="COMPLETED")
+        db.session.add(rec)
+        db.session.commit()
+        share = Share(recording_id=rec.id, user_id=owner.id)
+        db.session.add(share)
+        db.session.commit()
+        ids = (owner.id, rec.id, share.public_id)
+    yield ids
+    with app.app_context():
+        Share.query.filter_by(recording_id=ids[1]).delete()
+        db.session.delete(db.session.get(Recording, ids[1]))
+        db.session.delete(db.session.get(User, ids[0]))
+        db.session.commit()
+
+
+def _bootstrap_locale(html):
+    import json
+    m = re.search(r"window\.__I18N_BOOTSTRAP = (\{.*?\});</script>", html, re.S)
+    assert m
+    assert html.index("window.__I18N_BOOTSTRAP") < html.index("/static/js/i18n.js")
+    data = json.loads(m.group(1))
+    return data["locale"], set(data["translations"])
+
+
+@pytest.mark.parametrize("accept, locale", [("fr-FR,fr;q=0.9", "fr"), ("pt", "pt-BR"), (None, "en")])
+def test_public_share_page_follows_the_visitors_browser_language(shared_recording, accept, locale):
+    """An anonymous visitor gets the Accept-Language locale, not the owner's."""
+    headers = {"Accept-Language": accept} if accept else {}
+    response = app.test_client().get(f"/share/{shared_recording[2]}", headers=headers)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert _bootstrap_locale(html) == (locale, {locale, "en"})
+    assert f'<html lang="{locale}"' in html
+
+
+def test_public_share_page_uses_a_signed_in_viewers_language(german_client, shared_recording):
+    response = german_client.get(f"/share/{shared_recording[2]}", headers={"Accept-Language": "fr"})
+    assert response.status_code == 200
+    assert _bootstrap_locale(response.get_data(as_text=True)) == ("de", {"de", "en"})
+
+
+# --- Sign-in pages (server-side text) ----------------------------------------
+
+@pytest.mark.parametrize("accept, locale", [("fr-FR,fr;q=0.9", "fr"), ("pt", "pt-BR"), (None, "en")])
+@pytest.mark.parametrize("path, key", [("/login", "authPages.loginTitle"), ("/register", "authPages.createAccount")])
+def test_sign_in_pages_follow_the_visitors_browser_language(path, key, accept, locale):
+    """The forms are rendered on the server in the Accept-Language locale, so
+    they read correctly without JavaScript."""
+    from markupsafe import escape
+    from src.utils.localization import translate
+    headers = {"Accept-Language": accept} if accept else {}
+    with patch.dict(os.environ, {"ALLOW_REGISTRATION": "true"}):
+        response = app.test_client().get(path, headers=headers)
+    assert response.status_code == 200, path
+    html = response.get_data(as_text=True)
+    assert f'<html lang="{locale}">' in html
+    with app.test_request_context():
+        heading = translate(key, locale)
+    assert heading != key
+    assert str(escape(heading)) in html
+    # No catalog key leaks into the page as literal text.
+    assert "authPages." not in html

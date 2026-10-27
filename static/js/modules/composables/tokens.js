@@ -15,6 +15,9 @@ const parseServerInstant = (s) => {
     return new Date(s);
 };
 
+// i18n.js may not have loaded yet; fall back to the English text.
+const t = (key, params, fallback) => (window.i18n ? window.i18n.t(key, params || {}) : fallback);
+
 export function useTokens({ showToast, setGlobalError }) {
     // State
     const tokens = ref([]);
@@ -47,7 +50,7 @@ export function useTokens({ showToast, setGlobalError }) {
     };
 
     const formatTokenDate = (dateString) => {
-        if (!dateString) return 'Never';
+        if (!dateString) return t('adminDashboard.never', {}, 'Never');
         const date = parseServerInstant(dateString);
         return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
     };
@@ -86,14 +89,14 @@ export function useTokens({ showToast, setGlobalError }) {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to load tokens');
+                throw new Error(t('apiTokens.loadFailed', {}, 'Failed to load tokens'));
             }
 
             const data = await response.json();
             tokens.value = data.tokens || [];
         } catch (error) {
             console.error('Error loading tokens:', error);
-            setGlobalError('Failed to load API tokens: ' + error.message);
+            setGlobalError(t('apiTokens.loadFailedWithError', { error: error.message }, 'Failed to load API tokens: ' + error.message));
         } finally {
             isLoadingTokens.value = false;
         }
@@ -101,7 +104,7 @@ export function useTokens({ showToast, setGlobalError }) {
 
     const createToken = async () => {
         if (!tokenForm.value.name || tokenForm.value.name.trim() === '') {
-            showToast('Please enter a token name', 'error');
+            showToast(t('apiTokens.enterName', {}, 'Please enter a token name'), 'error');
             return;
         }
 
@@ -122,7 +125,7 @@ export function useTokens({ showToast, setGlobalError }) {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to create token');
+                throw new Error(errorData.error || t('apiTokens.createFailed', {}, 'Failed to create token'));
             }
 
             const data = await response.json();
@@ -156,15 +159,15 @@ export function useTokens({ showToast, setGlobalError }) {
             showCreateTokenModal.value = false;
             showTokenSecretModal.value = true;
 
-            showToast('API token created successfully', 'success');
+            showToast(t('apiTokens.createdSuccess', {}, 'API token created successfully'), 'success');
         } catch (error) {
             console.error('Error creating token:', error);
-            showToast('Failed to create token: ' + error.message, 'error');
+            showToast(t('apiTokens.createFailedWithError', { error: error.message }, 'Failed to create token: ' + error.message), 'error');
         }
     };
 
     const revokeToken = async (tokenId, tokenName) => {
-        if (!confirm(`Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`)) {
+        if (!confirm(t('apiTokens.revokeConfirm', { name: tokenName }, `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`))) {
             return;
         }
 
@@ -181,22 +184,22 @@ export function useTokens({ showToast, setGlobalError }) {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to revoke token');
+                throw new Error(errorData.error || t('apiTokens.revokeFailed', {}, 'Failed to revoke token'));
             }
 
             // Remove from local list
-            tokens.value = tokens.value.filter(t => t.id !== tokenId);
+            tokens.value = tokens.value.filter(tok => tok.id !== tokenId);
 
-            showToast('Token revoked successfully', 'success');
+            showToast(t('apiTokens.revokedSuccess', {}, 'Token revoked successfully'), 'success');
         } catch (error) {
             console.error('Error revoking token:', error);
-            showToast('Failed to revoke token: ' + error.message, 'error');
+            showToast(t('apiTokens.revokeFailedWithError', { error: error.message }, 'Failed to revoke token: ' + error.message), 'error');
         }
     };
 
     const updateTokenName = async (tokenId, newName) => {
         if (!newName || newName.trim() === '') {
-            showToast('Token name cannot be empty', 'error');
+            showToast(t('apiTokens.nameEmpty', {}, 'Token name cannot be empty'), 'error');
             return;
         }
 
@@ -214,31 +217,31 @@ export function useTokens({ showToast, setGlobalError }) {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update token');
+                throw new Error(errorData.error || t('apiTokens.updateFailed', {}, 'Failed to update token'));
             }
 
             const data = await response.json();
 
             // Update local token
-            const token = tokens.value.find(t => t.id === tokenId);
+            const token = tokens.value.find(tok => tok.id === tokenId);
             if (token) {
                 token.name = data.name;
             }
 
-            showToast('Token name updated', 'success');
+            showToast(t('apiTokens.nameUpdated', {}, 'Token name updated'), 'success');
         } catch (error) {
             console.error('Error updating token:', error);
-            showToast('Failed to update token: ' + error.message, 'error');
+            showToast(t('apiTokens.updateFailedWithError', { error: error.message }, 'Failed to update token: ' + error.message), 'error');
         }
     };
 
     const copyTokenToClipboard = async (token) => {
         try {
             await navigator.clipboard.writeText(token);
-            showToast('Token copied to clipboard', 'success');
+            showToast(t('apiTokens.copied', {}, 'Token copied to clipboard'), 'success');
         } catch (error) {
             console.error('Error copying token:', error);
-            showToast('Failed to copy token to clipboard', 'error');
+            showToast(t('apiTokens.copyFailed', {}, 'Failed to copy token to clipboard'), 'error');
         }
     };
 

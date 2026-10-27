@@ -42,6 +42,14 @@ export function useUpload(state, utils) {
 
     const { setGlobalError, showToast, formatFileSize, onChatComplete, t } = utils;
 
+    // An upload error shows its message in the interface language; matchText keeps
+    // the English wording that getFriendlyError's text patterns recognise.
+    const uploadError = (message, matchText) => {
+        const err = new Error(message);
+        err.matchText = matchText;
+        return err;
+    };
+
     // --- Join several files into one recording ------------------------------
     // Offered once two or more files are queued. The queue order is the join
     // order; turning the switch on sorts the files by modified time and name.
@@ -692,8 +700,8 @@ export function useUpload(state, utils) {
                         }
                         const titleMatch = xhr.responseText.match(/<title>([^<]+)<\/title>/i);
                         const h1Match = xhr.responseText.match(/<h1>([^<]+)<\/h1>/i);
-                        reject(new Error(titleMatch?.[1] || h1Match?.[1] ||
-                            `Server error (${xhr.status}): Response was not JSON`));
+                        reject(uploadError(titleMatch?.[1] || h1Match?.[1] ||
+                            t('errors.serverError', { status: xhr.status }), `Server error (${xhr.status}): Response was not JSON`));
                         return;
                     }
 
@@ -701,15 +709,21 @@ export function useUpload(state, utils) {
                     try {
                         parsed = JSON.parse(xhr.responseText);
                     } catch {
-                        reject(new Error(`Invalid JSON response (${xhr.status})`));
+                        reject(uploadError(t('errors.responseUnreadable'), `Invalid JSON response (${xhr.status})`));
                         return;
                     }
 
                     if (xhr.status === 202 && (parsed.id || parsed.join_pending)) {
                         resolve(parsed);
                     } else if (!String(xhr.status).startsWith('2')) {
-                        let errorMsg = parsed.error || `Upload failed with status ${xhr.status}`;
-                        if (xhr.status === 413) errorMsg = parsed.error || `File too large. Max: ${parsed.max_size_mb?.toFixed(0) || maxFileSizeMB.value} MB.`;
+                        let errorMsg = parsed.error || t('errors.uploadFailedWithStatus', { status: xhr.status });
+                        // English twin for getFriendlyError's text patterns.
+                        let matchText = parsed.error || `Upload failed with status ${xhr.status}`;
+                        if (xhr.status === 413) {
+                            const maxMb = parsed.max_size_mb?.toFixed(0) || maxFileSizeMB.value;
+                            errorMsg = parsed.error || t('errors.fileTooLargeMaxSize', { size: maxMb });
+                            matchText = parsed.error || `File too large. Max: ${maxMb} MB.`;
+                        }
                         if (parsed.code === 'storage_quota_exceeded' && t) {
                             const quotaMsg = t('storageQuota.uploadRefused', {
                                 used: formatFileSize(parsed.used_bytes), quota: formatFileSize(parsed.quota_bytes),
@@ -720,19 +734,19 @@ export function useUpload(state, utils) {
                         // A file the server could not read (#482): the item says so in the UI language.
                         if (parsed.code === 'audio_decode_failed' && t) errorMsg = t('errors.audioDecodeFailedGuidance');
                         if (parsed.code === 'empty_file' && t) errorMsg = t('errors.emptyFileGuidance');
-                        const err = new Error(errorMsg);
+                        const err = uploadError(errorMsg, matchText);
                         err.code = parsed.code;
                         if (isCsrfRejection(xhr.status, parsed.error || '')) {
                             err.isCsrfRejection = true;
                         }
                         reject(err);
                     } else {
-                        reject(new Error('Unexpected success response from server after upload.'));
+                        reject(uploadError(t('errors.unexpectedResponse'), 'Unexpected success response from server after upload.'));
                     }
                 };
 
-                xhr.onerror = () => reject(new Error('Network error during upload'));
-                xhr.ontimeout = () => reject(new Error('Upload timed out'));
+                xhr.onerror = () => reject(uploadError(t('errors.networkErrorDuringUpload'), 'Network error during upload'));
+                xhr.ontimeout = () => reject(uploadError(t('errors.uploadTimedOut'), 'Upload timed out'));
 
                 // Without an explicit timeout, a stalled connection (no FIN/RST,
                 // just no progress) hangs forever and ontimeout never fires — so
@@ -875,7 +889,7 @@ export function useUpload(state, utils) {
                 const existingDate = warning.existing_created_at
                     ? utils.parseServerInstant(warning.existing_created_at).toLocaleDateString(window.i18n?.getIntlLocale?.())
                     : '';
-                const existingName = warning.existing_title || 'Unknown';
+                const existingName = warning.existing_title || t('sharing.unknown');
                 showToast(
                     `⚠️ ${existingName} (${existingDate})`,
                     'fa-copy'
@@ -901,7 +915,7 @@ export function useUpload(state, utils) {
             }
 
             // Show friendly error message
-            const friendlyErr = getFriendlyError(error.message, t, error.code);
+            const friendlyErr = getFriendlyError(error.matchText || error.message, t, error.code);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
 
             // If this failure is itself a resurfaced retry, just bump the retry
@@ -1163,13 +1177,13 @@ export function useUpload(state, utils) {
             if (!contentType.includes('application/json')) {
                 const text = await response.text();
                 const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
-                throw new Error(titleMatch?.[1] || `Server error (${response.status})`);
+                throw uploadError(titleMatch?.[1] || t('errors.serverErrorStatus', { status: response.status }), titleMatch?.[1] || `Server error (${response.status})`);
             }
 
             const data = await response.json();
 
             if (!response.ok || data.error) {
-                const err = new Error(data.error || `Processing failed with status ${response.status}`);
+                const err = uploadError(data.error || t('errors.processingFailedWithStatus', { status: response.status }), data.error || `Processing failed with status ${response.status}`);
                 err.code = data.code;
                 err.errorType = data.error_type;
                 throw err;
@@ -1224,7 +1238,7 @@ export function useUpload(state, utils) {
 
         } catch (error) {
             console.error('[Incognito] Processing failed:', error);
-            const friendlyErr = getFriendlyError(error.message, t, error.code, error.errorType);
+            const friendlyErr = getFriendlyError(error.matchText || error.message, t, error.code, error.errorType);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
             fileItem.status = 'failed';
             fileItem.error = error.message;

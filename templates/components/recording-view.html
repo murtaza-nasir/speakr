@@ -49,7 +49,7 @@
                 <div v-else class="audio-player-container">
                     <audio :src="audioBlobURL" controls class="w-full"
                            @loadedmetadata="normalizeLiveMediaDuration">
-                        Your browser does not support the audio element.
+                        ${ t('recording.audioElementUnsupported') }
                     </audio>
                 </div>
             </div>
@@ -60,7 +60,7 @@
                 <!-- Real-time file size display -->
                 <div v-if="isRecording && estimatedFileSize > 0" class="mt-1.5">
                     <p class="text-xs text-[var(--text-muted)]">
-                        Estimated size: <span class="font-mono">${formatFileSize(estimatedFileSize)}</span>
+                        ${ t('help.estimatedSize') }: <span class="font-mono">${formatFileSize(estimatedFileSize)}</span>
                         <span v-if="actualBitrate > 0" class="ml-2">
                             (${Math.round(actualBitrate / 1000)}kbps)
                         </span>
@@ -84,8 +84,8 @@
                         <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 flex-shrink-0 text-xs" style="margin-top: 2px;"></i>
                         <div class="flex-1 min-w-0">
                             <div class="text-xs text-amber-800 dark:text-amber-200 leading-snug">
-                                <strong class="font-semibold">Keep this app visible!</strong>
-                                <span class="block text-[10px] mt-0.5">Recording pauses if minimized or screen locked.</span>
+                                <strong class="font-semibold" v-text="t('recording.keepAppVisible')"></strong>
+                                <span class="block text-[10px] mt-0.5" v-text="t('recording.keepAppVisibleHint')"></span>
                             </div>
                         </div>
                     </div>
@@ -101,7 +101,7 @@
                 <div class="flex-1 min-h-0 flex flex-col p-2 md:p-3">
                     <label for="recordingNotes" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 flex-shrink-0">
                         <i class="fas fa-pencil-alt mr-1"></i>
-                        Recording Notes (Markdown)
+                        ${ t('recording.notesMarkdownLabel') }
                     </label>
                     <div class="recording-notes-editor recording-active" style="min-height: 150px;">
                         <textarea ref="recordingNotesEditor" v-model="recordingNotes"
@@ -123,8 +123,8 @@
                                    bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] transition-colors">
                         <span class="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)]">
                             <i class="fas fa-pencil-alt text-[var(--text-muted)]"></i>
-                            Recording Notes
-                            <span v-if="recordingNotes" class="text-[10px] text-[var(--text-muted)]">(has content)</span>
+                            ${ t('recording.notesLabel') }
+                            <span v-if="recordingNotes" class="text-[10px] text-[var(--text-muted)]" v-text="t('recording.hasContent')"></span>
                         </span>
                         <i :class="['fas text-[var(--text-muted)] transition-transform duration-200',
                                     expandedSection === 'notes' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
@@ -151,7 +151,7 @@
                                    hover:bg-[var(--bg-accent)] transition-colors">
                         <span class="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)]">
                             <i class="fas fa-sliders-h text-[var(--text-muted)]"></i>
-                            Upload Settings
+                            ${ t('recording.uploadSettings') }
                         </span>
                         <i :class="['fas text-[var(--text-muted)] transition-transform duration-200',
                                     expandedSection === 'settings' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
@@ -206,13 +206,13 @@
                                         </div>
                                         <div class="text-left">
                                             <span :class="['text-sm font-medium', incognitoMode ? 'text-violet-700 dark:text-violet-300' : 'text-[var(--text-secondary)]']">
-                                                Incognito Mode
+                                                ${ t('incognito.mode') }
                                             </span>
                                             <p v-if="!incognitoMode" class="text-[10px] text-[var(--text-muted)]">
-                                                Process without saving
+                                                ${ t('incognito.processWithoutSaving') }
                                             </p>
                                             <p v-else class="text-[10px] text-violet-600 dark:text-violet-400">
-                                                Session only &bull; Not saved to account
+                                                ${ t('incognito.sessionOnly') } &bull; ${ t('incognito.notSavedToAccount') }
                                             </p>
                                         </div>
                                     </div>
@@ -300,8 +300,8 @@
                         :disabled="incognitoProcessing"
                         class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-sm">
                     <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
-                    <span v-if="incognitoProcessing">Processing...</span>
-                    <span v-else>Process in Incognito</span>
+                    <span v-if="incognitoProcessing" v-text="t('incognito.processing')"></span>
+                    <span v-else v-text="t('incognito.processInIncognito')"></span>
                 </button>
                 <button @click="discardRecording"
                         :disabled="isFinalizingRecording"

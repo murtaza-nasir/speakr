@@ -5,6 +5,9 @@
 
 const { computed, ref } = Vue;
 
+// Guarded: the module can run before i18n.js has loaded.
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 export function useFolders({
     recordings,
     availableFolders,
@@ -33,7 +36,7 @@ export function useFolders({
 
     const getFolderName = (folderId) => {
         const folder = getFolderById(folderId);
-        return folder?.name || 'Folder';
+        return folder?.name || t('form.folder');
     };
 
     const getAvailableFoldersForRecording = () => {
@@ -57,7 +60,7 @@ export function useFolders({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update folder');
+                throw new Error(errorData.error || t('errors.updateFolderFailed'));
             }
 
             const updatedRecording = await response.json();
@@ -85,16 +88,16 @@ export function useFolders({
 
             if (folderId) {
                 const folder = availableFolders.value?.find(f => f.id === folderId);
-                showToast(`Moved to folder "${folder?.name || 'Unknown'}"`, 'fa-folder', 2000, 'success');
+                showToast(t('messages.movedToFolder', { name: folder?.name || t('sharing.unknown') }), 'fa-folder', 2000, 'success');
             } else {
-                showToast('Removed from folder', 'fa-folder-minus', 2000, 'success');
+                showToast(t('messages.removedFromFolder'), 'fa-folder-minus', 2000, 'success');
             }
 
             return updatedRecording;
 
         } catch (error) {
             console.error('Error updating folder:', error);
-            setGlobalError(`Failed to update folder: ${error.message}`);
+            setGlobalError(t('errors.updateFolderFailedDetail', { error: error.message }));
             return null;
         }
     };
@@ -121,7 +124,7 @@ export function useFolders({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update folders');
+                throw new Error(errorData.error || t('errors.updateFoldersFailed'));
             }
 
             const result = await response.json();
@@ -145,16 +148,16 @@ export function useFolders({
 
             if (folderId) {
                 const folder = availableFolders.value?.find(f => f.id === folderId);
-                showToast(`${result.updated_count} recording(s) moved to "${folder?.name || 'Unknown'}"`, 'fa-folder', 2000, 'success');
+                showToast(t(result.updated_count === 1 ? 'messages.recordingsMovedToFolder' : 'messages.recordingsMovedToFolderPlural', { count: result.updated_count, name: folder?.name || t('sharing.unknown') }), 'fa-folder', 2000, 'success');
             } else {
-                showToast(`${result.updated_count} recording(s) removed from folder`, 'fa-folder-minus', 2000, 'success');
+                showToast(t(result.updated_count === 1 ? 'messages.recordingsRemovedFromFolder' : 'messages.recordingsRemovedFromFolderPlural', { count: result.updated_count }), 'fa-folder-minus', 2000, 'success');
             }
 
             return result;
 
         } catch (error) {
             console.error('Error bulk updating folders:', error);
-            setGlobalError(`Failed to update folders: ${error.message}`);
+            setGlobalError(t('errors.updateFoldersFailedDetail', { error: error.message }));
             return null;
         }
     };

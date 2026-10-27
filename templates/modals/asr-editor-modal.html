@@ -23,7 +23,7 @@
             <div v-else-if="selectedRecording.incognito"
                  class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
                 <i class="fas fa-user-secret"></i>
-                <span>Audio not stored in incognito mode</span>
+                <span v-text="t('incognito.audioNotStored')"></span>
             </div>
             <!-- Custom Audio Player (Independent from main player) -->
             <div v-else class="flex items-center gap-3">
@@ -40,7 +40,7 @@
                 <!-- Play/Pause -->
                 <button @click="$refs.asrEditorAudioRef?.paused ? $refs.asrEditorAudioRef.play() : $refs.asrEditorAudioRef.pause()"
                         class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
-                        :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
+                        :title="modalAudioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
                     <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-sm" :style="!modalAudioIsPlaying ? 'margin-left: 2px' : ''"></i>
                 </button>
                 <!-- Time -->
@@ -68,7 +68,7 @@
                 <!-- Speed Control (compact - tap to cycle) -->
                 <button @click="cycleModalPlaybackRate(); if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.playbackRate = modalPlaybackRate"
                         class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                        title="Playback speed (tap to change)">
+                        :title="t('tooltips.playbackSpeedTapToChange')">
                     <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
                 </button>
             </div>

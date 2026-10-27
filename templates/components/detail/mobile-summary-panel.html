@@ -49,12 +49,12 @@
                             @click="generateSummary()"
                             :disabled="processedTranscription.isError">
                         <i class="fas fa-magic"></i>
-                        <span>Generate Summary</span>
+                        <span v-text="t('summary.generateSummary')"></span>
                     </button>
                     <button v-if="!processedTranscription.isError"
                             class="btn btn--ghost btn--icon"
                             @click="openCustomizeSummaryModal"
-                            title="Customise prompt">
+                            :title="t('summary.customizePrompt')">
                         <i class="fas fa-sliders-h"></i>
                     </button>
                 </div>

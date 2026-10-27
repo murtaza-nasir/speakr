@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="{{ user_language or 'en' }}" class="h-full">
 <head>
     <meta charset="UTF-8">
     {% include 'includes/theme_account.html' %}
@@ -11,6 +11,8 @@
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/axios.min.js') }}"></script>
+    {% include 'includes/i18n_bootstrap.html' %}
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
 
@@ -70,13 +72,13 @@
                 <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr" class="app-logo w-8 h-8">
                 <div>
                     <h1 class="text-xl font-bold text-[var(--text-primary)]">${ recording.title }</h1>
-                    <p class="text-sm text-[var(--text-muted)]">Shared Recording</p>
+                    <p class="text-sm text-[var(--text-muted)]">${ t('sharePage.subtitle') }</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
                 <button @click="toggleDarkMode"
                         class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        title="Toggle Theme">
+                        :title="t('buttons.toggleTheme')">
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 </button>
             </div>
@@ -91,7 +93,7 @@
                     <div v-if="recording.audio_deleted_at"
                          class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
                         <i class="fas fa-info-circle"></i>
-                        <span>The audio file was removed. The transcript and summary remain available.</span>
+                        <span>${ t('help.audioDeletedMessage') }</span>
                     </div>
                     <!-- Custom Audio/Video Player -->
                     <div v-else>
@@ -110,7 +112,7 @@
                         <!-- Play/Pause -->
                         <button @click="toggleAudioPlayback"
                                 class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
-                                :title="audioIsPlaying ? 'Pause' : 'Play'">
+                                :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
                             <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-sm" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
                         </button>
                         <!-- Time -->
@@ -122,7 +124,7 @@
                         <div class="relative flex-shrink-0">
                             <button @click="showSpeedMenu = !showSpeedMenu"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-accent)] hover:opacity-80 transition-all"
-                                    title="Playback speed">
+                                    :title="t('tooltips.playbackSpeed')">
                                 <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
                             </button>
                             <!-- Dropdown menu (opens downward) -->
@@ -148,11 +150,13 @@
                         <!-- Volume -->
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button @click="toggleAudioMute"
+                                    :title="audioIsMuted || playerVolume === 0 ? t('tooltips.unmute') : t('tooltips.mute')"
                                     class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
                                 <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
                             </button>
                             <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
                                    @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                   :aria-label="t('speakerModal.volume')"
                                    class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
                         </div>
                     </div>
@@ -171,7 +175,7 @@
                                         ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
-                            <i class="fas fa-file-text mr-2"></i>Transcription
+                            <i class="fas fa-file-text mr-2"></i>${ t('transcription.title') }
                         </button>
                         {% if recording.summary %}
                         <button @click="activeTab = 'summary'"
@@ -181,7 +185,7 @@
                                         ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
-                            <i class="fas fa-file-alt mr-2"></i>Summary
+                            <i class="fas fa-file-alt mr-2"></i>${ t('summary.title') }
                         </button>
                         {% endif %}
                         {% if recording.notes %}
@@ -192,7 +196,7 @@
                                         ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
-                            <i class="fas fa-sticky-note mr-2"></i>Notes
+                            <i class="fas fa-sticky-note mr-2"></i>${ t('notes.title') }
                         </button>
                         {% endif %}
                     </div>
@@ -209,18 +213,18 @@
                             <div v-if="readableMode ? hasDialogue : processedTranscription.hasDialogue" class="view-mode-toggle">
                                 <button @click="transcriptView = 'simple'"
                                         :class="['toggle-button', transcriptView === 'simple' ? 'active' : '']">
-                                    <i class="fas fa-list mr-1"></i>Simple
+                                    <i class="fas fa-list mr-1"></i>${ t('transcription.simple') }
                                 </button>
                                 <button @click="transcriptView = 'bubble'"
                                         :class="['toggle-button', transcriptView === 'bubble' ? 'active' : '']">
-                                    <i class="fas fa-comments mr-1"></i>Bubble
+                                    <i class="fas fa-comments mr-1"></i>${ t('transcription.bubble') }
                                 </button>
                             </div>
                             <div class="flex items-center gap-2">
                                 <div v-if="!recording.audio_deleted_at && (readableMode ? hasDialogue : processedTranscription.hasDialogue)"
                                      class="follow-player-control text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                                      @click="toggleFollowPlayerMode"
-                                     :title="followPlayerMode ? 'Auto-scroll enabled' : 'Auto-scroll disabled'">
+                                     :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
                                     <input type="checkbox"
                                            :checked="followPlayerMode"
                                            @click.stop="toggleFollowPlayerMode"
@@ -228,7 +232,7 @@
                                     <i class="fas fa-arrows-alt-v follow-icon"></i>
                                 </div>
                                 <button @click="copyTranscript" class="copy-btn">
-                                    <i class="fas fa-copy mr-1"></i>Copy
+                                    <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
                                 </button>
                             </div>
                         </div>
@@ -242,7 +246,7 @@
                             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                 <div class="speaker-legend-title">
                                     <i class="fas fa-users"></i>
-                                    Speakers
+                                    ${ t('form.speakers') }
                                     <span class="speaker-count-indicator">({{ transcript.speakers|length }})</span>
                                 </div>
                                 <i class="fas fa-chevron-down speaker-legend-toggle"></i>
@@ -307,7 +311,7 @@
                             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                 <div class="speaker-legend-title">
                                     <i class="fas fa-users"></i>
-                                    Speakers
+                                    ${ t('form.speakers') }
                                     <span class="speaker-count-indicator">(${processedTranscription.speakers.length})</span>
                                 </div>
                                 <i class="fas fa-chevron-down speaker-legend-toggle"></i>
@@ -372,7 +376,7 @@
                     <div v-show="activeTab === 'summary'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="flex items-center justify-end mb-4 flex-shrink-0">
                             <button @click="copySummary" class="copy-btn">
-                                <i class="fas fa-copy mr-1"></i>Copy
+                                <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
                             </button>
                         </div>
                         <div class="w-full flex-1 overflow-y-auto summary-box">
@@ -386,7 +390,7 @@
                     <div v-show="activeTab === 'notes'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="flex items-center justify-end mb-4 flex-shrink-0">
                             <button @click="copyNotes" class="copy-btn">
-                                <i class="fas fa-copy mr-1"></i>Copy
+                                <i class="fas fa-copy mr-1"></i>${ t('buttons.copy') }
                             </button>
                         </div>
                         <div class="w-full flex-1 overflow-y-auto notes-box">
@@ -404,10 +408,10 @@
                 <div class="flex items-center gap-2">
                     <span>&copy; {{ now.year }} Speakr</span>
                     <span class="hidden sm:inline">•</span>
-                    <span class="text-xs">Powered by advanced AI transcription</span>
+                    <span class="text-xs">${ t('sharePage.poweredBy') }</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs">Built with</span>
+                    <span class="text-xs">${ t('sharePage.builtWith') }</span>
                     <a href="https://github.com/murtaza-nasir/speakr"
                        target="_blank"
                        rel="noopener noreferrer"
@@ -427,11 +431,37 @@
     <script>
         const { createApp, ref, computed } = Vue;
 
+        // Translations come embedded in the page (includes/i18n_bootstrap.html)
+        // for the viewer's language: their own interface language when signed
+        // in, else the browser's Accept-Language. A locale that was not
+        // embedded (e.g. a saved preferredLanguage) is fetched here.
+        const i18nVersion = ref(0);
+        if (window.i18n) {
+            window.addEventListener('i18nReady', () => { i18nVersion.value++; });
+            if (!window.i18n.isReady) {
+                window.i18n.init({{ (user_language or 'en')|tojson }});
+            }
+        }
+
         const app = createApp({
             setup() {
+                // Reading i18nVersion makes templates re-render when the
+                // translations finish loading.
+                function t(key, params) {
+                    i18nVersion.value;
+                    return window.i18n ? window.i18n.t(key, params || {}) : key;
+                }
                 const appElement = document.querySelector('#app');
                 const recordingData = JSON.parse(appElement.dataset.recording);
                 const recording = ref(recordingData);
+
+                function updateDocumentTitle() {
+                    if (!window.i18n || !window.i18n.isReady) return;
+                    const title = t('sharePage.pageTitle', { title: recording.value.title || '' });
+                    if (title !== 'sharePage.pageTitle') document.title = title;
+                }
+                updateDocumentTitle();
+                window.addEventListener('i18nReady', updateDocumentTitle);
                 const activeTab = ref('transcription');
                 const transcriptView = ref('simple');
                 const audioPlayer = ref(null);
@@ -760,7 +790,7 @@
                     }
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast('Transcription copied to clipboard!');
+                        showToast(tr('messages.transcriptionCopied', 'Transcription copied to clipboard!'));
                     });
                 }
 
@@ -769,7 +799,7 @@
                     const textToCopy = recording.value.summary_raw || recording.value.summary;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast('Summary copied to clipboard!');
+                        showToast(tr('messages.summaryCopied', 'Summary copied to clipboard!'));
                     });
                 }
 
@@ -778,7 +808,7 @@
                     const textToCopy = recording.value.notes_raw || recording.value.notes;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast('Notes copied to clipboard!');
+                        showToast(tr('messages.notesCopied', 'Notes copied to clipboard!'));
                     });
                 }
 
@@ -806,6 +836,16 @@
 
                     localStorage.setItem('darkMode', newDarkMode.toString());
                     if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
+                }
+
+                // Translate with an English fallback (this public page may
+                // render without the i18n bundle).
+                function tr(key, fallback) {
+                    if (window.i18n && typeof window.i18n.t === 'function') {
+                        const value = window.i18n.t(key);
+                        if (value && value !== key) return value;
+                    }
+                    return fallback;
                 }
 
                 function showToast(message) {
@@ -841,6 +881,7 @@
                 }
 
                 return {
+                    t,
                     recording,
                     activeTab,
                     transcriptView,

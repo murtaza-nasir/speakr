@@ -25,6 +25,15 @@
 
     if (!list) return; // template not on this page
 
+    // Translate with an English fallback (i18n may not be ready yet).
+    function tr(key, fallback, params) {
+        if (window.i18n) {
+            const value = window.i18n.t(key, params || {});
+            if (value && value !== key) return value;
+        }
+        return fallback;
+    }
+
     const csrfToken = () => {
         const el = document.querySelector('meta[name="csrf-token"]');
         return el ? el.getAttribute('content') : '';
@@ -42,7 +51,7 @@
         let body = null;
         try { body = text ? JSON.parse(text) : null; } catch (_) { body = null; }
         if (!resp.ok) {
-            const err = new Error((body && body.error) || ('HTTP ' + resp.status));
+            const err = new Error((body && body.error) || tr('errors.serverErrorStatus', 'HTTP ' + resp.status, { status: resp.status }));
             err.status = resp.status;
             throw err;
         }
@@ -71,10 +80,13 @@
     }
 
     function statusBadge(wh) {
-        if (wh.auto_paused) return '<span class="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-600">auto-paused</span>';
-        if (!wh.enabled) return '<span class="text-xs px-2 py-0.5 rounded bg-gray-500/15 text-gray-500">disabled</span>';
-        if (wh.consecutive_failures > 0) return '<span class="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-500">' + Number(wh.consecutive_failures) + ' consecutive failures</span>';
-        return '<span class="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600">healthy</span>';
+        if (wh.auto_paused) return '<span class="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-600">' + escapeHtml(tr('webhooks.statusAutoPaused', 'auto-paused')) + '</span>';
+        if (!wh.enabled) return '<span class="text-xs px-2 py-0.5 rounded bg-gray-500/15 text-gray-500">' + escapeHtml(tr('webhooks.statusDisabled', 'disabled')) + '</span>';
+        if (wh.consecutive_failures > 0) {
+            const n = Number(wh.consecutive_failures);
+            return '<span class="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-500">' + escapeHtml(tr('webhooks.statusFailures', n + ' consecutive failures', { count: n })) + '</span>';
+        }
+        return '<span class="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600">' + escapeHtml(tr('webhooks.statusHealthy', 'healthy')) + '</span>';
     }
 
     function deliveryStatusBadge(d) {
@@ -84,11 +96,17 @@
             failed: 'bg-amber-500/15 text-amber-600',
             permanent_failure: 'bg-red-500/15 text-red-500'
         }[d.status] || 'bg-gray-500/15 text-gray-500';
-        return '<span class="text-xs px-2 py-0.5 rounded ' + cls + '">' + escapeHtml(d.status) + '</span>';
+        const label = {
+            success: tr('webhooks.deliverySuccess', 'success'),
+            pending: tr('webhooks.deliveryPending', 'pending'),
+            failed: tr('webhooks.deliveryFailed', 'failed'),
+            permanent_failure: tr('webhooks.deliveryPermanentFailure', 'permanent failure')
+        }[d.status] || d.status;
+        return '<span class="text-xs px-2 py-0.5 rounded ' + cls + '">' + escapeHtml(label) + '</span>';
     }
 
     function eventChips(events) {
-        if (!events || !events.length) return '<span class="text-xs text-[var(--text-muted)]">no events</span>';
+        if (!events || !events.length) return '<span class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.noEvents', 'no events')) + '</span>';
         return events.map(function (e) {
             return '<span class="text-xs px-2 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] mr-1 mb-1 inline-block">' + escapeHtml(e) + '</span>';
         }).join('');
@@ -106,19 +124,19 @@
             +       '</div>'
             +       '<p class="mt-1 text-xs font-mono text-[var(--text-muted)] break-all">' + escapeHtml(wh.url) + '</p>'
             +       '<div class="mt-2">' + eventChips(wh.events) + '</div>'
-            +       '<p class="mt-2 text-xs text-[var(--text-muted)]">Last delivery: ' + escapeHtml(fmt(wh.last_delivery_at)) + '</p>'
+            +       '<p class="mt-2 text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.lastDelivery', 'Last delivery: ' + fmt(wh.last_delivery_at), { time: fmt(wh.last_delivery_at) })) + '</p>'
             +     '</div>'
             +     '<div class="flex flex-wrap items-center gap-2 shrink-0">'
-            +       '<button data-action="test" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="Send a synthetic webhook.test event"><i class="fas fa-paper-plane mr-1"></i>Test</button>'
-            +       '<button data-action="deliveries" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-list mr-1"></i>Deliveries</button>'
-            +       '<button data-action="rotate" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="Rotate HMAC secret"><i class="fas fa-key mr-1"></i>Rotate</button>'
-            +       '<button data-action="edit" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-pen mr-1"></i>Edit</button>'
-            +       '<button data-action="delete" class="px-2 py-1 text-xs rounded bg-red-500/10 hover:bg-red-500/20 text-red-500"><i class="fas fa-trash mr-1"></i>Delete</button>'
+            +       '<button data-action="test" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="' + escapeHtml(tr('webhooks.testTitle', 'Send a synthetic webhook.test event')) + '"><i class="fas fa-paper-plane mr-1"></i>' + escapeHtml(tr('webhooks.test', 'Test')) + '</button>'
+            +       '<button data-action="deliveries" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-list mr-1"></i>' + escapeHtml(tr('webhooks.deliveries', 'Deliveries')) + '</button>'
+            +       '<button data-action="rotate" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]" title="' + escapeHtml(tr('webhooks.rotateTitle', 'Rotate HMAC secret')) + '"><i class="fas fa-key mr-1"></i>' + escapeHtml(tr('webhooks.rotate', 'Rotate')) + '</button>'
+            +       '<button data-action="edit" class="px-2 py-1 text-xs rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-button-hover)] text-[var(--text-secondary)]"><i class="fas fa-pen mr-1"></i>' + escapeHtml(tr('common.edit', 'Edit')) + '</button>'
+            +       '<button data-action="delete" class="px-2 py-1 text-xs rounded bg-red-500/10 hover:bg-red-500/20 text-red-500"><i class="fas fa-trash mr-1"></i>' + escapeHtml(tr('common.delete', 'Delete')) + '</button>'
             +     '</div>'
             +   '</div>'
             +   '<div class="mt-3 hidden" data-deliveries-panel>'
             +     '<div class="border-t border-[var(--border-primary)] pt-3">'
-            +       '<h4 class="text-xs font-medium text-[var(--text-muted)] mb-2">Recent deliveries</h4>'
+            +       '<h4 class="text-xs font-medium text-[var(--text-muted)] mb-2">' + escapeHtml(tr('webhooks.recentDeliveries', 'Recent deliveries')) + '</h4>'
             +       '<div data-deliveries-list class="space-y-1 text-xs"></div>'
             +     '</div>'
             +   '</div>'
@@ -126,7 +144,7 @@
     }
 
     function showModalFor(webhook) {
-        modalTitle.textContent = webhook ? 'Edit webhook' : 'New webhook';
+        modalTitle.textContent = webhook ? tr('webhooks.modalTitleEdit', 'Edit webhook') : tr('webhooks.modalTitleNew', 'New webhook');
         idInput.value = webhook ? webhook.id : '';
         nameInput.value = webhook ? webhook.name : '';
         urlInput.value = webhook ? webhook.url : '';
@@ -162,7 +180,7 @@
             allEventTypes = body.event_types || [];
             list.replaceChildren();
             if (!body.webhooks || body.webhooks.length === 0) {
-                list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">No webhooks configured. Add one to start receiving event notifications.</p>');
+                list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.empty', 'No webhooks configured. Add one to start receiving event notifications.')) + '</p>');
                 return;
             }
             body.webhooks.forEach(function (wh) { list.insertAdjacentHTML('beforeend', renderWebhookCard(wh)); });
@@ -174,7 +192,7 @@
             });
         } catch (e) {
             list.replaceChildren();
-            list.insertAdjacentHTML('beforeend', '<p class="text-sm text-red-500">Error loading webhooks: ' + escapeHtml(e.message) + '</p>');
+            list.insertAdjacentHTML('beforeend', '<p class="text-sm text-red-500">' + escapeHtml(tr('webhooks.loadFailed', 'Error loading webhooks: ' + e.message, { error: e.message })) + '</p>');
         }
     }
     window.loadWebhooks = loadWebhooks;
@@ -185,14 +203,14 @@
                 const wh = await fetchJson('/api/v1/webhooks/' + Number(id));
                 showModalFor(wh);
             } else if (action === 'delete') {
-                if (!confirm('Delete this webhook? Past deliveries will be removed too.')) return;
+                if (!confirm(tr('webhooks.confirmDelete', 'Delete this webhook? Past deliveries will be removed too.'))) return;
                 await fetchJson('/api/v1/webhooks/' + Number(id), { method: 'DELETE' });
                 await loadWebhooks();
             } else if (action === 'test') {
                 await fetchJson('/api/v1/webhooks/' + Number(id) + '/test', { method: 'POST' });
-                alert('Test event queued. Check Deliveries in a few seconds.');
+                alert(tr('webhooks.testQueued', 'Test event queued. Check Deliveries in a few seconds.'));
             } else if (action === 'rotate') {
-                if (!confirm('Rotate the HMAC secret? Any receiver that already has the current secret will start failing until you update it.')) return;
+                if (!confirm(tr('webhooks.confirmRotate', 'Rotate the HMAC secret? Any receiver that already has the current secret will start failing until you update it.'))) return;
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/rotate-secret', { method: 'POST' });
                 if (body && body.secret) showSecretBanner(body.secret);
                 await loadWebhooks();
@@ -201,18 +219,18 @@
                 const listEl = card.querySelector('[data-deliveries-list]');
                 if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
                 listEl.replaceChildren();
-                listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">Loading...</p>');
+                listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.loading', 'Loading...')) + '</p>');
                 panel.classList.remove('hidden');
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/deliveries?limit=25');
                 listEl.replaceChildren();
                 if (!body.deliveries || body.deliveries.length === 0) {
-                    listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">No deliveries yet.</p>');
+                    listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.noDeliveries', 'No deliveries yet.')) + '</p>');
                     return;
                 }
                 body.deliveries.forEach(function (d) {
                     const httpStatus = d.response_status ? '<span class="text-xs text-[var(--text-muted)]">HTTP ' + Number(d.response_status) + '</span>' : '';
                     const errLine = d.error_message ? '<div class="text-xs text-red-500 mt-0.5 break-all">' + escapeHtml(d.error_message) + '</div>' : '';
-                    const retryLine = d.next_retry_at ? ' · next retry: ' + escapeHtml(fmt(d.next_retry_at)) : '';
+                    const retryLine = d.next_retry_at ? ' · ' + escapeHtml(tr('webhooks.nextRetry', 'next retry: ' + fmt(d.next_retry_at), { time: fmt(d.next_retry_at) })) : '';
                     const row = ''
                         + '<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--border-primary)] last:border-0">'
                         +   '<div class="flex-1 min-w-0">'
@@ -221,10 +239,10 @@
                         +       deliveryStatusBadge(d)
                         +       httpStatus
                         +     '</div>'
-                        +     '<div class="text-xs text-[var(--text-muted)] mt-0.5">' + escapeHtml(fmt(d.created_at)) + ' · attempts: ' + Number(d.attempt_count) + retryLine + '</div>'
+                        +     '<div class="text-xs text-[var(--text-muted)] mt-0.5">' + escapeHtml(fmt(d.created_at)) + ' · ' + escapeHtml(tr('webhooks.attempts', 'attempts: ' + Number(d.attempt_count), { count: Number(d.attempt_count) })) + retryLine + '</div>'
                         +     errLine
                         +   '</div>'
-                        +   '<button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-replay="' + Number(d.id) + '" title="Replay this delivery"><i class="fas fa-redo"></i></button>'
+                        +   '<button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-replay="' + Number(d.id) + '" title="' + escapeHtml(tr('webhooks.replayTitle', 'Replay this delivery')) + '"><i class="fas fa-redo"></i></button>'
                         + '</div>';
                     listEl.insertAdjacentHTML('beforeend', row);
                 });
@@ -237,13 +255,13 @@
                             panel.classList.add('hidden');
                             onCardAction(id, 'deliveries', card);
                         } catch (e2) {
-                            alert('Replay failed: ' + e2.message);
+                            alert(tr('webhooks.replayFailed', 'Replay failed: ' + e2.message, { error: e2.message }));
                         }
                     });
                 });
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            alert(tr('webhooks.actionFailed', 'Error: ' + e.message, { error: e.message }));
         }
     }
 
@@ -255,7 +273,7 @@
     form?.addEventListener('submit', async function (e) {
         e.preventDefault();
         const events = Array.from(eventsContainer.querySelectorAll('input[type=checkbox]:checked')).map(function (cb) { return cb.value; });
-        if (events.length === 0) { alert('Pick at least one event to subscribe to.'); return; }
+        if (events.length === 0) { alert(tr('webhooks.eventsRequired', 'Pick at least one event to subscribe to.')); return; }
         const payload = {
             name: nameInput.value.trim(),
             url: urlInput.value.trim(),
@@ -276,17 +294,17 @@
                 await loadWebhooks();
             }
         } catch (e2) {
-            alert('Save failed: ' + e2.message);
+            alert(tr('webhooks.saveFailed', 'Save failed: ' + e2.message, { error: e2.message }));
         }
     });
 
     secretCopyBtn?.addEventListener('click', async function () {
         try {
             await navigator.clipboard.writeText(secretValueEl.textContent || '');
-            secretCopyBtn.textContent = 'Copied!';
-            setTimeout(function () { secretCopyBtn.textContent = 'Copy'; }, 1500);
+            secretCopyBtn.textContent = tr('webhooks.copied', 'Copied!');
+            setTimeout(function () { secretCopyBtn.textContent = tr('webhooks.copy', 'Copy'); }, 1500);
         } catch (e) {
-            alert('Could not copy to clipboard: ' + e.message);
+            alert(tr('webhooks.copyFailed', 'Could not copy to clipboard: ' + e.message, { error: e.message }));
         }
     });
     secretDismissBtn?.addEventListener('click', function () {

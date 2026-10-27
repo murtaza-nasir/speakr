@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ page_language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>{{ title }} - Speakr</title>
+    <title>{% if action == 'verification_required' %}{{ t('authPages.verificationRequiredTitle') }}{% else %}{{ t('authPages.checkEmailTitle') }}{% endif %} - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -71,25 +71,25 @@
                     </div>
 
                     {% if action == 'verification' %}
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">Check Your Email</h2>
-                        <p class="text-[var(--text-secondary)] mb-2">We've sent a verification link to:</p>
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">{{ t('authPages.checkEmailTitle') }}</h2>
+                        <p class="text-[var(--text-secondary)] mb-2">{{ t('authPages.verificationSentTo') }}</p>
                         <p class="text-[var(--text-primary)] font-medium mb-6">{{ email }}</p>
                         <p class="text-[var(--text-muted)] text-sm mb-6">
-                            Click the link in the email to verify your account. The link will expire in 24 hours.
+                            {{ t('authPages.verificationLinkHelp') }}
                         </p>
                     {% elif action == 'verification_required' %}
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">Email Verification Required</h2>
-                        <p class="text-[var(--text-secondary)] mb-2">Please verify your email address:</p>
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">{{ t('authPages.verificationRequiredTitle') }}</h2>
+                        <p class="text-[var(--text-secondary)] mb-2">{{ t('authPages.pleaseVerify') }}</p>
                         <p class="text-[var(--text-primary)] font-medium mb-6">{{ email }}</p>
                         <p class="text-[var(--text-muted)] text-sm mb-6">
-                            Check your inbox for a verification email. If you haven't received it, you can request a new one.
+                            {{ t('authPages.verificationRequiredHelp') }}
                         </p>
                     {% elif action == 'password_reset' %}
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">Check Your Email</h2>
-                        <p class="text-[var(--text-secondary)] mb-2">If an account exists with this email:</p>
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4">{{ t('authPages.checkEmailTitle') }}</h2>
+                        <p class="text-[var(--text-secondary)] mb-2">{{ t('authPages.resetSentTo') }}</p>
                         <p class="text-[var(--text-primary)] font-medium mb-6">{{ email }}</p>
                         <p class="text-[var(--text-muted)] text-sm mb-6">
-                            We've sent a password reset link. The link will expire in 1 hour.
+                            {{ t('authPages.resetLinkHelp') }}
                         </p>
                     {% endif %}
 
@@ -99,7 +99,7 @@
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="email" value="{{ email }}">
                                 <button type="submit" class="text-[var(--text-accent)] hover:underline text-sm">
-                                    <i class="fas fa-redo mr-1"></i> Resend verification email
+                                    <i class="fas fa-redo mr-1"></i> {{ t('authPages.resendVerification') }}
                                 </button>
                             </form>
                         </div>
@@ -107,7 +107,7 @@
 
                     <div class="pt-4 border-t border-[var(--border-secondary)]">
                         <a href="{{ url_for('auth.login') }}" class="text-[var(--text-accent)] hover:underline">
-                            <i class="fas fa-arrow-left mr-1"></i> Back to Login
+                            <i class="fas fa-arrow-left mr-1"></i> {{ t('authPages.backToLogin') }}
                         </a>
                     </div>
                 </div>

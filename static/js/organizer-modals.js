@@ -53,7 +53,7 @@
             templates.forEach((template) => {
                 const option = document.createElement('option');
                 option.value = template.id;
-                option.textContent = template.name + (opts.markDefault && template.is_default ? ' (Default)' : '');
+                option.textContent = template.name + (opts.markDefault && template.is_default ? ' (' + tr('transcriptTemplates.default', 'Default') + ')' : '');
                 if (template.description) option.title = template.description;
                 select.appendChild(option);
             });
@@ -214,6 +214,11 @@
                 const translated = window.i18n.t(key);
                 if (translated && translated !== key) el.placeholder = translated;
             });
+            root?.querySelectorAll('[data-i18n-title]').forEach((el) => {
+                const key = el.getAttribute('data-i18n-title');
+                const translated = window.i18n.t(key);
+                if (translated && translated !== key) el.title = translated;
+            });
         }
         // Relocalize the language dropdowns now that i18n is ready (the
         // initial DOMContentLoaded population can predate i18n.init).
@@ -302,8 +307,8 @@
         populateGroupSelect('tagGroupId', 'tagGroupSelectionSection', 'tagTabSharingBtn');
         document.getElementById('tagGroupSettingsSection')?.classList.add('hidden');
         switchOrganizerModalTab('tagModalTabs', 'tag-modal-tab', 'tag-modal-tab-content', 'tagTabTranscription');
-        loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)', { selected: '' });
-        loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', 'No template (use user default)', { selected: '', markDefault: true });
+        loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tr('editTagModal.noNamingTemplate', 'No template (use user default or AI title)'), { selected: '' });
+        loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tr('editTagModal.noExportTemplate', 'No template (use user default)'), { selected: '', markDefault: true });
 
         bindSubmit(form, async (e) => {
             e.preventDefault();
@@ -315,13 +320,13 @@
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || ('HTTP ' + response.status));
+                    throw new Error(errorData.error || tr('errors.serverErrorStatus', 'HTTP ' + response.status, { status: response.status }));
                 }
                 const saved = await response.json();
                 hideModal('tagModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert('Could not create tag: ' + error.message);
+                alert(tr('editTagModal.createFailed', 'Could not create tag: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');
@@ -353,8 +358,8 @@
         populateGroupSelect('folderGroupId', 'folderGroupSelectionSection', 'folderTabSharingBtn');
         document.getElementById('folderGroupSettingsSection')?.classList.add('hidden');
         switchOrganizerModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
-        loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)', { selected: '' });
-        loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', 'No template (use user default)', { selected: '', markDefault: true });
+        loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tr('folderManagement.namingTemplateNone', 'No template (use user default or AI title)'), { selected: '' });
+        loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tr('folderManagement.exportTemplateNone', 'No template (use user default)'), { selected: '', markDefault: true });
 
         bindSubmit(form, async (e) => {
             e.preventDefault();
@@ -368,13 +373,13 @@
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || ('HTTP ' + response.status));
+                    throw new Error(errorData.error || tr('errors.serverErrorStatus', 'HTTP ' + response.status, { status: response.status }));
                 }
                 const saved = await response.json();
                 hideModal('folderModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert('Could not create folder: ' + error.message);
+                alert(tr('folderManagement.createFailed', 'Could not create folder: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');

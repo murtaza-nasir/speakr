@@ -6,6 +6,9 @@
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import { matchTagsByLabelName } from '../utils/label-links.js';
 
+// Guarded: the module can run before i18n.js has loaded.
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 export function useRecordings(state, utils, reprocessComposable) {
     const {
         recordings, selectedRecording, isLoadingRecordings, isLoadingMore,
@@ -42,7 +45,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         } catch (e) { /* the account timezone applies */ }
         const response = await fetch(`/api/recordings?${qs.toString()}`);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to load recordings');
+        if (!response.ok) throw new Error(data.error || t('errors.loadRecordingsFailed'));
         return data;
     };
 
@@ -76,7 +79,7 @@ export function useRecordings(state, utils, reprocessComposable) {
 
             if (!Array.isArray(recordingsList)) {
                 console.error('Unexpected response format:', data);
-                throw new Error('Invalid response format from server');
+                throw new Error(t('errors.responseNotJson'));
             }
 
             if (pagination) {
@@ -122,7 +125,7 @@ export function useRecordings(state, utils, reprocessComposable) {
 
         } catch (error) {
             console.error('Load Recordings Error:', error);
-            setGlobalError(`Failed to load recordings: ${error.message}`);
+            setGlobalError(t('errors.loadRecordingsFailedDetail', { error: error.message }));
             if (!append) {
                 recordings.value = [];
             }
@@ -195,7 +198,7 @@ export function useRecordings(state, utils, reprocessComposable) {
 
     const selectRecording = async (recording) => {
         if (hasUnsavedRecording()) {
-            if (!confirm('You have an unsaved recording. Are you sure you want to leave?')) {
+            if (!confirm(t('confirms.discardUnsavedRecording'))) {
                 return;
             }
             // User chose to leave → actually discard the unsaved/recovered
@@ -211,7 +214,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         if (incognitoRecording && incognitoRecording.value &&
             selectedRecording.value?.id === 'incognito' &&
             recording?.id !== 'incognito') {
-            if (!confirm('Switching to another recording will discard your incognito recording. Continue?')) {
+            if (!confirm(t('incognito.switchDiscardConfirm'))) {
                 return;
             }
             // Clear incognito recording immediately - this is the "incognito" promise
@@ -338,7 +341,7 @@ export function useRecordings(state, utils, reprocessComposable) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to toggle inbox status');
+            if (!response.ok) throw new Error(data.error || t('errors.updateInboxStatusFailed'));
 
             // Update the recording in the UI
             recording.is_inbox = data.is_inbox;
@@ -349,10 +352,10 @@ export function useRecordings(state, utils, reprocessComposable) {
                 recordings.value[index].is_inbox = data.is_inbox;
             }
 
-            showToast(`Recording ${data.is_inbox ? 'moved to inbox' : 'marked as read'}`);
+            showToast(t(data.is_inbox ? 'messages.recordingMovedToInbox' : 'messages.recordingMarkedAsRead'));
         } catch (error) {
             console.error('Toggle Inbox Error:', error);
-            setGlobalError(`Failed to toggle inbox status: ${error.message}`);
+            setGlobalError(t('errors.updateInboxStatusFailedDetail', { error: error.message }));
         }
     };
 
@@ -366,7 +369,7 @@ export function useRecordings(state, utils, reprocessComposable) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to toggle highlighted status');
+            if (!response.ok) throw new Error(data.error || t('errors.updateHighlightStatusFailed'));
 
             // Update the recording in the UI
             recording.is_highlighted = data.is_highlighted;
@@ -377,10 +380,10 @@ export function useRecordings(state, utils, reprocessComposable) {
                 recordings.value[index].is_highlighted = data.is_highlighted;
             }
 
-            showToast(`Recording ${data.is_highlighted ? 'highlighted' : 'unhighlighted'}`);
+            showToast(t(data.is_highlighted ? 'messages.recordingHighlighted' : 'messages.recordingUnhighlighted'));
         } catch (error) {
             console.error('Toggle Highlight Error:', error);
-            setGlobalError(`Failed to toggle highlighted status: ${error.message}`);
+            setGlobalError(t('errors.updateHighlightStatusFailedDetail', { error: error.message }));
         }
     };
 
@@ -396,7 +399,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 headers: { 'Content-Type': 'application/json' }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to change the archive status');
+            if (!response.ok) throw new Error(data.error || t('errors.archiveStatusFailed'));
 
             recording.is_archived = data.is_archived;
             if (selectedRecording.value && selectedRecording.value.id === recording.id) {

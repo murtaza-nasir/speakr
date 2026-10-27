@@ -23,7 +23,7 @@
                                    modalDraggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
                                    modalDragOverTagIndex === index && modalDraggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : '']"
                           :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                          :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
+                          :title="t('tooltips.tagDragToReorder', { name: tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name })">
                         <span class="opacity-75 mr-1 text-xs">${index + 1}.</span>
                         <i v-if="tag.group_id" class="fas fa-users mr-1.5 text-xs"></i>
                         <span v-if="tag.group_id" class="opacity-75">${ tag.group_name }: </span>${ tag.name }
@@ -35,7 +35,7 @@
                 <p v-else class="t-meta italic" v-text="t('tags.noTags')"></p>
                 <p v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 1" class="t-meta mt-2">
                     <i class="fas fa-grip-vertical mr-1" style="font-size: 10px;"></i>
-                    Drag to reorder &bull; First tag's defaults are applied
+                    ${ t('help.dragToReorder') } &bull; ${ t('help.firstTagDefaultsApplied') }
                 </p>
             </div>
 

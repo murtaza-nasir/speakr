@@ -213,7 +213,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update transcript');
+            if (!response.ok) throw new Error(data.error || t('errors.updateTranscriptFailed'));
 
             // Update recordings list and selected recording without closing modal
             const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
@@ -226,7 +226,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             showToast(t('help.saved'), 'fa-check-circle', 2000, 'success');
         } catch (error) {
             console.error('Save Transcript Error:', error);
-            showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('errors.errorWithMessage', { error: error.message }), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
@@ -259,7 +259,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update transcript');
+            if (!response.ok) throw new Error(data.error || t('errors.updateTranscriptFailed'));
 
             // The edits are now persisted on the server — clear the staged
             // flag BEFORE closing so closeSpeakerModal doesn't mistake this
@@ -296,7 +296,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             }
         } catch (error) {
             console.error('Save Transcript Error:', error);
-            showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('errors.errorWithMessage', { error: error.message }), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
@@ -331,7 +331,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update speaker names');
+            if (!response.ok) throw new Error(data.error || t('errors.updateSpeakerNamesFailed'));
 
             closeSpeakerModal();
 
@@ -362,7 +362,7 @@ export function useSpeakers(state, utils, processedTranscription) {
                 showToast(t('help.speakerNamesUpdated'), 'fa-check-circle');
             }
         } catch (error) {
-            setGlobalError(`Failed to save speaker names: ${error.message}`);
+            setGlobalError(t('errors.saveSpeakerNamesFailedDetail', { error: error.message }));
         }
     };
 
@@ -487,7 +487,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         if (speakerMap.value[speakerId].isMe) {
             // Checkbox is now checked - set the name to current user's name
-            speakerMap.value[speakerId].name = currentUserName.value || 'Me';
+            speakerMap.value[speakerId].name = currentUserName.value || t('help.me');
         } else {
             // Checkbox is now unchecked - clear the name
             speakerMap.value[speakerId].name = '';
@@ -546,7 +546,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error || 'Unknown error occurred during auto-identification.');
+                throw new Error(data.error || t('errors.autoIdentifyFailed'));
             }
 
             // Check if there's a message (e.g., all speakers already identified)
@@ -580,7 +580,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         } catch (error) {
             console.error('Auto Identify Speakers Error:', error);
-            showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 5000, 'error');
+            showToast(t('errors.errorWithMessage', { error: error.message }), 'fa-exclamation-circle', 5000, 'error');
         } finally {
             isAutoIdentifying.value = false;
         }
@@ -683,7 +683,7 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     const addNewSpeaker = () => {
-        const name = newSpeakerIsMe.value ? (currentUserName.value || 'Me') : newSpeakerName.value.trim();
+        const name = newSpeakerIsMe.value ? (currentUserName.value || t('help.me')) : newSpeakerName.value.trim();
 
         if (!newSpeakerIsMe.value && !name) {
             showToast(t('help.pleaseEnterSpeakerName'), 'fa-exclamation-circle');
@@ -787,7 +787,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
     const getEditSpeakerDropdownPosition = (index) => {
         // Find the input element for this index and calculate position
-        const inputs = document.querySelectorAll('[class*="edit-speakers-modal"] input[placeholder="New name..."], .max-w-md input[placeholder="New name..."]');
+        const inputs = document.querySelectorAll('input.edit-speaker-name-input');
         if (inputs[index]) {
             const rect = inputs[index].getBoundingClientRect();
             return {

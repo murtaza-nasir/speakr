@@ -29,7 +29,7 @@
                     @click="toggleTranscriptionViewMode"
                     class="toggle"
                     :class="{ 'is-on': transcriptionViewMode === 'bubble' }"
-                    :title="transcriptionViewMode === 'bubble' ? 'Switch to simple view' : 'Switch to bubble view'">
+                    :title="transcriptionViewMode === 'bubble' ? t('tooltips.switchToSimpleView') : t('tooltips.switchToBubbleView')">
                 <i class="fas fa-comments" style="font-size: 11px;"></i>
                 <span v-text="t('transcription.bubble')"></span>
             </button>
@@ -169,7 +169,7 @@
                              :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
                              @click="seekAudioFromEvent"
                              @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
-                             :title="'Double-click to edit this segment'"
+                             :title="t('tooltips.doubleClickToEditSegment')"
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <div class="speaker-text">
@@ -185,7 +185,7 @@
                              :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                              @click="seekAudioFromEvent"
                              @dblclick.stop="openAsrEditorAtSegment(index)"
-                             :title="'Double-click to edit this segment'"
+                             :title="t('tooltips.doubleClickToEditSegment')"
                              :data-start-time="segment.startTime"
                              :data-segment-index="index">
                             <span v-if="showTimestampsSimpleView"

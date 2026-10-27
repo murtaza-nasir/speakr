@@ -13,6 +13,9 @@ const _asrEditorScrollMemory = new Map();
 // double-click-on-simple-view-segment path. null means "restore last scroll".
 let _asrEditorPendingScrollIndex = null;
 
+// Guarded: the module can run before i18n.js has loaded.
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 export function useTranscription(state, utils) {
     const {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
@@ -129,7 +132,7 @@ export function useTranscription(state, utils) {
             });
         } catch (e) {
             console.error("Could not parse transcription as JSON for ASR editor:", e);
-            setGlobalError("This transcription is not in the correct format for the ASR editor.");
+            setGlobalError(t('errors.asrEditorWrongFormat'));
         }
     };
 
@@ -410,7 +413,7 @@ export function useTranscription(state, utils) {
         const newStart = lastSegment ? lastSegment.end_time : 0;
 
         editingSegments.value.push({
-            speaker: availableSpeakers.value[0] || 'Speaker 1',
+            speaker: availableSpeakers.value[0] || t('transcription.speaker', { number: 1 }),
             start_time: newStart,
             end_time: newStart + 5,
             sentence: '',
@@ -486,7 +489,7 @@ export function useTranscription(state, utils) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update transcription');
+            if (!response.ok) throw new Error(data.error || t('errors.updateTranscriptionFailed'));
 
             // Update recording
             selectedRecording.value.transcription = content;
@@ -496,9 +499,9 @@ export function useTranscription(state, utils) {
                 recordings.value[index].transcription = content;
             }
 
-            showToast('Transcription updated successfully!', 'fa-check-circle');
+            showToast(t('messages.transcriptionUpdated'), 'fa-check-circle');
         } catch (error) {
-            setGlobalError(`Failed to save transcription: ${error.message}`);
+            setGlobalError(t('errors.saveTranscriptionFailedDetail', { error: error.message }));
         }
     };
 
@@ -529,7 +532,7 @@ export function useTranscription(state, utils) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update summary');
+            if (!response.ok) throw new Error(data.error || t('errors.updateSummaryFailed'));
 
             // Update recording
             selectedRecording.value.summary = summary;
@@ -539,9 +542,9 @@ export function useTranscription(state, utils) {
                 recordings.value[index].summary = summary;
             }
 
-            showToast('Summary saved!', 'fa-check-circle');
+            showToast(t('messages.summarySaved'), 'fa-check-circle');
         } catch (error) {
-            setGlobalError(`Failed to save summary: ${error.message}`);
+            setGlobalError(t('errors.saveSummaryFailedDetail', { error: error.message }));
         }
     };
 
@@ -566,7 +569,7 @@ export function useTranscription(state, utils) {
             } catch (e) {
                 console.error('[Incognito] Failed to save notes to sessionStorage:', e);
             }
-            showToast('Notes saved (in browser only)', 'fa-check-circle');
+            showToast(t('messages.notesSavedBrowserOnly'), 'fa-check-circle');
             return;
         }
 
@@ -582,7 +585,7 @@ export function useTranscription(state, utils) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to update notes');
+            if (!response.ok) throw new Error(data.error || t('errors.updateNotesFailed'));
 
             // Update recording
             selectedRecording.value.notes = notes;
@@ -592,9 +595,9 @@ export function useTranscription(state, utils) {
                 recordings.value[index].notes = notes;
             }
 
-            showToast('Notes saved!', 'fa-check-circle');
+            showToast(t('messages.notesUpdated'), 'fa-check-circle');
         } catch (error) {
-            setGlobalError(`Failed to save notes: ${error.message}`);
+            setGlobalError(t('errors.saveNotesFailedDetail', { error: error.message }));
         }
     };
 

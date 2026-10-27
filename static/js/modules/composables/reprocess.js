@@ -116,9 +116,9 @@ export function useReprocess(state, utils) {
                 selectedRecording.value.status = 'FAILED';
             }
 
-            showToast('Recording status reset to FAILED', 'fa-undo');
+            showToast(t('messages.statusResetToFailed'), 'fa-undo');
         } catch (error) {
-            setGlobalError(`Failed to reset status: ${error.message}`);
+            setGlobalError(t('errors.resetStatusFailedDetail', { error: error.message }));
         }
     };
 
@@ -158,7 +158,7 @@ export function useReprocess(state, utils) {
 
     const reprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers, hotwords, initialPrompt, transcriptionModel) => {
         if (!recordingId) {
-            setGlobalError('No recording ID provided for reprocessing.');
+            setGlobalError(t('errors.noRecordingToReprocess'));
             return;
         }
 
@@ -194,12 +194,12 @@ export function useReprocess(state, utils) {
                 selectedRecording.value.status = 'PROCESSING';
             }
 
-            showToast('Transcription reprocessing started', 'fa-sync-alt');
+            showToast(t('messages.transcriptionReprocessingStarted'), 'fa-sync-alt');
 
             // Start polling for progress
             startReprocessingPoll(recordingId);
         } catch (error) {
-            setGlobalError(`Failed to start transcription reprocessing: ${error.message}`);
+            setGlobalError(t('errors.startTranscriptionReprocessingFailedDetail', { error: error.message }));
         }
     };
 
@@ -209,7 +209,7 @@ export function useReprocess(state, utils) {
 
     const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt, promptMode, promptVariables) => {
         if (!recordingId) {
-            setGlobalError('No recording ID provided for reprocessing.');
+            setGlobalError(t('errors.noRecordingToReprocess'));
             return;
         }
 
@@ -266,12 +266,12 @@ export function useReprocess(state, utils) {
                 selectedRecording.value.status = 'SUMMARIZING';
             }
 
-            showToast('Summary reprocessing started', 'fa-sync-alt');
+            showToast(t('messages.summaryReprocessingStarted'), 'fa-sync-alt');
 
             // Start polling for progress
             startReprocessingPoll(recordingId);
         } catch (error) {
-            setGlobalError(`Failed to start summary reprocessing: ${error.message}`);
+            setGlobalError(t('errors.startSummaryReprocessingFailedDetail', { error: error.message }));
         }
     };
 
@@ -338,7 +338,7 @@ export function useReprocess(state, utils) {
                     summary_html: data.summary_html
                 });
 
-                showToast('Summary generated', 'fa-file-alt');
+                showToast(t('messages.summaryGenerated'), 'fa-file-alt');
                 return;
             }
 
@@ -367,12 +367,12 @@ export function useReprocess(state, utils) {
                 recordingInList.status = 'SUMMARIZING';
             }
 
-            showToast('Summary generation started', 'fa-file-alt');
+            showToast(t('messages.summaryGenerationStarted'), 'fa-file-alt');
 
             // Start polling for progress
             startReprocessingPoll(selectedRecording.value.id);
         } catch (error) {
-            setGlobalError(`Failed to generate summary: ${error.message}`);
+            setGlobalError(t('errors.generateSummaryFailedDetail', { error: error.message }));
         }
     };
 

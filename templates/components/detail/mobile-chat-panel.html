@@ -6,7 +6,7 @@
         <div v-if="chatMessages.length === 0" class="empty">
             <div class="empty__icon"><i class="fas fa-robot"></i></div>
             <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>
-            <div class="empty__body">Type a question below. Markdown supported.</div>
+            <div class="empty__body" v-text="t('chat.emptyHint')"></div>
         </div>
         <div v-for="(message, index) in chatMessages" :key="index"
              :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
@@ -25,7 +25,7 @@
                         class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
                     <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
                     <span v-text="t('help.modelReasoning')"></span>
-                    <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
+                    <span class="text-[var(--text-muted)]" v-text="'(' + t('help.lines', { count: message.thinking.split('\n').length }) + ')'"></span>
                 </button>
                 <div v-if="message.thinkingExpanded"
                      class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">

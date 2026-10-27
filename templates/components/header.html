@@ -47,8 +47,8 @@
                         selectedRecording.can_edit !== false ? 'cursor-text hover:opacity-80' : ''
                     ]"
                     dir="auto"
-                    :title="selectedRecording.title || 'Untitled Recording'">
-                    ${selectedRecording.title || 'Untitled Recording'}
+                    :title="selectedRecording.title || t('help.untitled')">
+                    ${selectedRecording.title || t('help.untitled')}
                 </h1>
                 <input v-else
                        v-model="selectedRecording.title"
@@ -57,7 +57,7 @@
                        @keyup.esc="cancelEditTitle"
                        ref="titleInput"
                        class="text-base sm:text-lg font-semibold bg-transparent border-b border-[var(--border-focus)] focus:outline-none text-[var(--text-primary)] flex-1 px-1 min-w-0"
-                       placeholder="Untitled Recording">
+                       :placeholder="t('help.untitled')">
                 <button v-if="!editingTitle && selectedRecording.can_edit !== false"
                         @click="toggleEditTitle"
                         class="btn btn--icon btn--sm flex-shrink-0"

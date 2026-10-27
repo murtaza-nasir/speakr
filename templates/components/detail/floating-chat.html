@@ -59,7 +59,7 @@
                             @click="clearChat"
                             class="btn btn--icon btn--sm"
                             style="color: var(--text-muted);"
-                            title="Clear chat">
+                            :title="t('tooltips.clearChat')">
                         <i class="fas fa-eraser"></i>
                     </button>
                     <span class="floating-chat-dock-divider"></span>
@@ -71,7 +71,7 @@
                         <button @click="toggleChatDockToLast"
                                 class="btn btn--icon btn--sm floating-chat-dock-main"
                                 :class="{ 'is-active': chatPanelState === ('dock-' + chatLastDock) }"
-                                :title="chatPanelState === ('dock-' + chatLastDock) ? 'Undock' : (chatLastDock === 'left' ? 'Dock left' : chatLastDock === 'right' ? 'Dock right' : 'Dock full')">
+                                :title="chatPanelState === ('dock-' + chatLastDock) ? t('floatingChat.undock') : (chatLastDock === 'left' ? t('floatingChat.dockLeft') : chatLastDock === 'right' ? t('floatingChat.dockRight') : t('floatingChat.dockFull'))">
                             <!-- Dock-left icon (left half filled) -->
                             <svg v-if="chatLastDock === 'left'" width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
                                 <rect x="0.5" y="0.5" width="6" height="9" fill="currentColor"/>
@@ -89,7 +89,7 @@
                         </button>
                         <button @click.stop="chatDockMenuOpen = !chatDockMenuOpen"
                                 class="btn btn--icon btn--sm floating-chat-dock-caret"
-                                title="Choose dock target">
+                                :title="t('floatingChat.chooseDockTarget')">
                             <i class="fas fa-caret-down" style="font-size: 10px;"></i>
                         </button>
                         <div v-if="chatDockMenuOpen"
@@ -102,7 +102,7 @@
                                     <rect x="0.5" y="0.5" width="6" height="9" fill="currentColor"/>
                                     <rect x="7.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
                                 </svg>
-                                <span>Dock left</span>
+                                <span v-text="t('floatingChat.dockLeft')"></span>
                             </button>
                             <button @click="dockChatPanel('full')"
                                     class="floating-chat-dock-menu-item"
@@ -110,7 +110,7 @@
                                 <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
                                     <rect x="0.5" y="0.5" width="13" height="9" fill="currentColor"/>
                                 </svg>
-                                <span>Dock full</span>
+                                <span v-text="t('floatingChat.dockFull')"></span>
                             </button>
                             <button @click="dockChatPanel('right')"
                                     class="floating-chat-dock-menu-item"
@@ -119,7 +119,7 @@
                                     <rect x="0.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
                                     <rect x="7.5" y="0.5" width="6" height="9" fill="currentColor"/>
                                 </svg>
-                                <span>Dock right</span>
+                                <span v-text="t('floatingChat.dockRight')"></span>
                             </button>
                         </div>
                     </div>
@@ -137,7 +137,7 @@
                 <div v-if="chatMessages.length === 0" class="empty">
                     <div class="empty__icon"><i class="fas fa-robot"></i></div>
                     <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>
-                    <div class="empty__body">Type a question below. Markdown supported.</div>
+                    <div class="empty__body" v-text="t('chat.emptyHint')"></div>
                 </div>
 
                 <div v-for="(message, index) in chatMessages" :key="index"
@@ -156,7 +156,7 @@
                                 class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
                             <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
                             <span v-text="t('help.modelReasoning')"></span>
-                            <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
+                            <span class="text-[var(--text-muted)]" v-text="'(' + t('help.lines', { count: message.thinking.split('\n').length }) + ')'"></span>
                         </button>
                         <div v-if="message.thinkingExpanded"
                              class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
@@ -205,7 +205,7 @@
                  class="floating-chat-resize-handle"
                  @mousedown="startChatPanelResize"
                  @touchstart.passive="startChatPanelResize"
-                 title="Drag to resize">
+                 :title="t('tooltips.dragToResize')">
             </div>
         </div>
     </div>

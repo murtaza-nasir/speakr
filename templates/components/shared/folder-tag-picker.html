@@ -76,7 +76,7 @@
                           dragOverTagIndex === index && draggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
                       ]"
                       :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                      :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
+                      :title="t('tooltips.tagDragToReorder', { name: tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name })">
                     <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
                     <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
                     <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>

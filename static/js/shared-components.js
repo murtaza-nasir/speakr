@@ -2,6 +2,15 @@
 // This file contains reusable Vue composition functions and utilities
 // that can be used across multiple pages (index, inquire, admin, etc.)
 
+// Translate with an English fallback (i18n may not be ready yet).
+function sharedT(key, fallback, params) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+        const value = window.i18n.t(key, params || {});
+        if (value && value !== key) return value;
+    }
+    return fallback;
+}
+
 // Dark Mode Composition
 function useDarkMode() {
     const isDarkMode = Vue.ref(false);
@@ -111,7 +120,7 @@ function useColorScheme() {
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         const scheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === schemeId);
         if (window.showToast && scheme) {
-            window.showToast(`Applied ${scheme.name} theme`, 'fa-palette');
+            window.showToast(sharedT('messages.colorSchemeApplied', `Applied ${scheme.name} theme`), 'fa-palette');
         }
     };
     
@@ -120,7 +129,7 @@ function useColorScheme() {
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         if (window.showToast) {
             const defaultScheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === 'blue');
-            window.showToast(`Reset to default ${defaultScheme?.name || 'Ocean Blue'} theme`, 'fa-undo');
+            window.showToast(sharedT('messages.colorSchemeReset', `Reset to default ${defaultScheme?.name || 'Ocean Blue'} theme`), 'fa-undo');
         }
     };
     
@@ -158,17 +167,17 @@ function useSharesModal() {
         try {
             await navigator.clipboard.writeText(url);
             if (window.showToast) {
-                window.showToast('Share link copied to clipboard', 'fa-link');
+                window.showToast(sharedT('sharing.linkCopied', 'Share link copied to clipboard'), 'fa-link');
             }
         } catch (err) {
             if (window.setGlobalError) {
-                window.setGlobalError('Failed to copy link to clipboard');
+                window.setGlobalError(sharedT('sharing.linkCopyFailed', 'Failed to copy link to clipboard'));
             }
         }
     };
     
     const deleteShare = async (shareId) => {
-        if (!confirm('Are you sure you want to delete this share?')) return;
+        if (!confirm(sharedT('dialogs.deleteShare.message', 'Are you sure you want to delete this share?'))) return;
         
         try {
             const response = await fetch(`/api/shares/${shareId}`, {
@@ -180,16 +189,16 @@ function useSharesModal() {
             
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to delete share');
+                throw new Error(data.error || sharedT('errors.serverErrorStatus', `HTTP ${response.status}`, { status: response.status }));
             }
             
             userShares.value = userShares.value.filter(share => share.id !== shareId);
             if (window.showToast) {
-                window.showToast('Share deleted successfully', 'fa-trash');
+                window.showToast(sharedT('sharing.deleted', 'Share deleted successfully'), 'fa-trash');
             }
         } catch (error) {
             if (window.setGlobalError) {
-                window.setGlobalError(`Failed to delete share: ${error.message}`);
+                window.setGlobalError(sharedT('sharing.deleteFailed', `Failed to delete share: ${error.message}`, { error: error.message }));
             }
         }
     };

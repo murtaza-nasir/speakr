@@ -10,16 +10,16 @@
                     <i class="fas fa-user-secret text-white text-xs"></i>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-medium" style="color: var(--tint-incognito-fg);">Incognito</span>
+                    <span class="text-sm font-medium" style="color: var(--tint-incognito-fg);">${ t('incognito.badge') }</span>
                     <span class="text-xs" style="color: var(--tint-incognito-fg); opacity: 0.75;">
-                        &bull; Session only &bull; Not saved to account
+                        &bull; ${ t('incognito.sessionOnly') } &bull; ${ t('incognito.notSavedToAccount') }
                     </span>
                 </div>
             </div>
             <button @click="clearIncognitoRecordingWithConfirm"
                     class="btn btn--icon btn--sm"
                     style="color: var(--tint-incognito-fg);"
-                    title="Discard this recording">
+                    :title="t('tooltips.discardIncognito')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -80,14 +80,14 @@
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
                       class="chip"
                       :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
-                      :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
+                      :title="t('tooltips.folderLabel', { name: getFolderName(selectedRecording.folder_id) })">
                     <i class="fas fa-folder"></i>
                     <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>
                 </span>
                 <span v-for="tag in selectedRecording.tags" :key="tag.id"
                       class="chip"
                       :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
-                      :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                      :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name">
                     <i v-if="tag.group_id" class="fas fa-users"></i>
                     <span class="chip__label">${tag.name}</span>
                 </span>
@@ -103,7 +103,7 @@
             <!-- Meeting date -->
             <span class="chip-meta chip-meta--clickable" @click="openMeetingDatePicker">
                 <i class="fas fa-calendar"></i>
-                <span class="chip-meta__label">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
+                <span class="chip-meta__label">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : t('help.noDateSet')}</span>
             </span>
 
             <!-- File metadata facts -->

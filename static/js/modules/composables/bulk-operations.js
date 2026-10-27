@@ -177,7 +177,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to delete recordings');
+                throw new Error(data.error || t('errors.deleteRecordingsFailed'));
             }
 
             // Remove deleted recordings from local state
@@ -193,10 +193,10 @@ export function useBulkOperations({
             deletedIds.forEach(id => selectedRecordingIds.value.delete(id));
 
             const count = deletedIds.size;
-            showToast(`${count} recording${count !== 1 ? 's' : ''} deleted`, 'fa-trash', 3000, 'success');
+            showToast(t(count === 1 ? 'messages.recordingsDeleted' : 'messages.recordingsDeletedPlural', { count }), 'fa-trash', 3000, 'success');
         } catch (error) {
             console.error('Bulk delete error:', error);
-            setGlobalError(`Failed to delete recordings: ${error.message}`);
+            setGlobalError(t('errors.deleteRecordingsFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }
@@ -252,7 +252,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || `Failed to ${action} tag`);
+                throw new Error(data.error || (action === 'add' ? t('errors.addTagFailed') : t('errors.removeTagFailed')));
             }
 
             // Update local state
@@ -290,11 +290,11 @@ export function useBulkOperations({
             }
 
             const count = data.affected_ids?.length || ids.length;
-            const actionText = action === 'add' ? 'added to' : 'removed from';
-            showToast(`Tag ${actionText} ${count} recording${count !== 1 ? 's' : ''}`, 'fa-tags', 3000, 'success');
+            const tagToastKey = action === 'add' ? 'messages.tagAddedToRecordings' : 'messages.tagRemovedFromRecordings';
+            showToast(t(count === 1 ? tagToastKey : `${tagToastKey}Plural`, { count }), 'fa-tags', 3000, 'success');
         } catch (error) {
             console.error('Bulk tag error:', error);
-            setGlobalError(`Failed to ${action} tag: ${error.message}`);
+            setGlobalError(action === 'add' ? t('errors.addTagFailedDetail', { error: error.message }) : t('errors.removeTagFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }
@@ -336,7 +336,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to queue reprocessing');
+                throw new Error(data.error || t('errors.queueReprocessingFailed'));
             }
 
             // Update status for queued recordings
@@ -365,7 +365,7 @@ export function useBulkOperations({
             showToast(t(toastKey, { count }), 'fa-sync-alt', 3000, 'success');
         } catch (error) {
             console.error('Bulk reprocess error:', error);
-            setGlobalError(`Failed to queue reprocessing: ${error.message}`);
+            setGlobalError(t('errors.queueReprocessingFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }
@@ -490,7 +490,7 @@ export function useBulkOperations({
                 await finalizeRecordingMerge(orderedSpec, { deleteOriginals, removeOriginalAudio, title, notesSource });
             } catch (error) {
                 console.error('Recording merge finalize error:', error);
-                setGlobalError(`Failed to start merge: ${error.message}`);
+                setGlobalError(t('errors.startMergeFailedDetail', { error: error.message }));
             }
             return;
         }
@@ -529,7 +529,7 @@ export function useBulkOperations({
             }
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to merge recordings');
+                throw new Error(data.error || t('errors.mergeRecordingsFailed'));
             }
 
             // Show the merged recording immediately (in PROCESSING) for instant
@@ -547,10 +547,10 @@ export function useBulkOperations({
             if (exitSelectionMode) exitSelectionMode();
 
             const count = orderedIds.length;
-            showToast(`Merging ${count} recordings — the combined recording is processing`, 'fa-object-group', 4000, 'success');
+            showToast(t('mergeRecordings.mergingToast', { count }), 'fa-object-group', 4000, 'success');
         } catch (error) {
             console.error('Merge error:', error);
-            setGlobalError(`Failed to merge recordings: ${error.message}`);
+            setGlobalError(t('errors.mergeRecordingsFailedDetail', { error: error.message }));
         } finally {
             mergeInProgress.value = false;
             bulkActionInProgress.value = false;
@@ -590,7 +590,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to update inbox status');
+                throw new Error(data.error || t('errors.updateInboxStatusFailed'));
             }
 
             // Update local state
@@ -606,11 +606,11 @@ export function useBulkOperations({
             }
 
             const count = affectedIds.size;
-            const actionText = value ? 'added to' : 'removed from';
-            showToast(`${count} recording${count !== 1 ? 's' : ''} ${actionText} inbox`, 'fa-inbox', 3000, 'success');
+            const inboxToastKey = value ? 'messages.recordingsAddedToInbox' : 'messages.recordingsRemovedFromInbox';
+            showToast(t(count === 1 ? inboxToastKey : `${inboxToastKey}Plural`, { count }), 'fa-inbox', 3000, 'success');
         } catch (error) {
             console.error('Bulk toggle inbox error:', error);
-            setGlobalError(`Failed to update inbox status: ${error.message}`);
+            setGlobalError(t('errors.updateInboxStatusFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }
@@ -634,7 +634,7 @@ export function useBulkOperations({
                 body: JSON.stringify({ recording_ids: ids, field: 'archive', value })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to change the archive status');
+            if (!response.ok) throw new Error(data.error || t('errors.archiveStatusFailed'));
             const affected = new Set(data.affected_ids || ids);
             // They leave the current view unless a search is showing both.
             if (!searchQuery.value && value !== showArchivedRecordings.value) {
@@ -683,7 +683,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to update highlight status');
+                throw new Error(data.error || t('errors.updateHighlightStatusFailed'));
             }
 
             // Update local state
@@ -699,11 +699,11 @@ export function useBulkOperations({
             }
 
             const count = affectedIds.size;
-            const actionText = value ? 'highlighted' : 'unhighlighted';
-            showToast(`${count} recording${count !== 1 ? 's' : ''} ${actionText}`, 'fa-star', 3000, 'success');
+            const starToastKey = value ? 'messages.recordingsHighlighted' : 'messages.recordingsUnhighlighted';
+            showToast(t(count === 1 ? starToastKey : `${starToastKey}Plural`, { count }), 'fa-star', 3000, 'success');
         } catch (error) {
             console.error('Bulk toggle highlight error:', error);
-            setGlobalError(`Failed to update highlight status: ${error.message}`);
+            setGlobalError(t('errors.updateHighlightStatusFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }
@@ -736,7 +736,7 @@ export function useBulkOperations({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to update folders');
+                throw new Error(data.error || t('errors.updateFoldersFailed'));
             }
 
             // Update local state
@@ -764,13 +764,13 @@ export function useBulkOperations({
 
             const count = data.updated_count || ids.length;
             if (folderId) {
-                showToast(`${count} recording${count !== 1 ? 's' : ''} moved to "${folder?.name || 'folder'}"`, 'fa-folder', 3000, 'success');
+                showToast(t(count === 1 ? 'messages.recordingsMovedToFolder' : 'messages.recordingsMovedToFolderPlural', { count, name: folder?.name || t('form.folder') }), 'fa-folder', 3000, 'success');
             } else {
-                showToast(`${count} recording${count !== 1 ? 's' : ''} removed from folder`, 'fa-folder-minus', 3000, 'success');
+                showToast(t(count === 1 ? 'messages.recordingsRemovedFromFolder' : 'messages.recordingsRemovedFromFolderPlural', { count }), 'fa-folder-minus', 3000, 'success');
             }
         } catch (error) {
             console.error('Bulk folder assignment error:', error);
-            setGlobalError(`Failed to update folders: ${error.message}`);
+            setGlobalError(t('errors.updateFoldersFailedDetail', { error: error.message }));
         } finally {
             bulkActionInProgress.value = false;
         }

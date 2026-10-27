@@ -2,12 +2,12 @@
 <div v-if="showEditTextModal" @click.self="closeEditTextModal" class="modal-overlay">
     <div class="modal-panel modal-panel--lg">
         <div class="modal-header">
-            <h3 class="modal-title">Edit Transcript Text</h3>
+            <h3 class="modal-title" v-text="t('modal.editTranscriptText')"></h3>
             <button @click="closeEditTextModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Text Content</label>
-            <textarea dir="auto" v-model="editedText" rows="6" class="field" style="resize: vertical; min-height: 144px;" placeholder="Enter transcript text..."></textarea>
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="t('form.textContent')"></label>
+            <textarea dir="auto" v-model="editedText" rows="6" class="field" style="resize: vertical; min-height: 144px;" :placeholder="t('form.transcriptTextPlaceholder')"></textarea>
         </div>
         <div class="modal-footer">
             <button @click="closeEditTextModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>

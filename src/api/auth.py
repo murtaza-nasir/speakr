@@ -20,7 +20,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
-from src.utils.localization import format_file_size, format_number, translate, api_error
+from src.utils.localization import format_file_size, format_number, translate, api_error, request_language, LazyTranslation
 from src.auth.sso import (
     init_sso_client,
     is_sso_enabled,
@@ -47,6 +47,22 @@ from src.services.email import (
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
+
+
+@auth_bp.context_processor
+def inject_page_translation():
+    """Server-side text for the sign-in pages (login, register, auth/*).
+
+    These pages are plain forms that work without JavaScript, so their text
+    is translated here rather than by i18n.js: ``t('key', name=value)`` in
+    the viewer's language (their interface language when signed in, else
+    the browser's Accept-Language), and ``page_language`` for <html lang>.
+    """
+    language = request_language()
+    return {
+        't': lambda key, **params: translate(key, language, **params),
+        'page_language': language,
+    }
 
 # Import these from app after initialization
 bcrypt = None
@@ -95,29 +111,39 @@ def rate_limit(limit_string):
 # address, and normalizes what gets stored so accounts stay case-consistent.
 _normalize_email_filter = lambda x: x.strip().lower() if x else x
 
+# Validator messages in the language of the request that shows them (#477).
+_REQUIRED = LazyTranslation('server.form.required')
+_INVALID_EMAIL = LazyTranslation('server.form.invalidEmail')
+
 
 class RegistrationForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired(), password_check])
-    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    username = StringField('Username', validators=[
+        DataRequired(message=_REQUIRED),
+        Length(min=2, max=20, message=LazyTranslation('server.form.usernameLength', min=2, max=20))])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[
+        DataRequired(message=_REQUIRED), Email(message=_INVALID_EMAIL)])
+    password = PasswordField('Password', validators=[DataRequired(message=_REQUIRED), password_check])
+    confirm_password = PasswordField('Confirm Password', validators=[
+        DataRequired(message=_REQUIRED),
+        EqualTo('password', message=LazyTranslation('server.form.passwordsMustMatch'))])
     submit = SubmitField('Sign Up')
 
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user:
-            raise ValidationError('That username is already taken. Please choose a different one.')
+            raise ValidationError(translate('server.form.usernameTaken'))
 
     def validate_email(self, email):
         # Case-insensitive so a case-variant of an existing address can't be
         # registered as a separate account.
         if User.find_by_email(email.data):
-            raise ValidationError('That email is already registered. Please use a different one.')
+            raise ValidationError(translate('server.form.emailTaken'))
 
 
 class LoginForm(FlaskForm):
-    email = StringField('Email', filters=[_normalize_email_filter], validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
+    email = StringField('Email', filters=[_normalize_email_filter], validators=[
+        DataRequired(message=_REQUIRED), Email(message=_INVALID_EMAIL)])
+    password = PasswordField('Password', validators=[DataRequired(message=_REQUIRED)])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
 

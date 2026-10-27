@@ -30,9 +30,11 @@ LOCALE_DIR = os.path.join(REPO, 'static', 'locales')
 
 # data-i18n="a.b", plus the -placeholder / -title / -aria-label variants.
 TEMPLATE_PATTERN = re.compile(r'data-i18n(?:-[a-z-]+)?="([^"]+)"')
-# t('a.b') / $t("a.b") / i18n.t('a.b'). Requires a dot so bare t('x') helpers
-# and unrelated single-argument calls are not mistaken for keys.
-JS_PATTERN = re.compile(r"""(?:\$t|\bt|i18n\.t)\(\s*['"]([a-zA-Z][\w.]*\.[\w.]+)['"]""")
+# t('a.b') / $t("a.b") / i18n.t('a.b'), and the guarded page helpers tf(),
+# tr() and sharedT(). Requires a dot so bare t('x') helpers and unrelated
+# single-argument calls are not mistaken for keys. A prefix completed at run
+# time, t('colorScheme.themes.' + name), is not a key.
+JS_PATTERN = re.compile(r"""(?:\$t|\b(?:t|tf|tr|sharedT)|i18n\.t)\(\s*['"]([a-zA-Z][\w.]*\.[\w.]+)['"](?!\s*\+)""")
 
 
 def _flatten(d, prefix=''):
@@ -68,7 +70,8 @@ def _referenced_keys():
     found = {}
     for path in _walk('templates', '.html'):
         text = open(path, encoding='utf-8').read()
-        for key in TEMPLATE_PATTERN.findall(text):
+        # Vue templates and inline scripts call t() as the JS does.
+        for key in TEMPLATE_PATTERN.findall(text) + JS_PATTERN.findall(text):
             found.setdefault(key, set()).add(os.path.relpath(path, REPO))
     for path in _walk('static/js', '.js', skip=('.test.js',)):
         text = open(path, encoding='utf-8').read()
@@ -185,7 +188,7 @@ def test_every_recording_status_the_backend_can_set_has_a_label():
 
 # translate('server.a.b') in Python code: text the server produces in the
 # user's interface language (#477). The browser scan above does not see it.
-SERVER_PATTERN = re.compile(r"""\btranslate\(\s*['"](server\.[\w.]+)['"]""")
+SERVER_PATTERN = re.compile(r"""\b(?:translate|LazyTranslation)\(\s*['"](server\.[\w.]+)['"]""")
 # api_error('code') reads server.apiError.<code>.
 API_ERROR_PATTERN = re.compile(r"""\bapi_error\(\s*['"](\w+)['"]""")
 # Error codes that helpers return or raise (ReprocessError('code'),

@@ -110,7 +110,7 @@
                             </template>
                             <button @click="removeFromQueue(item.clientId)"
                                     class="ml-1.5 p-0.5 text-[var(--text-muted)] hover:text-red-500 transition-colors flex-shrink-0"
-                                    title="Remove from queue">
+                                    :title="t('tooltips.removeFromQueue')">
                                 <i class="fas fa-times text-xs"></i>
                             </button>
                         </div>
@@ -532,7 +532,7 @@
                             <span class="truncate max-w-[120px]" v-text="getFolderById(selectedFolderId).name"></span>
                             <button @click.stop.prevent="selectedFolderId = null"
                                     class="hover:opacity-100 opacity-70"
-                                    title="Clear folder">
+                                    :title="t('upload.clearFolder')">
                                 <i class="fas fa-times text-[9px]"></i>
                             </button>
                         </span>
@@ -541,10 +541,10 @@
                               class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
                               style="background: var(--bg-accent); color: var(--text-accent);">
                             <i class="fas fa-tag"></i>
-                            <span>${ selectedTags.length } ${ selectedTags.length === 1 ? 'tag' : 'tags' }</span>
+                            <span v-text="t(selectedTags.length === 1 ? 'upload.tagCount' : 'upload.tagCountPlural', { count: selectedTags.length })"></span>
                             <button @click.stop.prevent="selectedTagIds = []"
                                     class="hover:opacity-100 opacity-70"
-                                    title="Clear tags">
+                                    :title="t('upload.clearTags')">
                                 <i class="fas fa-times text-[9px]"></i>
                             </button>
                         </span>
@@ -556,7 +556,7 @@
                             <span v-text="uploadLanguage"></span>
                             <button @click.stop.prevent="uploadLanguage = ''"
                                     class="hover:opacity-100 opacity-70"
-                                    title="Clear language">
+                                    :title="t('upload.clearLanguage')">
                                 <i class="fas fa-times text-[9px]"></i>
                             </button>
                         </span>
@@ -568,7 +568,7 @@
                             <span>${ uploadMinSpeakers || '?' }${ uploadMinSpeakers != uploadMaxSpeakers ? '-' + (uploadMaxSpeakers || '?') : '' }</span>
                             <button @click.stop.prevent="uploadMinSpeakers = ''; uploadMaxSpeakers = ''"
                                     class="hover:opacity-100 opacity-70"
-                                    title="Clear speakers">
+                                    :title="t('upload.clearSpeakers')">
                                 <i class="fas fa-times text-[9px]"></i>
                             </button>
                         </span>

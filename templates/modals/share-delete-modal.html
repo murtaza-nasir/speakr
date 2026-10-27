@@ -4,27 +4,27 @@
         <div class="modal-header">
             <i class="fas fa-trash-alt text-2xl text-[var(--text-danger)]"></i>
             <div class="flex-1">
-                <h3 class="modal-title">Delete Shared Link</h3>
+                <h3 class="modal-title" v-text="t('modal.deleteSharedLink')"></h3>
                 <div class="modal-subtitle" v-text="t('help.thisActionCannotBeUndone')"></div>
             </div>
             <button @click="cancelDeleteShare" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <p class="t-body" style="margin-bottom: var(--sp-3);">Are you sure you want to delete the shared link for:</p>
+            <p class="t-body" style="margin-bottom: var(--sp-3);" v-text="t('dialogs.deleteShare.confirmFor')"></p>
             <div v-if="shareToDelete" class="banner" style="display: block;">
                 <div class="t-body-strong">${shareToDelete.recording_title}</div>
-                <div class="t-meta" style="margin-top: var(--sp-1);">Shared on: ${ formatShareDate(shareToDelete.created_at) }</div>
+                <div class="t-meta" style="margin-top: var(--sp-1);">${ t('help.sharedOn') }: ${ formatShareDate(shareToDelete.created_at) }</div>
             </div>
             <div class="banner banner--danger" style="margin-top: var(--sp-3); display: flex; align-items: flex-start;">
                 <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
-                <span>The share link will be permanently deleted and anyone with this link will no longer be able to access the recording.</span>
+                <span v-text="t('dialogs.deleteShare.permanentWarning')"></span>
             </div>
         </div>
         <div class="modal-footer">
             <button @click="cancelDeleteShare" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="deleteShare" class="btn btn--danger">
                 <i class="fas fa-trash"></i>
-                <span>Delete Share Link</span>
+                <span v-text="t('buttons.deleteShareLink')"></span>
             </button>
         </div>
     </div>

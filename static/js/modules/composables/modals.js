@@ -3,6 +3,9 @@
  * Handles opening, closing, and saving modal dialogs
  */
 
+// Guarded: the module can run before i18n.js has loaded.
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 export function useModals(state, utils) {
     const {
         showEditModal, showDeleteModal, showEditTagsModal,
@@ -53,7 +56,7 @@ export function useModals(state, utils) {
                 })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to save changes');
+            if (!response.ok) throw new Error(data.error || t('errors.saveChangesFailed'));
 
             // Update local data
             const index = recordings.value.findIndex(r => r.id === editingRecording.value.id);
@@ -64,11 +67,11 @@ export function useModals(state, utils) {
                 selectedRecording.value = { ...selectedRecording.value, ...editingRecording.value };
             }
 
-            showToast('Recording updated!', 'fa-check-circle');
+            showToast(t('messages.recordingUpdated'), 'fa-check-circle');
             showEditModal.value = false;
             editingRecording.value = null;
         } catch (error) {
-            setGlobalError(`Failed to save changes: ${error.message}`);
+            setGlobalError(t('errors.saveChangesFailedDetail', { error: error.message }));
         }
     };
 
@@ -96,7 +99,7 @@ export function useModals(state, utils) {
                 headers: { 'X-CSRFToken': csrfToken }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to delete recording');
+            if (!response.ok) throw new Error(data.error || t('errors.deleteRecordingFailed'));
 
             // Capture the deleted recording's index BEFORE removing it,
             // so when the deleted one was the selectedRecording we can
@@ -147,11 +150,11 @@ export function useModals(state, utils) {
                 }
             }
 
-            showToast('Recording deleted.', 'fa-trash');
+            showToast(t('messages.recordingDeleted'), 'fa-trash');
             showDeleteModal.value = false;
             recordingToDelete.value = null;
         } catch (error) {
-            setGlobalError(`Failed to delete recording: ${error.message}`);
+            setGlobalError(t('errors.deleteRecordingFailedDetail', { error: error.message }));
         }
     };
 
@@ -182,7 +185,7 @@ export function useModals(state, utils) {
                 headers: { 'Content-Type': 'application/json' }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to remove the audio');
+            if (!response.ok) throw new Error(data.error || t('errors.removeAudioFailed'));
 
             const removedAt = data.recording && data.recording.audio_deleted_at;
             recording.audio_deleted_at = removedAt;
@@ -227,7 +230,7 @@ export function useModals(state, utils) {
                 body: JSON.stringify({ tag_id: tagId })
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to add tag');
+            if (!response.ok) throw new Error(data.error || t('errors.addTagFailed'));
 
             // Find the tag object
             const tag = availableTags.value.find(t => t.id === tagId);
@@ -248,9 +251,9 @@ export function useModals(state, utils) {
             }
 
             selectedNewTagId.value = '';
-            showToast('Tag added!', 'fa-tag');
+            showToast(t('messages.tagAdded'), 'fa-tag');
         } catch (error) {
-            setGlobalError(`Failed to add tag: ${error.message}`);
+            setGlobalError(t('errors.addTagFailedDetail', { error: error.message }));
         }
     };
 
@@ -263,7 +266,7 @@ export function useModals(state, utils) {
                 headers: { 'X-CSRFToken': csrfToken }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to remove tag');
+            if (!response.ok) throw new Error(data.error || t('errors.removeTagFailed'));
 
             // Remove from selected recording
             if (selectedRecording.value.tags) {
@@ -276,9 +279,9 @@ export function useModals(state, utils) {
                 recordings.value[index].tags = recordings.value[index].tags.filter(t => t.id !== tagId);
             }
 
-            showToast('Tag removed!', 'fa-tag');
+            showToast(t('messages.tagRemoved'), 'fa-tag');
         } catch (error) {
-            setGlobalError(`Failed to remove tag: ${error.message}`);
+            setGlobalError(t('errors.removeTagFailedDetail', { error: error.message }));
         }
     };
 
@@ -305,7 +308,7 @@ export function useModals(state, utils) {
                 headers: { 'X-CSRFToken': csrfToken }
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to reset recording');
+            if (!response.ok) throw new Error(data.error || t('errors.resetRecordingFailed'));
 
             // Update recording status
             const index = recordings.value.findIndex(r => r.id === recordingToReset.value.id);
@@ -321,11 +324,11 @@ export function useModals(state, utils) {
                 selectedRecording.value.summary = '';
             }
 
-            showToast('Recording reset for reprocessing.', 'fa-redo');
+            showToast(t('messages.recordingResetForReprocessing'), 'fa-redo');
             showResetModal.value = false;
             recordingToReset.value = null;
         } catch (error) {
-            setGlobalError(`Failed to reset recording: ${error.message}`);
+            setGlobalError(t('errors.resetRecordingFailedDetail', { error: error.message }));
         }
     };
 
@@ -357,9 +360,21 @@ export function useModals(state, utils) {
     // DateTime Picker
     // =========================================
 
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                        'July', 'August', 'September', 'October', 'November', 'December'];
-    const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    // Month and weekday names follow the interface language. Reading
+    // showDateTimePicker recomputes them each time the picker opens, by which
+    // time i18n.js has loaded.
+    const pickerLocale = () => window.i18n?.getIntlLocale?.();
+    const monthNames = computed(() => {
+        void showDateTimePicker.value;
+        const fmt = new Intl.DateTimeFormat(pickerLocale(), { month: 'long' });
+        return Array.from({ length: 12 }, (_, m) => fmt.format(new Date(2000, m, 1)));
+    });
+    const dayNames = computed(() => {
+        void showDateTimePicker.value;
+        const fmt = new Intl.DateTimeFormat(pickerLocale(), { weekday: 'short' });
+        // 2 January 2000 was a Sunday; the grid starts on Sunday.
+        return Array.from({ length: 7 }, (_, d) => fmt.format(new Date(2000, 0, 2 + d)));
+    });
 
     // Generate available years (10 years before and after current year)
     const availableYears = computed(() => {
@@ -564,16 +579,16 @@ export function useModals(state, utils) {
     const formatPickerPreview = () => {
         if (!pickerSelectedDate.value) return '';
 
-        const date = pickerSelectedDate.value;
-        const monthName = monthNames[date.getMonth()];
-        const day = date.getDate();
-        const year = date.getFullYear();
+        const date = new Date(pickerSelectedDate.value);
+        let hours = pickerHour.value;
+        if (pickerAmPm.value === 'AM') {
+            hours = hours === 12 ? 0 : hours;
+        } else {
+            hours = hours === 12 ? 12 : hours + 12;
+        }
+        date.setHours(hours, pickerMinute.value, 0, 0);
 
-        const hour = pickerHour.value;
-        const minute = pickerMinute.value.toString().padStart(2, '0');
-        const ampm = pickerAmPm.value;
-
-        return `${monthName} ${day}, ${year} at ${hour}:${minute} ${ampm}`;
+        return new Intl.DateTimeFormat(pickerLocale(), { dateStyle: 'long', timeStyle: 'short' }).format(date);
     };
 
     const applyDateTime = () => {
@@ -654,11 +669,11 @@ export function useModals(state, utils) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to save meeting date');
+            if (!response.ok) throw new Error(data.error || t('errors.saveMeetingDateFailed'));
 
-            showToast('Meeting date updated!', 'fa-calendar-check');
+            showToast(t('messages.meetingDateUpdated'), 'fa-calendar-check');
         } catch (error) {
-            showToast(`Failed to save: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('messages.failedToSave', { error: error.message }), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 

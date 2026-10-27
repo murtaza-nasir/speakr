@@ -18,7 +18,7 @@
                         <div class="t-body-strong truncate"
                              :class="copy.is_self ? 'text-[var(--text-accent)]' : ''">
                             ${ copy.title }
-                            <span v-if="copy.is_self" class="t-meta ml-1">(current)</span>
+                            <span v-if="copy.is_self" class="t-meta ml-1" v-text="t('upload.currentCopy')"></span>
                         </div>
                         <div class="t-meta">${ formatDisplayDate(copy.created_at) }</div>
                     </div>

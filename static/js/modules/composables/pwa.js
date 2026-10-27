@@ -16,6 +16,7 @@ export function usePWA(state, utils) {
     } = state;
 
     const { showToast } = utils;
+    const t = (key, params = {}) => (utils.t ? utils.t(key, params) : key);
 
     // --- Install Prompt ---
 
@@ -50,7 +51,7 @@ export function usePWA(state, utils) {
         console.log(`[PWA] User response to install prompt: ${outcome}`);
 
         if (outcome === 'accepted') {
-            showToast('Installing Speakr...', 'success');
+            showToast(t('pwa.installing'), 'success');
         }
 
         // Clear the deferred prompt since it can only be used once
@@ -78,7 +79,7 @@ export function usePWA(state, utils) {
         console.log('[PWA] App was installed');
         isPWAInstalled.value = true;
         showInstallButton.value = false;
-        showToast('Speakr installed successfully!', 'success');
+        showToast(t('pwa.installed'), 'success');
     };
 
     // --- Push Notifications ---
@@ -98,10 +99,10 @@ export function usePWA(state, utils) {
             console.log(`[PWA] Notification permission: ${permission}`);
 
             if (permission === 'granted') {
-                showToast('Notifications enabled', 'success');
+                showToast(t('pwa.notificationsEnabled'), 'success');
                 return true;
             } else if (permission === 'denied') {
-                showToast('Notification permission denied', 'error');
+                showToast(t('pwa.notificationPermissionDenied'), 'error');
                 return false;
             }
         } catch (error) {
@@ -116,7 +117,7 @@ export function usePWA(state, utils) {
     const subscribeToPushNotifications = async () => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.warn('[PWA] Push notifications not supported');
-            showToast('Push notifications not supported in this browser', 'warning');
+            showToast(t('pwa.pushNotSupported'), 'warning');
             return null;
         }
 
@@ -124,7 +125,7 @@ export function usePWA(state, utils) {
         const enabled = await isPushEnabled();
         if (!enabled) {
             console.warn('[PWA] Push notifications not configured on server');
-            showToast('Push notifications not available. Install pywebpush on server.', 'warning');
+            showToast(t('pwa.pushUnavailableServer'), 'warning');
             return null;
         }
 
@@ -132,7 +133,7 @@ export function usePWA(state, utils) {
         const publicKey = await getPublicKey();
         if (!publicKey) {
             console.error('[PWA] Failed to get VAPID public key from server');
-            showToast('Failed to configure push notifications', 'error');
+            showToast(t('pwa.pushConfigureFailed'), 'error');
             return null;
         }
 
@@ -158,11 +159,11 @@ export function usePWA(state, utils) {
 
                 if (success) {
                     pushSubscription.value = subscription;
-                    showToast('Push notifications enabled', 'success');
+                    showToast(t('pwa.pushEnabled'), 'success');
                     console.log('[PWA] Push subscription successful:', subscription);
                 } else {
                     console.warn('[PWA] Failed to save subscription on server');
-                    showToast('Failed to enable push notifications', 'error');
+                    showToast(t('pwa.pushEnableFailed'), 'error');
                     return null;
                 }
             } else {
@@ -175,9 +176,9 @@ export function usePWA(state, utils) {
             console.error('[PWA] Failed to subscribe to push notifications:', error);
 
             if (error.name === 'NotAllowedError') {
-                showToast('Push notification permission denied', 'error');
+                showToast(t('pwa.pushPermissionDenied'), 'error');
             } else {
-                showToast('Failed to enable push notifications', 'error');
+                showToast(t('pwa.pushEnableFailed'), 'error');
             }
 
             return null;
@@ -236,12 +237,12 @@ export function usePWA(state, utils) {
             });
 
             pushSubscription.value = null;
-            showToast('Push notifications disabled', 'info');
+            showToast(t('pwa.pushDisabled'), 'info');
             console.log('[PWA] Unsubscribed from push notifications');
             return true;
         } catch (error) {
             console.error('[PWA] Failed to unsubscribe from push notifications:', error);
-            showToast('Failed to disable push notifications', 'error');
+            showToast(t('pwa.pushDisableFailed'), 'error');
             return false;
         }
     };
@@ -339,9 +340,9 @@ export function usePWA(state, utils) {
             // Set metadata
             if (metadata) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: metadata.title || 'Untitled Recording',
+                    title: metadata.title || t('upload.untitled'),
                     artist: metadata.artist || 'Speakr',
-                    album: metadata.album || 'Recordings',
+                    album: metadata.album || t('pwa.mediaAlbum'),
                     artwork: metadata.artwork || [
                         { src: '/static/img/icon-192x192.png', sizes: '192x192', type: 'image/png' },
                         { src: '/static/img/icon-512x512.png', sizes: '512x512', type: 'image/png' }

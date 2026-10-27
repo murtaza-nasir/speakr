@@ -247,6 +247,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
+    // Escapes text placed into the help markup returned by helpCode/helpLink.
+    const escapeHelpHtml = (text) => String(text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     // Create a safe t function that's always available
     const safeT = (key, params = {}) => {
         if (!window.i18n || !window.i18n.t) {
@@ -1757,7 +1761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const text = summaryReprocessCustomPrompt.value || '';
                     if (!text.trim()) return [];
                     return buildVariableList({
-                        tagsWithPrompts: [{ name: 'Custom prompt', custom_prompt: text }],
+                        tagsWithPrompts: [{ name: safeT('tagManagement.customPrompt'), custom_prompt: text }],
                         folder: null,
                         userPrompt: '',
                         adminPrompt: '',
@@ -3315,15 +3319,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                             recordingId: job.recording_id,
                             jobId: job.id,
                             clientId: null,
-                            title: job.recording_title || 'Untitled',
+                            title: job.recording_title || t('common.untitled'),
                             status: unifiedStatus,
                             statusLabel: isJoining ? t('progressQueue.joining') : null,
                             progress: isJoining ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
-                            progressMessage: unifiedStatus === 'queued' ? `#${job.position || '?'} in queue` :
+                            progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              isJoining ? t('progressQueue.joiningMessage') :
-                                             unifiedStatus === 'transcribing' ? 'Transcribing audio...' :
-                                             unifiedStatus === 'summarizing' ? 'Generating summary...' :
-                                             unifiedStatus === 'completed' ? 'Done' : 'Failed',
+                                             unifiedStatus === 'transcribing' ? t('progressQueue.transcribingAudio') :
+                                             unifiedStatus === 'summarizing' ? t('help.generatingSummary') :
+                                             unifiedStatus === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
                             queuePosition: job.position,
                             errorMessage: job.error_message,
                             friendlyError: job.error_message ? parseUnformattedError(job.error_message) : null,
@@ -3358,13 +3362,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Determine unified status from upload status (per-item progress)
                     let unifiedStatus = 'ready';
                     let progressVal = upload.progress || 0;
-                    let progressMsg = 'Waiting to upload...';
+                    let progressMsg = t('progressQueue.waitingToUpload');
 
                     if (upload.status === 'uploading') {
                         unifiedStatus = 'uploading';
                         // The bytes are sent; the server is checking and
                         // converting the file before it answers.
-                        progressMsg = upload.serverProcessing ? t('progressQueue.processingOnServer') : 'Uploading...';
+                        progressMsg = upload.serverProcessing ? t('progressQueue.processingOnServer') : t('progressQueue.uploadingMessage');
                     } else if (upload.status === 'pending' && upload.joinWaiting) {
                         unifiedStatus = 'queued';
                         progressVal = 100;
@@ -3375,19 +3379,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else if (upload.status === 'pending') {
                         unifiedStatus = 'queued';
                         progressVal = 100;
-                        progressMsg = 'Uploaded, waiting for processing...';
+                        progressMsg = t('progressQueue.waitingForProcessing');
                     } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
                         unifiedStatus = 'completed';
-                        progressMsg = 'Done';
+                        progressMsg = t('progressQueue.done');
                     } else if (upload.status === 'failed' || upload.status === 'FAILED') {
                         unifiedStatus = 'upload_failed';
-                        progressMsg = upload.error || 'Upload failed';
+                        progressMsg = upload.error || t('progressQueue.uploadFailed');
                     } else if (upload.status === 'ready') {
                         unifiedStatus = 'ready';
-                        progressMsg = 'Waiting to upload...';
+                        progressMsg = t('progressQueue.waitingToUpload');
                     } else if (upload.status === 'queued') {
                         unifiedStatus = 'ready';
-                        progressMsg = 'Waiting to upload...';
+                        progressMsg = t('progressQueue.waitingToUpload');
                     }
 
                     const key = upload.recordingId ? `rec_${upload.recordingId}` : `client_${upload.clientId}`;
@@ -3402,7 +3406,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         recordingId: upload.recordingId,
                         jobId: null,
                         clientId: upload.clientId,
-                        title: upload.displayName || upload.file?.name || 'Unknown file',
+                        title: upload.displayName || upload.file?.name || t('progressQueue.unknownFile'),
                         status: unifiedStatus,
                         progress: progressVal,
                         progressMessage: progressMsg,
@@ -3451,14 +3455,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Helper to get status display info
             const getStatusDisplay = (status) => {
                 const displays = {
-                    'ready': { label: 'Waiting', color: 'gray', icon: 'fa-clock' },
-                    'uploading': { label: 'Uploading', color: 'blue', icon: 'fa-cloud-upload-alt', animate: true },
-                    'queued': { label: 'Queued', color: 'yellow', icon: 'fa-clock' },
-                    'transcribing': { label: 'Transcribing', color: 'purple', icon: 'fa-microphone-alt', animate: true },
-                    'summarizing': { label: 'Summarizing', color: 'green', icon: 'fa-file-alt', animate: true },
-                    'completed': { label: 'Done', color: 'green', icon: 'fa-check-circle' },
-                    'failed': { label: 'Failed', color: 'red', icon: 'fa-exclamation-circle' },
-                    'upload_failed': { label: 'Upload Failed', color: 'red', icon: 'fa-exclamation-circle' }
+                    'ready': { label: t('progressQueue.waiting'), color: 'gray', icon: 'fa-clock' },
+                    'uploading': { label: t('status.uploading'), color: 'blue', icon: 'fa-cloud-upload-alt', animate: true },
+                    'queued': { label: t('status.queued'), color: 'yellow', icon: 'fa-clock' },
+                    'transcribing': { label: t('status.transcribing'), color: 'purple', icon: 'fa-microphone-alt', animate: true },
+                    'summarizing': { label: t('status.summarizing'), color: 'green', icon: 'fa-file-alt', animate: true },
+                    'completed': { label: t('progressQueue.done'), color: 'green', icon: 'fa-check-circle' },
+                    'failed': { label: t('progressQueue.failed'), color: 'red', icon: 'fa-exclamation-circle' },
+                    'upload_failed': { label: t('progressQueue.uploadFailed'), color: 'red', icon: 'fa-exclamation-circle' }
                 };
                 return displays[status] || displays['ready'];
             };
@@ -3485,7 +3489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recentlyCompletedBackend = computed(() => {
                 return completedJobs.value.map(j => ({
                     id: j.recording_id,
-                    title: j.recording_title || 'Untitled',
+                    title: j.recording_title || t('common.untitled'),
                     status: 'completed',
                     completedAt: j.completed_at
                 }));
@@ -4083,7 +4087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // than let an unfiltered list masquerade as the label's
                 // contents, and drop the dead path from the address bar.
                 if (deepLinkLabelName && !labelDeepLinkResolved) {
-                    showToast(`No label named "${deepLinkLabelName}"`, 'fa-tag', 4000, 'error');
+                    showToast(t('tags.noLabelNamed', { name: deepLinkLabelName }), 'fa-tag', 4000, 'error');
                     syncAddressBar();
                 }
 
@@ -4330,7 +4334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
                 } catch (e) {
                     console.warn('[App] Could not finalize recovered server session:', e);
-                    setGlobalError(`Could not recover the session: ${e.message}`);
+                    setGlobalError(safeT('errors.recoverSessionFailed', { error: e.message }));
                 }
             };
 
@@ -4369,7 +4373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 } catch (e) {
                     console.warn('[App] Could not resume server session:', e);
-                    setGlobalError(`Could not resume the recording: ${e.message}`);
+                    setGlobalError(safeT('errors.resumeRecordingFailed', { error: e.message }));
                 }
             };
 
@@ -4488,6 +4492,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formatNumber,
                 // The interface locale for toLocale*String calls in templates (#480)
                 uiLocale: () => window.i18n?.getIntlLocale?.(),
+                // Markup for translated help text shown with v-html (the
+                // system-audio guide): a command or path, an external link.
+                helpCode: (text) => `<code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">${escapeHelpHtml(text)}</code>`,
+                helpLink: (href, label) => `<a href="${escapeHelpHtml(href)}" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">${escapeHelpHtml(label)}</a>`,
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,

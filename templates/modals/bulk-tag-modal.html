@@ -4,8 +4,8 @@
         <div class="modal-header">
             <i class="fas fa-tags text-2xl text-[var(--text-accent)]"></i>
             <div class="flex-1">
-                <h3 class="modal-title">Bulk Tag Update</h3>
-                <div class="modal-subtitle">${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } selected</div>
+                <h3 class="modal-title" v-text="t('bulkActions.bulkTagTitle')"></h3>
+                <div class="modal-subtitle" v-text="t(selectedCount === 1 ? 'bulkReprocessModal.recordingsSelected' : 'bulkReprocessModal.recordingsSelectedPlural', { count: selectedCount })"></div>
             </div>
             <button @click="closeBulkTagModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
@@ -15,17 +15,17 @@
                 <button @click="bulkTagAction = 'add'"
                         :class="['flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors',
                                  bulkTagAction === 'add' ? 'bg-[var(--bg-button)] text-[var(--text-button)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']">
-                    <i class="fas fa-plus mr-2"></i>Add Tag
+                    <i class="fas fa-plus mr-2"></i>${ t('tags.addTag') }
                 </button>
                 <button @click="bulkTagAction = 'remove'"
                         :class="['flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors',
                                  bulkTagAction === 'remove' ? 'bg-[var(--bg-button)] text-[var(--text-button)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']">
-                    <i class="fas fa-minus mr-2"></i>Remove Tag
+                    <i class="fas fa-minus mr-2"></i>${ t('tags.removeTag') }
                 </button>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Select a tag to ${ bulkTagAction }</label>
+                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="bulkTagAction === 'add' ? t('bulkActions.selectTagToAdd') : t('bulkActions.selectTagToRemove')"></label>
                 <div class="max-h-64 overflow-y-auto space-y-1 border border-[var(--border-primary)] rounded-md p-2 bg-[var(--bg-input)]">
                     <button v-for="tag in availableTags" :key="tag.id"
                             @click="bulkTagSelectedId = tag.id"
@@ -34,25 +34,25 @@
                         <div class="flex items-center gap-2">
                             <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: tag.color }"></span>
                             <span class="t-body">${ tag.name }</span>
-                            <i v-if="tag.group_id" class="fas fa-users text-xs text-[var(--text-muted)]" title="Group tag"></i>
+                            <i v-if="tag.group_id" class="fas fa-users text-xs text-[var(--text-muted)]" :title="t('tags.groupTag')"></i>
                         </div>
                         <i v-if="bulkTagSelectedId == tag.id" class="fas fa-check text-[var(--text-accent)]"></i>
                     </button>
-                    <p v-if="availableTags.length === 0" class="t-meta text-center py-4">No tags available. Create tags in settings.</p>
+                    <p v-if="availableTags.length === 0" class="t-meta text-center py-4" v-text="t('bulkActions.noTagsAvailable')"></p>
                 </div>
             </div>
 
             <div class="mt-4 banner">
                 <i class="fas fa-info-circle"></i>
-                <span v-if="bulkTagAction === 'add'">The selected tag will be added to all ${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' }.</span>
-                <span v-else>The selected tag will be removed from all ${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } that have it.</span>
+                <span v-if="bulkTagAction === 'add'" v-text="t(selectedCount === 1 ? 'bulkActions.tagWillBeAdded' : 'bulkActions.tagWillBeAddedPlural', { count: selectedCount })"></span>
+                <span v-else v-text="t(selectedCount === 1 ? 'bulkActions.tagWillBeRemoved' : 'bulkActions.tagWillBeRemovedPlural', { count: selectedCount })"></span>
             </div>
         </div>
         <div class="modal-footer">
             <button @click="closeBulkTagModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="executeBulkTag" :disabled="!bulkTagSelectedId" class="btn btn--primary">
                 <i :class="['fas', bulkTagAction === 'add' ? 'fa-plus' : 'fa-minus']"></i>
-                <span>${ bulkTagAction === 'add' ? 'Add' : 'Remove' } Tag</span>
+                <span v-text="bulkTagAction === 'add' ? t('tags.addTag') : t('tags.removeTag')"></span>
             </button>
         </div>
     </div>

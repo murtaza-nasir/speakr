@@ -419,7 +419,7 @@ export function useUI(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to save metadata');
+            if (!response.ok) throw new Error(data.error || t('messages.saveMetadataFailed'));
 
             // Update the recording with returned HTML
             if (data.recording) {
@@ -506,10 +506,10 @@ export function useUI(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to regenerate title');
+            if (!response.ok) throw new Error(data.error || t('messages.regenerateTitleFailed'));
 
             selectedRecording.value.title = data.title;
-            showToast('Title regenerated', 'fa-check-circle', 3000, 'success');
+            showToast(t('messages.titleRegenerated'), 'fa-check-circle', 3000, 'success');
         } catch (error) {
             showToast(error.message, 'fa-exclamation-circle', 3000, 'error');
         } finally {
@@ -1684,7 +1684,7 @@ export function useUI(state, utils, processedTranscription) {
                     <div class="modal-panel modal-panel--sm">
                         <div class="modal-header">
                             <h3 class="modal-title">${_esc(t('transcriptTemplates.selectTemplate'))}</h3>
-                            <button class="modal-close cancel-btn" title="Close"><i class="fas fa-times"></i></button>
+                            <button class="modal-close cancel-btn" title="${_esc(t('common.close'))}"><i class="fas fa-times"></i></button>
                         </div>
                         <div class="modal-body" style="padding: var(--sp-2);">
                             <div class="space-y-1 max-h-60 overflow-y-auto">
@@ -1750,7 +1750,7 @@ export function useUI(state, utils, processedTranscription) {
                     const transcriptionData = JSON.parse(selectedRecording.value.transcription);
                     if (Array.isArray(transcriptionData)) {
                         rawText = transcriptionData.map(segment => {
-                            const speaker = segment.speaker || 'Unknown';
+                            const speaker = segment.speaker || t('sharing.unknown');
                             const text = segment.sentence || '';
                             return `${speaker}: ${text}`;
                         }).join('\n');

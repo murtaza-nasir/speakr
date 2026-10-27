@@ -69,13 +69,21 @@
      * value across repopulation (locale changes). The first entry is an
      * empty-value option labeled emptyLabel.
      */
+    function autoDetectLabel() {
+        if (window.i18n && typeof window.i18n.t === 'function') {
+            const value = window.i18n.t('form.autoDetect');
+            if (value && value !== 'form.autoDetect') return value;
+        }
+        return 'Auto detect';
+    }
+
     function populateSelect(select, emptyLabel) {
         if (!select) return;
         const previous = select.value;
         select.textContent = '';
         const emptyOpt = document.createElement('option');
         emptyOpt.value = '';
-        emptyOpt.textContent = emptyLabel || 'Auto detect';
+        emptyOpt.textContent = emptyLabel || autoDetectLabel();
         select.appendChild(emptyOpt);
         for (const { value, label } of buildOptions()) {
             const opt = document.createElement('option');

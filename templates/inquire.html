@@ -489,7 +489,7 @@
                                 <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
                                 <span class="flex items-center gap-1.5 whitespace-nowrap">
                                     <i class="fas fa-layer-group"></i>
-                                    <span>Earlier conversation summarized</span>
+                                    <span>${ t('inquire.earlierSummarized') }</span>
                                     <i :class="['fas text-[10px]', memoryState.showMemory ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                                 </span>
                                 <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
@@ -544,9 +544,9 @@
                             <div class="flex items-center gap-2">
                                 <div class="spinner flex-shrink-0"></div>
                                 <span class="t-meta flex-1" v-if="showProcessingStatus">${ chatProcessingStatus }</span>
-                                <span class="t-meta flex-1" v-else-if="agentSteps.length">Working on it...</span>
-                                <span class="t-meta flex-1" v-else>Analyzing transcriptions...</span>
-                                <button @click="stopInquireChat" class="btn btn--ghost btn--sm flex-shrink-0" title="Stop">
+                                <span class="t-meta flex-1" v-else-if="agentSteps.length">${ t('inquire.workingOnIt') }</span>
+                                <span class="t-meta flex-1" v-else>${ t('inquire.analyzing') }</span>
+                                <button @click="stopInquireChat" class="btn btn--ghost btn--sm flex-shrink-0" :title="t('inquire.stop')">
                                     <i class="fas fa-stop text-xs"></i>
                                 </button>
                             </div>
@@ -1049,7 +1049,8 @@
                             });
 
                             if (!response.ok) {
-                                throw new Error('Chat request failed');
+                                const tFailed = t('errors.requestFailed', { status: response.status });
+                                throw new Error(tFailed !== 'errors.requestFailed' ? tFailed : 'Chat request failed');
                             }
 
                             // Handle streaming response
@@ -1148,7 +1149,8 @@
                                 console.info('Inquire chat stopped by user');
                             } else {
                                 console.error('Error in inquire chat:', error);
-                                setGlobalError(error.message || 'Chat failed. Please try again.', 10000);
+                                const tChatFailed = t('inquire.chatFailed');
+                                setGlobalError(error.message || (tChatFailed !== 'inquire.chatFailed' ? tChatFailed : 'Chat failed. Please try again.'), 10000);
                             }
                         } finally {
                             isInquireChatLoading.value = false;

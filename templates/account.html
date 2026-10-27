@@ -25,6 +25,16 @@
         // Initialize i18n
         let t = (key) => key; // Default fallback
 
+        // Translate with an English fallback for when i18n is not ready
+        // or the key is missing. Params fill the locale placeholders.
+        function tf(key, fallback, params) {
+            if (window.i18n) {
+                const value = window.i18n.t(key, params || {});
+                if (value && value !== key) return value;
+            }
+            return fallback;
+        }
+
         // Sort the option list of a <select> alphabetically by the displayed
         // text, using the current locale's collation. The selected option is
         // preserved across the reshuffle so the user's preference doesn't
@@ -91,6 +101,19 @@
             }
         }
 
+        // Translate title / aria-label attributes marked with
+        // data-i18n-title / data-i18n-aria-label. The English attribute
+        // stays when a key is missing.
+        function applyI18nAttributes() {
+            [['data-i18n-title', 'title'], ['data-i18n-aria-label', 'aria-label']].forEach(([attr, target]) => {
+                document.querySelectorAll('[' + attr + ']').forEach(el => {
+                    const key = el.getAttribute(attr);
+                    const value = t(key);
+                    if (value && value !== key) el.setAttribute(target, value);
+                });
+            });
+        }
+
         async function initializeI18n(language) {
             const userLanguage = language || "{{ user_language }}";
 
@@ -114,6 +137,8 @@
                     const key = el.getAttribute('data-i18n-placeholder');
                     el.placeholder = t(key);
                 });
+
+                applyI18nAttributes();
 
                 // Make sure the Interface Language dropdown reflects the
                 // locale that's actually rendering, not just the DB value.
@@ -145,6 +170,8 @@
                 const key = el.getAttribute('data-i18n-placeholder');
                 el.placeholder = t(key);
             });
+
+            applyI18nAttributes();
 
             // Update language options in dropdown to show native names
             const langSelect = document.getElementById('ui_language');
@@ -185,7 +212,7 @@
                 const originalText = uiLanguageSelect.parentElement.querySelector('p').textContent;
                 const loadingMsg = uiLanguageSelect.parentElement.querySelector('p');
                 if (loadingMsg) {
-                    loadingMsg.textContent = 'Applying language change...';
+                    loadingMsg.textContent = tf('account.applyingLanguageChange', 'Applying language change...');
                 }
                 
                 // Get CSRF token
@@ -210,7 +237,7 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                 }
                 
                 // Store the new language in localStorage for other pages
@@ -232,7 +259,7 @@
                 
             } catch (error) {
                 console.error('Error updating language:', error);
-                alert('Failed to update language. Please try again.');
+                alert(tf('account.languageUpdateFailed', 'Failed to update language. Please try again.'));
                 // Revert the dropdown to previous value if update failed
                 document.getElementById('ui_language').value = currentUILanguage;
                 document.getElementById('ui_language').disabled = false;
@@ -485,10 +512,10 @@
                      also maps to horizontal scroll. IDs preserved so
                      existing tab-switching JS keeps working unchanged. -->
                 <div class="tabs-scroller flex-shrink-0" data-tabs-scroller>
-                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" aria-label="Scroll left">
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" aria-label="Scroll left" data-i18n-aria-label="account.scrollTabsLeft">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                <nav class="tabs px-3 sm:px-4" aria-label="Tabs" id="tabs-container">
+                <nav class="tabs px-3 sm:px-4" aria-label="Tabs" data-i18n-aria-label="account.tabsLabel" id="tabs-container">
                     <a href="#" id="tab-account" class="tab is-active">
                         <i class="fas fa-user-circle"></i><span data-i18n="account.title">Account</span>
                     </a>
@@ -525,7 +552,7 @@
                         <i class="fas fa-info-circle"></i><span data-i18n="accountTabs.about">About</span>
                     </a>
                 </nav>
-                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right">
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right" data-i18n-aria-label="account.scrollTabsRight">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -593,11 +620,11 @@
                                     </div>
                                     <div>
                                         <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.jobTitle">Job Title</label>
-                                        <input type="text" name="user_job_title" id="user_job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Software Engineer" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <input type="text" name="user_job_title" id="user_job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Software Engineer" data-i18n-placeholder="account.jobTitlePlaceholder" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                     <div>
                                         <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.companyOrganization">Company / Organization</label>
-                                        <input type="text" name="user_company" id="user_company" value="{{ current_user.company or '' }}" placeholder="e.g., Acme Corp" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <input type="text" name="user_company" id="user_company" value="{{ current_user.company or '' }}" placeholder="e.g., Acme Corp" data-i18n-placeholder="account.companyPlaceholder" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                 </div>
                             </div>
@@ -615,7 +642,7 @@
                                     <span class="block text-[var(--text-primary)]">{{ current_user.username }}</span>
                                 </div>
                                 <div class="mb-3">
-                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Email</span>
+                                    <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.email">Email</span>
                                     <span class="block text-[var(--text-primary)]">{{ current_user.email }}</span>
                                 </div>
                             </div>
@@ -736,7 +763,7 @@
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
                         {% if not admin_disabled_auto_summarization %}
-                        <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes">
+                        <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes" data-i18n-title="account.autoSummarizeTitle">
                             <span class="text-sm text-[var(--text-secondary)]" data-i18n="account.autoSummarize">Auto-summarize</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSummarizationToggle" class="sr-only peer" {% if auto_summarization %}checked{% endif %}>
@@ -744,7 +771,7 @@
                             </label>
                         </div>
                         {% else %}
-                        <div class="text-sm text-[var(--text-muted)] italic" title="Auto-summarization has been disabled by the administrator">
+                        <div class="text-sm text-[var(--text-muted)] italic" title="Auto-summarization has been disabled by the administrator" data-i18n-title="account.autoSummarizeDisabledTitle">
                             <i class="fas fa-lock mr-1"></i> <span data-i18n="account.autoSummarizationDisabled">Auto-summarization disabled by admin</span>
                         </div>
                         {% endif %}
@@ -1040,7 +1067,7 @@
                                             Default Initial Prompt
                                         </label>
                                         <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="transcription_initial_prompt" data-target-hotwords="transcription_hotwords" style="display:none">
-                                            <option value="">Insert a saved prompt…</option>
+                                            <option value="" data-i18n="initialPromptTemplates.pickPlaceholder">Insert a saved template…</option>
                                         </select>
                                         <textarea name="transcription_initial_prompt" id="transcription_initial_prompt" rows="2"
                                                   data-i18n-placeholder="account.defaultInitialPromptPlaceholder"
@@ -1283,7 +1310,7 @@
                             <p class="text-sm text-[var(--text-secondary)] hidden sm:block" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
                         </div>
                         {% if speaker_embeddings_enabled or contextual_labelling_available %}
-                        <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="{% if speaker_embeddings_enabled %}Automatically label speakers in new recordings when saved voice profiles match{% else %}Automatically label speakers in new recordings from the conversation context{% endif %}">
+                        <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="{% if speaker_embeddings_enabled %}Automatically label speakers in new recordings when saved voice profiles match{% else %}Automatically label speakers in new recordings from the conversation context{% endif %}" {% if speaker_embeddings_enabled %}data-i18n-title="account.speakersTab.autoLabelVoiceTitle"{% else %}data-i18n-title="account.speakersTab.autoLabelContextTitle"{% endif %}>
                             <span class="text-sm text-[var(--text-secondary)] hidden sm:inline" data-i18n="account.autoLabel">Auto-label</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
@@ -1292,9 +1319,9 @@
                             {# Confidence threshold only tunes embedding (voice) matching; the contextual LLM path has no similarity score, so it is hidden there. #}
                             {% if speaker_embeddings_enabled %}
                             <select id="autoSpeakerLabellingThreshold" class="text-sm bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded-md px-2 py-1 text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--border-focus)] disabled:opacity-50 disabled:cursor-not-allowed" {% if not auto_speaker_labelling %}disabled{% endif %}>
-                                <option value="high" {% if auto_speaker_labelling_threshold == 'high' %}selected{% endif %}>High</option>
-                                <option value="medium" {% if auto_speaker_labelling_threshold == 'medium' %}selected{% endif %}>Medium</option>
-                                <option value="low" {% if auto_speaker_labelling_threshold == 'low' %}selected{% endif %}>Low</option>
+                                <option value="high" {% if auto_speaker_labelling_threshold == 'high' %}selected{% endif %} data-i18n="account.speakersTab.thresholdHigh">High</option>
+                                <option value="medium" {% if auto_speaker_labelling_threshold == 'medium' %}selected{% endif %} data-i18n="account.speakersTab.thresholdMedium">Medium</option>
+                                <option value="low" {% if auto_speaker_labelling_threshold == 'low' %}selected{% endif %} data-i18n="account.speakersTab.thresholdLow">Low</option>
                             </select>
                             {% endif %}
                         </div>
@@ -1313,26 +1340,26 @@
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                                 <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="hidden sm:inline">Select All</span>
-                                <span class="sm:hidden">All</span>
+                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select All</span>
+                                <span class="sm:hidden" data-i18n="account.speakersTab.all">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
                                 <span id="speakersTabCountTop" class="speakers-count">0</span> <span class="hidden sm:inline" data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
                             </span>
-                            <input type="text" id="speakerSearchInput" placeholder="Filter by name..." class="speaker-search-input px-2 py-1 text-sm rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-light)] focus:outline-none focus:border-[var(--border-accent)] focus:ring-1 focus:ring-[var(--border-accent)] w-32 sm:w-40" autocomplete="off">
+                            <input type="text" id="speakerSearchInput" placeholder="Filter by name..." data-i18n-placeholder="account.speakersTab.filterPlaceholder" class="speaker-search-input px-2 py-1 text-sm rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-light)] focus:outline-none focus:border-[var(--border-accent)] focus:ring-1 focus:ring-[var(--border-accent)] w-32 sm:w-40" autocomplete="off">
                         </div>
                         <div class="flex space-x-1 sm:space-x-2">
-                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete" data-i18n-title="common.delete">
                                 <i class="fas fa-trash"></i>
-                                <span class="hidden sm:inline ml-1">Delete</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="common.delete">Delete</span>
                             </button>
-                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles">
+                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles" data-i18n-title="account.speakersTab.clearProfiles">
                                 <i class="fas fa-eraser"></i>
-                                <span class="hidden sm:inline ml-1">Clear</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="account.speakersTab.clear">Clear</span>
                             </button>
-                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge">
+                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge" data-i18n-title="account.speakersTab.merge">
                                 <i class="fas fa-object-group"></i>
-                                <span class="hidden sm:inline ml-1">Merge</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="account.speakersTab.merge">Merge</span>
                             </button>
                         </div>
                     </div>
@@ -1369,25 +1396,25 @@
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                                 <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="hidden sm:inline">Select All</span>
-                                <span class="sm:hidden">All</span>
+                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select All</span>
+                                <span class="sm:hidden" data-i18n="account.speakersTab.all">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
                                 <span id="speakersTabCountBottom" class="speakers-count">0</span> <span class="hidden sm:inline" data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
                             </span>
                         </div>
                         <div class="flex space-x-1 sm:space-x-2">
-                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete" data-i18n-title="common.delete">
                                 <i class="fas fa-trash"></i>
-                                <span class="hidden sm:inline ml-1">Delete</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="common.delete">Delete</span>
                             </button>
-                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles">
+                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles" data-i18n-title="account.speakersTab.clearProfiles">
                                 <i class="fas fa-eraser"></i>
-                                <span class="hidden sm:inline ml-1">Clear</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="account.speakersTab.clear">Clear</span>
                             </button>
-                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge">
+                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge" data-i18n-title="account.speakersTab.merge">
                                 <i class="fas fa-object-group"></i>
-                                <span class="hidden sm:inline ml-1">Merge</span>
+                                <span class="hidden sm:inline ml-1" data-i18n="account.speakersTab.merge">Merge</span>
                             </button>
                         </div>
                     </div>
@@ -1465,20 +1492,20 @@
                         <!-- Loading state -->
                         <div id="tagsLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="text-[var(--text-muted)] mt-2">Loading tags...</p>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="account.organizer.loadingTags">Loading tags...</p>
                         </div>
 
                         <!-- Error state -->
                         <div id="tagsError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <span id="tagsErrorMessage">Failed to load tags</span>
+                            <span id="tagsErrorMessage" data-i18n="account.organizer.tagsLoadFailed">Failed to load tags</span>
                         </div>
 
                         <!-- Empty state -->
                         <div id="tagsEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-tags text-4xl text-[var(--text-light)] mb-4"></i>
-                            <p class="text-[var(--text-muted)] text-lg mb-2">No tags created yet</p>
-                            <p class="text-sm text-[var(--text-light)]">Create your first tag to organize your recordings</p>
+                            <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="help.noTagsCreated">No tags created yet</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="account.organizer.createFirstTag">Create your first tag to organize your recordings</p>
                         </div>
 
                         <!-- Tags grid -->
@@ -1712,32 +1739,32 @@
                                                     <div>
                                                         <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.recordingData">Recording Data:</p>
                                                         <div class="flex flex-wrap gap-2">
-                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{title}}" title="Click to copy"><code>{{title}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{meeting_date}}" title="Click to copy"><code>{{meeting_date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{created_at}}" title="Click to copy"><code>{{created_at}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{original_filename}}" title="Click to copy"><code>{{original_filename}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{file_size}}" title="Click to copy"><code>{{file_size}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{participants}}" title="Click to copy"><code>{{participants}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{tags}}" title="Click to copy"><code>{{tags}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{title}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{title}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{meeting_date}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{meeting_date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{created_at}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{created_at}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{original_filename}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{original_filename}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{file_size}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{file_size}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{participants}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{participants}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{tags}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{tags}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.contentSections">Content Sections:</p>
                                                         <div class="flex flex-wrap gap-2">
-                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{notes}}" title="Click to copy"><code>{{notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{summary}}" title="Click to copy"><code>{{summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{transcription}}" title="Click to copy"><code>{{transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{notes}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{summary}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{transcription}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.availableLabels">Localized Labels (auto-translated):</p>
                                                         <div class="flex flex-wrap gap-2">
-                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.metadata}}" title="Click to copy"><code>{{label.metadata}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.notes}}" title="Click to copy"><code>{{label.notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.summary}}" title="Click to copy"><code>{{label.summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.transcription}}" title="Click to copy"><code>{{label.transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.date}}" title="Click to copy"><code>{{label.date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
-                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.created}}" title="Click to copy"><code>{{label.created}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.metadata}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.metadata}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.notes}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.summary}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.transcription}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.date}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.created}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.created}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
                                                         </div>
                                                     </div>
                                                     <div>
@@ -1838,11 +1865,11 @@
                                                 <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
                                                     <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in Variables:</p>
                                                     <div class="flex flex-wrap gap-2 mb-2">
-                                                        {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription">{{ai_title}}</code>
-                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension">{{filename}}</code>
-                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date (YYYY-MM-DD)">{{date}}</code>
-                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time">{{datetime}}</code>
-                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)">{{time}}</code>{% endraw %}
+                                                        {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription" data-i18n-title="account.namingTemplatesTab.varAiTitle">{{ai_title}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension" data-i18n-title="account.namingTemplatesTab.varFilename">{{filename}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date (YYYY-MM-DD)" data-i18n-title="account.namingTemplatesTab.varDate">{{date}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time" data-i18n-title="account.namingTemplatesTab.varDatetime">{{datetime}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)" data-i18n-title="account.namingTemplatesTab.varTime">{{time}}</code>{% endraw %}
                                                     </div>
                                                     <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Define regex patterns below to extract custom variables from filenames.</p>
                                                 </div>
@@ -2030,7 +2057,7 @@
                             <!-- Loading State -->
                             <div id="tokensLoading" class="text-center py-12">
                                 <i class="fas fa-spinner fa-spin text-4xl text-[var(--text-muted)] mb-4"></i>
-                                <p class="text-[var(--text-muted)]">Loading tokens...</p>
+                                <p class="text-[var(--text-muted)]" data-i18n="account.tokensTab.loading">Loading tokens...</p>
                             </div>
 
                             <!-- Token List Container -->
@@ -2065,12 +2092,12 @@
                                     </h3>
                                     <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-4 space-y-4">
                                         <div>
-                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2">Using with curl:</h4>
+                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.usingCurl">Using with curl:</h4>
                                             <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto"><code>curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
      https://your-speakr-instance.com/api/recordings</code></pre>
                                         </div>
                                         <div>
-                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2">Alternative header formats:</h4>
+                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.altHeaders">Alternative header formats:</h4>
                                             <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto"><code># X-API-Token header
 curl -H "X-API-Token: YOUR_TOKEN_HERE" ...
 
@@ -2111,7 +2138,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <div class="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg max-w-xl w-full max-h-[90vh] overflow-y-auto">
                                     <div class="flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
                                         <h3 id="webhook-modal-title" class="text-lg font-medium text-[var(--text-primary)]" data-i18n="webhooks.modalTitleNew">New webhook</h3>
-                                        <button id="webhook-modal-close" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Close"><i class="fas fa-times"></i></button>
+                                        <button id="webhook-modal-close" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Close" data-i18n-aria-label="common.close"><i class="fas fa-times"></i></button>
                                     </div>
                                     <form id="webhook-form" class="p-4 space-y-4">
                                         <input type="hidden" id="webhook-id-input" value="">
@@ -2181,7 +2208,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                                 <span class="inline-flex items-center px-2.5 py-1 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md text-xs font-mono border border-[var(--border-primary)]">
                                     <i class="fas fa-tag mr-1.5 text-[var(--text-muted)]"></i>
-                                    <span id="system-version">Loading…</span>
+                                    <span id="system-version" data-i18n="common.loading">Loading…</span>
                                 </span>
                             </div>
 
@@ -2194,11 +2221,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                         <dl class="text-xs space-y-1">
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
-                                                <dd id="llm-model" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
+                                                <dd id="llm-model" data-i18n="common.loading" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
                                             </div>
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.endpoint">Endpoint:</dt>
-                                                <dd id="llm-endpoint" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
+                                                <dd id="llm-endpoint" data-i18n="common.loading" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
                                             </div>
                                         </dl>
                                     </div>
@@ -2207,11 +2234,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                         <dl class="text-xs space-y-1">
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
-                                                <dd id="transcription-model" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
+                                                <dd id="transcription-model" data-i18n="common.loading" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
                                             </div>
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.endpoint">Endpoint:</dt>
-                                                <dd id="transcription-endpoint" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
+                                                <dd id="transcription-endpoint" data-i18n="common.loading" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
                                             </div>
                                         </dl>
                                     </div>
@@ -2265,7 +2292,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}" style="display: contents;">
                 <div class="modal-header">
                     <h3 class="modal-title" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
-                    <button type="button" id="closeModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                    <button type="button" id="closeModalBtn" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body space-y-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -2277,7 +2304,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% else %}
                     <div class="banner banner--info">
                         <i class="fas fa-info-circle"></i>
-                        <span>You don't have a password set. Create one to enable local login.</span>
+                        <span data-i18n="account.noPasswordSet">You don't have a password set. Create one to enable local login.</span>
                     </div>
                     {% endif %}
                     <div>
@@ -2291,7 +2318,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" id="cancelBtn" class="btn btn--ghost">Cancel</button>
+                    <button type="button" id="cancelBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                     <button type="submit" class="btn btn--primary" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
                 </div>
             </form>
@@ -2303,7 +2330,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--lg">
             <div class="modal-header">
                 <h3 class="modal-title" data-i18n="account.manageSpeakers">Manage Speakers</h3>
-                <button id="closeSpeakersModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                <button id="closeSpeakersModalBtn" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
                 <p class="t-meta mb-3"><span data-i18n="manageSpeakersModal.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</span></p>
@@ -2357,7 +2384,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-footer">
                 <button id="cancelDeleteAllBtn" class="btn btn--ghost"><span data-i18n="buttons.cancel">Cancel</span></button>
                 <button id="confirmDeleteAllBtn" class="btn btn--danger">
-                    <i class="fas fa-trash"></i><span>Delete All</span>
+                    <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete All</span>
                 </button>
             </div>
         </div>
@@ -2369,24 +2396,24 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-trash text-2xl text-[var(--text-danger)]"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title">Delete Speakers</h3>
-                    <div class="modal-subtitle">This action cannot be undone</div>
+                    <h3 class="modal-title" data-i18n="account.speakersTab.deleteSpeakers">Delete Speakers</h3>
+                    <div class="modal-subtitle" data-i18n="help.thisActionCannotBeUndone">This action cannot be undone</div>
                 </div>
             </div>
             <div class="modal-body">
                 <p class="t-body mb-3">
-                    You are about to delete <strong id="deleteSelectedCount">0</strong> speaker(s):
+                    <span data-i18n="account.speakersTab.deletePrefix">You are about to delete</span> <strong id="deleteSelectedCount">0</strong> <span data-i18n="account.speakersTab.deleteSuffix">speaker(s):</span>
                 </p>
                 <div id="deleteSelectedSpeakersList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)] mb-3"></div>
                 <div class="banner banner--danger" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
-                    <span>All voice profiles, recording associations, and usage data will be permanently deleted.</span>
+                    <span data-i18n="account.speakersTab.deleteWarning">All voice profiles, recording associations, and usage data will be permanently deleted.</span>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="cancelDeleteSelectedBtn" class="btn btn--ghost">Cancel</button>
+                <button id="cancelDeleteSelectedBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="confirmDeleteSelectedBtn" class="btn btn--danger">
-                    <i class="fas fa-trash"></i><span>Delete Speakers</span>
+                    <i class="fas fa-trash"></i><span data-i18n="account.speakersTab.deleteSpeakers">Delete Speakers</span>
                 </button>
             </div>
         </div>
@@ -2398,31 +2425,31 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-eraser text-2xl" style="color: #f97316;"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title">Clear Voice Profiles</h3>
-                    <div class="modal-subtitle">Remove voice recognition data</div>
+                    <h3 class="modal-title" data-i18n="account.speakersTab.clearVoiceProfiles">Clear Voice Profiles</h3>
+                    <div class="modal-subtitle" data-i18n="account.speakersTab.clearSubtitle">Remove voice recognition data</div>
                 </div>
             </div>
             <div class="modal-body">
                 <p class="t-body mb-3">
-                    Clear voice profiles for <strong id="clearVoiceProfilesCount">0</strong> speaker(s):
+                    <span data-i18n="account.speakersTab.clearPrefix">Clear voice profiles for</span> <strong id="clearVoiceProfilesCount">0</strong> <span data-i18n="account.speakersTab.clearSuffix">speaker(s):</span>
                 </p>
                 <div id="clearVoiceProfilesList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)] mb-4"></div>
                 <div class="banner banner--warn mb-2" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
                     <div>
-                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">What will happen</div>
-                        <div class="t-meta">All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.</div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);" data-i18n="account.speakersTab.whatWillHappen">What will happen</div>
+                        <div class="t-meta" data-i18n="account.speakersTab.clearExplanation">All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.</div>
                     </div>
                 </div>
                 <div class="banner banner--success" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-check" style="margin-top: 2px;"></i>
-                    <span class="t-meta">New voice profiles will be created when you identify these speakers in future recordings.</span>
+                    <span class="t-meta" data-i18n="account.speakersTab.clearNote">New voice profiles will be created when you identify these speakers in future recordings.</span>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="cancelClearVoiceProfilesBtn" class="btn btn--ghost">Cancel</button>
+                <button id="cancelClearVoiceProfilesBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="confirmClearVoiceProfilesBtn" class="btn btn--primary" style="background: #f97316; border-color: #f97316;">
-                    <i class="fas fa-eraser"></i><span>Clear Profiles</span>
+                    <i class="fas fa-eraser"></i><span data-i18n="account.speakersTab.clearProfiles">Clear Profiles</span>
                 </button>
             </div>
         </div>
@@ -2434,22 +2461,22 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-object-group text-2xl text-[var(--text-accent)]"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title">Merge Speakers</h3>
-                    <div class="modal-subtitle">Combine speaker profiles</div>
+                    <h3 class="modal-title" data-i18n="speakersManagement.mergeSpeakers">Merge Speakers</h3>
+                    <div class="modal-subtitle" data-i18n="account.speakersTab.mergeSubtitle">Combine speaker profiles</div>
                 </div>
-                <button id="closeMergeModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                <button id="closeMergeModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
                 <div class="banner banner--info mb-3" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
-                    <span>Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.</span>
+                    <span data-i18n="account.speakersTab.mergeInstruction">Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.</span>
                 </div>
                 <div id="mergeSpeakersList" class="space-y-2"></div>
             </div>
             <div class="modal-footer">
-                <button id="cancelMergeBtn" class="btn btn--ghost">Cancel</button>
+                <button id="cancelMergeBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="executeMergeBtn" class="btn btn--primary" disabled>
-                    <i class="fas fa-object-group"></i><span>Merge Speakers</span>
+                    <i class="fas fa-object-group"></i><span data-i18n="speakersManagement.mergeSpeakers">Merge Speakers</span>
                 </button>
             </div>
         </div>
@@ -2460,18 +2487,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-pen text-2xl text-[var(--text-accent)]"></i>
-                <h3 class="modal-title">Edit Speaker Name</h3>
-                <button id="closeEditSpeakerModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                <h3 class="modal-title" data-i18n="account.speakersTab.editNameTitle">Edit Speaker Name</h3>
+                <button id="closeEditSpeakerModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Speaker Name</label>
-                <input type="text" id="editSpeakerNameInput" class="field" placeholder="Enter speaker name">
+                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="help.speakerName">Speaker Name</label>
+                <input type="text" id="editSpeakerNameInput" class="field" placeholder="Enter speaker name" data-i18n-placeholder="help.enterSpeakerName">
                 <div id="editSpeakerError" class="t-meta mt-2 hidden" style="color: var(--text-danger);"></div>
             </div>
             <div class="modal-footer">
-                <button id="cancelEditSpeakerBtn" class="btn btn--ghost">Cancel</button>
+                <button id="cancelEditSpeakerBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="saveEditSpeakerBtn" class="btn btn--primary">
-                    <i class="fas fa-save"></i><span>Save</span>
+                    <i class="fas fa-save"></i><span data-i18n="common.save">Save</span>
                 </button>
             </div>
         </div>
@@ -2485,8 +2512,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-key text-[var(--text-accent)]"></i>
-                <h3 class="modal-title">Create API Token</h3>
-                <button id="closeCreateTokenModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                <h3 class="modal-title" data-i18n="account.tokensTab.createTitle">Create API Token</h3>
+                <button id="closeCreateTokenModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
 
             <form id="createTokenForm" class="contents">
@@ -2494,49 +2521,49 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <div>
-                        <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Token Name *</label>
-                        <input type="text" id="tokenNameInput" name="name" required maxlength="100" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., n8n automation, CLI access">
-                        <p class="text-xs text-[var(--text-light)] mt-1">A descriptive name to help you identify this token</p>
+                        <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.nameLabel">Token Name *</label>
+                        <input type="text" id="tokenNameInput" name="name" required maxlength="100" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., n8n automation, CLI access" data-i18n-placeholder="account.tokensTab.namePlaceholder">
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.nameHelp">A descriptive name to help you identify this token</p>
                     </div>
 
                     <div>
-                        <label for="tokenExpirationSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Expiration</label>
+                        <label for="tokenExpirationSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.expirationLabel">Expiration</label>
                         <select id="tokenExpirationSelect" name="expires_in_days" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="0">Never expires</option>
-                            <option value="7">7 days</option>
-                            <option value="30">30 days</option>
-                            <option value="90">90 days</option>
-                            <option value="365">1 year</option>
+                            <option value="0" data-i18n="account.tokensTab.expiresNever">Never expires</option>
+                            <option value="7" data-i18n="account.tokensTab.expires7">7 days</option>
+                            <option value="30" data-i18n="account.tokensTab.expires30">30 days</option>
+                            <option value="90" data-i18n="account.tokensTab.expires90">90 days</option>
+                            <option value="365" data-i18n="account.tokensTab.expires365">1 year</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1">When this token should expire</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.expirationHelp">When this token should expire</p>
                     </div>
 
                     <div>
-                        <label for="tokenScopePreset" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Access</label>
+                        <label for="tokenScopePreset" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.accessLabel">Access</label>
                         <select id="tokenScopePreset" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="read">Read only</option>
-                            <option value="read,write,upload">Integration (read, write, upload)</option>
-                            <option value="upload">Recorder (upload only)</option>
-                            <option value="full">Full access (everything this account can do)</option>
-                            <option value="custom">Custom</option>
+                            <option value="read" data-i18n="account.tokensTab.presetRead">Read only</option>
+                            <option value="read,write,upload" data-i18n="account.tokensTab.presetIntegration">Integration (read, write, upload)</option>
+                            <option value="upload" data-i18n="account.tokensTab.presetRecorder">Recorder (upload only)</option>
+                            <option value="full" data-i18n="account.tokensTab.presetFull">Full access (everything this account can do)</option>
+                            <option value="custom" data-i18n="account.tokensTab.presetCustom">Custom</option>
                         </select>
                         <div id="tokenScopeBoxes" class="hidden mt-2 grid gap-1">
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="read"> <span><span class="font-medium text-[var(--text-primary)]">read</span>: Read recordings, transcripts, summaries, notes, tags and folders</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="write"> <span><span class="font-medium text-[var(--text-primary)]">write</span>: Edit recordings, notes, summaries, tags, folders and speakers</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="upload"> <span><span class="font-medium text-[var(--text-primary)]">upload</span>: Upload recordings</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="process"> <span><span class="font-medium text-[var(--text-primary)]">process</span>: Transcribe, summarize, chat and other model calls</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="share"> <span><span class="font-medium text-[var(--text-primary)]">share</span>: Create and revoke share links</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="delete"> <span><span class="font-medium text-[var(--text-primary)]">delete</span>: Delete recordings, audio, tags, folders and speakers</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="webhooks"> <span><span class="font-medium text-[var(--text-primary)]">webhooks</span>: Manage webhooks</span></label>
-                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="account"> <span><span class="font-medium text-[var(--text-primary)]">account</span>: Change account settings</span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="read"> <span><span class="font-medium text-[var(--text-primary)]">read</span>: <span data-i18n="account.tokensTab.scopeRead">Read recordings, transcripts, summaries, notes, tags and folders</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="write"> <span><span class="font-medium text-[var(--text-primary)]">write</span>: <span data-i18n="account.tokensTab.scopeWrite">Edit recordings, notes, summaries, tags, folders and speakers</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="upload"> <span><span class="font-medium text-[var(--text-primary)]">upload</span>: <span data-i18n="account.tokensTab.scopeUpload">Upload recordings</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="process"> <span><span class="font-medium text-[var(--text-primary)]">process</span>: <span data-i18n="account.tokensTab.scopeProcess">Transcribe, summarize, chat and other model calls</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="share"> <span><span class="font-medium text-[var(--text-primary)]">share</span>: <span data-i18n="account.tokensTab.scopeShare">Create and revoke share links</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="delete"> <span><span class="font-medium text-[var(--text-primary)]">delete</span>: <span data-i18n="account.tokensTab.scopeDelete">Delete recordings, audio, tags, folders and speakers</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="webhooks"> <span><span class="font-medium text-[var(--text-primary)]">webhooks</span>: <span data-i18n="account.tokensTab.scopeWebhooks">Manage webhooks</span></span></label>
+                            <label class="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><input type="checkbox" class="token-scope-box mt-0.5" value="account"> <span><span class="font-medium text-[var(--text-primary)]">account</span>: <span data-i18n="account.tokensTab.scopeAccount">Change account settings</span></span></label>
                         </div>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Give an integration only the access it needs, and an expiry date. Scoped tokens work only in the Authorization header, and only on the API.</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.scopeHelp">Give an integration only the access it needs, and an expiry date. Scoped tokens work only in the Authorization header, and only on the API.</p>
                     </div>
 
                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <div class="flex">
                             <i class="fas fa-info-circle text-amber-500 mr-2 mt-0.5"></i>
-                            <p class="text-xs text-amber-700">
+                            <p class="text-xs text-amber-700" data-i18n="account.tokensTab.shownOnce">
                                 The token will only be shown once after creation. Make sure to copy and save it securely.
                             </p>
                         </div>
@@ -2544,9 +2571,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" id="cancelCreateTokenBtn" class="btn btn--ghost">Cancel</button>
+                    <button type="button" id="cancelCreateTokenBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                     <button type="submit" id="submitCreateTokenBtn" class="btn btn--primary">
-                        <i class="fas fa-plus mr-2"></i>Create Token
+                        <i class="fas fa-plus mr-2"></i><span data-i18n="apiTokens.createToken">Create Token</span>
                     </button>
                 </div>
             </form>
@@ -2558,7 +2585,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-check-circle text-green-500"></i>
-                <h3 class="modal-title">Token Created!</h3>
+                <h3 class="modal-title" data-i18n="account.tokensTab.createdTitle">Token Created!</h3>
             </div>
 
             <div class="modal-body">
@@ -2567,18 +2594,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <div class="flex">
                             <i class="fas fa-exclamation-triangle text-[var(--text-danger)] mr-2 mt-0.5"></i>
                             <p class="text-xs text-[var(--text-danger-strong)]">
-                                <strong>Important!</strong> This is the only time you'll see this token. Copy it now and store it securely.
+                                <strong data-i18n="account.tokensTab.important">Important!</strong> <span data-i18n="account.tokensTab.onlyTimeShown">This is the only time you'll see this token. Copy it now and store it securely.</span>
                             </p>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Your API Token</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.yourToken">Your API Token</label>
                         <div class="relative">
                             <input type="text" id="newTokenValue" readonly class="w-full px-3 py-2 pr-12 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-mono text-sm">
-                            <button type="button" id="copyTokenBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-md transition-all duration-200 flex items-center gap-1.5 border border-transparent hover:border-[var(--border-secondary)]" title="Copy to clipboard">
+                            <button type="button" id="copyTokenBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-md transition-all duration-200 flex items-center gap-1.5 border border-transparent hover:border-[var(--border-secondary)]" title="Copy to clipboard" data-i18n-title="buttons.copyToClipboard">
                                 <i id="copyTokenIcon" class="fas fa-copy text-[var(--text-muted)]"></i>
-                                <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden">Copied!</span>
+                                <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden" data-i18n="webhooks.copied">Copied!</span>
                             </button>
                         </div>
                     </div>
@@ -2591,7 +2618,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             <div class="modal-footer">
                 <button type="button" id="closeTokenSecretModal" class="btn btn--primary">
-                    <i class="fas fa-check mr-2"></i>I've Saved My Token
+                    <i class="fas fa-check mr-2"></i><span data-i18n="account.tokensTab.savedConfirm">I've Saved My Token</span>
                 </button>
             </div>
         </div>
@@ -2636,11 +2663,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const span = document.createElement('span');
                     if (kind === 'user') {
                         span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30';
-                        span.title = 'User-supplied variable. Filled at upload or reprocess.';
+                        span.title = tf('account.promptPreview.userVariable', 'User-supplied variable. Filled at upload or reprocess.');
                         span.textContent = '{{' + name + '}}';
                     } else {
                         span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30';
-                        span.title = 'System placeholder. Replaced by the framework before the LLM call.';
+                        span.title = tf('account.promptPreview.systemPlaceholder', 'System placeholder. Replaced by the framework before the LLM call.');
                         span.textContent = '{' + name + '}';
                     }
                     return span;
@@ -2861,7 +2888,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const newName = editSpeakerNameInput.value.trim();
 
                     if (!newName) {
-                        editSpeakerError.textContent = 'Speaker name cannot be empty';
+                        editSpeakerError.textContent = tf('account.speakersTab.nameRequired', 'Speaker name cannot be empty');
                         editSpeakerError.classList.remove('hidden');
                         return;
                     }
@@ -2880,12 +2907,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         const data = await response.json();
 
                         if (!response.ok) {
-                            editSpeakerError.textContent = data.error || 'Failed to update speaker';
+                            editSpeakerError.textContent = data.error || tf('account.speakersTab.updateFailed', 'Failed to update speaker');
                             editSpeakerError.classList.remove('hidden');
                             return;
                         }
 
-                        showToast('Speaker name updated successfully');
+                        showToast(tf('account.speakersTab.nameUpdated', 'Speaker name updated successfully'));
                         closeEditSpeakerModalFn();
 
                         // Reload speakers - reset flag to force reload
@@ -2893,7 +2920,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         await loadSpeakersTab();
                     } catch (error) {
                         console.error('Error updating speaker:', error);
-                        editSpeakerError.textContent = 'Failed to update speaker';
+                        editSpeakerError.textContent = tf('account.speakersTab.updateFailed', 'Failed to update speaker');
                         editSpeakerError.classList.remove('hidden');
                     }
                 });
@@ -3207,7 +3234,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 try {
                     const response = await fetch('/speakers');
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                     }
 
                     speakersTabData = await response.json();
@@ -3285,13 +3312,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     <button class="edit-speaker-tab-btn p-1 text-[var(--text-accent)] hover:bg-[var(--bg-accent-light)] rounded transition-colors"
                                             data-speaker-id="${speaker.id}"
                                             data-speaker-name="${escapeHtml(speaker.name)}"
-                                            title="Edit speaker name">
+                                            title="${escapeHtml(tf('account.speakersTab.editName', 'Edit speaker name'))}">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
                                     <button class="delete-speaker-tab-btn p-1 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded transition-colors"
                                             data-speaker-id="${speaker.id}"
                                             data-speaker-name="${escapeHtml(speaker.name)}"
-                                            title="Delete speaker">
+                                            title="${escapeHtml(tf('buttons.deleteSpeaker', 'Delete speaker'))}">
                                         <i class="fas fa-trash text-xs"></i>
                                     </button>
                                 </div>
@@ -3324,7 +3351,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <button class="view-snippets-btn w-full px-2 py-1 text-[10px] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-colors"
                                     data-speaker-id="${speaker.id}">
                                 <i class="fas fa-volume-up mr-1"></i>
-                                <span>Voice Samples</span>
+                                <span>${escapeHtml(tf('account.speakersTab.voiceSamples', 'Voice Samples'))}</span>
                                 <i class="fas fa-chevron-down ml-1 transition-transform duration-200"></i>
                             </button>
 
@@ -3393,7 +3420,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             async function deleteSpeakerFromTab(speakerId, speakerName) {
-                if (!confirm(`Are you sure you want to delete "${speakerName}"?`)) {
+                if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }))) {
                     return;
                 }
 
@@ -3413,7 +3440,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     
                     if (!response.ok) {
                         const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                        throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                     }
                     
                     // Remove from local array and re-render
@@ -3429,10 +3456,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     document.querySelectorAll('.speakers-count').forEach(el => {
                         el.textContent = speakersTabData.length;
                     });
-                    showToast(`Speaker "${speakerName}" deleted successfully`);
+                    showToast(tf('account.speakersTab.deleted', `Speaker "${speakerName}" deleted successfully`, { name: speakerName }));
                 } catch (error) {
                     console.error('Error deleting speaker:', error);
-                    showToast(`Failed to delete speaker: ${error.message}`, 'error');
+                    showToast(tf('account.speakersTab.deleteFailed', `Failed to delete speaker: ${error.message}`, { error: error.message }), 'error');
                 }
             }
 
@@ -3483,7 +3510,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i></div>';
                 try {
                     const response = await fetch(`/speakers/${speaker.id}/voice_samples`);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}`, { status: response.status }));
                     const data = await response.json();
                     const samples = data.samples || [];
                     container.innerHTML = '';
@@ -3538,7 +3565,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     : await fetch(`/speakers/${speaker.id}/voice_samples/${sample.id}`, {
                                         method: 'DELETE', headers: csrf ? { 'X-CSRFToken': csrf } : {} });
                                 const body = await r.json();
-                                if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+                                if (!r.ok) throw new Error(body.error || tf('errors.serverErrorStatus', `HTTP ${r.status}`, { status: r.status }));
                                 const voice = body.summary || { sample_count: 0, current_space_samples: 0, variant_count: 0, other_space_samples: 0 };
                                 Object.assign(speaker, body.speaker || {}, { voice });
                                 const summaryEl = card.querySelector('.voice-summary-text');
@@ -3598,8 +3625,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         contentEl.innerHTML = `
                             <div class="text-xs text-[var(--text-muted)] text-center py-3 px-2">
                                 <i class="fas fa-info-circle mb-2 text-[var(--text-accent)]"></i>
-                                <p class="mb-1">No voice samples found</p>
-                                <p class="text-[10px] leading-relaxed">Voice samples are created when you identify speakers in recordings</p>
+                                <p class="mb-1">${escapeHtml(tf('account.speakersTab.noVoiceSamples', 'No voice samples found'))}</p>
+                                <p class="text-[10px] leading-relaxed">${escapeHtml(tf('account.speakersTab.noVoiceSamplesHint', 'Voice samples are created when you identify speakers in recordings'))}</p>
                             </div>
                         `;
                     } else {
@@ -3644,7 +3671,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     console.error('Error loading snippets:', error);
                     loadingEl.classList.add('hidden');
                     contentEl.classList.remove('hidden');
-                    contentEl.innerHTML = '<p class="text-xs text-[var(--text-danger)] text-center py-2">Failed to load snippets</p>';
+                    contentEl.innerHTML = `<p class="text-xs text-[var(--text-danger)] text-center py-2">${escapeHtml(tf('speakersManagement.failedToLoadSnippets', 'Failed to load snippets'))}</p>`;
                 }
             }
 
@@ -3732,7 +3759,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     btn.disabled = count < 2;
                     const btnText = btn.querySelector('span');
                     if (btnText) {
-                        btnText.textContent = count >= 2 ? `Merge (${count})` : 'Merge';
+                        btnText.textContent = count >= 2
+                            ? tf('account.speakersTab.mergeCount', `Merge (${count})`, { count })
+                            : tf('account.speakersTab.merge', 'Merge');
                     }
                 });
 
@@ -3741,7 +3770,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     btn.disabled = count === 0;
                     const btnText = btn.querySelector('span');
                     if (btnText) {
-                        btnText.textContent = count > 0 ? `Delete (${count})` : 'Delete';
+                        btnText.textContent = count > 0
+                            ? tf('account.speakersTab.deleteCount', `Delete (${count})`, { count })
+                            : tf('common.delete', 'Delete');
                     }
                 });
 
@@ -3750,7 +3781,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     btn.disabled = count === 0;
                     const btnText = btn.querySelector('span');
                     if (btnText) {
-                        btnText.textContent = count > 0 ? `Clear (${count})` : 'Clear Profiles';
+                        btnText.textContent = count > 0
+                            ? tf('account.speakersTab.clearCount', `Clear (${count})`, { count })
+                            : tf('account.speakersTab.clearProfiles', 'Clear Profiles');
                     }
                 });
 
@@ -3785,7 +3818,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 });
 
                 const total = speakersTabData.length;
-                const label = lowerQuery ? `${visibleCount} of ${total}` : `${total}`;
+                const label = lowerQuery
+                    ? tf('account.speakersTab.filteredCount', `${visibleCount} of ${total}`, { visible: visibleCount, total })
+                    : `${total}`;
                 document.querySelectorAll('.speakers-count').forEach(el => {
                     el.textContent = label;
                 });
@@ -3836,7 +3871,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             async function openMergeSpeakersModal() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length < 2) {
-                    showToast('Please select at least 2 speakers to merge', 'error');
+                    showToast(tf('account.speakersTab.selectTwoToMerge', 'Please select at least 2 speakers to merge'), 'error');
                     return;
                 }
 
@@ -3891,7 +3926,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const targetId = mergeTargetSpeakerId;
 
                 if (!targetId) {
-                    showToast('Please select which speaker to keep', 'error');
+                    showToast(tf('account.speakersTab.selectTarget', 'Please select which speaker to keep'), 'error');
                     return;
                 }
 
@@ -3900,7 +3935,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const sourceIds = allIds.filter(id => id !== targetId);
 
                 if (sourceIds.length === 0) {
-                    showToast('No source speakers to merge', 'error');
+                    showToast(tf('account.speakersTab.noSourceSpeakers', 'No source speakers to merge'), 'error');
                     return;
                 }
 
@@ -3920,9 +3955,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || 'Merge failed');
+                    if (!response.ok) throw new Error(data.error || tf('speakersManagement.mergeFailed', 'Failed to merge speakers'));
 
-                    showToast(data.message || 'Speakers merged successfully');
+                    showToast(data.message || tf('speakersManagement.mergeSuccess', 'Speakers merged successfully'));
                     document.getElementById('mergeSpeakersModal').classList.add('hidden');
 
                     // Reload speakers - reset flag to force reload
@@ -3930,7 +3965,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     await loadSpeakersTab();
                 } catch (error) {
                     console.error('Error merging speakers:', error);
-                    showToast(`Failed to merge speakers: ${error.message}`, 'error');
+                    showToast(tf('account.speakersTab.mergeFailedWithError', `Failed to merge speakers: ${error.message}`, { error: error.message }), 'error');
                 }
             }
 
@@ -3938,7 +3973,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             function deleteSelectedSpeakers() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length === 0) {
-                    showToast('Please select speakers to delete', 'error');
+                    showToast(tf('account.speakersTab.selectToDelete', 'Please select speakers to delete'), 'error');
                     return;
                 }
 
@@ -3992,7 +4027,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     if (failures.length > 0) {
                         console.error('Some speakers failed to delete:', failures);
-                        showToast(`${failures.length} speaker(s) failed to delete`, 'error');
+                        showToast(tf('account.speakersTab.bulkDeleteFailures', `${failures.length} speaker(s) failed to delete`, { count: failures.length }), 'error');
                     }
 
                     // Reset and reload
@@ -4001,11 +4036,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     const successCount = results.length - failures.length;
                     if (successCount > 0) {
-                        showToast(`${successCount} speaker(s) deleted successfully`);
+                        showToast(tf('account.speakersTab.bulkDeleted', `${successCount} speaker(s) deleted successfully`, { count: successCount }));
                     }
                 } catch (error) {
                     console.error('Error deleting speakers:', error);
-                    showToast(`Failed to delete speakers: ${error.message}`, 'error');
+                    showToast(tf('account.speakersTab.bulkDeleteFailed', `Failed to delete speakers: ${error.message}`, { error: error.message }), 'error');
                 }
             }
 
@@ -4013,7 +4048,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             function clearSelectedVoiceProfiles() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length === 0) {
-                    showToast('Please select speakers to clear voice profiles', 'error');
+                    showToast(tf('account.speakersTab.selectToClear', 'Please select speakers to clear voice profiles'), 'error');
                     return;
                 }
 
@@ -4069,7 +4104,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     if (failures.length > 0) {
                         console.error('Some voice profiles failed to clear:', failures);
-                        showToast(`${failures.length} voice profile(s) failed to clear`, 'error');
+                        showToast(tf('account.speakersTab.bulkClearFailures', `${failures.length} voice profile(s) failed to clear`, { count: failures.length }), 'error');
                     }
 
                     // Reset and reload
@@ -4078,11 +4113,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     const successCount = results.length - failures.length;
                     if (successCount > 0) {
-                        showToast(`${successCount} voice profile(s) cleared successfully`);
+                        showToast(tf('account.speakersTab.bulkCleared', `${successCount} voice profile(s) cleared successfully`, { count: successCount }));
                     }
                 } catch (error) {
                     console.error('Error clearing voice profiles:', error);
-                    showToast(`Failed to clear voice profiles: ${error.message}`, 'error');
+                    showToast(tf('account.speakersTab.bulkClearFailed', `Failed to clear voice profiles: ${error.message}`, { error: error.message }), 'error');
                 }
             }
 
@@ -4090,7 +4125,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 try {
                     const response = await fetch('/api/system/info');
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                     }
                     
                     const data = await response.json();
@@ -4109,11 +4144,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // Show the active transcription endpoint (ASR or OpenAI depending on config)
                     document.getElementById('transcription-endpoint').textContent = data.transcription_endpoint || data.whisper_endpoint;
                 } catch (error) {
-                    document.getElementById('system-version').textContent = 'Failed to load';
-                    document.getElementById('llm-endpoint').textContent = 'Failed to load';
-                    document.getElementById('llm-model').textContent = 'Failed to load';
-                    document.getElementById('transcription-model').textContent = 'Failed to load';
-                    document.getElementById('transcription-endpoint').textContent = 'Failed to load';
+                    document.getElementById('system-version').textContent = tf('account.loadFailed', 'Failed to load');
+                    document.getElementById('llm-endpoint').textContent = tf('account.loadFailed', 'Failed to load');
+                    document.getElementById('llm-model').textContent = tf('account.loadFailed', 'Failed to load');
+                    document.getElementById('transcription-model').textContent = tf('account.loadFailed', 'Failed to load');
+                    document.getElementById('transcription-endpoint').textContent = tf('account.loadFailed', 'Failed to load');
                 }
             }
 
@@ -4124,7 +4159,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // and recordings shared with this user (#416).
                     const response = await fetch('/api/shares/overview');
                     const overview = await response.json();
-                    if (!response.ok) throw new Error(overview.error || 'Failed to load');
+                    if (!response.ok) throw new Error(overview.error || tf('account.loadFailed', 'Failed to load'));
                     const shares = overview.public_links || [];
 
                     sharesContainer.innerHTML = '';
@@ -4278,7 +4313,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             async function handleDeleteShare(event) {
                 const shareId = event.currentTarget.dataset.shareId;
-                if (!confirm('Are you sure you want to delete this share? This will revoke access to the public link.')) return;
+                if (!confirm(tf('dialogs.deleteShare.message', 'Are you sure you want to delete this share? This will revoke access to the public link.'))) return;
                 
                 try {
                     // Get CSRF token
@@ -4296,7 +4331,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (!response.ok) throw new Error('Failed to delete');
                     loadShares();
                 } catch (error) {
-                    alert('Error deleting share.');
+                    alert(tf('account.sharesTab.deleteFailed', 'Error deleting share.'));
                 }
             }
 
@@ -4321,7 +4356,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
                     if (!response.ok) throw new Error('Failed to update');
                 } catch (error) {
-                    alert('Error updating share.');
+                    alert(tf('account.sharesTab.updateFailed', 'Error updating share.'));
                     event.currentTarget.checked = !value; // Revert on failure
                 }
             }
@@ -4393,7 +4428,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             // re-POSTing via the native-submit fallback, which
                             // reloaded the page, dropped the active tab, and
                             // double-submitted the invalid form.
-                            let message = `Could not save settings (HTTP ${response.status}).`;
+                            let message = tf('account.saveSettingsFailed', `Could not save settings (HTTP ${response.status}).`, { status: response.status });
                             try {
                                 const data = await response.json();
                                 if (data && data.error) message = data.error;
@@ -4490,7 +4525,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         changePasswordForm.addEventListener('submit', (event) => {
             if (newPasswordInput.value !== confirmPasswordInput.value) {
                 event.preventDefault();
-                alert('New password and confirmation do not match.');
+                alert(tf('account.passwordMismatch', 'New password and confirmation do not match.'));
             }
         });
 
@@ -4543,7 +4578,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             try {
                 const response = await fetch('/speakers');
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                 }
                 
                 speakers = await response.json();
@@ -4616,9 +4651,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <span class="font-medium text-[var(--text-primary)]">${escapeHtml(speaker.name)}</span>
                     </div>
                     <div class="text-xs text-[var(--text-muted)] mt-1">
-                        Used ${speaker.use_count} time${speaker.use_count !== 1 ? 's' : ''} • 
-                        Last used: ${lastUsedDate} • 
-                        Created: ${createdDate}
+                        ${escapeHtml(tf('manageSpeakersModal.used', 'Used'))} ${speaker.use_count} ${escapeHtml(speaker.use_count !== 1 ? tf('manageSpeakersModal.times', 'times') : tf('speakersManagement.time', 'time'))} • 
+                        ${escapeHtml(tf('manageSpeakersModal.lastUsed', 'Last used'))}: ${lastUsedDate} • 
+                        ${escapeHtml(tf('manageSpeakersModal.created', 'Created'))}: ${createdDate}
                     </div>
                 </div>
                 <button class="delete-speaker-btn ml-3 p-2 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded-md transition-colors duration-200" 
@@ -4637,7 +4672,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete individual speaker
         async function deleteSpeaker(speakerId, speakerName) {
-            if (!confirm(`Are you sure you want to delete "${speakerName}"?`)) {
+            if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${speakerName}"?`, { name: speakerName }))) {
                 return;
             }
             
@@ -4657,16 +4692,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                 }
                 
                 // Remove from local array
                 speakers = speakers.filter(s => s.id !== speakerId);
                 displaySpeakers();
-                showToast(`Speaker "${speakerName}" deleted successfully`);
+                showToast(tf('account.speakersTab.deleted', `Speaker "${speakerName}" deleted successfully`, { name: speakerName }));
             } catch (error) {
                 console.error('Error deleting speaker:', error);
-                showToast(`Failed to delete speaker: ${error.message}`, 'error');
+                showToast(tf('account.speakersTab.deleteFailed', `Failed to delete speaker: ${error.message}`, { error: error.message }), 'error');
             }
         }
 
@@ -4714,15 +4749,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const failures = results.filter(result => result.status === 'rejected');
                 if (failures.length > 0) {
                     console.error('Some speakers failed to delete:', failures);
-                    showToast(`${failures.length} speaker(s) failed to delete`, 'error');
+                    showToast(tf('account.speakersTab.bulkDeleteFailures', `${failures.length} speaker(s) failed to delete`, { count: failures.length }), 'error');
                 }
                 
                 // Reload speakers list
                 await loadSpeakers();
-                showToast(`${speakers.length === 0 ? 'All speakers' : (results.length - failures.length) + ' speakers'} deleted successfully`);
+                showToast(speakers.length === 0
+                    ? tf('account.speakersTab.allDeleted', 'All speakers deleted successfully')
+                    : tf('account.speakersTab.bulkDeleted', `${results.length - failures.length} speaker(s) deleted successfully`, { count: results.length - failures.length }));
             } catch (error) {
                 console.error('Error deleting all speakers:', error);
-                showToast(`Failed to delete speakers: ${error.message}`, 'error');
+                showToast(tf('account.speakersTab.bulkDeleteFailed', `Failed to delete speakers: ${error.message}`, { error: error.message }), 'error');
             }
         });
 
@@ -4991,12 +5028,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     tagRetentionDaysInput.value = '';
                     tagRetentionDaysInput.disabled = true;
                     tagRetentionDaysInput.classList.add('opacity-50', 'cursor-not-allowed');
-                    tagRetentionDaysInput.placeholder = 'Infinite retention (protected)';
+                    tagRetentionDaysInput.placeholder = tf('account.organizer.infiniteRetention', 'Infinite retention (protected)');
                 } else {
                     // When protect is disabled, re-enable retention field
                     tagRetentionDaysInput.disabled = false;
                     tagRetentionDaysInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                    tagRetentionDaysInput.placeholder = 'Leave empty to use global retention';
+                    tagRetentionDaysInput.placeholder = tf('folderManagement.retentionPlaceholder', 'Leave empty to use global retention');
                 }
             });
         }
@@ -5045,7 +5082,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             setOrganizerState(els, 'loading');
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                throw new Error(tf('errors.serverErrorStatus', 'HTTP ' + response.status + ': ' + response.statusText, { status: response.status }));
             }
             return response.json();
         }
@@ -5086,12 +5123,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Protection/Retention badge
             if (item.protect_from_deletion || item.retention_days === -1) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #f59e0b; color: white;" title="Protected with infinite retention">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #f59e0b; color: white;" title="${escapeHtml(tf('account.organizer.protectedTitle', 'Protected with infinite retention'))}">
                     <i class="fas fa-shield-alt"></i>
                     <span>∞</span>
                 </span>`);
             } else if (item.retention_days && item.retention_days > 0) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #2563eb; color: white;" title="Retention: ${item.retention_days} days">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #2563eb; color: white;" title="${escapeHtml(tf('account.organizer.retentionTitle', `Retention: ${item.retention_days} days`, { days: item.retention_days }))}">
                     <i class="fas fa-clock"></i>
                     <span>${item.retention_days}d</span>
                 </span>`);
@@ -5100,17 +5137,21 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // Sharing badge for group-scoped items
             if (isGroupItem) {
                 const shareIcon = item.auto_share_on_apply ? 'user-friends' : (item.share_with_group_lead ? 'user-tie' : 'user-lock');
-                const shareText = item.auto_share_on_apply ? 'All members' : (item.share_with_group_lead ? 'Admins only' : 'Manual');
-                const shareTooltip = item.auto_share_on_apply ? 'Auto-shares with all group members' : (item.share_with_group_lead ? 'Shares with group admins only' : 'Manual sharing only');
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #9333ea; color: white;" title="${shareTooltip}">
+                const shareText = item.auto_share_on_apply
+                    ? tf('account.organizer.shareAllMembers', 'All members')
+                    : (item.share_with_group_lead ? tf('account.organizer.shareAdminsOnly', 'Admins only') : tf('account.organizer.shareManual', 'Manual'));
+                const shareTooltip = item.auto_share_on_apply
+                    ? tf('account.organizer.shareAllMembersTitle', 'Auto-shares with all group members')
+                    : (item.share_with_group_lead ? tf('account.organizer.shareAdminsOnlyTitle', 'Shares with group admins only') : tf('account.organizer.shareManualTitle', 'Manual sharing only'));
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #9333ea; color: white;" title="${escapeHtml(shareTooltip)}">
                     <i class="fas fa-${shareIcon}"></i>
-                    <span>${shareText}</span>
+                    <span>${escapeHtml(shareText)}</span>
                 </span>`);
             }
 
             // ASR defaults badges
             if (item.default_language) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #16a34a; color: white;" title="Language: ${escapeHtml(item.default_language)}">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #16a34a; color: white;" title="${escapeHtml(tf('account.organizer.languageTitle', `Language: ${item.default_language}`, { language: item.default_language }))}">
                     <i class="fas fa-language"></i>
                     <span>${escapeHtml(item.default_language).toUpperCase()}</span>
                 </span>`);
@@ -5120,7 +5161,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const max = item.default_max_speakers || '?';
                 // A single count is stored as min == max (#362); show one number.
                 const speakerLabel = (min === max) ? String(min) : `${min}-${max}`;
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="Speakers: ${speakerLabel}">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="${escapeHtml(tf('account.organizer.speakersTitle', `Speakers: ${speakerLabel}`, { count: speakerLabel }))}">
                     <i class="fas fa-users"></i>
                     <span>${speakerLabel}</span>
                 </span>`);
@@ -5128,7 +5169,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Naming template badge
             if (item.naming_template_name) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #6366f1; color: white;" title="Naming template: ${escapeHtml(item.naming_template_name)}">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #6366f1; color: white;" title="${escapeHtml(tf('account.organizer.namingTemplateTitle', `Naming template: ${item.naming_template_name}`, { name: item.naming_template_name }))}">
                     <i class="fas fa-heading"></i>
                     <span class="truncate max-w-[8rem]">${escapeHtml(item.naming_template_name)}</span>
                 </span>`);
@@ -5136,15 +5177,19 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Watch-folder badge (tags only expose is_auto_process)
             if (item.is_auto_process) {
-                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #ea580c; color: white;" title="Auto-processes files dropped in watch folder${item.auto_process_folder_name ? ': ' + escapeHtml(item.auto_process_folder_name) : ''}">
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #ea580c; color: white;" title="${escapeHtml(item.auto_process_folder_name
+                        ? tf('account.organizer.watchFolderTitleNamed', `Auto-processes files dropped in watch folder: ${item.auto_process_folder_name}`, { name: item.auto_process_folder_name })
+                        : tf('account.organizer.watchFolderTitle', 'Auto-processes files dropped in watch folder'))}">
                     <i class="fas fa-folder-open"></i>
-                    <span>Watch</span>
+                    <span>${escapeHtml(tf('account.organizer.watchBadge', 'Watch'))}</span>
                 </span>`);
             }
 
             // Recording count badge (neutral, same box as the colored badges)
             const count = item.recording_count || 0;
-            const countLabel = `${count} recording${count !== 1 ? 's' : ''}`;
+            const countLabel = count === 1
+                ? tf('account.organizer.recordingCount', `${count} recording`, { count })
+                : tf('account.organizer.recordingCountPlural', `${count} recordings`, { count });
             metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[var(--bg-secondary)] text-[var(--text-muted)]" title="${countLabel}">
                 <i class="fas fa-microphone"></i>
                 <span>${countLabel}</span>
@@ -5162,20 +5207,20 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             : `<div class="w-3 h-3 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${escapeHtml(item.color)}"></div>`
                         }
                         <h3 class="font-semibold text-sm text-[var(--text-primary)] truncate" title="${escapeHtml(item.name)}">
-                            ${isGroupItem ? `<span class="text-xs opacity-60">${escapeHtml(item.group_name || 'Group')}:</span> ` : ''}${escapeHtml(item.name)}
+                            ${isGroupItem ? `<span class="text-xs opacity-60">${escapeHtml(item.group_name || tf('sharing.teamBadge', 'Group'))}:</span> ` : ''}${escapeHtml(item.name)}
                         </h3>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
                         ${!canEdit ? `
-                            <span class="px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]" title="${cfg.lockTitle}">
+                            <span class="px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]" title="${escapeHtml(cfg.lockTitle)}">
                                 <i class="fas fa-lock"></i>
                             </span>
                         ` : ''}
                         ${canEdit ? `
-                            <button class="edit-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="Edit ${cfg.kind}">
+                            <button class="edit-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="${escapeHtml(cfg.editTitle)}">
                                 <i class="fas fa-edit text-xs"></i>
                             </button>
-                            <button class="delete-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="Delete ${cfg.kind}">
+                            <button class="delete-${cfg.kind}-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] transition-colors rounded" data-${cfg.kind}-id="${item.id}" title="${escapeHtml(cfg.deleteTitle)}">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         ` : ''}
@@ -5193,7 +5238,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <button class="toggle-prompt-btn w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[var(--bg-secondary)] transition-colors group" data-${cfg.kind}-id="${item.id}">
                             <span class="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <i class="fas fa-message-lines text-[10px]"></i>
-                                Custom Prompt
+                                ${escapeHtml(tf('tagManagement.customPrompt', 'Custom Prompt'))}
                             </span>
                             <i class="fas fa-chevron-down text-[10px] text-[var(--text-muted)] transition-transform group-hover:text-[var(--text-secondary)]"></i>
                         </button>
@@ -5233,7 +5278,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         function createTagCard(tag) {
             return createOrganizerCard(tag, {
                 kind: 'tag',
-                lockTitle: 'Team tag - cannot edit',
+                lockTitle: tf('account.organizer.groupTagLocked', 'Group tag - cannot edit'),
+                editTitle: tf('buttons.editTag', 'Edit tag'),
+                deleteTitle: tf('buttons.deleteTag', 'Delete tag'),
                 onEdit: (item) => editTag(item),
                 onDelete: (item) => deleteTag(item.id, item.name),
             });
@@ -5267,8 +5314,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (tag) {
                 // Edit mode
                 isEditingTag = true;
-                tagModalTitle.textContent = t('editTagModal.editTitle') || 'Edit Tag';
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + (t('editTagModal.updateTag') || 'Update Tag');
+                tagModalTitle.textContent = tf('editTagModal.editTitle', 'Edit Tag');
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('editTagModal.updateTag', 'Update Tag'));
 
                 // Populate form
                 document.getElementById('tagId').value = tag.id;
@@ -5327,7 +5374,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         retentionDaysInput.value = '';
                         retentionDaysInput.disabled = true;
                         retentionDaysInput.classList.add('opacity-50', 'cursor-not-allowed');
-                        retentionDaysInput.placeholder = 'Infinite retention (protected)';
+                        retentionDaysInput.placeholder = tf('account.organizer.infiniteRetention', 'Infinite retention (protected)');
                     }
                 } else {
                     // Not protected
@@ -5338,7 +5385,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         retentionDaysInput.value = tag.retention_days || '';
                         retentionDaysInput.disabled = false;
                         retentionDaysInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                        retentionDaysInput.placeholder = 'Leave empty to use global retention';
+                        retentionDaysInput.placeholder = tf('folderManagement.retentionPlaceholder', 'Leave empty to use global retention');
                     }
                 }
 
@@ -5396,8 +5443,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingTag = false;
-                tagModalTitle.textContent = t('editTagModal.createTitle') || 'Create Tag';
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + (t('buttons.createTag') || 'Save Tag');
+                tagModalTitle.textContent = tf('editTagModal.createTitle', 'Create Tag');
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('buttons.createTag', 'Create Tag'));
                 tagForm.reset();
                 document.getElementById('tagColor').value = '#3B82F6';
 
@@ -5423,7 +5470,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     retentionInput.value = '';
                     retentionInput.disabled = false;
                     retentionInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                    retentionInput.placeholder = 'Leave empty to use global retention';
+                    retentionInput.placeholder = tf('folderManagement.retentionPlaceholder', 'Leave empty to use global retention');
                 }
                 if (protectCheck) {
                     protectCheck.checked = false;
@@ -5455,8 +5502,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // re-run the tab indicators once they settle to catch the
             // Summary tab's template selections.
             Promise.allSettled([
-                loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)'),
-                loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', 'No template (use user default)', { markDefault: true })
+                loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tf('editTagModal.noNamingTemplate', 'No template (use user default or AI title)')),
+                loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tf('editTagModal.noExportTemplate', 'No template (use user default)'), { markDefault: true })
             ]).then(refreshTagTabIndicators);
 
             // Reset to first tab
@@ -5479,7 +5526,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete tag
         async function deleteTag(tagId, tagName) {
-            if (!confirm(`Are you sure you want to delete "${tagName}"?`)) {
+            if (!confirm(tf('account.confirmDeleteNamed', `Are you sure you want to delete "${tagName}"?`, { name: tagName }))) {
                 return;
             }
             
@@ -5498,16 +5545,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                 }
                 
                 // Remove from local array
                 tags = tags.filter(t => t.id !== tagId);
                 displayTags();
-                showToast(`Tag "${tagName}" deleted successfully`);
+                showToast(tf('account.organizer.tagDeleted', `Tag "${tagName}" deleted successfully`, { name: tagName }));
             } catch (error) {
                 console.error('Error deleting tag:', error);
-                showToast(`Failed to delete tag: ${error.message}`, 'error');
+                showToast(tf('account.organizer.tagDeleteFailed', `Failed to delete tag: ${error.message}`, { error: error.message }), 'error');
             }
         }
 
@@ -5542,7 +5589,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}: ${response.statusText}`, { status: response.status }));
                 }
                 
                 const savedTag = await response.json();
@@ -5553,26 +5600,26 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (index !== -1) {
                         tags[index] = savedTag;
                     }
-                    showToast(`Tag "${savedTag.name}" updated successfully`);
+                    showToast(tf('account.organizer.tagUpdated', `Tag "${savedTag.name}" updated successfully`, { name: savedTag.name }));
                 } else {
                     // Add new tag to local array
                     tags.push(savedTag);
-                    showToast(`Tag "${savedTag.name}" created successfully`);
+                    showToast(tf('account.organizer.tagCreated', `Tag "${savedTag.name}" created successfully`, { name: savedTag.name }));
                 }
 
                 // Show auto-process folder notifications
                 if (savedTag.auto_process_folder_path) {
-                    showToast(translations?.editTagModal?.watchFolderCreated || 'Watch folder created');
+                    showToast(tf('editTagModal.watchFolderCreated', 'Watch folder created'));
                 }
                 if (savedTag.auto_process_folder_warning) {
-                    showToast(translations?.editTagModal?.watchFolderError || 'Could not create watch folder', 'error');
+                    showToast(tf('editTagModal.watchFolderError', 'Could not create watch folder'), 'error');
                 }
 
                 displayTags();
                 closeTagModal();
             } catch (error) {
                 console.error('Error saving tag:', error);
-                showToast(`Failed to save tag: ${error.message}`, 'error');
+                showToast(tf('account.organizer.tagSaveFailed', `Failed to save tag: ${error.message}`, { error: error.message }), 'error');
             }
         });
 
@@ -5691,7 +5738,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (isStale) {
                 const staleOption = document.createElement('option');
                 staleOption.value = target;
-                staleOption.textContent = target + ' (no longer available)';
+                staleOption.textContent = tf('account.organizer.modelUnavailableOption', target + ' (no longer available)', { model: target });
                 staleOption.dataset.stale = '1';
                 select.appendChild(staleOption);
                 select.value = target;
@@ -5702,7 +5749,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     warning.className = 'text-xs text-[var(--text-danger)] mt-1';
                     select.parentNode.insertBefore(warning, select.nextSibling);
                 }
-                warning.textContent = 'The previously selected model "' + target + '" is no longer available. Choose a different model or leave blank to use the default.';
+                warning.textContent = tf('account.organizer.modelUnavailableWarning', 'The previously selected model "' + target + '" is no longer available. Choose a different model or leave blank to use the default.', { model: target });
             } else {
                 select.classList.remove(errorBorder, ...errorClasses);
                 if (warning) warning.remove();
@@ -5752,7 +5799,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         async function loadFolders() {
             if (!foldersEnabled) {
-                setOrganizerState(folderSectionEls, 'error', 'Folders feature is not enabled');
+                setOrganizerState(folderSectionEls, 'error', tf('account.organizer.foldersDisabled', 'Folders feature is not enabled'));
                 return;
             }
             try {
@@ -5771,7 +5818,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         function createFolderCard(folder) {
             return createOrganizerCard(folder, {
                 kind: 'folder',
-                lockTitle: "You don't have permission to edit this group folder",
+                lockTitle: tf('account.organizer.groupFolderLocked', "You don't have permission to edit this group folder"),
+                editTitle: tf('folderManagement.editFolder', 'Edit Folder'),
+                deleteTitle: tf('folderManagement.deleteFolder', 'Delete Folder'),
                 onEdit: (item) => openFolderModal(item),
                 onDelete: (item) => deleteFolder(item.id, item.name),
             });
@@ -5803,13 +5852,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (folder) {
                 // Edit mode
                 isEditingFolder = true;
-                if (folderModalTitle) folderModalTitle.textContent = t('folderManagement.editFolder') || 'Edit Folder';
+                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.editFolder', 'Edit Folder');
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');
                     saveIcon.className = 'fas fa-save mr-2';
                     saveFolderBtn.appendChild(saveIcon);
-                    saveFolderBtn.appendChild(document.createTextNode(' Update Folder'));
+                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('account.organizer.updateFolder', 'Update Folder')));
                 }
 
                 // Populate form
@@ -5866,13 +5915,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingFolder = false;
-                if (folderModalTitle) folderModalTitle.textContent = t('folderManagement.createFolderTitle') || 'Create Folder';
+                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.createFolderTitle', 'Create Folder');
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');
                     saveIcon.className = 'fas fa-save mr-2';
                     saveFolderBtn.appendChild(saveIcon);
-                    saveFolderBtn.appendChild(document.createTextNode(' Save Folder'));
+                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('buttons.saveFolder', 'Save Folder')));
                 }
                 if (folderForm) folderForm.reset();
                 document.getElementById('folderColor').value = '#10B981';
@@ -5883,8 +5932,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // value), then re-run tab indicators so the Summary tab's
             // template selections are reflected once they settle.
             Promise.allSettled([
-                loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', 'No template (use user default or AI title)', { selected: (folder && folder.naming_template_id) || '' }),
-                loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', 'No template (use user default)', { selected: (folder && folder.export_template_id) || '', markDefault: true })
+                loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tf('folderManagement.namingTemplateNone', 'No template (use user default or AI title)'), { selected: (folder && folder.naming_template_id) || '' }),
+                loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tf('folderManagement.exportTemplateNone', 'No template (use user default)'), { selected: (folder && folder.export_template_id) || '', markDefault: true })
             ]).then(refreshFolderTabIndicators);
 
             // Reset to first tab
@@ -5936,7 +5985,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete folder
         async function deleteFolder(folderId, folderName) {
-            if (!confirm('Are you sure you want to delete the folder "' + folderName + '"?\n\nRecordings in this folder will be removed from the folder but not deleted.')) {
+            if (!confirm(tf('account.organizer.confirmDeleteFolder', 'Are you sure you want to delete the folder "' + folderName + '"?\n\nRecordings in this folder will be removed from the folder but not deleted.', { name: folderName }))) {
                 return;
             }
 
@@ -5952,15 +6001,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const data = await response.json();
-                    throw new Error(data.error || 'Failed to delete folder');
+                    throw new Error(data.error || tf('errors.serverErrorStatus', 'HTTP ' + response.status, { status: response.status }));
                 }
 
                 folders = folders.filter(function(f) { return f.id !== folderId; });
                 displayFolders();
-                showToast('Folder "' + folderName + '" deleted successfully');
+                showToast(tf('account.organizer.folderDeleted', 'Folder "' + folderName + '" deleted successfully', { name: folderName }));
             } catch (error) {
                 console.error('Error deleting folder:', error);
-                showToast('Failed to delete folder: ' + error.message, 'error');
+                showToast(tf('account.organizer.folderDeleteFailed', 'Failed to delete folder: ' + error.message, { error: error.message }), 'error');
             }
         }
 
@@ -5978,7 +6027,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const folderName = document.getElementById('folderName').value.trim();
 
                 if (!folderName) {
-                    showToast('Folder name is required', 'error');
+                    showToast(tf('account.organizer.folderNameRequired', 'Folder name is required'), 'error');
                     return;
                 }
 
@@ -6001,7 +6050,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     if (!response.ok) {
                         const data = await response.json();
-                        throw new Error(data.error || 'Failed to save folder');
+                        throw new Error(data.error || tf('errors.serverErrorStatus', 'HTTP ' + response.status, { status: response.status }));
                     }
 
                     const savedFolder = await response.json();
@@ -6011,17 +6060,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         if (index !== -1) {
                             folders[index] = savedFolder;
                         }
-                        showToast('Folder "' + savedFolder.name + '" updated successfully');
+                        showToast(tf('account.organizer.folderUpdated', 'Folder "' + savedFolder.name + '" updated successfully', { name: savedFolder.name }));
                     } else {
                         folders.push(savedFolder);
-                        showToast('Folder "' + savedFolder.name + '" created successfully');
+                        showToast(tf('account.organizer.folderCreated', 'Folder "' + savedFolder.name + '" created successfully', { name: savedFolder.name }));
                     }
 
                     displayFolders();
                     closeFolderModal();
                 } catch (error) {
                     console.error('Error saving folder:', error);
-                    showToast('Failed to save folder: ' + error.message, 'error');
+                    showToast(tf('account.organizer.folderSaveFailed', 'Failed to save folder: ' + error.message, { error: error.message }), 'error');
                 }
             });
         }
@@ -6092,13 +6141,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                     if (response.ok) {
-                        showToast('Account information updated successfully', 'success');
+                        showToast(tf('account.infoUpdated', 'Account information updated successfully'), 'success');
                     } else {
                         var text = await response.text();
-                        showToast('Failed to update account information', 'error');
+                        showToast(tf('account.infoUpdateFailed', 'Failed to update account information'), 'error');
                     }
                 } catch (error) {
-                    showToast('Network error: ' + error.message, 'error');
+                    showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
                 }
             });
         }
@@ -6116,12 +6165,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         body: formData,
                     });
                     if (response.ok) {
-                        showToast('Preferences saved', 'success');
+                        showToast(tf('account.preferencesSaved', 'Preferences saved'), 'success');
                     } else {
-                        showToast('Failed to save preferences', 'error');
+                        showToast(tf('account.preferencesSaveFailed', 'Failed to save preferences'), 'error');
                     }
                 } catch (error) {
-                    showToast('Network error: ' + error.message, 'error');
+                    showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
                 }
             });
         }
@@ -6141,13 +6190,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
                     
                     if (response.ok) {
-                        showToast('Custom prompt saved successfully', 'success');
+                        showToast(tf('account.customPromptSaved', 'Custom prompt saved successfully'), 'success');
                     } else {
                         const text = await response.text();
-                        showToast('Failed to save custom prompt', 'error');
+                        showToast(tf('account.customPromptSaveFailed', 'Failed to save custom prompt'), 'error');
                     }
                 } catch (error) {
-                    showToast('Network error: ' + error.message, 'error');
+                    showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
                 }
             });
         }
@@ -6235,7 +6284,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 const response = await fetch('/api/tokens');
                 if (!response.ok) {
-                    throw new Error('Failed to load tokens');
+                    throw new Error(tf('errors.serverErrorStatus', `HTTP ${response.status}`, { status: response.status }));
                 }
 
                 const data = await response.json();
@@ -6251,7 +6300,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 tokensLoading.innerHTML = `
                     <div class="text-center py-12">
                         <i class="fas fa-exclamation-triangle text-4xl text-[var(--text-danger)] mb-4"></i>
-                        <p class="text-[var(--text-danger)]">Failed to load tokens: ${error.message}</p>
+                        <p class="text-[var(--text-danger)]">${escapeHtml(tf('account.tokensTab.loadFailed', `Failed to load tokens: ${error.message}`, { error: error.message }))}</p>
                     </div>
                 `;
             }
@@ -6287,10 +6336,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                         <h4 class="font-medium text-sm text-[var(--text-primary)] truncate">${escapeHtml(token.name)}</h4>
                                     </div>
                                     <div class="flex items-center gap-1 flex-shrink-0">
-                                        <span class="${statusClass} capitalize">${status}</span>
+                                        <span class="${statusClass} capitalize">${escapeHtml(tf(TOKEN_STATUS_KEYS[status], status))}</span>
                                         <button onclick="revokeToken(${token.id}, '${escapeHtml(token.name).replace(/'/g, "\\'")}' )"
                                                 class="p-1 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded transition-colors"
-                                                title="Revoke token">
+                                                title="${escapeHtml(tf('account.tokensTab.revokeTitle', 'Revoke token'))}">
                                             <i class="fas fa-trash text-xs"></i>
                                         </button>
                                     </div>
@@ -6304,14 +6353,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     </div>
                                     <div class="flex items-center gap-1">
                                         <i class="fas fa-clock opacity-60"></i>
-                                        <span>${lastUsed || 'Never used'}</span>
+                                        <span>${lastUsed || escapeHtml(tf('apiTokens.neverUsed', 'Never used'))}</span>
                                     </div>
                                 </div>
 
                                 <!-- Scopes -->
                                 <div class="mt-2 text-[10px] text-[var(--text-muted)]">
                                     <i class="fas fa-shield-alt opacity-60"></i>
-                                    ${(token.scopes || ['full']).includes('full') ? 'Full access' : escapeHtml((token.scopes || []).join(', '))}
+                                    ${(token.scopes || ['full']).includes('full') ? escapeHtml(tf('account.tokensTab.fullAccess', 'Full access')) : escapeHtml((token.scopes || []).join(', '))}
                                 </div>
 
                                 <!-- Expiration badge -->
@@ -6319,12 +6368,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     ${token.expires_at ? `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
                                             <i class="fas fa-hourglass-half"></i>
-                                            Expires ${parseInstant(token.expires_at).toLocaleDateString(window.i18n?.getIntlLocale?.())}
+                                            ${escapeHtml(tf('apiTokens.expires', 'Expires'))} ${parseInstant(token.expires_at).toLocaleDateString(window.i18n?.getIntlLocale?.())}
                                         </span>
                                     ` : `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
                                             <i class="fas fa-infinity"></i>
-                                            No expiration
+                                            ${escapeHtml(tf('apiTokens.noExpiration', 'No expiration'))}
                                         </span>
                                     `}
                                 </div>
@@ -6345,7 +6394,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
 
         function formatTokenDate(dateString) {
-            if (!dateString) return 'Never';
+            if (!dateString) return tf('account.tokensTab.never', 'Never');
             // Naive UTC from the server: read as UTC, show in local time (#412).
             let s = dateString;
             if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
@@ -6354,6 +6403,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const date = new Date(s);
             return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
         }
+
+        const TOKEN_STATUS_KEYS = {
+            active: 'account.tokensTab.statusActive',
+            expired: 'account.tokensTab.statusExpired',
+            revoked: 'account.tokensTab.statusRevoked'
+        };
 
         function getTokenStatus(token) {
             if (token.revoked) return 'revoked';
@@ -6406,12 +6461,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             document.getElementById('newTokenValue').value = tokenValue;
             document.getElementById('newTokenInfo').innerHTML = `
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Name:</span>
+                    <span class="text-[var(--text-muted)]">${escapeHtml(tf('webhooks.nameLabel', 'Name'))}:</span>
                     <span class="text-[var(--text-primary)] font-medium">${escapeHtml(tokenName)}</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Expires:</span>
-                    <span class="text-[var(--text-primary)]">${expiresAt ? formatTokenDate(expiresAt) : 'Never'}</span>
+                    <span class="text-[var(--text-muted)]">${escapeHtml(tf('apiTokens.expires', 'Expires'))}:</span>
+                    <span class="text-[var(--text-primary)]">${expiresAt ? formatTokenDate(expiresAt) : escapeHtml(tf('account.tokensTab.never', 'Never'))}</span>
                 </div>
             `;
             tokenSecretModal.classList.remove('hidden');
@@ -6468,10 +6523,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     copyBtn.classList.remove('bg-green-50', 'border-green-200');
                 }, 2000);
 
-                showToast('Token copied to clipboard', 'success');
+                showToast(tf('account.tokensTab.copied', 'Token copied to clipboard'), 'success');
             } catch (error) {
                 console.error('Error copying token:', error);
-                showToast('Failed to copy token to clipboard', 'error');
+                showToast(tf('account.tokensTab.copyFailed', 'Failed to copy token to clipboard'), 'error');
             }
         });
 
@@ -6491,12 +6546,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 ? Array.from(document.querySelectorAll('.token-scope-box:checked')).map(b => b.value)
                 : preset.split(',');
             if (!scopes.length) {
-                showToast('Choose at least one kind of access', 'error');
+                showToast(tf('account.tokensTab.scopeRequired', 'Choose at least one kind of access'), 'error');
                 return;
             }
 
             if (!tokenName) {
-                showToast('Please enter a token name', 'error');
+                showToast(tf('account.tokensTab.nameRequired', 'Please enter a token name'), 'error');
                 return;
             }
 
@@ -6524,7 +6579,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         showToast(text !== key ? text : errorData.error, 'error');
                         return;
                     }
-                    throw new Error(errorData.error || 'Failed to create token');
+                    throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}`, { status: response.status }));
                 }
 
                 const data = await response.json();
@@ -6545,16 +6600,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 closeCreateTokenModal();
                 showTokenSecretModal(data.token, data.name, data.expires_at);
 
-                showToast('API token created successfully', 'success');
+                showToast(tf('account.tokensTab.created', 'API token created successfully'), 'success');
             } catch (error) {
                 console.error('Error creating token:', error);
-                showToast('Failed to create token: ' + error.message, 'error');
+                showToast(tf('account.tokensTab.createFailed', 'Failed to create token: ' + error.message, { error: error.message }), 'error');
             }
         });
 
         // Make revokeToken globally accessible for inline onclick handlers
         window.revokeToken = async function(tokenId, tokenName) {
-            if (!confirm(`Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`)) {
+            if (!confirm(tf('account.tokensTab.confirmRevoke', `Are you sure you want to revoke the token "${tokenName}"? This action cannot be undone and any applications using this token will lose access.`, { name: tokenName }))) {
                 return;
             }
 
@@ -6570,17 +6625,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to revoke token');
+                    throw new Error(errorData.error || tf('errors.serverErrorStatus', `HTTP ${response.status}`, { status: response.status }));
                 }
 
                 // Remove from local list
                 tokensData = tokensData.filter(t => t.id !== tokenId);
                 renderTokensList();
 
-                showToast('Token revoked successfully', 'success');
+                showToast(tf('account.tokensTab.revoked', 'Token revoked successfully'), 'success');
             } catch (error) {
                 console.error('Error revoking token:', error);
-                showToast('Failed to revoke token: ' + error.message, 'error');
+                showToast(tf('account.tokensTab.revokeFailed', 'Failed to revoke token: ' + error.message, { error: error.message }), 'error');
             }
         };
 
@@ -6607,7 +6662,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 renderTemplatesList();
             } catch (error) {
                 console.error('Error loading templates:', error);
-                showToast('Failed to load templates', 'error');
+                showToast(tf('account.templatesTab.loadFailed', 'Failed to load templates'), 'error');
             }
         }
 
@@ -6616,7 +6671,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             templatesList.innerHTML = '';
 
             if (templates.length === 0) {
-                templatesList.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No templates yet</p>';
+                templatesList.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">' + escapeHtml(tf('account.templatesTab.noTemplates', 'No templates yet')) + '</p>';
                 return;
             }
 
@@ -6711,7 +6766,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save template');
+                    throw new Error(errorData.error || tf('account.templatesTab.saveFailed', 'Failed to save template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -6737,7 +6792,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
 
                 renderTemplatesList();
-                showToast(isEditingTemplate ? 'Template updated successfully' : 'Template created successfully', 'success');
+                showToast(isEditingTemplate
+                    ? tf('account.templatesTab.updated', 'Template updated successfully')
+                    : tf('account.templatesTab.created', 'Template created successfully'), 'success');
 
                 // Hide editor
                 document.getElementById('templateEditor').classList.add('hidden');
@@ -6746,12 +6803,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingTemplate = false;
             } catch (error) {
                 console.error('Error saving template:', error);
-                showToast(error.message || 'Failed to save template', 'error');
+                showToast(error.message || tf('account.templatesTab.saveFailed', 'Failed to save template'), 'error');
             }
         });
 
         document.getElementById('deleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentTemplate || !confirm('Are you sure you want to delete this template?')) {
+            if (!currentTemplate || !confirm(tf('account.templatesTab.confirmDelete', 'Are you sure you want to delete this template?'))) {
                 return;
             }
 
@@ -6778,10 +6835,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 currentTemplate = null;
                 isEditingTemplate = false;
 
-                showToast('Template deleted successfully', 'success');
+                showToast(tf('account.templatesTab.deleted', 'Template deleted successfully'), 'success');
             } catch (error) {
                 console.error('Error deleting template:', error);
-                showToast('Failed to delete template', 'error');
+                showToast(tf('account.templatesTab.deleteFailed', 'Failed to delete template'), 'error');
             }
         });
 
@@ -6802,10 +6859,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const result = await response.json();
                 templates = result.templates;
                 renderTemplatesList();
-                showToast('Default templates created successfully', 'success');
+                showToast(tf('account.templatesTab.defaultsCreated', 'Default templates created successfully'), 'success');
             } catch (error) {
                 console.error('Error creating default templates:', error);
-                showToast('Failed to create default templates', 'error');
+                showToast(tf('account.templatesTab.defaultsFailed', 'Failed to create default templates'), 'error');
             }
         });
 
@@ -6832,7 +6889,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 populateInitialPromptPickers();
             } catch (error) {
                 console.error('Error loading initial-prompt templates:', error);
-                showToast('Failed to load transcription prompts', 'error');
+                showToast(tf('account.promptTemplatesTab.loadFailed', 'Failed to load transcription prompts'), 'error');
             }
         }
 
@@ -6873,7 +6930,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (!list) return;
             list.innerHTML = '';
             if (ipTemplates.length === 0) {
-                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No prompts yet</p>';
+                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">' + escapeHtml(tf('account.promptTemplatesTab.noPrompts', 'No prompts yet')) + '</p>';
                 return;
             }
             ipTemplates.forEach(template => {
@@ -6951,7 +7008,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 is_default: document.getElementById('ipTemplateIsDefault').checked
             };
             if (!templateData.name.trim() || !(templateData.template.trim() || templateData.hotwords.trim())) {
-                showToast('Enter a name and a prompt or hotwords', 'error');
+                showToast(tf('account.promptTemplatesTab.nameAndContentRequired', 'Enter a name and a prompt or hotwords'), 'error');
                 return;
             }
             try {
@@ -6965,7 +7022,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 });
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save prompt');
+                    throw new Error(errorData.error || tf('account.promptTemplatesTab.saveFailed', 'Failed to save prompt'));
                 }
                 const saved = await response.json();
                 if (ipIsEditing) {
@@ -6979,19 +7036,21 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
                 renderIpTemplatesList();
                 populateInitialPromptPickers();
-                showToast(ipIsEditing ? 'Prompt updated' : 'Prompt created', 'success');
+                showToast(ipIsEditing
+                    ? tf('account.promptTemplatesTab.updated', 'Prompt updated')
+                    : tf('account.promptTemplatesTab.created', 'Prompt created'), 'success');
                 document.getElementById('ipTemplateEditor').classList.add('hidden');
                 document.getElementById('ipTemplateEmptyState').classList.remove('hidden');
                 ipCurrentTemplate = null;
                 ipIsEditing = false;
             } catch (error) {
                 console.error('Error saving initial-prompt template:', error);
-                showToast(error.message || 'Failed to save prompt', 'error');
+                showToast(error.message || tf('account.promptTemplatesTab.saveFailed', 'Failed to save prompt'), 'error');
             }
         });
 
         document.getElementById('ipDeleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!ipCurrentTemplate || !confirm('Are you sure you want to delete this prompt?')) return;
+            if (!ipCurrentTemplate || !confirm(tf('account.promptTemplatesTab.confirmDelete', 'Are you sure you want to delete this prompt?'))) return;
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 const response = await fetch(`/api/initial-prompt-templates/${ipCurrentTemplate.id}`, {
@@ -7006,10 +7065,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('ipTemplateEmptyState').classList.remove('hidden');
                 ipCurrentTemplate = null;
                 ipIsEditing = false;
-                showToast('Prompt deleted', 'success');
+                showToast(tf('account.promptTemplatesTab.deleted', 'Prompt deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting initial-prompt template:', error);
-                showToast('Failed to delete prompt', 'error');
+                showToast(tf('account.promptTemplatesTab.deleteFailed', 'Failed to delete prompt'), 'error');
             }
         });
 
@@ -7027,10 +7086,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     renderIpTemplatesList();
                     populateInitialPromptPickers();
                 }
-                showToast('Starter prompts created', 'success');
+                showToast(tf('account.promptTemplatesTab.startersCreated', 'Starter prompts created'), 'success');
             } catch (error) {
                 console.error('Error creating starter prompts:', error);
-                showToast('Failed to create starter prompts', 'error');
+                showToast(tf('account.promptTemplatesTab.startersFailed', 'Failed to create starter prompts'), 'error');
             }
         });
 
@@ -7042,7 +7101,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 // Only show the picker once the user actually has saved prompts,
                 // so single-prompt users keep a clean editor.
                 sel.style.display = ipTemplates.length ? '' : 'none';
-                sel.innerHTML = '<option value="">' + (t('initialPromptTemplates.pickPlaceholder') || 'Insert a saved template…') + '</option>';
+                sel.innerHTML = '<option value="">' + escapeHtml(tf('initialPromptTemplates.pickPlaceholder', 'Insert a saved template…')) + '</option>';
                 ipTemplates.forEach(tpl => {
                     const opt = document.createElement('option');
                     opt.value = String(tpl.id);
@@ -7174,7 +7233,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 renderExportTemplatesList();
             } catch (error) {
                 console.error('Error loading export templates:', error);
-                showToast('Failed to load export templates', 'error');
+                showToast(tf('account.exportTemplatesTab.loadFailed', 'Failed to load export templates'), 'error');
             }
         }
 
@@ -7186,7 +7245,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (exportTemplates.length === 0) {
                 const emptyMsg = document.createElement('p');
                 emptyMsg.className = 'text-sm text-[var(--text-muted)] text-center py-4';
-                emptyMsg.textContent = 'No templates yet';
+                emptyMsg.textContent = tf('account.templatesTab.noTemplates', 'No templates yet');
                 list.appendChild(emptyMsg);
                 return;
             }
@@ -7302,7 +7361,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save export template');
+                    throw new Error(errorData.error || tf('account.exportTemplatesTab.saveFailed', 'Failed to save export template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -7326,7 +7385,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
 
                 renderExportTemplatesList();
-                showToast(isEditingExportTemplate ? 'Export template updated successfully' : 'Export template created successfully', 'success');
+                showToast(isEditingExportTemplate
+                    ? tf('account.exportTemplatesTab.updated', 'Export template updated successfully')
+                    : tf('account.exportTemplatesTab.created', 'Export template created successfully'), 'success');
 
                 document.getElementById('exportTemplateEditor').classList.add('hidden');
                 document.getElementById('exportTemplateEmptyState').classList.remove('hidden');
@@ -7334,12 +7395,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingExportTemplate = false;
             } catch (error) {
                 console.error('Error saving export template:', error);
-                showToast(error.message || 'Failed to save export template', 'error');
+                showToast(error.message || tf('account.exportTemplatesTab.saveFailed', 'Failed to save export template'), 'error');
             }
         });
 
         document.getElementById('deleteExportTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentExportTemplate || !confirm('Are you sure you want to delete this export template?')) {
+            if (!currentExportTemplate || !confirm(tf('account.exportTemplatesTab.confirmDelete', 'Are you sure you want to delete this export template?'))) {
                 return;
             }
 
@@ -7364,10 +7425,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 currentExportTemplate = null;
                 isEditingExportTemplate = false;
 
-                showToast('Export template deleted successfully', 'success');
+                showToast(tf('account.exportTemplatesTab.deleted', 'Export template deleted successfully'), 'success');
             } catch (error) {
                 console.error('Error deleting export template:', error);
-                showToast('Failed to delete export template', 'error');
+                showToast(tf('account.exportTemplatesTab.deleteFailed', 'Failed to delete export template'), 'error');
             }
         });
 
@@ -7389,10 +7450,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 exportTemplates = result.templates;
                 renderExportTemplatesList();
                 document.getElementById('createDefaultExportTemplatesBtn').style.display = 'none';
-                showToast('Default export template created successfully', 'success');
+                showToast(tf('account.exportTemplatesTab.defaultCreated', 'Default export template created successfully'), 'success');
             } catch (error) {
                 console.error('Error creating default export template:', error);
-                showToast('Failed to create default export template', 'error');
+                showToast(tf('account.exportTemplatesTab.defaultFailed', 'Failed to create default export template'), 'error');
             }
         });
 
@@ -7562,7 +7623,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 updateUserDefaultSelect();
             } catch (error) {
                 console.error('Error loading naming templates:', error);
-                showToast('Failed to load naming templates', 'error');
+                showToast(tf('account.namingTemplatesTab.loadFailed', 'Failed to load naming templates'), 'error');
             }
         }
 
@@ -7571,7 +7632,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             list.innerHTML = '';
 
             if (namingTemplates.length === 0) {
-                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No templates yet</p>';
+                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">' + escapeHtml(tf('account.templatesTab.noTemplates', 'No templates yet')) + '</p>';
                 return;
             }
 
@@ -7607,7 +7668,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (userDefaultNamingTemplateId === template.id) {
                     const defaultEl = document.createElement('span');
                     defaultEl.className = 'text-xs text-[var(--text-accent)] mt-1';
-                    defaultEl.innerHTML = '<i class="fas fa-star mr-1"></i>Default';
+                    defaultEl.innerHTML = '<i class="fas fa-star mr-1"></i>' + escapeHtml(tf('transcriptTemplates.default', 'Default'));
                     inner.appendChild(defaultEl);
                 }
 
@@ -7621,7 +7682,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         function updateUserDefaultSelect() {
             const select = document.getElementById('userDefaultNamingTemplate');
-            select.innerHTML = '<option value="">No default (AI title only)</option>';
+            select.innerHTML = '<option value="">' + escapeHtml(tf('namingTemplates.noDefault', 'No default (AI title only)')) + '</option>';
 
             namingTemplates.forEach(template => {
                 const option = document.createElement('option');
@@ -7654,10 +7715,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 userDefaultNamingTemplateId = templateId;
                 renderNamingTemplatesList();
-                showToast('Default naming template updated', 'success');
+                showToast(tf('account.namingTemplatesTab.defaultUpdated', 'Default naming template updated'), 'success');
             } catch (error) {
                 console.error('Error updating default template:', error);
-                showToast('Failed to update default template', 'error');
+                showToast(tf('account.namingTemplatesTab.defaultUpdateFailed', 'Failed to update default template'), 'error');
             }
         });
 
@@ -7707,13 +7768,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             const varInput = document.createElement('input');
             varInput.type = 'text';
-            varInput.placeholder = 'Variable name';
+            varInput.placeholder = tf('account.namingTemplatesTab.variableNamePlaceholder', 'Variable name');
             varInput.value = varName;
             varInput.className = 'flex-1 px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md regex-var-name';
 
             const patternInput = document.createElement('input');
             patternInput.type = 'text';
-            patternInput.placeholder = 'Regex pattern';
+            patternInput.placeholder = tf('account.namingTemplatesTab.regexPlaceholder', 'Regex pattern');
             patternInput.value = pattern;
             patternInput.className = 'flex-2 px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md regex-pattern font-mono';
 
@@ -7776,7 +7837,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save naming template');
+                    throw new Error(errorData.error || tf('account.namingTemplatesTab.saveFailed', 'Failed to save naming template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -7792,7 +7853,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 renderNamingTemplatesList();
                 updateUserDefaultSelect();
-                showToast(isEditingNamingTemplate ? 'Naming template updated' : 'Naming template created', 'success');
+                showToast(isEditingNamingTemplate
+                    ? tf('account.namingTemplatesTab.updated', 'Naming template updated')
+                    : tf('account.namingTemplatesTab.created', 'Naming template created'), 'success');
 
                 document.getElementById('namingTemplateEditor').classList.add('hidden');
                 document.getElementById('namingTemplateEmptyState').classList.remove('hidden');
@@ -7800,12 +7863,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingNamingTemplate = false;
             } catch (error) {
                 console.error('Error saving naming template:', error);
-                showToast(error.message || 'Failed to save naming template', 'error');
+                showToast(error.message || tf('account.namingTemplatesTab.saveFailed', 'Failed to save naming template'), 'error');
             }
         });
 
         document.getElementById('deleteNamingTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentNamingTemplate || !confirm('Are you sure you want to delete this naming template?')) {
+            if (!currentNamingTemplate || !confirm(tf('account.namingTemplatesTab.confirmDelete', 'Are you sure you want to delete this naming template?'))) {
                 return;
             }
 
@@ -7820,7 +7883,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to delete naming template');
+                    throw new Error(errorData.error || tf('account.namingTemplatesTab.deleteFailed', 'Failed to delete naming template'));
                 }
 
                 namingTemplates = namingTemplates.filter(t => t.id !== currentNamingTemplate.id);
@@ -7837,10 +7900,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 currentNamingTemplate = null;
                 isEditingNamingTemplate = false;
 
-                showToast('Naming template deleted', 'success');
+                showToast(tf('account.namingTemplatesTab.deleted', 'Naming template deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting naming template:', error);
-                showToast(error.message || 'Failed to delete naming template', 'error');
+                showToast(error.message || tf('account.namingTemplatesTab.deleteFailed', 'Failed to delete naming template'), 'error');
             }
         });
 
@@ -7862,10 +7925,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 namingTemplates = result.templates;
                 renderNamingTemplatesList();
                 updateUserDefaultSelect();
-                showToast('Default naming templates created', 'success');
+                showToast(tf('account.namingTemplatesTab.defaultsCreated', 'Default naming templates created'), 'success');
             } catch (error) {
                 console.error('Error creating default naming templates:', error);
-                showToast('Failed to create default naming templates', 'error');
+                showToast(tf('account.namingTemplatesTab.defaultsFailed', 'Failed to create default naming templates'), 'error');
             }
         });
 
@@ -7874,7 +7937,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const testFilename = document.getElementById('testFilename').value || 'sample-file.mp3';
 
             if (!templateId) {
-                showToast('Save the template first to test it', 'info');
+                showToast(tf('account.namingTemplatesTab.saveBeforeTest', 'Save the template first to test it'), 'info');
                 return;
             }
 
@@ -7898,7 +7961,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('testResultText').textContent = result.result;
             } catch (error) {
                 console.error('Error testing template:', error);
-                showToast('Failed to test template', 'error');
+                showToast(tf('account.namingTemplatesTab.testFailed', 'Failed to test template'), 'error');
             }
         });
 

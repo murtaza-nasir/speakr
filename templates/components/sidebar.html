@@ -43,7 +43,7 @@
                     <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
                             @click="switchToUploadView"
                             class="btn btn--primary btn--icon"
-                            title="New Recording">
+                            :title="t('nav.newRecording')">
                         <i class="fas fa-plus"></i>
                     </button>
                     <button v-else-if="!selectionMode"
@@ -348,14 +348,14 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="font-medium text-sm text-[var(--text-primary)] truncate">
-                                ${ incognitoRecording.title || 'Incognito Recording' }
+                                ${ incognitoRecording.title || t('incognito.recordingTitle') }
                             </span>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
                             <!-- Incognito pill badge (matches tag style with contrasting border) -->
                             <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-violet-500/15 dark:bg-violet-500/25 text-violet-700 dark:text-violet-300 ring-1 ring-violet-400/50 dark:ring-violet-500/50">
                                 <i class="fas fa-user-secret mr-1" style="font-size: 9px;"></i>
-                                Incognito
+                                ${ t('incognito.badge') }
                             </span>
                             <!-- Duration pill -->
                             <span v-if="incognitoRecording.audio_duration_seconds" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] bg-[var(--bg-tertiary)]">
@@ -365,12 +365,12 @@
                         </div>
                         <p class="text-[10px] text-[var(--text-muted)] mt-1.5 opacity-70">
                             <i class="fas fa-eye-slash mr-1"></i>
-                            Session only
+                            ${ t('incognito.sessionOnly') }
                         </p>
                     </div>
                     <button @click.stop="clearIncognitoRecordingWithConfirm"
                             class="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
-                            title="Discard">
+                            :title="t('help.discard')">
                         <i class="fas fa-times text-xs"></i>
                     </button>
                 </div>
@@ -545,7 +545,7 @@
                                         @click.stop="filterFolder = recording.folder_id"
                                         class="chip chip--clickable"
                                         :style="{ backgroundColor: getFolderColor(recording.folder_id), color: getContrastTextColor(getFolderColor(recording.folder_id)) }"
-                                        :title="'Folder: ' + getFolderName(recording.folder_id)">
+                                        :title="t('tooltips.folderLabel', { name: getFolderName(recording.folder_id) })">
                                     <i class="fas fa-folder"></i>
                                     <span class="chip__label" v-text="getFolderName(recording.folder_id)"></span>
                                 </button>
@@ -562,14 +562,14 @@
                                             @click.stop="filterByTag(tag)"
                                             class="chip chip--clickable"
                                             :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                                            :title="tag.group_id ? ('Group: ' + tag.group_name) : ('Filter by ' + tag.name)">
+                                            :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : t('tooltips.filterByName', { name: tag.name })">
                                         <i v-if="tag.group_id" class="fas fa-users"></i>
                                         <span class="chip__label" v-text="tag.name"></span>
                                     </button>
                                 </template>
                                 <span v-if="getRecordingTags(recording).length > 4"
                                       class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
-                                      :title="'More tags...'">
+                                      :title="t('tooltips.moreTags')">
                                     +${getRecordingTags(recording).length - 4}
                                 </span>
                                 <button v-if="recording.duplicate_info"
@@ -626,19 +626,19 @@
         <button v-if="foldersEnabled"
                 @click="showBulkFolderModal = true"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                title="Move to folder">
+                :title="t('folderManagement.moveToFolder')">
             <i class="fas fa-folder text-emerald-500"></i>
         </button>
 
         <button @click="bulkToggleInbox()"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                title="Toggle inbox status">
+                :title="t('bulkActions.toggleInbox')">
             <i class="fas fa-inbox text-blue-500"></i>
         </button>
 
         <button @click="bulkToggleHighlight()"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
-                title="Toggle highlight">
+                :title="t('bulkActions.toggleHighlight')">
             <i class="fas fa-star text-amber-500"></i>
         </button>
 
@@ -684,7 +684,7 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-[var(--text-primary)]">
                     <i class="fas fa-folder mr-2 text-emerald-500"></i>
-                    Move to Folder
+                    ${ t('folderManagement.moveToFolder') }
                 </h3>
                 <button @click="showBulkFolderModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                     <i class="fas fa-times"></i>
@@ -697,7 +697,7 @@
             <button @click="bulkAssignFolder(null)"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--bg-tertiary)] transition-colors mb-2 border border-[var(--border-secondary)]">
                 <i class="fas fa-folder-minus text-[var(--text-muted)]"></i>
-                <span class="text-sm text-[var(--text-secondary)]">Remove from folder</span>
+                <span class="text-sm text-[var(--text-secondary)]" v-text="t('folderManagement.removeFromFolder')"></span>
             </button>
 
             <!-- Divider -->
@@ -721,13 +721,13 @@
 
             <!-- Empty State -->
             <p v-if="availableFolders.length === 0" class="text-sm text-[var(--text-muted)] text-center py-4">
-                No folders created. Create folders in your account settings.
+                ${ t('folderManagement.noFoldersCreateInSettings') }
             </p>
         </div>
         <div class="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
             <button @click="showBulkFolderModal = false"
                     class="w-full px-4 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                Cancel
+                ${ t('buttons.cancel') }
             </button>
         </div>
     </div>

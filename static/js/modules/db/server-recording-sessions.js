@@ -60,6 +60,10 @@ export function getRememberedSession() {
 /**
  * POST /upload/session  →  { session_id, expires_at, max_chunk_bytes, ... }
  */
+// The messages below reach the user (setGlobalError). Guarded: tests and
+// early page code run without i18n.js.
+const t = (key, params, fallback) => (typeof window !== 'undefined' && window.i18n ? window.i18n.t(key, params) : fallback);
+
 export async function createSession(mimeType = 'audio/webm') {
     const resp = await fetch(SESSION_BASE, {
         method: 'POST',
@@ -72,7 +76,7 @@ export async function createSession(mimeType = 'audio/webm') {
     });
     if (!resp.ok) {
         const body = await safeJson(resp);
-        const err = new Error(body?.error || `Could not open recording session (HTTP ${resp.status})`);
+        const err = new Error(body?.error || t('errors.recordingSessionOpenFailed', { status: resp.status }, `Could not open recording session (HTTP ${resp.status})`));
         err.status = resp.status;
         err.body = body;
         throw err;
@@ -108,7 +112,7 @@ export async function uploadChunk(sessionId, chunkIndex, blob) {
         throw err;
     }
     const body = await safeJson(resp);
-    const err = new Error(body?.error || `Chunk POST failed (HTTP ${resp.status})`);
+    const err = new Error(body?.error || t('errors.recordingChunkFailed', { status: resp.status }, `Chunk POST failed (HTTP ${resp.status})`));
     err.status = resp.status;
     err.body = body;
     throw err;
@@ -126,7 +130,7 @@ export async function getSessionStatus(sessionId) {
     if (resp.status === 404) return null;
     if (!resp.ok) {
         const body = await safeJson(resp);
-        throw new Error(body?.error || `Could not read session status (HTTP ${resp.status})`);
+        throw new Error(body?.error || t('errors.recordingSessionStatusFailed', { status: resp.status }, `Could not read session status (HTTP ${resp.status})`));
     }
     return resp.json();
 }
@@ -150,7 +154,7 @@ export async function finalizeSession(sessionId, metadata = {}) {
         forgetActiveSession();
         return body;
     }
-    const err = new Error(body?.error || `Finalize failed (HTTP ${resp.status})`);
+    const err = new Error(body?.error || t('errors.recordingFinalizeFailed', { status: resp.status }, `Finalize failed (HTTP ${resp.status})`));
     err.status = resp.status;
     err.body = body;
     throw err;
@@ -168,7 +172,7 @@ export async function abortSession(sessionId) {
     forgetActiveSession();
     if (resp.status === 204 || resp.status === 404) return { ok: true };
     const body = await safeJson(resp);
-    throw new Error(body?.error || `Abort failed (HTTP ${resp.status})`);
+    throw new Error(body?.error || t('errors.recordingAbortFailed', { status: resp.status }, `Abort failed (HTTP ${resp.status})`));
 }
 
 async function safeJson(resp) {

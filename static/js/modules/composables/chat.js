@@ -194,7 +194,7 @@ export function useChat(state, utils) {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to get chat response');
+                throw new Error(errorData.error || t('chat.responseFailed'));
             }
 
             const reader = response.body.getReader();
@@ -310,19 +310,19 @@ export function useChat(state, utils) {
             // note below it so the user can still copy what they got.
             if (assistantMessage) {
                 const partial = (assistantMessage.content || '').trim();
-                const errSuffix = `\n\n_⚠️ Connection ended before the response completed: ${error.message}_`;
+                const errSuffix = `\n\n_⚠️ ${t('chat.connectionEnded', { error: error.message })}_`;
                 if (partial) {
                     assistantMessage.content = partial + errSuffix;
                     assistantMessage.html = renderChatHtml(assistantMessage.content);
                 } else {
-                    assistantMessage.content = `Error: ${error.message}`;
-                    assistantMessage.html = `<span class="text-red-500">Error: ${error.message}</span>`;
+                    assistantMessage.content = t('chat.errorWithMessage', { error: error.message });
+                    assistantMessage.html = `<span class="text-red-500">${t('chat.errorWithMessage', { error: error.message })}</span>`;
                 }
             } else {
                 chatMessages.value.push({
                     role: 'assistant',
-                    content: `Error: ${error.message}`,
-                    html: `<span class="text-red-500">Error: ${error.message}</span>`
+                    content: t('chat.errorWithMessage', { error: error.message }),
+                    html: `<span class="text-red-500">${t('chat.errorWithMessage', { error: error.message })}</span>`
                 });
             }
         } finally {
