@@ -198,6 +198,18 @@ def test_config_connector_and_user_size_min(monkeypatch):
     assert cfg.source == "user_and_connector"
 
 
+def test_config_size_only_connector_honours_user_duration(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "300s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.enabled is True
+    assert cfg.mode == "duration"
+    assert cfg.limit_value == 300
+    assert cfg.source == "user_and_connector"
+    # Connector size limit stays as the per-chunk cap (80% of 25MB)
+    assert cfg.max_size_mb == pytest.approx(20.0)
+
+
 def test_config_connector_recommended_soft():
     # No hard limits, but a recommended chunk length set.
     specs = make_specs(recommended_chunk_seconds=480)
@@ -316,6 +328,26 @@ def test_needs_chunking_duration_unknown_returns_true(monkeypatch):
     with mock.patch("os.path.getsize", return_value=1234), \
          mock.patch.object(svc, "get_audio_duration", return_value=None):
         assert svc.needs_chunking("/unknown.mp3") is True
+
+
+def test_needs_chunking_size_only_connector_duration_over_limit(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "300s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    svc = AudioChunkingService()
+    # 15.4MB is under the size cap, but 17 minutes is over the user's 300s
+    with mock.patch("os.path.getsize", return_value=int(15.4 * 1024 * 1024)), \
+         mock.patch.object(svc, "get_audio_duration", return_value=1020.0):
+        assert svc.needs_chunking("/long.mp3", connector_specs=specs) is True
+
+
+def test_needs_chunking_size_only_connector_short_but_oversized(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "300s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    svc = AudioChunkingService()
+    # Shorter than the user's 300s but over the size cap
+    with mock.patch("os.path.getsize", return_value=60 * 1024 * 1024), \
+         mock.patch.object(svc, "get_audio_duration", return_value=200.0):
+        assert svc.needs_chunking("/wav.wav", connector_specs=specs) is True
 
 
 def test_needs_chunking_oserror_returns_false(monkeypatch):
@@ -471,6 +503,26 @@ def test_calc_chunking_duration_mode(monkeypatch):
     assert dur == pytest.approx(600.0)
 
 
+def test_calc_chunking_size_only_connector_user_duration(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "300s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    svc = AudioChunkingService()
+    # 15.4MB, 1020s: fits the size cap, but ceil(1020/300)=4 chunks by duration.
+    num, dur = svc.calculate_optimal_chunking(int(15.4 * 1024 * 1024), 1020.0, specs)
+    assert num == 4
+    assert dur == pytest.approx(300.0)
+
+
+def test_calc_chunking_size_cap_raises_chunks_above_user_duration(monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "1200s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    svc = AudioChunkingService()
+    # 66MB, 3000s: 1200s gives 3 chunks of 22MB, over the cap (20MB * 0.95), so 4.
+    num, dur = svc.calculate_optimal_chunking(66 * 1024 * 1024, 3000.0, specs)
+    assert num == 4
+    assert dur == pytest.approx(750.0)
+
+
 def test_calc_chunking_min_duration_clamp(monkeypatch):
     monkeypatch.setenv("CHUNK_LIMIT", "30s")
     svc = AudioChunkingService()
@@ -597,6 +649,32 @@ def test_create_chunks_multiple(tmp_path, monkeypatch):
     # Boundaries are monotonic / cover the file.
     assert chunks[0]["start_time"] == 0
     assert chunks[-1]["end_time"] == pytest.approx(1200.0)
+
+
+def test_create_chunks_size_only_connector_user_duration_respects_size_cap(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHUNK_LIMIT", "1200s")
+    specs = make_specs(max_file_size_bytes=25 * 1024 * 1024)
+    src = tmp_path / "in.mp3"
+    src.write_bytes(b"x" * 50)
+    mp3 = tmp_path / "conv.mp3"
+    mp3.write_bytes(b"y" * 50)
+    total_size = 66 * 1024 * 1024
+    svc = AudioChunkingService()
+    monkeypatch.setattr(svc, "convert_to_mp3_and_get_info", lambda f, d: (str(mp3), 3000.0, total_size))
+
+    # Mock ffmpeg: the output size is proportional to the cut length.
+    def fake_run(cmd, **kwargs):
+        seconds = float(cmd[cmd.index("-t") + 1])
+        with open(cmd[-1], "wb") as f:
+            f.truncate(int(total_size * seconds / 3000.0))
+        return completed(returncode=0)
+
+    with mock.patch("subprocess.run", side_effect=fake_run):
+        chunks = svc.create_chunks(str(src), str(tmp_path), specs)
+
+    assert len(chunks) == 4
+    assert chunks[-1]["end_time"] == pytest.approx(3000.0)
+    assert all(c["size_bytes"] <= 20 * 1024 * 1024 for c in chunks)
 
 
 def test_create_chunks_ffmpeg_failure_skips(tmp_path, monkeypatch):
