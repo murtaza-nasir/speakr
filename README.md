@@ -71,6 +71,10 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 
 Speakr is also an installable Progressive Web App - mobile-first, offline-capable, with a phone share-target - and ships light/dark themes, an incognito mode, a configurable Help Center link for your own documentation, and a UI translated into seven languages.
 
+## Works with Mailr
+
+[Mailr](https://github.com/murtaza-nasir/mailr) is a self-hosted webmail application that I also develop. It includes a calendar, tasks, notes and an AI assistant, and mail accounts from any provider are connected over IMAP and SMTP. With a Speakr server connected, recordings are shown beside their meetings and emails, a follow-up email can be drafted from a recording, and its action items can be added as tasks. See [Speakr recordings](https://murtaza-nasir.github.io/mailr/user-guide/recordings/) in the Mailr documentation.
+
 ## Unofficial Companion Apps
 
 These apps were built by members of the community for use with your own Speakr server. They are maintained by their authors, not by this project, and I have not tested them myself.
