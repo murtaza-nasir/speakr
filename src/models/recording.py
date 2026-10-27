@@ -316,11 +316,14 @@ class Recording(db.Model):
     def _serialize_tags_and_folder(self, viewer_user, share_map=None, batch=None):
         """Build (tags, folder, folder_id) for a viewer, applying #314 rules.
 
-        For a recording the viewer does NOT own, only the tag/folder that GRANTED
-        access (the share-reason, from the InternalShare row) is surfaced, each
-        flagged ``is_foreign: True`` so the UI can mark it and keep it
-        non-filterable. The owner's other tags/folder are never leaked. Owners
-        (and the no-viewer backward-compat case) see their tags/folder normally.
+        For a recording the viewer does NOT own, the share-reason (from the
+        InternalShare row) is surfaced and flagged ``is_foreign: True`` so the
+        UI can mark it and keep it non-filterable.  A group-tag share also
+        surfaces the other tags on this recording from that same group: group
+        tags are shared context for its members, unlike the owner's personal
+        tags.  Tags from other groups and the owner's personal tags/folder are
+        never leaked. Owners (and the no-viewer backward-compat case) see their
+        tags/folder normally.
 
         share_map: optional {recording_id: InternalShare} to avoid an N+1 query
         in list views; falls back to a per-recording lookup when not provided.
@@ -351,12 +354,23 @@ class Recording(db.Model):
         reason_folder_id = getattr(share, 'source_folder_id', None) if share else None
 
         tags = []
-        if reason_tag_id:
-            for tag in visible_tags:
-                if tag.id == reason_tag_id:
-                    td = tag_dict(tag)
-                    td['is_foreign'] = True
-                    tags.append(td)
+        reason_tag = next((tag for tag in visible_tags if tag.id == reason_tag_id), None)
+        if reason_tag:
+            if share and share.source_type == 'group_tag' and reason_tag.group_id:
+                # Group tags are shared metadata for their own group.  Include
+                # only the tags from the group that granted access, so a
+                # recipient never learns the recording's tags from another
+                # group they may also belong to.
+                tags_to_surface = [
+                    tag for tag in visible_tags if tag.group_id == reason_tag.group_id
+                ]
+            else:
+                tags_to_surface = [reason_tag]
+
+            for tag in tags_to_surface:
+                td = tag_dict(tag)
+                td['is_foreign'] = True
+                tags.append(td)
         if reason_folder_id and self.folder_id == reason_folder_id and self.folder:
             folder = folder_dict(self.folder)
             folder['is_foreign'] = True

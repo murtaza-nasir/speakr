@@ -40,18 +40,25 @@ def _tag_recording(rec, tag):
     db.session.commit()
 
 
-def test_foreign_recording_shows_only_share_reason_tag(ctx):
+def test_group_tag_share_shows_context_tags_from_the_source_group_only(ctx):
     owner, viewer = _u(), _u()
     grp = Group(name=f"g_{uuid.uuid4().hex[:6]}")
-    db.session.add(grp)
+    other_grp = Group(name=f"g_{uuid.uuid4().hex[:6]}")
+    db.session.add_all([grp, other_grp])
     db.session.commit()
     db.session.add(GroupMembership(group_id=grp.id, user_id=viewer.id, role='member'))
     db.session.add(GroupMembership(group_id=grp.id, user_id=owner.id, role='admin'))
+    # The viewer is also a member of this group.  Its tag still must not be
+    # exposed: it did not grant access to this recording.
+    db.session.add(GroupMembership(group_id=other_grp.id, user_id=viewer.id, role='member'))
+    db.session.add(GroupMembership(group_id=other_grp.id, user_id=owner.id, role='admin'))
 
     group_tag = Tag(name="ShareTag", user_id=owner.id, group_id=grp.id)
+    group_context_tag = Tag(name="ProjectContext", user_id=owner.id, group_id=grp.id)
+    other_group_tag = Tag(name="OtherGroup", user_id=owner.id, group_id=other_grp.id)
     personal_tag = Tag(name="OwnerPrivate", user_id=owner.id)
     personal_folder = Folder(name="OwnerFolder", user_id=owner.id)
-    db.session.add_all([group_tag, personal_tag, personal_folder])
+    db.session.add_all([group_tag, group_context_tag, other_group_tag, personal_tag, personal_folder,])
     db.session.commit()
 
     rec = Recording(user_id=owner.id, title="R", audio_path="local://r.mp3",
@@ -59,6 +66,8 @@ def test_foreign_recording_shows_only_share_reason_tag(ctx):
     db.session.add(rec)
     db.session.commit()
     _tag_recording(rec, group_tag)
+    _tag_recording(rec, group_context_tag)
+    _tag_recording(rec, other_group_tag)    
     _tag_recording(rec, personal_tag)
 
     db.session.add(InternalShare(
@@ -66,17 +75,18 @@ def test_foreign_recording_shows_only_share_reason_tag(ctx):
         source_type='group_tag', source_tag_id=group_tag.id))
     db.session.commit()
 
-    # Viewer (recipient): only the share-reason group tag, flagged foreign; no
-    # personal tag, and no folder (the share was via a tag, not a folder).
+    # Viewer (recipient): every group tag in the group that granted access is
+    # shown, but neither the owner's personal tag nor a tag from another group
+    # is exposed.  The owner's personal folder is still hidden.
     vd = rec.to_dict(viewer_user=viewer)
-    assert [t['name'] for t in vd['tags']] == ["ShareTag"]
-    assert vd['tags'][0]['is_foreign'] is True
+    assert sorted(t['name'] for t in vd['tags']) == ["ProjectContext", "ShareTag"]
+    assert all(t['is_foreign'] is True for t in vd['tags'])
     assert vd['folder'] is None and vd['folder_id'] is None
 
-    # Owner: sees their own personal tag + group tag and their folder, no foreign flag.
+    # Owner: sees all metadata, without foreign flags.
     od = rec.to_dict(viewer_user=owner)
     names = sorted(t['name'] for t in od['tags'])
-    assert names == ["OwnerPrivate", "ShareTag"]
+    assert names == ["OtherGroup", "OwnerPrivate", "ProjectContext", "ShareTag"]
     assert all('is_foreign' not in t for t in od['tags'])
     assert od['folder']['name'] == "OwnerFolder"
 
