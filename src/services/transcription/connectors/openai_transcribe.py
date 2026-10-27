@@ -2,6 +2,7 @@
 OpenAI GPT-4o Transcribe connector.
 
 Supports the newer GPT-4o based transcription models:
+- gpt-transcribe: Newer transcription model with a dedicated keywords list
 - gpt-4o-transcribe: High quality transcription
 - gpt-4o-mini-transcribe: Cost-effective transcription
 - gpt-4o-transcribe-diarize: Speaker diarization with labels A, B, C, D
@@ -37,6 +38,8 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
         # `prompt` parameter for non-diarize models. The diarize model
         # (gpt-4o-transcribe-diarize) silently ignores both -- handled with
         # a UI help note rather than a per-model capability split.
+        # gpt-transcribe takes hotwords as the `keywords` list instead, and the
+        # initial prompt as `prompt`.
         TranscriptionCapability.HOTWORDS,
         TranscriptionCapability.INITIAL_PROMPT,
     }
@@ -45,7 +48,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
     # GPT-4o Transcribe models have specific constraints
     # - 25MB file size limit (all models)
     # - Duration limits vary by model:
-    #   - gpt-4o-transcribe / gpt-4o-mini-transcribe: 1500 seconds (25 min)
+    #   - gpt-transcribe / gpt-4o-transcribe / gpt-4o-mini-transcribe: 1500 seconds (25 min)
     #   - gpt-4o-transcribe-diarize: 1400 seconds (~23 min)
     # - chunking_strategy="auto" handles files internally up to the duration limit
     # Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg, oga
@@ -64,6 +67,12 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
 
     # Models and their capabilities with duration limits
     MODELS = {
+        'gpt-transcribe': {
+            'supports_diarization': False,
+            'max_duration_seconds': 1500,  # 25 minutes
+            'recommended_chunk_seconds': 1200,  # 20 minutes
+            'description': 'Newer transcription model with a dedicated keywords list'
+        },
         'gpt-4o-transcribe': {
             'supports_diarization': False,
             'max_duration_seconds': 1500,  # 25 minutes
@@ -190,7 +199,11 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             }
 
             if request.language:
-                params["language"] = request.language
+                if effective_model == 'gpt-transcribe':
+                    # gpt-transcribe takes a list of possible languages, not `language`
+                    params["languages"] = [request.language]
+                else:
+                    params["language"] = request.language
                 logger.info(f"Using transcription language: {request.language}")
 
             # Handle diarization model specifics
@@ -223,6 +236,14 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                             }
                             logger.info(f"Using known speaker references for {len(speaker_names)} speakers")
                             logger.debug(f"Known speaker names: {speaker_names}")
+            elif effective_model == 'gpt-transcribe':
+                # gpt-transcribe takes hotwords as a dedicated keywords list
+                keywords = [w.strip() for w in (request.hotwords or '').split(',')]
+                keywords = list(dict.fromkeys(w for w in keywords if w and not any(c in w for c in '<>\r\n')))
+                if keywords:
+                    params["keywords"] = keywords
+                if request.prompt:
+                    params["prompt"] = request.prompt
             else:
                 # Non-diarization models - combine initial prompt and hotwords
                 prompt_parts = []

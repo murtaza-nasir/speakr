@@ -135,7 +135,7 @@ class ConnectorRegistry:
         2. ASR_BASE_URL contains dashscope - use FunASR connector
         3. ASR_BASE_URL is set - use ASR endpoint (smarter detection)
            - USE_ASR_ENDPOINT=true also works (backwards compat, with deprecation warning)
-        4. TRANSCRIPTION_MODEL contains 'gpt-4o' - use OpenAI Transcribe
+        4. TRANSCRIPTION_MODEL contains 'gpt-4o' or 'gpt-transcribe' - use OpenAI Transcribe
         5. TRANSCRIPTION_MODEL is set - use OpenAI Whisper with that model
         6. Default to OpenAI Whisper (whisper-1)
 
@@ -172,7 +172,7 @@ class ConnectorRegistry:
                 connector_name = 'azure_openai_transcribe'
                 logger.info("Auto-detected Azure OpenAI from TRANSCRIPTION_BASE_URL")
             # Priority 4: Model-based detection
-            elif transcription_model and 'gpt-4o' in transcription_model:
+            elif transcription_model and ('gpt-4o' in transcription_model or 'gpt-transcribe' in transcription_model):
                 connector_name = 'openai_transcribe'
                 logger.info(f"Auto-detected OpenAI Transcribe from TRANSCRIPTION_MODEL={transcription_model}")
             # Priority 5 & 6: OpenAI Whisper (with custom or default model)

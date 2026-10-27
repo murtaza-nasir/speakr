@@ -96,6 +96,7 @@ TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 
 The connector automatically detects that you want the OpenAI Transcribe connector based on the model name. Other available models:
 
+- `gpt-transcribe` - Replaces `gpt-4o-transcribe`, without diarization
 - `gpt-4o-transcribe` - High quality without diarization
 - `gpt-4o-mini-transcribe` - Cost-effective option
 - `whisper-1` - Legacy model (uses Whisper connector)

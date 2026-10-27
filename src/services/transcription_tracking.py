@@ -23,6 +23,7 @@ TRANSCRIPTION_PRICING = {
         'default': 0.006,
     },
     'openai_transcribe': {
+        'gpt-transcribe': 0.0045,        # $0.0045/min
         'gpt-4o-transcribe': 0.006,      # $0.006/min
         'gpt-4o-mini-transcribe': 0.003,  # $0.003/min
         'gpt-4o-mini-transcribe-2025-12-15': 0.003,
