@@ -2425,6 +2425,12 @@
       "domainNotAllowed": "Email domain is not allowed for SSO sign-up",
       "emailNotVerified": "SSO email address is not verified",
       "missingSubject": "SSO userinfo does not include 'sub'"
+    },
+    "budget": {
+      "tokenExceeded": "Monthly token budget exceeded ({{percent}}). Contact admin for more tokens.",
+      "tokenWarning": "Warning: {{percent}} of monthly token budget used.",
+      "transcriptionExceeded": "Monthly transcription budget exceeded ({{used}}/{{budget}} minutes). Contact admin for more time.",
+      "transcriptionWarning": "Warning: {{percent}} of monthly transcription budget used."
     }
   }
 }

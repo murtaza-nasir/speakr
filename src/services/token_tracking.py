@@ -11,6 +11,7 @@ from sqlalchemy import func, extract
 from src.database import db
 from src.models.token_usage import TokenUsage
 from src.models.user import User
+from src.utils.localization import format_percent, translate
 
 logger = logging.getLogger(__name__)
 
@@ -161,12 +162,17 @@ class TokenTracker:
             budget = user.monthly_token_budget
             percentage = (current_usage / budget) * 100
 
+            # In the user's interface language: the exceeded message is
+            # shown to them as the error of the blocked request.
+            language = user.ui_language
             if percentage >= 100:
-                return (False, percentage,
-                        f"Monthly token budget exceeded ({percentage:.1f}%). Contact admin for more tokens.")
+                return (False, percentage, translate(
+                    'server.budget.tokenExceeded', language,
+                    percent=format_percent(percentage, language)))
             elif percentage >= 80:
-                return (True, percentage,
-                        f"Warning: {percentage:.1f}% of monthly token budget used.")
+                return (True, percentage, translate(
+                    'server.budget.tokenWarning', language,
+                    percent=format_percent(percentage, language)))
             else:
                 return (True, percentage, None)
 

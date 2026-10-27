@@ -11,6 +11,7 @@ from sqlalchemy import func, extract
 from src.database import db
 from src.models.transcription_usage import TranscriptionUsage
 from src.models.user import User
+from src.utils.localization import format_number, format_percent, translate
 
 logger = logging.getLogger(__name__)
 
@@ -174,14 +175,18 @@ class TranscriptionTracker:
             budget = user.monthly_transcription_budget
             percentage = (current_usage / budget) * 100
 
+            # In the user's interface language: the exceeded message is
+            # shown to them as the error of the failed recording.
+            language = user.ui_language
             if percentage >= 100:
-                minutes_used = current_usage // 60
-                minutes_budget = budget // 60
-                return (False, percentage,
-                        f"Monthly transcription budget exceeded ({minutes_used}/{minutes_budget} minutes). Contact admin for more time.")
+                return (False, percentage, translate(
+                    'server.budget.transcriptionExceeded', language,
+                    used=format_number(current_usage // 60, language),
+                    budget=format_number(budget // 60, language)))
             elif percentage >= 80:
-                return (True, percentage,
-                        f"Warning: {percentage:.1f}% of monthly transcription budget used.")
+                return (True, percentage, translate(
+                    'server.budget.transcriptionWarning', language,
+                    percent=format_percent(percentage, language)))
             else:
                 return (True, percentage, None)
 

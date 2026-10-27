@@ -317,6 +317,31 @@ def format_number(value, language: Optional[str] = None, max_fraction_digits: in
     return format_decimal(rounded, format=pattern, locale=Locale.parse(language, sep='-'))
 
 
+def format_percent(percent, language: Optional[str] = None) -> str:
+    """
+    A percentage (0-100 scale) in the interface language's notation, as
+    i18n.formatPercent() does in the browser: '85.3%' in English, '85,3 %' in
+    German. At most one decimal, rounded half up.
+    """
+    from babel import Locale
+    from babel.numbers import format_percent as babel_format_percent
+    locale = Locale.parse(_resolve_language(language), sep='-')
+    rounded = Decimal(str(percent)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+    # The locale's own pattern ('#,##0%', '#,##0\xa0%') with one optional decimal.
+    head, _, tail = locale.percent_formats[None].pattern.rpartition('0')
+    return babel_format_percent(rounded / 100, format=f'{head}0.#{tail}', locale=locale)
+
+
+def api_error(code: str, language: Optional[str] = None, **params) -> dict:
+    """
+    The body of an API error response (#477): the message from
+    server.apiError.<code> in the interface language, and the code itself,
+    which stays the same in every language, e.g.
+    {'error': 'Aufnahme nicht gefunden', 'code': 'recording_not_found'}.
+    """
+    return {'error': translate(f'server.apiError.{code}', language, **params), 'code': code}
+
+
 _FILE_SIZE_UNITS = ('bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes')
 
 

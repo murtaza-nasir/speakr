@@ -2425,6 +2425,12 @@
       "domainNotAllowed": "O domínio de e-mail não é permitido para cadastro via SSO",
       "emailNotVerified": "O endereço de e-mail do SSO não está verificado",
       "missingSubject": "As informações do usuário do SSO não incluem 'sub'"
+    },
+    "budget": {
+      "tokenExceeded": "Orçamento mensal de tokens excedido ({{percent}}). Entre em contato com o administrador para obter mais tokens.",
+      "tokenWarning": "Aviso: {{percent}} do orçamento mensal de tokens utilizado.",
+      "transcriptionExceeded": "Orçamento mensal de transcrição excedido ({{used}}/{{budget}} minutos). Entre em contato com o administrador para obter mais tempo.",
+      "transcriptionWarning": "Aviso: {{percent}} do orçamento mensal de transcrição utilizado."
     }
   }
 }

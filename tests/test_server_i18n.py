@@ -2,7 +2,7 @@
 
 translate() resolves the same static/locales/*.json catalogs the browser uses.
 Flash messages and the verification and password-reset emails go through it;
-API JSON errors are still English and are not covered here.
+Budget messages follow the budget owner's language.
 """
 
 import os
@@ -17,7 +17,7 @@ from src.app import app, db
 from src.models import User
 from src.services import email as email_service
 from src.utils.localization import (
-    format_file_size, format_number, match_language, request_language, translate,
+    format_file_size, format_number, format_percent, match_language, request_language, translate,
 )
 
 
@@ -240,3 +240,46 @@ def test_translated_email_text_is_html_escaped(make_user):
     # French elision apostrophes are escaped in HTML and left alone in text.
     assert 'n&#x27;avez pas' in html_body
     assert "n'avez pas" in text_body
+
+
+# ---------------------------------------------------------------------------
+# Budget messages (#477): shown as the error of a blocked request or a failed
+# recording, so they follow the budget owner's interface language.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('lang,percent', [
+    ('en', '85.3%'), ('zh', '85.3%'), ('pt-BR', '85,3%'),
+    ('de', '85,3\xa0%'), ('fr', '85,3\xa0%'), ('ru', '85,3\xa0%'),
+])
+def test_format_percent_follows_the_language(lang, percent):
+    assert format_percent(85.25, lang) == percent
+    assert format_percent(100, lang) == percent.replace('85,3', '100').replace('85.3', '100')
+
+
+def _budget(tracker, uid, used, budget_field, budget):
+    with app.app_context():
+        u = db.session.get(User, uid)
+        setattr(u, budget_field, budget)
+        db.session.commit()
+        with mock.patch.object(tracker, 'get_monthly_usage', return_value=used):
+            return tracker.check_budget(uid)
+
+
+def test_token_budget_messages_use_the_users_language(make_user):
+    from src.services.token_tracking import token_tracker
+    de, en = make_user('de'), make_user(None)
+    assert _budget(token_tracker, de, 1200, 'monthly_token_budget', 1000) == (
+        False, 120.0, 'Monatliches Token-Budget überschritten (120\xa0%). '
+        'Wenden Sie sich für weitere Tokens an den Administrator.')
+    assert _budget(token_tracker, en, 853, 'monthly_token_budget', 1000) == (
+        True, 85.3, 'Warning: 85.3% of monthly token budget used.')
+    assert _budget(token_tracker, en, 100, 'monthly_token_budget', 1000) == (True, 10.0, None)
+
+
+def test_transcription_budget_messages_use_the_users_language(make_user):
+    from src.services.transcription_tracking import transcription_tracker
+    ru, en = make_user('ru'), make_user('en')
+    can, _, msg = _budget(transcription_tracker, ru, 90 * 60, 'monthly_transcription_budget', 60 * 60)
+    assert not can and msg.startswith('Месячный лимит транскрипции превышен (90/60 мин).')
+    assert _budget(transcription_tracker, en, 54 * 60, 'monthly_transcription_budget', 60 * 60)[2] == (
+        'Warning: 90% of monthly transcription budget used.')

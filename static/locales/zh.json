@@ -2425,6 +2425,12 @@
       "domainNotAllowed": "此邮箱域名不允许通过 SSO 注册",
       "emailNotVerified": "SSO 邮箱地址未经验证",
       "missingSubject": "SSO 用户信息中不包含 'sub'"
+    },
+    "budget": {
+      "tokenExceeded": "已超出每月令牌预算（{{percent}}）。请联系管理员获取更多令牌。",
+      "tokenWarning": "警告：已使用每月令牌预算的 {{percent}}。",
+      "transcriptionExceeded": "已超出每月转录预算（{{used}}/{{budget}} 分钟）。请联系管理员获取更多时长。",
+      "transcriptionWarning": "警告：已使用每月转录预算的 {{percent}}。"
     }
   }
 }

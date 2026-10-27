@@ -2425,6 +2425,12 @@
       "domainNotAllowed": "El dominio de correo no está permitido para el registro con SSO",
       "emailNotVerified": "La dirección de correo de SSO no está verificada",
       "missingSubject": "La información de usuario de SSO no incluye 'sub'"
+    },
+    "budget": {
+      "tokenExceeded": "Presupuesto mensual de tokens excedido ({{percent}}). Contacte a su administrador para obtener más tokens.",
+      "tokenWarning": "Advertencia: se ha usado el {{percent}} del presupuesto mensual de tokens.",
+      "transcriptionExceeded": "Presupuesto mensual de transcripción excedido ({{used}}/{{budget}} minutos). Contacte a su administrador para obtener más tiempo.",
+      "transcriptionWarning": "Advertencia: se ha usado el {{percent}} del presupuesto mensual de transcripción."
     }
   }
 }
