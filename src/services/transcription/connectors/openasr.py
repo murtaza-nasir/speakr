@@ -32,6 +32,7 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.DIARIZATION,
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         TranscriptionCapability.CHUNKING,
         TranscriptionCapability.HOTWORDS,
         TranscriptionCapability.INITIAL_PROMPT,

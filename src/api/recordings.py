@@ -1136,6 +1136,7 @@ def index(recording_id=None, label_name=None):
     connector_supports_exact_speaker_count = False  # Exact-N connectors (openasr) declare it (#362)
     connector_supports_hotwords = USE_ASR_ENDPOINT
     connector_supports_initial_prompt = USE_ASR_ENDPOINT
+    connector_supports_language = USE_ASR_ENDPOINT
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
@@ -1147,6 +1148,7 @@ def index(recording_id=None, label_name=None):
                 connector_supports_exact_speaker_count = connector.supports_exact_speaker_count
                 connector_supports_hotwords = connector.supports_hotwords
                 connector_supports_initial_prompt = connector.supports_initial_prompt
+                connector_supports_language = connector.supports_language_selection
         except Exception as e:
             current_app.logger.warning(f"Could not get connector capabilities: {e}")
 
@@ -1195,6 +1197,7 @@ def index(recording_id=None, label_name=None):
                          connector_supports_exact_speaker_count=connector_supports_exact_speaker_count,
                          connector_supports_hotwords=connector_supports_hotwords,
                          connector_supports_initial_prompt=connector_supports_initial_prompt,
+                         connector_supports_language=connector_supports_language,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          enable_audio_removed_filter=enable_audio_removed_filter,
                          enable_internal_sharing=_self.ENABLE_INTERNAL_SHARING,

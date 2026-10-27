@@ -1087,6 +1087,7 @@ def account():
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
     connector_supports_hotwords = USE_ASR_ENDPOINT
     connector_supports_initial_prompt = USE_ASR_ENDPOINT
+    connector_supports_language = USE_ASR_ENDPOINT
     connector_supports_speaker_embeddings = ASR_RETURN_SPEAKER_EMBEDDINGS
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
@@ -1098,6 +1099,7 @@ def account():
                 connector_supports_diarization = connector.supports_diarization
                 connector_supports_hotwords = connector.supports_hotwords
                 connector_supports_initial_prompt = connector.supports_initial_prompt
+                connector_supports_language = connector.supports_language_selection
                 # Query the live instance: the asr_endpoint connector adds the
                 # SPEAKER_EMBEDDINGS capability conditionally (only when its env
                 # flag is on), so the class-level set would be wrong.
@@ -1165,6 +1167,7 @@ def account():
                            connector_supports_diarization=connector_supports_diarization,
                            connector_supports_hotwords=connector_supports_hotwords,
                            connector_supports_initial_prompt=connector_supports_initial_prompt,
+                           connector_supports_language=connector_supports_language,
                            enable_auto_deletion=ENABLE_AUTO_DELETION,
                            enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                            user_admin_groups=user_admin_groups,

@@ -33,6 +33,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
     CAPABILITIES: Set[TranscriptionCapability] = {
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         # Hotwords + initial_prompt are concatenated into OpenAI's free-text
         # `prompt` parameter for non-diarize models. The diarize model
         # (gpt-4o-transcribe-diarize) silently ignores both -- handled with

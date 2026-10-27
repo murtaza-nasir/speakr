@@ -43,6 +43,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         TranscriptionCapability.DIARIZATION,
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         TranscriptionCapability.SPEAKER_COUNT_CONTROL,  # Supports min/max speakers
         TranscriptionCapability.HOTWORDS,
         TranscriptionCapability.INITIAL_PROMPT,

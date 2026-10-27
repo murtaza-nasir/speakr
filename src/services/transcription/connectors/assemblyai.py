@@ -43,6 +43,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.DIARIZATION,
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.LANGUAGE_SELECTION,
         TranscriptionCapability.SPEAKER_COUNT_CONTROL,  # speaker_options min/max
         TranscriptionCapability.HOTWORDS,               # word_boost
     }

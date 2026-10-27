@@ -1139,10 +1139,11 @@ export function useUpload(state, utils) {
         ).filter(Boolean);
 
         const firstTag = selectedTagsObjects[0];
+        // Apply language from first tag (works for all connectors; speaker counts need diarization)
+        if (firstTag && firstTag.default_language) {
+            uploadLanguage.value = firstTag.default_language;
+        }
         if (firstTag && connectorSupportsDiarization.value) {
-            if (firstTag.default_language) {
-                uploadLanguage.value = firstTag.default_language;
-            }
             if (firstTag.default_min_speakers) {
                 uploadMinSpeakers.value = firstTag.default_min_speakers;
             }
