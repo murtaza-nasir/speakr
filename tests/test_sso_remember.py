@@ -35,7 +35,7 @@ def _sign_in(query):
                 patch("src.api.auth.create_or_update_sso_user",
                       side_effect=lambda info: db.session.get(User, uid)):
             start = client.get("/auth/sso/login" + query)
-            assert start.status_code == 302
+            assert start.status_code == 200
             done = client.get("/auth/sso/callback")
             assert done.status_code == 302
             return done.headers.getlist("Set-Cookie")
@@ -62,3 +62,24 @@ def test_sign_in_page_offers_remember_me_with_sso():
     with patch("src.api.auth.is_sso_enabled", return_value=True):
         html = app.test_client().get("/login").get_data(as_text=True)
     assert 'name="remember" value="1"' in html
+
+
+def test_sso_sign_in_leaves_for_the_provider_from_a_page():
+    """The provider is reached through a refresh page, because form-action 'self'
+    blocks a 302 to another origin after the sign-in form is submitted (#496)."""
+    client = app.test_client()
+    oauth = MagicMock()
+    oauth.sso.authorize_redirect.side_effect = lambda **kw: redirect(
+        "https://idp.example/authorize?client_id=c&state=s")
+    with patch("src.api.auth.is_sso_enabled", return_value=True), \
+            patch("src.api.auth.get_sso_client", return_value=oauth), \
+            patch("src.api.auth.get_sso_config",
+                  return_value={"redirect_uri": "http://localhost/cb", "provider_name": "Test IdP"}):
+        response = client.get("/auth/sso/login")
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "Location" not in response.headers
+    assert response.headers["Cache-Control"] == "no-store"
+    url = "https://idp.example/authorize?client_id=c&amp;state=s"
+    assert f'<meta http-equiv="refresh" content="0;url={url}">' in body
+    assert f'<a href="{url}">Sign in with Test IdP</a>' in body

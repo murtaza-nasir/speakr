@@ -22,6 +22,7 @@ import sys
 import uuid
 import contextlib
 from unittest import mock
+from flask import redirect
 
 import pytest
 
@@ -690,7 +691,7 @@ def test_sso_login_does_not_store_unsafe_next(cleanup_users):
     # persisted to session['sso_next'] (it would be honoured after the
     # IdP round-trip). Both an absolute and a scheme-relative target.
     oauth = mock.MagicMock()
-    oauth.sso.authorize_redirect.return_value = 'redirecting'  # valid view return
+    oauth.sso.authorize_redirect.return_value = redirect("https://idp.example/authorize")
     with _sso_on(), mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth):
         for evil in ('http://evil.com', '//evil.com'):
             client = app.test_client()
@@ -704,7 +705,7 @@ def test_sso_login_does_not_store_unsafe_next(cleanup_users):
 def test_sso_login_stores_safe_next(cleanup_users):
     # The safe-path companion: a local relative target IS stored.
     oauth = mock.MagicMock()
-    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    oauth.sso.authorize_redirect.return_value = redirect("https://idp.example/authorize")
     with _sso_on(), mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth):
         client = app.test_client()
         resp = client.get('/auth/sso/login', query_string={'next': '/recordings'})
@@ -832,7 +833,7 @@ def test_sso_login_uses_cached_client_without_reinit():
     # short-circuit and init_sso_client must NOT be called. The `or`->`and`
     # mutation would call init_sso_client (and use ITS return value instead).
     oauth = mock.MagicMock()
-    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    oauth.sso.authorize_redirect.return_value = redirect("https://idp.example/authorize")
     with _sso_enabled_with_config(), \
             mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth), \
             mock.patch.object(auth_mod, 'init_sso_client') as init_mock:
@@ -848,7 +849,7 @@ def test_sso_login_inits_client_when_none_cached():
     # client is used. Under `or`->`and`, `None and init_sso_client(...)`
     # short-circuits, init is never called, and the route bails to /login.
     oauth = mock.MagicMock()
-    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    oauth.sso.authorize_redirect.return_value = redirect("https://idp.example/authorize")
     with _sso_enabled_with_config(), \
             mock.patch.object(auth_mod, 'get_sso_client', return_value=None), \
             mock.patch.object(auth_mod, 'init_sso_client', return_value=oauth) as init_mock:

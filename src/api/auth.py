@@ -9,7 +9,8 @@ import hmac
 import os
 import re
 import mimetypes
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app, make_response
+from markupsafe import escape
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
@@ -341,7 +342,25 @@ def sso_login():
     # "Remember me" on the sign-in page, as for a password sign-in (#437)
     session['sso_remember'] = request.args.get('remember') == '1'
 
-    return oauth.sso.authorize_redirect(redirect_uri=get_sso_config().get('redirect_uri'))
+    return _leave_for_provider(oauth.sso.authorize_redirect(redirect_uri=get_sso_config().get('redirect_uri')))
+
+
+def _leave_for_provider(provider_redirect):
+    """Send the browser on to the identity provider from a page, not with a 302.
+
+    The sign-in and link buttons are forms, and browsers apply the CSP
+    form-action directive to every redirect that follows a form submission,
+    so a 302 to the provider is blocked by form-action 'self' (#496).
+    """
+    location = escape(provider_redirect.headers['Location'])
+    label = escape(translate('authPages.signInWith', provider=get_sso_config().get('provider_name') or 'SSO'))
+    response = make_response(
+        '<!doctype html><html><head><meta charset="utf-8">'
+        f'<meta http-equiv="refresh" content="0;url={location}"></head>'
+        f'<body><a href="{location}">{label}</a></body></html>'
+    )
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @auth_bp.route('/auth/sso/callback')
