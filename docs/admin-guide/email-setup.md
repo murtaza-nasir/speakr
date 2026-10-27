@@ -169,6 +169,18 @@ SMTP_USERNAME=your-ses-smtp-username
 SMTP_PASSWORD=your-ses-smtp-password
 ```
 
+### Groundmail
+
+```bash
+SMTP_HOST=smtp.groundmail.dev
+SMTP_PORT=587
+SMTP_USE_TLS=true
+SMTP_USERNAME=groundmail
+SMTP_PASSWORD=your-groundmail-smtp-credential
+```
+
+Until you verify a sending domain and add a payment method, Groundmail only sends from `noreply@mail.groundmail.dev` to your own account email; other recipients are rejected. See [Groundmail SMTP](https://docs.groundmail.dev/smtp) (use port 2525 if 587 is blocked).
+
 ### Microsoft 365 / Outlook
 
 ```bash
