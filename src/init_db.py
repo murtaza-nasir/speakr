@@ -291,6 +291,9 @@ def _run_migrations(app, engine):
             app.logger.info("Added updated_at column to recording table")
         create_index_if_not_exists(engine, 'ix_recording_updated_at', 'recording', 'updated_at')
         create_index_if_not_exists(engine, 'ix_recording_user_updated', 'recording', 'user_id, updated_at')
+        # Admin status counts filter on status alone (#507). Without an index
+        # each count scanned the table, transcripts included.
+        create_index_if_not_exists(engine, 'ix_recording_status', 'recording', 'status')
 
         def _backfill_recording_updated_at(engine):
             from datetime import datetime as _dt

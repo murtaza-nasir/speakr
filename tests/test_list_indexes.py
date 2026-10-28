@@ -3,6 +3,7 @@
 The batched list queries read shares, tag links and per-user states by
 columns that had no index (the primary key of recording_tags and the unique
 constraints start with recording_id), so each such lookup scanned its table.
+The admin status counts filter recording on status alone (#507).
 """
 
 import pytest
@@ -17,6 +18,7 @@ INDEXES = [
     ('internal_share', 'ix_internal_share_owner_id', ['owner_id']),
     ('shared_recording_state', 'ix_shared_recording_state_user_id', ['user_id']),
     ('recording_tags', 'ix_recording_tags_tag_id', ['tag_id']),
+    ('recording', 'ix_recording_status', ['status']),
 ]
 
 # One query of the lists per index, as the list code issues it
@@ -28,6 +30,8 @@ QUERIES = {
     'ix_shared_recording_state_user_id':
         'SELECT recording_id FROM shared_recording_state WHERE user_id = 1 AND is_highlighted = 1',
     'ix_recording_tags_tag_id': 'SELECT tag_id, count(*) FROM recording_tags WHERE tag_id IN (1, 2) GROUP BY tag_id',
+    # Admin dashboard status counts (#507)
+    'ix_recording_status': "SELECT count(*) FROM recording WHERE status = 'COMPLETED'",
 }
 
 
