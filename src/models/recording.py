@@ -8,7 +8,7 @@ import logging
 import os
 from datetime import datetime
 from sqlalchemy import func
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import query_expression, validates
 from src.database import db
 from src.utils import md_to_html
 
@@ -29,6 +29,10 @@ class Recording(db.Model):
     title_source = db.Column(db.String(16), nullable=True)
     participants = db.Column(db.String(500))
     notes = db.Column(db.Text)
+    # 1 or 0 from the list page query (src/services/recording_list.py), so
+    # to_list_dict can report has_notes without loading the notes text (#508).
+    # None when the query did not compute it.
+    list_has_notes = query_expression()
     transcription = db.Column(db.Text, nullable=True)
     # Language the transcription service reported for THIS recording, as an
     # ISO 639-1 code. Recorded at transcription time rather than read from the
@@ -424,8 +428,10 @@ class Recording(db.Model):
             'participants': self.participants,
             # Cheap boolean (full notes text is excluded from the list for
             # lightness) — lets the merge modal offer this recording as a notes
-            # source without loading every recording's notes.
-            'has_notes': bool(self.notes and self.notes.strip()),
+            # source without loading every recording's notes. List pages
+            # compute it in SQL (list_has_notes) and leave notes unloaded.
+            'has_notes': (bool(self.notes and self.notes.strip()) if self.list_has_notes is None
+                          else bool(self.list_has_notes)),
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,

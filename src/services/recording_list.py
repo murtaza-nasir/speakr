@@ -10,8 +10,8 @@ same payload. tag_dicts and folder_dicts do the same for the tag and folder
 lists.
 """
 
-from sqlalchemy import func
-from sqlalchemy.orm import defer, joinedload, selectinload
+from sqlalchemy import case, func
+from sqlalchemy.orm import defer, joinedload, selectinload, with_expression
 
 from src.database import db
 from src.models import (
@@ -44,9 +44,35 @@ def _tags_and_folder_options():
     ]
 
 
+# The ASCII whitespace str.strip() removes; has_notes is false for a note of
+# only these characters on both the list and the single-row path.
+_NOTES_BLANK = " \t\n\r\v\f"
+
+
+def _has_notes_expr():
+    """1 when the notes hold anything besides whitespace, else 0; None on other dialects."""
+    dialect = db.engine.dialect.name
+    if dialect == 'sqlite':
+        stripped = func.trim(Recording.notes, _NOTES_BLANK)
+    elif dialect == 'postgresql':
+        stripped = func.btrim(Recording.notes, _NOTES_BLANK)
+    else:
+        return None
+    return case((func.length(stripped) > 0, 1), else_=0)
+
+
 def list_load_options():
-    """Loader options for a page query whose rows go through to_list_dict."""
-    return [*_tags_and_folder_options(), *(defer(column) for column in _LIST_DEFERRED)]
+    """Loader options for a page query whose rows go through to_list_dict.
+
+    has_notes comes from the query, so the notes text stays in the database
+    (#508). Where the dialect has no trim with a character set, notes load as
+    before and to_list_dict strips them in Python.
+    """
+    options = [*_tags_and_folder_options(), *(defer(column) for column in _LIST_DEFERRED)]
+    has_notes = _has_notes_expr()
+    if has_notes is not None:
+        options += [defer(Recording.notes), with_expression(Recording.list_has_notes, has_notes)]
+    return options
 
 
 def full_load_options():

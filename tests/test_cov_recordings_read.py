@@ -335,6 +335,54 @@ def test_paginated_list_includes_has_notes_flag(owner):
     assert by_id[without]["has_notes"] is False
 
 
+
+_NOTES_CASES = [
+    ("some notes", True), (" \r\n\v\f x\t", True),
+    (None, False), ("", False), ("   ", False), ("\n\t", False), (" \r\n\v\f\t", False),
+]
+
+
+def test_list_has_notes_leaves_notes_unloaded(owner):
+    """#508: the list computes has_notes in SQL and does not load the notes text."""
+    from sqlalchemy import inspect as sa_inspect, select
+    from src.services.recording_list import list_load_options
+    with _db():
+        u = db.session.get(User, owner)
+        ids = {}
+        for notes, expected in _NOTES_CASES:
+            r = make_recording(u, title="hn")
+            r.notes = notes
+            ids[r.id] = (notes, expected)
+        db.session.commit()
+        db.session.expunge_all()
+        rows = db.session.execute(
+            select(Recording).where(Recording.id.in_(ids)).options(*list_load_options())).scalars().all()
+        assert len(rows) == len(ids)
+        for r in rows:
+            notes, expected = ids[r.id]
+            assert "notes" in sa_inspect(r).unloaded
+            assert r.to_list_dict()["has_notes"] is expected, repr(notes)
+            assert "notes" in sa_inspect(r).unloaded
+            # The single-row path (no list expression) gives the same flag.
+            assert bool(notes and notes.strip()) is expected
+
+
+def test_paginated_list_has_notes_ignores_whitespace(owner):
+    with _db():
+        u = db.session.get(User, owner)
+        ids = {}
+        for notes, expected in _NOTES_CASES:
+            r = make_recording(u, title="hw")
+            r.notes = notes
+            ids[r.id] = expected
+        db.session.commit()
+    c = new_client()
+    login(c, owner)
+    by_id = {r["id"]: r for r in c.get("/api/recordings?per_page=100").get_json()["recordings"]}
+    for rid, expected in ids.items():
+        assert by_id[rid]["has_notes"] is expected
+        assert "notes" not in by_id[rid]
+
 def test_paginated_status_filter(owner):
     # The merge picker uses ?status=COMPLETED to fetch only mergeable recordings.
     with _db():
