@@ -584,7 +584,15 @@ of proxies in front of Speakr.
 
 When Speakr is reachable directly, without a proxy, set `TRUSTED_PROXY_HOPS=0`
 so that these headers cannot be forged, and set `APP_BASE_URL` so that the links
-in password-reset and verification emails always use your address.
+in password-reset and verification emails and public share links always use your
+address.
+
+`TRUSTED_PROXIES` names the proxies themselves: a comma-separated list of
+addresses or CIDR ranges, such as `172.16.0.0/12` for the default Docker
+networks. When it is set, the forwarded headers are read only from requests whose
+connection comes from one of those addresses; a client that reaches Speakr
+directly cannot set its own address, scheme or host. When it is unset, the
+headers are read from any client, and Speakr logs a warning at startup.
 
 ## Advanced Deployment Scenarios
 

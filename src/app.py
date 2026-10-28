@@ -11,7 +11,6 @@ from openai import OpenAI # Keep using the OpenAI library
 import json
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 import threading
@@ -446,14 +445,11 @@ elif _secret_key_action == 'ephemeral':
 
 # Apply ProxyFix to handle headers from a reverse proxy (like Nginx or Caddy)
 # This is crucial for request.is_secure to work correctly behind an SSL-terminating proxy.
-trusted_proxy_hops = int(os.environ.get('TRUSTED_PROXY_HOPS', '1'))
-app.wsgi_app = ProxyFix(
-    app.wsgi_app, 
-    x_for=trusted_proxy_hops, 
-    x_proto=trusted_proxy_hops, 
-    x_host=trusted_proxy_hops, 
-    x_prefix=trusted_proxy_hops
-)
+# TRUSTED_PROXY_HOPS is the hop count; TRUSTED_PROXIES, when set, limits the
+# forwarded headers to requests from those peers (#498, #501).
+from src.utils.proxy import TrustedProxyMiddleware, log_proxy_trust
+app.wsgi_app = TrustedProxyMiddleware(app.wsgi_app)
+log_proxy_trust()
 
 # --- Secure Session Cookie Configuration ---
 # Default is False so http://localhost / LAN deployments continue to
