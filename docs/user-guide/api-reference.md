@@ -15,7 +15,7 @@ https://your-speakr-instance.com/api/v1/
 
 ## Authentication
 
-All endpoints require authentication. See [API Tokens](api-tokens.md) for details on creating and managing tokens.
+All endpoints require authentication, except the API description and the interactive API docs. See [API Tokens](api-tokens.md) for details on creating and managing tokens.
 
 === "Bearer Token (Recommended)"
     ```bash
@@ -113,6 +113,8 @@ Lists the features this instance supports. Read features here, not from the vers
 |----------|-------------|
 | `GET /api/v1/docs` | Interactive Swagger UI |
 | `GET /api/v1/openapi.json` | OpenAPI 3.0 specification |
+
+Both addresses are available without signing in, by design. They describe the endpoints only and contain no user data or credentials.
 
 Every operation in the specification has an `operationId`, which is required to add Speakr to Open WebUI as an OpenAPI tool server.
 
