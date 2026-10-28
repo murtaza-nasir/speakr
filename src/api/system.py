@@ -247,8 +247,13 @@ def _get_transcription_model_options():
 
 
 @system_bp.route('/api/config', methods=['GET'])
+@login_required
 def get_config():
-    """Get application configuration settings for the frontend."""
+    """Get application configuration settings for the frontend.
+
+    Needs a signed-in user (#502): only pages behind sign-in read it, and it
+    carries the administrator's default summary prompt.
+    """
     try:
         # Get configurable file size limit
         max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)

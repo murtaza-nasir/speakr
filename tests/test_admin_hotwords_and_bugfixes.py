@@ -336,15 +336,15 @@ def test_user_transcription_language():
     run_test("Config returns empty language for user without preference", t2)
 
     def t3():
-        """Config endpoint works for unauthenticated requests (no crash)."""
+        """Config endpoint refuses unauthenticated requests (#502)."""
         with app.app_context():
             client = app.test_client()
             response = client.get('/api/config')
-            assert response.status_code == 200
+            assert response.status_code == 401
             data = response.get_json()
-            # Should still have the key, just empty
-            assert 'user_transcription_language' in data
-    run_test("Config endpoint works without authentication", t3)
+            assert data['code'] == 'authentication_required'
+            assert 'admin_default_summary_prompt' not in data
+    run_test("Config endpoint needs authentication", t3)
 
 
 # =============================================================================
