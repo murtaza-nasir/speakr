@@ -13,6 +13,7 @@ import fcntl
 import hashlib
 import os
 import re
+import stat
 import tempfile
 import time
 from contextlib import contextmanager
@@ -571,3 +572,39 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
         return True
 
     return False
+
+
+def remove_world_access_to_sqlite_files(database_path, logger=None):
+    """Clear the "other" permission bits of the SQLite file and its sidecars (#506).
+
+    SQLite creates the database with the process umask (0644 under Docker's
+    default 022), and a new -wal or -shm file copies the database file's
+    mode, so tightening the main file also covers sidecars created later.
+    Only the "other" bits are cleared: the owner and group keep their access,
+    so a host backup that runs as the owner or in the file's group still
+    works. Files this process does not own are left alone. Returns the paths
+    that were changed.
+    """
+    if not database_path or database_path == ':memory:' or not os.path.isfile(database_path):
+        return []
+    changed = []
+    for path in (database_path, database_path + '-wal', database_path + '-shm'):
+        try:
+            st = os.stat(path)
+        except FileNotFoundError:
+            continue
+        except OSError as e:
+            if logger:
+                logger.warning(f"Could not check the permissions of {path}: {e}")
+            continue
+        if not st.st_mode & 0o007 or st.st_uid != os.geteuid():
+            continue
+        try:
+            os.chmod(path, stat.S_IMODE(st.st_mode) & ~0o007)
+            changed.append(path)
+        except OSError as e:
+            if logger:
+                logger.warning(f"Could not remove world access to {path}: {e}")
+    if changed and logger:
+        logger.info(f"Removed world read access from {', '.join(changed)}")
+    return changed

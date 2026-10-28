@@ -466,7 +466,7 @@ mkdir -p uploads instance
 chmod 755 uploads instance
 ```
 
-The `uploads` directory stores all your audio files and their transcriptions, organized by user. The `instance` directory contains the SQLite database that tracks all your recordings, users, and settings. Setting the permissions to 755 ensures the Docker container can read and write to these directories while maintaining reasonable security.
+The `uploads` directory stores all your audio files and their transcriptions, organized by user. The `instance` directory contains the SQLite database that tracks all your recordings, users, and settings. Setting the permissions to 755 lets the Docker container read and write these directories. At startup Speakr removes world read access from the SQLite database and its `-wal` and `-shm` files when the container user owns them, so that other accounts on the host cannot read transcripts or password hashes; the owner and the file's group keep their access. A backup job on the host that reads the database has to run as that owner or in that group.
 
 If you're using the automated file processing feature, create that directory as well:
 

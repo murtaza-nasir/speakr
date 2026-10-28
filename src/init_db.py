@@ -26,7 +26,8 @@ from src.utils import (
     migration_lock,
     run_once,
 )
-from src.utils.database import drop_index_if_exists, ensure_migration_ledger
+from src.utils.database import (drop_index_if_exists, ensure_migration_ledger,
+                                remove_world_access_to_sqlite_files)
 
 # Configuration
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
@@ -143,6 +144,7 @@ def initialize_database(app):
                 app.logger.info("SQLite WAL mode enabled for better concurrency")
         except Exception as e:
             app.logger.warning(f"Could not enable WAL mode: {e}")
+        remove_world_access_to_sqlite_files(engine.url.database, logger=app.logger)
 
     # Only one process at a time, so the several startup processes cannot
     # interleave and see each other's half-applied schema. Failing to take the
