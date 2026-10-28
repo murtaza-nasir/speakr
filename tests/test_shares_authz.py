@@ -290,6 +290,27 @@ def test_create_share_by_owner_succeeds():
     _cleanup_ids([owner], [rec])
 
 
+def test_cookie_share_url_uses_app_base_url():
+    """#498: the web route builds the link from APP_BASE_URL, not X-Forwarded-Host."""
+    from unittest.mock import patch
+    with _db():
+        owner = _setup_user("cs_base")
+        rec = _make_recording(owner, "base url")
+
+    with _public_enabled(), patch.dict(os.environ, {"APP_BASE_URL": "https://speakr.example.com"}):
+        client = _client_for(owner)
+        resp = client.post(
+            f"/api/recording/{rec}/share", json={},
+            headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "attacker.example"},
+        )
+        again = client.get(f"/api/recording/{rec}/share",
+                           headers={"X-Forwarded-Host": "other.example"})
+    assert resp.status_code == 201, resp.data
+    assert resp.get_json()["share_url"].startswith("https://speakr.example.com/share/")
+    assert again.get_json()["share_url"].startswith("https://speakr.example.com/share/")
+    _cleanup_ids([owner], [rec])
+
+
 def test_create_share_for_other_users_recording_is_denied():
     """IDOR: a non-owner cannot create a public link for someone else's recording.
 

@@ -131,3 +131,32 @@ def test_an_expired_link_is_gone(world):
             db.session.commit()
         assert c.get(path).status_code == 404
     assert _post(world, {"expires_in_days": 0}).status_code == 400
+
+
+FORGED = {"X-Forwarded-Proto": "https", "X-Forwarded-Host": "attacker.example"}
+
+
+def test_share_url_and_list_use_app_base_url(world):
+    """#498: with APP_BASE_URL set, X-Forwarded-Host does not pick the link's host."""
+    with patch.dict(os.environ, {"APP_BASE_URL": "https://speakr.example.com/"}):
+        with app.test_client() as c:
+            auth = {"Authorization": f"Bearer {world['tokens']['share']}"}
+            made = c.post(f"/api/v1/recordings/{world['rec']}/share", json={},
+                          headers={**auth, **FORGED}, base_url="http://localhost")
+            listed = c.get(f"/api/v1/recordings/{world['rec']}/shares",
+                           headers={**auth, "X-Forwarded-Host": "other.example"})
+    assert made.status_code == 201
+    urls = [made.get_json()["share_url"]] + [s["share_url"] for s in listed.get_json()["shares"]]
+    assert all(u.startswith("https://speakr.example.com/share/") for u in urls), urls
+
+
+def test_http_app_base_url_refuses_even_with_a_forwarded_proto(world):
+    """#498: APP_BASE_URL decides the scheme of the link, so the gate follows it."""
+    with patch.dict(os.environ, {"APP_BASE_URL": "http://speakr.example.com"}):
+        with app.test_client() as c:
+            resp = c.post(f"/api/v1/recordings/{world['rec']}/share", json={},
+                          headers={"Authorization": f"Bearer {world['tokens']['share']}", **FORGED},
+                          base_url="https://localhost")
+    assert resp.status_code == 403 and resp.get_json()["code"] == "https_required"
+    with app.app_context():
+        assert Share.query.filter_by(recording_id=world["rec"]).count() == 0

@@ -1506,13 +1506,12 @@ def delete_external_ref(recording_id, ref_id):
 def create_public_share(recording_id):
     """Create or reuse a public link (mailr spec G10). Notes are not shared
     unless asked, and a reused link's flags change only with update_existing."""
-    from flask import url_for
-    from src.services.public_shares import get_or_create, share_dict
+    from src.services.public_shares import get_or_create, link_is_https, public_url, share_dict
     if os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() != 'true':
         return jsonify({'error': translate('server.apiError.public_sharing_off'), 'code': 'feature_disabled'}), 403
     if not getattr(current_user, 'can_share_publicly', True):
         return jsonify({'error': translate('server.apiError.public_link_not_permitted'), 'code': 'not_permitted'}), 403
-    if not request.is_secure:
+    if not link_is_https():
         return jsonify({'error': translate('server.apiError.public_link_https_required'), 'code': 'https_required'}), 403
     recording = db.session.get(Recording, recording_id)
     if not recording or recording.user_id != current_user.id:
@@ -1533,7 +1532,7 @@ def create_public_share(recording_id):
                                            force_new=flags['force_new'], update_existing=flags['update_existing'],
                                            expires_in_days=days)
     return jsonify({
-        'share_url': url_for('shares.view_shared_recording', public_id=share.public_id, _external=True),
+        'share_url': public_url(share.public_id),
         'existing': not created,
         'flags_differ': differ,
         'share': share_dict(share),
@@ -1545,17 +1544,14 @@ def create_public_share(recording_id):
 @login_required
 def list_public_shares(recording_id):
     """Your public links of a recording."""
-    from flask import url_for
     from src.models import Share
-    from src.services.public_shares import share_dict
+    from src.services.public_shares import public_url, share_dict
     recording = db.session.get(Recording, recording_id)
     if not recording or recording.user_id != current_user.id:
         return jsonify({'error': translate('server.apiError.recording_not_found'), 'code': 'not_found'}), 404
     shares = (Share.query.filter_by(recording_id=recording.id, user_id=current_user.id)
               .order_by(Share.created_at.desc()).all())
-    return jsonify({'shares': [dict(share_dict(s), share_url=url_for('shares.view_shared_recording',
-                                                                     public_id=s.public_id, _external=True))
-                               for s in shares]})
+    return jsonify({'shares': [dict(share_dict(s), share_url=public_url(s.public_id)) for s in shares]})
 
 
 @api_v1_bp.route('/shares/<int:share_id>', methods=['DELETE'])

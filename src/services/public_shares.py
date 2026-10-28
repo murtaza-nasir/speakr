@@ -74,6 +74,36 @@ def _emit(event_type, share):
         pass
 
 
+def public_url(public_id):
+    """Absolute link to a public share (#498).
+
+    Built from APP_BASE_URL when it is set, so X-Forwarded-Host cannot choose
+    the host of the link. Otherwise the host comes from the request, as before.
+    """
+    from flask import url_for
+    from src.services.email import get_app_base_url
+    base = get_app_base_url()
+    if base:
+        return base + url_for('shares.view_shared_recording', public_id=public_id)
+    return url_for('shares.view_shared_recording', public_id=public_id, _external=True)
+
+
+def link_is_https():
+    """Whether a new public link would be an https link (#498).
+
+    With APP_BASE_URL set, the link uses that address, so its scheme decides,
+    and an X-Forwarded-Proto header sent by the client does not. Otherwise
+    the request's scheme decides, as before.
+    """
+    from urllib.parse import urlparse
+    from flask import request
+    from src.services.email import get_app_base_url
+    base = get_app_base_url()
+    if base:
+        return urlparse(base).scheme.lower() == 'https'
+    return request.is_secure
+
+
 def share_dict(share):
     z = lambda v: v.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if v else None
     return {'id': share.id, 'share_summary': bool(share.share_summary), 'share_notes': bool(share.share_notes),

@@ -18,7 +18,7 @@ from src.database import db
 from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, ShareAuditLog, Folder
 from src.utils import md_to_html
 from src.services.storage import get_storage_service
-from src.services.public_shares import active_share_or_404
+from src.services.public_shares import active_share_or_404, link_is_https, public_url
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.utils.localization import api_error, translate, request_language
@@ -202,7 +202,7 @@ def get_existing_share(recording_id):
     ).order_by(Share.created_at.desc()).first()
 
     if existing_share:
-        share_url = url_for('shares.view_shared_recording', public_id=existing_share.public_id, _external=True)
+        share_url = public_url(existing_share.public_id)
         return jsonify({
             'success': True,
             'exists': True,
@@ -228,7 +228,7 @@ def create_share(recording_id):
     if not current_user.can_share_publicly:
         return jsonify(api_error('public_share_not_permitted')), 403
 
-    if not request.is_secure:
+    if not link_is_https():
         return jsonify(api_error('sharing_https_required')), 403
 
     recording = db.session.get(Recording, recording_id)
@@ -245,7 +245,7 @@ def create_share(recording_id):
     share, created, _ = get_or_create(recording, current_user, share_summary, share_notes,
                                       force_new=force_new, update_existing=True)
     if not created:
-        share_url = url_for('shares.view_shared_recording', public_id=share.public_id, _external=True)
+        share_url = public_url(share.public_id)
         return jsonify({
             'success': True,
             'share_url': share_url,
@@ -254,7 +254,7 @@ def create_share(recording_id):
             'message': translate('server.apiMessage.existingShareLinkUsed')
         }), 200
 
-    share_url = url_for('shares.view_shared_recording', public_id=share.public_id, _external=True)
+    share_url = public_url(share.public_id)
 
     return jsonify({
         'success': True,
