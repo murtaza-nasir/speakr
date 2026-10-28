@@ -469,8 +469,11 @@ def assign_recording_folder(recording_id):
     if not recording:
         return jsonify(api_error('recording_not_found')), 404
 
-    # Check access to recording (require edit permission)
+    # Check access to recording (require edit permission). A recording the
+    # caller cannot see answers like a missing id.
     if has_recording_access:
+        if not has_recording_access(recording, current_user):
+            return jsonify(api_error('recording_not_found')), 404
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_modify_denied')), 403
     else:
@@ -533,8 +536,11 @@ def remove_recording_folder(recording_id):
     if not recording:
         return jsonify(api_error('recording_not_found')), 404
 
-    # Check access to recording (require edit permission)
+    # Check access to recording (require edit permission). A recording the
+    # caller cannot see answers like a missing id.
     if has_recording_access:
+        if not has_recording_access(recording, current_user):
+            return jsonify(api_error('recording_not_found')), 404
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify(api_error('recording_modify_denied')), 403
     else:

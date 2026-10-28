@@ -64,9 +64,10 @@ def test_download_endpoints_reject_non_owner(method, suffix):
     nc = app.test_client()
     _login(nc, other_id)
     resp = getattr(nc, method)(f"/recording/{rid}{suffix}")
-    assert resp.status_code == 403, (
+    # 404, the answer for a missing id, so the id's owner stays unknown (#504).
+    assert resp.status_code == 404, (
         f"{method.upper()} {suffix} returned {resp.status_code} for a non-owner; "
-        f"expected 403 (auth-bypass / content leak)"
+        f"expected 404 (auth-bypass / content leak)"
     )
 
     # --- the owner must clear the authorization gate (fresh client => fresh g) ---

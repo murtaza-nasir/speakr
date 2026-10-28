@@ -277,8 +277,8 @@ def test_cannot_move_recording_you_dont_own():
             f"/api/recordings/{bob_rec.id}/folder",
             json={"folder_id": alice_folder.id},
         )
-        assert resp.status_code == 403, (
-            f"Expected 403 moving another user's recording, got {resp.status_code}"
+        assert resp.status_code == 404, (
+            f"Expected 404 moving another user's recording, got {resp.status_code}"
         )
         db.session.expire_all()
         assert db.session.get(Recording, bob_rec.id).folder_id is None

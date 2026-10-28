@@ -218,7 +218,7 @@ def test_api_v1_delete_audio_refusals(ctx):
     done, busy = _rec(owner), _rec(owner, status="PROCESSING")
     c, h = _Client(app, app.response_class), _token(owner)
     assert c.post('/api/v1/recordings/99999999/delete-audio', headers=h).status_code == 404
-    assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=_token(other)).status_code == 403
+    assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=_token(other)).status_code == 404
     assert c.post(f'/api/v1/recordings/{busy.id}/delete-audio', headers=h).status_code == 409
     with patch.dict(os.environ, {"USERS_CAN_DELETE": "false"}):
         assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=h).status_code == 403

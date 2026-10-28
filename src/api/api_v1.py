@@ -1426,7 +1426,7 @@ def search_recordings_v1():
 
 def _ref_recording(recording_id, require_edit):
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return None, (jsonify({'error': translate('server.apiError.recording_not_found'), 'code': 'not_found'}), 404)
     if not has_recording_access(recording, current_user, require_edit=require_edit):
         return None, (jsonify(api_error('permission_denied')), 403)
@@ -1627,11 +1627,8 @@ def get_recording(recording_id):
         format: 'full' (default) or 'minimal' (excludes large text fields)
     """
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     from src.services.recording_changes import effective_updated_at, iso_z
     include = request.args.get('include', 'transcription,summary,notes')
@@ -1701,11 +1698,8 @@ def get_transcript(recording_id):
         format: json (default), text, srt, vtt
     """
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     if not recording.transcription:
         return jsonify(api_error('no_transcription')), 404
@@ -1796,11 +1790,8 @@ def get_transcript(recording_id):
 def get_summary(recording_id):
     """Get summary markdown."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     return jsonify({
         'summary': recording.summary,
@@ -1815,11 +1806,8 @@ def get_summary(recording_id):
 def get_notes(recording_id):
     """Get notes markdown."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     # The owner's notes for the owner; a recipient's own personal notes otherwise.
     notes = recording.get_user_notes(current_user)
@@ -1853,7 +1841,7 @@ def update_recording(recording_id):
     }
     """
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -1956,13 +1944,10 @@ def update_recording(recording_id):
 def replace_notes(recording_id):
     """Replace notes entirely."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
-        return jsonify(api_error('recording_not_found')), 404
-
     # Notes are per user, as in the web app: a recipient with view access
     # writes their personal notes, never the owner's.
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
+    if not recording or not has_recording_access(recording, current_user):
+        return jsonify(api_error('recording_not_found')), 404
 
     data = request.get_json()
     if not data or 'notes' not in data:
@@ -1981,7 +1966,7 @@ def replace_notes(recording_id):
 def replace_summary(recording_id):
     """Replace summary entirely."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -2007,7 +1992,7 @@ def replace_summary(recording_id):
 def delete_recording(recording_id):
     """Delete a recording."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     # Check ownership (only owner can delete)
@@ -2039,7 +2024,7 @@ def delete_recording(recording_id):
 def delete_recording_audio(recording_id):
     """Delete a recording's media file and keep its transcript, summary and notes."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
     if recording.user_id != current_user.id:
         return jsonify(api_error('delete_owner_only')), 403
@@ -2066,11 +2051,8 @@ def delete_recording_audio(recording_id):
 def get_recording_status(recording_id):
     """Get processing status of a recording."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     # Get queue position if pending/processing
     queue_position = None
@@ -2377,7 +2359,7 @@ def add_tags_to_recording(recording_id):
     """Add tag(s) to a recording. Needs edit access; a group tag that shares
     the recording also needs the share scope on a scoped token."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -2437,7 +2419,7 @@ def replace_recording_tags(recording_id):
     recording. An unknown or forbidden id refuses the whole request.
     """
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify({'error': translate('server.apiError.recording_not_found'), 'code': 'not_found'}), 404
     if not has_recording_access(recording, current_user, require_edit=True):
         return jsonify(api_error('permission_denied')), 403
@@ -2499,7 +2481,7 @@ def replace_recording_tags(recording_id):
 def remove_tag_from_recording(recording_id, tag_id):
     """Remove a tag from a recording."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -2894,11 +2876,8 @@ def get_recording_speakers(recording_id):
     from src.services.speaker_embedding_matcher import find_matching_speakers
 
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     # One entry per person in the transcript: the diarization label (when
     # known), the name it was given and the linked saved speaker. Email only
@@ -2988,7 +2967,7 @@ def assign_speakers(recording_id):
 
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user, require_edit=True):
@@ -3060,11 +3039,8 @@ def identify_speakers(recording_id):
 
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-
-        if not has_recording_access(recording, current_user):
-            return jsonify(api_error('permission_denied')), 403
 
         if not recording.transcription:
             return jsonify(api_error('no_transcription_for_identification')), 400
@@ -3105,7 +3081,7 @@ def start_transcription(recording_id):
     from src.services.job_queue import job_queue
 
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -3144,7 +3120,7 @@ def start_summarization(recording_id):
     from src.services.job_queue import job_queue
 
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_edit=True):
@@ -3184,11 +3160,8 @@ def chat_with_recording(recording_id):
     from src.services.recording_chat import build_chat_messages, parse_sources
 
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     if not recording.transcription:
         return jsonify(api_error('no_transcription')), 400
@@ -3329,11 +3302,8 @@ def inquire_v1():
 def get_recording_events(recording_id):
     """Get calendar events extracted from a recording."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     events = Event.query.filter_by(recording_id=recording_id).all()
 
@@ -3348,11 +3318,8 @@ def download_events_ics(recording_id):
     from src.api.events import generate_ics_content
 
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     events = Event.query.filter_by(recording_id=recording_id).all()
     if not events:
@@ -3380,11 +3347,8 @@ def download_events_ics(recording_id):
 def download_audio(recording_id):
     """Download or stream audio file."""
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
-
-    if not has_recording_access(recording, current_user):
-        return jsonify(api_error('permission_denied')), 403
 
     if recording.audio_deleted_at:
         return jsonify(api_error('audio_deleted')), 404
@@ -3475,7 +3439,7 @@ def batch_update_recordings():
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             results.append({'id': recording_id, 'success': False, **api_error('not_found')})
             continue
 
@@ -3590,7 +3554,7 @@ def batch_delete_recordings():
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not (current_user.is_admin or has_recording_access(recording, current_user)):
             results.append({'id': recording_id, 'success': False, **api_error('not_found')})
             continue
 
@@ -3638,7 +3602,7 @@ def batch_transcribe_recordings():
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             results.append({'id': recording_id, 'success': False, **api_error('not_found')})
             continue
 

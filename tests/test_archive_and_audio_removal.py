@@ -156,7 +156,7 @@ def test_archiving_a_shared_recording_is_personal(ctx):
 def test_archive_needs_access(ctx):
     owner, stranger = _user(), _user()
     rec = _rec(owner)
-    assert _client(stranger).post(f'/recording/{rec.id}/toggle_archive').status_code == 403
+    assert _client(stranger).post(f'/recording/{rec.id}/toggle_archive').status_code == 404
     assert SharedRecordingState.query.filter_by(recording_id=rec.id, user_id=stranger.id).count() == 0
 
 
@@ -209,7 +209,7 @@ def test_delete_audio_refusals(ctx):
     done, busy = _rec(owner), _rec(owner, status="PROCESSING")
     storage = _fake_storage()
     with patch("src.services.retention.get_storage_service", return_value=storage):
-        assert _client(other).post(f'/recording/{done.id}/delete_audio').status_code == 403
+        assert _client(other).post(f'/recording/{done.id}/delete_audio').status_code == 404
         assert _client(owner).post(f'/recording/{busy.id}/delete_audio').status_code == 409
         assert _client(owner).post(f'/recording/{done.id}/delete_audio').status_code == 200
         assert _client(owner).post(f'/recording/{done.id}/delete_audio').status_code == 409

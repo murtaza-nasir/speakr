@@ -632,7 +632,7 @@ These requests send a weak `ETag` header:
 | `GET /api/v1/recordings/{id}/events` | the extracted events |
 | `GET /api/v1/recordings/{id}/speakers` | the speakers and the voice suggestions |
 
-Send the value back in `If-None-Match`. When nothing in the answer changed, the answer is `304 Not Modified` with no body. Treat the value as opaque. The access check comes first, so a caller without access gets `403` or `404`, never `304`. The answers carry `Cache-Control: private, no-cache`.
+Send the value back in `If-None-Match`. When nothing in the answer changed, the answer is `304 Not Modified` with no body. Treat the value as opaque. The access check comes first, so a caller without access gets `404`, never `304`. The answers carry `Cache-Control: private, no-cache`.
 
 ```bash
 curl -i -H "Authorization: Bearer $TOKEN" -H 'If-None-Match: W/"t412-1790950000000000-3f2a9c0d1b7e4a55"' \
@@ -2033,8 +2033,8 @@ All endpoints return consistent error responses:
 | `201` | Created |
 | `400` | Bad Request - Invalid parameters |
 | `401` | Unauthorized - Invalid or missing token |
-| `403` | Forbidden - No permission for this resource, or the token lacks a scope (`insufficient_scope`) |
-| `404` | Not Found - Resource doesn't exist |
+| `403` | Forbidden - You can see the recording but this request needs more (edit access, ownership, a target folder), or the token lacks a scope (`insufficient_scope`) |
+| `404` | Not Found - Resource doesn't exist. A recording you cannot see gets the same answer as an id that does not exist, in single and batch requests |
 | `429` | Too Many Requests - Rate limit reached; wait `Retry-After` seconds |
 | `500` | Internal Server Error |
 

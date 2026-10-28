@@ -50,11 +50,8 @@ def get_recording_events(recording_id):
     """Get all events extracted from a recording."""
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-
-        if not has_recording_access(recording, current_user):
-            return jsonify(api_error('unauthorized')), 403
 
         events = Event.query.filter_by(recording_id=recording_id).all()
         return jsonify({'events': [event.to_dict() for event in events]})
@@ -70,12 +67,9 @@ def download_event_ics(event_id):
     """Generate and download an ICS file for a single event."""
     try:
         event = db.session.get(Event, event_id)
-        if not event:
-            return jsonify(api_error('event_not_found')), 404
-
         # Check permissions through recording access
-        if not has_recording_access(event.recording, current_user):
-            return jsonify(api_error('unauthorized')), 403
+        if not event or not has_recording_access(event.recording, current_user):
+            return jsonify(api_error('event_not_found')), 404
 
         # Generate ICS content
         ics_content = generate_ics_content(event)
@@ -98,11 +92,8 @@ def download_all_events_ics(recording_id):
     """Generate and download an ICS file containing all events from a recording."""
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-
-        if not has_recording_access(recording, current_user):
-            return jsonify(api_error('unauthorized')), 403
 
         # Get all events for this recording
         events = Event.query.filter_by(recording_id=recording_id).all()
@@ -132,12 +123,9 @@ def delete_event(event_id):
     """Delete a single event."""
     try:
         event = db.session.get(Event, event_id)
-        if not event:
-            return jsonify(api_error('event_not_found')), 404
-
         # Check permissions through recording access
-        if not has_recording_access(event.recording, current_user):
-            return jsonify(api_error('unauthorized')), 403
+        if not event or not has_recording_access(event.recording, current_user):
+            return jsonify(api_error('event_not_found')), 404
 
         db.session.delete(event)
         db.session.commit()

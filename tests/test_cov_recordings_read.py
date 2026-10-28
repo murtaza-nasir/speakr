@@ -811,7 +811,7 @@ def test_get_detail_non_owner_denied(owner, other):
     c = new_client()
     login(c, other)
     resp = c.get(f"/api/recordings/{rid}")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 def test_get_detail_not_found(owner):
@@ -852,7 +852,7 @@ def test_status_only_non_owner_denied(owner, other):
     c = new_client()
     login(c, other)
     resp = c.get(f"/recording/{rid}/status")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 def test_status_only_not_found(owner):
@@ -880,7 +880,7 @@ def test_full_status_non_owner_denied(owner, other):
     c = new_client()
     login(c, other)
     resp = c.get(f"/status/{rid}")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 def test_batch_status_only_accessible(owner, other):
@@ -990,7 +990,7 @@ def test_audio_non_owner_denied(owner, other):
     login(c, other)
     with use_storage(storage):
         resp = c.get(f"/audio/{rid}")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 def test_audio_download_secure_filename(owner):
@@ -1057,7 +1057,7 @@ def test_reprocess_transcription_non_owner_denied(owner, other):
     login(c, other)
     with use_storage(storage), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_transcription", json={})
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     assert calls == []
 
 
@@ -1170,7 +1170,7 @@ def test_reprocess_summary_non_owner_denied(owner, other):
     login(c, other)
     with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/reprocess_summary", json={})
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     assert calls == []
 
 
@@ -1215,7 +1215,7 @@ def test_generate_summary_non_owner_denied(owner, other):
     login(c, other)
     with patch.object(rec_module, "client", object()), patch("src.services.llm.client", object()), capture_enqueue() as calls:
         resp = c.post(f"/recording/{rid}/generate_summary", json={})
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     assert calls == []
 
 
@@ -1250,7 +1250,7 @@ def test_delete_recording_non_owner_denied(owner, other):
     login(c, other)
     with use_storage(storage):
         resp = c.delete(f"/recording/{rid}")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     assert storage.deleted == []
     with _db():
         assert db.session.get(Recording, rid) is not None
@@ -1448,7 +1448,7 @@ def test_toggle_deletion_exempt_non_owner_denied(owner, other):
     c = new_client()
     login(c, other)
     resp = c.post(f"/api/recordings/{rid}/toggle_deletion_exempt")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 def test_process_chunks_non_owner_denied(owner, other):
@@ -1459,7 +1459,7 @@ def test_process_chunks_non_owner_denied(owner, other):
     c = new_client()
     login(c, other)
     resp = c.post(f"/api/recording/{rid}/process_chunks")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 # =========================================================================== #

@@ -261,11 +261,8 @@ def get_speaker_suggestions(recording_id):
     """
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-
-        if not has_recording_access(recording, current_user, require_edit=False):
-            return jsonify(api_error('recording_access_denied')), 403
 
         # Get speaker embeddings from recording
         if not recording.speaker_embeddings:
@@ -481,11 +478,8 @@ def get_snippet_audio(recording_id):
 
         # Get the recording
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-
-        if not has_recording_access(recording, current_user, require_edit=False):
-            return jsonify(api_error('recording_access_denied')), 403
 
         if recording.audio_deleted_at:
             return jsonify(api_error('audio_deleted')), 410

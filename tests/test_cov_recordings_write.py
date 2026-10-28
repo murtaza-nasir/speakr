@@ -837,7 +837,7 @@ def test_save_other_users_recording_forbidden():
         client = app.test_client()
         _login(client, other)
         resp = client.post("/save", json={"id": rec.id, "title": "hacked"})
-        assert resp.status_code == 403
+        assert resp.status_code == 404
         db.session.refresh(rec)
         assert rec.title == "keep"
         _cleanup(rec, owner, other)
@@ -892,7 +892,7 @@ def test_update_transcription_forbidden_for_other_user():
         _login(client, other)
         resp = client.post(f"/recording/{rec.id}/update_transcription",
                            json={"transcription": "tamper"})
-        assert resp.status_code == 403
+        assert resp.status_code == 404
         db.session.refresh(rec)
         assert rec.transcription == "orig"
         _cleanup(rec, owner, other)
@@ -1074,7 +1074,7 @@ def test_reorder_forbidden_for_other_user():
         _login(client, other)
         resp = client.put(f"/api/recordings/{rec.id}/tags/reorder",
                           json={"tag_ids": []})
-        assert resp.status_code == 403
+        assert resp.status_code == 404
         _cleanup(rec, owner, other)
 
 

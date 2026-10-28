@@ -156,7 +156,7 @@ def test_assign_recording_not_found():
 
 
 def test_assign_wrong_user_recording():
-    """Other user's recording -> 403."""
+    """Other user's recording -> 404, the answer for a missing id (#504)."""
     with app.app_context():
         owner, co = _get_or_create_test_user("_owner")
         other, cu = _get_or_create_test_user("_other")
@@ -167,7 +167,7 @@ def test_assign_wrong_user_recording():
             resp = client.put(f"/api/v1/recordings/{rec.id}/speakers/assign",
                               headers={"X-API-Token": token},
                               json={"speaker_map": {"SPEAKER_00": "Alice"}})
-            assert resp.status_code == 403, f"Expected 403, got {resp.status_code}"
+            assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -541,7 +541,7 @@ def test_identify_recording_not_found():
 
 
 def test_identify_wrong_user_recording():
-    """Other user's recording -> 403."""
+    """Other user's recording -> 404, the answer for a missing id (#504)."""
     with app.app_context():
         owner, co = _get_or_create_test_user("_id_owner")
         other, cu = _get_or_create_test_user("_id_other")
@@ -551,7 +551,7 @@ def test_identify_wrong_user_recording():
         try:
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
-            assert resp.status_code == 403, f"Expected 403, got {resp.status_code}"
+            assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
         finally:
             _cleanup(rec, token_rec)
             if cu:

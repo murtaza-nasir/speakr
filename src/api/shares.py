@@ -447,7 +447,7 @@ def share_recording_internal(recording_id):
 
         # Check recording exists and user has permission to share it
         recording = db.session.get(Recording, recording_id)
-        if not recording:
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
 
         if not has_recording_access(recording, current_user, require_reshare=True):
@@ -554,7 +554,7 @@ def get_internal_shares(recording_id):
 
     # Check recording exists and user has permission to view shares
     recording = db.session.get(Recording, recording_id)
-    if not recording:
+    if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
     if not has_recording_access(recording, current_user, require_reshare=True):
