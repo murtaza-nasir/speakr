@@ -8,7 +8,9 @@ limit in megabytes (MiB); NULL means no limit.
 
 Uploads are refused when they would go over the limit. A recording made in
 the app is checked when it starts, never when it ends, so a recording in
-progress is never lost to the quota.
+progress is never lost to the quota. Code that stores counted bytes calls
+reserve_room in the transaction that inserts them, so two overlapping
+uploads cannot both fit into the same free space (#509).
 """
 
 import logging
@@ -88,6 +90,28 @@ def check_room(user, file_bytes=0):
     if over:
         raise StorageQuotaExceeded(used, quota, int(file_bytes or 0))
     resolve_notice(user)
+
+
+def reserve_room(user, file_bytes):
+    """check_room, with the user's quota held until the transaction ends (#509).
+
+    The caller then adds the recording that holds file_bytes and commits;
+    another reserve_room for the same user waits for that commit and counts
+    the new recording. On SQLite the lock is the database write lock, taken
+    by an UPDATE that changes nothing; elsewhere it is a row lock on the
+    user (SELECT ... FOR UPDATE). Raises StorageQuotaExceeded with the lock
+    still held: the caller rolls back.
+    """
+    if quota_bytes(user) is None:
+        return
+    from src.models import User
+    if db.engine.dialect.name == 'sqlite':
+        table = User.__table__
+        db.session.execute(table.update().where(table.c.id == user.id)
+                           .values(storage_quota_mb=table.c.storage_quota_mb))
+    else:
+        db.session.query(User.id).filter(User.id == user.id).with_for_update().scalar()
+    check_room(user, file_bytes)
 
 
 def raise_notice(user, exc, filename=None):

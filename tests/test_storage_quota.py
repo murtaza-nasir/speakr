@@ -120,6 +120,81 @@ def test_an_upload_that_fits_is_accepted(world):
         assert _do_upload(client, payload=b"\x00" * 4096).status_code == 202
 
 
+
+def _overlapping_uploads(u, size):
+    """Two uploads by u, both past the early check before either is stored (#509)."""
+    import threading
+    import src.api.recordings as rec_module
+    barrier = threading.Barrier(2, timeout=20)
+    results = []
+    with _upload_mocks(_staging()) as (storage, enqueue):
+        convert = rec_module.convert_if_needed     # the mock _upload_mocks installed
+
+        def _convert_then_wait(*args, **kwargs):
+            result = convert(*args, **kwargs)
+            barrier.wait()                          # both requests have passed check_room
+            return result
+
+        def _one(name):
+            client = app.test_client()
+            _login(client, u)
+            resp = _do_upload(client, filename=name, payload=os.urandom(size))
+            results.append((resp.status_code, resp.get_json()))
+
+        with patch("src.api.recordings.convert_if_needed", side_effect=_convert_then_wait):
+            threads = [threading.Thread(target=_one, args=(n,)) for n in ("a.mp3", "b.mp3")]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(60)
+        uploaded, enqueued = len(storage.uploaded), enqueue.call_count
+    db.session.expire_all()
+    return results, uploaded, enqueued
+
+
+def test_overlapping_uploads_cannot_both_use_the_same_room(world):
+    u = world["user"](quota_mb=1)
+    size = MB // 2 + 1
+    results, uploaded, enqueued = _overlapping_uploads(u, size)
+    assert sorted(code for code, _ in results) == [202, 507]
+    refused = next(body for code, body in results if code == 507)
+    assert refused["code"] == "storage_quota_exceeded"
+    assert refused["used_bytes"] == size and refused["file_bytes"] == size
+    assert Recording.query.filter_by(user_id=u.id).count() == 1
+    assert sq.usage(u)["used_bytes"] == size
+    assert uploaded == 1 and enqueued == 1
+
+
+def test_overlapping_uploads_that_both_fit_are_both_stored(world):
+    u = world["user"](quota_mb=1)
+    results, uploaded, _ = _overlapping_uploads(u, MB // 2)
+    assert [code for code, _ in results] == [202, 202]
+    assert sq.usage(u)["used_bytes"] == MB and uploaded == 2
+
+
+def test_an_upload_that_fills_the_quota_exactly_is_accepted(world):
+    u = world["user"](quota_mb=1)
+    client = app.test_client()
+    _login(client, u)
+    with _upload_mocks(_staging()):
+        assert _do_upload(client, payload=b"\x00" * MB).status_code == 202
+        resp = _do_upload(client, payload=b"\x00")
+    assert resp.status_code == 507 and resp.get_json()["file_bytes"] == 1
+    assert Recording.query.filter_by(user_id=u.id).count() == 1
+
+
+def test_reserve_room_leaves_the_user_unchanged(world):
+    u = world["user"](quota_mb=1)
+    sq.reserve_room(u, MB)
+    db.session.commit()
+    db.session.expire_all()
+    assert u.storage_quota_mb == 1
+    with pytest.raises(sq.StorageQuotaExceeded):
+        sq.reserve_room(u, MB + 1)
+    db.session.rollback()
+    sq.reserve_room(world["user"](), 10 * MB)      # no quota: nothing to hold
+    db.session.rollback()
+
 def test_a_recording_made_in_the_app_is_kept_at_the_end(world):
     u = world["user"](quota_mb=1)
     world["rec"](u, MB)                                  # already full

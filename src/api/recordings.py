@@ -2886,6 +2886,19 @@ def ingest_uploaded_recording(
                 duplicate_warning=duplicate_warning, success_status=success_status,
             )
 
+        # The early check above ran before the conversion, which another
+        # upload can overlap. Count again, with the quota held until the
+        # commit below, the bytes that will be stored (#509).
+        if not recorded_in_app:
+            from src.services.storage_quota import reserve_room
+            try:
+                reserve_room(owner, final_file_size)
+            except StorageQuotaExceeded as quota_error:
+                db.session.rollback()
+                current_app.logger.info(f"Upload refused for user {owner.id}: {quota_error}")
+                _discard_staging(filepath)
+                return quota_error.response()
+
         recording = Recording(
             audio_path=None,
             original_filename=original_filename,
