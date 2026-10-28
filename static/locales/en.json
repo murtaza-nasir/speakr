@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "Public sharing is not enabled on this server",
       "public_sharing_off": "Public sharing is turned off on this server",
       "push_unavailable": "Push notifications not available",
+      "query_token_read_only": "A token in the ?token= query parameter is accepted only on GET and HEAD requests; send it in the Authorization: Bearer header",
       "question_required": "question is required",
       "recording_already_processing": "Recording is already being processed",
       "recording_delete_admin_only": "Only administrators can delete recordings",

@@ -28,7 +28,7 @@ export function useTokens({ showToast, setGlobalError }) {
     const newTokenData = ref(null);
     const tokenForm = ref({
         name: '',
-        expires_in_days: 0  // 0 = no expiration
+        expires_in_days: 90  // 0 = no expiration; the form defaults to 90 days (#500)
     });
 
     // Computed
@@ -152,7 +152,7 @@ export function useTokens({ showToast, setGlobalError }) {
             // Reset form
             tokenForm.value = {
                 name: '',
-                expires_in_days: 0
+                expires_in_days: 90
             };
 
             // Close create modal and show secret modal
@@ -248,7 +248,7 @@ export function useTokens({ showToast, setGlobalError }) {
     const openCreateTokenModal = () => {
         tokenForm.value = {
             name: '',
-            expires_in_days: 0
+            expires_in_days: 90
         };
         showCreateTokenModal.value = true;
     };
@@ -257,7 +257,7 @@ export function useTokens({ showToast, setGlobalError }) {
         showCreateTokenModal.value = false;
         tokenForm.value = {
             name: '',
-            expires_in_days: 0
+            expires_in_days: 90
         };
     };
 

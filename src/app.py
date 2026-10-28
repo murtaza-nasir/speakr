@@ -672,6 +672,25 @@ app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
 
 @app.before_request
+def refuse_query_token_writes():
+    """?token= is deprecated and read-only (#500).
+
+    resolve_request_token() ignores a token supplied only as ?token= on any
+    method other than GET and HEAD. Such a request is answered here with 401
+    and a clear error, before the CSRF check and before any view runs. A
+    browser session takes precedence over a token, as in Flask-Login.
+    """
+    if not request.endpoint or request.endpoint == 'static' or session.get('_user_id'):
+        return
+    from src.utils.token_auth import query_token_refused
+    if query_token_refused():
+        resp = jsonify(api_error('query_token_read_only'))
+        resp.status_code = 401
+        resp.headers['WWW-Authenticate'] = 'Bearer error="invalid_request"'
+        return resp
+
+
+@app.before_request
 def csrf_token_aware_check():
     """Per-request CSRF check that allows valid header-only API tokens
     to bypass CSRF, without ever mutating Flask-WTF's exemption set.
@@ -1090,6 +1109,15 @@ def add_no_crawl_headers(response):
     This provides defense-in-depth alongside robots.txt and meta tags.
     """
     response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive, nosnippet, noimageindex'
+    return response
+
+
+@app.after_request
+def add_query_token_deprecation_header(response):
+    """Mark responses to requests that sent an API token as ?token= (#500)."""
+    from src.utils.token_auth import query_token_used
+    if query_token_used():
+        response.headers['Deprecation'] = 'true'
     return response
 
 

@@ -19,9 +19,9 @@ API tokens are personal access tokens that authenticate API requests on your beh
 1. Navigate to **Account Settings** → **API Tokens** tab
 2. Click **Create Token**
 3. Enter a descriptive name (e.g., "n8n automation", "CLI access")
-4. Choose an expiration period:
-    - **No expiration** - Token remains valid until manually revoked
-    - **30 days**, **90 days**, **1 year** - Token automatically expires
+4. Choose an expiration period. The form is set to **90 days** by default:
+    - **7 days**, **30 days**, **90 days**, **1 year** - Token automatically expires
+    - **Never expires** - Token remains valid until manually revoked
 5. Choose the access the token needs (see [Scopes](#scopes)):
     - **Read only** - reads recordings and their content
     - **Integration** - read, write and upload
@@ -49,7 +49,7 @@ A token with scopes can call only the API v1 routes those scopes cover. The scop
 | `account` | Account settings under `/api/v1/settings` |
 
 - **Existing tokens have full access.** Tokens created before scopes existed, and tokens created through the API without `scopes`, keep full access. The token list shows them as **Full access**.
-- **Scoped tokens work only in a header.** A scoped token sent as `?token=` gets `401`. Full tokens still accept the query parameter.
+- **Scoped tokens work only in a header.** A scoped token sent as `?token=` gets `401`. A full-access token is still accepted in the query parameter on `GET` requests only; that form is deprecated.
 - **Scoped tokens work only on API v1.** Web-interface routes, token management and every route without a declared scope refuse a scoped token with `403`.
 - **Scopes can be narrowed, never widened.** `PATCH /api/tokens/{id}` with a smaller `scopes` list removes scopes from a token. A token that needs more scopes needs a new token.
 - A request a token is not allowed to make is refused before anything changes, with `403` and the code `insufficient_scope`.
@@ -90,9 +90,9 @@ curl -H "API-Token: YOUR_TOKEN_HERE" \
      https://your-speakr-instance.com/api/v1/recordings
 ```
 
-### Query Parameter
+### Query Parameter (deprecated)
 
-For simple integrations with a full-access token (less secure - token visible in logs). Scoped tokens do not work in the query string:
+The `?token=` query parameter is deprecated. A header is the preferred way to send a token, because a URL that contains a token can be recorded in proxy logs and browser history. The query parameter is accepted only on `GET` requests and only with a full-access token. A request with any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`, and every response to a request that uses `?token=` carries the header `Deprecation: true`:
 
 ```bash
 curl "https://your-speakr-instance.com/api/v1/recordings?token=YOUR_TOKEN_HERE"

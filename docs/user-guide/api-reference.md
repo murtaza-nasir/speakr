@@ -29,12 +29,12 @@ All endpoints require authentication. See [API Tokens](api-tokens.md) for detail
          https://speakr.example.com/api/v1/stats
     ```
 
-=== "Query Parameter"
+=== "Query Parameter (deprecated)"
     ```bash
     curl "https://speakr.example.com/api/v1/stats?token=YOUR_TOKEN"
     ```
 
-The query parameter works only with full-access tokens.
+A header is the preferred way to send a token. The `?token=` query parameter is deprecated and is accepted only on `GET` requests, and only with full-access tokens. A `POST`, `PUT`, `PATCH` or `DELETE` request that carries the token only in `?token=` gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`. A URL that contains a token can be recorded in proxy logs and browser history, so a header is the safer choice for every client.
 
 ### Scopes
 

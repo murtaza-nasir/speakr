@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "El uso compartido público no está habilitado en este servidor",
       "public_sharing_off": "El uso compartido público está desactivado en este servidor",
       "push_unavailable": "Notificaciones push no disponibles",
+      "query_token_read_only": "Un token en el parámetro de consulta ?token= solo se acepta en solicitudes GET y HEAD; envíelo en el encabezado Authorization: Bearer",
       "question_required": "question es obligatorio",
       "recording_already_processing": "La grabación ya se está procesando",
       "recording_delete_admin_only": "Solo los administradores pueden eliminar grabaciones",

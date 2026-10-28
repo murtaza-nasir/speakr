@@ -404,11 +404,11 @@ def test_api_v1_blueprint_remains_csrf_exempt_for_all_token_methods():
         app.config['WTF_CSRF_ENABLED'] = saved
 
 
-def test_api_v1_post_with_query_string_token_still_works():
-    """Critical for backwards compatibility: a POST to /api/v1/* with
-    ``?token=...`` still succeeds, because the v1 blueprint is
-    blueprint-level CSRF-exempt. The fix only changed how non-v1
-    endpoints react to a query-string token, not the v1 surface."""
+def test_api_v1_post_with_query_string_token_is_refused():
+    """#500: ``?token=`` is deprecated and accepted only on GET and HEAD.
+    A POST to /api/v1/* that carries the token only in the query string
+    gets 401 query_token_read_only (never a 400 CSRF rejection), and the
+    view does not run."""
     saved = app.config.get('WTF_CSRF_ENABLED', True)
     app.config['WTF_CSRF_ENABLED'] = True
     try:
@@ -439,14 +439,10 @@ def test_api_v1_post_with_query_string_token_still_works():
                 resp = client.post(
                     f'/api/v1/recordings/{rec.id}/regenerate_title?token={plaintext}',
                 )
-            # Acceptable success codes (the route may 202 or 200)
-            assert resp.status_code in (200, 202, 404), (
-                f'/api/v1/* POST with ?token= regressed; got {resp.status_code}: {resp.data!r}'
-            )
-            # 404 is acceptable here if the endpoint requires more
-            # setup than we have (e.g. completed transcript); what we
-            # really care about is that it is NOT a 400 CSRF rejection.
-            assert resp.status_code != 400
+            assert resp.status_code == 401, (resp.status_code, resp.data)
+            assert resp.get_json()['code'] == 'query_token_read_only'
+            db.session.refresh(rec)
+            assert rec.title == 'for-test'
 
             db.session.delete(rec)
             for t in APIToken.query.filter_by(user_id=user.id).all():

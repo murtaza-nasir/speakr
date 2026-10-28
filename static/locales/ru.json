@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "Публичный доступ не включён на этом сервере",
       "public_sharing_off": "Публичный доступ отключён на этом сервере",
       "push_unavailable": "Push-уведомления недоступны",
+      "query_token_read_only": "Токен в параметре запроса ?token= принимается только в запросах GET и HEAD; передайте его в заголовке Authorization: Bearer",
       "question_required": "question обязательно",
       "recording_already_processing": "Запись уже обрабатывается",
       "recording_delete_admin_only": "Удалять записи могут только администраторы",

@@ -2127,7 +2127,7 @@ curl -H "X-API-Token: YOUR_TOKEN_HERE" ...
 # API-Token header
 curl -H "API-Token: YOUR_TOKEN_HERE" ...
 
-# Query parameter
+# Query parameter (deprecated; GET requests only, header preferred)
 curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</code></pre>
                                         </div>
                                     </div>
@@ -2555,7 +2555,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <option value="0" data-i18n="account.tokensTab.expiresNever">Never expires</option>
                             <option value="7" data-i18n="account.tokensTab.expires7">7 days</option>
                             <option value="30" data-i18n="account.tokensTab.expires30">30 days</option>
-                            <option value="90" data-i18n="account.tokensTab.expires90">90 days</option>
+                            <option value="90" data-i18n="account.tokensTab.expires90" selected>90 days</option>
                             <option value="365" data-i18n="account.tokensTab.expires365">1 year</option>
                         </select>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.expirationHelp">When this token should expire</p>

@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "此服务器未启用公开分享",
       "public_sharing_off": "此服务器已关闭公开分享",
       "push_unavailable": "推送通知不可用",
+      "query_token_read_only": "通过查询参数 ?token= 传递的令牌仅在 GET 和 HEAD 请求中被接受；请在 Authorization: Bearer 请求头中发送",
       "question_required": "question 为必填项",
       "recording_already_processing": "录音已在处理中",
       "recording_delete_admin_only": "只有管理员可以删除录音",

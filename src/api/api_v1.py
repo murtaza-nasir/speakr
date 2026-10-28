@@ -10,7 +10,7 @@ All endpoints require token authentication via:
 - Authorization: Bearer <token>
 - X-API-Token: <token>
 - API-Token: <token>
-- ?token=<token> query parameter
+- ?token=<token> query parameter (deprecated; GET and HEAD only, #500)
 """
 
 import os
@@ -121,7 +121,7 @@ OPENAPI_SPEC = {
     "openapi": "3.0.3",
     "info": {
         "title": "Speakr API",
-        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nMost endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter\n\nThe ASR Voice Recorder integration is the one exception: its required multipart `secret` field contains the personal Speakr API token because that client cannot set custom authorization headers. Generate tokens in Settings > API Tokens.",
+        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nMost endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter (deprecated, GET only)\n\nA header is the preferred way to send a token. A token in `?token=` is accepted only on GET requests; any other method that carries the token only in the query string gets `401` with the code `query_token_read_only`, and every response to a request that uses `?token=` carries the header `Deprecation: true`.\n\nThe ASR Voice Recorder integration is the one exception: its required multipart `secret` field contains the personal Speakr API token because that client cannot set custom authorization headers. Generate tokens in Settings > API Tokens.",
         "version": "1.0.0"
     },
     "servers": [{"url": "/api/v1", "description": "API v1"}],
@@ -134,7 +134,11 @@ OPENAPI_SPEC = {
                                           "scopes it needs in x-required-scopes; a scoped token without them "
                                           "gets 403 insufficient_scope. Scoped tokens work only in a header."},
             "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
-            "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token"}
+            "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token", "x-deprecated": True,
+                            "description": "Deprecated. Accepted only on GET (and HEAD) requests; any other method "
+                                           "that carries the token only here gets 401 query_token_read_only. "
+                                           "Responses carry the header Deprecation: true. Send the token in "
+                                           "the Authorization header instead. Scoped tokens are not accepted here."}
         },
         "schemas": {
             "Recording": {
@@ -632,6 +636,11 @@ OPENAPI_SPEC = {
 }
 
 
+# Security requirements without the deprecated ?token= scheme, for operations
+# on methods other than GET and HEAD (#500).
+_HEADER_SECURITY = [{"bearerAuth": []}, {"apiKeyHeader": []}]
+
+
 def _openapi_with_scopes():
     """OPENAPI_SPEC with x-required-scopes on every operation, read from the
     routes' require_scope marks so the document cannot drift from the code.
@@ -669,6 +678,9 @@ def _openapi_with_scopes():
             scopes = by_route.get((norm(path), method))
             if scopes is not None:
                 operation['x-required-scopes'] = scopes
+            if method not in ('get', 'head') and 'security' not in operation:
+                # ?token= is accepted only on GET and HEAD (#500).
+                operation['security'] = _HEADER_SECURITY
             if 'operationId' not in operation:
                 name, shared = view_names.get(
                     (norm(path), method),

@@ -316,7 +316,7 @@ The API Tokens tab enables programmatic access to your Speakr instance through p
 
 ### Creating Tokens
 
-Click the **Create Token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and optionally set an expiration period. The token value is shown only once after creation - copy it immediately and store it securely.
+Click the **Create Token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and choose an expiration period, which is set to 90 days by default (**Never expires** can still be selected). The token value is shown only once after creation - copy it immediately and store it securely.
 
 !!! warning "Token Security"
     Treat API tokens like passwords. They provide full access to your account. Never share tokens publicly, commit them to version control, or expose them in client-side code.
@@ -342,9 +342,11 @@ curl -H "Authorization: Bearer YOUR_TOKEN" https://speakr.example.com/api/record
 # X-API-Token header
 curl -H "X-API-Token: YOUR_TOKEN" https://speakr.example.com/api/recordings
 
-# Query parameter (less secure)
+# Query parameter (deprecated; GET requests only)
 curl "https://speakr.example.com/api/recordings?token=YOUR_TOKEN"
 ```
+
+The Authorization header is the preferred form. The `?token=` query parameter is deprecated and is accepted only on `GET` requests; a request with any other method that carries the token only in the query string gets `401`.
 
 ### Revoking Tokens
 
@@ -353,7 +355,7 @@ Click the trash icon on any token card to revoke it immediately. Revoked tokens 
 ### Best Practices
 
 - Use descriptive names to track each token's purpose
-- Set expiration dates for temporary integrations
+- Set an expiration date on every token
 - Revoke tokens you no longer need
 - Create separate tokens for different integrations
 - Never share tokens between users - each person should create their own

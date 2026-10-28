@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "Le partage public n'est pas activé sur ce serveur",
       "public_sharing_off": "Le partage public est désactivé sur ce serveur",
       "push_unavailable": "Notifications push non disponibles",
+      "query_token_read_only": "Un jeton dans le paramètre de requête ?token= n'est accepté que pour les requêtes GET et HEAD ; envoyez-le dans l'en-tête Authorization: Bearer",
       "question_required": "question est requis",
       "recording_already_processing": "L'enregistrement est déjà en cours de traitement",
       "recording_delete_admin_only": "Seuls les administrateurs peuvent supprimer des enregistrements",

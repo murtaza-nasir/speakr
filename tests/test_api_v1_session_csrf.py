@@ -140,9 +140,12 @@ def test_token_clients_still_need_no_csrf_token(csrf_on, how):
     if how == 'header':
         resp = client.post('/api/v1/tags', json={'name': 'tok-header'},
                            headers={'Authorization': f'Bearer {plaintext}'})
+        assert resp.status_code == 201, (resp.status_code, resp.data)
     else:
+        # #500: ?token= is GET-only; a write with it gets 401, not a CSRF 400.
         resp = client.post(f'/api/v1/tags?token={plaintext}', json={'name': 'tok-query'})
-    assert resp.status_code == 201, (resp.status_code, resp.data)
+        assert resp.status_code == 401, (resp.status_code, resp.data)
+        assert resp.get_json()['code'] == 'query_token_read_only'
 
 
 def test_session_with_header_token_needs_no_csrf_token(csrf_on):

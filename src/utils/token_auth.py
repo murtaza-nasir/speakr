@@ -6,12 +6,24 @@ allowing users to authenticate with Bearer tokens instead of session cookies.
 """
 
 import hashlib
+import logging
 import os
 import threading
 from datetime import datetime
 from functools import wraps
 from flask import request, g, has_request_context
 from src.models import APIToken, User
+
+logger = logging.getLogger(__name__)
+
+# ?token= is deprecated (#500). It is accepted only on these read-only methods;
+# a token supplied only as ?token= on any other method is refused with 401.
+QUERY_TOKEN_METHODS = frozenset({'GET', 'HEAD'})
+
+# Token ids already reported as using ?token=, so the warning appears once per
+# token per process.
+_query_token_warned = set()
+_query_token_warned_lock = threading.Lock()
 
 
 def extract_token_from_request(headers_only=False):
@@ -22,7 +34,9 @@ def extract_token_from_request(headers_only=False):
     1. Authorization header with Bearer scheme
     2. X-API-Token header
     3. API-Token header
-    4. 'token' query parameter (only when ``headers_only=False``)
+    4. 'token' query parameter (only when ``headers_only=False``);
+       deprecated, and honoured only on GET and HEAD by
+       :func:`resolve_request_token`
 
     The ``headers_only`` flag exists because the query-string token can
     be triggered by a Simple Cross-Origin Request without CORS preflight
@@ -122,11 +136,48 @@ def resolve_request_token():
         header_value = extract_token_from_request(headers_only=True)
         value = header_value or extract_token_from_request()
         api_token = find_api_token(value)
-        env['_speakr_api_token'] = (api_token, bool(api_token is not None and not header_value))
+        via_query = bool(api_token is not None and not header_value)
+        if via_query:
+            # Deprecated (#500): marked for the Deprecation header, and
+            # accepted only on GET and HEAD. On any other method the token
+            # authenticates nothing; refuse_query_token_writes answers 401.
+            env['_speakr_query_token_used'] = True
+            _warn_query_token(api_token)
+            if request.method not in QUERY_TOKEN_METHODS:
+                # OPTIONS (a CORS preflight) authenticates nothing anyway
+                # and is not answered with 401.
+                if request.method != 'OPTIONS':
+                    env['_speakr_query_token_refused'] = True
+                api_token, via_query = None, False
+        env['_speakr_api_token'] = (api_token, via_query)
     api_token, via_query = env['_speakr_api_token']
     g.api_token = api_token
     g.api_token_via_query = via_query
     return api_token, via_query
+
+
+def _warn_query_token(api_token):
+    """Log, once per token per process, that a token arrived as ?token=."""
+    with _query_token_warned_lock:
+        if api_token.id in _query_token_warned:
+            return
+        _query_token_warned.add(api_token.id)
+    logger.warning(
+        'API token %s (user %s) was sent as the deprecated ?token= query parameter '
+        'on %s %s; send it in the Authorization header instead.',
+        api_token.id, api_token.user_id, request.method, request.path)
+
+
+def query_token_refused():
+    """True when this request supplied a valid token only as ?token= on a
+    method other than GET or HEAD (#500)."""
+    resolve_request_token()
+    return bool(request.environ.get('_speakr_query_token_refused'))
+
+
+def query_token_used():
+    """True when this request supplied a valid token as ?token=, accepted or not."""
+    return bool(request.environ.get('_speakr_query_token_used'))
 
 
 def current_api_token():

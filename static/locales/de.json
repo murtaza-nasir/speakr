@@ -3346,6 +3346,7 @@
       "public_sharing_disabled": "Öffentliches Teilen ist auf diesem Server nicht aktiviert",
       "public_sharing_off": "Öffentliches Teilen ist auf diesem Server ausgeschaltet",
       "push_unavailable": "Push-Benachrichtigungen nicht verfügbar",
+      "query_token_read_only": "Ein Token im Abfrageparameter ?token= wird nur bei GET- und HEAD-Anfragen akzeptiert; senden Sie es im Header Authorization: Bearer",
       "question_required": "question ist erforderlich",
       "recording_already_processing": "Die Aufnahme wird bereits verarbeitet",
       "recording_delete_admin_only": "Nur Administratoren können Aufnahmen löschen",
