@@ -148,7 +148,7 @@ After updating your configuration:
 
 2. **Test transcription** - Upload a test file and verify it transcribes correctly
 
-3. **Check system info** - Visit `/api/system/info` to see the active connector:
+3. **Check system info** - Signed in, visit `/api/system/info` to see the active connector (the service addresses appear only for an administrator):
    ```json
    {
      "transcription": {

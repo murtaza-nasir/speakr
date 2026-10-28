@@ -157,8 +157,14 @@ def get_user_token_budget():
 
 
 @system_bp.route('/api/system/info', methods=['GET'])
+@login_required
 def get_system_info():
-    """Get system information including version and model details."""
+    """Get system information including version and model details.
+
+    Needs a signed-in user (#499). The LLM and transcription service
+    addresses go to administrators only; everyone else gets the version,
+    model names and connector capabilities.
+    """
     try:
         # Use the same version detection logic as startup
         version = get_version()
@@ -196,17 +202,21 @@ def get_system_info():
         else:
             active_endpoint = os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1')
 
-        return jsonify({
+        info = {
             'version': version,
-            'llm_endpoint': TEXT_MODEL_BASE_URL,
             'llm_model': TEXT_MODEL_NAME,
-            'transcription_endpoint': active_endpoint,  # The actual endpoint being used
             'asr_enabled': asr_enabled,
-            # Legacy fields for backwards compatibility
-            'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
-            'asr_endpoint': ASR_BASE_URL if asr_enabled else None,
             'transcription': transcription_info,
-        })
+        }
+        if current_user.is_admin:
+            info.update({
+                'llm_endpoint': TEXT_MODEL_BASE_URL,
+                'transcription_endpoint': active_endpoint,  # The actual endpoint being used
+                # Legacy fields for backwards compatibility
+                'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
+                'asr_endpoint': ASR_BASE_URL if asr_enabled else None,
+            })
+        return jsonify(info)
     except Exception as e:
         current_app.logger.error(f"Error getting system info: {e}")
         return jsonify(api_error('system_info_unavailable')), 500

@@ -392,7 +392,7 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=false
 ## 8. System Info API
 
 ### Test 8.1: Connector Capabilities Exposed
-**Endpoint:** `GET /api/system/info`
+**Endpoint:** `GET /api/system/info` (signed in; the service addresses appear only for an administrator)
 
 **Expected Response Structure:**
 ```json

@@ -4156,8 +4156,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // Update version in multiple places
                     document.getElementById('system-version').textContent = data.version;
                     
-                    // Update LLM info
-                    document.getElementById('llm-endpoint').textContent = data.llm_endpoint;
+                    // Update LLM info. Service addresses come only to administrators
+                    // (#499); for everyone else the Endpoint rows are hidden.
+                    const showEndpoint = (id, value) => {
+                        const el = document.getElementById(id);
+                        if (value) el.textContent = value;
+                        else el.parentElement.style.display = 'none';
+                    };
+                    showEndpoint('llm-endpoint', data.llm_endpoint);
                     document.getElementById('llm-model').textContent = data.llm_model;
                     
                     // Update Speech Recognition info
@@ -4165,7 +4171,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const transcriptionModel = data.transcription?.model || data.transcription?.connector || 'whisper-1';
                     document.getElementById('transcription-model').textContent = transcriptionModel;
                     // Show the active transcription endpoint (ASR or OpenAI depending on config)
-                    document.getElementById('transcription-endpoint').textContent = data.transcription_endpoint || data.whisper_endpoint;
+                    showEndpoint('transcription-endpoint', data.transcription_endpoint || data.whisper_endpoint);
                 } catch (error) {
                     document.getElementById('system-version').textContent = tf('account.loadFailed', 'Failed to load');
                     document.getElementById('llm-endpoint').textContent = tf('account.loadFailed', 'Failed to load');
