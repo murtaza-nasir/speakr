@@ -58,7 +58,7 @@ class FileMonitor:
         # Keep a basic list for initial filtering to avoid probing every file
         self.potential_audio_extensions = {
             '.wav', '.mp3', '.flac', '.amr', '.3gp', '.3gpp', 
-            '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov',
+            '.m4a', '.aac', '.ogg', '.oga', '.wma', '.webm', '.mp4', '.mov',
             '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi',
             '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf'
         }

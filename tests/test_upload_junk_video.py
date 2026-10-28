@@ -157,6 +157,16 @@ def test_junk_with_a_video_extension_is_refused(user, retention, passthrough):
     assert storage.uploaded == []
 
 
+
+@needs_ffmpeg
+@pytest.mark.parametrize("filename", ["clip.ogg", "clip.oga", "clip.opus", "clip.ts", "clip.mpeg", "clip.vob", "clip.asf"])
+def test_junk_with_a_name_the_upload_dialog_takes_is_refused(user, filename):
+    """The dialog queues these names by extension (#510); the server still
+    decides from the content."""
+    resp, storage, enqueue, leftovers = _upload(user, JUNK, filename)
+    _assert_refused(resp, enqueue, leftovers, user)
+    assert storage.uploaded == []
+
 @needs_ffmpeg
 @pytest.mark.parametrize("retention,passthrough", [(True, False), (False, True), (False, False)])
 def test_video_without_an_audio_track_is_refused_as_without_retention(user, tmp_path, retention, passthrough):

@@ -6,11 +6,8 @@
 
 export const MAX_JOIN_FILES = 20;
 
-const VIDEO_EXT = /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts|mpeg|mpg|ogv|vob|asf)$/i;
-
-export function isVideoFileName(name) {
-    return VIDEO_EXT.test(name || '');
-}
+// The upload dialog's own list of video containers (#510).
+export { isVideoFileName } from './upload-file-type.js';
 
 const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 

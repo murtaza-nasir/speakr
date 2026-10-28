@@ -13,8 +13,9 @@ import { recorderInUse } from '../utils/recorder-state.js';
 import { getFriendlyError } from '../utils/upload-errors.js';
 import {
     sortQueuedForJoin, moveQueuedItem, placeQueuedItem, totalJoinDuration,
-    newJoinGroupId, isVideoFileName, MAX_JOIN_FILES,
+    newJoinGroupId, MAX_JOIN_FILES,
 } from '../utils/upload-join.js';
+import { UPLOAD_ACCEPT, isAcceptedUploadFile, isVideoFileName } from '../utils/upload-file-type.js';
 
 export function useUpload(state, utils) {
     const {
@@ -306,23 +307,8 @@ export function useUpload(state, utils) {
                 max_speakers: asrMaxSpeakers.value
             };
 
-            // Check if it's an audio file or video container with audio
-            const isAudioFile = fileObject && (
-                fileObject.type.startsWith('audio/') ||
-                fileObject.type === 'video/mp4' ||
-                fileObject.type === 'video/quicktime' ||
-                fileObject.type === 'video/x-msvideo' ||
-                fileObject.type === 'video/webm' ||
-                fileObject.name.toLowerCase().endsWith('.amr') ||
-                fileObject.name.toLowerCase().endsWith('.3gp') ||
-                fileObject.name.toLowerCase().endsWith('.3gpp') ||
-                fileObject.name.toLowerCase().endsWith('.mp4') ||
-                fileObject.name.toLowerCase().endsWith('.mov') ||
-                fileObject.name.toLowerCase().endsWith('.avi') ||
-                fileObject.name.toLowerCase().endsWith('.mkv') ||
-                fileObject.name.toLowerCase().endsWith('.webm') ||
-                fileObject.name.toLowerCase().endsWith('.weba')
-            );
+            // Audio, or a video container with audio; the picker offers the same (#510)
+            const isAudioFile = isAcceptedUploadFile(fileObject);
 
             if (isAudioFile) {
                 // Per-file effective size limit. Audio files always use
@@ -340,7 +326,7 @@ export function useUpload(state, utils) {
                 //   3. The toggle component only renders once a video
                 //      is already in the queue, so blocking video files
                 //      at precheck creates a chicken-and-egg loop.
-                const isVideoExt = /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(fileObject.name);
+                const isVideoExt = isVideoFileName(fileObject.name);
                 const effectiveLimitMB = isVideoExt
                     ? (maxAudioOnlyVideoSizeMB && maxAudioOnlyVideoSizeMB.value) || maxFileSizeMB.value
                     : maxFileSizeMB.value;
@@ -1394,6 +1380,7 @@ export function useUpload(state, utils) {
     };
 
     return {
+        uploadAccept: UPLOAD_ACCEPT,
         // Join several files into one recording
         joinMode,
         joinTitle,
