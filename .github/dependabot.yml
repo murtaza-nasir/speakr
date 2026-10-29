@@ -9,9 +9,8 @@
 # the base image by digest; Dependabot updates both.
 #
 # Minor and patch updates of Python packages come in one pull request, and
-# all action updates in another. Deliberate pins are ignored: authlib stays
-# below 1.7 (authlib/authlib#902, see requirements.txt), SQLAlchemy stays on
-# 2.0 and the base image stays on Python 3.11 (its digest is still updated).
+# all action updates in another. Deliberate pins are ignored: SQLAlchemy
+# stays on 2.0 and the base image stays on Python 3.11 (its digest is still updated).
 #
 # SQLAlchemy 2.1 makes psycopg 3 the default driver for postgresql:// URLs,
 # and the images install psycopg2 (#450). The move to 2.1 and psycopg 3 is
@@ -34,8 +33,6 @@ updates:
       python-minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      - dependency-name: authlib
-        versions: [">=1.7.0"]
       - dependency-name: sqlalchemy
         versions: [">=2.1"]
       - dependency-name: sentence-transformers

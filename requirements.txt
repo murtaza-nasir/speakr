@@ -7,12 +7,11 @@ flask-bcrypt==1.0.1
 Flask-Limiter[redis]==4.1.1
 flask-openapi3>=3.0.0
 pydantic>=2.14.1
-# authlib 1.7.x ships an OAuth client change that mis-handles the
-# client_id claim placement for some OpenID Connect providers, causing
-# `unsupported_header: Unsupported {'client_id'} in header` on the SSO
-# callback (issue #298; upstream authlib/authlib#902). Pinned to the
-# last known-good 1.6.x line until the upstream fix is released.
-authlib>=1.3.0,<1.7.0
+# authlib 1.7.x refused ID tokens that carry client_id in the JWS header
+# (issue #298, authlib/authlib#902); 1.8.0 fixed that. 1.9.1 fixes the
+# advisories published on 27 Oct 2026, among them an ID token nonce bypass
+# and JWS signature forgery.
+authlib>=1.9.1,<2.0
 itsdangerous>=2.2.0
 email-validator==2.3.0
 openai>=3.31.0
