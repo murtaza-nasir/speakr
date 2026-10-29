@@ -595,6 +595,19 @@ class FairJobQueue:
         if not session_id:
             raise ValueError("stitch job missing required 'session_id' param")
 
+        # The session must point at this recording, and both must belong to
+        # the same user. Otherwise the job is dropped without touching the
+        # recording: raising would mark another user's recording FAILED (#505).
+        # A missing session is left to stitch_recording_session, as before.
+        from src.models import RecordingSession
+        from src.database import db
+        sess = db.session.get(RecordingSession, session_id)
+        if sess is not None and (sess.finalized_recording_id != recording.id
+                                 or sess.user_id != recording.user_id):
+            logger.error(f"Stitch job {job.id}: session {session_id} does not belong to "
+                         f"recording {recording.id}; job dropped")
+            return
+
         try:
             recording_id, final_path, metadata = stitch_recording_session(session_id)
         except StitchError as e:

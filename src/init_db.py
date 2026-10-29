@@ -124,6 +124,21 @@ def _remove_orphaned_speaker_rows(engine, app):
                         f"and {samples} orphaned voice sample(s)")
 
 
+def _clear_stale_session_links(engine, app):
+    """Clear recording-session links to recordings that no longer exist.
+
+    Deleting a recording did not clear the link on SQLite, which does not
+    apply ON DELETE SET NULL (#505). PostgreSQL already cleared it.
+    """
+    with engine.begin() as conn:
+        cleared = conn.execute(text(
+            'UPDATE recording_session SET finalized_recording_id = NULL '
+            'WHERE finalized_recording_id IS NOT NULL '
+            'AND finalized_recording_id NOT IN (SELECT id FROM recording)')).rowcount
+    if cleared:
+        app.logger.info(f"Cleared {cleared} recording-session link(s) to deleted recordings")
+
+
 def initialize_database(app):
     """
     Initialize database schema and run migrations.
@@ -1235,6 +1250,14 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Orphaned speaker row cleanup skipped, retried next start: {e}")
+
+        # Deleting a recording left its session's link behind on SQLite (#505).
+        try:
+            run_once(engine, '0005_clear_stale_session_links',
+                     lambda eng: _clear_stale_session_links(eng, app), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Recording-session link cleanup skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

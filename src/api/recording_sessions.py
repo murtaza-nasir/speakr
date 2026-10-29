@@ -880,6 +880,16 @@ def abort_session(session_id):
 
 # --- Cleanup hook -----------------------------------------------------------
 
+def _owns_finalized_recording(session):
+    """True when the session's recording exists and belongs to the session's
+    user. A session whose recording was deleted is expired, never stitched
+    into whatever recording later received the same id (#505)."""
+    if not session.finalized_recording_id:
+        return False
+    recording = db.session.get(Recording, session.finalized_recording_id)
+    return recording is not None and recording.user_id == session.user_id
+
+
 def cleanup_expired_sessions(app=None):
     """Reap sessions whose ``last_seen_at`` is older than the TTL.
 
@@ -937,7 +947,7 @@ def cleanup_expired_sessions(app=None):
                         f"Auto-finalized abandoned recording session {s.id} "
                         f"({s.chunk_count} chunks) for user {s.user_id}"
                     )
-                elif s.status == 'finalizing' and s.finalized_recording_id:
+                elif s.status == 'finalizing' and _owns_finalized_recording(s):
                     s.last_seen_at = datetime.utcnow()
                     db.session.commit()
                     try:

@@ -51,6 +51,13 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     from src.models import SpeakerVoiceSample
     SpeakerVoiceSample.query.filter_by(recording_id=recording_id).update({'recording_id': None})
 
+    # Recording sessions keep their row but lose the link, as ON DELETE SET
+    # NULL does on PostgreSQL. SQLite reuses the highest id, so a stale link
+    # could otherwise point at a later recording of another user (#505).
+    from src.models import RecordingSession
+    RecordingSession.query.filter_by(finalized_recording_id=recording_id).update(
+        {'finalized_recording_id': None}, synchronize_session=False)
+
     snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
     jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
     if snippets or jobs:
