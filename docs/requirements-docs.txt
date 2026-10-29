@@ -12,5 +12,5 @@ pymdown-extensions>=10.5
 pygments>=2.21.0
 
 # Additional utilities
-Pillow>=10.1.0  # For image optimization
+Pillow>=13.0.0  # For image optimization
 cairosvg>=2.7.1  # For SVG support
