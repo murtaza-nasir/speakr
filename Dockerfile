@@ -151,5 +151,6 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # requests) hold a request slot for their duration; with sync workers 3 such
 # streams made the whole app unresponsive (#374). gthread gives 3x8 = 24
 # concurrent requests; the app is thread-tolerant (background job threads,
-# SQLite WAL) and streams are I/O-bound.
-CMD ["gunicorn", "--workers", "3", "--worker-class", "gthread", "--threads", "8", "--bind", "0.0.0.0:8899", "--timeout", "600", "src.app:app"]
+# SQLite WAL) and streams are I/O-bound. The control socket of gunicorn 25.1+
+# (runtime worker management through gunicornc) is not used, so it is off.
+CMD ["gunicorn", "--workers", "3", "--worker-class", "gthread", "--threads", "8", "--bind", "0.0.0.0:8899", "--timeout", "600", "--no-control-socket", "src.app:app"]
