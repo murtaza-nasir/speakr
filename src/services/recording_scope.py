@@ -92,7 +92,26 @@ def share_details(recordings, user):
             'tags': [{'id': t.id, 'name': t.name, 'color': t.color}
                      for t in r.get_visible_tags(user, member_group_ids)],
         }
+        folder = visible_folder(r, user.id, share)
+        details[r.id]['folder'] = folder
+        details[r.id]['folder_id'] = folder['id'] if folder else None
     return details
+
+
+def visible_folder(recording, viewer_id, share=None):
+    """The recording's folder as {'id', 'name'} for this viewer, or None (#516).
+
+    The owner sees the current folder. Anyone else sees it only while it is
+    the group folder that shared the recording with them, the rule the web
+    app applies (Recording._serialize_tags_and_folder).
+    """
+    folder = recording.folder
+    if folder is None:
+        return None
+    if recording.user_id != viewer_id and (
+            share is None or not share.source_folder_id or share.source_folder_id != recording.folder_id):
+        return None
+    return {'id': folder.id, 'name': folder.name}
 
 
 OWN_ITEM = {'is_shared': False, 'owner': None, 'share': None}

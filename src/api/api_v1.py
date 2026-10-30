@@ -1079,6 +1079,9 @@ def _recording_list_item(r, refs=None, shared=None):
         from src.services.external_refs import refs_for
         refs = [x.to_dict() for x in refs_for(r.id, current_user.id)]
     from src.services.recording_changes import effective_updated_at, iso_z
+    from src.services.recording_scope import visible_folder
+    # A shared row replaces folder and folder_id from its share (#516).
+    folder = visible_folder(r, current_user.id) if shared is None else None
     return {
         'id': r.id,
         'title': r.title,
@@ -1099,8 +1102,8 @@ def _recording_list_item(r, refs=None, shared=None):
         'processing_time_seconds': r.processing_time_seconds,
         'transcription_duration_seconds': r.transcription_duration_seconds,
         'summarization_duration_seconds': r.summarization_duration_seconds,
-        'folder_id': r.folder_id,
-        'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
+        'folder_id': folder['id'] if folder else None,
+        'folder': folder,
         'deletion_exempt': r.deletion_exempt,
         'error_message': r.error_message if r.status == 'FAILED' else None,
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
@@ -1643,9 +1646,17 @@ def get_recording(recording_id):
         return jsonify(api_error('recording_not_found')), 404
 
     from src.services.recording_changes import effective_updated_at, iso_z
+    from src.services.recording_scope import visible_folder
     include = request.args.get('include', 'transcription,summary,notes')
     include_fields = [f.strip() for f in include.split(',')]
     format_type = request.args.get('format', 'full')
+
+    share = None
+    if recording.user_id != current_user.id:
+        from src.models import InternalShare
+        share = InternalShare.query.filter_by(
+            recording_id=recording.id, shared_with_user_id=current_user.id).first()
+    folder = visible_folder(recording, current_user.id, share)
 
     response = {
         'id': recording.id,
@@ -1666,8 +1677,8 @@ def get_recording(recording_id):
         'processing_time_seconds': recording.processing_time_seconds,
         'transcription_duration_seconds': recording.transcription_duration_seconds,
         'summarization_duration_seconds': recording.summarization_duration_seconds,
-        'folder_id': recording.folder_id,
-        'folder': {'id': recording.folder.id, 'name': recording.folder.name} if recording.folder else None,
+        'folder_id': folder['id'] if folder else None,
+        'folder': folder,
         'deletion_exempt': recording.deletion_exempt,
         'events': [e.api_dict() for e in recording.events] if hasattr(recording, 'events') else [],
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
