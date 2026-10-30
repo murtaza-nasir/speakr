@@ -35,7 +35,7 @@ API tokens are personal access tokens that authenticate API requests on your beh
 
 ## Scopes
 
-A token with scopes can call only the API v1 routes those scopes cover. The scope each route needs is listed in the [API Reference](api-reference.md) and in `/api/v1/openapi.json` (`x-required-scopes`).
+A token with scopes can call only the API v1 routes those scopes cover. The scope each route needs is listed in the [API Reference](api-reference.md) and in `/api/v1/openapi.json` (`x-required-scopes`). Fetched with a scoped token, `/api/v1/openapi.json` lists only the routes that token may call.
 
 | Scope | Allows |
 |-------|--------|

@@ -693,11 +693,40 @@ def _openapi_with_scopes():
     return spec
 
 
+def _limit_to_scopes(spec, scopes):
+    """Drop the operations a token with these scopes cannot call (#526).
+
+    A tool built from the document (Open WebUI, for one) then offers only
+    what the token can do. An operation with no x-required-scopes is refused
+    for every scoped token, so it is dropped too."""
+    for path in list(spec.get('paths', {})):
+        operations = spec['paths'][path]
+        for method in list(operations):
+            operation = operations[method]
+            if not isinstance(operation, dict):
+                continue
+            required = operation.get('x-required-scopes')
+            if required is None or not set(required) <= scopes:
+                del operations[method]
+        if not any(isinstance(op, dict) for op in operations.values()):
+            del spec['paths'][path]
+    return spec
+
+
 @api_v1_bp.route('/openapi.json', methods=['GET'])
 @require_scope('read')
 def get_openapi_spec():
-    """Return OpenAPI specification."""
-    return jsonify(_openapi_with_scopes())
+    """Return OpenAPI specification.
+
+    Fetched with a scoped token, the document lists only the operations that
+    token may call. Full tokens and browser sessions get every operation."""
+    from flask import session
+    from src.utils.token_auth import current_api_token
+    spec = _openapi_with_scopes()
+    api_token = None if session.get('_user_id') else current_api_token()
+    if api_token is not None and api_token.scope_set is not None:
+        spec = _limit_to_scopes(spec, api_token.scope_set)
+    return jsonify(spec)
 
 
 @api_v1_bp.route('/docs', methods=['GET'])

@@ -116,7 +116,7 @@ Lists the features this instance supports. Read features here, not from the vers
 
 Both addresses are available without signing in, by design. They describe the endpoints only and contain no user data or credentials.
 
-Every operation in the specification has an `operationId`, which is required to add Speakr to Open WebUI as an OpenAPI tool server.
+Every operation in the specification has an `operationId`, which is required to add Speakr to Open WebUI as an OpenAPI tool server. When the specification is fetched with a scoped token, it lists only the operations that token may call, so a tool server built from it offers only those tools. A full token or a signed-in browser session receives every operation.
 
 <div style="max-width: 90%; margin: 1.5em auto;">
   <img src="../../assets/images/screenshots/api-swagger-ui.png" alt="Swagger UI Documentation" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
