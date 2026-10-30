@@ -191,7 +191,7 @@ You can modify these settings anytime without generating new links. Toggle summa
 
 ### Revoking Access
 
-To remove a person's access, click **Revoke** and then **Confirm**. Any shares that person passed on are removed too, unless the recipients also have access through another share.
+To change what a person may do, click **Change permissions**, check or clear **Allow editing** and **Allow re-sharing**, and click **Save**. To remove a person's access, click **Revoke** and then **Confirm**. Any shares that person passed on are removed too, unless the recipients also have access through another share.
 
 For a public link, click the delete button (trash icon) to revoke access immediately. Once deleted, anyone trying to access that link sees an error message. This instant revocation provides security when you've accidentally shared with wrong parties or when access is no longer appropriate. Remember that deletion can't retrieve information already viewed or downloaded by recipients.
 

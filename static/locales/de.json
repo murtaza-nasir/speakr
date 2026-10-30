@@ -2471,7 +2471,19 @@
     "sharedWithUser": "Aufnahme mit {{name}} geteilt",
     "userNumber": "Benutzer #{{id}}",
     "userGeneric": "Benutzer",
-    "accessRevokedFor": "Zugriff für {{name}} entzogen"
+    "accessRevokedFor": "Zugriff für {{name}} entzogen",
+    "changePermissions": "Berechtigungen ändern",
+    "changePermissionsFor": "Berechtigungen für {{name}} ändern",
+    "permissionsChanged": "Berechtigungen geändert",
+    "changePermissionsFailedWithError": "Berechtigungen konnten nicht geändert werden: {{error}}",
+    "searchMinChars": "Mindestens 2 Zeichen eines Benutzernamens oder einer E-Mail-Adresse eingeben",
+    "selectedPeople": "Ausgewählt",
+    "removeFromSelection": "{{name}} aus der Auswahl entfernen",
+    "selectionLimit": "Es können höchstens {{max}} Personen gleichzeitig ausgewählt werden",
+    "addSelected": "Mit Auswahl teilen ({{count}})",
+    "sharedWithCount": "Aufnahme geteilt. Hinzugefügte Personen: {{count}}",
+    "alreadySharedCount": "Hatten bereits Zugriff: {{count}}",
+    "notSharedCount": "Konnten nicht hinzugefügt werden: {{count}}"
   },
   "sidebar": {
     "advancedSearch": "Erweiterte Suche",
@@ -3474,7 +3486,13 @@
       "webhook_url_missing_host": "In der URL fehlt der Host",
       "webhook_url_private_address": "Die URL wird zu einer privaten oder Loopback-Adresse ({{ip}}) aufgelöst. Setzen Sie WEBHOOK_INTRANET_HOST_ALLOWLIST, um diesen Host ausdrücklich zuzulassen, oder verwenden Sie eine öffentliche URL. Der reguläre Ausdruck der Positivliste sollte verankert sein (z. B. r\"^(localhost|.*\\.intra)$\"), damit ähnlich aussehende Hostnamen ihn nicht täuschen können.",
       "webhook_url_unparseable": "Die URL konnte nicht gelesen werden",
-      "word_document_failed": "Das Word-Dokument konnte nicht erstellt werden"
+      "word_document_failed": "Das Word-Dokument konnte nicht erstellt werden",
+      "share_recipients_conflict": "Entweder user_id oder user_ids senden, nicht beides",
+      "share_recipients_invalid": "user_ids muss eine Liste mit 1 bis {{max}} Benutzer-IDs sein",
+      "share_permissions_invalid": "can_edit und can_reshare müssen true oder false sein",
+      "share_permissions_required": "can_edit, can_reshare oder beides angeben",
+      "share_update_denied": "Nur die Person, die diese Aufnahme geteilt hat, kann diese Berechtigungen ändern",
+      "share_source_locked": "Diese Freigabe stammt von einem Gruppen-Tag oder Gruppenordner, und ihre Berechtigungen folgen dieser Gruppe"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten erfolgreich aktualisiert!",

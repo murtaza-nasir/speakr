@@ -2471,7 +2471,19 @@
     "sharedWithUser": "Запись доступна пользователю {{name}}",
     "userNumber": "Пользователь №{{id}}",
     "userGeneric": "Пользователь",
-    "accessRevokedFor": "Доступ для {{name}} отозван"
+    "accessRevokedFor": "Доступ для {{name}} отозван",
+    "changePermissions": "Изменить права",
+    "changePermissionsFor": "Изменить права для {{name}}",
+    "permissionsChanged": "Права изменены",
+    "changePermissionsFailedWithError": "Не удалось изменить права: {{error}}",
+    "searchMinChars": "Введите не менее 2 символов имени пользователя или адреса эл. почты",
+    "selectedPeople": "Выбрано",
+    "removeFromSelection": "Убрать {{name}} из выбора",
+    "selectionLimit": "Одновременно можно выбрать не более {{max}} человек",
+    "addSelected": "Поделиться с выбранными ({{count}})",
+    "sharedWithCount": "Запись открыта. Добавлено людей: {{count}}",
+    "alreadySharedCount": "Уже имели доступ: {{count}}",
+    "notSharedCount": "Не удалось добавить: {{count}}"
   },
   "sidebar": {
     "advancedSearch": "Расширенный поиск",
@@ -3474,7 +3486,13 @@
       "webhook_url_missing_host": "В URL не указан хост",
       "webhook_url_private_address": "URL указывает на частный или loopback-адрес ({{ip}}); задайте WEBHOOK_INTRANET_HOST_ALLOWLIST, чтобы явно разрешить этот хост, или используйте публичный URL. Регулярное выражение списка разрешённых хостов должно быть привязано к началу и концу (например, r\"^(localhost|.*\\.intra)$\"), чтобы его нельзя было обойти похожими именами хостов.",
       "webhook_url_unparseable": "Не удалось разобрать URL",
-      "word_document_failed": "Не удалось создать документ Word"
+      "word_document_failed": "Не удалось создать документ Word",
+      "share_recipients_conflict": "Укажите либо user_id, либо user_ids, но не оба",
+      "share_recipients_invalid": "user_ids должен быть списком от 1 до {{max}} идентификаторов пользователей",
+      "share_permissions_invalid": "can_edit и can_reshare должны быть true или false",
+      "share_permissions_required": "Укажите can_edit, can_reshare или оба",
+      "share_update_denied": "Изменить эти права может только тот, кто поделился этой записью",
+      "share_source_locked": "Этот доступ выдан через тег или папку группы, и его права определяются этой группой"
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены!",

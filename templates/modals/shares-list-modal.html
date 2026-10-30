@@ -67,7 +67,8 @@
                              class="p-4 rounded-md border border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
                             <a :href="'/recordings/' + entry.recording_id" class="t-body-strong hover:underline block truncate" dir="auto" v-text="entry.recording_title"></a>
                             <ul class="mt-2 divide-y divide-[var(--border-primary)]">
-                                <li v-for="person in entry.recipients" :key="person.share_id" class="py-2 flex items-center justify-between gap-3">
+                                <li v-for="person in entry.recipients" :key="person.share_id" class="py-2">
+                                  <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="text-sm font-medium text-[var(--text-primary)] truncate" v-text="person.username"></p>
                                         <p class="t-meta">
@@ -75,13 +76,43 @@
                                             <span v-if="person.source.type !== 'manual'"> · <i class="fas fa-users text-[10px]"></i> <span v-text="t(person.source.type === 'group_tag' ? 'sharedTranscripts.viaGroupTag' : 'sharedTranscripts.viaGroupFolder', { name: person.source.name || '' })"></span></span>
                                         </p>
                                     </div>
-                                    <button v-if="person.revocable" @click="revokeShareFromList(entry, person)"
+                                    <div v-if="person.revocable" class="flex items-center gap-2 flex-shrink-0">
+                                    <button v-if="person.permissions_editable && !person.permissionDraft" type="button"
+                                            @click="startPermissionEdit(person)" class="btn btn--sm btn--ghost"
+                                            :aria-label="t('sharing.changePermissionsFor', { name: person.username || '' })">
+                                        <i class="fas fa-user-cog" aria-hidden="true"></i>
+                                        <span v-text="t('sharing.changePermissions')"></span>
+                                    </button>
+                                    <button @click="revokeShareFromList(entry, person)"
                                             class="btn btn--sm flex-shrink-0" :class="person.confirming ? 'btn--danger' : 'btn--ghost'"
                                             :title="t('sharedTranscripts.revokeAccess')">
                                         <i class="fas fa-user-times"></i>
                                         <span v-text="person.confirming ? t('sharedTranscripts.confirmRevoke') : t('sharedTranscripts.revoke')"></span>
                                     </button>
+                                    </div>
                                     <span v-else class="t-meta flex-shrink-0 text-right max-w-[12rem]" v-text="t('sharedTranscripts.groupShareNote')"></span>
+                                  </div>
+                                  <!-- Change permissions of this share (D#517) -->
+                                  <div v-if="person.permissionDraft" class="mt-2 space-y-1.5" role="group"
+                                       :aria-label="t('sharing.changePermissionsFor', { name: person.username || '' })">
+                                      <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                                          <input type="checkbox" v-model="person.permissionDraft.can_edit"
+                                                 :disabled="!canGrantPermission(person, entry.grantable, 'can_edit')"
+                                                 class="h-4 w-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                                          <span v-text="t('unifiedShareModal.allowEditing')"></span>
+                                      </label>
+                                      <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                                          <input type="checkbox" v-model="person.permissionDraft.can_reshare"
+                                                 :disabled="!canGrantPermission(person, entry.grantable, 'can_reshare')"
+                                                 class="h-4 w-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                                          <span v-text="t('unifiedShareModal.allowReshare')"></span>
+                                      </label>
+                                      <div class="flex justify-end gap-2">
+                                          <button type="button" class="btn btn--sm btn--ghost" @click="cancelPermissionEdit(person)" v-text="t('common.cancel')"></button>
+                                          <button type="button" class="btn btn--sm btn--primary" :disabled="person.savingPermissions"
+                                                  @click="savePermissionEdit(person, person.share_id)" v-text="t('common.save')"></button>
+                                      </div>
+                                  </div>
                                 </li>
                             </ul>
                         </div>

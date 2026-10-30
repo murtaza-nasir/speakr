@@ -1528,8 +1528,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingInternalShares = ref([]);
             const isLoadingInternalShares = ref(false);
             const isSearchingUsers = ref(false);
-            const allUsers = ref([]);
-            const isLoadingAllUsers = ref(false);
 
             // --- Reprocessing Polls ---
             const reprocessingPolls = ref(new Map());
@@ -1953,7 +1951,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
                 internalShareRecording, internalSharePermissions, internalShareMaxPermissions, recordingInternalShares,
-                isLoadingInternalShares, isSearchingUsers, allUsers, isLoadingAllUsers,
+                isLoadingInternalShares, isSearchingUsers,
 
                 // Reprocessing
                 reprocessingPolls,

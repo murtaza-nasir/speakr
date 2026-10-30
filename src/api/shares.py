@@ -12,6 +12,7 @@ import re
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, current_app
 from flask_login import login_required, current_user
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 
 from src.database import db
@@ -298,7 +299,8 @@ def get_shares_overview():
     def _internal(*criteria):
         shares = (InternalShare.query.filter(*criteria)
                   .options(selectinload(InternalShare.recording).load_only(
-                               Recording.id, Recording.title, Recording.original_filename, Recording.status),
+                               Recording.id, Recording.user_id, Recording.title, Recording.original_filename,
+                               Recording.status),
                            joinedload(InternalShare.shared_with), joinedload(InternalShare.owner),
                            joinedload(InternalShare.source_tag))
                   .order_by(InternalShare.created_at.desc(), InternalShare.id.desc()).all())
@@ -315,6 +317,13 @@ def get_shares_overview():
                     .order_by(Share.created_at.desc(), Share.id.desc()).all()]
     shared_by_me, shared_with_me = [], []
     if ENABLE_INTERNAL_SHARING:
+        received = _internal(InternalShare.shared_with_user_id == current_user.id)
+        # What the user may grant on each recording, for changing a share's
+        # permissions in place (D#517): everything on their own recordings,
+        # their own flags on a recording shared with them.
+        # Without re-share permission they can no longer grant anything.
+        held = {s.recording_id: {'can_edit': bool(s.can_edit and s.can_reshare), 'can_reshare': bool(s.can_reshare)}
+                for s in received}
         by_recording = {}
         for share in _internal(InternalShare.owner_id == current_user.id):
             recording = share.recording
@@ -323,6 +332,8 @@ def get_shares_overview():
             entry = by_recording.setdefault(recording.id, {
                 'recording_id': recording.id,
                 'recording_title': recording.title or recording.original_filename or f'#{recording.id}',
+                'grantable': ({'can_edit': True, 'can_reshare': True} if recording.user_id == current_user.id
+                              else held.get(recording.id, {'can_edit': False, 'can_reshare': False})),
                 'recipients': [],
             })
             source = _source(share)
@@ -336,11 +347,12 @@ def get_shares_overview():
                 # A group share follows its tag or folder; removing the tag or
                 # folder ends it, so only a manual share is revoked here.
                 'revocable': source['type'] == 'manual',
+                'permissions_editable': _permissions_editable(share),
                 'created_at': share.created_at.isoformat() if share.created_at else None,
             })
         shared_by_me = list(by_recording.values())
 
-        for share in _internal(InternalShare.shared_with_user_id == current_user.id):
+        for share in received:
             recording = share.recording
             if recording is None:
                 continue
@@ -396,31 +408,35 @@ def delete_share(share_id):
 @shares_bp.route('/api/users/search', methods=['GET'])
 @login_required
 def search_users():
-    """Search for users by username (for internal sharing)."""
+    """Find people to share a recording with (D#519).
+
+    With usernames shown, up to 10 accounts whose username or email contains
+    the query, ordered by username. With usernames hidden, only the account
+    with exactly that username. A query under 2 characters returns nothing in
+    both modes, so the list of accounts is never sent in one response.
+    """
     if not ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     query = request.args.get('q', '').strip()
-
-    # If SHOW_USERNAMES_IN_UI is enabled and no query, return all users for quick selection
-    if SHOW_USERNAMES_IN_UI and len(query) < 2:
-        users = User.query.filter(User.id != current_user.id).order_by(User.username).all()
-    elif len(query) < 2:
-        # If usernames are hidden and no query, return empty
+    if len(query) < 2:
         return jsonify([])
+
+    if SHOW_USERNAMES_IN_UI:
+        pattern = contains_pattern(query)
+        users = User.query.filter(
+            User.id != current_user.id,
+            db.or_(
+                User.username.ilike(pattern, escape=LIKE_ESCAPE),
+                User.email.ilike(pattern, escape=LIKE_ESCAPE),
+            )
+        ).order_by(User.username, User.id).limit(10).all()
     else:
-        if SHOW_USERNAMES_IN_UI:
-            # If usernames are shown, allow partial match (autocomplete)
-            users = User.query.filter(
-                User.id != current_user.id,
-                User.username.ilike(contains_pattern(query), escape=LIKE_ESCAPE)
-            ).limit(10).all()
-        else:
-            # If usernames are hidden (privacy mode), require exact match only
-            users = User.query.filter(
-                User.id != current_user.id,
-                User.username == query
-            ).all()
+        # Privacy mode: exact match only
+        users = User.query.filter(
+            User.id != current_user.id,
+            User.username == query
+        ).all()
 
     return jsonify([{
         'id': user.id,
@@ -429,15 +445,146 @@ def search_users():
     } for user in users])
 
 
+# Most people one share request may name (D#519)
+MAX_SHARE_RECIPIENTS = 25
+_SHARE_FLAGS = ('can_edit', 'can_reshare')
+
+
+def _add_manual_share(recording_id, user_id, can_edit, can_reshare):
+    """Add a manual share and put the recording in the recipient's inbox.
+
+    The caller has already checked access and the permission ceiling. Does not
+    commit.
+    """
+    share = InternalShare(
+        recording_id=recording_id,
+        owner_id=current_user.id,
+        shared_with_user_id=user_id,
+        can_edit=can_edit,
+        can_reshare=can_reshare
+    )
+    db.session.add(share)
+
+    state = SharedRecordingState.query.filter_by(
+        recording_id=recording_id,
+        user_id=user_id
+    ).first()
+    if not state:
+        # New shares appear in the inbox and are not favorited
+        db.session.add(SharedRecordingState(
+            recording_id=recording_id,
+            user_id=user_id,
+            is_inbox=True,
+            is_highlighted=False
+        ))
+    else:
+        # Back to the inbox, e.g. after an earlier share was revoked
+        state.is_inbox = True
+    return share
+
+
+def _share_with_many(recording_id, data):
+    """Share one recording with several people at once (D#519).
+
+    The request is checked as a whole before anything is written: the list,
+    the flags, access to the recording and the permission ceiling. Each person
+    then gets a result: shared, already_shared (that share is left as it is),
+    not_found, share_with_owner or share_with_self.
+    """
+    if 'user_id' in data:
+        return jsonify(api_error('share_recipients_conflict')), 400
+
+    raw_ids = data.get('user_ids')
+    if (not isinstance(raw_ids, list) or not raw_ids or len(raw_ids) > MAX_SHARE_RECIPIENTS
+            or any(isinstance(i, bool) or not isinstance(i, int) or i < 1 for i in raw_ids)):
+        return jsonify(api_error('share_recipients_invalid', max=MAX_SHARE_RECIPIENTS)), 400
+    user_ids = list(dict.fromkeys(raw_ids))
+
+    flags = {}
+    for key in _SHARE_FLAGS:
+        value = data.get(key, False)
+        if not isinstance(value, bool):
+            return jsonify(api_error('share_permissions_invalid')), 400
+        flags[key] = value
+
+    recording = db.session.get(Recording, recording_id)
+    if not recording or not has_recording_access(recording, current_user):
+        return jsonify(api_error('recording_not_found')), 404
+    if not has_recording_access(recording, current_user, require_reshare=True):
+        return jsonify(api_error('recording_share_denied')), 403
+
+    is_valid, error_code = InternalShare.validate_reshare_permissions(recording, current_user, flags)
+    if not is_valid:
+        return jsonify(api_error(error_code)), 403
+
+    actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
+    found = {user.id for user in User.query.filter(User.id.in_(user_ids)).all()}
+    existing = {share.shared_with_user_id for share in InternalShare.query.filter(
+        InternalShare.recording_id == recording_id,
+        InternalShare.shared_with_user_id.in_(user_ids)
+    ).all()}
+
+    results, created = [], []
+    for user_id in user_ids:
+        if user_id not in found:
+            status = 'not_found'
+        elif user_id == recording.user_id:
+            status = 'share_with_owner'
+        elif user_id == current_user.id:
+            status = 'share_with_self'
+        elif user_id in existing:
+            status = 'already_shared'
+        else:
+            status = 'shared'
+            created.append(_add_manual_share(recording_id, user_id, flags['can_edit'], flags['can_reshare']))
+        results.append({'user_id': user_id, 'status': status})
+
+    if created:
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Another request shared with one of these people in the meantime
+            db.session.rollback()
+            return jsonify(api_error('already_shared')), 409
+
+        try:
+            for share in created:
+                ShareAuditLog.log_share_created(
+                    recording_id=recording_id,
+                    actor_id=current_user.id,
+                    target_user_id=share.shared_with_user_id,
+                    permissions=dict(flags),
+                    actor_permissions=actor_permissions,
+                    notes=f"Shared by {'owner' if recording.user_id == current_user.id else 'delegated user'}",
+                    ip_address=request.remote_addr
+                )
+            db.session.commit()
+        except Exception as audit_error:
+            db.session.rollback()
+            current_app.logger.error(f"Failed to log share creation: {audit_error}")
+
+    shares = {share.shared_with_user_id: share.to_dict() for share in created}
+    for row in results:
+        if row['user_id'] in shares:
+            row['share'] = shares[row['user_id']]
+    return jsonify({'success': True, 'results': results, 'shared_count': len(created)}), 200
+
+
 @shares_bp.route('/api/recordings/<int:recording_id>/share-internal', methods=['POST'])
 @login_required
 def share_recording_internal(recording_id):
-    """Share a recording with another user internally."""
+    """Share a recording with another user internally.
+
+    A body with `user_ids` shares with several people at once (D#519).
+    """
     if not ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
         data = request.json
+        if isinstance(data, dict) and 'user_ids' in data:
+            return _share_with_many(recording_id, data)
+
         shared_with_user_id = data.get('user_id')
         can_edit = data.get('can_edit', False)
         can_reshare = data.get('can_reshare', False)
@@ -487,35 +634,7 @@ def share_recording_internal(recording_id):
         # Get current user's permissions for audit log
         actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
 
-        # Create share
-        share = InternalShare(
-            recording_id=recording_id,
-            owner_id=current_user.id,
-            shared_with_user_id=shared_with_user_id,
-            can_edit=can_edit,
-            can_reshare=can_reshare
-        )
-        db.session.add(share)
-
-        # Create or update SharedRecordingState for the recipient
-        state = SharedRecordingState.query.filter_by(
-            recording_id=recording_id,
-            user_id=shared_with_user_id
-        ).first()
-
-        if not state:
-            # Create new state if it doesn't exist
-            state = SharedRecordingState(
-                recording_id=recording_id,
-                user_id=shared_with_user_id,
-                is_inbox=True,  # New shares appear in inbox by default
-                is_highlighted=False  # Not favorited by default
-            )
-            db.session.add(state)
-        else:
-            # Reset to inbox if it already exists (e.g., from previous share that was deleted)
-            state.is_inbox = True
-
+        share = _add_manual_share(recording_id, shared_with_user_id, can_edit, can_reshare)
         db.session.commit()
 
         # AUDIT LOGGING: Log the share creation
@@ -562,7 +681,11 @@ def get_internal_shares(recording_id):
 
     # Get all internal shares
     shares = InternalShare.query.filter_by(recording_id=recording_id).all()
-    shares_list = [share.to_dict() for share in shares]
+    shares_list = []
+    for share in shares:
+        entry = share.to_dict()
+        entry['permissions_editable'] = _permissions_editable(share)
+        shares_list.append(entry)
 
     # Add owner as first entry (owner always has full permissions)
     owner = db.session.get(User, recording.user_id)
@@ -585,6 +708,80 @@ def get_internal_shares(recording_id):
         shares_list.insert(0, owner_entry)
 
     return jsonify({'shares': shares_list})
+
+
+def _permissions_editable(share):
+    """Whether the current user may change this share's flags: only the person
+    who granted it, and only a manual share. A group share follows its tag or
+    folder (D#517)."""
+    return share.owner_id == current_user.id and (share.source_type or 'manual') == 'manual'
+
+
+@shares_bp.route('/api/internal-shares/<int:share_id>', methods=['PATCH'])
+@login_required
+def update_internal_share(share_id):
+    """Change can_edit and can_reshare on a manual share (D#517).
+
+    Only the person who granted the share may change it. A flag can be turned
+    on only within that person's own permissions on the recording. Turning a
+    flag off leaves the shares the recipient has granted in place; revoking is
+    what removes those. The share id, the recipient's inbox state and notes
+    stay as they are.
+    """
+    if not ENABLE_INTERNAL_SHARING:
+        return jsonify(api_error('internal_sharing_disabled')), 403
+
+    share = db.session.get(InternalShare, share_id)
+    if not share:
+        return jsonify(api_error('share_not_found')), 404
+    if share.owner_id != current_user.id:
+        return jsonify(api_error('share_update_denied')), 403
+    if (share.source_type or 'manual') != 'manual':
+        return jsonify(api_error('share_source_locked')), 409
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not any(key in data for key in _SHARE_FLAGS):
+        return jsonify(api_error('share_permissions_required')), 400
+
+    old = {key: bool(getattr(share, key)) for key in _SHARE_FLAGS}
+    new = dict(old)
+    for key in _SHARE_FLAGS:
+        if key in data:
+            if not isinstance(data[key], bool):
+                return jsonify(api_error('share_permissions_invalid')), 400
+            new[key] = data[key]
+
+    if new != old:
+        recording = db.session.get(Recording, share.recording_id)
+        if not recording:
+            return jsonify(api_error('recording_not_found')), 404
+
+        # Only a flag being turned on is checked against the ceiling, so a
+        # grantor can always narrow a share they made.
+        raised = {key: True for key in _SHARE_FLAGS if new[key] and not old[key]}
+        if raised:
+            if not has_recording_access(recording, current_user, require_reshare=True):
+                return jsonify(api_error('recording_share_denied')), 403
+            is_valid, error_code = InternalShare.validate_reshare_permissions(recording, current_user, raised)
+            if not is_valid:
+                return jsonify(api_error(error_code)), 403
+
+        share.can_edit = new['can_edit']
+        share.can_reshare = new['can_reshare']
+        ShareAuditLog.log_share_modified(
+            share_id=share.id,
+            recording_id=share.recording_id,
+            actor_id=current_user.id,
+            target_user_id=share.shared_with_user_id,
+            old_permissions=old,
+            new_permissions=new,
+            ip_address=request.remote_addr
+        )
+        db.session.commit()
+
+    entry = share.to_dict()
+    entry['permissions_editable'] = True
+    return jsonify({'success': True, 'share': entry})
 
 
 @shares_bp.route('/api/internal-shares/<int:share_id>', methods=['DELETE'])

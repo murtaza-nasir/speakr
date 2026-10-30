@@ -104,43 +104,63 @@
                         ${ t('unifiedShareModal.shareWithUser') }
                     </h5>
 
-                    <!-- User Search/Selection (when SHOW_USERNAMES_IN_UI is enabled) -->
+                    <!-- User search and selection (when SHOW_USERNAMES_IN_UI is enabled, D#519) -->
                     <div v-if="showUsernamesInUI" class="space-y-3">
-                        <!-- Search Input (for filtering) -->
                         <div class="relative">
                             <input v-model="internalShareUserSearch"
                                    @input="searchInternalShareUsers()"
-                                   type="text"
+                                   type="search"
+                                   autocomplete="off"
                                    :placeholder="t('sharing.searchUsers')"
+                                   :aria-label="t('sharing.searchUsers')"
+                                   aria-describedby="unified_share_search_hint"
                                    class="w-full px-4 py-2 pl-10 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <i class="fas fa-search absolute left-3 top-3 text-[var(--text-muted)]"></i>
+                            <i class="fas fa-search absolute left-3 top-3 text-[var(--text-muted)]" aria-hidden="true"></i>
                         </div>
 
-                        <!-- User Grid -->
-                        <div v-if="isLoadingAllUsers" class="text-center py-8">
-                            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="mt-2 text-sm text-[var(--text-muted)]" v-text="t('unifiedShareModal.loadingUsers')"></p>
+                        <!-- Results: nothing is loaded before two characters -->
+                        <p v-if="internalShareUserSearch.trim().length < 2" id="unified_share_search_hint"
+                           class="text-xs text-[var(--text-muted)]" v-text="t('sharing.searchMinChars')"></p>
+                        <div v-else-if="isSearchingUsers" class="text-center py-4" aria-live="polite">
+                            <i class="fas fa-spinner fa-spin text-xl text-[var(--text-muted)]" aria-hidden="true"></i>
                         </div>
-                        <div v-else-if="internalShareSearchResults.length === 0" class="text-center py-8 text-[var(--text-muted)]">
-                            <i class="fas fa-users-slash text-3xl mb-2"></i>
-                            <p v-text="t('unifiedShareModal.noUsersFound')"></p>
-                        </div>
+                        <p v-else-if="internalShareSearchResults.length === 0" class="text-sm text-[var(--text-muted)] text-center py-3"
+                           aria-live="polite" v-text="t('unifiedShareModal.noUsersFound')"></p>
                         <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] sm:max-h-64 overflow-y-auto">
-                            <div v-for="user in internalShareSearchResults" :key="user.id"
-                                 @click="createInternalShare(user.id, user.username)"
-                                 class="group p-3 sm:p-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-lg border border-[var(--border-secondary)] hover:border-blue-500 cursor-pointer transition-all active:scale-[0.98]">
-                                <div class="flex items-center gap-3 sm:gap-2">
-                                    <div :class="['w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm sm:text-xs', getUserColorClass(user.username)]">
+                            <button v-for="user in internalShareSearchResults" :key="user.id" type="button"
+                                    @click="toggleShareSelection(user)"
+                                    :aria-pressed="isShareSelected(user) ? 'true' : 'false'"
+                                    :class="['group w-full text-left p-3 sm:p-2 rounded-lg border transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500',
+                                             isShareSelected(user) ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' : 'bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border-[var(--border-secondary)] hover:border-blue-500']">
+                                <span class="flex items-center gap-3 sm:gap-2">
+                                    <span :class="['w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm sm:text-xs', getUserColorClass(user.username)]" aria-hidden="true">
                                         ${user.username ? user.username.charAt(0).toUpperCase() : '?'}
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="font-medium text-base sm:text-sm text-[var(--text-primary)] truncate">${user.username}</p>
-                                        <p v-if="user.email" class="text-sm sm:text-xs text-[var(--text-muted)] truncate">${user.email}</p>
-                                    </div>
-                                    <i class="fas fa-user-plus text-blue-500 text-lg sm:text-base group-hover:scale-110 transition-transform flex-shrink-0"></i>
-                                </div>
-                            </div>
+                                    </span>
+                                    <span class="flex-1 min-w-0">
+                                        <span class="block font-medium text-base sm:text-sm text-[var(--text-primary)] truncate">${user.username}</span>
+                                        <span v-if="user.email" class="block text-sm sm:text-xs text-[var(--text-muted)] truncate">${user.email}</span>
+                                    </span>
+                                    <i :class="['fas text-lg sm:text-base flex-shrink-0', isShareSelected(user) ? 'fa-check-circle text-blue-500' : 'fa-plus-circle text-[var(--text-muted)] group-hover:text-blue-500']" aria-hidden="true"></i>
+                                </span>
+                            </button>
                         </div>
+
+                        <!-- Selected people -->
+                        <div v-if="selectedShareUsers.length" class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-xs font-medium text-[var(--text-secondary)] mr-1" v-text="t('sharing.selectedPeople')"></span>
+                            <span v-for="user in selectedShareUsers" :key="user.id"
+                                  class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs">
+                                <span class="truncate max-w-[10rem]">${user.username}</span>
+                                <button type="button" @click="removeShareSelection(user)"
+                                        class="w-5 h-5 inline-flex items-center justify-center rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        :aria-label="t('sharing.removeFromSelection', { name: user.username })"
+                                        :title="t('sharing.removeFromSelection', { name: user.username })">
+                                    <i class="fas fa-times text-[10px]" aria-hidden="true"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <p v-if="shareSelectionLimited" class="text-xs text-amber-600 dark:text-amber-400" role="status"
+                           v-text="t('sharing.selectionLimit', { max: maxShareSelection })"></p>
                     </div>
 
                     <!-- Direct Username Entry (when SHOW_USERNAMES_IN_UI is disabled - Privacy Mode) -->
@@ -193,6 +213,16 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- Add: share with everyone selected, with the permissions above -->
+                    <div v-if="showUsernamesInUI" class="mt-3 flex justify-end">
+                        <button type="button" @click="shareWithSelected()"
+                                :disabled="!selectedShareUsers.length || isSharingSelected"
+                                class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <i v-if="isSharingSelected" class="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i>
+                            <span v-text="selectedShareUsers.length ? t('sharing.addSelected', { count: selectedShareUsers.length }) : t('unifiedShareModal.add')"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Already Shared With Section -->
@@ -243,12 +273,44 @@
                                         </template>
                                     </div>
                                 </div>
+                                <button v-if="share.permissions_editable && !share.permissionDraft" type="button"
+                                        @click="startPermissionEdit(share)"
+                                        class="p-2 sm:p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all flex-shrink-0"
+                                        :title="t('sharing.changePermissions')"
+                                        :aria-label="t('sharing.changePermissionsFor', { name: share.username || t('unifiedShareModal.userNumber', { id: share.user_id }) })">
+                                    <i class="fas fa-user-cog text-base sm:text-xs" aria-hidden="true"></i>
+                                </button>
                                 <button v-if="!share.is_owner"
                                         @click="revokeInternalShare(share.id, share.username || share.user_name)"
                                         class="p-2 sm:p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all flex-shrink-0"
                                         :title="t('sharedTranscripts.revokeAccess')">
                                     <i class="fas fa-user-times text-base sm:text-xs"></i>
                                 </button>
+                            </div>
+                            <!-- Change permissions of this share (D#517) -->
+                            <div v-if="share.permissionDraft" class="mt-2 pt-2 border-t border-[var(--border-primary)] space-y-1.5"
+                                 role="group" :aria-label="t('sharing.changePermissionsFor', { name: share.username || t('unifiedShareModal.userNumber', { id: share.user_id }) })">
+                                <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                                    <input type="checkbox" v-model="share.permissionDraft.can_edit"
+                                           :disabled="!canGrantPermission(share, internalShareMaxPermissions, 'can_edit')"
+                                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span v-text="t('unifiedShareModal.allowEditing')"></span>
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                                    <input type="checkbox" v-model="share.permissionDraft.can_reshare"
+                                           :disabled="!canGrantPermission(share, internalShareMaxPermissions, 'can_reshare')"
+                                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span v-text="t('unifiedShareModal.allowReshare')"></span>
+                                </label>
+                                <div class="flex justify-end gap-2 pt-1">
+                                    <button type="button" @click="cancelPermissionEdit(share)"
+                                            class="px-3 py-1 text-xs rounded-lg border border-[var(--border-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                                            v-text="t('common.cancel')"></button>
+                                    <button type="button" @click="savePermissionEdit(share, share.id)" :disabled="share.savingPermissions"
+                                            class="px-3 py-1 text-xs rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                                        <i v-if="share.savingPermissions" class="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i><span v-text="t('common.save')"></span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

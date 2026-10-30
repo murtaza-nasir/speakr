@@ -31,7 +31,7 @@ After modifying `.env`, restart your Speakr instance for changes to take effect.
 
 ### Privacy Considerations
 
-The `SHOW_USERNAMES_IN_UI` setting affects the entire instance. When enabled (`true`), users see actual usernames when searching for colleagues and viewing shared content. This improves usability in small, trusted groups where everyone knows each other.
+The `SHOW_USERNAMES_IN_UI` setting affects the entire instance. When enabled (`true`), users see actual usernames when searching for colleagues and viewing shared content. The share window searches usernames and email addresses once at least two characters are typed and lists up to ten matches, so the full list of accounts is never loaded. This improves usability in small, trusted groups where everyone knows each other.
 
 When disabled (`false`), usernames are hidden from the interface. Users must know each other's usernames to share recordings - they type the username manually when creating shares. This privacy-focused approach suits organizations where username visibility should be restricted. Group functionality works identically in both modes - only the display changes.
 
