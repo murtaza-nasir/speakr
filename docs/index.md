@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.16-alpha: Tencent Cloud ASR, interface language, API limits"
-    A Tencent Cloud ASR connector, dates, times and file sizes in the interface language, account-wide API limits and faster recording lists.
+!!! success "Latest Release: v0.10.17-alpha: SSO security update, share permissions, folder fixes"
+    An Authlib security update for SSO, read-only query-string tokens, permission changes on existing shares, a searchable share window and folder fixes.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.16-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.17-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.17-alpha - SSO security update, share permissions, folder fixes"
+    Two indexes are added at startup. Set `TRUSTED_PROXIES` to the reverse proxy address, and send API tokens in the `Authorization` header for writes.
+
+    - **Security** - Authlib 1.9.1 for SSO, query-string tokens only for reading (#500), and sign-in required for the app configuration and system info (#499, #502).
+    - **Sharing** - Permissions on an existing share can be changed, and several people can be selected in the share window (discussions #517, #519).
+    - **Folders** - Name and color checks, group folder names unique in the group, and group sharing through the API (#511 to #516).
+    - **Fixes** - SSO sign-in (#496), upload formats (#510), the storage quota (#509), and recording sessions (#505).
+
 !!! info "Version 0.10.16-alpha - Tencent Cloud ASR, interface language, API limits"
     One column and seven indexes are added at startup; no configuration changes are required.
 
@@ -144,16 +152,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Inquire and API** - A folder filter in Inquire (#428), and an operationId on every API operation (#443).
     - **Fixes** - Long file names (#430), recordings deleted during transcription (#432), and dependencies pinned and verified.
 
-!!! info "Version 0.10.14-alpha - Theme with the account, transcript editor and processing fixes"
-    Two new columns are added at startup; no configuration changes are required.
-
-    - **Theme** - The light or dark mode and the color scheme are saved with the account (#419).
-    - **Transcript editor** - Every speaker can be chosen for a segment again (#425).
-    - **Processing** - Recordings stuck in QUEUED or SUMMARIZING can be reset, and a transcript is no longer lost when reprocessing cannot be queued (#420, #423, #424).
-    - **Errors** - The exception line of a failed WhisperX request is kept (#422), and "Authentication Error" is no longer shown for an ID that contains "401".
-
 !!! note "Earlier releases"
-    Release notes for v0.10.13 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.14 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
