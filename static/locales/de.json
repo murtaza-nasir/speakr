@@ -499,6 +499,8 @@
     "seconds": "Sekunden",
     "settings": {
       "asrTimeoutDesc": "Maximale Zeit in Sekunden, um auf den Abschluss der ASR-Transkription zu warten. Standard ist 1800 Sekunden (30 Minuten).",
+      "loginMaxFailedAttemptsDesc": "Falsche Passwörter für ein Konto von einer Adresse, bevor die Passwortanmeldung von dieser Adresse gesperrt wird. 0 schaltet die Sperre ab.",
+      "loginLockoutMinutesDesc": "Dauer einer Anmeldesperre in Minuten. Die Sperre endet früher, wenn das Passwort geändert oder das Konto von einem Administrator entsperrt wird.",
       "defaultSummaryPromptDesc": "Standard-Zusammenfassungsprompt, der verwendet wird, wenn Benutzer keinen eigenen Prompt festgelegt haben. Dies dient als Basis-Prompt für alle Benutzer.",
       "maxFileSizeDesc": "Maximale Dateigröße für Audio-Uploads in Megabyte (MB).",
       "recordingDisclaimerDesc": "Rechtlicher Hinweis, der Benutzern vor Beginn der Aufnahme angezeigt wird. Unterstützt Markdown-Formatierung. Leer lassen zum Deaktivieren.",
@@ -558,6 +560,8 @@
     "transcriptionBudgetPlaceholder": "Leer lassen für unbegrenzt",
     "transcriptionUsage": "Transkriptionsnutzung",
     "updateUser": "Benutzer Aktualisieren",
+    "loginLocked": "Anmeldung gesperrt",
+    "unlockLogin": "Anmeldung entsperren",
     "userCustomPrompt": "Benutzerdefinierter Prompt",
     "userCustomPromptDesc": "Wenn der Benutzer seinen eigenen Prompt in den Kontoeinstellungen festgelegt hat",
     "userManagement": "Benutzerverwaltung",

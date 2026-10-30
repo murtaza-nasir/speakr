@@ -251,7 +251,7 @@
                             <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
                                 <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.id }</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }<i v-if="user.login_locked" class="fas fa-lock ml-2 text-[var(--text-warning-strong)]" :title="t('adminDashboard.loginLocked')" :aria-label="t('adminDashboard.loginLocked')"></i></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.email }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                         <span v-if="user.is_admin" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">${ t('common.yes') }</span>
@@ -1452,6 +1452,7 @@ Summarization Instructions:
                     </div>
                     </div>
                     <div class="modal-footer">
+                        <button v-if="editingUser.login_locked" type="button" @click="unlockUserLogin" class="btn btn--ghost mr-auto"><i class="fas fa-lock-open mr-1"></i>${ t('adminDashboard.unlockLogin') }</button>
                         <button type="button" @click="showEditUserModal = false" class="btn btn--ghost">${ t('buttons.cancel') }</button>
                         <button type="submit" class="btn btn--primary">${t('adminDashboard.updateUser')}</button>
                     </div>
@@ -2444,6 +2445,8 @@ Summarization Instructions:
                             'max_audio_only_video_size_mb',
                             'default_storage_quota_mb',
                             'asr_timeout_seconds',
+                            'login_max_failed_attempts',
+                            'login_lockout_minutes',
                             'default_timezone',
                             'admin_default_summary_prompt',
                             'recording_disclaimer',
@@ -2841,6 +2844,8 @@ Summarization Instructions:
                         'max_file_size_mb': 'adminDashboard.settings.maxFileSizeDesc',
                         'max_audio_only_video_size_mb': 'adminDashboard.settings.maxAudioOnlyVideoSizeDesc',
                         'asr_timeout_seconds': 'adminDashboard.settings.asrTimeoutDesc',
+                        'login_max_failed_attempts': 'adminDashboard.settings.loginMaxFailedAttemptsDesc',
+                        'login_lockout_minutes': 'adminDashboard.settings.loginLockoutMinutesDesc',
                         'admin_default_summary_prompt': 'adminDashboard.settings.defaultSummaryPromptDesc',
                         'recording_disclaimer': 'adminDashboard.settings.recordingDisclaimerDesc',
                         'upload_disclaimer': 'adminDashboard.settings.uploadDisclaimerDesc',
@@ -2970,6 +2975,34 @@ Summarization Instructions:
                     }
                 };
                 
+                // Ends the login lock without saving the rest of the form (#529)
+                const unlockUserLogin = async () => {
+                    const user = editingUser.value;
+                    if (!user) return;
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        const response = await fetch(`/admin/users/${user.id}`, {
+                            method: 'PUT',
+                            headers: headers,
+                            body: JSON.stringify({ unlock_login: true })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error || t('adminDashboard.updateUserFailed'));
+                        }
+                        user.login_locked = false;
+                        const row = users.value.find(u => u.id === user.id);
+                        if (row) row.login_locked = false;
+                    } catch (error) {
+                        console.error('Error unlocking user login:', error);
+                        alert(error.message);
+                    }
+                };
+
                 const confirmDeleteUser = (user) => {
                     userToDelete.value = user;
                     showDeleteUserModal.value = true;
@@ -4155,6 +4188,7 @@ Summarization Instructions:
                     addUser,
                     editUser,
                     updateUser,
+                    unlockUserLogin,
                     confirmDeleteUser,
                     deleteUser,
                     toggleAdminStatus,

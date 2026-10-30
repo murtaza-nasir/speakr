@@ -499,6 +499,8 @@
     "seconds": "segundos",
     "settings": {
       "asrTimeoutDesc": "Tempo máximo em segundos para aguardar a conclusão da transcrição de ASR. O padrão é 1.800 segundos (30 minutos).",
+      "loginMaxFailedAttemptsDesc": "Senhas incorretas para uma conta a partir de um mesmo endereço antes que o login por senha desse endereço seja bloqueado. 0 desativa o bloqueio.",
+      "loginLockoutMinutesDesc": "Minutos de duração de um bloqueio de login. O bloqueio termina antes se a senha for alterada ou se um administrador desbloquear a conta.",
       "defaultSummaryPromptDesc": "Instrução de resumo padrão usada quando os usuários não configuraram sua própria instrução. Serve como a instrução base para todos os usuários.",
       "maxFileSizeDesc": "Tamanho máximo de arquivo permitido para uploads de áudio em megabytes (MB).",
       "recordingDisclaimerDesc": "Aviso legal mostrado aos usuários antes do início da gravação. Suporta formatação Markdown. Deixe em branco para desabilitar.",
@@ -558,6 +560,8 @@
     "transcriptionBudgetPlaceholder": "Deixe em branco para ilimitado",
     "transcriptionUsage": "Uso de Transcrição",
     "updateUser": "Atualizar Usuário",
+    "loginLocked": "Login bloqueado",
+    "unlockLogin": "Desbloquear login",
     "userCustomPrompt": "Instrução Personalizada do Usuário",
     "userCustomPromptDesc": "Se o usuário configurou sua própria instrução nas configurações da conta",
     "userManagement": "Gerenciamento de Usuários",

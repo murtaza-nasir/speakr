@@ -99,6 +99,8 @@ Every user account is a potential security vector. Strong passwords are your fir
 
 Admin accounts require extra vigilance. Each admin can do everything you can do, including creating more admins or deleting all users. Limit admin access to the absolute minimum needed for operations. When someone no longer needs admin privileges, revoke them immediately.
 
+After repeated wrong passwords from one address, password sign-in for that account from that address is refused for a set number of minutes; see [Login Lock](system-settings.md#login-lock). A locked account is shown with a lock icon beside its username, and the lock is ended with **Unlock login** in the Edit User dialog.
+
 Inactive accounts pose particular risks. They might have weak or compromised passwords that no one is monitoring. Regular audits help you identify and remove these vulnerabilities before they become problems.
 
 ---

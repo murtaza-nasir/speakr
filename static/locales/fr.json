@@ -499,6 +499,8 @@
     "seconds": "secondes",
     "settings": {
       "asrTimeoutDesc": "Temps maximal en secondes pour attendre la fin de la transcription ASR. La valeur par défaut est 1800 secondes (30 minutes).",
+      "loginMaxFailedAttemptsDesc": "Nombre de mots de passe erronés pour un compte depuis une même adresse avant le verrouillage de la connexion par mot de passe depuis cette adresse. 0 désactive le verrouillage.",
+      "loginLockoutMinutesDesc": "Durée du verrouillage de connexion, en minutes. Le verrouillage prend fin plus tôt si le mot de passe est modifié ou si un administrateur déverrouille le compte.",
       "defaultSummaryPromptDesc": "Invite de résumé par défaut utilisée lorsque les utilisateurs n'ont pas défini leur propre invite. Cela sert d'invite de base pour tous les utilisateurs.",
       "maxFileSizeDesc": "Taille maximale de fichier autorisée pour les téléchargements audio en mégaoctets (Mo).",
       "recordingDisclaimerDesc": "Avis légal affiché aux utilisateurs avant le début de l'enregistrement. Prend en charge le formatage Markdown. Laisser vide pour désactiver.",
@@ -558,6 +560,8 @@
     "transcriptionBudgetPlaceholder": "Laissez vide pour illimité",
     "transcriptionUsage": "Utilisation de la Transcription",
     "updateUser": "Mettre à jour l'Utilisateur",
+    "loginLocked": "Connexion verrouillée",
+    "unlockLogin": "Déverrouiller la connexion",
     "userCustomPrompt": "Invite Personnalisée de l'Utilisateur",
     "userCustomPromptDesc": "Si l'utilisateur a défini sa propre invite dans les paramètres du compte",
     "userManagement": "Gestion des Utilisateurs",

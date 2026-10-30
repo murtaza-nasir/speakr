@@ -499,6 +499,8 @@
     "seconds": "seconds",
     "settings": {
       "asrTimeoutDesc": "Maximum time in seconds to wait for ASR transcription to complete. Default is 1800 seconds (30 minutes).",
+      "loginMaxFailedAttemptsDesc": "Wrong passwords for one account from one address before password sign-in from that address is locked. Set it to 0 to turn the lock off.",
+      "loginLockoutMinutesDesc": "Minutes a login lock lasts. The lock ends earlier when the password is changed or the account is unlocked by an administrator.",
       "defaultSummaryPromptDesc": "Default summarization prompt used when users have not set their own prompt. This serves as the base prompt for all users.",
       "maxFileSizeDesc": "Maximum file size allowed for audio uploads in megabytes (MB).",
       "recordingDisclaimerDesc": "Legal disclaimer shown to users before recording starts. Supports Markdown formatting. Leave empty to disable.",
@@ -558,6 +560,8 @@
     "transcriptionBudgetPlaceholder": "Leave empty for unlimited",
     "transcriptionUsage": "Transcription Usage",
     "updateUser": "Update User",
+    "loginLocked": "Login locked",
+    "unlockLogin": "Unlock login",
     "userCustomPrompt": "User Custom Prompt",
     "userCustomPromptDesc": "If the user has set their own prompt in account settings",
     "userManagement": "User Management",

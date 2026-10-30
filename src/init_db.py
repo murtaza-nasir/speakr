@@ -1014,6 +1014,24 @@ def _run_migrations(app, engine):
             )
             app.logger.info("Initialized default max_file_size_mb setting")
 
+        if not SystemSetting.query.filter_by(key='login_max_failed_attempts').first():
+            SystemSetting.set_setting(
+                key='login_max_failed_attempts',
+                value='5',
+                description='Wrong passwords for one account from one address before password sign-in from that address is locked. Set it to 0 to turn the lock off.',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default login_max_failed_attempts setting")
+
+        if not SystemSetting.query.filter_by(key='login_lockout_minutes').first():
+            SystemSetting.set_setting(
+                key='login_lockout_minutes',
+                value='15',
+                description='Minutes a login lock lasts.',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default login_lockout_minutes setting")
+
         if not SystemSetting.query.filter_by(key='max_audio_only_video_size_mb').first():
             # Default to 4x the regular limit so a default deployment lets
             # ~1 GB videos through when only the extracted audio will be
