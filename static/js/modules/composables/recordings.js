@@ -222,16 +222,6 @@ export function useRecordings(state, utils, reprocessComposable) {
             incognitoRecording.value = null;
         }
 
-        // Also clear any orphaned incognito data when selecting a non-incognito recording
-        // This handles edge cases like page refresh where the above check doesn't trigger
-        if (recording?.id !== 'incognito' && IncognitoStorage.hasIncognitoRecording()) {
-            console.log('[Incognito] Clearing orphaned incognito data');
-            IncognitoStorage.clearIncognitoRecording();
-            if (incognitoRecording) {
-                incognitoRecording.value = null;
-            }
-        }
-
         // Reset modal audio state when switching recordings
         if (utils.resetModalAudioState) {
             utils.resetModalAudioState();

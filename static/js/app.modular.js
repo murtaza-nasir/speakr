@@ -4117,14 +4117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uploadComposable.resurfaceFailedUploads();
                 window.addEventListener('online', () => uploadComposable.resurfaceFailedUploads());
 
-                // Clean up orphaned incognito data if we're not viewing incognito recording
-                // This can happen if user navigated away without the cleanup triggering
-                if (uploadComposable.hasIncognitoRecording() && selectedRecording.value?.id !== 'incognito') {
-                    console.log('[App] Cleaning up orphaned incognito data from sessionStorage');
-                    sessionStorage.removeItem('speakr_incognito_recording');
-                    incognitoRecording.value = null;
-                }
-
                 // Load config
                 try {
                     const response = await fetch('/api/config');
@@ -4196,7 +4188,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Initialize UI settings from localStorage
                 uiComposable.initializeUI();
 
-                // Load incognito recording from sessionStorage if exists (only if feature is enabled)
+                // Restore the incognito recording after a reload; sessionStorage
+                // keeps it until the tab closes (#528). Only if the feature is enabled.
                 if (enableIncognitoMode.value) {
                     uploadComposable.loadIncognitoRecording();
                 }
