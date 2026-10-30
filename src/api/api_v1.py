@@ -1248,16 +1248,16 @@ def list_recordings():
         query = query.join(RecordingTag).filter(RecordingTag.tag_id == tag_id)
 
     # Folder filter. Accepts an integer folder id, or the literal "none" to
-    # return recordings that are not in any folder. Anything else is ignored.
+    # return recordings that are not in any folder. Anything else is a 400,
+    # as on /api/v1/search, so a bad value never returns the unfiltered list (#514).
     if folder_filter:
         if folder_filter.lower() == 'none':
             query = query.filter(Recording.folder_id.is_(None))
+        elif folder_filter.isdecimal():
+            query = query.filter(Recording.folder_id == int(folder_filter))
         else:
-            try:
-                folder_id_int = int(folder_filter)
-                query = query.filter(Recording.folder_id == folder_id_int)
-            except ValueError:
-                pass
+            return jsonify({'error': translate('server.apiError.invalid_folder_id'),
+                            'code': 'invalid_parameter'}), 400
 
     # Search filter
     if search_query:
@@ -1408,7 +1408,7 @@ def search_recordings_v1():
     if folder:
         if folder.lower() == 'none':
             folder_id = 'none'
-        elif folder.isdigit():
+        elif folder.isdecimal():
             folder_id = int(folder)
         else:
             return jsonify({'error': translate('server.apiError.invalid_folder_id'), 'code': 'invalid_parameter'}), 400
