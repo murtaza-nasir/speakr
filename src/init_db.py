@@ -139,6 +139,47 @@ def _clear_stale_session_links(engine, app):
         app.logger.info(f"Cleared {cleared} recording-session link(s) to deleted recordings")
 
 
+def _add_folder_group_name_index(engine, app):
+    """Make a group folder name unique within its group (#513).
+
+    The table constraint is (name, user_id), so two admins of one group could
+    each create a folder with the same name when their requests overlapped.
+    The index is added next to that constraint; the table is not rebuilt.
+    Folders that already share a name in a group keep the oldest name, and
+    the others get a " (2)", " (3)", ... suffix so the index can be created.
+    """
+    from src.models.organization import Folder
+    max_len = Folder.__table__.c.name.type.length
+    with engine.begin() as conn:
+        rows = conn.execute(text(
+            'SELECT id, name, user_id, group_id FROM folder')).fetchall()
+        group_names = {(r.name, r.group_id) for r in rows if r.group_id is not None}
+        user_names = {(r.name, r.user_id) for r in rows}
+        kept = set()
+        for row in sorted((r for r in rows if r.group_id is not None), key=lambda r: r.id):
+            if (row.name, row.group_id) not in kept:
+                kept.add((row.name, row.group_id))
+                continue
+            n = 2
+            while True:
+                suffix = f' ({n})'
+                candidate = row.name[:max_len - len(suffix)] + suffix
+                if (candidate, row.group_id) not in group_names and (candidate, row.user_id) not in user_names:
+                    break
+                n += 1
+            conn.execute(text('UPDATE folder SET name = :name WHERE id = :id'),
+                         {'name': candidate, 'id': row.id})
+            group_names.add((candidate, row.group_id))
+            user_names.add((candidate, row.user_id))
+            kept.add((candidate, row.group_id))
+            app.logger.warning(
+                f"Renamed folder {row.id} in group {row.group_id} to '{candidate}': "
+                f"another folder in that group already had its name")
+        conn.execute(text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_folder_group_name '
+            'ON folder (name, group_id) WHERE group_id IS NOT NULL'))
+
+
 def initialize_database(app):
     """
     Initialize database schema and run migrations.
@@ -1258,6 +1299,14 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Recording-session link cleanup skipped, retried next start: {e}")
+
+        # Two admins could create the same folder name in one group (#513).
+        try:
+            run_once(engine, '0006_folder_group_name_index',
+                     lambda eng: _add_folder_group_name_index(eng, app), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Group folder name index skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

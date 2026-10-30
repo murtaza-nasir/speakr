@@ -129,8 +129,17 @@ class Folder(db.Model):
     # One-to-many relationship with recordings
     recordings = db.relationship('Recording', back_populates='folder', lazy=True)
 
-    # Unique constraint: folder name must be unique per user
-    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_user_folder_uc'),)
+    # Unique constraint: folder name must be unique per user. A group folder
+    # name is also unique within its group, whoever created it (#513); the
+    # startup migration 0006 adds that index to existing databases.
+    __table_args__ = (
+        db.UniqueConstraint('name', 'user_id', name='_user_folder_uc'),
+        db.Index(
+            'uq_folder_group_name', 'name', 'group_id', unique=True,
+            sqlite_where=db.text('group_id IS NOT NULL'),
+            postgresql_where=db.text('group_id IS NOT NULL'),
+        ),
+    )
 
     @property
     def is_group_folder(self):
