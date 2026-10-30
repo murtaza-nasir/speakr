@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.17-alpha: SSO security update, share permissions, folder fixes"
-    An Authlib security update for SSO, read-only query-string tokens, permission changes on existing shares, a searchable share window and folder fixes.
+!!! success "Latest Release: v0.10.18-alpha: login lock, incognito fixes, scoped API tools"
+    A password sign-in lock per account and client address, working chat on incognito recordings, incognito recordings kept through a reload, and an API specification limited to the scopes of the token.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.17-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.18-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.18-alpha - Login lock, incognito fixes, scoped API tools"
+    A `login_failure` table and two login settings are added at startup.
+
+    - **Security** - Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
+    - **Incognito** - Chat works again (#527), and the recording is kept through a page reload (#528).
+    - **API** - The OpenAPI document lists only the operations a scoped token may call (#526).
+
 !!! info "Version 0.10.17-alpha - SSO security update, share permissions, folder fixes"
     Two indexes are added at startup. Set `TRUSTED_PROXIES` to the reverse proxy address, and send API tokens in the `Authorization` header for writes.
 
@@ -144,16 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **API** - Account-wide limits and a cap on active tokens (discussion #484), and a CSRF check on the token API (#478).
     - **Fixes** - Faster recording lists (discussion #483), clear errors for unreadable uploads (#482), and #475, #476, #479, #485.
 
-!!! info "Version 0.10.15-alpha - Security fixes, find and replace, notes in summaries"
-    Two columns and one index are added at startup. Set `APP_BASE_URL` if Speakr sends email, and `TRUSTED_PROXY_HOPS=0` if no reverse proxy is in front of it.
-
-    - **Security** - Email links, the remember-me cookie, recording files, summary display, the share target, Markdown rendering and gunicorn (#434 to #439, #442).
-    - **Transcripts** - Find and replace in the transcript editors, and notes given to the summarizer as context (#440).
-    - **Inquire and API** - A folder filter in Inquire (#428), and an operationId on every API operation (#443).
-    - **Fixes** - Long file names (#430), recordings deleted during transcription (#432), and dependencies pinned and verified.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.14 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.15 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

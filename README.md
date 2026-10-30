@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.17--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.18--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -236,7 +236,13 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.17-alpha)
+## Latest Release (v0.10.18-alpha)
+
+- Chat on incognito recordings works again (#527), and an incognito recording is kept through a page reload (#528).
+- Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
+- The API specification lists only the operations a scoped token may call, so tool servers such as Open WebUI offer only those tools (#526).
+
+### v0.10.17-alpha
 
 - Security update of Authlib for SSO, and SSO sign-in works again under the default security policy (#496).
 - API tokens in the query string only for reading, and sign-in required for the app configuration and system info (#499, #500, #502).
@@ -250,14 +256,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Account-wide API limits and a cap on active tokens (discussion #484), and a CSRF check on the token API (#478).
 - Faster recording lists (discussion #483), clear errors for unreadable uploads (#482), and fixes for #475, #476, #479 and #485.
 
-### v0.10.15-alpha
-
-- Seven security fixes: email links, the remember-me cookie, recording files, summary display, the share target, Markdown rendering and gunicorn (#434 to #439, #442).
-- Find and replace in the transcript editors, and notes given to the summarizer as context (#440).
-- Inquire can be filtered by folder (#428), and the API specification has an operationId on every operation (#443).
-- Long file names (#430) and recordings deleted during transcription (#432) no longer cause errors, and the dependencies are pinned and verified.
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.17-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.18-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

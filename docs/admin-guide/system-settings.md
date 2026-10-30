@@ -47,7 +47,7 @@ Wrong passwords on the sign-in page are counted for each account and client addr
 
 For a locked account, the same message is shown as for a wrong password. The count is reset by a correct password before the limit is reached. In User Management, a locked account has a lock icon beside its username, and every lock on the account is ended with **Unlock login** in the Edit User dialog. The lock also ends when a new password is set by an administrator or through a password-reset email. SSO sign-in is not affected.
 
-The client address is taken from the reverse proxy's headers, so set `TRUSTED_PROXIES` as described in [Reverse-proxy hops](../getting-started/installation.md#reverse-proxy-hops); without it, a client can choose its own address. IPv6 addresses are counted by their /64 network. Separately, 10 sign-in attempts per minute are allowed from one address.
+Behind a reverse proxy, the client address is read from the proxy's `X-Forwarded-For` header, as for the per-address limit below. Set `TRUSTED_PROXIES` as described in [Reverse-proxy hops](../getting-started/installation.md#reverse-proxy-hops) so that a client connecting to Speakr directly cannot choose its own address. Without a reverse proxy, set `TRUSTED_PROXY_HOPS=0`. IPv6 addresses are counted by their /64 network. Separately, 10 sign-in attempts per minute are allowed from one address.
 
 ## Default Timezone
 
