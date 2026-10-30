@@ -173,6 +173,9 @@ def create_joined_recording(owner, parts, *, title=None, notes=None, folder=None
         db.session.add(RecordingTag(recording_id=recording.id, tag_id=tag.id, order=order, added_at=now))
     for p in parts:
         p.recording_id = recording.id
+    if folder is not None:
+        from src.api.folders import apply_group_folder_shares
+        apply_group_folder_shares(recording, folder)
     db.session.commit()
 
     try:

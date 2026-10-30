@@ -1564,13 +1564,12 @@ def get_recordings_paginated():
             if folder_filter.lower() == 'none':
                 # Filter recordings with no folder
                 stmt = stmt.where(Recording.folder_id.is_(None))
+            elif folder_filter.isdecimal():
+                stmt = stmt.where(Recording.folder_id == int(folder_filter))
             else:
-                # Filter by specific folder_id
-                try:
-                    folder_id = int(folder_filter)
-                    stmt = stmt.where(Recording.folder_id == folder_id)
-                except ValueError:
-                    pass  # Invalid folder_id, ignore filter
+                # A bad value is refused, not ignored (#514).
+                return jsonify({'error': translate('server.apiError.invalid_folder_id'),
+                                'code': 'invalid_parameter'}), 400
 
         if needs_transcription:
             stmt = stmt.where(_needs_transcription_condition())
@@ -2921,6 +2920,10 @@ def ingest_uploaded_recording(
                 added_at=datetime.utcnow()
             )
             db.session.add(new_association)
+
+        if selected_folder:
+            from src.api.folders import apply_group_folder_shares
+            apply_group_folder_shares(recording, selected_folder)
 
         db.session.commit()
 

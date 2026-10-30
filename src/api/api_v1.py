@@ -1079,6 +1079,9 @@ def _recording_list_item(r, refs=None, shared=None):
         from src.services.external_refs import refs_for
         refs = [x.to_dict() for x in refs_for(r.id, current_user.id)]
     from src.services.recording_changes import effective_updated_at, iso_z
+    from src.services.recording_scope import visible_folder
+    # A shared row replaces folder and folder_id from its share (#516).
+    folder = visible_folder(r, current_user.id) if shared is None else None
     return {
         'id': r.id,
         'title': r.title,
@@ -1099,8 +1102,8 @@ def _recording_list_item(r, refs=None, shared=None):
         'processing_time_seconds': r.processing_time_seconds,
         'transcription_duration_seconds': r.transcription_duration_seconds,
         'summarization_duration_seconds': r.summarization_duration_seconds,
-        'folder_id': r.folder_id,
-        'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
+        'folder_id': folder['id'] if folder else None,
+        'folder': folder,
         'deletion_exempt': r.deletion_exempt,
         'error_message': r.error_message if r.status == 'FAILED' else None,
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
@@ -1248,16 +1251,16 @@ def list_recordings():
         query = query.join(RecordingTag).filter(RecordingTag.tag_id == tag_id)
 
     # Folder filter. Accepts an integer folder id, or the literal "none" to
-    # return recordings that are not in any folder. Anything else is ignored.
+    # return recordings that are not in any folder. Anything else is a 400,
+    # as on /api/v1/search, so a bad value never returns the unfiltered list (#514).
     if folder_filter:
         if folder_filter.lower() == 'none':
             query = query.filter(Recording.folder_id.is_(None))
+        elif folder_filter.isdecimal():
+            query = query.filter(Recording.folder_id == int(folder_filter))
         else:
-            try:
-                folder_id_int = int(folder_filter)
-                query = query.filter(Recording.folder_id == folder_id_int)
-            except ValueError:
-                pass
+            return jsonify({'error': translate('server.apiError.invalid_folder_id'),
+                            'code': 'invalid_parameter'}), 400
 
     # Search filter
     if search_query:
@@ -1408,7 +1411,7 @@ def search_recordings_v1():
     if folder:
         if folder.lower() == 'none':
             folder_id = 'none'
-        elif folder.isdigit():
+        elif folder.isdecimal():
             folder_id = int(folder)
         else:
             return jsonify({'error': translate('server.apiError.invalid_folder_id'), 'code': 'invalid_parameter'}), 400
@@ -1643,9 +1646,17 @@ def get_recording(recording_id):
         return jsonify(api_error('recording_not_found')), 404
 
     from src.services.recording_changes import effective_updated_at, iso_z
+    from src.services.recording_scope import visible_folder
     include = request.args.get('include', 'transcription,summary,notes')
     include_fields = [f.strip() for f in include.split(',')]
     format_type = request.args.get('format', 'full')
+
+    share = None
+    if recording.user_id != current_user.id:
+        from src.models import InternalShare
+        share = InternalShare.query.filter_by(
+            recording_id=recording.id, shared_with_user_id=current_user.id).first()
+    folder = visible_folder(recording, current_user.id, share)
 
     response = {
         'id': recording.id,
@@ -1666,8 +1677,8 @@ def get_recording(recording_id):
         'processing_time_seconds': recording.processing_time_seconds,
         'transcription_duration_seconds': recording.transcription_duration_seconds,
         'summarization_duration_seconds': recording.summarization_duration_seconds,
-        'folder_id': recording.folder_id,
-        'folder': {'id': recording.folder.id, 'name': recording.folder.name} if recording.folder else None,
+        'folder_id': folder['id'] if folder else None,
+        'folder': folder,
         'deletion_exempt': recording.deletion_exempt,
         'events': [e.api_dict() for e in recording.events] if hasattr(recording, 'events') else [],
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
@@ -1911,21 +1922,16 @@ def update_recording(recording_id):
         if new_folder_id is None:
             recording.folder_id = None
         else:
-            from src.models.organization import Folder, GroupMembership
+            from src.models.organization import Folder
             target = db.session.get(Folder, new_folder_id)
             if not target:
                 return jsonify(api_error('folder_id_not_found', folderId=new_folder_id)), 404
-            # Personal folders: must own. Group folders: must be a member.
-            if target.group_id is None:
-                if target.user_id != current_user.id:
-                    return jsonify(api_error('target_folder_access_denied')), 403
-            else:
-                membership = GroupMembership.query.filter_by(
-                    user_id=current_user.id, group_id=target.group_id
-                ).first()
-                if not membership:
-                    return jsonify(api_error('target_folder_access_denied')), 403
+            from src.api.folders import apply_group_folder_shares, folder_assign_error
+            error_key = folder_assign_error(recording, target, current_user, 'target_folder_access_denied')
+            if error_key:
+                return jsonify(api_error(error_key)), 403
             recording.folder_id = new_folder_id
+            apply_group_folder_shares(recording, target)
 
     db.session.commit()
 
@@ -3424,6 +3430,7 @@ def batch_update_recordings():
     # once up front. The same destination folder applies to every recording
     # in the batch, so the permission check is identical for all of them.
     target_folder_id = None
+    target = None
     if 'folder_id' in updates:
         new_folder_id = updates['folder_id']
         if new_folder_id is not None:
@@ -3459,6 +3466,13 @@ def batch_update_recordings():
             results.append({'id': recording_id, 'success': False, **api_error('permission_denied')})
             continue
 
+        if target is not None:
+            from src.api.folders import folder_assign_error
+            error_key = folder_assign_error(recording, target, current_user, 'target_folder_access_denied')
+            if error_key:
+                results.append({'id': recording_id, 'success': False, **api_error(error_key)})
+                continue
+
         try:
             if 'is_inbox' in updates:
                 recording.is_inbox = bool(updates['is_inbox'])
@@ -3470,6 +3484,9 @@ def batch_update_recordings():
                 # `target_folder_id` already validated above (None to remove,
                 # or a valid folder id the caller has access to).
                 recording.folder_id = target_folder_id
+                if target is not None:
+                    from src.api.folders import apply_group_folder_shares
+                    apply_group_folder_shares(recording, target)
 
             # Handle tag additions.
             # Authorize each tag_id: personal tags must be owned, group
