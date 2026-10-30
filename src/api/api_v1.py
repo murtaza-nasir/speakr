@@ -1926,6 +1926,8 @@ def update_recording(recording_id):
                 if not membership:
                     return jsonify(api_error('target_folder_access_denied')), 403
             recording.folder_id = new_folder_id
+            from src.api.folders import apply_group_folder_shares
+            apply_group_folder_shares(recording, target)
 
     db.session.commit()
 
@@ -3424,6 +3426,7 @@ def batch_update_recordings():
     # once up front. The same destination folder applies to every recording
     # in the batch, so the permission check is identical for all of them.
     target_folder_id = None
+    target = None
     if 'folder_id' in updates:
         new_folder_id = updates['folder_id']
         if new_folder_id is not None:
@@ -3470,6 +3473,9 @@ def batch_update_recordings():
                 # `target_folder_id` already validated above (None to remove,
                 # or a valid folder id the caller has access to).
                 recording.folder_id = target_folder_id
+                if target is not None:
+                    from src.api.folders import apply_group_folder_shares
+                    apply_group_folder_shares(recording, target)
 
             # Handle tag additions.
             # Authorize each tag_id: personal tags must be owned, group

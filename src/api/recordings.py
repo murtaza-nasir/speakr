@@ -2921,6 +2921,10 @@ def ingest_uploaded_recording(
             )
             db.session.add(new_association)
 
+        if selected_folder:
+            from src.api.folders import apply_group_folder_shares
+            apply_group_folder_shares(recording, selected_folder)
+
         db.session.commit()
 
         if selected_tags:

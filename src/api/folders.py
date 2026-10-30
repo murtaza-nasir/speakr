@@ -697,6 +697,16 @@ def bulk_assign_folder():
     return jsonify({'success': True, 'updated_count': updated_count})
 
 
+def apply_group_folder_shares(recording, folder):
+    """Share a recording placed in a group folder, as that folder's settings say.
+
+    Every path that puts a recording in a folder calls this, so the v1 API and
+    uploads share the same way as moving it in the web app (#515).
+    """
+    if folder is not None and folder.group_id and (folder.auto_share_on_apply or folder.share_with_group_lead):
+        _apply_folder_auto_shares(recording, folder)
+
+
 def _apply_folder_auto_shares(recording, folder):
     """
     Apply auto-shares for a group folder when a recording is assigned to it.
