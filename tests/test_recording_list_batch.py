@@ -678,6 +678,16 @@ def _legacy_overview(viewer_id):
                         .order_by(Share.created_at.desc(), Share.id.desc()).all()]
         shared_by_me, shared_with_me = [], []
         if ENABLE_INTERNAL_SHARING:
+            def _grantable(recording):
+                if recording.user_id == current_user.id:
+                    return {'can_edit': True, 'can_reshare': True}
+                held = InternalShare.query.filter_by(
+                    recording_id=recording.id, shared_with_user_id=current_user.id).first()
+                if held is None:
+                    return {'can_edit': False, 'can_reshare': False}
+                return {'can_edit': bool(held.can_edit and held.can_reshare),
+                        'can_reshare': bool(held.can_reshare)}
+
             by_recording = {}
             for share in (InternalShare.query.filter_by(owner_id=current_user.id)
                           .order_by(InternalShare.created_at.desc(), InternalShare.id.desc()).all()):
@@ -687,6 +697,7 @@ def _legacy_overview(viewer_id):
                 entry = by_recording.setdefault(recording.id, {
                     'recording_id': recording.id,
                     'recording_title': recording.title or recording.original_filename or f'#{recording.id}',
+                    'grantable': _grantable(recording),
                     'recipients': [],
                 })
                 source = _source(share)
@@ -698,6 +709,7 @@ def _legacy_overview(viewer_id):
                     'can_reshare': bool(share.can_reshare),
                     'source': source,
                     'revocable': source['type'] == 'manual',
+                    'permissions_editable': (share.source_type or 'manual') == 'manual',
                     'created_at': share.created_at.isoformat() if share.created_at else None,
                 })
             shared_by_me = list(by_recording.values())
