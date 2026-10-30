@@ -499,6 +499,8 @@
     "seconds": "秒",
     "settings": {
       "asrTimeoutDesc": "等待 ASR 转录完成的最大时间（秒）。默认为 1800 秒（30 分钟）。",
+      "loginMaxFailedAttemptsDesc": "同一地址对同一账户输入错误密码达到此次数后，将锁定该地址的密码登录。0 表示关闭锁定。",
+      "loginLockoutMinutesDesc": "登录锁定持续的分钟数。更改密码或管理员解除锁定后，锁定会提前结束。",
       "defaultSummaryPromptDesc": "用户未设置自己的提示时使用的默认摘要提示。这作为所有用户的基础提示。",
       "maxFileSizeDesc": "允许的音频上传最大文件大小（兆字节）。",
       "recordingDisclaimerDesc": "录音开始前向用户显示的法律免责声明。支持 Markdown 格式。留空以禁用。",
@@ -558,6 +560,8 @@
     "transcriptionBudgetPlaceholder": "留空表示无限制",
     "transcriptionUsage": "转录使用情况",
     "updateUser": "更新用户",
+    "loginLocked": "登录已锁定",
+    "unlockLogin": "解除登录锁定",
     "userCustomPrompt": "用户自定义提示",
     "userCustomPromptDesc": "如果用户在账户设置中设置了自己的提示",
     "userManagement": "用户管理",

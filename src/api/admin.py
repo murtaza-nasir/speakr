@@ -21,6 +21,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
+from src.services import login_lock
 from src.config.startup import get_file_monitor_functions
 
 # Create blueprint
@@ -137,6 +138,8 @@ def admin_get_users():
         users = User.query.filter(User.id.in_(member_ids)).all()
 
     user_data = []
+    # Only a site admin can unlock an account, so only a site admin sees the lock (#529)
+    locked_ids = login_lock.locked_user_ids([u.id for u in users]) if current_user.is_admin else set()
 
     # Aggregate recordings_count and storage_used in two grouped queries
     # so the page doesn't re-query the recording table once per user.
@@ -184,7 +187,8 @@ def admin_get_users():
             'monthly_transcription_budget_minutes': (user.monthly_transcription_budget // 60) if user.monthly_transcription_budget else None,
             'current_transcription_usage': current_transcription_usage,
             'current_transcription_usage_minutes': current_transcription_usage // 60,
-            'transcription_usage_percentage': round(transcription_usage_percentage, 1)
+            'transcription_usage_percentage': round(transcription_usage_percentage, 1),
+            'login_locked': user.id in locked_ids
         })
     
     return jsonify(user_data)
@@ -298,7 +302,12 @@ def admin_update_user(user_id):
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
         # Sign the account out of every browser (#437)
         user.end_all_sessions()
-    
+        # A new password ends any login lock on the account (#529)
+        login_lock.clear_failures(user.id)
+
+    if data.get('unlock_login') is True:
+        login_lock.clear_failures(user.id)
+
     if 'is_admin' in data:
         new_is_admin = bool(data['is_admin'])
         # Guard against demoting the last remaining admin, which would lock
@@ -368,7 +377,8 @@ def admin_update_user(user_id):
         'monthly_transcription_budget_minutes': (user.monthly_transcription_budget // 60) if user.monthly_transcription_budget else None,
         'current_transcription_usage': current_transcription_usage,
         'current_transcription_usage_minutes': current_transcription_usage // 60,
-        'transcription_usage_percentage': round(transcription_usage_percentage, 1)
+        'transcription_usage_percentage': round(transcription_usage_percentage, 1),
+        'login_locked': bool(login_lock.locked_user_ids([user.id]))
     })
 
 

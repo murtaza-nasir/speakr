@@ -41,6 +41,14 @@ Setting this too low causes longer recordings to fail even when the transcriptio
 
 Your optimal timeout depends on your transcription service's performance and your users' recording lengths. Monitor processing times for successful transcriptions and set the timeout comfortably above your longest normal processing time. If you regularly process multi-hour recordings, you might need 3,600 seconds or more.
 
+## Login Lock
+
+Wrong passwords on the sign-in page are counted for each account and client address. After `login_max_failed_attempts` wrong passwords (default `5`) from one address for one account, password sign-in for that account from that address is refused for `login_lockout_minutes` (default `15`), even with the correct password. Sign-ins from other addresses are not affected: the owner can still sign in from elsewhere, and an account cannot be locked for everyone by repeated guesses from one address. To turn the lock off, set `login_max_failed_attempts` to `0`.
+
+For a locked account, the same message is shown as for a wrong password. The count is reset by a correct password before the limit is reached. In User Management, a locked account has a lock icon beside its username, and every lock on the account is ended with **Unlock login** in the Edit User dialog. The lock also ends when a new password is set by an administrator or through a password-reset email. SSO sign-in is not affected.
+
+The client address is taken from the reverse proxy's headers, so set `TRUSTED_PROXIES` as described in [Reverse-proxy hops](../getting-started/installation.md#reverse-proxy-hops); without it, a client can choose its own address. IPv6 addresses are counted by their /64 network. Separately, 10 sign-in attempts per minute are allowed from one address.
+
 ## Default Timezone
 
 Dates in generated titles (naming-template dates and default titles), in exported files and in the dates given to the AI are written in each user's timezone. A user's timezone is reported by their browser or chosen in Account → Preferences. The default timezone is used for users without one, for example accounts that only use the API or the watch folder. On a new installation it is UTC; if the `TIMEZONE` variable from earlier versions is set, its value is used as the initial default. Stored dates and API responses are always UTC.

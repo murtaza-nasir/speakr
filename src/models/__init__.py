@@ -17,6 +17,7 @@ from src.database import db
 from .user import User, Speaker
 from .voice import VoiceEmbeddingSpace, SpeakerVoiceSample
 from .api_token import APIToken
+from .login_failure import LoginFailure
 from .speaker_snippet import SpeakerSnippet
 from .recording import Recording, RecordingTombstone, TranscriptChunk
 from .external_ref import RecordingExternalRef
@@ -59,6 +60,7 @@ __all__ = [
     'VoiceEmbeddingSpace',
     'SpeakerVoiceSample',
     'APIToken',
+    'LoginFailure',
     'SpeakerSnippet',
     # Recording models
     'Recording',

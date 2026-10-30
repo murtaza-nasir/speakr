@@ -21,6 +21,7 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check, is_safe_url
+from src.services import login_lock
 from src.utils.localization import format_file_size, format_number, translate, api_error, request_language, LazyTranslation
 from src.auth.sso import (
     init_sso_client,
@@ -269,6 +270,28 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 
+def _password_accepted(user, password):
+    """Check a sign-in password against the account and the login lock (#529).
+
+    The hash is always checked, so a locked account answers as slowly as a
+    wrong password. While the account is locked for this client address, a
+    correct password is refused too, and the count does not change.
+    """
+    matches = bcrypt.check_password_hash(user.password, password)
+    max_attempts, minutes = login_lock.lock_settings()
+    if max_attempts == 0:
+        return matches
+    key = login_lock.client_key(request.remote_addr)
+    if login_lock.is_locked(user.id, key):
+        return False
+    if matches:
+        login_lock.clear_failures(user.id, key)
+        db.session.commit()
+        return True
+    login_lock.record_failure(user.id, key, max_attempts, minutes)
+    return False
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @rate_limit("10 per minute")
 def login():
@@ -289,7 +312,9 @@ def login():
             # Check if password login is disabled for non-admins
             if password_login_disabled and not user.is_admin:
                 flash(translate('server.flash.passwordLoginDisabled'), 'warning')
-            elif bcrypt.check_password_hash(user.password, form.password.data):
+            elif not _password_accepted(user, form.password.data):
+                flash(translate('server.flash.loginFailed'), 'danger')
+            else:
                 # Check email verification if required
                 if is_email_verification_required() and not user.email_verified:
                     # Store user email in session for resend functionality
@@ -305,8 +330,6 @@ def login():
                 if not is_safe_url(next_page):
                     return redirect(url_for('recordings.index'))
                 return redirect(next_page) if next_page else redirect(url_for('recordings.index'))
-            else:
-                flash(translate('server.flash.loginFailed'), 'danger')
         elif user and not user.password:
             flash(translate('server.flash.useSsoLogin'), 'warning')
         else:
@@ -654,6 +677,8 @@ def reset_password(token):
         user.password_reset_sent_at = None
         # Sign the account out of every browser (#437)
         user.end_all_sessions()
+        # A new password ends any login lock on the account (#529)
+        login_lock.clear_failures(user.id)
 
         # Also verify email if not already verified
         if not user.email_verified:

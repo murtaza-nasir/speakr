@@ -593,6 +593,8 @@ networks. When it is set, the forwarded headers are read only from requests whos
 connection comes from one of those addresses; a client that reaches Speakr
 directly cannot set its own address, scheme or host. When it is unset, the
 headers are read from any client, and Speakr logs a warning at startup.
+The client address is also used for the
+[login lock](../admin-guide/system-settings.md#login-lock).
 
 ## Advanced Deployment Scenarios
 
