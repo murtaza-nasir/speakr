@@ -568,19 +568,10 @@ def assign_recording_folder(recording_id):
         if not folder:
             return jsonify(api_error('folder_not_found')), 404
 
-        # Check if user can use this folder
-        if folder.group_id:
-            # Group folder - user must be a member
-            membership = GroupMembership.query.filter_by(
-                group_id=folder.group_id,
-                user_id=current_user.id
-            ).first()
-            if not membership:
-                return jsonify(api_error('folder_access_denied')), 403
-        else:
-            # Personal folder - must be owner
-            if folder.user_id != current_user.id:
-                return jsonify(api_error('folder_access_denied')), 403
+        # Check if user can put this recording in this folder
+        error_key = folder_assign_error(recording, folder, current_user, 'folder_access_denied')
+        if error_key:
+            return jsonify(api_error(error_key)), 403
 
         # Handle auto-sharing for group folders
         old_folder_id = recording.folder_id
@@ -668,7 +659,7 @@ def bulk_assign_folder():
             if folder.user_id != current_user.id:
                 return jsonify(api_error('folder_access_denied')), 403
 
-    updated_count = 0
+    recordings = []
     for rec_id in recording_ids:
         recording = db.session.get(Recording, rec_id)
         if not recording:
@@ -682,6 +673,15 @@ def bulk_assign_folder():
             if recording.user_id != current_user.id:
                 continue
 
+        # Another user's recording: refuse the whole move before changing any
+        if folder is not None:
+            error_key = folder_assign_error(recording, folder, current_user, 'folder_access_denied')
+            if error_key:
+                return jsonify(api_error(error_key)), 403
+        recordings.append(recording)
+
+    updated_count = 0
+    for recording in recordings:
         recording.folder_id = folder_id
 
         # Apply auto-shares if moving to a group folder
@@ -695,6 +695,32 @@ def bulk_assign_folder():
     current_app.logger.info(f"Bulk folder update: {updated_count} recordings {action} by user {current_user.id}")
 
     return jsonify({'success': True, 'updated_count': updated_count})
+
+
+def folder_assign_error(recording, folder, user, denied_key):
+    """Why `user` may not put `recording` into `folder`, as an error key, or None.
+
+    The group-tag rule applies (#515): your own recordings go into your own
+    folders and your groups' folders; another user's recording goes only into
+    a group folder, and only from an admin of that group. Without it, an
+    editor of a shared recording could share it with a whole group by moving
+    it. Edit access to the recording is checked by each move path.
+    denied_key is the path's error for a folder the user cannot use at all.
+    """
+    if folder.group_id:
+        membership = GroupMembership.query.filter_by(
+            group_id=folder.group_id, user_id=user.id
+        ).first()
+        if not membership:
+            return denied_key
+        if recording.user_id != user.id and membership.role != 'admin':
+            return 'folder_assign_restricted'
+        return None
+    if folder.user_id != user.id:
+        return denied_key
+    if recording.user_id != user.id:
+        return 'folder_assign_restricted'
+    return None
 
 
 def apply_group_folder_shares(recording, folder):

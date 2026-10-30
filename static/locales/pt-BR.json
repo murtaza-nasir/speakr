@@ -3188,6 +3188,7 @@
       "folder_delete_denied": "Você não tem permissão para excluir esta pasta",
       "folder_edit_denied": "Você não tem permissão para editar esta pasta",
       "folder_group_assign_admin_only": "Somente administradores do grupo podem atribuir pastas a grupos",
+      "folder_assign_restricted": "Somente o proprietário da gravação, ou um administrador do grupo da pasta, pode colocá-la nesta pasta",
       "folder_color_invalid": "A cor da pasta deve ser uma cor hexadecimal como #10B981",
       "folder_id_not_found": "Pasta {{folderId}} não encontrada",
       "folder_name_exists": "Já existe uma pasta com este nome",

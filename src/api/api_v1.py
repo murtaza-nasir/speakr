@@ -1922,22 +1922,15 @@ def update_recording(recording_id):
         if new_folder_id is None:
             recording.folder_id = None
         else:
-            from src.models.organization import Folder, GroupMembership
+            from src.models.organization import Folder
             target = db.session.get(Folder, new_folder_id)
             if not target:
                 return jsonify(api_error('folder_id_not_found', folderId=new_folder_id)), 404
-            # Personal folders: must own. Group folders: must be a member.
-            if target.group_id is None:
-                if target.user_id != current_user.id:
-                    return jsonify(api_error('target_folder_access_denied')), 403
-            else:
-                membership = GroupMembership.query.filter_by(
-                    user_id=current_user.id, group_id=target.group_id
-                ).first()
-                if not membership:
-                    return jsonify(api_error('target_folder_access_denied')), 403
+            from src.api.folders import apply_group_folder_shares, folder_assign_error
+            error_key = folder_assign_error(recording, target, current_user, 'target_folder_access_denied')
+            if error_key:
+                return jsonify(api_error(error_key)), 403
             recording.folder_id = new_folder_id
-            from src.api.folders import apply_group_folder_shares
             apply_group_folder_shares(recording, target)
 
     db.session.commit()
@@ -3472,6 +3465,13 @@ def batch_update_recordings():
         if not has_recording_access(recording, current_user, require_edit=True):
             results.append({'id': recording_id, 'success': False, **api_error('permission_denied')})
             continue
+
+        if target is not None:
+            from src.api.folders import folder_assign_error
+            error_key = folder_assign_error(recording, target, current_user, 'target_folder_access_denied')
+            if error_key:
+                results.append({'id': recording_id, 'success': False, **api_error(error_key)})
+                continue
 
         try:
             if 'is_inbox' in updates:

@@ -3188,6 +3188,7 @@
       "folder_delete_denied": "Vous n'avez pas l'autorisation de supprimer ce dossier",
       "folder_edit_denied": "Vous n'avez pas l'autorisation de modifier ce dossier",
       "folder_group_assign_admin_only": "Seuls les administrateurs du groupe peuvent attribuer des dossiers à des groupes",
+      "folder_assign_restricted": "Seul le propriétaire de l'enregistrement, ou un administrateur du groupe du dossier, peut le placer dans ce dossier",
       "folder_color_invalid": "La couleur du dossier doit être une couleur hexadécimale comme #10B981",
       "folder_id_not_found": "Dossier {{folderId}} introuvable",
       "folder_name_exists": "Un dossier portant ce nom existe déjà",

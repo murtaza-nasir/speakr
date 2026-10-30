@@ -3188,6 +3188,7 @@
       "folder_delete_denied": "No tiene permiso para eliminar esta carpeta",
       "folder_edit_denied": "No tiene permiso para editar esta carpeta",
       "folder_group_assign_admin_only": "Solo los administradores del grupo pueden asignar carpetas a grupos",
+      "folder_assign_restricted": "Solo el propietario de la grabación, o un administrador del grupo de la carpeta, puede ponerla en esta carpeta",
       "folder_color_invalid": "El color de la carpeta debe ser un color hexadecimal como #10B981",
       "folder_id_not_found": "Carpeta {{folderId}} no encontrada",
       "folder_name_exists": "Ya existe una carpeta con este nombre",

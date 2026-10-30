@@ -3188,6 +3188,7 @@
       "folder_delete_denied": "您没有删除此文件夹的权限",
       "folder_edit_denied": "您没有编辑此文件夹的权限",
       "folder_group_assign_admin_only": "只有群组管理员可以将文件夹指派给群组",
+      "folder_assign_restricted": "只有录音的所有者或该文件夹所属群组的管理员才能将其放入此文件夹",
       "folder_color_invalid": "文件夹颜色必须是十六进制颜色，例如 #10B981",
       "folder_id_not_found": "未找到文件夹 {{folderId}}",
       "folder_name_exists": "已存在同名文件夹",
