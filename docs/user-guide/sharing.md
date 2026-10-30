@@ -27,7 +27,7 @@ Your Speakr administrator must enable internal sharing before this feature becom
 
 When viewing any recording you own, look for the blue users icon button in the toolbar. Clicking this opens the share modal where you can search for colleagues and configure access permissions.
 
-The search functionality makes finding the right person quick and intuitive. Type at least two characters of a username to see matching results. The system filters out your own name since you can't share recordings with yourself, and shows only other users in your instance.
+Type at least two characters of a username or email address to search. Up to ten matching people are listed. People who already have access to the recording are left out, and so is your own account. When usernames are hidden on your instance, you type the exact username instead.
 
 Before sharing, consider what level of access makes sense for this collaboration. Speakr offers three permission levels that build on each other, letting you grant exactly the access needed without oversharing control.
 
@@ -37,11 +37,15 @@ Before sharing, consider what level of access makes sense for this collaboration
 
 **Re-share Permissions** grant the highest level of access short of full ownership. Recipients can do everything editors can do, plus share the recording with additional users and manage those shares by revoking access. This creates a chain of trust where you empower certain colleagues to extend access as needed. However, even with re-share permissions, recipients cannot delete the recording - only the original owner can do that.
 
-To share with view-only access, simply search for the user and click their name in the results. For edit or re-share permissions, check the appropriate boxes before clicking the username. The share takes effect immediately, and the recipient gains access to the recording in their main interface.
+Click a person in the results to select them. Up to 25 people can be selected at a time, and the selected names appear under the search box; the x beside a name removes it from the selection. Check **Allow editing** or **Allow re-sharing** as needed, then click **Share with selected**. Everyone selected receives the same permissions, and nobody is shared with until that button is clicked. The checkboxes keep their state until the share window is closed, so a second group of people can be added with the same permissions. A person who already has access keeps their current permissions. The share takes effect immediately, and the recipient gains access to the recording in their main interface.
+
+When usernames are hidden, type one exact username and click **Add**.
 
 ### Managing Your Shares
 
 The unified share modal shows everyone who has access to a recording, making it easy to track and control sharing. Each entry displays the recipient's name, their permissions level, and when you granted access. The red user-times icon lets you instantly revoke access when collaboration ends or circumstances change.
+
+To change a person's permissions, click **Change permissions** (the user-gear icon) beside their name, check or clear **Allow editing** and **Allow re-sharing**, and click **Save**. The colored labels (Edit, Reshare, View) show the current permissions and are not buttons. The recording stays in the recipient's list with their personal notes. You can turn on a permission only if you hold it yourself, and only for shares you made. Turning off re-sharing does not remove the shares that person has already made; revoke their access to remove those. Shares made through a group tag or group folder follow the group and cannot be changed here.
 
 Revoking access is immediate and thorough. When you revoke someone's access, they lose the ability to view the recording, and any personal notes they created on the shared recording are removed. This ensures complete separation when collaboration ends.
 

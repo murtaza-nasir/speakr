@@ -757,3 +757,479 @@ if __name__ == "__main__":
         initialize_database(app)
     import pytest as _pytest
     raise SystemExit(_pytest.main([__file__, "-q", "-p", "no:cacheprovider"]))
+
+
+# =============================================================================
+# Changing the permissions of an existing share (D#517)
+# =============================================================================
+
+def _share_flags(share_id):
+    with _db():
+        share = db.session.get(InternalShare, share_id)
+        return None if share is None else (bool(share.can_edit), bool(share.can_reshare))
+
+
+def _modified_logs(share_id):
+    from src.models import ShareAuditLog
+    with _db():
+        return [log.permissions_granted for log in
+                ShareAuditLog.query.filter_by(share_id=share_id, action='modified').all()]
+
+
+def _patch_share(user_id, share_id, body):
+    return _client_for(user_id).patch(f"/api/internal-shares/{share_id}", json=body)
+
+
+def test_update_internal_share_grantor_changes_permissions():
+    with _db():
+        owner = _setup_user("up_owner")
+        recip = _setup_user("up_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip)
+    try:
+        with _internal_enabled():
+            resp = _patch_share(owner, share_id, {"can_edit": True})
+        assert resp.status_code == 200, resp.get_json()
+        body = resp.get_json()
+        assert body["share"]["id"] == share_id
+        assert body["share"]["can_edit"] is True and body["share"]["can_reshare"] is False
+        assert _share_flags(share_id) == (True, False)
+        assert _modified_logs(share_id) == [{"old": {"can_edit": False, "can_reshare": False},
+                                             "new": {"can_edit": True, "can_reshare": False}}]
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_update_internal_share_keeps_inbox_state_and_id():
+    with _db():
+        owner = _setup_user("upst_owner")
+        recip = _setup_user("upst_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip)
+        db.session.add(SharedRecordingState(recording_id=rec, user_id=recip, is_inbox=False, is_highlighted=True))
+        db.session.commit()
+    try:
+        with _internal_enabled():
+            assert _patch_share(owner, share_id, {"can_reshare": True}).status_code == 200
+        with _db():
+            state = SharedRecordingState.query.filter_by(recording_id=rec, user_id=recip).one()
+            assert (state.is_inbox, state.is_highlighted) == (False, True)
+            assert InternalShare.query.filter_by(recording_id=rec).count() == 1
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_update_internal_share_unchanged_is_noop():
+    with _db():
+        owner = _setup_user("upn_owner")
+        recip = _setup_user("upn_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip, can_edit=True)
+    try:
+        with _internal_enabled():
+            resp = _patch_share(owner, share_id, {"can_edit": True, "can_reshare": False})
+        assert resp.status_code == 200
+        assert _modified_logs(share_id) == []
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_update_internal_share_third_party_recipient_and_recording_owner_denied():
+    """Only the person who granted the share may change it, not the recipient,
+    an outsider, or the recording owner when someone else granted it."""
+    with _db():
+        owner = _setup_user("upd_owner")
+        delegate = _setup_user("upd_deleg")
+        recip = _setup_user("upd_recip")
+        outsider = _setup_user("upd_out")
+        rec = _make_recording(owner)
+        _make_internal_share(rec, owner, delegate, can_edit=True, can_reshare=True)
+        share_id = _make_internal_share(rec, delegate, recip)
+    try:
+        with _internal_enabled():
+            for user in (outsider, recip, owner):
+                resp = _patch_share(user, share_id, {"can_edit": True})
+                assert resp.status_code == 403, (user, resp.status_code)
+                assert resp.get_json()["code"] == "share_update_denied"
+        assert _share_flags(share_id) == (False, False)
+        assert _modified_logs(share_id) == []
+    finally:
+        _cleanup_ids([owner, delegate, recip, outsider], [rec])
+
+
+def test_update_internal_share_requires_login_and_internal_sharing():
+    with _db():
+        owner = _setup_user("upl_owner")
+        recip = _setup_user("upl_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip)
+    try:
+        with _internal_enabled():
+            resp = _anon_client().patch(f"/api/internal-shares/{share_id}", json={"can_edit": True})
+            assert resp.status_code in (302, 401), resp.status_code
+        with _internal_disabled():
+            assert _patch_share(owner, share_id, {"can_edit": True}).status_code == 403
+        assert _share_flags(share_id) == (False, False)
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_update_internal_share_above_ceiling_denied():
+    """A delegate without edit permission cannot turn edit on for someone else."""
+    with _db():
+        owner = _setup_user("upc_owner")
+        delegate = _setup_user("upc_deleg")
+        recip = _setup_user("upc_recip")
+        rec = _make_recording(owner)
+        _make_internal_share(rec, owner, delegate, can_edit=False, can_reshare=True)
+        share_id = _make_internal_share(rec, delegate, recip)
+    try:
+        with _internal_enabled():
+            resp = _patch_share(delegate, share_id, {"can_edit": True})
+            assert resp.status_code == 403
+            assert resp.get_json()["code"] == "reshare_edit_not_permitted"
+            # Re-share is within the delegate's own permissions
+            assert _patch_share(delegate, share_id, {"can_reshare": True}).status_code == 200
+        assert _share_flags(share_id) == (False, True)
+    finally:
+        _cleanup_ids([owner, delegate, recip], [rec])
+
+
+def test_update_internal_share_grantor_without_reshare_can_only_narrow():
+    """A delegate who has since lost re-share permission cannot turn anything on,
+    but can still narrow a share they made, even one above their current flags."""
+    with _db():
+        owner = _setup_user("upw_owner")
+        delegate = _setup_user("upw_deleg")
+        recip = _setup_user("upw_recip")
+        rec = _make_recording(owner)
+        _make_internal_share(rec, owner, delegate, can_edit=False, can_reshare=False)
+        share_id = _make_internal_share(rec, delegate, recip, can_edit=True, can_reshare=False)
+    try:
+        with _internal_enabled():
+            resp = _patch_share(delegate, share_id, {"can_reshare": True})
+            assert resp.status_code == 403
+            assert resp.get_json()["code"] == "recording_share_denied"
+            assert _share_flags(share_id) == (True, False)
+            assert _patch_share(delegate, share_id, {"can_edit": False}).status_code == 200
+        assert _share_flags(share_id) == (False, False)
+    finally:
+        _cleanup_ids([owner, delegate, recip], [rec])
+
+
+def test_update_internal_share_lowering_does_not_cascade():
+    with _db():
+        owner = _setup_user("upk_owner")
+        recip = _setup_user("upk_recip")
+        third = _setup_user("upk_third")
+        fourth = _setup_user("upk_fourth")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip, can_edit=True, can_reshare=True)
+        downstream = _make_internal_share(rec, recip, third, can_edit=True)
+    try:
+        with _internal_enabled():
+            assert _patch_share(owner, share_id, {"can_edit": False, "can_reshare": False}).status_code == 200
+        assert _share_flags(share_id) == (False, False)
+        assert _share_flags(downstream) == (True, False)
+        # The recipient's next share is checked against the lowered flags
+        with _internal_enabled():
+            resp = _client_for(recip).post(f"/api/recordings/{rec}/share-internal", json={"user_id": fourth})
+        assert resp.status_code == 403
+    finally:
+        _cleanup_ids([owner, recip, third, fourth], [rec])
+
+
+def test_update_internal_share_group_source_locked():
+    with _db():
+        owner = _setup_user("upg_owner")
+        recip = _setup_user("upg_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip)
+        share = db.session.get(InternalShare, share_id)
+        share.source_type = "group_tag"
+        db.session.commit()
+    try:
+        with _internal_enabled():
+            resp = _patch_share(owner, share_id, {"can_edit": True})
+        assert resp.status_code == 409
+        assert resp.get_json()["code"] == "share_source_locked"
+        assert _share_flags(share_id) == (False, False)
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_update_internal_share_rejects_bad_bodies():
+    with _db():
+        owner = _setup_user("upb_owner")
+        recip = _setup_user("upb_recip")
+        rec = _make_recording(owner)
+        share_id = _make_internal_share(rec, owner, recip)
+    try:
+        with _internal_enabled():
+            for body, code in (({}, "share_permissions_required"),
+                               ({"other": True}, "share_permissions_required"),
+                               ([True], "share_permissions_required"),
+                               ({"can_edit": "true"}, "share_permissions_invalid"),
+                               ({"can_edit": 1}, "share_permissions_invalid"),
+                               ({"can_reshare": None}, "share_permissions_invalid")):
+                resp = _patch_share(owner, share_id, body)
+                assert resp.status_code == 400, body
+                assert resp.get_json()["code"] == code, body
+            assert _patch_share(owner, 999999999, {"can_edit": True}).status_code == 404
+        assert _share_flags(share_id) == (False, False)
+    finally:
+        _cleanup_ids([owner, recip], [rec])
+
+
+def test_share_lists_mark_which_shares_can_be_changed():
+    """The share modal and Shared Transcripts flag the manual shares the viewer
+    granted, and the overview gives the viewer's own ceiling per recording."""
+    with _db():
+        owner = _setup_user("upm_owner")
+        delegate = _setup_user("upm_deleg")
+        recip = _setup_user("upm_recip")
+        group = _setup_user("upm_group")
+        rec = _make_recording(owner)
+        mine = _make_internal_share(rec, owner, delegate, can_edit=False, can_reshare=True)
+        theirs = _make_internal_share(rec, delegate, recip)
+        by_group = _make_internal_share(rec, owner, group)
+        db.session.get(InternalShare, by_group).source_type = "group_folder"
+        db.session.commit()
+    try:
+        with _internal_enabled():
+            shares = _client_for(owner).get(f"/api/recordings/{rec}/shares-internal").get_json()["shares"]
+            flags = {s["id"]: s.get("permissions_editable") for s in shares}
+            assert flags == {None: None, mine: True, theirs: False, by_group: False}
+
+            overview = _client_for(delegate).get("/api/shares/overview").get_json()
+            entry = next(e for e in overview["shared_by_me"] if e["recording_id"] == rec)
+            assert entry["grantable"] == {"can_edit": False, "can_reshare": True}
+            assert [p["permissions_editable"] for p in entry["recipients"]] == [True]
+
+            overview = _client_for(owner).get("/api/shares/overview").get_json()
+            entry = next(e for e in overview["shared_by_me"] if e["recording_id"] == rec)
+            assert entry["grantable"] == {"can_edit": True, "can_reshare": True}
+            assert {p["share_id"]: p["permissions_editable"] for p in entry["recipients"]} == {
+                mine: True, by_group: False}
+    finally:
+        _cleanup_ids([owner, delegate, recip, group], [rec])
+
+
+# =============================================================================
+# Share picker: search and sharing with several people at once (D#519)
+# =============================================================================
+
+def _usernames_shown(value=True):
+    return _flag("SHOW_USERNAMES_IN_UI", value, shares_module)
+
+
+def _search(user_id, q):
+    resp = _client_for(user_id).get("/api/users/search", query_string={"q": q})
+    assert resp.status_code == 200
+    return resp.get_json()
+
+
+def test_users_search_short_query_returns_no_directory():
+    with _db():
+        searcher = _setup_user("ps_short")
+        other = _setup_user("ps_other")
+    try:
+        with _internal_enabled():
+            for shown in (True, False):
+                with _usernames_shown(shown):
+                    assert _search(searcher, "") == []
+                    assert _search(searcher, "p") == []
+                    assert _search(searcher, " p ") == []
+    finally:
+        _cleanup_ids([searcher, other], [])
+
+
+def test_users_search_limits_and_orders_matches():
+    tok = uuid.uuid4().hex[:8]
+    with _db():
+        ids = []
+        for i in reversed(range(12)):
+            u = User(username=f"{tok}u{i:02d}", email=f"{tok}u{i:02d}@local.test", password="x")
+            db.session.add(u)
+            db.session.commit()
+            ids.append(u.id)
+        searcher_id = ids[-1]  # the user named ...u00
+    try:
+        with _internal_enabled(), _usernames_shown():
+            names = [u["username"] for u in _search(searcher_id, tok)]
+        assert names == [f"{tok}u{i:02d}" for i in range(1, 11)]
+    finally:
+        _cleanup_ids(ids, [])
+
+
+def test_users_search_matches_email_when_usernames_shown():
+    tok = uuid.uuid4().hex[:8]
+    with _db():
+        searcher = _setup_user("ps_mail")
+        u = User(username=f"plain_{tok}", email=f"z{tok}x@corp.local.test", password="x")
+        db.session.add(u)
+        db.session.commit()
+        target = u.id
+    try:
+        with _internal_enabled(), _usernames_shown():
+            found = _search(searcher, f"z{tok}x@corp")
+        assert [(r["id"], r["email"]) for r in found] == [(target, f"z{tok}x@corp.local.test")]
+        with _internal_enabled(), _usernames_shown(False):
+            # Privacy mode never matches on email
+            assert _search(searcher, f"z{tok}x@corp.local.test") == []
+    finally:
+        _cleanup_ids([searcher, target], [])
+
+
+def test_users_search_hidden_usernames_still_exact():
+    tok = uuid.uuid4().hex[:8]
+    with _db():
+        searcher = _setup_user("ps_hide")
+        u = User(username=f"exact_{tok}", email=f"exact_{tok}@local.test", password="x")
+        db.session.add(u)
+        db.session.commit()
+        target = u.id
+    try:
+        with _internal_enabled(), _usernames_shown(False):
+            assert _search(searcher, f"exact_{tok[:4]}") == []
+            assert _search(searcher, f"exact_{tok}") == [{"id": target, "username": f"exact_{tok}", "email": None}]
+    finally:
+        _cleanup_ids([searcher, target], [])
+
+
+def _batch(user_id, rec, body):
+    return _client_for(user_id).post(f"/api/recordings/{rec}/share-internal", json=body)
+
+
+def _rows(rec):
+    with _db():
+        return {s.shared_with_user_id: (bool(s.can_edit), bool(s.can_reshare), s.owner_id, s.source_type)
+                for s in InternalShare.query.filter_by(recording_id=rec).all()}
+
+
+def test_share_internal_user_ids_batch():
+    from src.models import ShareAuditLog
+    with _db():
+        owner = _setup_user("pb_owner")
+        a = _setup_user("pb_a")
+        b = _setup_user("pb_b")
+        rec = _make_recording(owner)
+    try:
+        with _internal_enabled():
+            resp = _batch(owner, rec, {"user_ids": [a, b], "can_edit": True})
+        assert resp.status_code == 200, resp.get_json()
+        body = resp.get_json()
+        assert body["shared_count"] == 2
+        assert [(r["user_id"], r["status"]) for r in body["results"]] == [(a, "shared"), (b, "shared")]
+        assert all(r["share"]["can_edit"] is True for r in body["results"])
+        assert _rows(rec) == {a: (True, False, owner, "manual"), b: (True, False, owner, "manual")}
+        with _db():
+            assert {s.user_id for s in SharedRecordingState.query.filter_by(recording_id=rec, is_inbox=True)} == {a, b}
+            assert ShareAuditLog.query.filter_by(recording_id=rec, action="created").count() == 2
+        with _internal_enabled():
+            listed = _client_for(owner).get(f"/api/recordings/{rec}/shares-internal").get_json()["shares"]
+        assert {s["user_id"] for s in listed} == {owner, a, b}
+    finally:
+        _cleanup_ids([owner, a, b], [rec])
+
+
+def test_share_internal_user_ids_mixed_results():
+    """Already shared, unknown, owner, self and duplicate ids are reported or
+    collapsed, and do not block the others."""
+    with _db():
+        owner = _setup_user("pm_owner")
+        delegate = _setup_user("pm_deleg")
+        existing = _setup_user("pm_exist")
+        new = _setup_user("pm_new")
+        rec = _make_recording(owner)
+        _make_internal_share(rec, owner, delegate, can_edit=True, can_reshare=True)
+        _make_internal_share(rec, owner, existing, can_edit=False, can_reshare=False)
+    try:
+        with _internal_enabled():
+            resp = _batch(delegate, rec, {"user_ids": [existing, new, new, 999999999, owner, delegate],
+                                          "can_edit": True})
+        assert resp.status_code == 200, resp.get_json()
+        assert [(r["user_id"], r["status"]) for r in resp.get_json()["results"]] == [
+            (existing, "already_shared"), (new, "shared"), (999999999, "not_found"),
+            (owner, "share_with_owner"), (delegate, "share_with_self")]
+        rows = _rows(rec)
+        assert rows[existing] == (False, False, owner, "manual")
+        assert rows[new] == (True, False, delegate, "manual")
+        assert len(rows) == 3
+    finally:
+        _cleanup_ids([owner, delegate, existing, new], [rec])
+
+
+def test_share_internal_user_ids_rejects_bad_requests_without_writing():
+    with _db():
+        owner = _setup_user("pr_owner")
+        a = _setup_user("pr_a")
+        rec = _make_recording(owner)
+    try:
+        bad = [
+            ({"user_ids": [a], "user_id": a}, "share_recipients_conflict"),
+            ({"user_ids": []}, "share_recipients_invalid"),
+            ({"user_ids": a}, "share_recipients_invalid"),
+            ({"user_ids": [True]}, "share_recipients_invalid"),
+            ({"user_ids": [str(a)]}, "share_recipients_invalid"),
+            ({"user_ids": [a, 0]}, "share_recipients_invalid"),
+            ({"user_ids": [a, -3]}, "share_recipients_invalid"),
+            ({"user_ids": [a, 1.5]}, "share_recipients_invalid"),
+            ({"user_ids": list(range(1000000, 1000026))}, "share_recipients_invalid"),
+            ({"user_ids": [a], "can_edit": "yes"}, "share_permissions_invalid"),
+            ({"user_ids": [a], "can_reshare": 1}, "share_permissions_invalid"),
+        ]
+        with _internal_enabled():
+            for body, code in bad:
+                resp = _batch(owner, rec, body)
+                assert resp.status_code == 400, body
+                assert resp.get_json()["code"] == code, body
+        assert _rows(rec) == {}
+    finally:
+        _cleanup_ids([owner, a], [rec])
+
+
+def test_share_internal_user_ids_access_and_ceiling():
+    with _db():
+        owner = _setup_user("pa_owner")
+        viewer = _setup_user("pa_view")
+        limited = _setup_user("pa_limit")
+        outsider = _setup_user("pa_out")
+        target = _setup_user("pa_target")
+        rec = _make_recording(owner)
+        _make_internal_share(rec, owner, viewer)
+        _make_internal_share(rec, owner, limited, can_edit=False, can_reshare=True)
+    try:
+        with _internal_enabled():
+            resp = _batch(outsider, rec, {"user_ids": [target]})
+            assert resp.status_code == 404
+            resp = _batch(viewer, rec, {"user_ids": [target]})
+            assert resp.status_code == 403 and resp.get_json()["code"] == "recording_share_denied"
+            resp = _batch(limited, rec, {"user_ids": [target], "can_edit": True})
+            assert resp.status_code == 403 and resp.get_json()["code"] == "reshare_edit_not_permitted"
+            assert target not in _rows(rec)
+            with _internal_disabled():
+                assert _batch(owner, rec, {"user_ids": [target]}).status_code == 403
+            resp = _batch(limited, rec, {"user_ids": [target], "can_reshare": True})
+            assert resp.status_code == 200
+        assert _rows(rec)[target] == (False, True, limited, "manual")
+    finally:
+        _cleanup_ids([owner, viewer, limited, outsider, target], [rec])
+
+
+def test_share_internal_single_user_id_unchanged():
+    """The one-person body keeps its responses: 201, 409, 404, 400."""
+    with _db():
+        owner = _setup_user("pu_owner")
+        a = _setup_user("pu_a")
+        rec = _make_recording(owner)
+    try:
+        with _internal_enabled():
+            resp = _batch(owner, rec, {"user_id": a, "can_edit": True})
+            assert resp.status_code == 201 and resp.get_json()["share"]["can_edit"] is True
+            assert _batch(owner, rec, {"user_id": a}).status_code == 409
+            assert _batch(owner, rec, {"user_id": 999999999}).status_code == 404
+            assert _batch(owner, rec, {"user_id": owner}).status_code == 400
+            assert _batch(owner, rec, {}).status_code == 400
+    finally:
+        _cleanup_ids([owner, a], [rec])

@@ -4223,13 +4223,22 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             card.className = 'bg-[var(--bg-tertiary)] px-4 py-3 rounded-lg border border-[var(--border-primary)] lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-6 lg:items-start';
                             card.innerHTML = `<a href="/recordings/${entry.recording_id}" dir="auto" class="font-semibold hover:underline block truncate lg:py-2" title="${escapeHtml(entry.recording_title)}">${escapeHtml(entry.recording_title)}</a>
                                 <ul class="mt-2 lg:mt-0 divide-y divide-[var(--border-primary)]">${entry.recipients.map(p => `
-                                    <li class="py-2 flex items-center justify-between gap-3">
+                                    <li class="py-2" data-share-row="${p.share_id}">
+                                        <div class="flex items-center justify-between gap-3">
                                         <div class="min-w-0"><p class="text-sm font-medium">${escapeHtml(p.username || '')}</p>
-                                        <p class="text-xs text-[var(--text-muted)]">${escapeHtml(permissions(p))}</p></div>
+                                        <p class="share-permissions-text text-xs text-[var(--text-muted)]">${escapeHtml(permissions(p))}</p></div>
                                         ${p.revocable
-                                            ? `<button data-internal-share-id="${p.share_id}" class="revoke-internal-btn text-sm px-2 py-1 rounded border border-[var(--border-secondary)] hover:bg-[var(--bg-secondary)]"><i class="fas fa-user-times mr-1"></i>${escapeHtml(t('sharedTranscripts.revoke'))}</button>`
+                                            ? `<div class="flex items-center gap-2 flex-shrink-0">${p.permissions_editable
+                                                    ? `<button type="button" data-share-id="${p.share_id}" aria-label="${escapeHtml(t('sharing.changePermissionsFor', { name: p.username || '' }))}" class="change-permissions-btn text-sm px-2 py-1 rounded border border-[var(--border-secondary)] hover:bg-[var(--bg-secondary)]"><i class="fas fa-user-cog mr-1" aria-hidden="true"></i>${escapeHtml(t('sharing.changePermissions'))}</button>`
+                                                    : ''}<button data-internal-share-id="${p.share_id}" class="revoke-internal-btn text-sm px-2 py-1 rounded border border-[var(--border-secondary)] hover:bg-[var(--bg-secondary)]"><i class="fas fa-user-times mr-1"></i>${escapeHtml(t('sharedTranscripts.revoke'))}</button></div>`
                                             : `<span class="text-xs text-[var(--text-muted)] text-right max-w-[12rem]">${escapeHtml(t('sharedTranscripts.groupShareNote'))}</span>`}
+                                        </div>
                                     </li>`).join('')}</ul>`;
+                            // The flags and the grantor's own ceiling, for changing a share in place (D#517)
+                            entry.recipients.forEach(p => {
+                                const btn = card.querySelector(`.change-permissions-btn[data-share-id="${p.share_id}"]`);
+                                if (btn) btn.addEventListener('click', () => openPermissionEditor(card, p, entry.grantable || {}));
+                            });
                             peopleSection.appendChild(card);
                         });
 
@@ -4319,6 +4328,54 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             // First click asks, second revokes (#416).
+            // Change permissions of a manual share in place (D#517). A flag can be
+            // switched on only when it is already on or the grantor holds it.
+            function openPermissionEditor(card, person, grantable) {
+                const row = card.querySelector(`[data-share-row="${person.share_id}"]`);
+                if (!row || row.querySelector('.permission-editor')) return;
+                const box = (flag, label) => {
+                    const disabled = !person[flag] && !grantable[flag];
+                    return `<label class="flex items-center gap-2 text-sm"><input type="checkbox" data-flag="${flag}" class="h-4 w-4 rounded" ${person[flag] ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${escapeHtml(label)}</span></label>`;
+                };
+                const editor = document.createElement('div');
+                editor.className = 'permission-editor mt-2 space-y-1.5';
+                editor.setAttribute('role', 'group');
+                editor.setAttribute('aria-label', t('sharing.changePermissionsFor', { name: person.username || '' }));
+                editor.innerHTML = box('can_edit', t('unifiedShareModal.allowEditing'))
+                    + box('can_reshare', t('unifiedShareModal.allowReshare'))
+                    + `<div class="flex justify-end gap-2"><button type="button" class="perm-cancel text-sm px-2 py-1 rounded border border-[var(--border-secondary)] hover:bg-[var(--bg-secondary)]">${escapeHtml(t('common.cancel'))}</button>`
+                    + `<button type="button" class="perm-save text-sm px-2 py-1 rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)]">${escapeHtml(t('common.save'))}</button></div>`;
+                row.appendChild(editor);
+                editor.querySelector('input:not([disabled])')?.focus();
+                editor.querySelector('.perm-cancel').addEventListener('click', () => editor.remove());
+                editor.querySelector('.perm-save').addEventListener('click', async (event) => {
+                    const saveButton = event.currentTarget;
+                    const changes = {};
+                    editor.querySelectorAll('input[data-flag]').forEach(input => {
+                        if (input.checked !== Boolean(person[input.dataset.flag])) changes[input.dataset.flag] = input.checked;
+                    });
+                    if (!Object.keys(changes).length) { editor.remove(); return; }
+                    saveButton.disabled = true;
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const response = await fetch(`/api/internal-shares/${person.share_id}`, {
+                            method: 'PATCH',
+                            headers: Object.assign({ 'Content-Type': 'application/json' }, csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+                            body: JSON.stringify(changes),
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || t('sharing.updateFailed'));
+                        person.can_edit = Boolean(data.share.can_edit);
+                        person.can_reshare = Boolean(data.share.can_reshare);
+                        loadShares();
+                        showToast(t('sharing.permissionsChanged'));
+                    } catch (error) {
+                        saveButton.disabled = false;
+                        showToast(t('sharing.changePermissionsFailedWithError', { error: error.message }), 'error');
+                    }
+                });
+            }
+
             async function handleRevokeInternalShare(event) {
                 const button = event.currentTarget;
                 if (!button.dataset.confirming) {

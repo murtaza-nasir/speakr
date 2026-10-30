@@ -2471,7 +2471,19 @@
     "sharedWithUser": "Enregistrement partagé avec {{name}}",
     "userNumber": "Utilisateur n° {{id}}",
     "userGeneric": "Utilisateur",
-    "accessRevokedFor": "Accès retiré pour {{name}}"
+    "accessRevokedFor": "Accès retiré pour {{name}}",
+    "changePermissions": "Modifier les autorisations",
+    "changePermissionsFor": "Modifier les autorisations de {{name}}",
+    "permissionsChanged": "Autorisations modifiées",
+    "changePermissionsFailedWithError": "Impossible de modifier les autorisations : {{error}}",
+    "searchMinChars": "Saisissez au moins 2 caractères d'un nom d'utilisateur ou d'une adresse e-mail",
+    "selectedPeople": "Sélection",
+    "removeFromSelection": "Retirer {{name}} de la sélection",
+    "selectionLimit": "Vous pouvez sélectionner jusqu'à {{max}} personnes à la fois",
+    "addSelected": "Partager avec la sélection ({{count}})",
+    "sharedWithCount": "Enregistrement partagé. Personnes ajoutées : {{count}}",
+    "alreadySharedCount": "Avaient déjà accès : {{count}}",
+    "notSharedCount": "Impossible d'ajouter : {{count}}"
   },
   "sidebar": {
     "advancedSearch": "Recherche Avancée",
@@ -3478,7 +3490,13 @@
       "webhook_url_missing_host": "L'URL ne contient pas d'hôte",
       "webhook_url_private_address": "L'URL pointe vers une adresse privée ou de bouclage ({{ip}}) ; définissez WEBHOOK_INTRANET_HOST_ALLOWLIST pour autoriser explicitement cet hôte, ou utilisez une URL publique. L'expression régulière de la liste d'autorisation doit être ancrée (p. ex. r\"^(localhost|.*\\.intra)$\") pour ne pas être trompée par des noms d'hôte similaires.",
       "webhook_url_unparseable": "L'URL n'a pas pu être analysée",
-      "word_document_failed": "Échec de la génération du document Word"
+      "word_document_failed": "Échec de la génération du document Word",
+      "share_recipients_conflict": "Envoyez user_id ou user_ids, pas les deux",
+      "share_recipients_invalid": "user_ids doit être une liste de 1 à {{max}} identifiants d'utilisateur",
+      "share_permissions_invalid": "can_edit et can_reshare doivent valoir true ou false",
+      "share_permissions_required": "Envoyez can_edit, can_reshare ou les deux",
+      "share_update_denied": "Seule la personne qui a partagé cet enregistrement peut modifier ces autorisations",
+      "share_source_locked": "Ce partage provient d'une étiquette ou d'un dossier de groupe, et ses autorisations suivent ce groupe"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour !",

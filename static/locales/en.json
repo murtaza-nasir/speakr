@@ -2471,7 +2471,19 @@
     "sharedWithUser": "Recording shared with {{name}}",
     "userNumber": "User #{{id}}",
     "userGeneric": "User",
-    "accessRevokedFor": "Access revoked for {{name}}"
+    "accessRevokedFor": "Access revoked for {{name}}",
+    "changePermissions": "Change permissions",
+    "changePermissionsFor": "Change permissions for {{name}}",
+    "permissionsChanged": "Permissions changed",
+    "changePermissionsFailedWithError": "Could not change permissions: {{error}}",
+    "searchMinChars": "Type at least 2 characters of a username or email",
+    "selectedPeople": "Selected",
+    "removeFromSelection": "Remove {{name}} from the selection",
+    "selectionLimit": "Up to {{max}} people can be selected at a time",
+    "addSelected": "Share with selected ({{count}})",
+    "sharedWithCount": "Recording shared. People added: {{count}}",
+    "alreadySharedCount": "Already had access: {{count}}",
+    "notSharedCount": "Could not be added: {{count}}"
   },
   "sidebar": {
     "advancedSearch": "Advanced Search",
@@ -3478,7 +3490,13 @@
       "webhook_url_missing_host": "URL is missing a host",
       "webhook_url_private_address": "URL resolves to a private/loopback address ({{ip}}); set WEBHOOK_INTRANET_HOST_ALLOWLIST to permit this host explicitly, or use a public URL. The allowlist regex should be anchored (e.g. r\"^(localhost|.*\\.intra)$\") so it cannot be tricked by lookalike hostnames.",
       "webhook_url_unparseable": "URL could not be parsed",
-      "word_document_failed": "Failed to generate Word document"
+      "word_document_failed": "Failed to generate Word document",
+      "share_recipients_conflict": "Send either user_id or user_ids, not both",
+      "share_recipients_invalid": "user_ids must be a list of 1 to {{max}} user ids",
+      "share_permissions_invalid": "can_edit and can_reshare must be true or false",
+      "share_permissions_required": "Send can_edit, can_reshare or both",
+      "share_update_denied": "Only the person who shared this recording can change these permissions",
+      "share_source_locked": "This share comes from a group tag or folder, and its permissions follow that group"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated successfully!",

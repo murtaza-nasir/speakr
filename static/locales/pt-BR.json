@@ -2471,7 +2471,19 @@
     "sharedWithUser": "Gravação compartilhada com {{name}}",
     "userNumber": "Usuário #{{id}}",
     "userGeneric": "Usuário",
-    "accessRevokedFor": "Acesso revogado para {{name}}"
+    "accessRevokedFor": "Acesso revogado para {{name}}",
+    "changePermissions": "Alterar permissões",
+    "changePermissionsFor": "Alterar permissões de {{name}}",
+    "permissionsChanged": "Permissões alteradas",
+    "changePermissionsFailedWithError": "Não foi possível alterar as permissões: {{error}}",
+    "searchMinChars": "Digite pelo menos 2 caracteres de um nome de usuário ou e-mail",
+    "selectedPeople": "Selecionados",
+    "removeFromSelection": "Remover {{name}} da seleção",
+    "selectionLimit": "É possível selecionar até {{max}} pessoas por vez",
+    "addSelected": "Compartilhar com a seleção ({{count}})",
+    "sharedWithCount": "Gravação compartilhada. Pessoas adicionadas: {{count}}",
+    "alreadySharedCount": "Já tinham acesso: {{count}}",
+    "notSharedCount": "Não foi possível adicionar: {{count}}"
   },
   "sidebar": {
     "advancedSearch": "Busca Avançada",
@@ -3478,7 +3490,13 @@
       "webhook_url_missing_host": "A URL não tem um host",
       "webhook_url_private_address": "A URL resolve para um endereço privado ou de loopback ({{ip}}); defina WEBHOOK_INTRANET_HOST_ALLOWLIST para permitir este host explicitamente ou use uma URL pública. A expressão regular da lista de permissões deve ser ancorada (por exemplo, r\"^(localhost|.*\\.intra)$\") para não ser enganada por nomes de host parecidos.",
       "webhook_url_unparseable": "Não foi possível interpretar a URL",
-      "word_document_failed": "Falha ao gerar o documento do Word"
+      "word_document_failed": "Falha ao gerar o documento do Word",
+      "share_recipients_conflict": "Envie user_id ou user_ids, não ambos",
+      "share_recipients_invalid": "user_ids deve ser uma lista de 1 a {{max}} IDs de usuário",
+      "share_permissions_invalid": "can_edit e can_reshare devem ser true ou false",
+      "share_permissions_required": "Envie can_edit, can_reshare ou ambos",
+      "share_update_denied": "Somente a pessoa que compartilhou esta gravação pode alterar essas permissões",
+      "share_source_locked": "Este compartilhamento vem de uma tag ou pasta de grupo, e suas permissões seguem esse grupo"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados com sucesso!",

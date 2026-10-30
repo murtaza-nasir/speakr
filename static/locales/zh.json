@@ -2471,7 +2471,19 @@
     "sharedWithUser": "已与 {{name}} 分享录音",
     "userNumber": "用户 #{{id}}",
     "userGeneric": "用户",
-    "accessRevokedFor": "已撤销 {{name}} 的访问权限"
+    "accessRevokedFor": "已撤销 {{name}} 的访问权限",
+    "changePermissions": "更改权限",
+    "changePermissionsFor": "更改 {{name}} 的权限",
+    "permissionsChanged": "权限已更改",
+    "changePermissionsFailedWithError": "无法更改权限：{{error}}",
+    "searchMinChars": "请输入用户名或邮箱中的至少 2 个字符",
+    "selectedPeople": "已选择",
+    "removeFromSelection": "将 {{name}} 从选择中移除",
+    "selectionLimit": "一次最多可选择 {{max}} 人",
+    "addSelected": "与所选人员共享（{{count}}）",
+    "sharedWithCount": "录音已共享。已添加人数：{{count}}",
+    "alreadySharedCount": "已有访问权限：{{count}}",
+    "notSharedCount": "无法添加：{{count}}"
   },
   "sidebar": {
     "advancedSearch": "高级搜索",
@@ -3478,7 +3490,13 @@
       "webhook_url_missing_host": "URL 缺少主机名",
       "webhook_url_private_address": "该 URL 解析到私有或回环地址（{{ip}}）；请设置 WEBHOOK_INTRANET_HOST_ALLOWLIST 以明确允许此主机，或使用公网 URL。允许列表的正则表达式应带锚点（例如 r\"^(localhost|.*\\.intra)$\"），以免被外观相似的主机名欺骗。",
       "webhook_url_unparseable": "无法解析该 URL",
-      "word_document_failed": "生成 Word 文档失败"
+      "word_document_failed": "生成 Word 文档失败",
+      "share_recipients_conflict": "请发送 user_id 或 user_ids，不能同时发送",
+      "share_recipients_invalid": "user_ids 必须是包含 1 到 {{max}} 个用户 ID 的列表",
+      "share_permissions_invalid": "can_edit 和 can_reshare 必须为 true 或 false",
+      "share_permissions_required": "请发送 can_edit、can_reshare 或两者",
+      "share_update_denied": "只有分享此录音的人才能更改这些权限",
+      "share_source_locked": "此共享来自群组标签或文件夹，其权限由该群组决定"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新！",
