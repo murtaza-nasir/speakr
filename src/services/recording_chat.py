@@ -28,6 +28,19 @@ def _marked_transcript(segments):
                      for seg in segments)
 
 
+class IncognitoTranscript:
+    """The fields build_chat_messages reads, for an incognito recording that
+    exists only in the browser (#527). Never saved."""
+
+    def __init__(self, transcription, participants=None, notes=None):
+        self.transcription = transcription
+        self.participants = participants if isinstance(participants, str) and participants.strip() else None
+        self._notes = notes if isinstance(notes, str) and notes.strip() else None
+
+    def get_user_notes(self, user):
+        return self._notes
+
+
 def build_chat_messages(recording, user, message, history=None, with_sources=False):
     """(messages, segments). segments is the canonical list when with_sources
     is on and the transcript has segments, else None."""

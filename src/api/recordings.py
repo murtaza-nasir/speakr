@@ -3245,10 +3245,8 @@ def chat_incognito():
     if not ENABLE_INCOGNITO_MODE:
         return jsonify(api_error('incognito_disabled')), 403
 
-    from src.tasks.processing import format_transcription_for_llm
-
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         if not data:
             return jsonify(api_error('no_data_provided')), 400
 
@@ -3258,19 +3256,23 @@ def chat_incognito():
         participants = data.get('participants', '')
         notes = data.get('notes', '')
 
-        if not transcription:
+        if not transcription or not isinstance(transcription, str):
             return jsonify(api_error('no_transcription_provided')), 400
-        if not user_message:
+        if not user_message or not isinstance(user_message, str):
             return jsonify(api_error('no_message_provided')), 400
+        if not isinstance(message_history, list):
+            message_history = []
 
         # Check if chat client is available
         if chat_client is None:
             return jsonify(api_error('chat_client_not_configured')), 503
 
-        # Same prompt as API v1 chat (src/services/recording_chat.py); the notes
-        # are the ones this user can see.
-        from src.services.recording_chat import build_chat_messages
-        messages, _ = build_chat_messages(recording, current_user, user_message, message_history)
+        # Same prompt as API v1 chat (src/services/recording_chat.py). An
+        # incognito recording has no database row: the transcript, participants
+        # and notes come from this request (#527).
+        from src.services.recording_chat import IncognitoTranscript, build_chat_messages
+        transcript = IncognitoTranscript(transcription, participants, notes)
+        messages, _ = build_chat_messages(transcript, current_user, user_message, message_history)
 
         user_id = current_user.id
 
