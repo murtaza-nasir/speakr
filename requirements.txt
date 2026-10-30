@@ -14,7 +14,7 @@ pydantic>=2.14.1
 authlib>=1.9.1,<2.0
 itsdangerous>=2.2.0
 email-validator==2.3.0
-openai>=3.31.0
+openai>=3.37.0
 httpx>=0.28.1,<1.0.0
 pywebpush==1.14.0
 werkzeug==3.1.9
