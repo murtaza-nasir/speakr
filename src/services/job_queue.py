@@ -11,7 +11,6 @@ This queue ensures:
 
 import os
 import json
-import itertools
 import threading
 import time
 import logging
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
 SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
+INDEX_WORKERS = int(os.environ.get('INDEX_QUEUE_WORKERS', '1'))
 MAX_RETRIES = int(os.environ.get('JOB_MAX_RETRIES', '3'))
 POLL_INTERVAL = 1.0  # seconds between checking for new jobs
 
@@ -38,6 +38,23 @@ POLL_INTERVAL = 1.0  # seconds between checking for new jobs
 # membership in this list is the single source of truth for the whole pipeline.
 TRANSCRIPTION_JOBS = ['transcribe', 'reprocess_transcription', 'stitch', 'merge']
 SUMMARY_JOBS = ['summarize', 'reprocess_summary', 'translate_transcription']
+# Building a recording's Inquire chunks (embeddings) has its own workers, so a
+# slow embedding model never holds up a transcription or a summary (#541).
+INDEX_JOBS = ['index_chunks']
+
+QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index': INDEX_JOBS}
+
+# Jobs that run beside a recording's processing: they leave recording.status
+# alone and send no webhooks or emails.
+BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
+
+
+def queue_name_for(job_type: str) -> str:
+    """Name of the queue whose workers run this job type."""
+    for name, job_types in QUEUES.items():
+        if job_type in job_types:
+            return name
+    return 'transcription'
 
 
 class FairJobQueue:
@@ -67,12 +84,9 @@ class FairJobQueue:
 
         self._transcription_workers = []
         self._summary_workers = []
+        self._index_workers = []
         self._running = False
         self._app = None
-        # Turn taken by each user in each queue, numbered across both queues;
-        # the waiting user with the oldest turn goes next.
-        self._turns = {'transcription': {}, 'summary': {}}
-        self._turn_numbers = itertools.count()
         # Lock for claiming jobs (SQLite doesn't support row-level locking)
         self._claim_lock = threading.Lock()
         # Serialise the check-then-insert in enqueue(). The active-job unique
@@ -138,7 +152,17 @@ class FairJobQueue:
             worker.start()
             self._summary_workers.append(worker)
 
-        logger.info(f"Started {TRANSCRIPTION_WORKERS} transcription workers and {SUMMARY_WORKERS} summary workers")
+        for i in range(INDEX_WORKERS):
+            worker = threading.Thread(
+                target=self._worker_loop,
+                args=(INDEX_JOBS, 'index'),
+                name=f"IndexWorker-{i}",
+                daemon=True
+            )
+            worker.start()
+            self._index_workers.append(worker)
+
+        logger.info(f"Started {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers and {INDEX_WORKERS} index workers")
 
     def stop(self):
         """Stop the worker threads gracefully."""
@@ -180,40 +204,8 @@ class FairJobQueue:
                 from src.models import ProcessingJob
 
                 try:
-                    # Get list of users with queued jobs of our types
-                    users_with_jobs = db.session.query(
-                        ProcessingJob.user_id
-                    ).filter(
-                        ProcessingJob.status == 'queued',
-                        ProcessingJob.job_type.in_(job_types)
-                    ).group_by(
-                        ProcessingJob.user_id
-                    ).order_by(
-                        db.func.min(ProcessingJob.created_at)
-                    ).all()
-
-                    if not users_with_jobs:
-                        return None
-
-                    user_ids = [u[0] for u in users_with_jobs]
-
-                    # Users take turns: whoever was served longest ago goes
-                    # next, and a user without a turn yet goes first. Ties
-                    # keep the order of each user's oldest queued job. Taking
-                    # "the user after the last one" in that order would let a
-                    # user go twice in a round, since the order changes as
-                    # jobs are claimed.
-                    turns = self._turns[queue_name]
-                    next_user_id = min(user_ids, key=lambda uid: turns.get(uid, -1))
-
-                    # Get oldest queued job of our types for this user
-                    candidate_job = ProcessingJob.query.filter(
-                        ProcessingJob.user_id == next_user_id,
-                        ProcessingJob.status == 'queued',
-                        ProcessingJob.job_type.in_(job_types)
-                    ).order_by(
-                        ProcessingJob.created_at
-                    ).first()
+                    order = self.turn_order(job_types)
+                    candidate_job = order[0] if order else None
 
                     if candidate_job:
                         # Atomically claim the job - only succeeds if status is still 'queued'
@@ -246,8 +238,6 @@ class FairJobQueue:
                         # Refresh the job object to get updated values
                         db.session.refresh(candidate_job)
 
-                        turns[next_user_id] = next(self._turn_numbers)
-
                         wait_time = (claim_time - candidate_job.created_at).total_seconds()
                         logger.info(f"[{queue_name.upper()}] Claimed job {candidate_job.id} (type={candidate_job.job_type}) for user {candidate_job.user_id}, recording {candidate_job.recording_id} (waited {wait_time:.1f}s)")
                         return candidate_job
@@ -258,6 +248,50 @@ class FairJobQueue:
                     logger.error(f"Error claiming {queue_name} job: {e}", exc_info=True)
                     db.session.rollback()
                     return None
+
+    def turn_order(self, job_types: List[str]):
+        """The queued jobs of these types, in the order workers will claim them.
+
+        Users take turns, one job each: the user whose last job of these types
+        started longest ago goes next, and a user without one goes first. Ties
+        keep the order of each user's oldest queued job, and each user's jobs
+        run oldest first. The last start comes from the jobs table, so every
+        process computes the same order and a restart keeps it.
+        """
+        from src.database import db
+        from src.models import ProcessingJob
+
+        queued = ProcessingJob.query.filter(
+            ProcessingJob.status == 'queued',
+            ProcessingJob.job_type.in_(job_types)
+        ).order_by(ProcessingJob.created_at, ProcessingJob.id).all()
+        if not queued:
+            return []
+
+        waiting = {}
+        for job in queued:
+            waiting.setdefault(job.user_id, []).append(job)
+
+        last_started = dict(db.session.query(
+            ProcessingJob.user_id, db.func.max(ProcessingJob.started_at)
+        ).filter(
+            ProcessingJob.user_id.in_(list(waiting)),
+            ProcessingJob.job_type.in_(job_types),
+            ProcessingJob.started_at.isnot(None)
+        ).group_by(ProcessingJob.user_id).all())
+
+        # (round, last start, place in line): a user moves to the next round
+        # after each job handed out below.
+        keys = {
+            uid: (0, last_started.get(uid) or datetime.min, place)
+            for place, uid in enumerate(waiting)
+        }
+        order = []
+        for round_number in range(1, len(queued) + 1):
+            uid = min((u for u in waiting if waiting[u]), key=keys.get)
+            order.append(waiting[uid].pop(0))
+            keys[uid] = (round_number, datetime.min, keys[uid][2])
+        return order
 
     def _is_permanent_error(self, error_str: str) -> bool:
         """
@@ -362,6 +396,8 @@ class FairJobQueue:
                     self._run_merge(job, recording, params)
                 elif job_type == 'translate_transcription':
                     self._run_translation(job, recording, params)
+                elif job_type == 'index_chunks':
+                    self._run_index_chunks(job, recording, params)
                 else:
                     raise ValueError(f"Unknown job type: {job_type}")
 
@@ -376,15 +412,15 @@ class FairJobQueue:
                 # Webhook fan-out (#275). One emit per job-type completion;
                 # subscribers map these to user-visible lifecycle events.
                 # Best-effort: if the webhook subsystem throws, the job is
-                # still marked completed. Translation jobs are excluded from
-                # webhook/email emission per spec.
-                if job_type != 'translate_transcription':
+                # still marked completed. Background jobs (translation,
+                # Inquire chunks) send no webhooks or emails.
+                if job_type not in BACKGROUND_JOBS:
                     try:
                         self._emit_completion_webhook(job_type, recording_id)
                     except Exception as e:
                         logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
 
-                if job_type != 'translate_transcription':
+                if job_type not in BACKGROUND_JOBS:
                     try:
                         self._emit_completion_email(job_type, recording_id)
                     except Exception as e:
@@ -439,7 +475,7 @@ class FairJobQueue:
 
                         # Always keep recordings with FAILED status so users can see the error
                         # and reprocess later (e.g., when ASR server recovers)
-                        if recording and job_type != 'translate_transcription':
+                        if recording and job_type not in BACKGROUND_JOBS:
                             # Keep the recording with FAILED status so user can see the error and fix settings
                             recording.status = 'FAILED'
                             # Format the error for nice display. A failed summary
@@ -460,15 +496,14 @@ class FairJobQueue:
                         # retryable-failure case does not emit because the
                         # subscriber will see the eventual success or
                         # permanent failure that follows the retry loop.
-                        # Translation jobs are excluded from webhook/email
-                        # emission per spec.
-                        if job_type != 'translate_transcription':
+                        # Background jobs send no webhooks or emails.
+                        if job_type not in BACKGROUND_JOBS:
                             try:
                                 self._emit_failure_webhook(job_type, recording_id, error_str)
                             except Exception as e:
                                 logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
 
-                        if job_type != 'translate_transcription':
+                        if job_type not in BACKGROUND_JOBS:
                             try:
                                 self._emit_failure_email(job_type, recording_id, error_str)
                             except Exception as e:
@@ -668,6 +703,16 @@ class FairJobQueue:
             params=params,
         )
 
+    def _run_index_chunks(self, job, recording, params):
+        """Rebuild the recording's Inquire chunks (index worker pool)."""
+        from src.services.embeddings import process_recording_chunks
+
+        if not (recording.transcription or '').strip():
+            return
+        # A failure keeps the old chunks; raising lets the job be retried.
+        if not process_recording_chunks(recording.id):
+            raise RuntimeError(f"Could not build the Inquire chunks for recording {recording.id}")
+
     def enqueue(
         self,
         user_id: int,
@@ -720,7 +765,7 @@ class FairJobQueue:
                 # Update recording status based on job type
                 recording = db.session.get(Recording, recording_id)
                 if recording:
-                    if job_type == 'translate_transcription':
+                    if job_type in BACKGROUND_JOBS:
                         # Leave recording status untouched.
                         pass
                     elif job_type in SUMMARY_JOBS:
@@ -754,7 +799,7 @@ class FairJobQueue:
                 if not self._running:
                     self.start()
 
-                queue_name = 'summary' if job_type in SUMMARY_JOBS else 'transcription'
+                queue_name = queue_name_for(job_type)
                 logger.info(f"Enqueued {queue_name} job {job.id} (type={job_type}) for user {user_id}, recording {recording_id}")
                 return job.id
 
@@ -774,7 +819,7 @@ class FairJobQueue:
             for job in orphaned:
                 job.status = 'queued'
                 job.started_at = None
-                queue_name = 'summary' if job.job_type in SUMMARY_JOBS else 'transcription'
+                queue_name = queue_name_for(job.job_type)
                 logger.info(f"Recovered orphaned {queue_name} job {job.id} for recording {job.recording_id}")
 
             if orphaned:
@@ -782,7 +827,7 @@ class FairJobQueue:
                 logger.info(f"Recovered {len(orphaned)} orphaned jobs")
 
     def get_queue_status(self) -> Dict[str, Any]:
-        """Get the current queue status for both queues."""
+        """Get the current status of each queue."""
         with self._app_context():
             from src.models import ProcessingJob
 
@@ -815,33 +860,40 @@ class FairJobQueue:
                     "processing": summary_processing,
                     "workers": SUMMARY_WORKERS
                 },
+                "index_queue": {
+                    "queued": ProcessingJob.query.filter(
+                        ProcessingJob.status == 'queued',
+                        ProcessingJob.job_type.in_(INDEX_JOBS)
+                    ).count(),
+                    "processing": ProcessingJob.query.filter(
+                        ProcessingJob.status == 'processing',
+                        ProcessingJob.job_type.in_(INDEX_JOBS)
+                    ).count(),
+                    "workers": INDEX_WORKERS
+                },
                 "is_running": self._running
             }
 
     def get_position_in_queue(self, recording_id: int) -> Optional[int]:
-        """Get the position of a recording's job in its respective queue (1-indexed)."""
+        """Place of a recording's queued job among the queued jobs of its queue (1 = next).
+
+        Background jobs (translation, Inquire chunks) are not counted as the
+        recording's job.
+        """
         with self._app_context():
             from src.models import ProcessingJob
 
             job = ProcessingJob.query.filter(
                 ProcessingJob.recording_id == recording_id,
-                ProcessingJob.status == 'queued'
+                ProcessingJob.status == 'queued',
+                ProcessingJob.job_type.notin_(BACKGROUND_JOBS)
             ).first()
 
             if not job:
                 return None
 
-            # Determine which queue this job is in
-            job_types = SUMMARY_JOBS if job.job_type in SUMMARY_JOBS else TRANSCRIPTION_JOBS
-
-            # Count jobs of the same type created before this one
-            position = ProcessingJob.query.filter(
-                ProcessingJob.status == 'queued',
-                ProcessingJob.job_type.in_(job_types),
-                ProcessingJob.created_at < job.created_at
-            ).count() + 1
-
-            return position
+            order = self.turn_order(QUEUES[queue_name_for(job.job_type)])
+            return next(i for i, queued in enumerate(order, 1) if queued.id == job.id)
 
     def get_job_for_recording(self, recording_id: int):
         """Get the active job for a recording."""

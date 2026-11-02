@@ -39,8 +39,6 @@ from src.services.job_queue import (
 def _bind_queue():
     """Bind the singleton queue to the test app and reset round-robin state."""
     job_queue.init_app(app)
-    # Reset the turns so cross-test ordering is deterministic.
-    job_queue._turns = {'transcription': {}, 'summary': {}}
     yield
 
 
@@ -233,8 +231,6 @@ def test_claim_marks_job_processing_and_recording_processing(track):
     assert claimed.started_at is not None
 
     assert db.session.get(Recording, rid).status == "PROCESSING"
-    # the user's turn is recorded for the transcription queue
-    assert uid in job_queue._turns['transcription']
 
 
 def test_claim_picks_oldest_queued_job_for_user(track):
@@ -260,8 +256,6 @@ def test_claim_summary_queue_uses_separate_cursor(track):
 
     claimed = job_queue._claim_next_job(SUMMARY_JOBS, "summary")
     assert claimed.id == jid
-    assert uid in job_queue._turns['summary']
-    assert uid not in job_queue._turns['transcription']
 
 
 # --------------------------------------------------------------------------

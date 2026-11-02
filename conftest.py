@@ -70,6 +70,7 @@ os.environ.setdefault("ENABLE_AUTO_PROCESSING", "false")   # no black-hole file 
 # exercise claiming drive _claim_next_job themselves.
 os.environ["JOB_QUEUE_WORKERS"] = "0"
 os.environ["SUMMARY_QUEUE_WORKERS"] = "0"
+os.environ["INDEX_QUEUE_WORKERS"] = "0"
 # Force the agentic Inquire flag OFF for the suite: the legacy-pipeline tests
 # (test_cov_inquire) patch the single-shot pipeline's internals and would
 # silently route to the agent if the host .env enables the beta. The agent's

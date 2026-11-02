@@ -178,7 +178,11 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 **SUMMARY_QUEUE_WORKERS**: Number of workers for summary jobs (LLM API calls). These are fast jobs that typically complete in under a minute. Default: `2`.
 
+**INDEX_QUEUE_WORKERS**: Number of workers that build the Inquire search chunks (embeddings) of completed recordings, when `ENABLE_INQUIRE_MODE` is on. The chunks are built after a recording is marked completed, in their own queue, so a slow embedding model does not delay the next transcription or summary. Default: `1`.
+
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
+
+In each queue, users take turns: every user with a waiting job gets one job started before anyone gets a second, whatever order the files were uploaded in.
 
 Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
 

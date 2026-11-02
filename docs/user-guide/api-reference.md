@@ -819,7 +819,7 @@ GET /api/v1/recordings/{id}/status
 ```json
 {
   "id": 123,
-  "status": "PROCESSING",
+  "status": "QUEUED",
   "queue_position": 2,
   "error_message": null,
   "completed_at": null
@@ -831,10 +831,13 @@ GET /api/v1/recordings/{id}/status
 | Status | Description |
 |--------|-------------|
 | `PENDING` | Waiting in queue |
+| `QUEUED` | Waiting for a transcription worker |
 | `PROCESSING` | Transcription in progress |
 | `SUMMARIZING` | Summary generation in progress |
 | `COMPLETED` | Processing finished successfully |
 | `FAILED` | Processing failed (check `error_message`) |
+
+`queue_position` is the recording's place among the waiting jobs of its queue, where `1` is the next job to start. Users take turns, so a recording can be ahead of files that were uploaded earlier by someone else. The value is `null` when none of the recording's jobs is waiting.
 
 ### Update Recording
 

@@ -50,7 +50,7 @@ def rec():
 
 def _quiet():
     return (patch.object(proc, "apply_team_tag_auto_shares"), patch.object(proc, "export_recording"),
-            patch.object(proc, "process_recording_chunks"), patch.object(proc, "extract_events_from_transcript"))
+            patch.object(proc, "queue_inquire_chunks"), patch.object(proc, "extract_events_from_transcript"))
 
 
 def _completion(text):

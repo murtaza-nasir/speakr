@@ -71,7 +71,7 @@ def test_summary_prompt_recording_date_is_local(rec):
          patch.object(proc, "call_llm_completion", side_effect=fake), \
          patch.object(proc, "extract_events_from_transcript"), \
          patch.object(proc, "apply_team_tag_auto_shares"), patch.object(proc, "export_recording"), \
-         patch.object(proc, "process_recording_chunks"):
+         patch.object(proc, "queue_inquire_chunks"):
         proc.generate_summary_only_task(app.app_context(), rid)
     assert any("Recording date: March 05, 2026" in p for p in seen)
 

@@ -1,20 +1,21 @@
 """Users take turns in the job queue, one job each, whatever order they uploaded in."""
 
 import os
+import secrets
 from datetime import datetime, timedelta
 
 import pytest
 
 from src.app import app
 from src.database import db
-from src.models import ProcessingJob, Recording, User
+from src.models import APIToken, ProcessingJob, Recording, User
 from src.services.job_queue import job_queue
+from src.utils.token_auth import hash_token
 
 
 @pytest.fixture
 def queue():
     job_queue.init_app(app)
-    job_queue._turns = {'transcription': {}, 'summary': {}}
     with app.app_context():
         # Jobs left by other test files would take turns too.
         stale = ProcessingJob.query.filter(ProcessingJob.status == 'queued').all()
@@ -89,3 +90,34 @@ def test_a_later_upload_does_not_cost_a_user_a_turn(queue):
     _upload(queue, c, 'C2', 10)
 
     assert _claim_all() == ['A1', 'B1', 'C1', 'A2', 'B2', 'C2']
+
+
+def test_queue_positions_follow_the_turns(queue):
+    a, b, c = (_user(queue, n) for n in 'abc')
+    for label, user, seconds in [('A1', a, 0), ('B1', b, 1), ('B2', b, 2), ('C1', c, 3), ('A2', a, 5), ('C2', c, 10)]:
+        _upload(queue, user, label, seconds)
+
+    titles = {rid: db.session.get(Recording, rid).title for rid in queue['recordings']}
+    positions = {titles[rid]: job_queue.get_position_in_queue(rid) for rid in queue['recordings']}
+    assert positions == {'A1': 1, 'B1': 2, 'C1': 3, 'A2': 4, 'B2': 5, 'C2': 6}
+
+
+def test_the_status_api_gives_the_place_of_a_queued_recording(queue):
+    a, b = _user(queue, 'a'), _user(queue, 'b')
+    _upload(queue, a, 'A1', 0)
+    _upload(queue, a, 'A2', 1)
+    _upload(queue, b, 'B1', 2)
+    plaintext = f"turn-token-{secrets.token_urlsafe(16)}"
+    token = APIToken(user_id=a, token_hash=hash_token(plaintext), name='turns')
+    db.session.add(token)
+    db.session.commit()
+    try:
+        a2 = queue['recordings'][1]
+        res = app.test_client().get(f'/api/v1/recordings/{a2}/status', headers={'X-API-Token': plaintext})
+        assert res.status_code == 200
+        assert res.get_json()['status'] == 'QUEUED'
+        # B1 goes before A's second file.
+        assert res.get_json()['queue_position'] == 3
+    finally:
+        db.session.delete(db.session.get(APIToken, token.id))
+        db.session.commit()

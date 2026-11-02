@@ -2105,20 +2105,9 @@ def get_recording_status(recording_id):
     if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
-    # Get queue position if pending/processing
-    queue_position = None
-    if recording.status in ['PENDING', 'PROCESSING', 'SUMMARIZING']:
-        # Count jobs ahead of this one
-        job = ProcessingJob.query.filter_by(
-            recording_id=recording_id,
-            status='queued'
-        ).first()
-
-        if job:
-            queue_position = ProcessingJob.query.filter(
-                ProcessingJob.status == 'queued',
-                ProcessingJob.created_at < job.created_at
-            ).count() + 1
+    # Place in its queue while the recording's job waits (1 = next)
+    from src.services.job_queue import job_queue
+    queue_position = job_queue.get_position_in_queue(recording_id)
 
     return jsonify({
         'id': recording.id,

@@ -171,7 +171,7 @@ def test_summary_inquire_mode_calls_process_chunks():
         rid = rec.id
         with _patch_llm(content="A real summary body."), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", True), \
-             patch.object(proc, "process_recording_chunks") as mock_chunks:
+             patch.object(proc, "queue_inquire_chunks") as mock_chunks:
             proc.generate_summary_only_task(app.app_context(), rid)
 
         mock_chunks.assert_called_once_with(rid)
@@ -184,7 +184,7 @@ def test_summary_inquire_chunk_error_is_swallowed():
         rid = rec.id
         with _patch_llm(content="A real summary body."), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", True), \
-             patch.object(proc, "process_recording_chunks",
+             patch.object(proc, "queue_inquire_chunks",
                           side_effect=RuntimeError("embed fail")):
             # Must not raise despite the chunk error.
             proc.generate_summary_only_task(app.app_context(), rid)
@@ -309,7 +309,7 @@ def test_title_inquire_mode_calls_process_chunks():
         rid = rec.id
         with _patch_llm(content="Inquire Title"), \
              patch.object(proc, "ENABLE_INQUIRE_MODE", True), \
-             patch.object(proc, "process_recording_chunks") as mock_chunks:
+             patch.object(proc, "queue_inquire_chunks") as mock_chunks:
             proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
         mock_chunks.assert_called_once_with(rid)
 

@@ -3709,7 +3709,7 @@ def get_job_queue_status():
     """
     try:
         from src.models import ProcessingJob
-        from src.services.job_queue import TRANSCRIPTION_JOBS, SUMMARY_JOBS
+        from src.services.job_queue import job_queue, INDEX_JOBS, QUEUES, queue_name_for
         from datetime import timedelta
 
         # Expire all cached objects to ensure we see latest data from worker threads
@@ -3717,8 +3717,10 @@ def get_job_queue_status():
 
         # Get all jobs for the user (active + recent completed/failed within last hour)
         cutoff_time = datetime.utcnow() - timedelta(hours=1)
+        # Inquire chunk jobs run unseen after a recording is completed.
         all_jobs = ProcessingJob.query.filter(
             ProcessingJob.user_id == current_user.id,
+            ProcessingJob.job_type.notin_(INDEX_JOBS),
             db.or_(
                 ProcessingJob.status.in_(['queued', 'processing']),
                 db.and_(
@@ -3728,6 +3730,16 @@ def get_job_queue_status():
             )
         ).order_by(ProcessingJob.created_at.desc()).all()
 
+        places = {}
+        for name in {queue_name_for(job.job_type) for job in all_jobs if job.status == 'queued'}:
+            order = job_queue.turn_order(QUEUES[name])
+            currently_processing = ProcessingJob.query.filter(
+                ProcessingJob.status == 'processing',
+                ProcessingJob.job_type.in_(QUEUES[name])
+            ).count()
+            for place, queued in enumerate(order, 1):
+                places[queued.id] = place + currently_processing
+
         job_details = []
         for job in all_jobs:
             recording = db.session.get(Recording, job.recording_id)
@@ -3735,23 +3747,8 @@ def get_job_queue_status():
             if recording:
                 recording_title = recording.title or recording.original_filename or 'Untitled'
 
-            # Determine queue type
-            queue_type = 'summary' if job.job_type in SUMMARY_JOBS else 'transcription'
-
-            # Calculate position if queued
-            position = None
-            if job.status == 'queued':
-                job_types = SUMMARY_JOBS if job.job_type in SUMMARY_JOBS else TRANSCRIPTION_JOBS
-                ahead_in_queue = ProcessingJob.query.filter(
-                    ProcessingJob.status == 'queued',
-                    ProcessingJob.job_type.in_(job_types),
-                    ProcessingJob.created_at < job.created_at
-                ).count()
-                currently_processing = ProcessingJob.query.filter(
-                    ProcessingJob.status == 'processing',
-                    ProcessingJob.job_type.in_(job_types)
-                ).count()
-                position = ahead_in_queue + currently_processing + 1
+            queue_type = queue_name_for(job.job_type)
+            position = places.get(job.id)
 
             job_details.append({
                 'id': job.id,

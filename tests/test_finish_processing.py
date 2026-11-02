@@ -62,7 +62,7 @@ def _rec(made, user_id, **kwargs):
 def _side_effects():
     return (patch.object(proc, "apply_team_tag_auto_shares"),
             patch.object(proc, "export_recording"),
-            patch.object(proc, "process_recording_chunks"),
+            patch.object(proc, "queue_inquire_chunks"),
             patch.object(proc, "ENABLE_AUTO_EXPORT", True),
             patch.object(proc, "ENABLE_INQUIRE_MODE", True))
 

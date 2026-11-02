@@ -42,7 +42,7 @@ Sometimes the admin user creation fails silently if the password doesn't meet re
 
 When recordings stay in "pending" or "queued" status indefinitely, check these common causes:
 
-**QUEUED status**: Recordings show "Queued" when waiting for an available worker. By default, 2 workers process jobs concurrently. If many recordings are queued, they'll be processed in fair round-robin order across users - no single user can monopolize the queue. Increase `JOB_QUEUE_WORKERS` in your environment file for faster throughput.
+**QUEUED status**: Recordings show "Queued" when waiting for an available worker. By default, 2 workers process jobs concurrently. If many recordings are queued, users take turns: every user with a waiting recording gets one started before anyone gets a second, so no single user can monopolize the queue. Increase `JOB_QUEUE_WORKERS` in your environment file for faster throughput.
 
 **Background processor stopped**: Check the logs for error messages about the [transcription service](features.md#multi-engine-support). Monitor processing status in the [vector store](admin-guide/vector-store.md) admin panel.
 

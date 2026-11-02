@@ -23,7 +23,6 @@ from openai import OpenAI
 from src.services.llm_settings import get_temperature
 from src.database import db
 from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
-from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy, TokenBudgetExceeded
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError, has_audio_stream, probe_rejected_input
@@ -364,7 +363,8 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
     so none of them can skip a step. Events no longer depend on a summary: with
     auto-summarization off they are extracted from the transcript. The steps
     after COMPLETED are best-effort: a failure is logged and the recording
-    stays COMPLETED.
+    stays COMPLETED. The Inquire chunks are built by the index workers, so the
+    worker running this step is free for the next job.
     """
     recording = db.session.get(Recording, recording_id)
     if not recording:
@@ -392,9 +392,18 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
             current_app.logger.error(f"Auto-export failed for recording {recording_id} (recording stays COMPLETED): {e}")
     if ENABLE_INQUIRE_MODE:
         try:
-            process_recording_chunks(recording_id)
+            queue_inquire_chunks(recording_id)
         except Exception as e:
-            current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
+            current_app.logger.error(f"Could not queue the Inquire chunks for completed recording {recording_id}: {e}")
+
+
+def queue_inquire_chunks(recording_id):
+    """Queue a rebuild of a recording's Inquire chunks on the index workers (#541)."""
+    from src.services.job_queue import job_queue
+
+    recording = db.session.get(Recording, recording_id)
+    if recording:
+        job_queue.enqueue(recording.user_id, recording_id, 'index_chunks')
 
 
 def generate_title_task(app_context, recording_id, will_auto_summarize=False):
