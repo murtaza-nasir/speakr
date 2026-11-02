@@ -611,7 +611,7 @@ def test_process_whitespace_only_chunks_to_empty(api_emb):
     with app.app_context():
         user = _make_user()
         rec = _make_recording(user, transcription="some real text here")
-        with patch.object(api_emb, "chunk_transcription", return_value=[]):
+        with patch("src.transcript_chunking.chunk_transcription", return_value=[]):
             assert api_emb.process_recording_chunks(rec.id) is True
         assert TranscriptChunk.query.filter_by(recording_id=rec.id).count() == 0
 
@@ -726,7 +726,7 @@ def test_process_exception_path_returns_false(api_emb):
     with app.app_context():
         user = _make_user()
         rec = _make_recording(user, transcription="boom text")
-        with patch.object(api_emb, "chunk_transcription",
+        with patch("src.transcript_chunking.chunk_transcription",
                           side_effect=RuntimeError("unexpected")):
             assert api_emb.process_recording_chunks(rec.id) is False
 
