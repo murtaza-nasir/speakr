@@ -169,7 +169,7 @@ The setting only appears when your administrator has configured email delivery a
 
 **Auto-translate new recordings.** When enabled, each new recording is translated automatically into your preferred output language once transcription finishes, so the translation is ready without another click. When disabled (the default), you generate the translation yourself with the **Generate Translation** button on the translation tab.
 
-The checkbox only appears when your administrator has enabled automatic translation for the instance. It is off by default per account, and it neither changes the recording's status nor replaces the original transcript. The target is the language set as your Preferred Chatbot and Summarization Language; when that is left on Default, your interface language is used. Translations consume the same AI tokens as a manual translation and count toward your monthly token budget, so a large batch of uploads translates every recording in the batch.
+The checkbox only appears when your administrator has enabled automatic translation for the instance. It is off by default per account, and it neither changes the recording's status nor replaces the original transcript. The target is the language set as your Preferred Chatbot, Summarization and Translation Language; when that is left on Default, your interface language is used. Translations consume the same AI tokens as a manual translation and count toward your monthly token budget, so a large batch of uploads translates every recording in the batch.
 
 ### Display
 

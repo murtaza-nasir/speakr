@@ -1152,7 +1152,7 @@
                                             <option value="{{ _lang_name }}" data-i18n="languages.{{ _lang_code }}" {% if current_user.output_language == _lang_name %}selected{% endif %}>{{ _lang_name }}</option>
                                             {% endfor %}
                                         </select>
-                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, chat, and translation. Leave on Default to follow the model's own behaviour.</p>
                                     </div>
                                     <div>
                                         <label for="timezone_select" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.timezone">Timezone</label>
@@ -1240,7 +1240,7 @@
                                     <input type="checkbox" id="prefAutoTranslation" name="auto_translation" {% if current_user.auto_translation %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
                                     <span class="flex-1">
                                         <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.autoTranslation">Auto-translate new recordings</span>
-                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.autoTranslationHelp">When enabled, each new recording is translated automatically into the language you selected as your Preferred Chatbot and Summarization Language once transcription finishes. When disabled (default), you generate the translation yourself with the Generate Translation button. Translations use the same AI tokens as a manual one and count toward your monthly token budget.</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.autoTranslationHelp">When enabled, each new recording is translated automatically into the language you selected as your Preferred Chatbot, Summarization and Translation Language once transcription finishes. When disabled (default), you generate the translation yourself with the Generate Translation button. Translations use the same AI tokens as a manual one and count toward your monthly token budget.</span>
                                     </span>
                                 </label>
                                 {% else %}
