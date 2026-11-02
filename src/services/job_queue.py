@@ -11,6 +11,7 @@ This queue ensures:
 
 import os
 import json
+import itertools
 import threading
 import time
 import logging
@@ -68,9 +69,10 @@ class FairJobQueue:
         self._summary_workers = []
         self._running = False
         self._app = None
-        # Separate round-robin tracking for each queue
-        self._last_user_id_transcription = None
-        self._last_user_id_summary = None
+        # Turn taken by each user in each queue, numbered across both queues;
+        # the waiting user with the oldest turn goes next.
+        self._turns = {'transcription': {}, 'summary': {}}
+        self._turn_numbers = itertools.count()
         # Lock for claiming jobs (SQLite doesn't support row-level locking)
         self._claim_lock = threading.Lock()
         # Serialise the check-then-insert in enqueue(). The active-job unique
@@ -163,7 +165,7 @@ class FairJobQueue:
 
     def _claim_next_job(self, job_types: List[str], queue_name: str):
         """
-        Claim the next job of specified types using fair round-robin scheduling.
+        Claim the next job of specified types, with users taking turns.
 
         Args:
             job_types: List of job types this worker handles
@@ -195,18 +197,14 @@ class FairJobQueue:
 
                     user_ids = [u[0] for u in users_with_jobs]
 
-                    # Get last user ID for this queue type
-                    last_user_id = (self._last_user_id_transcription
-                                   if queue_name == 'transcription'
-                                   else self._last_user_id_summary)
-
-                    # Round-robin: pick next user after last processed
-                    next_user_id = None
-                    if last_user_id is not None and last_user_id in user_ids:
-                        idx = user_ids.index(last_user_id)
-                        next_user_id = user_ids[(idx + 1) % len(user_ids)]
-                    else:
-                        next_user_id = user_ids[0]
+                    # Users take turns: whoever was served longest ago goes
+                    # next, and a user without a turn yet goes first. Ties
+                    # keep the order of each user's oldest queued job. Taking
+                    # "the user after the last one" in that order would let a
+                    # user go twice in a round, since the order changes as
+                    # jobs are claimed.
+                    turns = self._turns[queue_name]
+                    next_user_id = min(user_ids, key=lambda uid: turns.get(uid, -1))
 
                     # Get oldest queued job of our types for this user
                     candidate_job = ProcessingJob.query.filter(
@@ -248,11 +246,7 @@ class FairJobQueue:
                         # Refresh the job object to get updated values
                         db.session.refresh(candidate_job)
 
-                        # Update last user ID for this queue
-                        if queue_name == 'transcription':
-                            self._last_user_id_transcription = next_user_id
-                        else:
-                            self._last_user_id_summary = next_user_id
+                        turns[next_user_id] = next(self._turn_numbers)
 
                         wait_time = (claim_time - candidate_job.created_at).total_seconds()
                         logger.info(f"[{queue_name.upper()}] Claimed job {candidate_job.id} (type={candidate_job.job_type}) for user {candidate_job.user_id}, recording {candidate_job.recording_id} (waited {wait_time:.1f}s)")

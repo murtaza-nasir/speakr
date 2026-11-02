@@ -39,9 +39,8 @@ from src.services.job_queue import (
 def _bind_queue():
     """Bind the singleton queue to the test app and reset round-robin state."""
     job_queue.init_app(app)
-    # Reset fairness cursors so cross-test ordering is deterministic.
-    job_queue._last_user_id_transcription = None
-    job_queue._last_user_id_summary = None
+    # Reset the turns so cross-test ordering is deterministic.
+    job_queue._turns = {'transcription': {}, 'summary': {}}
     yield
 
 
@@ -234,8 +233,8 @@ def test_claim_marks_job_processing_and_recording_processing(track):
     assert claimed.started_at is not None
 
     assert db.session.get(Recording, rid).status == "PROCESSING"
-    # round-robin cursor updated for transcription queue
-    assert job_queue._last_user_id_transcription == uid
+    # the user's turn is recorded for the transcription queue
+    assert uid in job_queue._turns['transcription']
 
 
 def test_claim_picks_oldest_queued_job_for_user(track):
@@ -261,8 +260,8 @@ def test_claim_summary_queue_uses_separate_cursor(track):
 
     claimed = job_queue._claim_next_job(SUMMARY_JOBS, "summary")
     assert claimed.id == jid
-    assert job_queue._last_user_id_summary == uid
-    assert job_queue._last_user_id_transcription is None
+    assert uid in job_queue._turns['summary']
+    assert uid not in job_queue._turns['transcription']
 
 
 # --------------------------------------------------------------------------
@@ -296,15 +295,10 @@ def test_round_robin_across_two_users(track):
 
 
 def test_round_robin_cursor_advances_across_three_users(track):
-    """The fairness cursor must advance to the user AFTER the last-claimed one.
+    """A user who just had a turn waits, even while holding the oldest job.
 
-    Mutation guard for `_claim_next_job` line 188
-    (`if last_user_id is not None and last_user_id in user_ids:`):
-    the `is not None`->`is None` mutation collapses the round-robin to always
-    picking ``user_ids[0]`` (the lowest min(created_at) user). We make the
-    just-claimed user u1 *retain* the globally-oldest queued job so it stays at
-    ``user_ids[0]``; correct round-robin must still skip past it to u2, while the
-    mutant would re-pick u1.
+    u1 keeps the globally-oldest queued job after its first claim, so it stays
+    at ``user_ids[0]``; the next turn must still go to u2, who has not had one.
     """
     u1 = _make_user(); track.user_ids.append(u1)
     u2 = _make_user(); track.user_ids.append(u2)
@@ -331,15 +325,12 @@ def test_round_robin_cursor_advances_across_three_users(track):
     db.session.commit()
 
     first = job_queue._claim_next_job(["transcribe"], "transcription")
-    assert first.user_id == u1            # cursor was None -> user_ids[0] == u1
-    assert job_queue._last_user_id_transcription == u1
+    assert first.user_id == u1            # no turns yet -> user_ids[0] == u1
 
     second = job_queue._claim_next_job(["transcribe"], "transcription")
     # u1 still owns the globally-oldest queued job (j1b), so user_ids stays
-    # [u1, u2, u3]. Correct round-robin advances PAST u1 to u2. The mutant
-    # (is None) ignores the cursor and re-picks user_ids[0] == u1.
+    # [u1, u2, u3]. u1 has had a turn and u2 has not, so u2 goes next.
     assert second.user_id == u2
-    assert job_queue._last_user_id_transcription == u2
 
 
 # --------------------------------------------------------------------------
