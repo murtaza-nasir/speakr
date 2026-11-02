@@ -2105,14 +2105,17 @@ def get_recording_status(recording_id):
     if not recording or not has_recording_access(recording, current_user):
         return jsonify(api_error('recording_not_found')), 404
 
-    # Place in its queue while the recording's job waits (1 = next)
+    # Place in its queue while the recording's job waits (1 = next), and
+    # which step that job is
     from src.services.job_queue import job_queue
     queue_position = job_queue.get_position_in_queue(recording_id)
+    stage = job_queue.get_stage(recording_id)
 
     return jsonify({
         'id': recording.id,
         'status': recording.status,
         'queue_position': queue_position,
+        'stage': stage,
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
         'completed_at': recording.completed_at.isoformat() if recording.completed_at else None
     })

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
 SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
 INDEX_WORKERS = int(os.environ.get('INDEX_QUEUE_WORKERS', '1'))
-CONVERT_WORKERS = int(os.environ.get('CONVERT_QUEUE_WORKERS', '1'))
+CONVERT_WORKERS = int(os.environ.get('CONVERT_QUEUE_WORKERS', '2'))
 MAX_RETRIES = int(os.environ.get('JOB_MAX_RETRIES', '3'))
 POLL_INTERVAL = 1.0  # seconds between checking for new jobs
 
@@ -247,7 +247,11 @@ class FairJobQueue:
                         # Also update Recording.status to reflect active processing
                         from src.models import Recording
                         recording = db.session.get(Recording, candidate_job.recording_id)
-                        if recording and recording.status == 'QUEUED':
+                        # A conversion leaves the recording QUEUED: its
+                        # transcription is queued next, and the status should
+                        # not go from PROCESSING back to QUEUED (#543).
+                        if (recording and recording.status == 'QUEUED'
+                                and candidate_job.job_type not in CONVERT_JOBS):
                             recording.status = 'PROCESSING'
 
                         db.session.commit()
@@ -930,6 +934,26 @@ class FairJobQueue:
 
             order = self.turn_order(QUEUES[queue_name_for(job.job_type)])
             return next(i for i, queued in enumerate(order, 1) if queued.id == job.id)
+
+    # Names of the queues as the API reports a recording's stage.
+    STAGES = {'convert': 'conversion', 'transcription': 'transcription', 'summary': 'summary'}
+
+    def get_stage(self, recording_id: int) -> Optional[str]:
+        """The stage of a recording's waiting or running job: 'conversion',
+        'transcription' or 'summary'; None when it has none.
+
+        Background jobs (translation, Inquire chunks) are not the recording's
+        stage.
+        """
+        with self._app_context():
+            from src.models import ProcessingJob
+
+            job = ProcessingJob.query.filter(
+                ProcessingJob.recording_id == recording_id,
+                ProcessingJob.status.in_(['queued', 'processing']),
+                ProcessingJob.job_type.notin_(BACKGROUND_JOBS)
+            ).order_by(ProcessingJob.id.desc()).first()
+            return self.STAGES.get(queue_name_for(job.job_type)) if job else None
 
     def get_job_for_recording(self, recording_id: int):
         """Get the active job for a recording."""

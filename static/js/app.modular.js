@@ -3135,6 +3135,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Computed properties for different job states
             const activeJobs = computed(() => allJobs.value.filter(j => ['queued', 'processing'].includes(j.job_status)));
+
+            // A queued recording waits for its conversion or its
+            // transcription (#543). Only the viewer's own jobs are known, so
+            // other recordings keep the plain status.
+            const formatRecordingStatus = (recording) => {
+                const job = activeJobs.value.find(j => j.recording_id === recording.id
+                    && !['translate_transcription', 'index_chunks'].includes(j.job_type));
+                if (job && job.job_type === 'convert') {
+                    return job.job_status === 'processing' ? t('status.converting') : t('status.queuedConversion');
+                }
+                if (job && job.queue_type === 'transcription' && job.job_status === 'queued') {
+                    return t('status.queuedTranscription');
+                }
+                return formatStatus(recording.status);
+            };
             const completedJobs = computed(() => allJobs.value.filter(j => j.job_status === 'completed'));
             const failedJobs = computed(() => allJobs.value.filter(j => j.job_status === 'failed'));
 
@@ -3438,8 +3453,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const isJoining = job.job_type === 'merge' && unifiedStatus === 'transcribing';
                     // A convert job prepares an upload's audio before it is
                     // queued for transcription (#543).
-                    const isPreparing = job.job_type === 'convert' && unifiedStatus === 'transcribing';
-                    const stage = isJoining ? 'joining' : (isPreparing ? 'preparing' : null);
+                    const isConverting = job.job_type === 'convert' && unifiedStatus === 'transcribing';
+                    const stage = isJoining ? 'joining' : (isConverting ? 'converting' : null);
+                    // A waiting job says what it waits for.
+                    const queuedLabel = unifiedStatus !== 'queued' ? null
+                        : job.job_type === 'convert' ? t('status.queuedConversion')
+                        : job.queue_type === 'transcription' ? t('status.queuedTranscription') : null;
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
                         items.set(key, {
                             id: key,
@@ -3449,11 +3468,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             title: job.recording_title || t('common.untitled'),
                             status: unifiedStatus,
                             stage,
-                            statusLabel: isJoining ? t('progressQueue.joining') : (isPreparing ? t('progressQueue.preparing') : null),
+                            statusLabel: isJoining ? t('progressQueue.joining') : (isConverting ? t('progressQueue.converting') : queuedLabel),
                             progress: stage ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
                             progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              isJoining ? t('progressQueue.joiningMessage') :
-                                             isPreparing ? t('progressQueue.preparingMessage') :
+                                             isConverting ? t('progressQueue.convertingMessage') :
                                              unifiedStatus === 'transcribing' ? t('progressQueue.transcribingAudio') :
                                              unifiedStatus === 'summarizing' ? t('help.generatingSummary') :
                                              unifiedStatus === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
@@ -4628,6 +4647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formatDisplayDate,
                 formatShortDate,
                 formatStatus,
+                formatRecordingStatus,
                 getStatusClass,
                 formatTime,
                 formatDuration,

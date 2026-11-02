@@ -823,6 +823,7 @@ GET /api/v1/recordings/{id}/status
   "id": 123,
   "status": "QUEUED",
   "queue_position": 2,
+  "stage": "transcription",
   "error_message": null,
   "completed_at": null
 }
@@ -833,11 +834,13 @@ GET /api/v1/recordings/{id}/status
 | Status | Description |
 |--------|-------------|
 | `PENDING` | Waiting in queue |
-| `QUEUED` | Waiting for a transcription worker |
+| `QUEUED` | Waiting for conversion or transcription (see `stage`) |
 | `PROCESSING` | Transcription in progress |
 | `SUMMARIZING` | Summary generation in progress |
 | `COMPLETED` | Processing finished successfully |
 | `FAILED` | Processing failed (check `error_message`) |
+
+`stage` is the step the recording's waiting or running job belongs to: `conversion`, `transcription` or `summary`, or `null` when it has none. A recording stays `QUEUED` while its upload is converted and until its transcription starts; with `stage` set to `conversion`, a `queue_position` of `null` means the conversion is running.
 
 `queue_position` is the recording's place among the waiting jobs of its queue, where `1` is the next job to start. Users take turns, so a recording can be ahead of files that were uploaded earlier by someone else. The value is `null` when none of the recording's jobs is waiting.
 

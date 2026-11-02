@@ -274,3 +274,29 @@ def test_without_convert_workers_the_upload_converts_the_file_itself(user, tmp_p
         # The stored file keeps the uploaded name in this path; its type shows the conversion.
         assert db.session.get(Recording, rid).mime_type != "audio/webm"
         assert _jobs(rid) == [("transcribe", "queued")]
+
+
+def test_the_status_api_says_what_a_queued_recording_waits_for(user, tmp_path):
+    import secrets
+    from src.models import APIToken
+    from src.utils.token_auth import hash_token
+
+    with app.app_context():
+        plaintext = f"conv-{secrets.token_urlsafe(16)}"
+        db.session.add(APIToken(user_id=user, token_hash=hash_token(plaintext), name="conv"))
+        db.session.commit()
+        rid = _upload(user, _webm(tmp_path), "meeting.webm").get_json()["id"]
+        client = app.test_client()
+
+        def status():
+            body = client.get(f"/api/v1/recordings/{rid}/status", headers={"X-API-Token": plaintext}).get_json()
+            return body["status"], body["stage"], body["queue_position"]
+
+        assert status() == ("QUEUED", "conversion", 1)
+        job = job_queue._claim_next_job(CONVERT_JOBS, 'convert')
+        # Still QUEUED while converting: the status never goes back from PROCESSING.
+        assert status() == ("QUEUED", "conversion", None)
+        job_queue._process_job(job)
+        assert status() == ("QUEUED", "transcription", 1)
+        APIToken.query.filter_by(user_id=user).delete()
+        db.session.commit()

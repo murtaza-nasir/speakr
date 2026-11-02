@@ -484,7 +484,7 @@
                                     <span v-else-if="recording.status !== 'COMPLETED'"
                                           :class="getStatusClass(recording.status)"
                                           class="status-badge">
-                                        ${formatStatus(recording.status)}
+                                        ${formatRecordingStatus(recording)}
                                     </span>
 
                                     <!-- For completed recordings, show highlight and inbox badges -->

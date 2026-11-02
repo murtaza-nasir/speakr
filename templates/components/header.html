@@ -80,7 +80,7 @@
                 <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"
                       :class="getStatusClass(selectedRecording.status)"
                       class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0">
-                    ${formatStatus(selectedRecording.status)}
+                    ${formatRecordingStatus(selectedRecording)}
                 </span>
             </div>
         </template>
