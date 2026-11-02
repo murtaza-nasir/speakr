@@ -9,7 +9,6 @@ import json
 import re
 import mimetypes
 import time
-import threading
 import subprocess
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -155,29 +154,24 @@ def _needs_speakers_condition():
     )
 
 def reindex_recording_chunks_async(recording_id):
-    """Rebuild a recording's semantic-search (Inquire) chunks in the background.
+    """Queue a rebuild of a recording's semantic-search (Inquire) chunks.
 
     The Inquire/RAG chunks are a snapshot of recording.transcription. When the
-    transcription text changes — speaker names applied, transcript edited — the
+    transcription text changes (speaker names applied, transcript edited) the
     chunks must be rebuilt or Inquire keeps answering from the stale text (e.g.
-    'SPEAKER_00' instead of the applied name). Runs in a daemon thread so the
-    edit's HTTP response isn't blocked on embedding generation; no-op when
-    Inquire mode is off. process_recording_chunks deletes-then-recreates with
-    rollback safety, so a failure leaves the previous chunks intact.
+    'SPEAKER_00' instead of the applied name). The rebuild is an index job on
+    the index workers, as after transcription (#541): it survives a restart, is
+    retried, and an edit made while it runs is picked up before it ends. No-op
+    when Inquire mode is off.
     """
     if not ENABLE_INQUIRE_MODE:
         return
-    app_obj = current_app._get_current_object()
-
-    def _run():
-        with app_obj.app_context():
-            try:
-                process_recording_chunks(recording_id)
-                app_obj.logger.info(f"Reindexed Inquire chunks for recording {recording_id} after edit")
-            except Exception as e:
-                app_obj.logger.error(f"Failed to reindex Inquire chunks for recording {recording_id}: {e}", exc_info=True)
-
-    threading.Thread(target=_run, name=f"reindex-chunks-{recording_id}", daemon=True).start()
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if recording is not None:
+            job_queue.enqueue(recording.user_id, recording_id, 'index_chunks')
+    except Exception as e:
+        current_app.logger.error(f"Could not queue the Inquire chunks for recording {recording_id}: {e}", exc_info=True)
 
 
 # Global helpers (will be injected from app)

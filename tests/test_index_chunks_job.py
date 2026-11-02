@@ -107,3 +107,38 @@ def test_the_job_list_leaves_out_chunk_jobs(recording):
 
     assert res.status_code == 200
     assert [job for job in res.get_json()['jobs'] if job['recording_id'] == recording.id] == []
+
+
+def test_an_edit_queues_the_rebuild_as_an_index_job(recording):
+    import src.api.recordings as rec_module
+    with patch.object(rec_module, 'ENABLE_INQUIRE_MODE', True), \
+         patch('src.services.embeddings.process_recording_chunks') as build:
+        rec_module.reindex_recording_chunks_async(recording.id)
+
+    build.assert_not_called()
+    assert [job.status for job in _index_jobs(recording.id)] == ['queued']
+
+
+def test_an_edit_during_a_build_is_built_as_well(recording):
+    # The second edit arrives while the first build runs: its enqueue is
+    # merged into the running job, which then builds again.
+    built = []
+
+    def build(recording_id):
+        rec = db.session.get(Recording, recording_id)
+        built.append(rec.transcription)
+        if len(built) == 1:
+            rec.transcription = 'edited ' * 50
+            db.session.commit()
+            assert job_queue.enqueue(rec.user_id, recording_id, 'index_chunks') == job.id
+        return True
+
+    recording.status = 'COMPLETED'
+    db.session.commit()
+    job_queue.enqueue(recording.user_id, recording.id, 'index_chunks')
+    job = job_queue._claim_next_job(INDEX_JOBS, 'index')
+    with patch('src.services.embeddings.process_recording_chunks', side_effect=build):
+        job_queue._process_job(job)
+
+    assert built == ['word ' * 50, 'edited ' * 50]
+    assert [j.status for j in _index_jobs(recording.id)] == ['completed']

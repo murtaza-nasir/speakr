@@ -1783,15 +1783,15 @@ def test_reindex_chunks_noop_when_inquire_disabled(owner):
     (guard at recordings.py:118).
 
     MUTATION-VERIFIED: `if not ENABLE_INQUIRE_MODE` -> `if ENABLE_INQUIRE_MODE`
-    makes the disabled-mode call spawn a reindex thread; this test (asserting no
-    thread / no process_recording_chunks call) then FAILS.
+    makes the disabled-mode call queue an index job; this test (asserting no
+    job / no process_recording_chunks call) then FAILS.
     """
     # Force the disabled state (the test image may have inquire enabled), so the
     # gate is exercised regardless of environment.
     with _db():
         with patch.object(rec_module, "ENABLE_INQUIRE_MODE", False), \
              patch.object(rec_module, "process_recording_chunks") as proc, \
-             patch.object(rec_module.threading, "Thread") as thread_cls:
+             patch.object(rec_module.job_queue, "enqueue") as enqueue:
             rec_module.reindex_recording_chunks_async(987654321)
-            thread_cls.assert_not_called()
+            enqueue.assert_not_called()
             proc.assert_not_called()

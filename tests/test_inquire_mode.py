@@ -202,10 +202,10 @@ def test_reindex_is_noop_when_inquire_disabled():
 
     with patch.object(rec, 'ENABLE_INQUIRE_MODE', False), \
          patch.object(rec, 'process_recording_chunks') as pc, \
-         patch('threading.Thread') as th:
+         patch.object(rec.job_queue, 'enqueue') as enqueue:
         rec.reindex_recording_chunks_async(123)
         pc.assert_not_called()
-        th.assert_not_called()
+        enqueue.assert_not_called()
 
 
 def main():

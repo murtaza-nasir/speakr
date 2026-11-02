@@ -732,15 +732,38 @@ class FairJobQueue:
 
         convert_uploaded_recording(recording.id, params or {})
 
+    # Builds in a row for one job while the transcript keeps changing.
+    MAX_INDEX_PASSES = 10
+
     def _run_index_chunks(self, job, recording, params):
-        """Rebuild the recording's Inquire chunks (index worker pool)."""
+        """Rebuild the recording's Inquire chunks (index worker pool).
+
+        An edit queued while this job runs is merged into it (one active job
+        per recording and type), so the chunks are built again when the
+        transcript changed during a build.
+        """
+        from src.database import db
+        from src.models import Recording
         from src.services.embeddings import process_recording_chunks
 
-        if not (recording.transcription or '').strip():
-            return
-        # A failure keeps the old chunks; raising lets the job be retried.
-        if not process_recording_chunks(recording.id):
-            raise RuntimeError(f"Could not build the Inquire chunks for recording {recording.id}")
+        recording_id = recording.id
+        for _ in range(self.MAX_INDEX_PASSES):
+            db.session.expire_all()
+            recording = db.session.get(Recording, recording_id)
+            if recording is None:
+                return
+            text = recording.transcription
+            if not (text or '').strip():
+                return
+            # A failure keeps the old chunks; raising lets the job be retried.
+            if not process_recording_chunks(recording_id):
+                raise RuntimeError(f"Could not build the Inquire chunks for recording {recording_id}")
+            db.session.expire_all()
+            recording = db.session.get(Recording, recording_id)
+            if recording is None or recording.transcription == text:
+                return
+            logger.info(f"Transcript of recording {recording_id} changed while its chunks were built; building again")
+        logger.warning(f"Transcript of recording {recording_id} kept changing; its chunks may be behind the last edit")
 
     def enqueue(
         self,

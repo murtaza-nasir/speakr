@@ -180,7 +180,7 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 **CONVERT_QUEUE_WORKERS**: Number of workers that convert uploads (codec conversion, compression, audio extraction from video) after the upload is answered. A converted file replaces the uploaded one, and its transcription is queued once the conversion is done. Each conversion keeps about one CPU core busy, and the convert queue takes turns between users like the others. A conversion takes seconds to a minute where a transcription takes minutes, so the default keeps well ahead of the transcription workers; raise it if many users upload large files at once. Set it to `0` to convert files during the upload request instead, as in earlier versions. Default: `2`.
 
-**INDEX_QUEUE_WORKERS**: Number of workers that build the Inquire search chunks (embeddings) of completed recordings, when `ENABLE_INQUIRE_MODE` is on. The chunks are built after a recording is marked completed, in their own queue, so a slow embedding model does not delay the next transcription or summary. Default: `1`.
+**INDEX_QUEUE_WORKERS**: Number of workers that build the Inquire search chunks (embeddings) of completed recordings, when `ENABLE_INQUIRE_MODE` is on. The chunks are built after a recording is marked completed, and again after its transcript or speaker names are edited, in their own queue, so a slow embedding model does not delay the next transcription or summary. Default: `1`.
 
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
 
