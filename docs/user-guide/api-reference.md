@@ -358,6 +358,8 @@ A file that cannot be ingested is refused with `400`. No recording is created an
 
 A conversion that runs longer than `FFMPEG_TIMEOUT_SECONDS` is a server error: `500` with the code `audio_conversion_timeout`.
 
+Unless `CONVERT_QUEUE_WORKERS` is `0`, most files are converted after the upload is answered. A file that ffprobe can read, with an audio track, is stored as it arrived, and a convert job converts it before the transcription is queued. If that conversion fails, the upload has already been accepted: the recording's status becomes `FAILED`, the error is shown in place of the transcript, and the `recording.transcription.failed` webhook is sent. The `400` and `500` answers above apply to files that ffprobe cannot read, to videos without an audio track, to videos over the regular size limit whose extracted audio has to fit it, and to parts of a join.
+
 **Example:**
 
 ```bash

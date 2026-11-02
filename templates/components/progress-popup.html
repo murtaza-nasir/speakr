@@ -60,11 +60,14 @@
                 <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
-                <span v-if="activeProgressItems.filter(i => i.statusLabel).length > 0">
-                    ${ activeProgressItems.filter(i => i.statusLabel).length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && !i.statusLabel).length > 0">, </span>
+                <span v-if="activeProgressItems.filter(i => i.stage === 'joining').length > 0">
+                    ${ activeProgressItems.filter(i => i.stage === 'joining').length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && i.stage !== 'joining').length > 0">, </span>
                 </span>
-                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing' && !i.statusLabel).length > 0">
-                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.statusLabel).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                <span v-if="activeProgressItems.filter(i => i.stage === 'preparing').length > 0">
+                    ${ activeProgressItems.filter(i => i.stage === 'preparing').length } ${ t('progressQueue.preparingShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && !i.stage).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>

@@ -83,7 +83,7 @@ def generate(tag, deps_dir):
         TRANSCRIPTION_BASE_URL='https://api.openai.com/v1',
         TEXT_MODEL_BASE_URL='https://api.openai.com/v1',
         USE_ASR_ENDPOINT='false', ENABLE_INQUIRE_MODE='false',
-        ENABLE_AUTO_PROCESSING='false', JOB_QUEUE_WORKERS='0', SUMMARY_QUEUE_WORKERS='0', INDEX_QUEUE_WORKERS='0',
+        ENABLE_AUTO_PROCESSING='false', JOB_QUEUE_WORKERS='0', SUMMARY_QUEUE_WORKERS='0', INDEX_QUEUE_WORKERS='0', CONVERT_QUEUE_WORKERS='0',
         PYTHONPATH=deps_dir + os.pathsep + worktree, PYTHONDONTWRITEBYTECODE='1',
     )
 

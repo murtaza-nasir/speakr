@@ -199,11 +199,13 @@ def start_job_queue(app):
     t_queue = status['transcription_queue']
     s_queue = status['summary_queue']
     i_queue = status['index_queue']
+    c_queue = status['convert_queue']
     app.logger.info(
         f"Job queues started: "
         f"transcription ({t_queue['workers']} workers, {t_queue['queued']} queued), "
         f"summary ({s_queue['workers']} workers, {s_queue['queued']} queued), "
-        f"index ({i_queue['workers']} workers, {i_queue['queued']} queued)"
+        f"index ({i_queue['workers']} workers, {i_queue['queued']} queued), "
+        f"convert ({c_queue['workers']} workers, {c_queue['queued']} queued)"
     )
 
 

@@ -3436,6 +3436,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // A merge job (joining uploaded files, or merging recordings)
                     // runs in the transcription queue but is not transcribing yet.
                     const isJoining = job.job_type === 'merge' && unifiedStatus === 'transcribing';
+                    // A convert job prepares an upload's audio before it is
+                    // queued for transcription (#543).
+                    const isPreparing = job.job_type === 'convert' && unifiedStatus === 'transcribing';
+                    const stage = isJoining ? 'joining' : (isPreparing ? 'preparing' : null);
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
                         items.set(key, {
                             id: key,
@@ -3444,10 +3448,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             clientId: null,
                             title: job.recording_title || t('common.untitled'),
                             status: unifiedStatus,
-                            statusLabel: isJoining ? t('progressQueue.joining') : null,
-                            progress: isJoining ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
+                            stage,
+                            statusLabel: isJoining ? t('progressQueue.joining') : (isPreparing ? t('progressQueue.preparing') : null),
+                            progress: stage ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
                             progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              isJoining ? t('progressQueue.joiningMessage') :
+                                             isPreparing ? t('progressQueue.preparingMessage') :
                                              unifiedStatus === 'transcribing' ? t('progressQueue.transcribingAudio') :
                                              unifiedStatus === 'summarizing' ? t('help.generatingSummary') :
                                              unifiedStatus === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),

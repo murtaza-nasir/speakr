@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
 SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
 INDEX_WORKERS = int(os.environ.get('INDEX_QUEUE_WORKERS', '1'))
+CONVERT_WORKERS = int(os.environ.get('CONVERT_QUEUE_WORKERS', '1'))
 MAX_RETRIES = int(os.environ.get('JOB_MAX_RETRIES', '3'))
 POLL_INTERVAL = 1.0  # seconds between checking for new jobs
 
@@ -41,8 +42,12 @@ SUMMARY_JOBS = ['summarize', 'reprocess_summary', 'translate_transcription']
 # Building a recording's Inquire chunks (embeddings) has its own workers, so a
 # slow embedding model never holds up a transcription or a summary (#541).
 INDEX_JOBS = ['index_chunks']
+# Converting an upload after the upload is answered (#543). FFmpeg uses
+# several cores, so this queue has its own, small pool of workers.
+CONVERT_JOBS = ['convert']
 
-QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index': INDEX_JOBS}
+QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index': INDEX_JOBS,
+          'convert': CONVERT_JOBS}
 
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
@@ -85,6 +90,7 @@ class FairJobQueue:
         self._transcription_workers = []
         self._summary_workers = []
         self._index_workers = []
+        self._convert_workers = []
         self._running = False
         self._app = None
         # Lock for claiming jobs (SQLite doesn't support row-level locking)
@@ -162,7 +168,18 @@ class FairJobQueue:
             worker.start()
             self._index_workers.append(worker)
 
-        logger.info(f"Started {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers and {INDEX_WORKERS} index workers")
+        for i in range(CONVERT_WORKERS):
+            worker = threading.Thread(
+                target=self._worker_loop,
+                args=(CONVERT_JOBS, 'convert'),
+                name=f"ConvertWorker-{i}",
+                daemon=True
+            )
+            worker.start()
+            self._convert_workers.append(worker)
+
+        logger.info(f"Started {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers, "
+                    f"{INDEX_WORKERS} index workers and {CONVERT_WORKERS} convert workers")
 
     def stop(self):
         """Stop the worker threads gracefully."""
@@ -398,6 +415,8 @@ class FairJobQueue:
                     self._run_translation(job, recording, params)
                 elif job_type == 'index_chunks':
                     self._run_index_chunks(job, recording, params)
+                elif job_type == 'convert':
+                    self._run_convert(job, recording, params)
                 else:
                     raise ValueError(f"Unknown job type: {job_type}")
 
@@ -451,7 +470,7 @@ class FairJobQueue:
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
                 # Check if this is a permanent error that shouldn't be retried
-                is_permanent_error = self._is_permanent_error(error_str)
+                is_permanent_error = getattr(e, 'permanent', False) or self._is_permanent_error(error_str)
 
                 # Re-fetch job to update it
                 job = db.session.get(ProcessingJob, job_id)
@@ -703,6 +722,12 @@ class FairJobQueue:
             params=params,
         )
 
+    def _run_convert(self, job, recording, params):
+        """Convert an upload, then queue its transcription (convert worker pool)."""
+        from src.services.upload_conversion import convert_uploaded_recording
+
+        convert_uploaded_recording(recording.id, params or {})
+
     def _run_index_chunks(self, job, recording, params):
         """Rebuild the recording's Inquire chunks (index worker pool)."""
         from src.services.embeddings import process_recording_chunks
@@ -860,6 +885,17 @@ class FairJobQueue:
                     "processing": summary_processing,
                     "workers": SUMMARY_WORKERS
                 },
+                "convert_queue": {
+                    "queued": ProcessingJob.query.filter(
+                        ProcessingJob.status == 'queued',
+                        ProcessingJob.job_type.in_(CONVERT_JOBS)
+                    ).count(),
+                    "processing": ProcessingJob.query.filter(
+                        ProcessingJob.status == 'processing',
+                        ProcessingJob.job_type.in_(CONVERT_JOBS)
+                    ).count(),
+                    "workers": CONVERT_WORKERS
+                },
                 "index_queue": {
                     "queued": ProcessingJob.query.filter(
                         ProcessingJob.status == 'queued',
@@ -948,6 +984,8 @@ class FairJobQueue:
         # mapping: those fire from the real transcribe job after a successful
         # stitch.
         'stitch': 'recording.transcription.failed',
+        # Likewise for an upload whose conversion failed (#543).
+        'convert': 'recording.transcription.failed',
     }
 
     # No `summary.started` in the vocabulary today; if one is added later,
@@ -1038,7 +1076,8 @@ class FairJobQueue:
                 logger.info(f"Sent completion email for recording {recording_id} to user {owner.id}")
 
     def _emit_failure_email(self, job_type: str, recording_id: int, error: str):
-        if job_type not in self._EMAIL_JOB_TYPES:
+        # A failed conversion means the transcript will never come (#543).
+        if job_type not in self._EMAIL_JOB_TYPES + ('convert',):
             return
         with self._app_context():
             from src.services.email import send_transcription_failed_email

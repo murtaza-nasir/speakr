@@ -14,7 +14,7 @@ import subprocess
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from src.services.llm_settings import get_temperature
-from src.services.job_queue import job_queue
+from src.services.job_queue import job_queue, CONVERT_WORKERS
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -2524,9 +2524,10 @@ def ingest_uploaded_recording(
             # temporarily unavailable queue makes ASR retry the delivery.
             _discard_staging(filepath)
 
-            existing_job = ProcessingJob.query.filter_by(
-                recording_id=existing.id,
-                job_type='transcribe',
+            # A pending conversion queues the transcription when it is done.
+            existing_job = ProcessingJob.query.filter(
+                ProcessingJob.recording_id == existing.id,
+                ProcessingJob.job_type.in_(('transcribe', 'convert')),
             ).first()
             if existing.status in ('PENDING', 'QUEUED') and existing_job is None:
                 # Resolve from the existing recording (tags/folder aware), not
@@ -2653,10 +2654,38 @@ def ingest_uploaded_recording(
         # audio extracted, which is a fast stream copy and keeps a large video
         # from being stored whole until the join.
         skip_conversion_for_join = bool(join) and codec_info is not None and not has_video
+        chunking_will_handle_large_audio = (
+            chunking_service is not None and not should_enforce_size_limit
+        )
+        # Only the extracted audio of a video has to fit the regular limit.
+        extracted_audio_limit_mb = (
+            regular_limit_mb
+            if effective_audio_only and is_likely_video_by_ext and not chunking_will_handle_large_audio
+            else None
+        )
+        # A file ffprobe could read, with an audio track, is converted after
+        # the upload is answered, by the convert job (#543). The request still
+        # refuses at once what it can: a file ffprobe could not read goes
+        # through the conversion here, which refuses it with
+        # audio_decode_failed, and so does a video without audio. So does a
+        # video that only passes the size limit once its audio is extracted,
+        # and parts of a join, which the merge job converts. Without convert
+        # workers (CONVERT_QUEUE_WORKERS=0) every file is converted here.
+        can_defer_conversion = (
+            CONVERT_WORKERS > 0
+            and not join
+            and codec_info is not None
+            and has_audio_stream(codec_info)
+            and not (extracted_audio_limit_mb and original_file_size > extracted_audio_limit_mb * 1024 * 1024)
+        )
+        conversion_deferred = False
         if keep_video_for_this_upload:
             current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
         elif skip_conversion_for_join:
             current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
+        elif can_defer_conversion:
+            conversion_deferred = True
+            current_app.logger.info(f"Upload {original_filename}: converting after the upload is answered")
         else:
             # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
             try:
@@ -2705,9 +2734,6 @@ def ingest_uploaded_recording(
         # clean up, and let the user know. When chunking is on the
         # large extracted audio is fine — the chunking pipeline will
         # split it for the ASR call.
-        chunking_will_handle_large_audio = (
-            chunking_service is not None and not should_enforce_size_limit
-        )
         if (
             effective_audio_only
             and is_likely_video_by_ext
@@ -3033,15 +3059,26 @@ def ingest_uploaded_recording(
         # Params were already resolved (incl. admin model validation) above.
         job_params = resolved_params
 
-        current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
-        job_queue.enqueue(
-            user_id=owner.id,
-            recording_id=recording.id,
-            job_type='transcribe',
-            params=job_params,
-            is_new_upload=True
-        )
-        current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
+        if conversion_deferred:
+            # The convert job queues the transcription with these params.
+            job_queue.enqueue(
+                user_id=owner.id,
+                recording_id=recording.id,
+                job_type='convert',
+                params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
+                is_new_upload=True
+            )
+            current_app.logger.info(f"Conversion job queued for recording ID: {recording.id}")
+        else:
+            current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
+            job_queue.enqueue(
+                user_id=owner.id,
+                recording_id=recording.id,
+                job_type='transcribe',
+                params=job_params,
+                is_new_upload=True
+            )
+            current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
         # Webhook event (#275). Fan-out happens off-request via the
         # dispatcher; this call only enqueues a delivery row per matching
