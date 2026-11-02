@@ -373,7 +373,7 @@ def test_process_job_transcribe_dispatches_task_and_completes(track):
 def test_transcribe_uses_original_filename_when_set(track):
     """When recording.original_filename is set, it is passed to the ASR task.
 
-    Mutation guard for `_run_transcription` line 432
+    Mutation guard for `_run_audio_job` line 432
     (`recording.original_filename or os.path.basename(filepath)`): the
     `or`->`and` mutation yields `original_filename and basename` == basename
     whenever original_filename is truthy, wrongly dropping the real filename.

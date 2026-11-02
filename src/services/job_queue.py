@@ -403,12 +403,10 @@ class FairJobQueue:
                 # (Previously fired here, immediately after claim.)
 
                 # Dispatch based on job type
-                if job_type == 'transcribe':
-                    self._run_transcription(job, recording, params)
+                if job_type in ('transcribe', 'reprocess_transcription'):
+                    self._run_audio_job(job, recording, params, job_type)
                 elif job_type == 'summarize':
                     self._run_summarization(job, recording, params)
-                elif job_type == 'reprocess_transcription':
-                    self._run_reprocess_transcription(job, recording, params)
                 elif job_type == 'reprocess_summary':
                     self._run_reprocess_summary(job, recording, params)
                 elif job_type == 'stitch':
@@ -534,16 +532,17 @@ class FairJobQueue:
 
                     db.session.commit()
 
-    def _run_transcription(self, job, recording, params):
-        """Run transcription task. Status updates handled by task function."""
+    def _run_audio_job(self, job, recording, params, job_type='transcribe'):
+        """Run a transcription (fresh or reprocess) task. Status updates handled by task function."""
         from src.tasks.processing import transcribe_audio_task
         from flask import current_app
         from src.services.storage import get_storage_service
 
         storage = get_storage_service()
         audio_path = (recording.audio_path or '').strip()
+        label = 'transcription' if job_type == 'transcribe' else 'reprocess transcription'
         if not audio_path:
-            logger.error(f"Cannot run transcription job for recording {recording.id}: missing audio_path")
+            logger.error(f"Cannot run {label} job for recording {recording.id}: missing audio_path")
             raise ValueError(f"Missing audio_path for recording {recording.id}")
         with storage.materialize(audio_path) as materialized:
             filepath = materialized.local_path
@@ -556,9 +555,9 @@ class FairJobQueue:
             # block so the temp file still exists when transcription runs.
             if filepath and os.path.exists(filepath):
                 try:
-                    self._emit_started_webhook('transcribe', recording.id)
+                    self._emit_started_webhook(job_type, recording.id)
                 except Exception as e:
-                    logger.warning(f"Webhook emit (transcribe started) failed: {e}")
+                    logger.warning(f"Webhook emit ({job_type} started) failed: {e}")
 
             transcribe_audio_task(
                 current_app._get_current_object().app_context(),
@@ -587,44 +586,6 @@ class FairJobQueue:
             custom_prompt_append=params.get('custom_prompt_append', False),
             user_id=params.get('user_id')
         )
-
-    def _run_reprocess_transcription(self, job, recording, params):
-        """Run transcription reprocessing task. Status updates handled by task function."""
-        from src.tasks.processing import transcribe_audio_task
-        from flask import current_app
-        from src.services.storage import get_storage_service
-
-        storage = get_storage_service()
-        audio_path = (recording.audio_path or '').strip()
-        if not audio_path:
-            logger.error(f"Cannot run reprocess transcription job for recording {recording.id}: missing audio_path")
-            raise ValueError(f"Missing audio_path for recording {recording.id}")
-        with storage.materialize(audio_path) as materialized:
-            filepath = materialized.local_path
-            filename_for_asr = recording.original_filename or os.path.basename(filepath)
-
-            # Emit started AFTER file existence check (see _run_transcription).
-            # Kept INSIDE the materialize block so the temp file still exists.
-            if filepath and os.path.exists(filepath):
-                try:
-                    self._emit_started_webhook('reprocess_transcription', recording.id)
-                except Exception as e:
-                    logger.warning(f"Webhook emit (reprocess_transcription started) failed: {e}")
-
-            transcribe_audio_task(
-                current_app._get_current_object().app_context(),
-                recording.id,
-                filepath,
-                filename_for_asr,
-                datetime.utcnow(),
-                language=params.get('language'),
-                min_speakers=params.get('min_speakers'),
-                max_speakers=params.get('max_speakers'),
-                tag_id=params.get('tag_id'),
-                hotwords=params.get('hotwords'),
-                initial_prompt=params.get('initial_prompt'),
-                transcription_model=params.get('transcription_model'),
-            )
 
     def _run_reprocess_summary(self, job, recording, params):
         """Run summary reprocessing task. Status updates handled by task function."""
