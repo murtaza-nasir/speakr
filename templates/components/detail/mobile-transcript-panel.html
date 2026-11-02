@@ -158,7 +158,7 @@
             </div>
             <div class="modal-body">
                 <label class="block text-sm mb-2" v-text="t('translation.targetLanguage')" data-i18n="translation.targetLanguage"></label>
-                <select v-model="translationTargetLanguage" class="w-full">
+                <select v-model="translationTargetLanguage" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                     {% for name, iso in output_languages %}
                     <option value="{{ name }}" v-text="t('languages.{{ iso }}')"></option>
                     {% endfor %}
