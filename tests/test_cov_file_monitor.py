@@ -539,10 +539,12 @@ class TestProcessFile(unittest.TestCase):
         return storage
 
     def _patches(self, storage, enqueue_capture, convert_passthrough=True):
-        """Patch the externals _process_file imports. convert_if_needed and the
-        ffprobe helpers are module-level imports on src.file_monitor; storage,
-        job_queue, file_hash, registry, transcribe_audio_task are imported
-        inside the function so we patch them at their origin module."""
+        """Patch the externals used by the shared ingestion path.
+
+        file_monitor delegates to ``ingest_uploaded_recording``, so the
+        probe/convert/storage/job-queue names are patched where that function
+        binds them (``src.api.recordings``) and at their origin modules for
+        any late imports."""
         import contextlib
 
         def fake_convert(src_path, **kw):
@@ -559,12 +561,6 @@ class TestProcessFile(unittest.TestCase):
         registry_mock.get_active_connector.return_value = None
 
         cm = contextlib.ExitStack()
-        # file_monitor module-level (legacy, now no-ops but harmless)
-        cm.enter_context(patch.object(fm_module, 'convert_if_needed', fake_convert))
-        cm.enter_context(patch.object(fm_module, 'get_codec_info',
-                                      lambda *a, **kw: {'audio_codec': 'mp3', 'has_video': False}))
-        cm.enter_context(patch.object(fm_module, 'get_creation_date', lambda *a, **kw: None))
-        cm.enter_context(patch.object(fm_module, 'get_duration', lambda *a, **kw: 12.5))
         # ingest binds these names in src.api.recordings at import time.
         cm.enter_context(patch('src.api.recordings.get_codec_info',
                                lambda *a, **kw: {'audio_codec': 'mp3', 'has_video': False}))
@@ -673,8 +669,7 @@ class TestProcessFile(unittest.TestCase):
             return res
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'convert_if_needed', fake_convert), \
-                 patch('src.api.recordings.convert_if_needed', fake_convert):
+            with patch('src.api.recordings.convert_if_needed', fake_convert):
                 self.monitor._process_file(p, self.uid)
         self.assertEqual(len(enqueued), 1)
 
@@ -687,13 +682,9 @@ class TestProcessFile(unittest.TestCase):
             self.fail("convert_if_needed should be skipped for video passthrough")
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'VIDEO_PASSTHROUGH_ASR', True), \
-                 patch('src.api.recordings.VIDEO_PASSTHROUGH_ASR', True), \
-                 patch.object(fm_module, 'get_codec_info',
-                              lambda *a, **kw: {'audio_codec': 'aac', 'has_video': True}), \
+            with patch('src.api.recordings.VIDEO_PASSTHROUGH_ASR', True), \
                  patch('src.api.recordings.get_codec_info',
                        lambda *a, **kw: {'audio_codec': 'aac', 'has_video': True}), \
-                 patch.object(fm_module, 'convert_if_needed', convert_should_not_run), \
                  patch('src.api.recordings.convert_if_needed', convert_should_not_run), \
                  patch('src.api.recordings.has_audio_stream', lambda *a, **kw: True):
                 self.monitor._process_file(p, self.uid)
@@ -709,8 +700,7 @@ class TestProcessFile(unittest.TestCase):
             raise FFmpegError("conversion failed")
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'convert_if_needed', boom), \
-                 patch('src.api.recordings.convert_if_needed', boom):
+            with patch('src.api.recordings.convert_if_needed', boom):
                 with self.assertRaises(RuntimeError):
                     self.monitor._process_file(p, self.uid)
         self.assertEqual(enqueued, [])
@@ -744,9 +734,7 @@ class TestProcessFile(unittest.TestCase):
         storage = self._build_storage_mock()
         enqueued = []
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'get_creation_date',
-                              lambda *a, **kw: _dt(2020, 1, 2, 3, 4, 5)), \
-                 patch('src.api.recordings.get_creation_date',
+            with patch('src.api.recordings.get_creation_date',
                        lambda *a, **kw: _dt(2020, 1, 2, 3, 4, 5)):
                 self.monitor._process_file(p, self.uid)
 

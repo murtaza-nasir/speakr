@@ -22,10 +22,9 @@ The protocol is structural, so callers may pass either an adapter or a raw
 
 import os
 import shutil
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 
-@runtime_checkable
 class RecordingSource(Protocol):
     """The minimal read/copy contract the ingestion pipeline relies on."""
 
@@ -101,26 +100,33 @@ class PathSource:
             pass
 
 
+_SOURCE_ATTRS = ('filename', 'seek', 'tell', 'save')
+
+
+def _has_source_contract(candidate):
+    return all(hasattr(candidate, attr) for attr in _SOURCE_ATTRS)
+
+
 def coerce_source(uploaded_file=None, source=None):
     """Return a :class:`RecordingSource` for either input form.
 
     ``source`` (an adapter) wins when given; otherwise a raw ``FileStorage``
     is wrapped in :class:`FileStorageSource`.  Returns ``None`` if neither is
     provided, so callers can keep their existing "no file" handling.
+
+    The check is deliberately explicit rather than
+    ``isinstance(obj, RecordingSource)``: runtime-checkable Protocols treat
+    data members inconsistently across Python versions, and a raw
+    ``FileStorage`` must always be wrapped so the seam stays uniform.
     """
-    if source is not None:
-        if isinstance(source, RecordingSource):
-            return source
-        # Duck-typed: anything exposing the contract is accepted as-is.
-        if all(hasattr(source, attr) for attr in ('filename', 'seek', 'tell', 'save')):
-            return source
-        raise TypeError(f'unsupported source type: {type(source)!r}')
-    if uploaded_file is None:
+    candidate = source if source is not None else uploaded_file
+    if candidate is None:
         return None
-    if isinstance(uploaded_file, RecordingSource):
-        return uploaded_file
-    if all(hasattr(uploaded_file, attr) for attr in ('filename', 'seek', 'tell', 'save')):
-        # Already FileStorage-like: wrap for uniformity only when it is not
-        # already an adapter.  Wrapping is cheap and keeps the seam honest.
-        return FileStorageSource(uploaded_file)
-    raise TypeError(f'unsupported uploaded_file type: {type(uploaded_file)!r}')
+    if isinstance(candidate, (FileStorageSource, PathSource)):
+        return candidate
+    if _has_source_contract(candidate):
+        # A raw FileStorage (or any duck-typed source) is wrapped so every
+        # caller sees the same adapter, on every supported Python version.
+        return FileStorageSource(candidate)
+    kind = 'source' if source is not None else 'uploaded_file'
+    raise TypeError(f'unsupported {kind} type: {type(candidate)!r}')

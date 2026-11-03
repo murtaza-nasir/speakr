@@ -12,21 +12,7 @@ import os
 import time
 import threading
 import logging
-from datetime import datetime
 from pathlib import Path
-import mimetypes
-from werkzeug.utils import secure_filename
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError, has_audio_stream
-from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
-from src.utils.audio_conversion import convert_if_needed
-from src.utils.filenames import shorten_filename
-from src.utils.titles import placeholder_titles
-
-# Video retention - when enabled, video files keep their video stream for playback
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
-
-# Video passthrough - send original video files directly to ASR without extracting audio
-VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 
 # Flask app components will be imported inside functions to avoid circular imports
 
@@ -341,7 +327,7 @@ class FileMonitor:
             tag_id (int, optional): Tag ID to apply to the recording
         """
         # Import Flask components inside function to avoid circular imports
-        from src.app import app, db, Recording, User, transcribe_audio_task
+        from src.app import app, db, User
         
         with app.app_context():
             try:
@@ -381,7 +367,6 @@ class FileMonitor:
                 # tag via the form, and cleaning up the locked watch-dir file.
                 from src.services.recording_source import PathSource
                 from src.api.recordings import ingest_uploaded_recording
-                from flask import jsonify
 
                 # Preserve the monitor's filename-date parsing by forwarding it
                 # as a meeting_date when the owner opted in.
@@ -391,7 +376,6 @@ class FileMonitor:
                 try:
                     if getattr(user, 'parse_filename_dates', False):
                         from src.utils.filename_dates import parse_filename_date
-                        from src.utils.dates import to_utc_naive
                         md = parse_filename_date(
                             original_filename,
                             pattern_key=user.filename_date_pattern or 'auto',

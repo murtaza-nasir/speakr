@@ -30,7 +30,6 @@ class TestVideoRetentionConfig(unittest.TestCase):
         'src/tasks/processing.py',
         'src/api/system.py',
         'src/api/recordings.py',
-        'src/file_monitor.py',
     ]
 
     def _read_file(self, rel_path):
@@ -196,41 +195,45 @@ class TestUploadHandlerVideoRetention(unittest.TestCase):
 
 
 class TestFileMonitorVideoRetention(unittest.TestCase):
-    """Test file_monitor.py video retention code paths."""
+    """The file monitor delegates video retention to the shared ingestion path.
+
+    The monitor no longer probes or converts files itself; it hands the
+    watched path to ``ingest_uploaded_recording``. These tests pin that
+    delegation and verify the retention guard lives in the shared path.
+    """
 
     @classmethod
     def setUpClass(cls):
         with open(os.path.join(PROJECT_ROOT, 'src/file_monitor.py'), 'r') as f:
-            cls.content = f.read()
+            cls.monitor = f.read()
+        with open(os.path.join(PROJECT_ROOT, 'src/api/recordings.py'), 'r') as f:
+            cls.ingest = f.read()
+
+    def test_monitor_delegates_to_shared_ingestion(self):
+        """The monitor hands the watched file to the shared ingestion path."""
+        self.assertIn('ingest_uploaded_recording(', self.monitor)
+        self.assertIn('source=source', self.monitor)
+        self.assertIn('processing_source=\'auto_process\'', self.monitor)
 
     def test_video_retention_skips_conversion(self):
-        """When VIDEO_RETENTION=True and has_video=True, convert_if_needed is skipped."""
-        # Should have the guard: if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video: ... skip conversion
-        self.assertIn('VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video', self.content)
-        self.assertIn('skipping conversion', self.content)
+        """When retention/passthrough applies to a video, conversion is skipped
+        by the shared ingestion path, not by the monitor."""
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', self.ingest)
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', self.ingest)
+        self.assertIn('skipping conversion', self.ingest)
+        # The monitor must not keep a second, drifting copy of the guard.
+        self.assertNotIn('convert_if_needed', self.monitor)
 
     def test_no_double_extraction(self):
-        """File monitor does NOT call convert_if_needed for videos when retention is on."""
-        # The convert_if_needed call should be in the else branch
-        lines = self.content.split('\n')
-        in_retention_skip_block = False
-        found_convert_in_else = False
-
-        for i, line in enumerate(lines):
-            if 'VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video' in line and 'if' in line:
-                in_retention_skip_block = True
-            elif in_retention_skip_block and 'else:' in line:
-                in_retention_skip_block = False
-                found_convert_in_else = True
-            elif in_retention_skip_block and 'convert_if_needed' in line:
-                self.fail(f"convert_if_needed called inside VIDEO_RETENTION skip block at line {i+1}")
-
-        self.assertTrue(found_convert_in_else, "Should have else branch after video retention skip")
+        """The monitor never calls convert_if_needed, so it cannot extract
+        video audio twice; the shared path owns the single decision."""
+        self.assertNotIn('convert_if_needed', self.monitor)
+        self.assertIn('keep_video_for_this_upload = (', self.ingest)
 
     def test_no_video_retention_param_in_convert_call(self):
         """convert_if_needed should NOT receive a video_retention parameter."""
-        # Ensure the old video_retention parameter isn't being passed
-        self.assertNotIn('video_retention=VIDEO_RETENTION', self.content)
+        self.assertNotIn('video_retention=VIDEO_RETENTION', self.monitor)
+        self.assertNotIn('video_retention=VIDEO_RETENTION', self.ingest)
 
 
 class TestAudioConversionNotModified(unittest.TestCase):
@@ -422,11 +425,14 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         self.assertTrue(found_else_after, "Missing else branch after effective_video_retention check in processing.py")
 
     def test_file_monitor_has_both_branches(self):
-        """file_monitor.py has both video retention skip and normal conversion paths."""
-        content = self._read_file('src/file_monitor.py')
-        self.assertIn('VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video', content)
-        # convert_if_needed should still exist in the else path
-        self.assertIn('convert_if_needed(', content)
+        """The file monitor delegates to the shared ingestion path, which has
+        both the video retention/passthrough skip and normal conversion paths."""
+        monitor = self._read_file('src/file_monitor.py')
+        ingest = self._read_file('src/api/recordings.py')
+        self.assertIn('ingest_uploaded_recording(', monitor)
+        self.assertNotIn('convert_if_needed', monitor)
+        self.assertIn('keep_video_for_this_upload = (', ingest)
+        self.assertIn('convert_if_needed(', ingest)
 
     def test_incognito_not_affected(self):
         """Incognito processing path should NOT reference VIDEO_RETENTION."""
@@ -446,8 +452,8 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         for rel_path, marker in [
             # Upload handler: per-upload override factored in.
             ('src/api/recordings.py', 'VIDEO_RETENTION and not keep_audio_only_flag'),
-            # File monitor: still global-only, no per-file override.
-            ('src/file_monitor.py', '(VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video'),
+            # File monitor: delegates to the shared path below.
+            ('src/file_monitor.py', 'ingest_uploaded_recording('),
             # Processing task: effective flag (env var AND per-recording).
             ('src/tasks/processing.py', 'elif effective_video_retention:'),
         ]:

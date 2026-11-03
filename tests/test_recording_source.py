@@ -77,6 +77,18 @@ class TestCoerceSource(unittest.TestCase):
         finally:
             os.remove(path)
 
+    def test_raw_filestorage_as_source_wrapped(self):
+        """A raw FileStorage passed as ``source`` is wrapped like the other
+        input form, so every caller sees the same adapter."""
+        fs = FileStorage(stream=BytesIO(b'x'), filename='x.mp3')
+        self.assertIsInstance(coerce_source(source=fs), FileStorageSource)
+
+    def test_unsupported_source_rejected(self):
+        with self.assertRaises(TypeError):
+            coerce_source(source=object())
+        with self.assertRaises(TypeError):
+            coerce_source(uploaded_file=object())
+
 
 if __name__ == '__main__':
     unittest.main()
