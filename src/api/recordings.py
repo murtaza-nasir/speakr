@@ -2317,7 +2317,7 @@ def _discard_staging(path):
 def ingest_uploaded_recording(
     *,
     owner,
-    uploaded_file,
+    uploaded_file=None,
     form,
     original_filename=None,
     processing_source='upload',
@@ -2325,6 +2325,7 @@ def ingest_uploaded_recording(
     reuse_duplicate=False,
     prepare=None,
     on_conflict=None,
+    source=None,
 ):
     """Run an uploaded file through Speakr's standard ingestion pipeline.
 
@@ -2337,10 +2338,10 @@ def ingest_uploaded_recording(
     """
     filepath = None
     try:
-        if uploaded_file is None:
+        from src.services.recording_source import coerce_source
+        file = coerce_source(uploaded_file=uploaded_file, source=source)
+        if file is None:
             return jsonify(api_error('no_file_provided')), 400
-
-        file = uploaded_file
         if not original_filename:
             original_filename = file.filename
         if not original_filename:
