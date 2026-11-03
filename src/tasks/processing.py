@@ -31,6 +31,16 @@ from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, VIDEO_PASSTHROUGH_ASR
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
+from src.transcription_prompts import (
+    _SHARED_LLM_SYSTEM_MSG as _SHARED_LLM_SYSTEM_MSG,
+    _shared_user_prefix as _shared_user_prefix,
+    build_incognito_summary_prompt,
+    build_summary_prompt,
+    build_title_prompt,
+    build_user_content,
+    clean_llm_response,
+    format_transcription_for_llm,
+)
 from src.config.app_config import (
     ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS,
     transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING,
@@ -78,41 +88,18 @@ TEXT_MODEL_CACHE_BREAKPOINTS = os.environ.get(
 # Longest notes text given to the summarizer (#440)
 SUMMARY_NOTES_LIMIT = 8000
 
-# Must be byte-identical between the title and summary calls. Keep it short and
-# generic; per-task guidance belongs in the user-message suffix.
-_SHARED_LLM_SYSTEM_MSG = (
-    "You assist with meeting transcripts. Follow the user's specific "
-    "instruction precisely and output only what is requested."
-)
-
-
-def _shared_user_prefix(transcript_text):
-    """Byte-identical user-message prefix shared by the title and summary calls.
-
-    DO NOT insert any conditional content (language, date, context, user info)
-    before the closing triple-quote. Any byte that differs between the two calls
-    past the first divergence kills KV-cache reuse for everything that follows --
-    including the transcript itself, which is the expensive part.
-    """
-    return f'Transcript:\n"""\n{transcript_text}\n"""\n\n'
-
-
 def _user_content(prompt_text, transcript_text):
     """User-message content for a prompt that may start with the shared prefix.
 
-    A plain string, except with PREFIX_CACHE_OPTIMIZED_PROMPTS and
-    TEXT_MODEL_CACHE_BREAKPOINTS both on: then two text parts, the shared
-    prefix marked with cache_control and the rest of the prompt (#488).
+    Reads the module-level flags so tests and deployments can toggle them, and
+    delegates the layout decision to the prompt module.
     """
-    if not (PREFIX_CACHE_OPTIMIZED_PROMPTS and TEXT_MODEL_CACHE_BREAKPOINTS):
-        return prompt_text
-    prefix = _shared_user_prefix(transcript_text)
-    if not prompt_text.startswith(prefix):
-        return prompt_text
-    return [
-        {"type": "text", "text": prefix, "cache_control": {"type": "ephemeral"}},
-        {"type": "text", "text": prompt_text[len(prefix):]},
-    ]
+    return build_user_content(
+        prompt_text,
+        transcript_text,
+        PREFIX_CACHE_OPTIMIZED_PROMPTS,
+        TEXT_MODEL_CACHE_BREAKPOINTS,
+    )
 
 
 # Maximum length for user-visible error_message text. The Recording.error_message
@@ -204,76 +191,9 @@ def _resolve_timestamp_template_format(user, template_id):
     return tpl.template if tpl else None
 
 
-def format_transcription_for_llm(transcription_text, include_timestamps=False, template_format=None):
-    """
-    Formats transcription for LLM. If it's our simplified JSON, convert it to plain text.
-    Otherwise, return as is.
+# format_transcription_for_llm and clean_llm_response live in
+# src.transcription_prompts and are imported above.
 
-    When include_timestamps is True the transcript is rendered with a transcript
-    template (the given template_format, or a built-in default timestamp format)
-    so the summarizer / chat can reference times (#304).
-    """
-    if include_timestamps:
-        from src.utils.transcript_render import render_transcription
-        rendered = render_transcription(transcription_text, template_format)
-        if rendered is not None:
-            return rendered
-    try:
-        transcription_data = json.loads(transcription_text)
-        if isinstance(transcription_data, list):
-            # It's our simplified JSON format
-            formatted_lines = []
-            for segment in transcription_data:
-                speaker = segment.get('speaker', 'Unknown Speaker')
-                sentence = segment.get('sentence', '')
-                formatted_lines.append(f"[{speaker}]: {sentence}")
-            return "\n".join(formatted_lines)
-    except (json.JSONDecodeError, TypeError):
-        # Not a JSON, or not the format we expect, so return as is.
-        pass
-    return transcription_text
-
-
-def clean_llm_response(text):
-    """
-    Clean LLM responses by removing thinking tags and excessive whitespace.
-    This handles responses from reasoning models that include <think> tags.
-    """
-    if not text:
-        return ""
-
-    # Remove thinking tags and their content
-    # Handle both <think> and <thinking> tags with various closing formats
-    cleaned = re.sub(r'<think(?:ing)?>.*?</think(?:ing)?>', '', text, flags=re.DOTALL | re.IGNORECASE)
-
-    # Also handle unclosed thinking tags (in case the model doesn't close them)
-    cleaned = re.sub(r'<think(?:ing)?>.*$', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
-
-    # Remove any remaining XML-like tags that might be related to thinking
-    # but preserve markdown formatting
-    cleaned = re.sub(r'<(?!/?(?:code|pre|blockquote|p|br|hr|ul|ol|li|h[1-6]|em|strong|b|i|a|img)(?:\s|>|/))[^>]+>', '', cleaned)
-
-    # Clean up excessive whitespace while preserving intentional formatting
-    # Handle lines individually to preserve Markdown hard line breaks (two spaces at end)
-    lines = cleaned.split('\n')
-    cleaned_lines = []
-    
-    for line in lines:
-        # If a line consists only of whitespace (e.g., after tag removal),
-        # make it completely empty. This is necessary for the \n{3,} regex to work later.
-        if not line.strip():
-            cleaned_lines.append("")
-        else:
-            # Preserve lines containing text exactly as they are
-            # This keeps trailing spaces needed for Markdown hard line breaks intact
-            cleaned_lines.append(line)
-
-    # Join lines and collapse 3+ consecutive newlines into exactly 2 (one blank line)
-    cleaned = '\n'.join(cleaned_lines)
-    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
-
-    # Final strip to remove leading/trailing whitespace
-    return cleaned.strip()
 
 # Configuration from environment
 # Note: Legacy ASR paths (USE_ASR_ENDPOINT, transcribe_audio_asr, etc.) were removed.
@@ -566,43 +486,15 @@ def _generate_ai_title(recording):
     if recording.owner:
         user_output_language = recording.owner.output_language
 
-    language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
-
     title_instructions, title_source = resolve_title_instructions(recording)
     current_app.logger.info(f"Using {title_source} title instructions for recording {recording.id}")
 
-    if PREFIX_CACHE_OPTIMIZED_PROMPTS:
-        # Shared-prefix layout: identical system message + identical user prefix
-        # (including the transcript) between this call and the summary call, so
-        # a prefix-caching backend can reuse the transcript KV cache. Everything
-        # task-specific goes in the SUFFIX after the transcript block. This
-        # prefix MUST stay byte-identical to the one in generate_summary_only_task.
-        system_message_content = _SHARED_LLM_SYSTEM_MSG
-        prompt_text = (
-            _shared_user_prefix(transcript_text)
-            + "Task: produce ONE title for the conversation above.\n"
-            + "Requirements:\n"
-            + title_instructions + "\n"
-            + "- Output ONLY the title text, nothing else (no quotes, no prefix)\n"
-            + (f"- Respond in {user_output_language}\n" if user_output_language else "")
-            + "\nTitle:"
-        )
-    else:
-        prompt_text = f"""Create a short title for this conversation:
-
-{transcript_text}
-
-Requirements:
-{title_instructions}
-- Output ONLY the title text, nothing else
-
-{language_directive}
-
-Title:"""
-
-        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
-        if user_output_language:
-            system_message_content += f" Ensure your response is in {user_output_language}."
+    system_message_content, prompt_text = build_title_prompt(
+        transcript_text,
+        title_instructions,
+        user_output_language,
+        PREFIX_CACHE_OPTIMIZED_PROMPTS,
+    )
 
     try:
         llm_temperature = get_temperature('title')  # read before the transaction ends
@@ -725,8 +617,6 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         else:
             transcript_text = formatted_transcription[:transcript_limit]
 
-        language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
-
         # Instructions: a replacing override, else the resolved level
         # (tag > folder > user > admin > default). An appended override is
         # added below.
@@ -826,47 +716,13 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                     f'"""\n{owner_notes[:SUMMARY_NOTES_LIMIT]}\n"""'
                 )
 
-        if PREFIX_CACHE_OPTIMIZED_PROMPTS:
-            # Shared-prefix layout: the system message and the user-message bytes
-            # up to and including the transcript block MUST match _generate_ai_title
-            # byte-for-byte, so the transcript KV cache built by the title call is
-            # reusable here. All variability (role guidance, context, instructions,
-            # language) goes in the SUFFIX after the transcript block.
-            system_message_content = _SHARED_LLM_SYSTEM_MSG
-            suffix_parts = [
-                "Task: produce a comprehensive Markdown summary of the "
-                "transcript above. Output raw Markdown only -- no code fences, "
-                "no preamble, no commentary.",
-                "",
-                context_section,
-                "",
-                "Summarization Instructions:",
-                summarization_instructions,
-            ]
-            if user_output_language:
-                suffix_parts.append("")
-                suffix_parts.append(
-                    f"Language Requirement: You MUST write the entire summary "
-                    f"in {user_output_language}. This is mandatory."
-                )
-            prompt_text = _shared_user_prefix(transcript_text) + "\n".join(suffix_parts)
-        else:
-            # Build SYSTEM message: Initial instructions + Context + Language
-            system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
-            system_message_content += f"\n\n{context_section}"
-            if user_output_language:
-                system_message_content += f"\n\nLanguage Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory."
-
-            # Build USER message: Transcription + Summarization Instructions + Language Directive
-            prompt_text = f"""Transcription:
-\"\"\"
-{transcript_text}
-\"\"\"
-
-Summarization Instructions:
-{summarization_instructions}
-
-{language_directive}"""
+        system_message_content, prompt_text = build_summary_prompt(
+            transcript_text,
+            context_section,
+            summarization_instructions,
+            user_output_language,
+            PREFIX_CACHE_OPTIMIZED_PROMPTS,
+        )
 
         # Debug logging: Log the complete prompt being sent to the LLM
         current_app.logger.info(f"Sending summarization prompt to LLM (length: {len(prompt_text)} chars). Set LOG_LEVEL=DEBUG to see full prompt details.")
@@ -2860,26 +2716,16 @@ def _generate_incognito_title(transcription_text, user=None):
 
         # Get user language preference
         user_output_language = user.output_language if user else None
-        language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
         # Incognito recordings have no tags or folder, so only the user,
         # admin and shipped levels apply.
         title_instructions, _ = _user_title_instructions(user)
 
-        prompt_text = f"""Create a short title for this conversation:
-
-{limited_text}
-
-Requirements:
-{title_instructions}
-- Output ONLY the title text, nothing else
-
-{language_directive}
-
-Title:"""
-
-        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
-        if user_output_language:
-            system_message_content += f" Ensure your response is in {user_output_language}."
+        system_message_content, prompt_text = build_title_prompt(
+            limited_text,
+            title_instructions,
+            user_output_language,
+            False,
+        )
 
         # No user_id, so nothing is tracked for incognito
         completion = call_llm_completion(
@@ -2925,8 +2771,6 @@ def generate_incognito_summary(transcription_text, user=None):
         user_output_language = user.output_language if user else None
         user_summary_prompt = user.summary_prompt if user else None
 
-        language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}." if user_output_language else ""
-
         # Determine summarization instructions
         if user_summary_prompt:
             summarization_instructions = user_summary_prompt
@@ -2938,20 +2782,11 @@ def generate_incognito_summary(transcription_text, user=None):
                 from src.config.prompts import DEFAULT_SUMMARY_PROMPT
                 summarization_instructions = DEFAULT_SUMMARY_PROMPT
 
-        # Build messages
-        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format."
-        if user_output_language:
-            system_message_content += f" You MUST generate the entire summary in {user_output_language}."
-
-        prompt_text = f"""Transcription:
-\"\"\"
-{transcript_text}
-\"\"\"
-
-Summarization Instructions:
-{summarization_instructions}
-
-{language_directive}"""
+        system_message_content, prompt_text = build_incognito_summary_prompt(
+            transcript_text,
+            summarization_instructions,
+            user_output_language,
+        )
 
         current_app.logger.info(f"[Incognito] Generating summary...")
 
