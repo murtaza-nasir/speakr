@@ -286,6 +286,8 @@ def _api_embed(texts, user_id=None, input_type="document"):
     return []
 
 
+# Re-exported for backwards compatibility with callers and tests that import
+# these helpers from the embeddings module.
 from src.transcript_chunking import (
     CHUNK_TARGET_CHARS,
     build_transcript_segments,
@@ -295,8 +297,6 @@ from src.transcript_chunking import (
     chunk_transcription,
 )
 
-# Re-exported for backwards compatibility with callers and tests that import
-# these helpers from the embeddings module.
 
 def generate_embeddings(texts, user_id=None):
     """

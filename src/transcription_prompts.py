@@ -86,13 +86,13 @@ def format_transcription_for_llm(transcription_text, include_timestamps=False, t
 def clean_llm_response(text):
     """Clean LLM responses by removing thinking tags and excessive whitespace.
 
-    This handles responses from reasoning models that include  thinking tags.
+    This handles responses from reasoning models that include <think> tags.
     """
     if not text:
         return ""
 
     # Remove thinking tags and their content
-    # Handle both  thinking and <thinking> tags with various closing formats
+    # Handle both <think> and <thinking> tags with various closing formats
     cleaned = re.sub(r'<think(?:ing)?>.*?</think(?:ing)?>', '', text, flags=re.DOTALL | re.IGNORECASE)
 
     # Also handle unclosed thinking tags (in case the model doesn't close them)
