@@ -57,6 +57,8 @@ from src.services.transcription import get_registry
 from tests.contract.fake_asr_server import FakeASRServer
 from tests.contract.whisperx_model_rules import ServiceModelRules
 
+pytestmark = pytest.mark.slow
+
 app.config["WTF_CSRF_ENABLED"] = False
 
 EXAMPLE = os.path.join(ROOT, "config", "env.whisperx.example")

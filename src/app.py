@@ -579,6 +579,8 @@ login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 bcrypt = Bcrypt()
+app.config.setdefault("BCRYPT_LOG_ROUNDS",
+                      int(os.environ.get("BCRYPT_LOG_ROUNDS", "12")))
 bcrypt.init_app(app)
 # Rate-limit headers, including Retry-After on 429 (mailr spec G1).
 app.config.setdefault("RATELIMIT_HEADERS_ENABLED", True)

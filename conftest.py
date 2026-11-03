@@ -91,15 +91,40 @@ os.environ["DISABLE_VOICE_EMBEDDING_CHECK"] = "true"
 # "10 per minute" login limit would reject with 429. Production leaves this
 # enabled (default true).
 os.environ.setdefault("RATELIMIT_ENABLED", "false")
+# Lower bcrypt cost in tests: production keeps 12 rounds, but the
+# suite makes ~260 bcrypt calls per run (~57 s at 12 rounds). 4
+# rounds is the standard Django test-hasher practice and no test
+# asserts on the cost factor or the $2b$12$ prefix.
+os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
 
 import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _restore_upload_folder():
+    """Undo cross-test leakage of app.config['UPLOAD_FOLDER'].
+
+    Several modules assign UPLOAD_FOLDER to a mkdtemp and remove the
+    directory without restoring the previous value. This fixture snapshots
+    the value before each test and restores it afterwards, so tests no
+    longer depend on collection order (required for pytest-xdist).
+    """
+    from src.app import app
+
+    previous = app.config.get("UPLOAD_FOLDER")
+    yield
+    app.config["UPLOAD_FOLDER"] = previous
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _initialize_test_database():
     """Create the full schema in the throwaway DB once per session."""
-    from src.app import app
+    from src.app import app, bcrypt
     from src.init_db import initialize_database
+
+    # Keep bcrypt at 4 rounds even if the app read a different value.
+    bcrypt._log_rounds = 4
+    app.config["BCRYPT_LOG_ROUNDS"] = 4
 
     with app.app_context():
         initialize_database(app)

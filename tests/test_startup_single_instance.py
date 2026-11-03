@@ -33,6 +33,8 @@ import pytest
 from src.app import app
 from src.config import startup
 
+pytestmark = pytest.mark.slow
+
 
 def _reset_process_local_guards():
     """Clear the `global _x_started` flags several starters keep.
