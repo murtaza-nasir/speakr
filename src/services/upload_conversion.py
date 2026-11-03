@@ -27,25 +27,6 @@ class ConversionFailed(Exception):
     permanent = True
 
 
-def conversion_context(filepath):
-    """The connector specifications and chunking decision used to convert a file."""
-    from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
-    use_asr_endpoint = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
-    connector_specs = None
-    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
-        try:
-            from src.services.transcription import get_registry
-            connector = get_registry().get_active_connector()
-            if connector:
-                connector_specs = connector.specifications
-        except Exception as e:
-            current_app.logger.warning(f"Could not get connector specs for conversion: {e}")
-    needs_chunking = bool(
-        chunking_service and chunking_service.needs_chunking(filepath, use_asr_endpoint, connector_specs)
-    )
-    return connector_specs, needs_chunking, use_asr_endpoint
-
-
 def _stored_mime(path, codec_info=None):
     from src.utils.mime import resolve_media_mime, served_media_mime
     mime_type, _ = mimetypes.guess_type(path)
@@ -61,6 +42,7 @@ def convert_uploaded_recording(recording_id, params):
     ('transcribe') and, when only the extracted audio of a video has to fit
     the upload limit, that limit in MB ('extracted_audio_limit_mb').
     """
+    from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
     from src.services.job_queue import job_queue
     from src.services.storage import get_storage_service
     from src.utils.audio_conversion import convert_if_needed
@@ -80,7 +62,19 @@ def convert_uploaded_recording(recording_id, params):
     with storage.materialize(old_locator) as materialized:
         local_path = materialized.local_path
         before = os.stat(local_path)
-        connector_specs, needs_chunking, use_asr_endpoint = conversion_context(local_path)
+        use_asr_endpoint = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
+        connector_specs = None
+        if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+            try:
+                from src.services.transcription import get_registry
+                connector = get_registry().get_active_connector()
+                if connector:
+                    connector_specs = connector.specifications
+            except Exception as e:
+                current_app.logger.warning(f"Could not get connector specs for conversion: {e}")
+        needs_chunking = bool(
+            chunking_service and chunking_service.needs_chunking(local_path, use_asr_endpoint, connector_specs)
+        )
         try:
             result = convert_if_needed(
                 local_path,
