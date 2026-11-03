@@ -549,10 +549,11 @@ from src.utils import (
 
 # Import service layer functions
 from src.services.embeddings import (
-    get_embedding_model, chunk_transcription, generate_embeddings,
+    get_embedding_model, generate_embeddings,
     serialize_embedding, deserialize_embedding, get_accessible_recording_ids,
     process_recording_chunks, basic_text_search_chunks, semantic_search_chunks
 )
+from src.transcript_chunking import chunk_transcription
 from src.services.llm import (
     is_gpt5_model, is_using_openai_api, call_llm_completion, format_api_error_message
 )
