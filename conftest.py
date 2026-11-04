@@ -91,11 +91,6 @@ os.environ["DISABLE_VOICE_EMBEDDING_CHECK"] = "true"
 # "10 per minute" login limit would reject with 429. Production leaves this
 # enabled (default true).
 os.environ.setdefault("RATELIMIT_ENABLED", "false")
-# Lower bcrypt cost in tests: production keeps 12 rounds, but the
-# suite makes ~260 bcrypt calls per run (~57 s at 12 rounds). 4
-# rounds is the standard Django test-hasher practice and no test
-# asserts on the cost factor or the $2b$12$ prefix.
-os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
 
 import pytest  # noqa: E402
 
@@ -122,7 +117,9 @@ def _initialize_test_database():
     from src.app import app, bcrypt
     from src.init_db import initialize_database
 
-    # Keep bcrypt at 4 rounds even if the app read a different value.
+    # Lower bcrypt cost in tests: the suite makes ~260 bcrypt calls per run
+    # (~57 s at the default 12 rounds), and no test asserts on the cost
+    # factor. Production always uses the default.
     bcrypt._log_rounds = 4
     app.config["BCRYPT_LOG_ROUNDS"] = 4
 
