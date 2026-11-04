@@ -547,6 +547,27 @@ def kickoff_transcription_for_stitched(
         overrides['tag_id'] = metadata.get('tag_id')
 
     job_params = resolve_transcription_params(recording, overrides)
+
+    # The chunks are stitched by stream copy, so the file is still what the
+    # browser recorded. An audio recording is converted like an upload: Safari
+    # writes 2.5 ms Opus frames that iOS and VLC play back distorted (#495).
+    # A video capture is kept as recorded.
+    if not (recording.mime_type or '').startswith('video/'):
+        from src.services.job_queue import CONVERT_WORKERS
+        convert_params = {'transcribe': job_params}
+        if CONVERT_WORKERS > 0:
+            job_queue.enqueue(
+                user_id=user_id,
+                recording_id=recording_id,
+                job_type='convert',
+                params=convert_params,
+                is_new_upload=True,
+            )
+        else:
+            from src.services.upload_conversion import convert_uploaded_recording
+            convert_uploaded_recording(recording_id, convert_params)
+        return
+
     job_queue.enqueue(
         user_id=user_id,
         recording_id=recording_id,

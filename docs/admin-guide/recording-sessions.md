@@ -15,7 +15,7 @@ Off by default; opt in with `ENABLE_SERVER_RECORDING_CHUNKS=true`. It is planned
 | Where audio lives during recording | Browser RAM + IndexedDB | Server disk (`UPLOAD_FOLDER/_sessions/<id>/`) |
 | Max recording size | Hard auto-stop at 200 MB (fixed; protects browser RAM), with a warning at 80% | No size limit or size warning; hours-based ceiling instead (`RECORDING_MAX_HOURS`, default 8h, with a warning at 80%) |
 | Crash recovery | IndexedDB chunks survive tab refresh | Server-side chunks survive tab/browser/device crash |
-| Finalize | Single-shot `POST /upload` | `POST /upload/session/{id}/finalize`; backend ffmpeg concat demux stitches chunks |
+| Finalize | Single-shot `POST /upload` | `POST /upload/session/{id}/finalize`; backend ffmpeg concat demux stitches chunks, and an audio recording is then converted like an upload |
 | Reverse-proxy chunk POSTs | One big upload (subject to body-size + read-timeout) | Many small POSTs per recording, plus a longer finalize call |
 
 Incognito recordings are the exception: they never open a server session,
@@ -24,6 +24,13 @@ browser (RAM + IndexedDB) until the explicit process-without-saving upload,
 so the legacy 200 MB cap and its warning still apply to them. If a recording
 did stream to the server and the user switches it to incognito in the review
 pane afterwards, the server-side chunks are deleted before processing.
+
+After stitching, an audio recording is converted in the same way as an
+uploaded file (to `AUDIO_CODEC`, MP3 by default), by a convert job when
+`CONVERT_QUEUE_WORKERS` is above 0 and in the stitch job otherwise. Safari
+records Opus in 2.5 ms frames, which iOS and VLC play back distorted, so
+recordings made on iPhones and iPads need this conversion. A recording with
+video (tab or screen capture) is kept as recorded.
 
 ## Sliced uploads of files on disk
 
