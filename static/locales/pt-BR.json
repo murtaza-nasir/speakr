@@ -2190,7 +2190,9 @@
     "empty": "Nada requer sua atenção.",
     "view": "Ver",
     "voiceEmbeddingChanged": "O serviço de transcrição está retornando embeddings de voz de outro modelo. Os perfis de voz são mantidos separadamente para cada modelo: os do modelo anterior não corresponderão às novas gravações e voltam se você restaurar o backend anterior, e os do novo modelo são aprendidos conforme você nomeia os oradores.",
-    "storageQuotaReached": "{{filename}} ficou na pasta monitorada porque seu armazenamento está cheio ({{used_mb}} MB de {{quota_mb}} MB). Ele será adicionado quando houver espaço."
+    "storageQuotaReached": "{{filename}} ficou na pasta monitorada porque seu armazenamento está cheio ({{used_mb}} MB de {{quota_mb}} MB). Ele será adicionado quando houver espaço.",
+    "autoProcessRefused": "{{filename}} não pôde ser processado ({{reason}}) e foi renomeado para {{failed_name}} na pasta monitorada. Renomeie-o de volta para tentar novamente.",
+    "autoProcessFailed": "{{filename}} não pôde ser processado após várias tentativas e foi renomeado para {{failed_name}} na pasta monitorada. Renomeie-o de volta para tentar novamente."
   },
   "preferences": {
     "autoTranslation": "Traduzir automaticamente novas gravações",

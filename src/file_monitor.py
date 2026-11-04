@@ -12,23 +12,23 @@ import os
 import time
 import threading
 import logging
-from datetime import datetime
 from pathlib import Path
-import mimetypes
-from werkzeug.utils import secure_filename
-from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError, has_audio_stream
-from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
-from src.utils.audio_conversion import convert_if_needed
-from src.utils.filenames import shorten_filename
-from src.utils.titles import placeholder_titles
-
-# Video retention - when enabled, video files keep their video stream for playback
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
-
-# Video passthrough - send original video files directly to ASR without extracting audio
-VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 
 # Flask app components will be imported inside functions to avoid circular imports
+
+# A file that cannot be processed is renamed to <name>.failed, which later
+# scans skip; the owner renames it back to try again. A file ingestion refuses
+# (unreadable, empty, a video without audio) is set aside at once. Any other
+# failure is retried, after 1, 2, 4 and 8 minutes, and the file is set aside
+# after the fifth.
+FAILED_SUFFIX = '.failed'
+MAX_ATTEMPTS = 5
+RETRY_BASE_SECONDS = 60
+RETRY_MAX_SECONDS = 3600
+
+
+class IngestionRefused(Exception):
+    """Ingestion refused the file; trying it again would not change that."""
 
 class FileMonitor:
     def __init__(self, base_watch_directory, check_interval=30, mode='admin_only'):
@@ -71,6 +71,9 @@ class FileMonitor:
 
         # Files left in the folder for the storage quota, logged once (#413)
         self._quota_skipped = set()
+
+        # Failed attempts per watched file: path -> (attempts, retry after)
+        self._failures = {}
 
     def start(self):
         """Start the file monitoring in a background thread."""
@@ -237,6 +240,10 @@ class FileMonitor:
             if file_path.suffix.lower() not in self.potential_audio_extensions:
                 continue
 
+            failure = self._failures.get(str(file_path))
+            if failure and time.time() < failure[1]:
+                continue
+
             # Check if file is still being written (size stability check)
             stability_time = int(os.environ.get('AUTO_PROCESS_STABILITY_TIME', '5'))
             try:
@@ -264,15 +271,51 @@ class FileMonitor:
             # --- Process the locked file ---
             try:
                 self._process_file(processing_path, user_id, tag_id=tag_id)
+                self._failures.pop(str(file_path), None)
+            except IngestionRefused as e:
+                self._failures.pop(str(file_path), None)
+                self._set_aside(processing_path, file_path, user_id, 'notifications.autoProcessRefused',
+                                f"refused: {e}", reason=str(e))
             except Exception as e:
                 self.logger.error(f"Error processing file {processing_path}: {e}", exc_info=True)
-                # If processing fails, unlock the file by renaming it back
+                attempts = self._failures.get(str(file_path), (0, 0))[0] + 1
+                if attempts >= MAX_ATTEMPTS:
+                    self._failures.pop(str(file_path), None)
+                    self._set_aside(processing_path, file_path, user_id, 'notifications.autoProcessFailed',
+                                    f"failed {attempts} times, last: {e}")
+                    continue
+                delay = min(RETRY_BASE_SECONDS * 2 ** (attempts - 1), RETRY_MAX_SECONDS)
+                self._failures[str(file_path)] = (attempts, time.time() + delay)
+                # Unlock the file by renaming it back; it is tried again after the delay
                 try:
-                    original_path = processing_path.with_suffix(processing_path.suffix.replace('.processing', ''))
-                    processing_path.rename(original_path)
-                    self.logger.info(f"Unlocked file {processing_path} back to {original_path} after processing error.")
+                    processing_path.rename(file_path)
+                    self.logger.info(f"Unlocked {processing_path} after processing error "
+                                     f"(attempt {attempts} of {MAX_ATTEMPTS}, next in {delay}s).")
                 except Exception as rename_err:
                     self.logger.error(f"CRITICAL: Failed to unlock file {processing_path} after error: {rename_err}")
+
+    def _set_aside(self, processing_path, file_path, user_id, message_key, log_reason, reason=None):
+        """Rename a file that cannot be processed to <name>.failed and tell its owner once."""
+        target = file_path.with_name(file_path.name + FAILED_SUFFIX)
+        if target.exists():
+            target = file_path.with_name(f"{file_path.stem}-{int(time.time())}{file_path.suffix}{FAILED_SUFFIX}")
+        try:
+            processing_path.rename(target)
+        except Exception as e:
+            self.logger.error(f"CRITICAL: Failed to set aside {processing_path} as {target.name}: {e}")
+            return
+        self.logger.warning(f"Set aside {file_path} as {target.name}, {log_reason}")
+        try:
+            from src.app import app
+            from src.services.notifications import notify
+            params = {'filename': file_path.name, 'failed_name': target.name}
+            if reason:
+                params['reason'] = reason
+            with app.app_context():
+                notify('auto_process.file_set_aside', message_key, user_ids=[user_id], level='warning',
+                       params=params, dedupe_key=f'auto_process.file_set_aside:{user_id}:{target.name}'[:200])
+        except Exception as e:
+            self.logger.warning(f"Could not notify user {user_id} about {target.name}: {e}")
                 
     def _extract_user_id_from_dirname(self, dirname):
         """
@@ -341,7 +384,7 @@ class FileMonitor:
             tag_id (int, optional): Tag ID to apply to the recording
         """
         # Import Flask components inside function to avoid circular imports
-        from src.app import app, db, Recording, User, transcribe_audio_task
+        from src.app import app, db, User
         
         with app.app_context():
             try:
@@ -356,230 +399,97 @@ class FileMonitor:
                 original_filename = processing_path.name.replace('.processing', '')
 
                 # Storage quota (#413): a file that does not fit stays in the
-                # folder untouched and is tried again on later scans; the user
-                # gets one notification, resolved when there is room.
+                # folder untouched and is tried again on later scans.
                 from src.services.storage_quota import check_room, StorageQuotaExceeded, raise_notice
                 try:
                     check_room(user, processing_path.stat().st_size)
                 except StorageQuotaExceeded as quota_error:
                     original_path = processing_path.with_name(original_filename)
-                    processing_path.rename(original_path)
+                    try:
+                        processing_path.rename(original_path)
+                    except FileNotFoundError:
+                        pass
                     if str(original_path) not in self._quota_skipped:
                         self._quota_skipped.add(str(original_path))
                         self.logger.info(f"Left {original_path} in the watch folder: {quota_error}")
                         raise_notice(user, quota_error, original_filename)
                     return
                 self._quota_skipped.discard(str(processing_path.with_name(original_filename)))
-                safe_filename = shorten_filename(secure_filename(original_filename))
-                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                new_filename = f"auto_{timestamp}_{safe_filename}"
-                
-                from src.services.storage import get_storage_service
 
-                storage = get_storage_service()
-                staging_dir = Path(storage.get_staging_dir())
-                staging_dir.mkdir(parents=True, exist_ok=True)
-                destination_path = staging_dir / new_filename
-                
-                # Copy locked file to uploads directory
-                import shutil
-                shutil.copy(str(processing_path), str(destination_path))
-                self.logger.info(f"Copied {processing_path} to {destination_path}")
-                
-                # Delete the locked file from watch directory after successful copy
+                # Delegate the rest of the pipeline (probe, conversion, storage,
+                # Recording creation, enqueue) to the shared ingestion path so
+                # the monitor and the upload entry point never drift apart.
+                # The monitor's only responsibilities left are: quota gating
+                # (above), handing the file over as a path source, applying a
+                # tag via the form, and cleaning up the locked watch-dir file.
+                from src.services.recording_source import PathSource
+                from src.api.recordings import ingest_uploaded_recording
+
+                # Preserve the monitor's filename-date parsing by forwarding it
+                # as a meeting_date when the owner opted in.
+                form = {}
+                if tag_id is not None:
+                    form['tag_ids[0]'] = str(tag_id)
+                try:
+                    if getattr(user, 'parse_filename_dates', False):
+                        from src.utils.filename_dates import parse_filename_date
+                        md = parse_filename_date(
+                            original_filename,
+                            pattern_key=user.filename_date_pattern or 'auto',
+                            custom_regex=user.filename_date_regex,
+                        )
+                        if md:
+                            form['meeting_date'] = md.isoformat()
+                except Exception as e:
+                    self.logger.warning(f"Could not parse filename date for {original_filename}: {e}")
+
+                from src.utils.titles import placeholder_titles
+                def _prepare(recording):
+                    recording.title = placeholder_titles(original_filename)[1]
+                    recording.title_source = None
+
+                source = PathSource(processing_path)
+                response, status = ingest_uploaded_recording(
+                    owner=user,
+                    source=source,
+                    form=form,
+                    original_filename=original_filename,
+                    processing_source='auto_process',
+                    success_status=202,
+                    prepare=_prepare,
+                    enforce_upload_limits=False,
+                )
+
+                # ingest returns a Flask response tuple.
+                try:
+                    payload = response.get_json(silent=True) or {}
+                except Exception:
+                    payload = {}
+                source.close()
+                if 400 <= int(status) < 500:
+                    raise IngestionRefused(payload.get('error') or f"status {status}")
+                if not (200 <= int(status) < 300):
+                    raise RuntimeError(
+                        f"ingestion failed with status {status}: {payload.get('error') or payload}"
+                    )
+
+                recording_id = payload.get('id')
+                self.logger.info(f"Created recording record with ID: {recording_id} for user: {user.username}")
+
+                # Remove the locked file from the watch directory now that ingestion
+                # has copied it into staging.  ingest never deletes its source.
                 try:
                     processing_path.unlink()
                     self.logger.info(f"Deleted locked file: {processing_path}")
                 except FileNotFoundError:
-                    # This should not happen if the lock is held, but good to log
                     self.logger.warning(f"Locked file {processing_path} was already deleted.")
-                
-                # Compute file hash on the ORIGINAL file before any conversion/compression.
-                # Lossy re-encoding produces different bytes each run, so hashing after
-                # conversion would miss duplicates.
-                file_hash = None
-                try:
-                    from src.utils.file_hash import compute_file_sha256
-                    file_hash = compute_file_sha256(str(destination_path))
-                except Exception as e:
-                    self.logger.warning(f"Could not compute file hash: {e}")
 
-                # Probe once to get codec info, then pass through pipeline to avoid redundant calls
-                codec_info = None
-                try:
-                    codec_info = get_codec_info(str(destination_path), timeout=10)
-                    self.logger.info(f"Detected codec for {original_filename}: audio_codec={codec_info.get('audio_codec')}, has_video={codec_info.get('has_video', False)}")
-                except FFProbeError as e:
-                    self.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
-                
-                # Get connector specs for codec restrictions
-                connector_specs = None
-                try:
-                    from src.services.transcription import get_registry
-                    registry = get_registry()
-                    connector = registry.get_active_connector()
-                    if connector:
-                        connector_specs = connector.specifications
-                except Exception as e:
-                    self.logger.warning(f"Could not get connector specs: {e}")
-
-                # Check if this is a video file (for video retention logic)
-                has_video = codec_info.get('has_video', False) if codec_info else False
-
-                # Video passthrough or retention: skip conversion for videos.
-                # A video without an audio track goes through conversion,
-                # which refuses it, as without these settings.
-                if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video and has_audio_stream(codec_info):
-                    self.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
-                    final_path = destination_path
-                else:
-                    # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs
-                    try:
-                        result = convert_if_needed(
-                            str(destination_path),
-                            original_filename=original_filename,
-                            codec_info=codec_info,
-                            needs_chunking=False,
-                            is_asr_endpoint=False,
-                            delete_original=True,  # Clean up original after conversion
-                            connector_specs=connector_specs  # Pass connector specs for codec restrictions
-                        )
-                        final_path = Path(result.output_path)
-
-                        # Log what happened
-                        if result.was_converted:
-                            self.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
-                        if result.was_compressed:
-                            self.logger.info(f"File compressed: {result.size_change_label}")
-
-                    except FFmpegNotFoundError as e:
-                        self.logger.error(f"FFmpeg not found: {e}")
-                        raise
-                    except FFmpegError as e:
-                        self.logger.error(f"FFmpeg conversion failed: {e}")
-                        raise
-
-                # (file_hash already computed above, before conversion)
-
-                # Get file size and MIME type
-                file_size = final_path.stat().st_size
-                mime_type, _ = mimetypes.guess_type(str(final_path))
-
-                # Create database record
-                now = datetime.utcnow()
-
-                # Filename-parsed date first when the owner opted in (#342):
-                # the configured pattern is explicit user intent, so it
-                # outranks embedded metadata. No client timezone exists on
-                # this path, so date-only matches anchor at 12:00 UTC.
-                meeting_date = None
-                if user and user.parse_filename_dates:
-                    from src.utils.filename_dates import parse_filename_date
-                    meeting_date = parse_filename_date(
-                        original_filename,
-                        pattern_key=user.filename_date_pattern or 'auto',
-                        custom_regex=user.filename_date_regex,
-                    )
-                    if meeting_date:
-                        self.logger.info(f"Using filename-parsed meeting date: {meeting_date}")
-
-                # Try to extract creation date from file metadata, fall back to current time
-                if not meeting_date:
-                    # Normalised to naive UTC like the upload path (#412 B6).
-                    from src.utils.dates import to_utc_naive
-                    meeting_date = to_utc_naive(get_creation_date(str(final_path)))
-                    if meeting_date:
-                        self.logger.info(f"Using file metadata creation date: {meeting_date}")
-                    else:
-                        meeting_date = now
-                        self.logger.debug("No metadata creation date found, using current time")
-
-                # Check for duplicate
-                if file_hash:
-                    existing = Recording.query.filter_by(user_id=user_id, file_hash=file_hash).first()
-                    if existing:
-                        self.logger.warning(
-                            f"Duplicate file detected for user {user_id}: "
-                            f"hash={file_hash[:12]}... matches recording {existing.id} "
-                            f"({existing.title}). Processing anyway."
-                        )
-
-                audio_duration_seconds = None
-                try:
-                    detected_duration = get_duration(str(final_path), timeout=30)
-                    if detected_duration is not None and detected_duration > 0:
-                        audio_duration_seconds = float(detected_duration)
-                except Exception as e:
-                    self.logger.warning(f"Could not determine duration for auto-processed file {original_filename}: {e}")
-
-                recording = Recording(
-                    audio_path=None,
-                    original_filename=original_filename,
-                    title=placeholder_titles(original_filename)[1],
-                    file_size=file_size,
-                    status='PENDING',
-                    meeting_date=meeting_date,
-                    user_id=user_id,
-                    mime_type=mime_type,
-                    audio_duration_seconds=audio_duration_seconds,
-                    is_inbox=True,  # Auto-processed files go to inbox
-                    processing_source='auto_process',  # Track that this was auto-processed
-                    file_hash=file_hash
-                )
-                
-                db.session.add(recording)
-                db.session.flush()
-
-                storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
-                stored_object = storage.upload_local_file(
-                    str(final_path),
-                    storage_key,
-                    content_type=mime_type,
-                    delete_source=True,
-                )
-                recording.audio_path = stored_object.locator
-
-                self.logger.info(f"Created recording record with ID: {recording.id} for user: {user.username}")
-
-                # Apply tag if specified (so the recording carries it before we
-                # resolve transcribe params below).
-                if tag_id:
-                    from src.models import Tag, RecordingTag
-                    tag = db.session.get(Tag, tag_id)
-                    if tag:
-                        recording_tag = RecordingTag(
-                            recording_id=recording.id,
-                            tag_id=tag_id,
-                            order=0
-                        )
-                        db.session.add(recording_tag)
-                        db.session.commit()
-                        self.logger.info(f"Applied tag '{tag.name}' (id={tag_id}) to recording {recording.id}")
-
-                db.session.commit()
-                from src.services.webhook_dispatch import emit_recording_created
-                emit_recording_created(recording)
-
-                # Resolve transcribe params through the shared chain so an
-                # auto-processed file honors the same tag/folder/env/account
-                # defaults (speaker hints, model, hotwords, prompt) as a normal
-                # upload — previously this path only forwarded a thin subset.
-                from src.services.transcription_defaults import resolve_transcription_params
-                job_params = resolve_transcription_params(recording)
-
-                # Queue for background processing
-                from src.services.job_queue import job_queue
-                job_queue.enqueue(
-                    user_id=user.id,
-                    recording_id=recording.id,
-                    job_type='transcribe',
-                    params=job_params,
-                    is_new_upload=True
-                )
-
-                self.logger.info(f"Queued background processing for recording ID: {recording.id}")
+                self.logger.info(f"Queued background processing for recording ID: {recording_id}")
                 self.logger.info(f"Successfully processed and moved file from: {processing_path}")
+
                     
+            except IngestionRefused:
+                raise
             except Exception as e:
                 self.logger.error(f"Error processing file {processing_path} for user {user_id}: {e}", exc_info=True)
                 # Re-raise the exception to be caught by the calling method, which will handle unlocking.

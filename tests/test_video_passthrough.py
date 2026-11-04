@@ -79,7 +79,6 @@ class TestPassthroughConfig(unittest.TestCase):
         ('src/config/app_config.py', APP_CONFIG),
         ('src/tasks/processing.py', PROCESSING),
         ('src/api/recordings.py', RECORDINGS),
-        ('src/file_monitor.py', FILE_MONITOR),
     ]
 
     def test_defined_in_all_files(self):
@@ -330,34 +329,35 @@ class TestUploadHandlerPassthrough(unittest.TestCase):
 # ===========================================================================
 
 class TestFileMonitorPassthrough(unittest.TestCase):
-    """Test file_monitor.py respects VIDEO_PASSTHROUGH_ASR."""
+    """The file monitor delegates video passthrough to the shared ingestion path."""
+
+    def test_monitor_delegates_to_shared_ingestion(self):
+        """The monitor no longer owns probe/convert decisions."""
+        self.assertIn('ingest_uploaded_recording(', FILE_MONITOR)
+        self.assertIn('processing_source=\'auto_process\'', FILE_MONITOR)
 
     def test_passthrough_defined(self):
-        self.assertIn('VIDEO_PASSTHROUGH_ASR', FILE_MONITOR)
+        """VIDEO_PASSTHROUGH_ASR is handled by the shared ingestion path."""
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
 
     def test_skip_conversion_for_passthrough_or_retention(self):
-        """File monitor skips conversion when passthrough or retention + video."""
-        self.assertIn('VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video', FILE_MONITOR)
+        """The shared path skips conversion for passthrough/retention videos."""
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', RECORDINGS)
+        self.assertIn('and has_video', RECORDINGS)
+        self.assertIn('skipping conversion', RECORDINGS)
 
     def test_convert_if_needed_in_else_branch(self):
-        """convert_if_needed is in the else branch, not inside the skip block."""
-        lines = FILE_MONITOR.split('\n')
-        in_skip_block = False
-        found_else = False
-        for i, line in enumerate(lines):
-            if 'VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video' in line:
-                in_skip_block = True
-            elif in_skip_block and line.strip().startswith('else:'):
-                in_skip_block = False
-                found_else = True
-            elif in_skip_block and 'convert_if_needed' in line:
-                self.fail(f"convert_if_needed inside skip block at line {i + 1}")
-        self.assertTrue(found_else, "Should have else branch after passthrough/retention skip")
+        """The shared path keeps the skip decision ahead of conversion."""
+        self.assertIn('keep_video_for_this_upload = (', RECORDINGS)
+        self.assertIn('elif can_defer_conversion:', RECORDINGS)
+        self.assertIn('convert_if_needed(', RECORDINGS)
+        self.assertNotIn('convert_if_needed', FILE_MONITOR)
 
     def test_log_distinguishes_passthrough_from_retention(self):
         """Log message indicates whether passthrough or retention caused the skip."""
-        self.assertIn("'passthrough'", FILE_MONITOR)
-        self.assertIn("'retention'", FILE_MONITOR)
+        self.assertIn("'passthrough'", RECORDINGS)
+        self.assertIn("'retention'", RECORDINGS)
 
 
 # ===========================================================================
@@ -381,8 +381,10 @@ class TestAudioUnaffected(unittest.TestCase):
         self.assertIn('and has_video', RECORDINGS)
 
     def test_file_monitor_gated_on_has_video(self):
-        """File monitor skip is gated on `has_video`."""
-        self.assertIn('and has_video', FILE_MONITOR)
+        """The file monitor delegates to the shared path, whose skip is gated
+        on `has_video`."""
+        self.assertIn('ingest_uploaded_recording(', FILE_MONITOR)
+        self.assertIn('and has_video', RECORDINGS)
 
 
 # ===========================================================================

@@ -539,10 +539,12 @@ class TestProcessFile(unittest.TestCase):
         return storage
 
     def _patches(self, storage, enqueue_capture, convert_passthrough=True):
-        """Patch the externals _process_file imports. convert_if_needed and the
-        ffprobe helpers are module-level imports on src.file_monitor; storage,
-        job_queue, file_hash, registry, transcribe_audio_task are imported
-        inside the function so we patch them at their origin module."""
+        """Patch the externals used by the shared ingestion path.
+
+        file_monitor delegates to ``ingest_uploaded_recording``, so the
+        probe/convert/storage/job-queue names are patched where that function
+        binds them (``src.api.recordings``) and at their origin modules for
+        any late imports."""
         import contextlib
 
         def fake_convert(src_path, **kw):
@@ -559,18 +561,28 @@ class TestProcessFile(unittest.TestCase):
         registry_mock.get_active_connector.return_value = None
 
         cm = contextlib.ExitStack()
-        cm.enter_context(patch.object(fm_module, 'convert_if_needed', fake_convert))
-        cm.enter_context(patch.object(fm_module, 'get_codec_info',
-                                      lambda *a, **kw: {'audio_codec': 'mp3', 'has_video': False}))
-        cm.enter_context(patch.object(fm_module, 'get_creation_date', lambda *a, **kw: None))
-        cm.enter_context(patch.object(fm_module, 'get_duration', lambda *a, **kw: 12.5))
-        cm.enter_context(patch('src.services.storage.get_storage_service',
-                               lambda: storage))
-        cm.enter_context(patch('src.services.job_queue.job_queue', job_queue_mock))
-        cm.enter_context(patch('src.services.transcription.get_registry',
-                               lambda: registry_mock))
-        cm.enter_context(patch('src.utils.file_hash.compute_file_sha256',
+        # ingest binds these names in src.api.recordings at import time.
+        cm.enter_context(patch('src.api.recordings.get_codec_info',
+                               lambda *a, **kw: {'audio_codec': 'mp3', 'has_video': False}))
+        cm.enter_context(patch('src.api.recordings.get_creation_date', lambda *a, **kw: None))
+        cm.enter_context(patch('src.api.recordings.get_duration', lambda *a, **kw: 12.5))
+        cm.enter_context(patch('src.api.recordings.has_audio_stream', lambda *a, **kw: False))
+        cm.enter_context(patch('src.api.recordings.convert_if_needed', fake_convert))
+        cm.enter_context(patch('src.api.recordings.get_storage_service', lambda: storage))
+        cm.enter_context(patch('src.api.recordings.compute_file_sha256',
                                lambda *a, **kw: 'deadbeef' * 8))
+        cm.enter_context(patch('src.api.recordings.job_queue', job_queue_mock))
+        # origin modules (for any late imports inside ingest)
+        cm.enter_context(patch('src.services.storage.get_storage_service', lambda: storage))
+        cm.enter_context(patch('src.services.job_queue.job_queue', job_queue_mock))
+        cm.enter_context(patch('src.services.transcription.get_registry', lambda: registry_mock))
+        cm.enter_context(patch('src.utils.file_hash.compute_file_sha256', lambda *a, **kw: 'deadbeef' * 8))
+        cm.enter_context(patch('src.utils.ffprobe.get_codec_info', lambda *a, **kw: {'audio_codec': 'mp3', 'has_video': False}))
+        cm.enter_context(patch('src.utils.ffprobe.get_creation_date', lambda *a, **kw: None))
+        cm.enter_context(patch('src.utils.ffprobe.get_duration', lambda *a, **kw: 12.5))
+        cm.enter_context(patch('src.utils.audio_conversion.convert_if_needed', fake_convert))
+        cm.enter_context(patch('src.audio_chunking.get_effective_chunking_config',
+                               lambda *a, **kw: MagicMock(chunk_audio=False)))
         return cm
 
     def test_process_file_creates_recording_and_enqueues(self):
@@ -657,7 +669,7 @@ class TestProcessFile(unittest.TestCase):
             return res
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'convert_if_needed', fake_convert):
+            with patch('src.api.recordings.convert_if_needed', fake_convert):
                 self.monitor._process_file(p, self.uid)
         self.assertEqual(len(enqueued), 1)
 
@@ -670,14 +682,17 @@ class TestProcessFile(unittest.TestCase):
             self.fail("convert_if_needed should be skipped for video passthrough")
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'VIDEO_PASSTHROUGH_ASR', True), \
-                 patch.object(fm_module, 'get_codec_info',
-                              lambda *a, **kw: {'audio_codec': 'aac', 'has_video': True}), \
-                 patch.object(fm_module, 'convert_if_needed', convert_should_not_run):
+            with patch('src.api.recordings.VIDEO_PASSTHROUGH_ASR', True), \
+                 patch('src.api.recordings.get_codec_info',
+                       lambda *a, **kw: {'audio_codec': 'aac', 'has_video': True}), \
+                 patch('src.api.recordings.convert_if_needed', convert_should_not_run), \
+                 patch('src.api.recordings.has_audio_stream', lambda *a, **kw: True):
                 self.monitor._process_file(p, self.uid)
         self.assertEqual(len(enqueued), 1)
 
-    def test_process_file_ffmpeg_error_propagates(self):
+    def test_process_file_ffmpeg_error_is_a_refusal(self):
+        # A file FFmpeg cannot convert is refused (400); the scan sets it aside.
+        from src.file_monitor import IngestionRefused
         from src.utils.ffmpeg_utils import FFmpegError
         p = self._make_processing_file('badconvert.mp3')
         storage = self._build_storage_mock()
@@ -687,8 +702,8 @@ class TestProcessFile(unittest.TestCase):
             raise FFmpegError("conversion failed")
 
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'convert_if_needed', boom):
-                with self.assertRaises(FFmpegError):
+            with patch('src.api.recordings.convert_if_needed', boom):
+                with self.assertRaises(IngestionRefused):
                     self.monitor._process_file(p, self.uid)
         self.assertEqual(enqueued, [])
 
@@ -721,8 +736,8 @@ class TestProcessFile(unittest.TestCase):
         storage = self._build_storage_mock()
         enqueued = []
         with self._patches(storage, enqueued):
-            with patch.object(fm_module, 'get_creation_date',
-                              lambda *a, **kw: _dt(2020, 1, 2, 3, 4, 5)):
+            with patch('src.api.recordings.get_creation_date',
+                       lambda *a, **kw: _dt(2020, 1, 2, 3, 4, 5)):
                 self.monitor._process_file(p, self.uid)
 
         recs = Recording.query.filter_by(user_id=self.uid).all()
