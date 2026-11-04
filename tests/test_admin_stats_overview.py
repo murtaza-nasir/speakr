@@ -98,7 +98,7 @@ def test_recordings_by_day_source_and_failure(world):
     assert after["activity"]["created"] - before["activity"]["created"] == 3
     assert after["overview"]["recordings"]["previous"] - before["overview"]["recordings"]["previous"] == 1
     assert after["activity"]["failure_rate"] is not None
-    assert after["failed_recent"][0]["title"] == "Broken one" and after["failed_recent"][0]["error"] == "boom"
+    assert any(r["title"] == "Broken one" and r["error"] == "boom" for r in after["failed_recent"])
 
 
 def test_tokens_split_by_task_with_embeddings_apart(world):

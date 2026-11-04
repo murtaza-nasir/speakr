@@ -51,7 +51,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov pytest-xdist
 
       - name: Build the Tailwind stylesheet as the image build does
         run: scripts/build_css.sh
@@ -62,7 +62,7 @@ jobs:
           # test_postgres_migrations.py reads TEST_DATABASE_URI separately so it
           # exercises real PostgreSQL compatibility against the service above.
           TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
-        run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
+        run: pytest tests/ -q -n 4 --dist loadfile --cov=src --cov-report=term-missing --cov-fail-under=60
 
   # The same suite on PostgreSQL, the database of most deployments. SQLite
   # does not enforce column lengths or foreign keys the way PostgreSQL does,
