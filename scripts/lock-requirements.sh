@@ -1,7 +1,9 @@
 #!/bin/sh
 # Regenerate requirements.lock (lite image) and requirements-embeddings.lock
 # (full image) from requirements.txt, requirements-embeddings.txt and
-# constraints.txt.
+# constraints.txt, and requirements-dev.lock (the test tools CI installs) from
+# requirements-dev.txt, at the versions requirements.lock uses for any package
+# the two share.
 #
 # The lock files pin every package, including the dependencies of
 # dependencies, with the hash of every published file, for amd64 and arm64.
@@ -38,7 +40,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/w -w /w \
     OUT=.
     if [ "$CHECK" = "1" ]; then
         OUT=$(mktemp -d)
-        cp requirements.lock requirements-embeddings.lock "$OUT"/
+        cp requirements.lock requirements-embeddings.lock requirements-dev.lock "$OUT"/
     fi
     $UV pip compile -q requirements.txt -c constraints.txt \
         --universal --python-version 3.11 --generate-hashes \
@@ -46,9 +48,13 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/w -w /w \
     $UV pip compile -q requirements.txt requirements-embeddings.txt -c constraints.txt \
         --universal --python-version 3.11 --generate-hashes \
         -o "$OUT"/requirements-embeddings.lock "$@"
+    $UV pip compile -q requirements-dev.txt -c requirements.lock \
+        --universal --python-version 3.11 --generate-hashes \
+        -o "$OUT"/requirements-dev.lock "$@"
     if [ "$CHECK" = "1" ]; then
         diff -u requirements.lock "$OUT"/requirements.lock && \
-        diff -u requirements-embeddings.lock "$OUT"/requirements-embeddings.lock || {
+        diff -u requirements-embeddings.lock "$OUT"/requirements-embeddings.lock && \
+        diff -u requirements-dev.lock "$OUT"/requirements-dev.lock || {
             echo "The lock files do not match the requirements; run scripts/lock-requirements.sh" >&2
             exit 1
         }

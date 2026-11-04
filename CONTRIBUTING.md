@@ -267,7 +267,7 @@ docker-compose -f docker-compose.dev.yml up -d --build
 # Or for local development
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install --require-hashes --no-deps -r requirements.lock
+pip install --require-hashes --no-deps -r requirements.lock -r requirements-dev.lock   # the app and the test tools
 python scripts/download_offline_deps.py   # vendor JavaScript, CSS and fonts
 scripts/build_css.sh                      # static/css/tailwind.css (Linux x64/arm64)
 python src/app.py --debug
@@ -277,10 +277,10 @@ The Tailwind stylesheet is compiled from the templates and scripts. After a chan
 
 ### Dependencies
 
-Every Python package, including the dependencies of dependencies, is pinned with its hashes in `requirements.lock` (lite image) and `requirements-embeddings.lock` (full image), and the images are built with `pip install --require-hashes`. The vendored JavaScript, CSS and fonts are pinned to exact versions and checked against their SHA-256 checksums in `scripts/download_offline_deps.py`.
+Every Python package, including the dependencies of dependencies, is pinned with its hashes in `requirements.lock` (lite image) and `requirements-embeddings.lock` (full image), and the test tools in `requirements-dev.lock`. The images are built with `pip install --require-hashes`. The vendored JavaScript, CSS and fonts are pinned to exact versions and checked against their SHA-256 checksums in `scripts/download_offline_deps.py`.
 
 - Give a clear reason for a new dependency in the PR description. A feature that can be built with the existing packages is preferred, and for a heavy dependency needed only by a rarely used feature, you may be asked to keep that part in a fork.
-- After a change to `requirements.txt` or `requirements-embeddings.txt`, run `scripts/lock-requirements.sh` (Docker is required) and commit the lock files. The lock files are checked in CI, and a mismatch is reported as a failure.
+- After a change to `requirements.txt`, `requirements-embeddings.txt` or `requirements-dev.txt`, run `scripts/lock-requirements.sh` (Docker is required) and commit the lock files. The lock files are checked in CI, and a mismatch is reported as a failure.
 - To update one package: `scripts/lock-requirements.sh --upgrade-package <name>`. Releases that have been public for less than a week are not accepted.
 - The locked packages are checked against the published advisories with `scripts/audit-dependencies.sh` (pip-audit), in CI and before every release. An advisory that does not apply to Speakr is listed in `scripts/audit-exceptions.txt` with a reason and a review date.
 - PRs that change dependencies, the Dockerfile, workflows or scripts, or that add minified, binary or encoded content, are reviewed line by line, so their review can take longer.

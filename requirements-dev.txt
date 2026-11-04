@@ -1,0 +1,8 @@
+# Tools used only by the test and browser-smoke jobs in CI. Locked with hashes
+# in requirements-dev.lock by scripts/lock-requirements.sh, at the versions
+# requirements.lock already uses for any package the two share.
+pytest==9.2.0
+pytest-cov==7.1.0
+pytest-xdist==3.8.0
+pytest-timeout==2.4.0
+playwright==1.64.1

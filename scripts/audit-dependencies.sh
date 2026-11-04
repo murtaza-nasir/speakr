@@ -22,7 +22,7 @@ while read -r id until reason; do
 done < scripts/audit-exceptions.txt
 
 status=0
-for lock in requirements.lock requirements-embeddings.lock; do
+for lock in requirements.lock requirements-embeddings.lock requirements-dev.lock; do
     echo "== $lock"
     # shellcheck disable=SC2086
     pip-audit --disable-pip --require-hashes --progress-spinner off -r "$lock" $ignores || status=1
