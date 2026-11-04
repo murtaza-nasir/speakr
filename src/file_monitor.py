@@ -16,6 +16,20 @@ from pathlib import Path
 
 # Flask app components will be imported inside functions to avoid circular imports
 
+# A file that cannot be processed is renamed to <name>.failed, which later
+# scans skip; the owner renames it back to try again. A file ingestion refuses
+# (unreadable, empty, a video without audio) is set aside at once. Any other
+# failure is retried, after 1, 2, 4 and 8 minutes, and the file is set aside
+# after the fifth.
+FAILED_SUFFIX = '.failed'
+MAX_ATTEMPTS = 5
+RETRY_BASE_SECONDS = 60
+RETRY_MAX_SECONDS = 3600
+
+
+class IngestionRefused(Exception):
+    """Ingestion refused the file; trying it again would not change that."""
+
 class FileMonitor:
     def __init__(self, base_watch_directory, check_interval=30, mode='admin_only'):
         """
@@ -57,6 +71,9 @@ class FileMonitor:
 
         # Files left in the folder for the storage quota, logged once (#413)
         self._quota_skipped = set()
+
+        # Failed attempts per watched file: path -> (attempts, retry after)
+        self._failures = {}
 
     def start(self):
         """Start the file monitoring in a background thread."""
@@ -223,6 +240,10 @@ class FileMonitor:
             if file_path.suffix.lower() not in self.potential_audio_extensions:
                 continue
 
+            failure = self._failures.get(str(file_path))
+            if failure and time.time() < failure[1]:
+                continue
+
             # Check if file is still being written (size stability check)
             stability_time = int(os.environ.get('AUTO_PROCESS_STABILITY_TIME', '5'))
             try:
@@ -250,15 +271,51 @@ class FileMonitor:
             # --- Process the locked file ---
             try:
                 self._process_file(processing_path, user_id, tag_id=tag_id)
+                self._failures.pop(str(file_path), None)
+            except IngestionRefused as e:
+                self._failures.pop(str(file_path), None)
+                self._set_aside(processing_path, file_path, user_id, 'notifications.autoProcessRefused',
+                                f"refused: {e}", reason=str(e))
             except Exception as e:
                 self.logger.error(f"Error processing file {processing_path}: {e}", exc_info=True)
-                # If processing fails, unlock the file by renaming it back
+                attempts = self._failures.get(str(file_path), (0, 0))[0] + 1
+                if attempts >= MAX_ATTEMPTS:
+                    self._failures.pop(str(file_path), None)
+                    self._set_aside(processing_path, file_path, user_id, 'notifications.autoProcessFailed',
+                                    f"failed {attempts} times, last: {e}")
+                    continue
+                delay = min(RETRY_BASE_SECONDS * 2 ** (attempts - 1), RETRY_MAX_SECONDS)
+                self._failures[str(file_path)] = (attempts, time.time() + delay)
+                # Unlock the file by renaming it back; it is tried again after the delay
                 try:
-                    original_path = processing_path.with_suffix(processing_path.suffix.replace('.processing', ''))
-                    processing_path.rename(original_path)
-                    self.logger.info(f"Unlocked file {processing_path} back to {original_path} after processing error.")
+                    processing_path.rename(file_path)
+                    self.logger.info(f"Unlocked {processing_path} after processing error "
+                                     f"(attempt {attempts} of {MAX_ATTEMPTS}, next in {delay}s).")
                 except Exception as rename_err:
                     self.logger.error(f"CRITICAL: Failed to unlock file {processing_path} after error: {rename_err}")
+
+    def _set_aside(self, processing_path, file_path, user_id, message_key, log_reason, reason=None):
+        """Rename a file that cannot be processed to <name>.failed and tell its owner once."""
+        target = file_path.with_name(file_path.name + FAILED_SUFFIX)
+        if target.exists():
+            target = file_path.with_name(f"{file_path.stem}-{int(time.time())}{file_path.suffix}{FAILED_SUFFIX}")
+        try:
+            processing_path.rename(target)
+        except Exception as e:
+            self.logger.error(f"CRITICAL: Failed to set aside {processing_path} as {target.name}: {e}")
+            return
+        self.logger.warning(f"Set aside {file_path} as {target.name}, {log_reason}")
+        try:
+            from src.app import app
+            from src.services.notifications import notify
+            params = {'filename': file_path.name, 'failed_name': target.name}
+            if reason:
+                params['reason'] = reason
+            with app.app_context():
+                notify('auto_process.file_set_aside', message_key, user_ids=[user_id], level='warning',
+                       params=params, dedupe_key=f'auto_process.file_set_aside:{user_id}:{target.name}'[:200])
+        except Exception as e:
+            self.logger.warning(f"Could not notify user {user_id} about {target.name}: {e}")
                 
     def _extract_user_id_from_dirname(self, dirname):
         """
@@ -400,6 +457,7 @@ class FileMonitor:
                     processing_source='auto_process',
                     success_status=202,
                     prepare=_prepare,
+                    enforce_upload_limits=False,
                 )
 
                 # ingest returns a Flask response tuple.
@@ -408,6 +466,8 @@ class FileMonitor:
                 except Exception:
                     payload = {}
                 source.close()
+                if 400 <= int(status) < 500:
+                    raise IngestionRefused(payload.get('error') or f"status {status}")
                 if not (200 <= int(status) < 300):
                     raise RuntimeError(
                         f"ingestion failed with status {status}: {payload.get('error') or payload}"
@@ -428,6 +488,8 @@ class FileMonitor:
                 self.logger.info(f"Successfully processed and moved file from: {processing_path}")
 
                     
+            except IngestionRefused:
+                raise
             except Exception as e:
                 self.logger.error(f"Error processing file {processing_path} for user {user_id}: {e}", exc_info=True)
                 # Re-raise the exception to be caught by the calling method, which will handle unlocking.

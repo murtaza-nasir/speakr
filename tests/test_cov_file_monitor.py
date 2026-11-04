@@ -690,7 +690,9 @@ class TestProcessFile(unittest.TestCase):
                 self.monitor._process_file(p, self.uid)
         self.assertEqual(len(enqueued), 1)
 
-    def test_process_file_ffmpeg_error_propagates(self):
+    def test_process_file_ffmpeg_error_is_a_refusal(self):
+        # A file FFmpeg cannot convert is refused (400); the scan sets it aside.
+        from src.file_monitor import IngestionRefused
         from src.utils.ffmpeg_utils import FFmpegError
         p = self._make_processing_file('badconvert.mp3')
         storage = self._build_storage_mock()
@@ -701,7 +703,7 @@ class TestProcessFile(unittest.TestCase):
 
         with self._patches(storage, enqueued):
             with patch('src.api.recordings.convert_if_needed', boom):
-                with self.assertRaises(RuntimeError):
+                with self.assertRaises(IngestionRefused):
                     self.monitor._process_file(p, self.uid)
         self.assertEqual(enqueued, [])
 

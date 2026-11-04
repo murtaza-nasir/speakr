@@ -2326,8 +2326,13 @@ def ingest_uploaded_recording(
     prepare=None,
     on_conflict=None,
     source=None,
+    enforce_upload_limits=True,
 ):
     """Run an uploaded file through Speakr's standard ingestion pipeline.
+
+    enforce_upload_limits=False leaves out the upload size limits (the request
+    ceiling, max_file_size_mb and the limit on the extracted audio of a video),
+    which protect HTTP requests; the file monitor sets it for watched files.
 
     prepare(recording), when given, runs before the file is stored and the
     recording is first committed, so fields it sets (API v1 participants,
@@ -2427,7 +2432,7 @@ def ingest_uploaded_recording(
 
         # Chunking (app-level, or inside the connector) lifts the per-type
         # policy cap; the WSGI ceiling below always applies (#533).
-        should_enforce_size_limit = True
+        should_enforce_size_limit = enforce_upload_limits
         if chunking_service:
             from src.audio_chunking import get_effective_chunking_config
             chunking_config = get_effective_chunking_config(connector_specs)
@@ -2446,7 +2451,7 @@ def ingest_uploaded_recording(
         # smaller `effective_limit_bytes` is the per-request policy cap
         # (which differs between regular and audio-only-video uploads), and
         # chunking lifts it.
-        if max_content_length and original_file_size > max_content_length:
+        if enforce_upload_limits and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
         if should_enforce_size_limit and original_file_size > effective_limit_bytes:
             raise RequestEntityTooLarge()
@@ -2655,7 +2660,8 @@ def ingest_uploaded_recording(
         # Only the extracted audio of a video has to fit the regular limit.
         extracted_audio_limit_mb = (
             regular_limit_mb
-            if effective_audio_only and is_likely_video_by_ext and not chunking_will_handle_large_audio
+            if (enforce_upload_limits and effective_audio_only and is_likely_video_by_ext
+                and not chunking_will_handle_large_audio)
             else None
         )
         # A file ffprobe could read, with an audio track, is converted after

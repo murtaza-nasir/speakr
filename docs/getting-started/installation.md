@@ -411,6 +411,8 @@ AUTO_PROCESS_CHECK_INTERVAL=30
 
 When enabled, Speakr checks the watch directory every 30 seconds for new audio files. Any files found are automatically moved to the uploads directory and processed using your configured transcription settings. The `admin_only` mode assigns all processed files to the admin user, but you can also configure it for multi-user scenarios with separate directories for each user (`AUTO_PROCESS_MODE=user_directories`). Per-user subfolders may be named after the user id (`user123` or `123`) or after the username itself, mirroring the naming of the per-user export folders.
 
+Watched files are processed like uploads, without the upload size limits. A file that cannot be processed is renamed to `<name>.failed` in the watch folder, and its owner is notified; later scans skip it, and it is tried again once it is renamed back. A file that is refused (one that cannot be read as audio, an empty file, a video without an audio track) is renamed at once. After any other error, the file is tried again after 1, 2, 4 and 8 minutes, and renamed after the fifth failed attempt.
+
 To use this feature, you'll need to mount an additional volume in your Docker Compose configuration, which we'll cover in the next steps.
 
 #### File Storage Backend (Local / S3-Compatible)

@@ -2190,7 +2190,9 @@
     "empty": "No hay nada que requiera su atención.",
     "view": "Ver",
     "voiceEmbeddingChanged": "El servicio de transcripción devuelve embeddings de voz de otro modelo. Los perfiles de voz se guardan por separado para cada modelo: los del modelo anterior no coincidirán con las grabaciones nuevas y vuelven si restaura el backend anterior, y los del modelo nuevo se aprenden a medida que nombra a los hablantes.",
-    "storageQuotaReached": "{{filename}} se dejó en la carpeta vigilada porque su almacenamiento está lleno ({{used_mb}} MB de {{quota_mb}} MB). Se añadirá cuando haya espacio."
+    "storageQuotaReached": "{{filename}} se dejó en la carpeta vigilada porque su almacenamiento está lleno ({{used_mb}} MB de {{quota_mb}} MB). Se añadirá cuando haya espacio.",
+    "autoProcessRefused": "{{filename}} no se pudo procesar ({{reason}}) y se renombró a {{failed_name}} en la carpeta vigilada. Vuelva a ponerle su nombre original para intentarlo de nuevo.",
+    "autoProcessFailed": "{{filename}} no se pudo procesar después de varios intentos y se renombró a {{failed_name}} en la carpeta vigilada. Vuelva a ponerle su nombre original para intentarlo de nuevo."
   },
   "preferences": {
     "autoTranslation": "Traducir automáticamente las grabaciones nuevas",
