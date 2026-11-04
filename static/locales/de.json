@@ -2191,7 +2191,7 @@
     "view": "Ansehen",
     "voiceEmbeddingChanged": "Der Transkriptionsdienst liefert Stimm-Embeddings eines anderen Modells. Stimmprofile werden je Modell getrennt geführt: Profile des vorherigen Modells passen nicht zu neuen Aufnahmen und kehren zurück, wenn Sie das vorherige Backend wiederherstellen; Profile für das neue Modell entstehen, sobald Sie Sprecher benennen.",
     "storageQuotaReached": "{{filename}} wurde im überwachten Ordner belassen, weil Ihr Speicher voll ist ({{used_mb}} MB von {{quota_mb}} MB). Die Datei wird hinzugefügt, sobald Platz ist.",
-    "autoProcessRefused": "{{filename}} konnte nicht verarbeitet werden ({{reason}}) und wurde im überwachten Ordner in {{failed_name}} umbenannt. Benennen Sie die Datei zurück, um es erneut zu versuchen.",
+    "autoProcessRefused": "{{filename}} wurde im überwachten Ordner in {{failed_name}} umbenannt, weil die Datei nicht verarbeitet werden konnte. {{reason}} Benennen Sie die Datei zurück, um es erneut zu versuchen.",
     "autoProcessFailed": "{{filename}} konnte nach mehreren Versuchen nicht verarbeitet werden und wurde im überwachten Ordner in {{failed_name}} umbenannt. Benennen Sie die Datei zurück, um es erneut zu versuchen."
   },
   "preferences": {

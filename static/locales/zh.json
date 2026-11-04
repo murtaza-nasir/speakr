@@ -2191,7 +2191,7 @@
     "view": "查看",
     "voiceEmbeddingChanged": "转录服务返回的是另一个模型的声纹特征。声纹档案按模型分别保存：旧模型的档案不会匹配新录音，恢复先前的后端后即可重新使用；新模型的档案会在您为发言人命名时逐步建立。",
     "storageQuotaReached": "由于存储已满（已用 {{used_mb}} MB，共 {{quota_mb}} MB），{{filename}} 仍留在监控文件夹中，有空间后会自动添加。",
-    "autoProcessRefused": "无法处理 {{filename}}（{{reason}}），已在监视文件夹中将其重命名为 {{failed_name}}。将其改回原名即可重试。",
+    "autoProcessRefused": "{{filename}} 无法处理，已在监视文件夹中重命名为 {{failed_name}}。{{reason}} 将其改回原名即可重试。",
     "autoProcessFailed": "多次尝试后仍无法处理 {{filename}}，已在监视文件夹中将其重命名为 {{failed_name}}。将其改回原名即可重试。"
   },
   "preferences": {

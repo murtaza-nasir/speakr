@@ -2191,7 +2191,7 @@
     "view": "View",
     "voiceEmbeddingChanged": "The transcription service is returning voice embeddings from a different model. Voice profiles are kept separately for each model: profiles from the previous model will not match new recordings and come back if you restore the previous backend, and profiles for the new model are learned as you name speakers.",
     "storageQuotaReached": "{{filename}} was left in the watch folder because your storage is full ({{used_mb}} MB of {{quota_mb}} MB). It is added once there is room.",
-    "autoProcessRefused": "{{filename}} could not be processed ({{reason}}) and was renamed to {{failed_name}} in the watch folder. Rename it back to try again.",
+    "autoProcessRefused": "{{filename}} was renamed to {{failed_name}} in the watch folder because it could not be processed. {{reason}} Rename it back to try again.",
     "autoProcessFailed": "{{filename}} could not be processed after several attempts and was renamed to {{failed_name}} in the watch folder. Rename it back to try again."
   },
   "preferences": {

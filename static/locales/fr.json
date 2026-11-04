@@ -2191,7 +2191,7 @@
     "view": "Afficher",
     "voiceEmbeddingChanged": "Le service de transcription renvoie des empreintes vocales d’un autre modèle. Les profils vocaux sont conservés séparément pour chaque modèle : ceux du modèle précédent ne correspondront pas aux nouveaux enregistrements et reviennent si vous rétablissez le backend précédent, et ceux du nouveau modèle se construisent à mesure que vous nommez les intervenants.",
     "storageQuotaReached": "{{filename}} a été laissé dans le dossier surveillé, car votre stockage est plein ({{used_mb}} Mo sur {{quota_mb}} Mo). Il sera ajouté dès qu'il y aura de la place.",
-    "autoProcessRefused": "{{filename}} n'a pas pu être traité ({{reason}}) et a été renommé en {{failed_name}} dans le dossier surveillé. Redonnez-lui son nom d'origine pour réessayer.",
+    "autoProcessRefused": "{{filename}} a été renommé en {{failed_name}} dans le dossier surveillé, car il n'a pas pu être traité. {{reason}} Redonnez-lui son nom d'origine pour réessayer.",
     "autoProcessFailed": "{{filename}} n'a pas pu être traité après plusieurs tentatives et a été renommé en {{failed_name}} dans le dossier surveillé. Redonnez-lui son nom d'origine pour réessayer."
   },
   "preferences": {
