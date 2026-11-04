@@ -15,6 +15,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from email_validator import validate_email, EmailNotValidError
 from werkzeug.security import generate_password_hash, check_password_hash
 import markdown
 
@@ -117,13 +118,46 @@ _normalize_email_filter = lambda x: x.strip().lower() if x else x
 _REQUIRED = LazyTranslation('server.form.required')
 _INVALID_EMAIL = LazyTranslation('server.form.invalidEmail')
 
+_DOMAIN_RE = re.compile(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$')
+
+
+class AccountEmail:
+    """WTForms Email(), plus addresses on special-use domains such as .local (#551).
+
+    email_validator refuses special-use and reserved domains (.local, .home.arpa
+    and others) whatever its options, so an internal mail domain cannot pass
+    Email(). Registration accepts such an address when its domain is listed in
+    REGISTRATION_ALLOWED_DOMAINS, and sign-in accepts any well-formed one, since
+    it only looks the account up. For these addresses only the part before the
+    @ is checked by email_validator.
+    """
+
+    def __init__(self, any_domain=False):
+        self.any_domain = any_domain
+        self.email = Email(message=_INVALID_EMAIL)
+
+    def __call__(self, form, field):
+        try:
+            self.email(form, field)
+            return
+        except ValidationError:
+            local, at, domain = (field.data or '').rpartition('@')
+            if not (at and local and _DOMAIN_RE.match(domain)):
+                raise
+            if not (self.any_domain or domain in registration_allowed_domains()):
+                raise
+            try:
+                validate_email(f'{local}@example.com', check_deliverability=False)
+            except EmailNotValidError:
+                raise ValidationError(_INVALID_EMAIL) from None
+
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[
         DataRequired(message=_REQUIRED),
         Length(min=2, max=20, message=LazyTranslation('server.form.usernameLength', min=2, max=20))])
     email = StringField('Email', filters=[_normalize_email_filter], validators=[
-        DataRequired(message=_REQUIRED), Email(message=_INVALID_EMAIL)])
+        DataRequired(message=_REQUIRED), AccountEmail()])
     password = PasswordField('Password', validators=[DataRequired(message=_REQUIRED), password_check])
     confirm_password = PasswordField('Confirm Password', validators=[
         DataRequired(message=_REQUIRED),
@@ -144,7 +178,7 @@ class RegistrationForm(FlaskForm):
 
 class LoginForm(FlaskForm):
     email = StringField('Email', filters=[_normalize_email_filter], validators=[
-        DataRequired(message=_REQUIRED), Email(message=_INVALID_EMAIL)])
+        DataRequired(message=_REQUIRED), AccountEmail(any_domain=True)])
     password = PasswordField('Password', validators=[DataRequired(message=_REQUIRED)])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
@@ -162,6 +196,12 @@ def registration_enabled() -> bool:
     return os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
 
 
+def registration_allowed_domains() -> list:
+    """The domains in REGISTRATION_ALLOWED_DOMAINS, lowercased; empty when unset."""
+    domains_env = os.environ.get('REGISTRATION_ALLOWED_DOMAINS', '')
+    return [d.strip().lower() for d in domains_env.split(',') if d.strip()]
+
+
 def is_registration_domain_allowed(email: str) -> bool:
     """Check if email domain is allowed for registration.
 
@@ -171,13 +211,9 @@ def is_registration_domain_allowed(email: str) -> bool:
     if not email:
         return False
 
-    domains_env = os.environ.get('REGISTRATION_ALLOWED_DOMAINS', '')
-    if not domains_env or not domains_env.strip():
-        return True  # No restriction configured
-
-    allowed = [d.strip().lower() for d in domains_env.split(',') if d.strip()]
+    allowed = registration_allowed_domains()
     if not allowed:
-        return True  # Empty after parsing
+        return True  # No restriction configured
 
     parts = email.lower().rsplit('@', 1)
     if len(parts) != 2:
