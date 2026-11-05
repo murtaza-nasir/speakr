@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.18-alpha: login lock, incognito fixes, scoped API tools"
-    A password sign-in lock per account and client address, working chat on incognito recordings, incognito recordings kept through a reload, and an API specification limited to the scopes of the token.
+!!! success "Latest Release: v0.10.19-alpha: transcript translation, faster uploads, fair queues"
+    Transcript translation, uploads answered before their files are converted, turns for every user in the processing queues, Inquire indexing on its own worker, and fixes for recordings made on iPhones and for `.local` email addresses.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.18-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.19-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.19-alpha - Transcript translation, faster uploads, fair queues"
+    Five columns and a unique index on active processing jobs are added at startup. Uploads are converted by convert jobs (`CONVERT_QUEUE_WORKERS`, default 2); read the release notes before going back to an earlier version.
+
+    - **Translation** - Transcripts can be translated on demand or automatically, with an optional separate translation model (PR #538).
+    - **Processing** - Uploads are answered before conversion, every user gets a turn in the queues, and Inquire indexing has its own worker (discussions #541 to #543).
+    - **Watch folder** - Watched files go through the upload pipeline without its size limits, and a file that cannot be processed is renamed to `<name>.failed` (PR #552).
+    - **Fixes** - Recordings made on iPhones (#495), `.local` email addresses (#551), seeking in long videos (#539), and #530 to #534.
+
 !!! info "Version 0.10.18-alpha - Login lock, incognito fixes, scoped API tools"
     A `login_failure` table and two login settings are added at startup.
 
@@ -143,16 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Folders** - Name and color checks, group folder names unique in the group, and group sharing through the API (#511 to #516).
     - **Fixes** - SSO sign-in (#496), upload formats (#510), the storage quota (#509), and recording sessions (#505).
 
-!!! info "Version 0.10.16-alpha - Tencent Cloud ASR, interface language, API limits"
-    One column and seven indexes are added at startup; no configuration changes are required.
-
-    - **Transcription** - A Tencent Cloud ASR connector with speaker diarization (#427), and request parameters for the text and chat models.
-    - **Language** - Dates, times, numbers, percentages and file sizes follow the interface language (#477, #480, #481).
-    - **API** - Account-wide limits and a cap on active tokens (discussion #484), and a CSRF check on the token API (#478).
-    - **Fixes** - Faster recording lists (discussion #483), clear errors for unreadable uploads (#482), and #475, #476, #479, #485.
-
 !!! note "Earlier releases"
-    Release notes for v0.10.15 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.16 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

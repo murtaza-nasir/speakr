@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.18--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.19--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -236,7 +236,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.18-alpha)
+## Latest Release (v0.10.19-alpha)
+
+- Transcripts can be translated, on demand or automatically after transcription (PR #538, #463).
+- Uploads are answered before their files are converted, and a queued recording shows what it waits for (discussion #543).
+- Every waiting user gets a turn in the processing queues, and the API gives each recording's place in the queue (discussion #542).
+- Inquire indexing is done on its own worker (discussion #541), and watched files go through the upload pipeline without its size limits (PR #552).
+- Recordings made on iPhones play correctly (#495), `.local` email addresses can register (#551), and seeking in long videos no longer uses up the rate limit (#539).
+
+### v0.10.18-alpha
 
 - Chat on incognito recordings works again (#527), and an incognito recording is kept through a page reload (#528).
 - Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
@@ -249,14 +257,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Permissions on an existing share can be changed, and several people can be found and selected in the share window (discussions #517, #519).
 - Folder fixes for names, filters and group sharing (#511 to #516), and a per-account default sort for the recordings list.
 
-### v0.10.16-alpha
-
-- Tencent Cloud ASR connector with speaker diarization (#427), and request parameters for the text and chat models.
-- Dates, times, numbers, percentages and file sizes follow the interface language (#477, #480, #481).
-- Account-wide API limits and a cap on active tokens (discussion #484), and a CSRF check on the token API (#478).
-- Faster recording lists (discussion #483), clear errors for unreadable uploads (#482), and fixes for #475, #476, #479 and #485.
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.18-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.19-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
