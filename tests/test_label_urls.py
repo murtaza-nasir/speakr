@@ -151,12 +151,21 @@ def test_label_url_serves_the_spa_shell(owner):
     # Compared with the CSRF tokens blanked out. Flask-WTF signs the token
     # with a timed serializer, so its bytes embed the current second; two
     # renders that straddle a second boundary differ there and nowhere else.
-    # The token appears in the meta tag, in the logout form and in a script
-    # header, so every signed token is blanked (its payload is a JSON string,
-    # which encodes to "Im...").
+    # The token is rendered in the meta tag, in several forms and in a script
+    # header, so every occurrence is blanked by its render site (not by a
+    # token-format guess, which only matched some session tokens).
     import re
     def _shell(body):
-        return re.sub(rb'Im[\w-]+\.[\w-]+\.[\w-]+', b'', body)
+        # Blank CSRF tokens at every render site, regardless of the random
+        # token's base64 prefix (the old "Im..." regex missed tokens whose
+        # payload did not start with "Im", leaving a time-dependent diff that
+        # flaked this comparison in the full suite).
+        body = re.sub(rb'(name="csrf-token"\s+content=")[^"]*(")', rb'\1\2', body)
+        body = re.sub(rb'(name="csrf_token"\s+value=")[^"]*(")', rb'\1\2', body)
+        body = re.sub(rb"(X-CSRFToken':\s*)\"[^\"]*\"", rb'\1""', body)
+        # Safety net for any itsdangerous token that slipped through.
+        body = re.sub(rb'[\w-]{20,}\.[\w-]{20,}\.[\w-]{20,}', b'', body)
+        return body
     assert _shell(resp.data) == _shell(c.get("/").data)
 
 
