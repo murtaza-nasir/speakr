@@ -56,6 +56,17 @@ QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index':
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
 
 
+def is_background(job_type: str) -> bool:
+    """Whether ``job_type`` runs beside a recording's processing.
+
+    Background jobs (translation, Inquire chunks) leave the recording's
+    status untouched and send no webhooks or emails. Centralising this
+    predicate keeps the "is this a background job" decision in one place
+    instead of scattered ``in``/``not in`` membership checks.
+    """
+    return job_type in BACKGROUND_JOBS
+
+
 def queue_name_for(job_type: str) -> str:
     """Name of the queue whose workers run this job type."""
     for name, job_types in QUEUES.items():
@@ -316,6 +327,10 @@ class FairJobQueue:
             keys[uid] = (round_number, datetime.min, keys[uid][2])
         return order
 
+    def is_background(self, job_type: str) -> bool:
+        """Whether ``job_type`` is a background job (see module helper)."""
+        return is_background(job_type)
+
     def _is_permanent_error(self, error_str: str) -> bool:
         """Delegate to src.services.error_classification.is_permanent_error.
 
@@ -392,13 +407,13 @@ class FairJobQueue:
                 # Best-effort: if the webhook subsystem throws, the job is
                 # still marked completed. Background jobs (translation,
                 # Inquire chunks) send no webhooks or emails.
-                if job_type not in BACKGROUND_JOBS:
+                if not is_background(job_type):
                     try:
                         self._emit_completion_webhook(job_type, recording_id)
                     except Exception as e:
                         logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
 
-                if job_type not in BACKGROUND_JOBS:
+                if not is_background(job_type):
                     try:
                         self._emit_completion_email(job_type, recording_id)
                     except Exception as e:
@@ -453,7 +468,7 @@ class FairJobQueue:
 
                         # Always keep recordings with FAILED status so users can see the error
                         # and reprocess later (e.g., when ASR server recovers)
-                        if recording and job_type not in BACKGROUND_JOBS:
+                        if recording and not is_background(job_type):
                             # Keep the recording with FAILED status so user can see the error and fix settings
                             recording.status = 'FAILED'
                             # Format the error for nice display. A failed summary
@@ -475,13 +490,13 @@ class FairJobQueue:
                         # subscriber will see the eventual success or
                         # permanent failure that follows the retry loop.
                         # Background jobs send no webhooks or emails.
-                        if job_type not in BACKGROUND_JOBS:
+                        if not is_background(job_type):
                             try:
                                 self._emit_failure_webhook(job_type, recording_id, error_str)
                             except Exception as e:
                                 logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
 
-                        if job_type not in BACKGROUND_JOBS:
+                        if not is_background(job_type):
                             try:
                                 self._emit_failure_email(job_type, recording_id, error_str)
                             except Exception as e:
@@ -735,7 +750,7 @@ class FairJobQueue:
                 # Update recording status based on job type
                 recording = db.session.get(Recording, recording_id)
                 if recording:
-                    if job_type in BACKGROUND_JOBS:
+                    if is_background(job_type):
                         # Leave recording status untouched.
                         pass
                     elif job_type in SUMMARY_JOBS:
