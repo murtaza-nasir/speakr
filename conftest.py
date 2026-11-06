@@ -125,6 +125,16 @@ def _initialize_test_database():
 
     with app.app_context():
         initialize_database(app)
+        # Lower fsync cost for the throwaway test database only. Production is
+        # unaffected because this lives in conftest.py. Small but free win,
+        # larger on slower CI disks.
+        from src.app import db
+        from sqlalchemy import text
+        try:
+            db.session.execute(text("PRAGMA synchronous=OFF"))
+            db.session.commit()
+        except Exception:
+            pass
 
     yield
 
