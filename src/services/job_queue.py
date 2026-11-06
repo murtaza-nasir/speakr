@@ -20,6 +20,8 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
+from src.services.error_classification import is_permanent_error
+
 # Configuration
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
 SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
@@ -315,57 +317,12 @@ class FairJobQueue:
         return order
 
     def _is_permanent_error(self, error_str: str) -> bool:
+        """Delegate to src.services.error_classification.is_permanent_error.
+
+        Kept as a method for backwards compatibility with callers and tests
+        that invoke job_queue._is_permanent_error directly.
         """
-        Detect if an error is permanent and should not be retried.
-
-        Permanent errors include:
-        - 400: Bad request (invalid format, invalid parameters)
-        - 413: File too large (user needs to enable chunking or compress file)
-        - 401/403: Authentication/authorization errors (credentials issue)
-        - 402: Payment required (billing issue)
-        - 404: Resource not found (model doesn't exist)
-        - Invalid format errors (file needs to be converted)
-        """
-        error_lower = error_str.lower()
-
-        # HTTP status codes that indicate permanent errors
-        permanent_codes = ['400', '413', '401', '402', '403', '404']
-        for code in permanent_codes:
-            if f'error code: {code}' in error_lower or f'status {code}' in error_lower:
-                return True
-
-        # Specific error patterns that are permanent (simple substring matching)
-        permanent_patterns = [
-            'maximum content size limit',
-            'file too large',
-            'payload too large',
-            'invalid api key',
-            'incorrect api key',
-            'authentication failed',
-            'unauthorized',
-            'permission denied',
-            'access denied',
-            'billing',
-            'payment required',
-            'quota exceeded',
-            'insufficient funds',
-            # A paid submission with no clear outcome (Tencent ASR); only a
-            # reprocess, which starts a new job, submits it again.
-            'had no clear outcome',
-            'model not found',
-            'invalid model',
-            'unsupported format',
-            'invalid file format',
-            'invalid_request_error',
-            'bad request',
-            'unparseable',
-        ]
-
-        for pattern in permanent_patterns:
-            if pattern in error_lower:
-                return True
-
-        return False
+        return is_permanent_error(error_str)
 
     def _process_job(self, job):
         """Process a single job by dispatching to the appropriate task function."""
