@@ -44,6 +44,7 @@ from src.utils.ffmpeg_utils import (
     FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError,
 )
 from src.utils.titles import resolve_upload_title, upload_title_source
+from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
 )
@@ -206,9 +207,6 @@ def init_recordings_helpers(**kwargs):
 def download_transcript_with_template(recording_id):
     """Download transcript with custom template formatting."""
     try:
-        import re
-        from datetime import timedelta
-
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
@@ -237,77 +235,16 @@ def download_transcript_with_template(recording_id):
                 is_default=True
             ).first()
 
-        # If no template found, use a basic format
-        if not template:
-            template_format = "[{{speaker}}]: {{text}}"
-        else:
-            template_format = template.template
-
-        # Helper functions for formatting
-        def format_time(seconds):
-            """Format seconds to HH:MM:SS"""
-            if seconds is None:
-                return "00:00:00"
-            td = timedelta(seconds=seconds)
-            hours = int(td.total_seconds() // 3600)
-            minutes = int((td.total_seconds() % 3600) // 60)
-            secs = int(td.total_seconds() % 60)
-            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-
-        def format_srt_time(seconds):
-            """Format seconds to SRT format HH:MM:SS,mmm"""
-            if seconds is None:
-                return "00:00:00,000"
-            td = timedelta(seconds=seconds)
-            hours = int(td.total_seconds() // 3600)
-            minutes = int((td.total_seconds() % 3600) // 60)
-            secs = int(td.total_seconds() % 60)
-            millis = int((td.total_seconds() % 1) * 1000)
-            return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-
-        # Parse transcription - handle both JSON (diarized) and plain text formats
-        is_diarized = False
-        transcription_data = None
-        try:
-            transcription_data = json.loads(source_transcription)
-            if isinstance(transcription_data, list):
-                is_diarized = True
-        except (json.JSONDecodeError, TypeError):
-            # Not JSON, treat as plain text
-            pass
-
-        # If plain text transcription, return it as-is (no template formatting applies)
+        # Plain text transcription: returned as-is (no template formatting applies)
+        segments = parse_segments(source_transcription)
+        is_diarized = segments is not None
         if not is_diarized:
             formatted_transcript = source_transcription
+        elif not template:
+            # No template found: use a basic format
+            formatted_transcript = render_segments(segments, BASIC_TEMPLATE_FORMAT)
         else:
-            # Generate formatted transcript from diarized segments
-            output_lines = []
-            for index, segment in enumerate(transcription_data, 1):
-                line = template_format
-
-                # Replace variables
-                replacements = {
-                    '{{index}}': str(index),
-                    '{{speaker}}': segment.get('speaker', 'Unknown'),
-                    '{{text}}': segment.get('sentence', ''),
-                    '{{start_time}}': format_time(segment.get('start_time')),
-                    '{{end_time}}': format_time(segment.get('end_time')),
-                }
-
-                for key, value in replacements.items():
-                    line = line.replace(key, value)
-
-                # Handle filters
-                # Upper case filter
-                line = re.sub(r'{{(.*?)\|upper}}', lambda m: replacements.get('{{' + m.group(1) + '}}', '').upper(), line)
-                # SRT time filter
-                line = re.sub(r'{{start_time\|srt}}', format_srt_time(segment.get('start_time')), line)
-                line = re.sub(r'{{end_time\|srt}}', format_srt_time(segment.get('end_time')), line)
-
-                output_lines.append(line)
-
-            # Join lines
-            formatted_transcript = '\n'.join(output_lines)
+            formatted_transcript = render_segments(segments, template.template)
 
         # Output format: 'txt' (default) or 'md'. Markdown wraps the templated
         # body with a title heading so it renders as a proper document, and

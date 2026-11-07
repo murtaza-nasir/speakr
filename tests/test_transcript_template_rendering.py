@@ -406,12 +406,36 @@ EXPECTED_LLM = {
 # The lazy |upper pattern used to start at the first "{{" of the line, so a
 # {{start_time|srt}} before a {{x|upper}} was swallowed by the match: the old
 # export and download rendered "{{start_time|srt}} {{speaker|upper}}: {{text}}"
-# as ": Hello there.". The match no longer crosses a placeholder.
-FIXED_USER = {}
+# as ": Hello there.". The match no longer crosses a placeholder. That also
+# keeps an unknown {{foo}} before an unknown {{foo|upper}}: unknown plain
+# placeholders were always left as written.
+FIXED_USER = {
+    'unknown_placeholder/basic': '{{foo}}  Hello there.\n{{foo}}  Hi back.',
+    'unknown_placeholder/missing': '{{foo}}  No speaker.\n{{foo}}  \n{{foo}}  No times.',
+    'unknown_placeholder/over_an_hour': '{{foo}}  Late.\n{{foo}}  Later.\n{{foo}}  Day.',
+    'unknown_placeholder/unicode': '{{foo}}  Grüße, 你好 ✓',
+    'srt_then_upper/basic': '00:00:01,500 ALICE: Hello there.\n00:00:04,299 BOB: Hi back.',
+    'srt_then_upper/missing': '00:00:00,000 UNKNOWN: No speaker.\n00:00:02,000 CAROL: \n00:00:00,000 DAN: No times.',
+    'srt_then_upper/over_an_hour': '00:59:59,999 ALICE: Late.\n01:02:05,500 BOB: Later.\n23:59:59,500 EVE: Day.',
+    'srt_then_upper/unicode': '00:00:00,000 ZOË: Grüße, 你好 ✓',
+}
 # The same pattern made the summarizer path drop everything up to an |upper
 # that followed a plain placeholder: "{{speaker}}: {{text|upper}}" rendered as
-# an empty line.
-FIXED_LLM = {}
+# an empty line, and the Court Transcript default lost its index and speaker.
+FIXED_LLM = {
+    'unknown_placeholder/basic': '{{foo}}  Hello there.\n{{foo}}  Hi back.',
+    'unknown_placeholder/missing': '{{foo}}  No speaker.\n{{foo}}  \n{{foo}}  No times.',
+    'unknown_placeholder/over_an_hour': '{{foo}}  Late.\n{{foo}}  Later.\n{{foo}}  Day.',
+    'unknown_placeholder/unicode': '{{foo}}  Grüße, 你好 ✓',
+    'court/basic': '1    ALICE: Hello there.\n2    BOB: Hi back.',
+    'court/missing': '1    UNKNOWN: No speaker.\n2    CAROL: \n3    DAN: No times.',
+    'court/over_an_hour': '1    ALICE: Late.\n2    BOB: Later.\n3    EVE: Day.',
+    'court/unicode': '1    ZOË: Grüße, 你好 ✓',
+    'plain_then_upper/basic': 'Alice: HELLO THERE.\nBob: HI BACK.',
+    'plain_then_upper/missing': 'Unknown: NO SPEAKER.\nCarol: \nDan: NO TIMES.',
+    'plain_then_upper/over_an_hour': 'Alice: LATE.\nBob: LATER.\nEve: DAY.',
+    'plain_then_upper/unicode': 'Zoë: GRÜSSE, 你好 ✓',
+}
 
 
 @pytest.mark.parametrize("template_key,transcript_key", CASES)
