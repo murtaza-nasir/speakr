@@ -56,9 +56,10 @@ def segments_of(transcription):
     return segments
 
 
-def canonical_segments(recording):
+def canonical_segments(recording, transcription=None):
     """The documented API shape of a JSON transcript (mailr spec G12), or None
-    for a plain-text transcript.
+    for a plain-text transcript. `transcription` replaces the recording's
+    transcript as the source (the translation, for example).
 
     Every segment has index, speaker, speaker_label, speaker_id, text,
     sentence, start_time and end_time. speaker is the linked saved speaker's
@@ -68,11 +69,13 @@ def canonical_segments(recording):
     from src.services.speaker_links import (LABEL, _labels_by_name, _sample_speakers, owner_speakers,
                                             resolve_id)
     import json as _json
-    segments = segments_of(recording.transcription)
+    if transcription is None:
+        transcription = recording.transcription
+    segments = segments_of(transcription)
     if segments is None:
         return None
     try:
-        raw = [s for s in _json.loads(recording.transcription) if isinstance(s, dict)]
+        raw = [s for s in _json.loads(transcription) if isinstance(s, dict)]
     except (TypeError, ValueError):
         raw = []
     by_name, by_id = owner_speakers(recording.user_id) if recording.user_id else ({}, {})
