@@ -2872,6 +2872,21 @@
     },
     "recording": "R1",
     "status": "queued"
+   },
+   {
+    "is_new_upload": true,
+    "job_type": "transcribe",
+    "params": {
+     "hotwords": null,
+     "initial_prompt": null,
+     "language": null,
+     "max_speakers": null,
+     "min_speakers": null,
+     "tag_id": null,
+     "transcription_model": null
+    },
+    "recording": "R2",
+    "status": "queued"
    }
   ],
   "recordings": [
@@ -2902,6 +2917,35 @@
     },
     "tags": [],
     "title": "Recording - big.wav",
+    "title_source": null
+   },
+   {
+    "audio_duration_seconds": 90.0,
+    "file_hash": "upload#2",
+    "file_size_present": true,
+    "folder": null,
+    "id": "R2",
+    "idempotency_key": null,
+    "is_inbox": true,
+    "keep_audio_only": true,
+    "meeting_date": "<now>",
+    "mime_type": "audio/mpeg",
+    "notes": null,
+    "original_filename": "long.mkv",
+    "participants": null,
+    "processing_source": "upload",
+    "prompt_variables": null,
+    "status": "QUEUED",
+    "stored": {
+     "content": "<converted>",
+     "ext": ".mkv",
+     "size_is_file_size": true,
+     "streams": [
+      "audio:mp3"
+     ]
+    },
+    "tags": [],
+    "title": "Recording - long.mkv",
     "title_source": null
    }
   ],
@@ -2956,14 +3000,51 @@
    },
    {
     "json": {
-     "audio_only_mode": true,
-     "chunking_enabled": false,
-     "code": "extracted_audio_too_large",
-     "error": "The extracted audio is 1 MB, larger than the 1 MB stored-file limit. Enable chunking in admin settings (ENABLE_CHUNKING=true) or use a shorter / lower-bitrate source video.",
-     "extracted_audio_mb": "<size>",
-     "max_size_mb": 1.0
+     "audio_available": true,
+     "audio_deleted_at": null,
+     "audio_duration": 90.0,
+     "completed_at": null,
+     "created_at": "<now>",
+     "deletion_exempt": false,
+     "duplicate_info": null,
+     "events": [],
+     "file_size": "<size>",
+     "folder": null,
+     "folder_id": null,
+     "id": "R2",
+     "is_archived": false,
+     "is_highlighted": false,
+     "is_inbox": true,
+     "keep_audio_only": true,
+     "meeting_date": "<now>",
+     "mime_type": "audio/mpeg",
+     "notes": null,
+     "notes_html": "",
+     "original_filename": "long.mkv",
+     "participants": null,
+     "processing_time_seconds": null,
+     "prompt_variables": {},
+     "public_share_count": 0,
+     "resolved_hotwords": null,
+     "resolved_initial_prompt": null,
+     "shared_with_count": 0,
+     "status": "PENDING",
+     "summarization_duration_seconds": null,
+     "summary": null,
+     "summary_html": "",
+     "tags": [],
+     "title": "Recording - long.mkv",
+     "transcription": null,
+     "transcription_duration_seconds": null,
+     "transcription_language": null,
+     "transcription_requested_language": null,
+     "transcription_translation": null,
+     "transcription_translation_language": null,
+     "translation_duration_seconds": null,
+     "updated_at": "<now>",
+     "user_id": "<owner>"
     },
-    "status": 413
+    "status": 202
    }
   ],
   "staging_leftovers": 0,
@@ -2971,6 +3052,10 @@
    {
     "recording": "R1",
     "title": "Recording - big.wav"
+   },
+   {
+    "recording": "R2",
+    "title": "Recording - long.mkv"
    }
   ]
  },
@@ -5184,46 +5269,132 @@
   "webhooks": []
  },
  "monitor/deferred/video-over-max-small-audio": {
-  "jobs": [],
-  "notifications": [
+  "jobs": [
    {
-    "kind": "auto_process.file_set_aside",
-    "message_key": "notifications.autoProcessRefused",
-    "params": [
-     "failed_name",
-     "filename",
-     "reason"
-    ]
+    "is_new_upload": true,
+    "job_type": "convert",
+    "params": {
+     "extracted_audio_limit_mb": null,
+     "transcribe": {
+      "hotwords": null,
+      "initial_prompt": null,
+      "language": null,
+      "max_speakers": null,
+      "min_speakers": null,
+      "tag_id": null,
+      "transcription_model": null
+     }
+    },
+    "recording": "R1",
+    "status": "queued"
    }
   ],
-  "recordings": [],
+  "notifications": [],
+  "recordings": [
+   {
+    "audio_duration_seconds": 2.0,
+    "file_hash": "upload#1",
+    "file_size_present": true,
+    "folder": null,
+    "id": "R1",
+    "idempotency_key": null,
+    "is_inbox": true,
+    "keep_audio_only": true,
+    "meeting_date": "<now>",
+    "mime_type": "video/mp4",
+    "notes": null,
+    "original_filename": "big.mp4",
+    "participants": null,
+    "processing_source": "auto_process",
+    "prompt_variables": null,
+    "status": "QUEUED",
+    "stored": {
+     "content": "upload#1",
+     "ext": ".mp4",
+     "size_is_file_size": true,
+     "streams": [
+      "video:h264",
+      "audio:aac"
+     ]
+    },
+    "tags": [],
+    "title": "Auto-processed - big.mp4",
+    "title_source": null
+   }
+  ],
   "responses": [],
   "staging_leftovers": 0,
-  "watch_folder": [
-   "big.mp4.failed"
-  ],
-  "webhooks": []
+  "watch_folder": [],
+  "webhooks": [
+   {
+    "recording": "R1",
+    "title": "Auto-processed - big.mp4"
+   }
+  ]
  },
  "monitor/deferred/video-with-large-extracted-audio": {
-  "jobs": [],
-  "notifications": [
+  "jobs": [
    {
-    "kind": "auto_process.file_set_aside",
-    "message_key": "notifications.autoProcessRefused",
-    "params": [
-     "failed_name",
-     "filename",
-     "reason"
-    ]
+    "is_new_upload": true,
+    "job_type": "convert",
+    "params": {
+     "extracted_audio_limit_mb": null,
+     "transcribe": {
+      "hotwords": null,
+      "initial_prompt": null,
+      "language": null,
+      "max_speakers": null,
+      "min_speakers": null,
+      "tag_id": null,
+      "transcription_model": null
+     }
+    },
+    "recording": "R1",
+    "status": "queued"
    }
   ],
-  "recordings": [],
+  "notifications": [],
+  "recordings": [
+   {
+    "audio_duration_seconds": 90.0,
+    "file_hash": "upload#1",
+    "file_size_present": true,
+    "folder": null,
+    "id": "R1",
+    "idempotency_key": null,
+    "is_inbox": true,
+    "keep_audio_only": true,
+    "meeting_date": "<now>",
+    "mime_type": "video/x-matroska",
+    "notes": null,
+    "original_filename": "long.mkv",
+    "participants": null,
+    "processing_source": "auto_process",
+    "prompt_variables": null,
+    "status": "QUEUED",
+    "stored": {
+     "content": "upload#1",
+     "ext": ".mkv",
+     "size_is_file_size": true,
+     "streams": [
+      "video:h264",
+      "audio:pcm_s16le"
+     ]
+    },
+    "tags": [],
+    "title": "Auto-processed - long.mkv",
+    "title_source": null
+   }
+  ],
   "responses": [],
   "staging_leftovers": 0,
-  "watch_folder": [
-   "long.mkv.failed"
-  ],
-  "webhooks": []
+  "watch_folder": [],
+  "webhooks": [
+   {
+    "recording": "R1",
+    "title": "Auto-processed - long.mkv"
+   }
+  ]
  },
  "monitor/deferred/wav": {
   "jobs": [
@@ -5705,25 +5876,64 @@
   ]
  },
  "monitor/video-with-large-extracted-audio": {
-  "jobs": [],
-  "notifications": [
+  "jobs": [
    {
-    "kind": "auto_process.file_set_aside",
-    "message_key": "notifications.autoProcessRefused",
-    "params": [
-     "failed_name",
-     "filename",
-     "reason"
-    ]
+    "is_new_upload": true,
+    "job_type": "transcribe",
+    "params": {
+     "hotwords": null,
+     "initial_prompt": null,
+     "language": null,
+     "max_speakers": null,
+     "min_speakers": null,
+     "tag_id": null,
+     "transcription_model": null
+    },
+    "recording": "R1",
+    "status": "queued"
    }
   ],
-  "recordings": [],
+  "notifications": [],
+  "recordings": [
+   {
+    "audio_duration_seconds": 90.0,
+    "file_hash": "upload#1",
+    "file_size_present": true,
+    "folder": null,
+    "id": "R1",
+    "idempotency_key": null,
+    "is_inbox": true,
+    "keep_audio_only": true,
+    "meeting_date": "<now>",
+    "mime_type": "audio/mpeg",
+    "notes": null,
+    "original_filename": "long.mkv",
+    "participants": null,
+    "processing_source": "auto_process",
+    "prompt_variables": null,
+    "status": "QUEUED",
+    "stored": {
+     "content": "<converted>",
+     "ext": ".mkv",
+     "size_is_file_size": true,
+     "streams": [
+      "audio:mp3"
+     ]
+    },
+    "tags": [],
+    "title": "Auto-processed - long.mkv",
+    "title_source": null
+   }
+  ],
   "responses": [],
   "staging_leftovers": 0,
-  "watch_folder": [
-   "long.mkv.failed"
-  ],
-  "webhooks": []
+  "watch_folder": [],
+  "webhooks": [
+   {
+    "recording": "R1",
+    "title": "Auto-processed - long.mkv"
+   }
+  ]
  },
  "quota/over": {
   "jobs": [],

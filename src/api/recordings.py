@@ -2474,12 +2474,13 @@ def ingest_uploaded_recording(
         # alone is enormous AND chunking is off; reject the upload,
         # clean up, and let the user know. When chunking is on the
         # large extracted audio is fine — the chunking pipeline will
-        # split it for the ASR call.
+        # split it for the ASR call. extracted_audio_limit_mb is None when
+        # the upload limits are not enforced (watched files); a deferred
+        # conversion is checked by the convert job, after the extraction.
         if (
-            effective_audio_only
-            and is_likely_video_by_ext
-            and final_file_size > regular_limit_mb * 1024 * 1024
-            and not chunking_will_handle_large_audio
+            extracted_audio_limit_mb
+            and not conversion_deferred
+            and final_file_size > extracted_audio_limit_mb * 1024 * 1024
         ):
             _discard_staging(filepath)
             current_app.logger.warning(
