@@ -69,6 +69,29 @@ def docx_attachment_response(doc, filename, fallback_filename):
     return response
 
 
+def append_conversation_turn(doc, role, content, thinking=None):
+    """Add one chat turn: a bold role label, any assistant reasoning, then the markdown content.
+
+    A blank paragraph follows the turn.
+    """
+    if role == 'user':
+        label = 'You'
+    elif role == 'assistant':
+        label = 'Assistant'
+    else:
+        label = role.title()
+    doc.add_paragraph().add_run(f'{label}: ').bold = True
+
+    if thinking and role == 'assistant':
+        p = doc.add_paragraph()
+        p.add_run('[Model Reasoning]\n').italic = True
+        p.add_run(thinking).italic = True
+        doc.add_paragraph('')
+
+    process_markdown_to_docx(doc, content)
+    doc.add_paragraph('')
+
+
 def process_markdown_to_docx(doc, content):
     """Convert markdown content to properly formatted Word document elements.
 

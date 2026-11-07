@@ -427,6 +427,17 @@
             <!-- Right Panel: Chat -->
             <div class="flex-1 flex flex-col overflow-hidden"
                  :class="isMobileSidebarOpen ? 'hidden lg:flex' : 'flex'">
+                <!-- Conversation toolbar -->
+                <div v-if="canDownloadInquire"
+                     class="flex items-center justify-end px-4 py-1 border-b flex-shrink-0"
+                     style="border-bottom-color: var(--border-primary);">
+                    <button @click="downloadInquireConversation"
+                            class="btn btn--icon btn--sm"
+                            :title="t('inquire.downloadConversation')"
+                            :aria-label="t('inquire.downloadConversation')">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
                 <!-- Chat Messages Area -->
                 <div ref="inquireMessagesRef" @scroll="handleScroll" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                     <!-- Welcome / Empty state.
@@ -812,6 +823,10 @@
                                inquireFilters.dateFrom ||
                                inquireFilters.dateTo;
                     });
+
+                    const hasTurnContent = (message) => typeof message.content === 'string' && message.content !== '';
+
+                    const canDownloadInquire = computed(() => inquireChatMessages.value.some(hasTurnContent));
                     
                     const filteredTags = computed(() => {
                         if (!tagSearchQuery.value) return availableFilters.tags;
@@ -1174,6 +1189,65 @@
                         }
                     };
 
+                    // Filter names for the downloaded file; ids no longer in availableFilters are skipped
+                    const inquireDownloadFilters = () => {
+                        const namesFor = (ids, options) => ids
+                            .map(id => options.find(option => option.id === id))
+                            .filter(Boolean)
+                            .map(option => option.name);
+                        const groups = {
+                            tags: namesFor(inquireFilters.selectedTags, availableFilters.tags),
+                            folders: namesFor(inquireFilters.selectedFolders, availableFilters.folders),
+                            speakers: [...inquireFilters.selectedSpeakers],
+                            dates: [inquireFilters.dateFrom, inquireFilters.dateTo].filter(Boolean)
+                        };
+                        const filters = {};
+                        for (const [key, names] of Object.entries(groups)) {
+                            if (names.length > 0) filters[key] = names;
+                        }
+                        return Object.keys(filters).length > 0 ? filters : undefined;
+                    };
+
+                    const downloadInquireConversation = async () => {
+                        const messages = inquireChatMessages.value
+                            .filter(hasTurnContent)
+                            .map(m => ({ role: m.role, content: m.content }));
+                        if (messages.length === 0) return;
+
+                        const tFailed = t('chat.downloadFailed');
+                        const failedMessage = tFailed !== 'chat.downloadFailed' ? tFailed : 'Failed to download chat';
+                        try {
+                            const response = await fetch('/api/inquire/download', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken.value
+                                },
+                                body: JSON.stringify({ messages, filters: inquireDownloadFilters() })
+                            });
+
+                            if (!response.ok) {
+                                const error = await response.json().catch(() => ({}));
+                                setGlobalError(error.error || failedMessage);
+                                return;
+                            }
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = url;
+                            a.download = 'inquire.docx';
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        } catch (error) {
+                            console.error('Inquire download failed:', error);
+                            setGlobalError(failedMessage);
+                        }
+                    };
+
                     const clearInquireFilters = () => {
                         inquireFilters.selectedTags = [];
                         inquireFilters.selectedFolders = [];
@@ -1372,6 +1446,7 @@
                         
                         // Computed
                         hasActiveFilters,
+                        canDownloadInquire,
                         filteredTags,
                         filteredFolders,
                         filteredSpeakers,
@@ -1380,6 +1455,7 @@
                         sendInquireChatMessage,
                         handleInquireChatKeydown,
                         clearInquireFilters,
+                        downloadInquireConversation,
                         loadAvailableFilters,
                         setGlobalError,
                         formatDate,

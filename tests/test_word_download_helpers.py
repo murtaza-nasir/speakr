@@ -11,7 +11,7 @@ from docx.oxml.ns import qn
 
 from src.app import app
 from src.services.document import (
-    add_unicode_heading, add_unicode_paragraph,
+    add_unicode_heading, add_unicode_paragraph, append_conversation_turn,
     docx_attachment_response, process_markdown_to_docx,
 )
 
@@ -76,3 +76,21 @@ def test_rfc2231_failure_uses_fallback():
          patch('src.services.document.encode_rfc2231', side_effect=ValueError('boom')):
         resp = docx_attachment_response(Document(), 'summary-预算.docx', 'download-4.docx')
     assert resp.headers['Content-Disposition'] == 'attachment; filename="download-4.docx"'
+
+
+def _turn(role, content, thinking=None):
+    doc = Document()
+    append_conversation_turn(doc, role, content, thinking)
+    return [p.text for p in doc.paragraphs]
+
+
+def test_conversation_turn_role_labels():
+    assert _turn('user', 'Hi') == ['You: ', 'Hi', '']
+    assert _turn('assistant', 'Hello') == ['Assistant: ', 'Hello', '']
+    assert _turn('system', 'Note') == ['System: ', 'Note', '']
+
+
+def test_conversation_turn_reasoning_only_for_assistant():
+    assert _turn('assistant', 'Answer', 'why') == ['Assistant: ', '[Model Reasoning]\nwhy', '', 'Answer', '']
+    assert _turn('user', 'Question', 'why') == ['You: ', 'Question', '']
+    assert _turn('assistant', 'Answer', '') == ['Assistant: ', 'Answer', '']

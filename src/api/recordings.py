@@ -50,7 +50,8 @@ from src.services.speaker import (
 # Incognito mode - disabled by default, enable via environment variable
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 from src.services.document import (
-    add_unicode_heading, add_unicode_paragraph, docx_attachment_response, process_markdown_to_docx,
+    add_unicode_heading, add_unicode_paragraph, append_conversation_turn, docx_attachment_response,
+    process_markdown_to_docx,
 )
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
@@ -450,35 +451,12 @@ def download_chat_word(recording_id):
 
         # Add chat messages
         for message in messages:
-            role = message.get('role', 'unknown')
-            content = message.get('content', '')
-            thinking = message.get('thinking', '')
-
-            # Add role header
-            if role == 'user':
-                p = doc.add_paragraph()
-                run = p.add_run('You: ')
-                run.bold = True
-            elif role == 'assistant':
-                p = doc.add_paragraph()
-                run = p.add_run('Assistant: ')
-                run.bold = True
-            else:
-                p = doc.add_paragraph()
-                run = p.add_run(f'{role.title()}: ')
-                run.bold = True
-
-            # Add thinking content if present
-            if thinking and role == 'assistant':
-                p = doc.add_paragraph()
-                p.add_run('[Model Reasoning]\n').italic = True
-                p.add_run(thinking).italic = True
-                doc.add_paragraph('')  # Empty line
-
-            # Add message content with markdown formatting
-            process_markdown_to_docx(doc, content)
-
-            doc.add_paragraph('')  # Empty line between messages
+            append_conversation_turn(
+                doc,
+                message.get('role', 'unknown'),
+                message.get('content', ''),
+                message.get('thinking', ''),
+            )
 
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')

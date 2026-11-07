@@ -864,6 +864,91 @@ def inquire_chat():
         return jsonify({'error': str(e)}), 500
 
 
+# Filter groups in the order the downloaded file lists them
+_INQUIRE_FILTER_GROUPS = (
+    ('tags', 'Tags'),
+    ('folders', 'Folders'),
+    ('speakers', 'Speakers'),
+    ('recordings', 'Recordings'),
+    ('dates', 'Dates'),
+)
+
+
+def _inquire_filter_line(filters):
+    """The filter names as 'Label: a, b' groups joined by '; ', or '' when none are set."""
+    if not isinstance(filters, dict):
+        return ''
+    parts = []
+    for key, label in _INQUIRE_FILTER_GROUPS:
+        value = filters.get(key)
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            continue
+        items = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+        if items:
+            parts.append(f'{label}: {", ".join(items)}')
+    return '; '.join(parts)
+
+
+def _inquire_download_turns(messages):
+    """(role, content) for each turn with non-empty string content; other fields are ignored."""
+    if not isinstance(messages, list):
+        return []
+    turns = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        content = message.get('content')
+        if not isinstance(content, str) or content == '':
+            continue
+        role = message.get('role')
+        if not isinstance(role, str) or role == '':
+            role = 'unknown'
+        turns.append((role, content))
+    return turns
+
+
+@inquire_bp.route('/api/inquire/download', methods=['POST'])
+@login_required
+def download_inquire_conversation():
+    """Download the Inquire conversation on screen as a Word document."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify(api_error('inquire_disabled')), 403
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or 'messages' not in data:
+        return jsonify(api_error('no_messages_provided')), 400
+
+    turns = _inquire_download_turns(data['messages'])
+    if not turns:
+        return jsonify(api_error('no_messages_to_download')), 400
+
+    try:
+        from docx import Document
+        from src.services.document import (
+            add_unicode_heading, add_unicode_paragraph, append_conversation_turn, docx_attachment_response,
+        )
+        from src.utils.timezones import now_local
+
+        doc = Document()
+        add_unicode_heading(doc, 'Inquire', 0)
+        add_unicode_paragraph(doc, f'Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}')
+        filter_line = _inquire_filter_line(data.get('filters'))
+        if filter_line:
+            add_unicode_paragraph(doc, filter_line)
+        doc.add_paragraph('')  # Empty line
+
+        for role, content in turns:
+            append_conversation_turn(doc, role, content)
+
+        return docx_attachment_response(doc, 'inquire.docx', 'inquire.docx')
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating inquire Word document: {e}")
+        return jsonify(api_error('word_document_failed')), 500
+
+
 
 @inquire_bp.route('/api/inquire/available_filters', methods=['GET'])
 @login_required

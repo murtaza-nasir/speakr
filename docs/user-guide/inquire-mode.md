@@ -38,6 +38,10 @@ Speaker filtering allows you to focus on what specific people have said across r
 
 Date range filtering helps you focus on recent discussions or search within a specific time period. This is particularly useful for tracking how discussions have evolved over time or finding information from a specific quarter or project phase.
 
+## Downloading the Conversation
+
+Once the conversation has a question or an answer, a download icon appears above it. Click it to save the questions and answers on screen as a Word file named `inquire.docx`. Headings, lists and bold text in the answers are kept. When tags, folders, speakers or dates are selected, their names appear under the export date. An answer that is still streaming, or one you stopped, is saved as far as it got. **Clear All** removes the conversation and the icon. The conversation is not stored on the server, so download it before you leave or refresh the page.
+
 ## Asking Effective Questions
 
 The key to getting great results from Inquire Mode is asking clear, specific questions. The system works best when you provide context and be specific about what you're looking for.
