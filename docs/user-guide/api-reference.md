@@ -723,6 +723,12 @@ GET /api/v1/recordings/{id}/transcript
 | `format` | string | `json` | Output format: `json`, `text`, `srt`, `vtt` |
 | `start`, `end` | number | - | JSON only: segments that overlap this window, in seconds |
 | `max_segments` | integer | - | JSON only: at most this many segments; `next_start` gives the start time of the next one |
+| `translation` | boolean | - | `true`, `1` or `yes`: the stored translation is the source instead of the transcript, in every format |
+| `template_id` | integer | - | Text only: one of your transcript templates instead of your default template |
+
+With `translation`, the response also has `"translation": true` and `translation_language`, the language of the translation. A recording without a translation returns `404` with the code `no_translation`. Without the parameter, the response has neither key.
+
+A `template_id` that is not one of your templates returns `404` with the code `template_not_found`. The other formats ignore `template_id`.
 
 === "JSON Format"
     ```json
@@ -748,7 +754,7 @@ GET /api/v1/recordings/{id}/transcript
     Every segment has every key above, whatever format the transcript was saved in; clients can rely on this shape. `text` and `sentence` are the same (`sentence` is kept for older clients). Times are seconds or `null`. `speaker_label` is the diarization label (also after the speaker was named), or `null` when it is not known. `speaker_id` is the id of the saved speaker the segment is linked to, else `null`; for a linked segment, `speaker` is that speaker's current name. A transcript without speaker segments returns `"kind": "plain"`, an empty `segments` list and the text in `raw`.
 
 === "Text Format"
-    Uses your default transcript template:
+    Uses your default transcript template, or the template in `template_id`, including its header:
     ```json
     {
       "format": "text",

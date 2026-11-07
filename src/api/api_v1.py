@@ -32,7 +32,7 @@ from werkzeug.utils import secure_filename
 
 from src.database import db
 from src.services.recording_state import get_user_archived, set_user_archived, parse_archived_flag
-from src.models import Recording, User, Tag, RecordingTag, Speaker, Event
+from src.models import Recording, User, Tag, RecordingTag, Speaker, Event, TranscriptTemplate
 from src.models.processing_job import ProcessingJob
 from src.models.token_usage import TokenUsage
 from src.models.transcription_usage import TranscriptionUsage
@@ -389,7 +389,9 @@ OPENAPI_SPEC = {
                 "summary": "Get transcript",
                 "parameters": [
                     {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
-                    {"name": "format", "in": "query", "schema": {"type": "string", "enum": ["json", "text", "srt", "vtt"], "default": "json"}}
+                    {"name": "format", "in": "query", "schema": {"type": "string", "enum": ["json", "text", "srt", "vtt"], "default": "json"}},
+                    {"name": "translation", "in": "query", "schema": {"type": "boolean"}, "description": "true, 1 or yes: the stored translation is the source, in every format. 404 with the code no_translation when the recording has none."},
+                    {"name": "template_id", "in": "query", "schema": {"type": "integer"}, "description": "format=text only: one of your transcript templates instead of your default template. 404 with the code template_not_found for an id that is not yours."}
                 ],
                 "responses": {"200": {"description": "Transcript in requested format"}}
             }
@@ -1752,6 +1754,8 @@ def get_transcript(recording_id):
 
     Query params:
         format: json (default), text, srt, vtt
+        translation: true/1/yes renders the stored translation instead
+        template_id: format=text only, one of the user's transcript templates
     """
     recording = db.session.get(Recording, recording_id)
     if not recording or not has_recording_access(recording, current_user):
@@ -1762,13 +1766,22 @@ def get_transcript(recording_id):
 
     format_type = request.args.get('format', 'json').lower()
 
+    use_translation = request.args.get('translation', '').lower() in ('1', 'true', 'yes')
+    source = recording.transcription
+    extra = {}
+    if use_translation:
+        if not recording.transcription_translation:
+            return jsonify(api_error('no_translation')), 404
+        source = recording.transcription_translation
+        extra = {'translation': True, 'translation_language': recording.transcription_translation_language}
+
     if format_type == 'json':
         # One documented shape whatever key set the transcript was stored
         # with (mailr spec G12); optional window: start, end, max_segments.
         from src.services.transcript_segments import canonical_segments, window
-        segments = canonical_segments(recording)
+        segments = canonical_segments(recording, source)
         if segments is None:
-            return jsonify({'format': 'json', 'kind': 'plain', 'segments': [], 'raw': recording.transcription})
+            return jsonify({'format': 'json', 'kind': 'plain', 'segments': [], 'raw': source, **extra})
         try:
             start = request.args.get('start', type=float)
             end = request.args.get('end', type=float)
@@ -1777,7 +1790,7 @@ def get_transcript(recording_id):
             start = end = max_segments = None
         if max_segments is not None and max_segments < 1:
             return jsonify({'error': translate('server.apiError.invalid_max_segments'), 'code': 'invalid_parameter'}), 400
-        body = {'format': 'json', 'kind': 'segments', 'duration': recording.get_audio_duration()}
+        body = {'format': 'json', 'kind': 'segments', 'duration': recording.get_audio_duration(), **extra}
         if start is not None or end is not None or max_segments is not None:
             segments, next_start = window(segments, start, end, max_segments)
             if next_start is not None:
@@ -1786,16 +1799,24 @@ def get_transcript(recording_id):
         return jsonify(body)
 
     elif format_type == 'text':
-        # Use user's default template for text format
-        formatted = format_transcription_with_template(recording.transcription, current_user)
+        # The user's default template, or the one in template_id
+        template = None
+        if request.args.get('template_id'):
+            template_id = request.args.get('template_id', type=int)
+            if template_id is not None:
+                template = TranscriptTemplate.query.filter_by(id=template_id, user_id=current_user.id).first()
+            if template is None:
+                return jsonify(api_error('template_not_found')), 404
+        formatted = format_transcription_with_template(source, current_user, template)
         return jsonify({
             'format': 'text',
-            'content': formatted
+            'content': formatted,
+            **extra
         })
 
     elif format_type in ['srt', 'vtt']:
         try:
-            segments = json.loads(recording.transcription)
+            segments = json.loads(source)
             lines = []
 
             if format_type == 'vtt':
@@ -1831,7 +1852,8 @@ def get_transcript(recording_id):
 
             return jsonify({
                 'format': format_type,
-                'content': '\n'.join(lines)
+                'content': '\n'.join(lines),
+                **extra
             })
         except (json.JSONDecodeError, TypeError):
             return jsonify(api_error('subtitle_generation_failed')), 400

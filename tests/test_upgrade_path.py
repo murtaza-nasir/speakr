@@ -226,6 +226,34 @@ def test_recording_schema_reaches_current_model(upgraded):
     assert expected - after_cols == set()
 
 
+def test_transcript_template_header_column_is_added(tmp_path):
+    """An old transcript_template table gains the nullable header column, and
+    the templates it already holds keep their values with header NULL."""
+    db_path = str(tmp_path / "templates.db")
+    with open(os.path.join(FIXTURE_DIR, "v0.10.10-alpha.sql")) as fh:
+        schema_sql = fh.read()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema_sql)
+    assert "header" not in {row[1] for row in con.execute('PRAGMA table_info("transcript_template")')}
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+                ("existing", "existing@example.test", "x"))
+    con.execute('INSERT INTO transcript_template (id, user_id, name, template, description, is_default) '
+                'VALUES (1, 1, ?, ?, ?, 1)', ("Mine", "{{speaker}}: {{text}}", "kept"))
+    con.commit()
+    con.close()
+
+    app = _fixture_app(db_path)
+    with app.app_context():
+        initialize_database(app)
+
+    con = sqlite3.connect(db_path)
+    columns = {row[1]: row for row in con.execute('PRAGMA table_info("transcript_template")')}
+    row = con.execute('SELECT name, template, description, is_default, header FROM transcript_template').fetchone()
+    con.close()
+    assert "header" in columns and columns["header"][3] == 0  # nullable
+    assert row == ("Mine", "{{speaker}}: {{text}}", "kept", 1, None)
+
+
 def test_second_startup_is_a_no_op(upgraded):
     """Migrations run about five times per container start, and on every restart."""
     before = _live(upgraded["path"])

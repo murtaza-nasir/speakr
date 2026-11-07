@@ -30,6 +30,16 @@ Variables can be modified using filters by adding a pipe (|) symbol:
 - `{{text|upper}}` - Converts text to UPPERCASE
 - `{{start_time|srt}}` - Formats time for SRT subtitles (HH:MM:SS,mmm)
 - `{{end_time|srt}}` - Formats time for SRT subtitles (HH:MM:SS,mmm)
+- `{{start_time|vtt}}` - Formats time for WebVTT subtitles (MM:SS.mmm, or HH:MM:SS.mmm from one hour on)
+- `{{end_time|vtt}}` - Formats time for WebVTT subtitles (MM:SS.mmm, or HH:MM:SS.mmm from one hour on)
+
+The `|srt` filter drops the digits after the millisecond. The `|vtt` filter rounds to the nearest millisecond, so 59.9996 seconds becomes `01:00.000`. A segment without a time shows `00:00:00,000` with `|srt` and `00:00.000` with `|vtt`.
+
+### Header
+
+The optional **Header** field holds text that is written once at the top of the formatted transcript, followed by a blank line. The template itself is still applied to every segment. Placeholders in the header are not replaced, and trailing line breaks in it are ignored. With an empty header the output has no extra lines.
+
+The header applies to downloads, the auto-export and the API's `format=text`. It is not used for transcripts without speaker segments, which are returned as they are. In a Markdown download, the title heading comes first, then the header, then the segments.
 
 ## Creating Your First Template
 
@@ -45,6 +55,10 @@ In the Transcript Templates section, click the **Create Template** button.
 **Description** (Optional): Add a brief description of when to use this template
 
 - Example: "Use for client interview transcriptions"
+
+**Header** (Optional): Text written once above the transcript
+
+- Example: `WEBVTT` for a WebVTT subtitle file
 
 **Template**: Enter your format pattern using variables
 
@@ -111,7 +125,31 @@ Hello, how are you today?
 I'm doing great, thanks for asking!
 ```
 
-### 5. Meeting Minutes Style
+### 5. WebVTT Subtitle Format
+Header:
+```
+WEBVTT
+```
+Template:
+```
+{{start_time|vtt}} --> {{end_time|vtt}}
+<v {{speaker}}>{{text}}
+
+```
+**Output:**
+```
+WEBVTT
+
+00:01.000 --> 00:03.000
+<v John>Hello, how are you today?
+
+00:04.000 --> 00:07.000
+<v Sarah>I'm doing great, thanks for asking!
+```
+
+Save the download with the `.vtt` extension to use it as a subtitle track.
+
+### 6. Meeting Minutes Style
 ```
 • [{{start_time}}] {{speaker}}: {{text}}
 ```
@@ -121,7 +159,7 @@ I'm doing great, thanks for asking!
 • [00:00:05] Sarah: I'll start with the marketing report.
 ```
 
-### 6. Screenplay Format
+### 7. Screenplay Format
 ```
                     {{speaker|upper}}
         {{text}}
@@ -136,7 +174,7 @@ I'm doing great, thanks for asking!
         I'm doing great, thanks for asking!
 ```
 
-### 7. Court Transcript Style
+### 8. Court Transcript Style
 ```
 {{index}}    {{speaker|upper}}: {{text}}
 ```
@@ -167,7 +205,7 @@ I'm doing great, thanks for asking!
 
 ### Editing Templates
 1. Click on any template in the list to open it
-2. Modify the name, description, or format
+2. Modify the name, description, header, or format
 3. Click **Save** to update
 
 ### Deleting Templates

@@ -9,9 +9,8 @@ Supports customizable export templates with localized labels.
 
 import os
 import re
-import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
 
@@ -26,91 +25,38 @@ logger = logging.getLogger('file_exporter')
 logger.setLevel(logging.INFO)
 
 
-def format_transcription_with_template(transcription_text, user):
+def format_transcription_with_template(transcription_text, user, template=None):
     """
     Format transcription using the user's default template.
 
     Args:
         transcription_text: Raw transcription (JSON or plain text)
         user: User object to get template from
+        template: TranscriptTemplate to use instead of the user's default
 
     Returns:
         Formatted transcription string
     """
     # Import here to avoid circular imports
     from src.models import TranscriptTemplate
+    from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 
-    # Try to parse as JSON
-    try:
-        transcription_data = json.loads(transcription_text)
-        if not isinstance(transcription_data, list):
-            # Not our expected format, return as-is
-            return transcription_text
-    except (json.JSONDecodeError, TypeError):
-        # Not JSON, return as-is
+    # Not our segment-list JSON: return as-is
+    segments = parse_segments(transcription_text)
+    if segments is None:
         return transcription_text
 
     # Get user's default template
-    template = TranscriptTemplate.query.filter_by(
-        user_id=user.id,
-        is_default=True
-    ).first()
+    if template is None:
+        template = TranscriptTemplate.query.filter_by(
+            user_id=user.id,
+            is_default=True
+        ).first()
 
     # Default format if no template set
     if not template:
-        template_format = "[{{speaker}}]: {{text}}"
-    else:
-        template_format = template.template
-
-    # Helper functions for formatting
-    def format_time(seconds):
-        """Format seconds to HH:MM:SS"""
-        if seconds is None:
-            return "00:00:00"
-        td = timedelta(seconds=seconds)
-        hours = int(td.total_seconds() // 3600)
-        minutes = int((td.total_seconds() % 3600) // 60)
-        secs = int(td.total_seconds() % 60)
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-
-    def format_srt_time(seconds):
-        """Format seconds to SRT format HH:MM:SS,mmm"""
-        if seconds is None:
-            return "00:00:00,000"
-        td = timedelta(seconds=seconds)
-        hours = int(td.total_seconds() // 3600)
-        minutes = int((td.total_seconds() % 3600) // 60)
-        secs = int(td.total_seconds() % 60)
-        millis = int((td.total_seconds() % 1) * 1000)
-        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-
-    # Generate formatted transcript
-    output_lines = []
-    for index, segment in enumerate(transcription_data, 1):
-        line = template_format
-
-        # Replace variables
-        replacements = {
-            '{{index}}': str(index),
-            '{{speaker}}': segment.get('speaker', 'Unknown'),
-            '{{text}}': segment.get('sentence', ''),
-            '{{start_time}}': format_time(segment.get('start_time')),
-            '{{end_time}}': format_time(segment.get('end_time')),
-        }
-
-        for key, value in replacements.items():
-            line = line.replace(key, value)
-
-        # Handle filters
-        # Upper case filter
-        line = re.sub(r'{{(.*?)\|upper}}', lambda m: replacements.get('{{' + m.group(1) + '}}', '').upper(), line)
-        # SRT time filter
-        line = re.sub(r'{{start_time\|srt}}', format_srt_time(segment.get('start_time')), line)
-        line = re.sub(r'{{end_time\|srt}}', format_srt_time(segment.get('end_time')), line)
-
-        output_lines.append(line)
-
-    return '\n'.join(output_lines)
+        return render_segments(segments, BASIC_TEMPLATE_FORMAT)
+    return render_segments(segments, template.template, template.header)
 
 
 def get_export_directory(user):
