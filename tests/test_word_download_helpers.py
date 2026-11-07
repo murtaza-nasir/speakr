@@ -8,13 +8,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from docx import Document
 from docx.oxml.ns import qn
-from docx.shared import Pt
+from docx.shared import Pt, RGBColor
+import pytest
 
 from src.app import app
 from src.services.document import (
     add_document_header, append_conversation_turn, docx_attachment_response,
-    new_document, process_markdown_to_docx,
+    new_document, process_markdown_to_docx, resolve_link_url,
 )
+
+_BASE = 'https://speakr.example.com'
 
 
 def _east_asia(run):
@@ -142,3 +145,100 @@ def test_role_label_style_spaces_the_turns():
 
 def test_role_label_style_added_to_a_plain_document():
     assert _turn('user', 'Hi', doc=Document()) == ['You:', 'Hi']
+
+
+@pytest.mark.parametrize('url, base, expected', [
+    ('/recordings/7?t=65', _BASE, 'https://speakr.example.com/recordings/7?t=65'),
+    ('/recordings/7', _BASE + '/', 'https://speakr.example.com/recordings/7'),
+    ('/recordings/7?t=65', 'http://localhost', 'http://localhost/recordings/7?t=65'),
+    ('https://example.com/a?b=1#c', _BASE, 'https://example.com/a?b=1#c'),
+    ('HTTP://Example.com/x', None, 'HTTP://Example.com/x'),
+    ('https://example.com/会議 x', None, 'https://example.com/%E4%BC%9A%E8%AD%B0%20x'),
+    ('/recordings/7', None, None),
+    ('//evil.example/x', _BASE, None),
+    ('/\\evil.example/x', _BASE, None),
+    ('javascript:alert(1)', _BASE, None),
+    (' JavaScript:alert(1)', _BASE, None),
+    ('java\tscript:alert(1)', _BASE, None),
+    ('data:text/html,<b>x</b>', _BASE, None),
+    ('file:///etc/passwd', _BASE, None),
+    ('vbscript:msgbox', _BASE, None),
+    ('mailto:a@example.com', _BASE, None),
+    ('recordings/7', _BASE, None),
+    ('https://', _BASE, None),
+    ('https://[::1', _BASE, None),
+])
+def test_resolve_link_url(url, base, expected):
+    assert resolve_link_url(url, base) == expected
+
+
+def _links(doc):
+    return [(h.text, h.url) for p in doc.paragraphs for h in p.hyperlinks]
+
+
+def test_markdown_link_is_a_word_hyperlink():
+    doc = new_document()
+    process_markdown_to_docx(doc, 'See [Budget @ 1:05](/recordings/7?t=65) and [site](https://example.com).', _BASE)
+    paragraph = doc.paragraphs[0]
+    assert paragraph.text == 'See Budget @ 1:05 and site.'
+    assert _links(doc) == [('Budget @ 1:05', _BASE + '/recordings/7?t=65'), ('site', 'https://example.com')]
+    hyperlink = paragraph.hyperlinks[0]
+    assert hyperlink._hyperlink.get(qn('r:id')) in doc.part.rels
+    rel = doc.part.rels[hyperlink._hyperlink.get(qn('r:id'))]
+    assert rel.is_external and rel.reltype.endswith('/hyperlink')
+    assert [r.style.name for r in hyperlink.runs] == ['Hyperlink']
+    assert '(' not in paragraph.text
+
+
+def test_hyperlink_style_is_blue_underlined_arial():
+    style = new_document().styles['Hyperlink']
+    assert style.font.underline is True
+    assert style.font.color.rgb == RGBColor(0x05, 0x63, 0xC1)
+    assert style.element.rPr.rFonts.get(qn('w:ascii')) == 'Arial'
+
+
+def test_hyperlink_style_added_to_a_plain_document():
+    doc = Document()
+    process_markdown_to_docx(doc, '[a](https://example.com)')
+    assert doc.paragraphs[0].hyperlinks[0].runs[0].style.name == 'Hyperlink'
+
+
+@pytest.mark.parametrize('url', [
+    'javascript:void0', 'data:text/html,x', 'file:///etc/passwd', '//evil.example/x', 'vbscript:x',
+])
+def test_unsafe_link_targets_stay_plain_text(url):
+    doc = new_document()
+    process_markdown_to_docx(doc, f'Click [here]({url}) now', _BASE)
+    assert doc.paragraphs[0].text == 'Click here now'
+    assert _links(doc) == []
+    assert not [r for r in doc.part.rels.values() if r.reltype.endswith('/hyperlink')]
+
+
+def test_relative_link_without_base_is_plain_text():
+    doc = new_document()
+    process_markdown_to_docx(doc, '[Standup](/recordings/3)')
+    assert doc.paragraphs[0].text == 'Standup'
+    assert _links(doc) == []
+
+
+def test_link_in_table_cell_is_a_hyperlink():
+    doc = new_document()
+    process_markdown_to_docx(doc, '| Source |\n| --- |\n| [Standup](/recordings/3?t=9) |', _BASE)
+    cell = doc.tables[0].rows[1].cells[0].paragraphs[0]
+    assert [(h.text, h.url) for h in cell.hyperlinks] == [('Standup', _BASE + '/recordings/3?t=9')]
+
+
+def test_sources_follow_an_assistant_turn():
+    doc = new_document()
+    append_conversation_turn(doc, 'assistant', 'Answer [1 @ 0:05](/recordings/3?t=5)', base_url=_BASE,
+                             sources=[(1, 'Standup', '/recordings/3'), (3, 'Budget', '/recordings/9')])
+    assert [p.text for p in doc.paragraphs] == ['Assistant:', 'Answer 1 @ 0:05', 'Sources', '1. Standup', '3. Budget']
+    assert _links(doc) == [('1 @ 0:05', _BASE + '/recordings/3?t=5'),
+                           ('Standup', _BASE + '/recordings/3'), ('Budget', _BASE + '/recordings/9')]
+
+
+def test_sources_ignored_for_a_user_turn_and_when_empty():
+    for role, sources in (('user', [(1, 'Standup', '/recordings/3')]), ('assistant', []), ('assistant', None)):
+        doc = new_document()
+        append_conversation_turn(doc, role, 'Text', base_url=_BASE, sources=sources)
+        assert 'Sources' not in [p.text for p in doc.paragraphs]

@@ -51,8 +51,8 @@ from src.services.speaker import (
 # Incognito mode - disabled by default, enable via environment variable
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 from src.services.document import (
-    add_document_header, append_conversation_turn, docx_attachment_response, new_document,
-    process_markdown_to_docx,
+    add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
+    new_document, process_markdown_to_docx,
 )
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
@@ -330,7 +330,7 @@ def download_summary_word(recording_id):
         add_document_header(doc, f'Summary: {recording.title or "Untitled Recording"}', metadata)
 
         # Process markdown content using the helper function
-        process_markdown_to_docx(doc, recording.summary)
+        process_markdown_to_docx(doc, recording.summary, link_base_url())
 
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
@@ -374,12 +374,14 @@ def download_chat_word(recording_id):
         ])
 
         # Add chat messages
+        base_url = link_base_url()
         for message in messages:
             append_conversation_turn(
                 doc,
                 message.get('role', 'unknown'),
                 message.get('content', ''),
                 message.get('thinking', ''),
+                base_url=base_url,
             )
 
         # Create safe filename
@@ -424,7 +426,7 @@ def download_notes_word(recording_id):
         add_document_header(doc, f'Notes: {recording.title or "Untitled Recording"}', metadata)
 
         # Process markdown content using the helper function
-        process_markdown_to_docx(doc, recording.notes)
+        process_markdown_to_docx(doc, recording.notes, link_base_url())
 
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')

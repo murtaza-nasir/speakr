@@ -1208,10 +1208,16 @@
                         return Object.keys(filters).length > 0 ? filters : undefined;
                     };
 
+                    // The Sources list under an answer, as {title, url}
+                    // pairs in the numbered order the page shows.
+                    const downloadSources = (message) => (message.role === 'assistant' && Array.isArray(message.sources))
+                        ? message.sources.map(s => ({ title: s.title, url: '/recordings/' + s.recording_id }))
+                        : undefined;
+
                     const downloadInquireConversation = async () => {
                         const messages = inquireChatMessages.value
                             .filter(hasTurnContent)
-                            .map(m => ({ role: m.role, content: m.content }));
+                            .map(m => ({ role: m.role, content: m.content, sources: downloadSources(m) }));
                         if (messages.length === 0) return;
 
                         const tFailed = t('chat.downloadFailed');

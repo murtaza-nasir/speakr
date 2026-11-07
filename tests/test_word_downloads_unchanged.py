@@ -3,11 +3,13 @@
 The values were first captured before the shared helpers in
 src/services/document.py (#554, #555). They were re-recorded on purpose when
 the downloads moved to one font (Arial on the styles, so runs carry no font of
-their own) and to style spacing in place of empty paragraphs.
+their own) and to style spacing in place of empty paragraphs, and again when
+markdown links became Word hyperlinks.
 
 Each case records the status, Content-Type and Content-Disposition, then every
 paragraph (style, text) and every run (text, font name, east-Asia font, bold,
-italic) of the document, including table cells. An ASCII and a Japanese title
+italic) of the document, including table cells, and each paragraph's
+hyperlinks (text, target, run styles) when it has any. An ASCII and a Japanese title
 cover both Content-Disposition forms. The chat case
 includes an assistant turn with thinking, so the [Model Reasoning] paragraph
 is part of the pinned file.
@@ -81,7 +83,10 @@ def _run_info(run):
 
 
 def _paragraph_info(paragraph):
-    return [paragraph.style.name, paragraph.text, [_run_info(r) for r in paragraph.runs]]
+    info = [paragraph.style.name, paragraph.text, [_run_info(r) for r in paragraph.runs]]
+    if paragraph.hyperlinks:
+        info.append([[h.text, h.url, [r.style.name for r in h.runs]] for h in paragraph.hyperlinks])
+    return info
 
 
 def _capture(resp):
@@ -219,7 +224,7 @@ def test_every_text_run_resolves_to_arial(recordings, kind, title_key):
     doc = Document(io.BytesIO(_download(user_id, ids[title_key], kind).data))
     checked = 0
     for paragraph in _all_paragraphs(doc):
-        for run in paragraph.runs:
+        for run in paragraph.runs + [r for h in paragraph.hyperlinks for r in h.runs]:
             if run.font.name == "Courier New":  # inline code and code blocks stay monospace
                 continue
             assert _effective_fonts(doc, paragraph, run) == ("Arial", "Arial"), (paragraph.text, run.text)
@@ -245,6 +250,18 @@ def test_no_empty_spacer_paragraphs(recordings, kind):
     user_id, ids, _ = recordings
     doc = Document(io.BytesIO(_download(user_id, ids["ascii"], kind).data))
     assert [p.style.name for p in _all_paragraphs(doc) if not p.text.strip()] == []
+
+
+def test_chat_links_are_absolute_hyperlinks(recordings):
+    user_id, ids, _ = recordings
+    messages = [{"role": "assistant", "content": "See [Standup @ 0:09](/recordings/3?t=9) and [x](javascript:void0)."}]
+    for env, base in (({"APP_BASE_URL": "https://speakr.example.com/"}, "https://speakr.example.com"),
+                      ({"APP_BASE_URL": ""}, "http://localhost")):
+        with patch.dict(os.environ, env):
+            resp = _client(user_id).post(f"/recording/{ids['ascii']}/download/chat", json={"messages": messages})
+        paragraph = [p for p in Document(io.BytesIO(resp.data)).paragraphs if p.text.startswith("See ")][0]
+        assert paragraph.text == "See Standup @ 0:09 and x."
+        assert [(h.text, h.url) for h in paragraph.hyperlinks] == [("Standup @ 0:09", base + "/recordings/3?t=9")]
 
 
 @pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
@@ -308,14 +325,14 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                     ['code', 'Courier New', None, None, None],
                                     ['.', None, None, None, None]]],
                                   ['Normal',
-                                   '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
+                                   '日本語の行に 太字 と コード と リンク があります。',
                                    [['日本語の行に ', None, None, None, None],
                                     ['太字', None, None, True, None],
                                     [' と ', None, None, None, None],
                                     ['コード', 'Courier New', 'Consolas', None, None],
                                     [' と ', None, None, None, None],
-                                    ['リンク (https://example.com/会議)', None, None, None, None],
-                                    [' があります。', None, None, None, None]]],
+                                    [' があります。', None, None, None, None]],
+                                   [['リンク', 'https://example.com/%E4%BC%9A%E8%AD%B0', ['Hyperlink']]]],
                                   ['List Bullet', 'first item', [['first item', None, None, None, None]]],
                                   ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                   ['List Number', 'one', [['one', None, None, None, None]]],
@@ -366,14 +383,14 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                        ['code', 'Courier New', None, None, None],
                                        ['.', None, None, None, None]]],
                                      ['Normal',
-                                      '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
+                                      '日本語の行に 太字 と コード と リンク があります。',
                                       [['日本語の行に ', None, None, None, None],
                                        ['太字', None, None, True, None],
                                        [' と ', None, None, None, None],
                                        ['コード', 'Courier New', 'Consolas', None, None],
                                        [' と ', None, None, None, None],
-                                       ['リンク (https://example.com/会議)', None, None, None, None],
-                                       [' があります。', None, None, None, None]]],
+                                       [' があります。', None, None, None, None]],
+                                      [['リンク', 'https://example.com/%E4%BC%9A%E8%AD%B0', ['Hyperlink']]]],
                                      ['List Bullet', 'first item', [['first item', None, None, None, None]]],
                                      ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                      ['List Number', 'one', [['one', None, None, None, None]]],
@@ -425,14 +442,14 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                   ['code', 'Courier New', None, None, None],
                                   ['.', None, None, None, None]]],
                                 ['Normal',
-                                 '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
+                                 '日本語の行に 太字 と コード と リンク があります。',
                                  [['日本語の行に ', None, None, None, None],
                                   ['太字', None, None, True, None],
                                   [' と ', None, None, None, None],
                                   ['コード', 'Courier New', 'Consolas', None, None],
                                   [' と ', None, None, None, None],
-                                  ['リンク (https://example.com/会議)', None, None, None, None],
-                                  [' があります。', None, None, None, None]]],
+                                  [' があります。', None, None, None, None]],
+                                 [['リンク', 'https://example.com/%E4%BC%9A%E8%AD%B0', ['Hyperlink']]]],
                                 ['List Bullet', 'first item', [['first item', None, None, None, None]]],
                                 ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                 ['List Number', 'one', [['one', None, None, None, None]]],
@@ -481,14 +498,14 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                      ['code', 'Courier New', None, None, None],
                                      ['.', None, None, None, None]]],
                                    ['Normal',
-                                    '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
+                                    '日本語の行に 太字 と コード と リンク があります。',
                                     [['日本語の行に ', None, None, None, None],
                                      ['太字', None, None, True, None],
                                      [' と ', None, None, None, None],
                                      ['コード', 'Courier New', 'Consolas', None, None],
                                      [' と ', None, None, None, None],
-                                     ['リンク (https://example.com/会議)', None, None, None, None],
-                                     [' があります。', None, None, None, None]]],
+                                     [' があります。', None, None, None, None]],
+                                    [['リンク', 'https://example.com/%E4%BC%9A%E8%AD%B0', ['Hyperlink']]]],
                                    ['List Bullet', 'first item', [['first item', None, None, None, None]]],
                                    ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                    ['List Number', 'one', [['one', None, None, None, None]]],

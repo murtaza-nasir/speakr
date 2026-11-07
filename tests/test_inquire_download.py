@@ -231,3 +231,128 @@ def test_route_is_csrf_protected(user_id):
     assert 'token' in missing.get_json()['csrf_reason'].lower()
     assert sent.status_code == 200
     assert sent.headers['Content-Disposition'] == 'attachment; filename="inquire.docx"'
+
+
+_ANSWER = 'Two items [Budget review @ 0:05](/recordings/5?t=5), [Standup](/recordings/9).'
+
+
+def _hyperlinks(resp):
+    return [(h.text, h.url) for p in Document(io.BytesIO(resp.data)).paragraphs for h in p.hyperlinks]
+
+
+def _sources_turn(sources):
+    return {'messages': [
+        {'role': 'user', 'content': 'What is on the roadmap?'},
+        {'role': 'assistant', 'content': _ANSWER, 'sources': sources},
+    ]}
+
+
+@pytest.mark.parametrize('env, base', [
+    ({'APP_BASE_URL': 'https://speakr.example.com/'}, 'https://speakr.example.com'),
+    ({'APP_BASE_URL': ''}, 'http://localhost'),
+])
+def test_citations_and_sources_are_absolute_hyperlinks(user_id, env, base):
+    with patch.dict(os.environ, env):
+        resp = _post(user_id, _sources_turn([
+            {'title': 'Budget review', 'url': '/recordings/5'},
+            {'title': 'Standup', 'url': '/recordings/9?t=30'},
+        ]))
+    assert resp.status_code == 200
+    assert _paragraphs(resp)[2:] == [
+        'You:', 'What is on the roadmap?',
+        'Assistant:', 'Two items 1 @ 0:05, 2.',
+        'Sources', '1. Budget review', '2. Standup',
+    ]
+    assert _hyperlinks(resp) == [
+        ('1 @ 0:05', base + '/recordings/5?t=5'),
+        ('2', base + '/recordings/9'),
+        ('Budget review', base + '/recordings/5'),
+        ('Standup', base + '/recordings/9?t=30'),
+    ]
+    assert '(/recordings' not in '\n'.join(_paragraphs(resp))
+
+
+def test_invalid_sources_dropped_and_numbers_kept(user_id):
+    resp = _post(user_id, _sources_turn([
+        {'title': 'Kept one', 'url': '/recordings/5'},
+        {'title': 'Script', 'url': 'javascript:alert(1)'},
+        {'title': 'Elsewhere', 'url': 'https://evil.example/recordings/5'},
+        {'title': 'Host relative', 'url': '//evil.example/recordings/5'},
+        {'title': 'Traversal', 'url': '/recordings/5/../../admin'},
+        {'title': 'Other param', 'url': '/recordings/5?t=1&next=/x'},
+        {'title': 'Not a number', 'url': '/recordings/abc'},
+        {'title': 'Other page', 'url': '/admin'},
+        {'title': 7, 'url': '/recordings/5'},
+        {'title': '   ', 'url': '/recordings/5'},
+        {'title': 'No url'},
+        'not a dict',
+        {'title': 'Kept two', 'url': '/recordings/12?t=40'},
+    ]))
+    paragraphs = _paragraphs(resp)
+    assert paragraphs[paragraphs.index('Sources'):] == ['Sources', '1. Kept one', '13. Kept two']
+    assert [url for _, url in _hyperlinks(resp)][2:] == [
+        'http://localhost/recordings/5', 'http://localhost/recordings/12?t=40']
+
+
+@pytest.mark.parametrize('sources', [None, [], 'Budget', {'title': 'x', 'url': '/recordings/5'},
+                                     [{'title': 'Script', 'url': 'javascript:alert(1)'}]])
+def test_no_sources_label_without_valid_sources(user_id, sources):
+    body = _sources_turn(sources)
+    if sources is None:
+        del body['messages'][1]['sources']
+    paragraphs = _paragraphs(_post(user_id, body))
+    assert 'Sources' not in paragraphs
+    assert paragraphs[-1] == 'Two items Budget review @ 0:05, Standup.'
+
+
+def test_sources_on_a_user_turn_are_ignored(user_id):
+    resp = _post(user_id, {'messages': [
+        {'role': 'user', 'content': 'Question', 'sources': [{'title': 'Planted', 'url': '/recordings/5'}]},
+    ]})
+    assert 'Planted' not in '\n'.join(_paragraphs(resp))
+
+
+def test_source_title_is_capped_and_whitespace_collapsed(user_id):
+    resp = _post(user_id, _sources_turn([{'title': 'A\n  b ' + 'x' * 400, 'url': '/recordings/5'}]))
+    line = _paragraphs(resp)[-1]
+    assert line.startswith('1. A b x')
+    assert len(line) == len('1. ') + 300
+
+
+def test_sources_capped_per_turn_and_in_total(user_id):
+    many = [{'title': f'Recording {i}', 'url': f'/recordings/{i}'} for i in range(1, 61)]
+    resp = _post(user_id, _sources_turn(many))
+    lines = [p for p in _paragraphs(resp) if p.startswith(tuple(f'{i}. ' for i in range(1, 100)))]
+    assert len(lines) == 50 and lines[-1] == '50. Recording 50'
+
+    turns = []
+    for _ in range(5):
+        turns += [{'role': 'user', 'content': 'Q'}, {'role': 'assistant', 'content': 'A', 'sources': many}]
+    paragraphs = _paragraphs(_post(user_id, {'messages': turns}))
+    assert paragraphs.count('Sources') == 4
+    assert sum(1 for p in paragraphs if p.startswith('50. ')) == 4
+
+
+def test_citations_numbered_as_on_the_page(user_id):
+    body = {'messages': [{'role': 'assistant', 'sources': [
+        {'title': 'Budget review', 'url': '/recordings/5'},
+        {'title': 'Standup', 'url': '/recordings/9'},
+    ], 'content': ('A [Budget review @ 1:02:03](/recordings/5?t=3723), '
+                   'B [Budget review @ 2:05](/recordings/5), '
+                   'C [Standup @ 1317](/recordings/9), '
+                   'D [Other](/recordings/44?t=8), '
+                   'E [Standup](/recordings/9).')}]}
+    resp = _post(user_id, body)
+    assert _paragraphs(resp)[3] == 'A 1 @ 1:02:03, B 1 @ 2:05, C 2 @ 21:57, D Other, E 2.'
+    assert [h for h in _hyperlinks(resp)][:5] == [
+        ('1 @ 1:02:03', 'http://localhost/recordings/5?t=3723'),
+        ('1 @ 2:05', 'http://localhost/recordings/5'),
+        ('2 @ 21:57', 'http://localhost/recordings/9'),
+        ('Other', 'http://localhost/recordings/44?t=8'),
+        ('2', 'http://localhost/recordings/9'),
+    ]
+
+
+def test_citations_keep_their_text_without_sources(user_id):
+    resp = _post(user_id, _sources_turn(None))
+    assert _paragraphs(resp)[-1] == 'Two items Budget review @ 0:05, Standup.'

@@ -891,11 +891,92 @@ def _inquire_filter_line(filters):
     return '; '.join(parts)
 
 
+# Limits on the Sources lists the page sends with a download
+_MAX_SOURCES_PER_TURN = 50
+_MAX_SOURCES_TOTAL = 200
+_MAX_SOURCE_TITLE = 300
+# A source links to a recording page, optionally at a time in seconds
+_SOURCE_URL = re.compile(r'/recordings/([0-9]+)(?:\?t=[0-9]+)?')
+
+
+def _inquire_turn_sources(raw, budget):
+    """(number, title, url) for each valid source in raw, at most budget of them.
+
+    The number is the source's position in the list the page shows, so the
+    numbers stay those of the page when an entry is dropped. An entry is kept
+    only when its title is a non-empty string and its url is a relative
+    /recordings/<id> path with an optional ?t=<seconds>.
+    """
+    if not isinstance(raw, list) or budget <= 0:
+        return []
+    sources = []
+    for number, item in enumerate(raw[:_MAX_SOURCES_PER_TURN], start=1):
+        if len(sources) >= budget:
+            break
+        if not isinstance(item, dict):
+            continue
+        title, url = item.get('title'), item.get('url')
+        if not isinstance(title, str) or not isinstance(url, str):
+            continue
+        title = ' '.join(title.split())[:_MAX_SOURCE_TITLE]
+        if not title or not _SOURCE_URL.fullmatch(url):
+            continue
+        sources.append((number, title, url))
+    return sources
+
+
+# A citation the agent writes into an answer: [Title @ m:ss](/recordings/<id>?t=<s>)
+_CITATION_LINK = re.compile(r'\[([^\]]+)\]\((/recordings/([0-9]+)(?:\?t=([0-9]+))?)\)')
+_CITATION_TIME = re.compile(r'@\s*([0-9]+(?::[0-9]{1,2}){0,2})\s*$')
+
+
+def _format_seconds(seconds):
+    hours, rest = divmod(max(0, seconds), 3600)
+    minutes, secs = divmod(rest, 60)
+    return f'{hours}:{minutes:02d}:{secs:02d}' if hours else f'{minutes}:{secs:02d}'
+
+
+def _number_citations(content, sources):
+    """Citation links in content relabelled "<n> @ m:ss" as the page shows them.
+
+    n is the number of the cited recording in sources; a link to a recording
+    that is not in sources keeps its own text. The time comes from the
+    link's ?t= value, else from an "@ m:ss" at the end of its text.
+    """
+    numbers = {}
+    for number, _, url in sources:
+        numbers.setdefault(_SOURCE_URL.fullmatch(url).group(1), number)
+
+    def relabel(match):
+        number = numbers.get(match.group(3))
+        if number is None:
+            return match.group(0)
+        if match.group(4) is not None:
+            seconds = int(match.group(4))
+        else:
+            stated = _CITATION_TIME.search(match.group(1))
+            seconds = None
+            if stated:
+                seconds = 0
+                for part in stated.group(1).split(':'):
+                    seconds = seconds * 60 + int(part)
+        label = f'{number} @ {_format_seconds(seconds)}' if seconds is not None else str(number)
+        return f'[{label}]({match.group(2)})'
+
+    return _CITATION_LINK.sub(relabel, content) if numbers else content
+
+
 def _inquire_download_turns(messages):
-    """(role, content) for each turn with non-empty string content; other fields are ignored."""
+    """(role, content, sources) for each turn with non-empty string content.
+
+    Sources are read for assistant turns only (see _inquire_turn_sources), and
+    the citations in such a turn are numbered to match them; other fields are
+    ignored.
+    """
     if not isinstance(messages, list):
         return []
     turns = []
+    budget = _MAX_SOURCES_TOTAL
     for message in messages:
         if not isinstance(message, dict):
             continue
@@ -905,7 +986,9 @@ def _inquire_download_turns(messages):
         role = message.get('role')
         if not isinstance(role, str) or role == '':
             role = 'unknown'
-        turns.append((role, content))
+        sources = _inquire_turn_sources(message.get('sources'), budget) if role == 'assistant' else []
+        budget -= len(sources)
+        turns.append((role, _number_citations(content, sources), sources))
     return turns
 
 
@@ -926,7 +1009,8 @@ def download_inquire_conversation():
 
     try:
         from src.services.document import (
-            add_document_header, append_conversation_turn, docx_attachment_response, new_document,
+            add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
+            new_document,
         )
         from src.utils.timezones import now_local
 
@@ -937,8 +1021,9 @@ def download_inquire_conversation():
         doc = new_document()
         add_document_header(doc, 'Inquire', metadata)
 
-        for role, content in turns:
-            append_conversation_turn(doc, role, content)
+        base_url = link_base_url()
+        for role, content, sources in turns:
+            append_conversation_turn(doc, role, content, base_url=base_url, sources=sources)
 
         return docx_attachment_response(doc, 'inquire.docx', 'inquire.docx')
 

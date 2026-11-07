@@ -5,13 +5,16 @@ Document processing and conversion services.
 import re
 from email.utils import encode_rfc2231
 from io import BytesIO
+from urllib.parse import quote, urlsplit
 
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
-from flask import current_app, send_file
+from docx.text.run import Run
+from flask import current_app, request, send_file
 
 DOCX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -29,6 +32,12 @@ _DOCUMENT_STYLES = (
 )
 
 ROLE_LABEL_STYLE = 'Conversation Role'
+HYPERLINK_STYLE = 'Hyperlink'
+HYPERLINK_COLOR = RGBColor(0x05, 0x63, 0xC1)  # Word's own hyperlink blue
+
+# Characters a link target keeps as they are; anything else (spaces,
+# non-ASCII letters) is percent-encoded
+_URL_SAFE = ":/?#[]@!$&'()*+,;=%~-._"
 
 _FONT_ATTRIBUTES = ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia')
 _THEME_FONT_ATTRIBUTES = ('w:asciiTheme', 'w:hAnsiTheme', 'w:cstheme', 'w:eastAsiaTheme')
@@ -74,7 +83,92 @@ def new_document():
     normal.line_spacing = 1.15
 
     _role_label_style(doc)
+    _hyperlink_style(doc.styles)
     return doc
+
+
+def _hyperlink_style(styles):
+    """The Hyperlink character style (blue, underlined, Arial), added when the template lacks it."""
+    try:
+        return styles[HYPERLINK_STYLE]
+    except KeyError:
+        pass
+    style = styles.add_style(HYPERLINK_STYLE, WD_STYLE_TYPE.CHARACTER)
+    style.font.color.rgb = HYPERLINK_COLOR
+    style.font.underline = True
+    _set_fonts(style.element.get_or_add_rPr(), DOCUMENT_FONT)
+    return style
+
+
+def link_base_url():
+    """The base for absolute links in a download: APP_BASE_URL when set, else this request's root."""
+    from src.services.email import get_app_base_url
+    return get_app_base_url() or request.url_root.rstrip('/')
+
+
+def resolve_link_url(url, base_url):
+    """The absolute http(s) target for a markdown link, or None when it must stay plain text.
+
+    A path starting with "/" is joined to base_url, query string included.
+    An http or https URL is kept. Every other target, including other schemes
+    (javascript:, data:, file:), protocol-relative "//host" paths and paths
+    relative to the current page, is not linked.
+    """
+    if not isinstance(url, str):
+        return None
+    url = url.strip()
+    if any(ord(c) < 0x20 or ord(c) == 0x7f for c in url):
+        return None
+    if url.startswith('/'):
+        if url.startswith('//') or url.startswith('/\\') or not base_url:
+            return None
+        url = base_url.rstrip('/') + url
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme.lower() not in ('http', 'https') or not parts.hostname:
+        return None
+    return quote(url, safe=_URL_SAFE)
+
+
+def add_hyperlink(paragraph, text, url):
+    """Append a Word hyperlink to url showing text, in the Hyperlink character style."""
+    part = paragraph.part
+    hyperlink = OxmlElement('w:hyperlink')
+    hyperlink.set(qn('r:id'), part.relate_to(url, RT.HYPERLINK, is_external=True))
+    run_element = OxmlElement('w:r')
+    hyperlink.append(run_element)
+    paragraph._p.append(hyperlink)
+    run = Run(run_element, paragraph)
+    run.text = text
+    run.style = _hyperlink_style(part.styles)
+    return hyperlink
+
+
+def add_link(paragraph, text, url, base_url):
+    """A hyperlink when url resolves to a safe absolute target, otherwise text alone."""
+    target = resolve_link_url(url, base_url)
+    if target is None:
+        return paragraph.add_run(text)
+    return add_hyperlink(paragraph, text, target)
+
+
+def append_sources(doc, sources, base_url):
+    """A "Sources" label, then one numbered line per (number, title, url), each title a link."""
+    if not sources:
+        return
+    label = doc.add_paragraph()
+    label.add_run('Sources').bold = True
+    label.paragraph_format.space_before = Pt(6)
+    label.paragraph_format.space_after = Pt(2)
+    label.paragraph_format.keep_with_next = True
+    for number, title, url in sources:
+        line = doc.add_paragraph()
+        line.paragraph_format.left_indent = Pt(12)
+        line.paragraph_format.space_after = Pt(2)
+        line.add_run(f'{number}. ')
+        add_link(line, title, url, base_url)
 
 
 def _role_label_style(doc):
@@ -130,11 +224,13 @@ def docx_attachment_response(doc, filename, fallback_filename):
     return response
 
 
-def append_conversation_turn(doc, role, content, thinking=None):
-    """Add one chat turn: a bold role label, any assistant reasoning, then the markdown content.
+def append_conversation_turn(doc, role, content, thinking=None, base_url=None, sources=None):
+    """Add one chat turn: a bold role label, any assistant reasoning, the markdown content,
+    then the Sources list for an assistant turn that has one.
 
     The label uses the Conversation Role style, whose space before separates
-    the turns, so no blank paragraph is needed.
+    the turns, so no blank paragraph is needed. Links are made absolute against
+    base_url (see resolve_link_url).
     """
     if role == 'user':
         label = 'You'
@@ -149,10 +245,12 @@ def append_conversation_turn(doc, role, content, thinking=None):
         p.add_run('[Model Reasoning]\n').italic = True
         p.add_run(thinking).italic = True
 
-    process_markdown_to_docx(doc, content)
+    process_markdown_to_docx(doc, content, base_url)
+    if role == 'assistant':
+        append_sources(doc, sources, base_url)
 
 
-def process_markdown_to_docx(doc, content):
+def process_markdown_to_docx(doc, content, base_url=None):
     """Convert markdown content to properly formatted Word document elements.
 
     Supports:
@@ -164,7 +262,9 @@ def process_markdown_to_docx(doc, content):
     - Inline code (`code`)
     - Code blocks (```code```)
     - Strikethrough (~~text~~)
-    - Links ([text](url))
+    - Links ([text](url)): a Word hyperlink showing the text. A target starting
+      with "/" is joined to base_url; http(s) targets are kept; any other
+      target, or a relative one without base_url, is written as plain text.
     - Bullet lists (- or *)
     - Numbered lists (1. 2. 3.)
     - Horizontal rules (--- or ***)
@@ -204,12 +304,7 @@ def process_markdown_to_docx(doc, content):
             return run
 
         def add_link_run(para, text, url):
-            """Add a hyperlink-styled run (note: actual hyperlinks require more complex handling)."""
-            full_text = f"{text} ({url})"
-            run = para.add_run(full_text)
-            run.font.color.rgb = RGBColor(0, 0, 255)  # Blue color for links
-            run.font.underline = True
-            return run
+            return add_link(para, text, url, base_url)
 
         # Process the text with all patterns
         remaining_text = text
