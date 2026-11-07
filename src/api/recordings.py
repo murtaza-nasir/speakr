@@ -20,7 +20,6 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from email.utils import encode_rfc2231
 from urllib.parse import quote
 
 from src.database import db
@@ -50,7 +49,9 @@ from src.services.speaker import (
 
 # Incognito mode - disabled by default, enable via environment variable
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
-from src.services.document import process_markdown_to_docx
+from src.services.document import (
+    add_unicode_heading, add_unicode_paragraph, docx_attachment_response, process_markdown_to_docx,
+)
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
@@ -368,9 +369,7 @@ def download_summary_word(recording_id):
     """Download recording summary as a Word document."""
     try:
         from docx import Document
-        from docx.shared import Inches
         import re
-        from io import BytesIO
 
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
@@ -384,30 +383,7 @@ def download_summary_word(recording_id):
 
         # Add title
         title_text = f'Summary: {recording.title or "Untitled Recording"}'
-        title = doc.add_heading(title_text, 0)
-        # Check if title needs Unicode font support
-        try:
-            title_text.encode('ascii')
-        except UnicodeEncodeError:
-            # Title contains non-ASCII characters
-            from docx.oxml.ns import qn
-            for run in title.runs:
-                run.font.name = 'Arial'
-                r = run._element
-                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-
-        # Helper function to add paragraph with Unicode support
-        def add_unicode_paragraph(doc, text):
-            p = doc.add_paragraph(text)
-            try:
-                text.encode('ascii')
-            except UnicodeEncodeError:
-                from docx.oxml.ns import qn
-                for run in p.runs:
-                    run.font.name = 'Arial'
-                    r = run._element
-                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-            return p
+        add_unicode_heading(doc, title_text, 0)
 
         # Add metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
@@ -425,46 +401,12 @@ def download_summary_word(recording_id):
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.summary)
 
-        # Save to BytesIO
-        doc_stream = BytesIO()
-        doc.save(doc_stream)
-        doc_stream.seek(0)
-
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'summary-{safe_title}.docx' if safe_title else f'summary-recording-{recording_id}.docx'
 
-        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
-        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
-        if not ascii_filename.strip() or ascii_filename.strip() in ['summary-.docx', 'summary-recording-.docx']:
-            ascii_filename = f'summary-recording-{recording_id}.docx'
-
-        response = send_file(
-            doc_stream,
-            as_attachment=False,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-        # Properly encode filename for international characters
-        # Check if filename contains non-ASCII characters
-        try:
-            # Try to encode as ASCII - if this works, use simple format
-            filename.encode('ascii')
-            # ASCII-only filename, use simple format
-            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        except UnicodeEncodeError:
-            # Contains non-ASCII characters, use proper RFC 2231 encoding
-            try:
-                # Use Python's built-in RFC 2231 encoder
-                encoded_value = encode_rfc2231(filename, charset='utf-8')
-                header_value = f'attachment; filename*={encoded_value}'
-                current_app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
-                response.headers['Content-Disposition'] = header_value
-            except Exception as e:
-                # Fallback to simple attachment with generic name
-                current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
-                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
-        return response
+        return docx_attachment_response(doc, filename, f'download-{recording_id}.docx')
 
     except Exception as e:
         current_app.logger.error(f"Error generating summary Word document: {e}")
@@ -478,9 +420,7 @@ def download_chat_word(recording_id):
     """Download chat conversation as a Word document."""
     try:
         from docx import Document
-        from docx.shared import Inches
         import re
-        from io import BytesIO
 
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
@@ -500,29 +440,7 @@ def download_chat_word(recording_id):
 
         # Add title
         title_text = f'Chat Conversation: {recording.title or "Untitled Recording"}'
-        title = doc.add_heading(title_text, 0)
-        # Check if title needs Unicode font support
-        try:
-            title_text.encode('ascii')
-        except UnicodeEncodeError:
-            from docx.oxml.ns import qn
-            for run in title.runs:
-                run.font.name = 'Arial'
-                r = run._element
-                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-
-        # Helper function to add paragraph with Unicode support
-        def add_unicode_paragraph(doc, text):
-            p = doc.add_paragraph(text)
-            try:
-                text.encode('ascii')
-            except UnicodeEncodeError:
-                from docx.oxml.ns import qn
-                for run in p.runs:
-                    run.font.name = 'Arial'
-                    r = run._element
-                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-            return p
+        add_unicode_heading(doc, title_text, 0)
 
         # Add metadata
         from src.utils.timezones import to_user_local, now_local, user_timezone  # owner's local time (#412)
@@ -562,47 +480,12 @@ def download_chat_word(recording_id):
 
             doc.add_paragraph('')  # Empty line between messages
 
-        # Save to BytesIO
-        doc_stream = BytesIO()
-        doc.save(doc_stream)
-        doc_stream.seek(0)
-
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'chat-{safe_title}.docx' if safe_title else f'chat-recording-{recording_id}.docx'
 
-        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
-        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
-        if not ascii_filename.strip() or ascii_filename.strip() in ['chat-.docx', 'chat-recording-.docx']:
-            ascii_filename = f'chat-recording-{recording_id}.docx'
-
-        response = send_file(
-            doc_stream,
-            as_attachment=False,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-
-        # Properly encode filename for international characters
-        # Check if filename contains non-ASCII characters
-        try:
-            # Try to encode as ASCII - if this works, use simple format
-            filename.encode('ascii')
-            # ASCII-only filename, use simple format
-            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        except UnicodeEncodeError:
-            # Contains non-ASCII characters, use proper RFC 2231 encoding
-            try:
-                # Use Python's built-in RFC 2231 encoder
-                encoded_value = encode_rfc2231(filename, charset='utf-8')
-                header_value = f'attachment; filename*={encoded_value}'
-                current_app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
-                response.headers['Content-Disposition'] = header_value
-            except Exception as e:
-                # Fallback to simple attachment with generic name
-                current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
-                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
-        return response
+        return docx_attachment_response(doc, filename, f'download-{recording_id}.docx')
 
     except Exception as e:
         current_app.logger.error(f"Error generating chat Word document: {e}")
@@ -616,9 +499,7 @@ def download_notes_word(recording_id):
     """Download recording notes as a Word document."""
     try:
         from docx import Document
-        from docx.shared import Inches
         import re
-        from io import BytesIO
 
         recording = db.session.get(Recording, recording_id)
         if not recording or not has_recording_access(recording, current_user):
@@ -632,29 +513,7 @@ def download_notes_word(recording_id):
 
         # Add title
         title_text = f'Notes: {recording.title or "Untitled Recording"}'
-        title = doc.add_heading(title_text, 0)
-        # Check if title needs Unicode font support
-        try:
-            title_text.encode('ascii')
-        except UnicodeEncodeError:
-            from docx.oxml.ns import qn
-            for run in title.runs:
-                run.font.name = 'Arial'
-                r = run._element
-                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-
-        # Helper function to add paragraph with Unicode support
-        def add_unicode_paragraph(doc, text):
-            p = doc.add_paragraph(text)
-            try:
-                text.encode('ascii')
-            except UnicodeEncodeError:
-                from docx.oxml.ns import qn
-                for run in p.runs:
-                    run.font.name = 'Arial'
-                    r = run._element
-                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-            return p
+        add_unicode_heading(doc, title_text, 0)
 
         # Add metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
@@ -672,46 +531,12 @@ def download_notes_word(recording_id):
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.notes)
 
-        # Save to BytesIO
-        doc_stream = BytesIO()
-        doc.save(doc_stream)
-        doc_stream.seek(0)
-
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'notes-{safe_title}.docx' if safe_title else f'notes-recording-{recording_id}.docx'
 
-        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
-        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
-        if not ascii_filename.strip() or ascii_filename.strip() in ['notes-.docx', 'notes-recording-.docx']:
-            ascii_filename = f'notes-recording-{recording_id}.docx'
-
-        response = send_file(
-            doc_stream,
-            as_attachment=False,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-        # Properly encode filename for international characters
-        # Check if filename contains non-ASCII characters
-        try:
-            # Try to encode as ASCII - if this works, use simple format
-            filename.encode('ascii')
-            # ASCII-only filename, use simple format
-            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        except UnicodeEncodeError:
-            # Contains non-ASCII characters, use proper RFC 2231 encoding
-            try:
-                # Use Python's built-in RFC 2231 encoder
-                encoded_value = encode_rfc2231(filename, charset='utf-8')
-                header_value = f'attachment; filename*={encoded_value}'
-                current_app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
-                response.headers['Content-Disposition'] = header_value
-            except Exception as e:
-                # Fallback to simple attachment with generic name
-                current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
-                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
-        return response
+        return docx_attachment_response(doc, filename, f'download-{recording_id}.docx')
 
     except Exception as e:
         current_app.logger.error(f"Error generating notes Word document: {e}")

@@ -3,9 +3,70 @@ Document processing and conversion services.
 """
 
 import re
-from docx import Document
-from docx.shared import Pt, RGBColor
+from email.utils import encode_rfc2231
+from io import BytesIO
 
+from docx import Document
+from docx.oxml.ns import qn
+from docx.shared import Pt, RGBColor
+from flask import current_app, send_file
+
+DOCX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+
+def ensure_unicode_font(run, text):
+    """Ensure the run uses a font that supports the characters in the text."""
+    try:
+        text.encode('ascii')
+    except UnicodeEncodeError:
+        # Arial for broad Unicode coverage; the east-Asia font for CJK text in Word
+        run.font.name = 'Arial'
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+    return run
+
+
+def add_unicode_heading(doc, text, level):
+    """Add a heading, with the Unicode font on every run when text is not ASCII."""
+    heading = doc.add_heading(text, level)
+    for run in heading.runs:
+        ensure_unicode_font(run, text)
+    return heading
+
+
+def add_unicode_paragraph(doc, text):
+    """Add a paragraph, with the Unicode font on every run when text is not ASCII."""
+    paragraph = doc.add_paragraph(text)
+    for run in paragraph.runs:
+        ensure_unicode_font(run, text)
+    return paragraph
+
+
+def docx_attachment_response(doc, filename, fallback_filename):
+    """Return doc as a Word download named filename.
+
+    A non-ASCII filename uses the RFC 2231 form; fallback_filename is used if
+    that encoding fails.
+    """
+    doc_stream = BytesIO()
+    doc.save(doc_stream)
+    doc_stream.seek(0)
+
+    # as_attachment=True needs a download name, which a BytesIO lacks (500);
+    # the name goes in Content-Disposition instead.
+    response = send_file(doc_stream, as_attachment=False, mimetype=DOCX_MIMETYPE)
+    try:
+        filename.encode('ascii')
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        try:
+            encoded_value = encode_rfc2231(filename, charset='utf-8')
+            header_value = f'attachment; filename*={encoded_value}'
+            current_app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+            response.headers['Content-Disposition'] = header_value
+        except Exception as e:
+            current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
+            response.headers['Content-Disposition'] = f'attachment; filename="{fallback_filename}"'
+    return response
 
 
 def process_markdown_to_docx(doc, content):
@@ -29,22 +90,6 @@ def process_markdown_to_docx(doc, content):
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.oxml.ns import qn
     import re
-
-    def ensure_unicode_font(run, text):
-        """Ensure the run uses a font that supports the characters in the text."""
-        # Check if text contains non-ASCII characters
-        try:
-            text.encode('ascii')
-            # Text is pure ASCII, no special font needed
-        except UnicodeEncodeError:
-            # Text contains non-ASCII characters, use a font with better Unicode support
-            # Use Arial for broad compatibility - it has good Unicode support on most systems
-            run.font.name = 'Arial'
-            # Set the East Asian font for CJK (Chinese, Japanese, Korean) text
-            # This ensures proper rendering in Word
-            r = run._element
-            r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-        return run
 
     def add_formatted_run(paragraph, text):
         """Add a run with inline formatting to a paragraph."""
