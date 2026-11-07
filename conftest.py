@@ -126,15 +126,18 @@ def _initialize_test_database():
     with app.app_context():
         initialize_database(app)
         # Lower fsync cost for the throwaway test database only. Production is
-        # unaffected because this lives in conftest.py. Small but free win,
-        # larger on slower CI disks.
+        # unaffected because this lives in conftest.py. SQLite applies
+        # PRAGMA synchronous per connection, so it is set on every connection
+        # the test engine opens, and the connections already pooled are closed.
         from src.app import db
-        from sqlalchemy import text
-        try:
-            db.session.execute(text("PRAGMA synchronous=OFF"))
-            db.session.commit()
-        except Exception:
-            pass
+        if db.engine.dialect.name == 'sqlite':
+            from sqlalchemy import event
+
+            @event.listens_for(db.engine, 'connect')
+            def _synchronous_off(dbapi_connection, _record):
+                dbapi_connection.execute('PRAGMA synchronous=OFF')
+
+            db.engine.dispose()
 
     yield
 
