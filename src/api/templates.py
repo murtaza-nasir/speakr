@@ -73,6 +73,7 @@ def create_transcript_template():
         name=data['name'],
         template=data['template'],
         description=data.get('description'),
+        header=data.get('header'),
         is_default=data.get('is_default', False)
     )
 
@@ -109,6 +110,7 @@ def update_transcript_template(template_id):
     template.name = data.get('name', template.name)
     template.template = data.get('template', template.template)
     template.description = data.get('description', template.description)
+    template.header = data.get('header', template.header)
     template.is_default = data.get('is_default', template.is_default)
     template.updated_at = datetime.utcnow()
 

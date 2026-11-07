@@ -244,7 +244,7 @@ def download_transcript_with_template(recording_id):
             # No template found: use a basic format
             formatted_transcript = render_segments(segments, BASIC_TEMPLATE_FORMAT)
         else:
-            formatted_transcript = render_segments(segments, template.template)
+            formatted_transcript = render_segments(segments, template.template, template.header)
 
         # Output format: 'txt' (default) or 'md'. Markdown wraps the templated
         # body with a title heading so it renders as a proper document, and

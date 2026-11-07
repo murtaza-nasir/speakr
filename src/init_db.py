@@ -675,6 +675,10 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'folder', 'export_template_id', 'INTEGER'):
             app.logger.info("Added export_template_id column to folder table")
 
+        # Optional transcript template header. NULL renders as before.
+        if add_column_if_not_exists(engine, 'transcript_template', 'header', 'TEXT'):
+            app.logger.info("Added header column to transcript_template table")
+
         # Configurable auto-export filenames (#348)
         if add_column_if_not_exists(engine, 'user', 'export_filename_template', 'VARCHAR(500)'):
             app.logger.info("Added export_filename_template column to user table")

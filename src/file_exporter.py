@@ -25,13 +25,14 @@ logger = logging.getLogger('file_exporter')
 logger.setLevel(logging.INFO)
 
 
-def format_transcription_with_template(transcription_text, user):
+def format_transcription_with_template(transcription_text, user, template=None):
     """
     Format transcription using the user's default template.
 
     Args:
         transcription_text: Raw transcription (JSON or plain text)
         user: User object to get template from
+        template: TranscriptTemplate to use instead of the user's default
 
     Returns:
         Formatted transcription string
@@ -46,15 +47,16 @@ def format_transcription_with_template(transcription_text, user):
         return transcription_text
 
     # Get user's default template
-    template = TranscriptTemplate.query.filter_by(
-        user_id=user.id,
-        is_default=True
-    ).first()
+    if template is None:
+        template = TranscriptTemplate.query.filter_by(
+            user_id=user.id,
+            is_default=True
+        ).first()
 
     # Default format if no template set
     if not template:
         return render_segments(segments, BASIC_TEMPLATE_FORMAT)
-    return render_segments(segments, template.template)
+    return render_segments(segments, template.template, template.header)
 
 
 def get_export_directory(user):
