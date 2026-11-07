@@ -427,16 +427,35 @@
             <!-- Right Panel: Chat -->
             <div class="flex-1 flex flex-col overflow-hidden"
                  :class="isMobileSidebarOpen ? 'hidden lg:flex' : 'flex'">
-                <!-- Conversation toolbar -->
+                <!-- Conversation header: label and a short filter summary
+                     on the left, Download and Clear conversation on the
+                     right, in the order of the recording chat header. -->
                 <div v-if="canDownloadInquire"
-                     class="flex items-center justify-end px-4 py-1 border-b flex-shrink-0"
-                     style="border-bottom-color: var(--border-primary);">
-                    <button @click="downloadInquireConversation"
-                            class="btn btn--icon btn--sm"
-                            :title="t('inquire.downloadConversation')"
-                            :aria-label="t('inquire.downloadConversation')">
-                        <i class="fas fa-download"></i>
-                    </button>
+                     class="inquire-conversation-header flex items-center gap-2 px-3 sm:px-4 py-1.5 border-b flex-shrink-0"
+                     style="border-bottom-color: var(--border-primary); background: var(--bg-secondary);">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <i class="fas fa-comments flex-shrink-0" style="color: var(--text-muted); font-size: 12px;"></i>
+                        <span class="flex-shrink-0" style="font-size: var(--fs-meta); font-weight: 600; color: var(--text-primary);">${ t('inquire.conversation') }</span>
+                        <span v-if="inquireFilterSummary"
+                              class="truncate min-w-0"
+                              style="font-size: var(--fs-meta); color: var(--text-muted);"
+                              :title="inquireFilterSummary">· ${ inquireFilterSummary }</span>
+                    </div>
+                    <div class="flex items-center flex-shrink-0" style="gap: 2px;">
+                        <button @click="downloadInquireConversation"
+                                class="btn btn--icon btn--sm"
+                                :title="t('inquire.downloadConversation')"
+                                :aria-label="t('inquire.downloadConversation')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button @click="clearInquireConversation"
+                                class="btn btn--icon btn--sm"
+                                style="color: var(--text-muted);"
+                                :title="t('inquire.clearConversation')"
+                                :aria-label="t('inquire.clearConversation')">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                    </div>
                 </div>
                 <!-- Chat Messages Area -->
                 <div ref="inquireMessagesRef" @scroll="handleScroll" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
@@ -827,6 +846,18 @@
                     const hasTurnContent = (message) => typeof message.content === 'string' && message.content !== '';
 
                     const canDownloadInquire = computed(() => inquireChatMessages.value.some(hasTurnContent));
+
+                    // Short readout of the active filters for the
+                    // conversation header, in the wording of the Active
+                    // Filters pills ("2 tags · Date Range"); '' with none.
+                    const inquireFilterSummary = computed(() => {
+                        const parts = [];
+                        if (inquireFilters.selectedTags.length) parts.push(`${inquireFilters.selectedTags.length} ${t('inquire.tagsCount')}`);
+                        if (inquireFilters.selectedFolders.length) parts.push(`${inquireFilters.selectedFolders.length} ${t('inquire.foldersCount')}`);
+                        if (inquireFilters.selectedSpeakers.length) parts.push(`${inquireFilters.selectedSpeakers.length} ${t('inquire.speakersCount')}`);
+                        if (inquireFilters.dateFrom || inquireFilters.dateTo) parts.push(t('inquire.dateRange'));
+                        return parts.join(' · ');
+                    });
                     
                     const filteredTags = computed(() => {
                         if (!tagSearchQuery.value) return availableFilters.tags;
@@ -1254,13 +1285,11 @@
                         }
                     };
 
-                    const clearInquireFilters = () => {
-                        inquireFilters.selectedTags = [];
-                        inquireFilters.selectedFolders = [];
-                        inquireFilters.selectedSpeakers = [];
-                        inquireFilters.selectedRecordings = [];
-                        inquireFilters.dateFrom = null;
-                        inquireFilters.dateTo = null;
+                    // Empty the conversation and the agent's memory; the
+                    // filters stay. An answer still streaming is stopped
+                    // first, so it cannot add to the emptied conversation.
+                    const clearInquireConversation = () => {
+                        stopInquireChat();
                         inquireChatMessages.value = [];
                         // New conversation: drop the agent's memory/compaction state.
                         memoryState.memory = '';
@@ -1268,6 +1297,16 @@
                         memoryState.dividerIndex = -1;
                         memoryState.showMemory = false;
                         contextUsage.value = 0;
+                    };
+
+                    const clearInquireFilters = () => {
+                        inquireFilters.selectedTags = [];
+                        inquireFilters.selectedFolders = [];
+                        inquireFilters.selectedSpeakers = [];
+                        inquireFilters.selectedRecordings = [];
+                        inquireFilters.dateFrom = null;
+                        inquireFilters.dateTo = null;
+                        clearInquireConversation();
                     };
                     
                     const formatDate = (dateString) => {
@@ -1453,6 +1492,8 @@
                         // Computed
                         hasActiveFilters,
                         canDownloadInquire,
+                        inquireFilterSummary,
+                        clearInquireConversation,
                         filteredTags,
                         filteredFolders,
                         filteredSpeakers,

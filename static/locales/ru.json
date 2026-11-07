@@ -1872,6 +1872,8 @@
     "activeFilters": "Активные фильтры:",
     "askQuestions": "Задавайте вопросы о ваших транскрипциях",
     "clearAll": "Сбросить всё",
+    "clearConversation": "Очистить беседу",
+    "conversation": "Беседа",
     "dateRange": "Диапазон дат",
     "dateRangeActive": "Диапазон дат активен",
     "downloadConversation": "Скачать беседу как документ Word",

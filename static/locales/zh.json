@@ -1872,6 +1872,8 @@
     "activeFilters": "活动筛选器：",
     "askQuestions": "询问您的转录内容",
     "clearAll": "清除全部",
+    "clearConversation": "清除对话",
+    "conversation": "对话",
     "dateRange": "日期范围",
     "dateRangeActive": "日期范围已激活",
     "downloadConversation": "下载对话为Word文档",

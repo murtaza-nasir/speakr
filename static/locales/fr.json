@@ -1872,6 +1872,8 @@
     "activeFilters": "Filtres Actifs :",
     "askQuestions": "Posez des Questions sur Vos Transcriptions",
     "clearAll": "Effacer Tout",
+    "clearConversation": "Effacer la conversation",
+    "conversation": "Conversation",
     "dateRange": "Plage de Dates",
     "dateRangeActive": "Plage de dates active",
     "downloadConversation": "Télécharger la conversation au format Word",

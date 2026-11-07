@@ -1872,6 +1872,8 @@
     "activeFilters": "Filtros Ativos:",
     "askQuestions": "Faça Perguntas Sobre Suas Transcrições",
     "clearAll": "Limpar Tudo",
+    "clearConversation": "Limpar conversa",
+    "conversation": "Conversa",
     "dateRange": "Intervalo de Datas",
     "dateRangeActive": "Intervalo de datas ativo",
     "downloadConversation": "Baixar conversa como documento Word",

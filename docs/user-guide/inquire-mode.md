@@ -40,7 +40,11 @@ Date range filtering helps you focus on recent discussions or search within a sp
 
 ## Downloading the Conversation
 
-Once the conversation has a question or an answer, a download icon appears above it. Click it to save the questions and answers on screen as a Word file named `inquire.docx`. Headings, lists and bold text in the answers are kept. When tags, folders, speakers or dates are selected, their names appear under the export date. An answer that is still streaming, or one you stopped, is saved as far as it got. **Clear All** removes the conversation and the icon. The conversation is not stored on the server, so download it before you leave or refresh the page.
+Once the conversation has a question or an answer, a header appears above it. On the left it reads **Conversation**, followed by a short summary of the active filters, such as "2 tags · Date Range". On the right are two buttons: a download button and a **Clear conversation** button.
+
+The download button saves the questions and answers on screen as a Word file named `inquire.docx`. Headings, lists, bold text and links in the answers are kept. Links become Word hyperlinks with full addresses, so a link to a recording opens that recording in Speakr. The address starts with `APP_BASE_URL` when the administrator has set it, and with the address you used to open Speakr otherwise. Each answer is followed by its Sources list, numbered as on screen, and the citation markers in the answer carry the same numbers, such as "2 @ 14:05". Each source title links to its recording. When tags, folders, speakers or dates are selected, their names appear under the export date. An answer that is still streaming, or one you stopped, is saved as far as it got.
+
+**Clear conversation** removes the questions and answers and starts a new conversation; the filters stay as they are. An answer that is still streaming is stopped first. **Clear All** in the filter panel removes the filters as well as the conversation. The conversation is not stored on the server, so download it before you leave or refresh the page.
 
 ## Asking Effective Questions
 

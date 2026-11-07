@@ -1872,6 +1872,8 @@
     "activeFilters": "Aktive Filter:",
     "askQuestions": "Fragen Sie zu Ihren Transkriptionen",
     "clearAll": "Alle löschen",
+    "clearConversation": "Unterhaltung löschen",
+    "conversation": "Unterhaltung",
     "dateRange": "Datumsbereich",
     "dateRangeActive": "Datumsbereich aktiv",
     "downloadConversation": "Unterhaltung als Word-Dokument herunterladen",
