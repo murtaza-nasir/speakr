@@ -7,38 +7,99 @@ from email.utils import encode_rfc2231
 from io import BytesIO
 
 from docx import Document
+from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
 from flask import current_app, send_file
 
 DOCX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
+# One font for all text in the Word downloads. Arial covers Latin, Cyrillic
+# and, through Word's font fallback, CJK text; it is also the east-Asia font.
+DOCUMENT_FONT = 'Arial'
+CODE_FONT = 'Courier New'
+CODE_EAST_ASIA_FONT = 'Consolas'
 
-def ensure_unicode_font(run, text):
-    """Ensure the run uses a font that supports the characters in the text."""
+# The styles the downloads and the markdown converter use
+_DOCUMENT_STYLES = (
+    'Normal', 'Title',
+    'Heading 1', 'Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6',
+    'List Paragraph', 'List Bullet', 'List Number', 'Table Grid',
+)
+
+ROLE_LABEL_STYLE = 'Conversation Role'
+
+_FONT_ATTRIBUTES = ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia')
+_THEME_FONT_ATTRIBUTES = ('w:asciiTheme', 'w:hAnsiTheme', 'w:cstheme', 'w:eastAsiaTheme')
+
+
+def _set_fonts(rpr, name):
+    """Set every script's font in rpr to name and drop the theme fonts, which would win."""
+    fonts = rpr.find(qn('w:rFonts'))
+    if fonts is None:
+        fonts = OxmlElement('w:rFonts')
+        rpr.insert(0, fonts)
+    for attribute in _THEME_FONT_ATTRIBUTES:
+        fonts.attrib.pop(qn(attribute), None)
+    for attribute in _FONT_ATTRIBUTES:
+        fonts.set(qn(attribute), name)
+
+
+def new_document():
+    """A Document whose text is Arial throughout, with spacing set on the styles.
+
+    The fonts are set on the document defaults and on each style the downloads
+    use, so no run needs a font of its own. Paragraphs are spaced by the Normal
+    style, so content needs no empty paragraphs between blocks.
+    """
+    doc = Document()
+    styles_element = doc.styles.element
+    defaults = styles_element.find(qn('w:docDefaults'))
+    if defaults is not None:
+        rpr = defaults.find(qn('w:rPrDefault') + '/' + qn('w:rPr'))
+        if rpr is not None:
+            _set_fonts(rpr, DOCUMENT_FONT)
+
+    for name in _DOCUMENT_STYLES:
+        try:
+            style = doc.styles[name]
+        except KeyError:
+            continue
+        _set_fonts(style.element.get_or_add_rPr(), DOCUMENT_FONT)
+
+    normal = doc.styles['Normal'].paragraph_format
+    normal.space_before = Pt(0)
+    normal.space_after = Pt(6)
+    normal.line_spacing = 1.15
+
+    _role_label_style(doc)
+    return doc
+
+
+def _role_label_style(doc):
+    """The paragraph style of the "You:" and "Assistant:" labels, added on first use."""
     try:
-        text.encode('ascii')
-    except UnicodeEncodeError:
-        # Arial for broad Unicode coverage; the east-Asia font for CJK text in Word
-        run.font.name = 'Arial'
-        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-    return run
+        return doc.styles[ROLE_LABEL_STYLE]
+    except KeyError:
+        pass
+    role = doc.styles.add_style(ROLE_LABEL_STYLE, WD_STYLE_TYPE.PARAGRAPH)
+    role.base_style = doc.styles['Normal']
+    role.font.bold = True
+    role.paragraph_format.space_before = Pt(12)
+    role.paragraph_format.space_after = Pt(2)
+    role.paragraph_format.keep_with_next = True
+    return role
 
 
-def add_unicode_heading(doc, text, level):
-    """Add a heading, with the Unicode font on every run when text is not ASCII."""
-    heading = doc.add_heading(text, level)
-    for run in heading.runs:
-        ensure_unicode_font(run, text)
-    return heading
-
-
-def add_unicode_paragraph(doc, text):
-    """Add a paragraph, with the Unicode font on every run when text is not ASCII."""
-    paragraph = doc.add_paragraph(text)
-    for run in paragraph.runs:
-        ensure_unicode_font(run, text)
-    return paragraph
+def add_document_header(doc, title, lines):
+    """The title, then one paragraph per metadata line, with a gap below the last."""
+    doc.add_heading(title, 0)
+    paragraph = None
+    for line in lines:
+        paragraph = doc.add_paragraph(line)
+    if paragraph is not None:
+        paragraph.paragraph_format.space_after = Pt(12)
 
 
 def docx_attachment_response(doc, filename, fallback_filename):
@@ -72,7 +133,8 @@ def docx_attachment_response(doc, filename, fallback_filename):
 def append_conversation_turn(doc, role, content, thinking=None):
     """Add one chat turn: a bold role label, any assistant reasoning, then the markdown content.
 
-    A blank paragraph follows the turn.
+    The label uses the Conversation Role style, whose space before separates
+    the turns, so no blank paragraph is needed.
     """
     if role == 'user':
         label = 'You'
@@ -80,16 +142,14 @@ def append_conversation_turn(doc, role, content, thinking=None):
         label = 'Assistant'
     else:
         label = role.title()
-    doc.add_paragraph().add_run(f'{label}: ').bold = True
+    doc.add_paragraph(style=_role_label_style(doc)).add_run(f'{label}:').bold = True
 
     if thinking and role == 'assistant':
         p = doc.add_paragraph()
         p.add_run('[Model Reasoning]\n').italic = True
         p.add_run(thinking).italic = True
-        doc.add_paragraph('')
 
     process_markdown_to_docx(doc, content)
-    doc.add_paragraph('')
 
 
 def process_markdown_to_docx(doc, content):
@@ -109,10 +169,7 @@ def process_markdown_to_docx(doc, content):
     - Numbered lists (1. 2. 3.)
     - Horizontal rules (--- or ***)
     """
-    from docx.shared import RGBColor, Pt
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-    from docx.oxml.ns import qn
-    import re
 
     def add_formatted_run(paragraph, text):
         """Add a run with inline formatting to a paragraph."""
@@ -122,11 +179,11 @@ def process_markdown_to_docx(doc, content):
         # Pattern for all inline formatting
         # Order matters: check triple asterisk before double/single
         patterns = [
-            (r'\*\*\*(.*?)\*\*\*', lambda p, t: (lambda r: (setattr(r, 'bold', True), setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Bold italic
-            (r'\*\*(.*?)\*\*', lambda p, t: (lambda r: (setattr(r, 'bold', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Bold
-            (r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', lambda p, t: (lambda r: (setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Italic with *
-            (r'\b_(.*?)_\b', lambda p, t: (lambda r: (setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Italic with _
-            (r'~~(.*?)~~', lambda p, t: (lambda r: (setattr(r, 'strike', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Strikethrough
+            (r'\*\*\*(.*?)\*\*\*', lambda p, t: (lambda r: (setattr(r, 'bold', True), setattr(r, 'italic', True)))(p.add_run(t))),  # Bold italic
+            (r'\*\*(.*?)\*\*', lambda p, t: (lambda r: setattr(r, 'bold', True))(p.add_run(t))),  # Bold
+            (r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', lambda p, t: (lambda r: setattr(r, 'italic', True))(p.add_run(t))),  # Italic with *
+            (r'\b_(.*?)_\b', lambda p, t: (lambda r: setattr(r, 'italic', True))(p.add_run(t))),  # Italic with _
+            (r'~~(.*?)~~', lambda p, t: (lambda r: setattr(r, 'strike', True))(p.add_run(t))),  # Strikethrough
             (r'`([^`]+)`', lambda p, t: add_code_run(p, t)),  # Inline code
             (r'\[([^\]]+)\]\(([^)]+)\)', lambda p, t, u: add_link_run(p, t, u)),  # Links
         ]
@@ -134,7 +191,7 @@ def process_markdown_to_docx(doc, content):
         def add_code_run(para, text):
             """Add inline code with monospace font and background."""
             run = para.add_run(text)
-            run.font.name = 'Courier New'
+            run.font.name = CODE_FONT
             run.font.size = Pt(10)
             run.font.color.rgb = RGBColor(220, 20, 60)  # Crimson color for code
             # Check if we need Unicode support for code
@@ -143,7 +200,7 @@ def process_markdown_to_docx(doc, content):
             except UnicodeEncodeError:
                 # Use Consolas as fallback for better Unicode support in monospace
                 r = run._element
-                r.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
+                r.rPr.rFonts.set(qn('w:eastAsia'), CODE_EAST_ASIA_FONT)
             return run
 
         def add_link_run(para, text, url):
@@ -152,7 +209,6 @@ def process_markdown_to_docx(doc, content):
             run = para.add_run(full_text)
             run.font.color.rgb = RGBColor(0, 0, 255)  # Blue color for links
             run.font.underline = True
-            ensure_unicode_font(run, full_text)
             return run
 
         # Process the text with all patterns
@@ -173,8 +229,7 @@ def process_markdown_to_docx(doc, content):
             if earliest_match:
                 # Add text before the match
                 if earliest_pos > 0:
-                    run = paragraph.add_run(remaining_text[:earliest_pos])
-                    ensure_unicode_font(run, remaining_text[:earliest_pos])
+                    paragraph.add_run(remaining_text[:earliest_pos])
 
                 # Apply formatting for the matched text
                 if '[' in earliest_match.group(0) and '](' in earliest_match.group(0):
@@ -187,8 +242,7 @@ def process_markdown_to_docx(doc, content):
                 remaining_text = remaining_text[earliest_match.end():]
             else:
                 # No more patterns, add the rest as plain text
-                run = paragraph.add_run(remaining_text)
-                ensure_unicode_font(run, remaining_text)
+                paragraph.add_run(remaining_text)
                 break
 
     def parse_table(lines, start_idx):
@@ -227,6 +281,7 @@ def process_markdown_to_docx(doc, content):
 
     # Split content into lines
     lines = content.split('\n')
+    tables = []  # the paragraph after each table gets space above it at the end
     i = 0
     in_code_block = False
     code_block_content = []
@@ -247,7 +302,7 @@ def process_markdown_to_docx(doc, content):
                     p.style = 'Normal'
                     code_text = '\n'.join(code_block_content)
                     run = p.add_run(code_text)
-                    run.font.name = 'Courier New'
+                    run.font.name = CODE_FONT
                     run.font.size = Pt(10)
                     run.font.color.rgb = RGBColor(64, 64, 64)
                     # Check if we need Unicode support for code blocks
@@ -255,7 +310,7 @@ def process_markdown_to_docx(doc, content):
                         code_text.encode('ascii')
                     except UnicodeEncodeError:
                         r = run._element
-                        r.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
+                        r.rPr.rFonts.set(qn('w:eastAsia'), CODE_EAST_ASIA_FONT)
             i += 1
             continue
 
@@ -276,24 +331,22 @@ def process_markdown_to_docx(doc, content):
                 for col_idx, cell_text in enumerate(row_data):
                     if col_idx < len(table.rows[row_idx].cells):
                         cell = table.rows[row_idx].cells[col_idx]
-                        # Clear existing paragraphs and add new one
-                        cell.text = ""
-                        p = cell.add_paragraph()
+                        # A new cell holds one empty paragraph; write into it
+                        p = cell.paragraphs[0]
                         add_formatted_run(p, cell_text)
                         # Make header row bold
                         if row_idx == 0:
                             for run in p.runs:
                                 run.bold = True
 
-            doc.add_paragraph('')  # Space after table
+            tables.append(table)
             i = end_idx
             continue
 
         line = line.rstrip()
 
-        # Skip empty lines
+        # Blank lines only separate blocks; the paragraph styles space them
         if not line:
-            doc.add_paragraph('')
             i += 1
             continue
 
@@ -347,6 +400,15 @@ def process_markdown_to_docx(doc, content):
             add_formatted_run(p, line)
 
         i += 1
+
+    # A paragraph that follows a table gets space above it, in place of the
+    # empty paragraph the converter used to add there
+    for table in tables:
+        following = table._tbl.getnext()
+        if following is not None and following.tag == qn('w:p'):
+            spacing = following.get_or_add_pPr().get_or_add_spacing()
+            if spacing.before is None:
+                spacing.before = Pt(8)
 
 # --- Database Models ---
 # --- Database Models ---

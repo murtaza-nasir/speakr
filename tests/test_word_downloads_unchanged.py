@@ -1,10 +1,14 @@
-"""The summary, notes and chat Word downloads, pinned to the files they returned
-before the shared helpers in src/services/document.py (#554, #555).
+"""The summary, notes and chat Word downloads, pinned to the files they return.
+
+The values were first captured before the shared helpers in
+src/services/document.py (#554, #555). They were re-recorded on purpose when
+the downloads moved to one font (Arial on the styles, so runs carry no font of
+their own) and to style spacing in place of empty paragraphs.
 
 Each case records the status, Content-Type and Content-Disposition, then every
 paragraph (style, text) and every run (text, font name, east-Asia font, bold,
 italic) of the document, including table cells. An ASCII and a Japanese title
-cover both Content-Disposition forms and both font branches. The chat case
+cover both Content-Disposition forms. The chat case
 includes an assistant turn with thinking, so the [Model Reasoning] paragraph
 is part of the pinned file.
 """
@@ -170,6 +174,79 @@ def test_word_download_unchanged(recordings, kind, title_key):
     assert got == EXPECTED[f"{kind}-{title_key}"]
 
 
+def _style_fonts(style):
+    """(ascii, eastAsia) from the first style in the base-style chain that names them."""
+    while style is not None:
+        rpr = style.element.rPr
+        fonts = rpr.rFonts if rpr is not None else None
+        if fonts is not None and fonts.get(qn("w:ascii")):
+            return fonts.get(qn("w:ascii")), fonts.get(qn("w:eastAsia"))
+        style = style.base_style
+    return None, None
+
+
+def _default_fonts(doc):
+    fonts = doc.styles.element.find(qn("w:docDefaults")).find(qn("w:rPrDefault")).find(qn("w:rPr")).find(qn("w:rFonts"))
+    return fonts.get(qn("w:ascii")), fonts.get(qn("w:eastAsia"))
+
+
+def _all_paragraphs(doc):
+    paragraphs = list(doc.paragraphs)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                paragraphs.extend(cell.paragraphs)
+    return paragraphs
+
+
+def _effective_fonts(doc, paragraph, run):
+    """The run's (ascii, eastAsia) fonts as Word resolves them: run, then style, then defaults."""
+    rpr = run._element.rPr
+    fonts = rpr.rFonts if rpr is not None else None
+    ascii_font = fonts.get(qn("w:ascii")) if fonts is not None else None
+    east_asia = fonts.get(qn("w:eastAsia")) if fonts is not None else None
+    for style_fonts in (_style_fonts(run.style) if run.style.name != "Default Paragraph Font" else (None, None),
+                        _style_fonts(paragraph.style), _default_fonts(doc)):
+        ascii_font = ascii_font or style_fonts[0]
+        east_asia = east_asia or style_fonts[1]
+    return ascii_font, east_asia
+
+
+@pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
+@pytest.mark.parametrize("title_key", ["ascii", "japanese"])
+def test_every_text_run_resolves_to_arial(recordings, kind, title_key):
+    user_id, ids, _ = recordings
+    doc = Document(io.BytesIO(_download(user_id, ids[title_key], kind).data))
+    checked = 0
+    for paragraph in _all_paragraphs(doc):
+        for run in paragraph.runs:
+            if run.font.name == "Courier New":  # inline code and code blocks stay monospace
+                continue
+            assert _effective_fonts(doc, paragraph, run) == ("Arial", "Arial"), (paragraph.text, run.text)
+            checked += 1
+    assert checked > 5
+
+
+@pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
+def test_styles_carry_no_theme_fonts(recordings, kind):
+    user_id, ids, _ = recordings
+    doc = Document(io.BytesIO(_download(user_id, ids["ascii"], kind).data))
+    used = {p.style.name for p in _all_paragraphs(doc)}
+    for name in used:
+        rpr = doc.styles[name].element.rPr
+        if rpr is None or rpr.rFonts is None:  # inherits its base style's fonts
+            continue
+        fonts = rpr.rFonts
+        assert not [a for a in fonts.attrib if a.endswith("Theme") or a.endswith("theme")], name
+
+
+@pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
+def test_no_empty_spacer_paragraphs(recordings, kind):
+    user_id, ids, _ = recordings
+    doc = Document(io.BytesIO(_download(user_id, ids["ascii"], kind).data))
+    assert [p.style.name for p in _all_paragraphs(doc) if not p.text.strip()] == []
+
+
 @pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
 def test_non_ascii_filename_logs_rfc2231_header(recordings, kind, caplog):
     user_id, ids, _ = recordings
@@ -197,7 +274,7 @@ def test_rfc2231_failure_falls_back_to_recording_id(recordings, kind):
     assert resp.headers["Content-Disposition"] == f'attachment; filename="download-{rid}.docx"'
 
 
-# Captured from master (a55e69dd) before the refactor.
+# Re-recorded when the downloads moved to one font and style spacing.
 EXPECTED = {'summary-ascii': {'status': 200,
                    'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                    'disposition': 'attachment; filename="summary-Weekly-Sync.docx"',
@@ -216,9 +293,7 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                   ['Normal',
                                    'Tags: Planning-SUFFIX',
                                    [['Tags: Planning-SUFFIX', None, None, None, None]]],
-                                  ['Normal', '', []],
                                   ['Heading 2', 'Overview', [['Overview', None, None, None, None]]],
-                                  ['Normal', '', []],
                                   ['Normal',
                                    'Plain line with bold, italic, both, gone and code.',
                                    [['Plain line with ', None, None, None, None],
@@ -234,22 +309,17 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                     ['.', None, None, None, None]]],
                                   ['Normal',
                                    '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
-                                   [['日本語の行に ', 'Arial', 'Arial', None, None],
-                                    ['太字', 'Arial', 'Arial', True, None],
-                                    [' と ', 'Arial', 'Arial', None, None],
+                                   [['日本語の行に ', None, None, None, None],
+                                    ['太字', None, None, True, None],
+                                    [' と ', None, None, None, None],
                                     ['コード', 'Courier New', 'Consolas', None, None],
-                                    [' と ', 'Arial', 'Arial', None, None],
-                                    ['リンク (https://example.com/会議)', 'Arial', 'Arial', None, None],
-                                    [' があります。', 'Arial', 'Arial', None, None]]],
-                                  ['Normal', '', []],
+                                    [' と ', None, None, None, None],
+                                    ['リンク (https://example.com/会議)', None, None, None, None],
+                                    [' があります。', None, None, None, None]]],
                                   ['List Bullet', 'first item', [['first item', None, None, None, None]]],
-                                  ['List Bullet', '二番目の項目', [['二番目の項目', 'Arial', 'Arial', None, None]]],
-                                  ['Normal', '', []],
+                                  ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                   ['List Number', 'one', [['one', None, None, None, None]]],
-                                  ['List Number', '二', [['二', 'Arial', 'Arial', None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', '', []],
-                                  ['Normal', '', []],
+                                  ['List Number', '二', [['二', None, None, None, None]]],
                                   ['Normal',
                                    '──────────────────────────────────────────────────',
                                    [['──────────────────────────────────────────────────',
@@ -257,24 +327,18 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                      None,
                                      None,
                                      None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', "print('x')", [["print('x')", 'Courier New', None, None, None]]],
-                                  ['Normal', '', []]],
-                   'tables': [[[[['Normal', '', [['', None, None, None, None]]],
-                                 ['Normal', 'Name', [['Name', None, None, True, None]]]],
-                                [['Normal', '', [['', None, None, None, None]]],
-                                 ['Normal', '担当', [['担当', 'Arial', 'Arial', True, None]]]]],
-                               [[['Normal', '', [['', None, None, None, None]]],
-                                 ['Normal', 'Ada', [['Ada', None, None, None, None]]]],
-                                [['Normal', '', [['', None, None, None, None]]],
-                                 ['Normal', '予算', [['予算', 'Arial', 'Arial', None, None]]]]]]]},
+                                  ['Normal',
+                                   "print('x')",
+                                   [["print('x')", 'Courier New', None, None, None]]]],
+                   'tables': [[[[['Normal', 'Name', [['Name', None, None, True, None]]]],
+                                [['Normal', '担当', [['担当', None, None, True, None]]]]],
+                               [[['Normal', 'Ada', [['Ada', None, None, None, None]]]],
+                                [['Normal', '予算', [['予算', None, None, None, None]]]]]]]},
  'summary-japanese': {'status': 200,
                       'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                       'disposition': 'attachment; '
                                      "filename*=utf-8''summary-%E9%80%B1%E6%AC%A1%E4%BC%9A%E8%AD%B0.docx",
-                      'paragraphs': [['Title',
-                                      'Summary: 週次会議',
-                                      [['Summary: 週次会議', 'Arial', 'Arial', None, None]]],
+                      'paragraphs': [['Title', 'Summary: 週次会議', [['Summary: 週次会議', None, None, None, None]]],
                                      ['Normal',
                                       'Uploaded: 2026-03-04 09:30',
                                       [['Uploaded: 2026-03-04 09:30', None, None, None, None]]],
@@ -283,13 +347,11 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                       [['Recording Date: 2026-03-03', None, None, None, None]]],
                                      ['Normal',
                                       'Participants: 佐藤, 鈴木',
-                                      [['Participants: 佐藤, 鈴木', 'Arial', 'Arial', None, None]]],
+                                      [['Participants: 佐藤, 鈴木', None, None, None, None]]],
                                      ['Normal',
                                       'Tags: 会議-SUFFIX',
-                                      [['Tags: 会議-SUFFIX', 'Arial', 'Arial', None, None]]],
-                                     ['Normal', '', []],
+                                      [['Tags: 会議-SUFFIX', None, None, None, None]]],
                                      ['Heading 2', 'Overview', [['Overview', None, None, None, None]]],
-                                     ['Normal', '', []],
                                      ['Normal',
                                       'Plain line with bold, italic, both, gone and code.',
                                       [['Plain line with ', None, None, None, None],
@@ -305,22 +367,17 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                        ['.', None, None, None, None]]],
                                      ['Normal',
                                       '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
-                                      [['日本語の行に ', 'Arial', 'Arial', None, None],
-                                       ['太字', 'Arial', 'Arial', True, None],
-                                       [' と ', 'Arial', 'Arial', None, None],
+                                      [['日本語の行に ', None, None, None, None],
+                                       ['太字', None, None, True, None],
+                                       [' と ', None, None, None, None],
                                        ['コード', 'Courier New', 'Consolas', None, None],
-                                       [' と ', 'Arial', 'Arial', None, None],
-                                       ['リンク (https://example.com/会議)', 'Arial', 'Arial', None, None],
-                                       [' があります。', 'Arial', 'Arial', None, None]]],
-                                     ['Normal', '', []],
+                                       [' と ', None, None, None, None],
+                                       ['リンク (https://example.com/会議)', None, None, None, None],
+                                       [' があります。', None, None, None, None]]],
                                      ['List Bullet', 'first item', [['first item', None, None, None, None]]],
-                                     ['List Bullet', '二番目の項目', [['二番目の項目', 'Arial', 'Arial', None, None]]],
-                                     ['Normal', '', []],
+                                     ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                      ['List Number', 'one', [['one', None, None, None, None]]],
-                                     ['List Number', '二', [['二', 'Arial', 'Arial', None, None]]],
-                                     ['Normal', '', []],
-                                     ['Normal', '', []],
-                                     ['Normal', '', []],
+                                     ['List Number', '二', [['二', None, None, None, None]]],
                                      ['Normal',
                                       '──────────────────────────────────────────────────',
                                       [['──────────────────────────────────────────────────',
@@ -328,19 +385,13 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                         None,
                                         None,
                                         None]]],
-                                     ['Normal', '', []],
                                      ['Normal',
                                       "print('x')",
-                                      [["print('x')", 'Courier New', None, None, None]]],
-                                     ['Normal', '', []]],
-                      'tables': [[[[['Normal', '', [['', None, None, None, None]]],
-                                    ['Normal', 'Name', [['Name', None, None, True, None]]]],
-                                   [['Normal', '', [['', None, None, None, None]]],
-                                    ['Normal', '担当', [['担当', 'Arial', 'Arial', True, None]]]]],
-                                  [[['Normal', '', [['', None, None, None, None]]],
-                                    ['Normal', 'Ada', [['Ada', None, None, None, None]]]],
-                                   [['Normal', '', [['', None, None, None, None]]],
-                                    ['Normal', '予算', [['予算', 'Arial', 'Arial', None, None]]]]]]]},
+                                      [["print('x')", 'Courier New', None, None, None]]]],
+                      'tables': [[[[['Normal', 'Name', [['Name', None, None, True, None]]]],
+                                   [['Normal', '担当', [['担当', None, None, True, None]]]]],
+                                  [[['Normal', 'Ada', [['Ada', None, None, None, None]]]],
+                                   [['Normal', '予算', [['予算', None, None, None, None]]]]]]]},
  'notes-ascii': {'status': 200,
                  'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                  'disposition': 'attachment; filename="notes-Weekly-Sync.docx"',
@@ -359,9 +410,7 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                 ['Normal',
                                  'Tags: Planning-SUFFIX',
                                  [['Tags: Planning-SUFFIX', None, None, None, None]]],
-                                ['Normal', '', []],
                                 ['Heading 2', 'Overview', [['Overview', None, None, None, None]]],
-                                ['Normal', '', []],
                                 ['Normal',
                                  'Plain line with bold, italic, both, gone and code.',
                                  [['Plain line with ', None, None, None, None],
@@ -377,22 +426,17 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                   ['.', None, None, None, None]]],
                                 ['Normal',
                                  '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
-                                 [['日本語の行に ', 'Arial', 'Arial', None, None],
-                                  ['太字', 'Arial', 'Arial', True, None],
-                                  [' と ', 'Arial', 'Arial', None, None],
+                                 [['日本語の行に ', None, None, None, None],
+                                  ['太字', None, None, True, None],
+                                  [' と ', None, None, None, None],
                                   ['コード', 'Courier New', 'Consolas', None, None],
-                                  [' と ', 'Arial', 'Arial', None, None],
-                                  ['リンク (https://example.com/会議)', 'Arial', 'Arial', None, None],
-                                  [' があります。', 'Arial', 'Arial', None, None]]],
-                                ['Normal', '', []],
+                                  [' と ', None, None, None, None],
+                                  ['リンク (https://example.com/会議)', None, None, None, None],
+                                  [' があります。', None, None, None, None]]],
                                 ['List Bullet', 'first item', [['first item', None, None, None, None]]],
-                                ['List Bullet', '二番目の項目', [['二番目の項目', 'Arial', 'Arial', None, None]]],
-                                ['Normal', '', []],
+                                ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                 ['List Number', 'one', [['one', None, None, None, None]]],
-                                ['List Number', '二', [['二', 'Arial', 'Arial', None, None]]],
-                                ['Normal', '', []],
-                                ['Normal', '', []],
-                                ['Normal', '', []],
+                                ['List Number', '二', [['二', None, None, None, None]]],
                                 ['Normal',
                                  '──────────────────────────────────────────────────',
                                  [['──────────────────────────────────────────────────',
@@ -400,22 +444,16 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                    None,
                                    None,
                                    None]]],
-                                ['Normal', '', []],
-                                ['Normal', "print('x')", [["print('x')", 'Courier New', None, None, None]]],
-                                ['Normal', '', []]],
-                 'tables': [[[[['Normal', '', [['', None, None, None, None]]],
-                               ['Normal', 'Name', [['Name', None, None, True, None]]]],
-                              [['Normal', '', [['', None, None, None, None]]],
-                               ['Normal', '担当', [['担当', 'Arial', 'Arial', True, None]]]]],
-                             [[['Normal', '', [['', None, None, None, None]]],
-                               ['Normal', 'Ada', [['Ada', None, None, None, None]]]],
-                              [['Normal', '', [['', None, None, None, None]]],
-                               ['Normal', '予算', [['予算', 'Arial', 'Arial', None, None]]]]]]]},
+                                ['Normal', "print('x')", [["print('x')", 'Courier New', None, None, None]]]],
+                 'tables': [[[[['Normal', 'Name', [['Name', None, None, True, None]]]],
+                              [['Normal', '担当', [['担当', None, None, True, None]]]]],
+                             [[['Normal', 'Ada', [['Ada', None, None, None, None]]]],
+                              [['Normal', '予算', [['予算', None, None, None, None]]]]]]]},
  'notes-japanese': {'status': 200,
                     'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     'disposition': 'attachment; '
                                    "filename*=utf-8''notes-%E9%80%B1%E6%AC%A1%E4%BC%9A%E8%AD%B0.docx",
-                    'paragraphs': [['Title', 'Notes: 週次会議', [['Notes: 週次会議', 'Arial', 'Arial', None, None]]],
+                    'paragraphs': [['Title', 'Notes: 週次会議', [['Notes: 週次会議', None, None, None, None]]],
                                    ['Normal',
                                     'Uploaded: 2026-03-04 09:30',
                                     [['Uploaded: 2026-03-04 09:30', None, None, None, None]]],
@@ -424,13 +462,11 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                     [['Recording Date: 2026-03-03', None, None, None, None]]],
                                    ['Normal',
                                     'Participants: 佐藤, 鈴木',
-                                    [['Participants: 佐藤, 鈴木', 'Arial', 'Arial', None, None]]],
+                                    [['Participants: 佐藤, 鈴木', None, None, None, None]]],
                                    ['Normal',
                                     'Tags: 会議-SUFFIX',
-                                    [['Tags: 会議-SUFFIX', 'Arial', 'Arial', None, None]]],
-                                   ['Normal', '', []],
+                                    [['Tags: 会議-SUFFIX', None, None, None, None]]],
                                    ['Heading 2', 'Overview', [['Overview', None, None, None, None]]],
-                                   ['Normal', '', []],
                                    ['Normal',
                                     'Plain line with bold, italic, both, gone and code.',
                                     [['Plain line with ', None, None, None, None],
@@ -446,22 +482,17 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                      ['.', None, None, None, None]]],
                                    ['Normal',
                                     '日本語の行に 太字 と コード と リンク (https://example.com/会議) があります。',
-                                    [['日本語の行に ', 'Arial', 'Arial', None, None],
-                                     ['太字', 'Arial', 'Arial', True, None],
-                                     [' と ', 'Arial', 'Arial', None, None],
+                                    [['日本語の行に ', None, None, None, None],
+                                     ['太字', None, None, True, None],
+                                     [' と ', None, None, None, None],
                                      ['コード', 'Courier New', 'Consolas', None, None],
-                                     [' と ', 'Arial', 'Arial', None, None],
-                                     ['リンク (https://example.com/会議)', 'Arial', 'Arial', None, None],
-                                     [' があります。', 'Arial', 'Arial', None, None]]],
-                                   ['Normal', '', []],
+                                     [' と ', None, None, None, None],
+                                     ['リンク (https://example.com/会議)', None, None, None, None],
+                                     [' があります。', None, None, None, None]]],
                                    ['List Bullet', 'first item', [['first item', None, None, None, None]]],
-                                   ['List Bullet', '二番目の項目', [['二番目の項目', 'Arial', 'Arial', None, None]]],
-                                   ['Normal', '', []],
+                                   ['List Bullet', '二番目の項目', [['二番目の項目', None, None, None, None]]],
                                    ['List Number', 'one', [['one', None, None, None, None]]],
-                                   ['List Number', '二', [['二', 'Arial', 'Arial', None, None]]],
-                                   ['Normal', '', []],
-                                   ['Normal', '', []],
-                                   ['Normal', '', []],
+                                   ['List Number', '二', [['二', None, None, None, None]]],
                                    ['Normal',
                                     '──────────────────────────────────────────────────',
                                     [['──────────────────────────────────────────────────',
@@ -469,19 +500,13 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                       None,
                                       None,
                                       None]]],
-                                   ['Normal', '', []],
                                    ['Normal',
                                     "print('x')",
-                                    [["print('x')", 'Courier New', None, None, None]]],
-                                   ['Normal', '', []]],
-                    'tables': [[[[['Normal', '', [['', None, None, None, None]]],
-                                  ['Normal', 'Name', [['Name', None, None, True, None]]]],
-                                 [['Normal', '', [['', None, None, None, None]]],
-                                  ['Normal', '担当', [['担当', 'Arial', 'Arial', True, None]]]]],
-                                [[['Normal', '', [['', None, None, None, None]]],
-                                  ['Normal', 'Ada', [['Ada', None, None, None, None]]]],
-                                 [['Normal', '', [['', None, None, None, None]]],
-                                  ['Normal', '予算', [['予算', 'Arial', 'Arial', None, None]]]]]]]},
+                                    [["print('x')", 'Courier New', None, None, None]]]],
+                    'tables': [[[[['Normal', 'Name', [['Name', None, None, True, None]]]],
+                                 [['Normal', '担当', [['担当', None, None, True, None]]]]],
+                                [[['Normal', 'Ada', [['Ada', None, None, None, None]]]],
+                                 [['Normal', '予算', [['予算', None, None, None, None]]]]]]]},
  'chat-ascii': {'status': 200,
                 'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'disposition': 'attachment; filename="chat-Weekly-Sync.docx"',
@@ -494,45 +519,35 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                ['Normal',
                                 'Chat Export Date: 2026-03-05 16:07',
                                 [['Chat Export Date: 2026-03-05 16:07', None, None, None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'You: ', [['You: ', None, None, True, None]]],
+                               ['Conversation Role', 'You:', [['You:', None, None, True, None]]],
                                ['Normal',
                                 'What was discussed?',
                                 [['What was discussed?', None, None, None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'Assistant: ', [['Assistant: ', None, None, True, None]]],
+                               ['Conversation Role', 'Assistant:', [['Assistant:', None, None, True, None]]],
                                ['Normal',
                                 '[Model Reasoning]\nhidden-reasoning',
                                 [['[Model Reasoning]\n', None, None, None, True],
                                  ['hidden-reasoning', None, None, None, True]]],
-                               ['Normal', '', []],
                                ['Normal',
                                 'The roadmap.',
                                 [['The ', None, None, None, None],
                                  ['roadmap', None, None, True, None],
                                  ['.', None, None, None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'System: ', [['System: ', None, None, True, None]]],
+                               ['Conversation Role', 'System:', [['System:', None, None, True, None]]],
                                ['Normal', 'A note.', [['A note.', None, None, None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'You: ', [['You: ', None, None, True, None]]],
-                               ['Normal', '予算は？', [['予算は？', 'Arial', 'Arial', None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'Assistant: ', [['Assistant: ', None, None, True, None]]],
+                               ['Conversation Role', 'You:', [['You:', None, None, True, None]]],
+                               ['Normal', '予算は？', [['予算は？', None, None, None, None]]],
+                               ['Conversation Role', 'Assistant:', [['Assistant:', None, None, True, None]]],
                                ['Normal',
                                 '[Model Reasoning]\n考え中',
                                 [['[Model Reasoning]\n', None, None, None, True],
                                  ['考え中', None, None, None, True]]],
-                               ['Normal', '', []],
                                ['Normal',
                                 '予算は 増額 です。',
-                                [['予算は ', 'Arial', 'Arial', None, None],
-                                 ['増額', 'Arial', 'Arial', True, None],
-                                 [' です。', 'Arial', 'Arial', None, None]]],
-                               ['Normal', '', []],
-                               ['Normal', 'You: ', [['You: ', None, None, True, None]]],
-                               ['Normal', '', []],
-                               ['Normal', '', []]],
+                                [['予算は ', None, None, None, None],
+                                 ['増額', None, None, True, None],
+                                 [' です。', None, None, None, None]]],
+                               ['Conversation Role', 'You:', [['You:', None, None, True, None]]]],
                 'tables': []},
  'chat-japanese': {'status': 200,
                    'content_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -540,50 +555,44 @@ EXPECTED = {'summary-ascii': {'status': 200,
                                   "filename*=utf-8''chat-%E9%80%B1%E6%AC%A1%E4%BC%9A%E8%AD%B0.docx",
                    'paragraphs': [['Title',
                                    'Chat Conversation: 週次会議',
-                                   [['Chat Conversation: 週次会議', 'Arial', 'Arial', None, None]]],
+                                   [['Chat Conversation: 週次会議', None, None, None, None]]],
                                   ['Normal',
                                    'Recording Date: 2026-03-03 14:00',
                                    [['Recording Date: 2026-03-03 14:00', None, None, None, None]]],
                                   ['Normal',
                                    'Chat Export Date: 2026-03-05 16:07',
                                    [['Chat Export Date: 2026-03-05 16:07', None, None, None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'You: ', [['You: ', None, None, True, None]]],
+                                  ['Conversation Role', 'You:', [['You:', None, None, True, None]]],
                                   ['Normal',
                                    'What was discussed?',
                                    [['What was discussed?', None, None, None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'Assistant: ', [['Assistant: ', None, None, True, None]]],
+                                  ['Conversation Role',
+                                   'Assistant:',
+                                   [['Assistant:', None, None, True, None]]],
                                   ['Normal',
                                    '[Model Reasoning]\nhidden-reasoning',
                                    [['[Model Reasoning]\n', None, None, None, True],
                                     ['hidden-reasoning', None, None, None, True]]],
-                                  ['Normal', '', []],
                                   ['Normal',
                                    'The roadmap.',
                                    [['The ', None, None, None, None],
                                     ['roadmap', None, None, True, None],
                                     ['.', None, None, None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'System: ', [['System: ', None, None, True, None]]],
+                                  ['Conversation Role', 'System:', [['System:', None, None, True, None]]],
                                   ['Normal', 'A note.', [['A note.', None, None, None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'You: ', [['You: ', None, None, True, None]]],
-                                  ['Normal', '予算は？', [['予算は？', 'Arial', 'Arial', None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'Assistant: ', [['Assistant: ', None, None, True, None]]],
+                                  ['Conversation Role', 'You:', [['You:', None, None, True, None]]],
+                                  ['Normal', '予算は？', [['予算は？', None, None, None, None]]],
+                                  ['Conversation Role',
+                                   'Assistant:',
+                                   [['Assistant:', None, None, True, None]]],
                                   ['Normal',
                                    '[Model Reasoning]\n考え中',
                                    [['[Model Reasoning]\n', None, None, None, True],
                                     ['考え中', None, None, None, True]]],
-                                  ['Normal', '', []],
                                   ['Normal',
                                    '予算は 増額 です。',
-                                   [['予算は ', 'Arial', 'Arial', None, None],
-                                    ['増額', 'Arial', 'Arial', True, None],
-                                    [' です。', 'Arial', 'Arial', None, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', 'You: ', [['You: ', None, None, True, None]]],
-                                  ['Normal', '', []],
-                                  ['Normal', '', []]],
+                                   [['予算は ', None, None, None, None],
+                                    ['増額', None, None, True, None],
+                                    [' です。', None, None, None, None]]],
+                                  ['Conversation Role', 'You:', [['You:', None, None, True, None]]]],
                    'tables': []}}

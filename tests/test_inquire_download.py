@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from docx import Document
+from docx.oxml.ns import qn
 
 from src.app import app, db
 from src.models import User, InquireSession
@@ -99,18 +100,18 @@ def test_returns_docx(user_id):
     assert _paragraphs(resp) == [
         'Inquire',
         'Export Date: 2026-03-04 15:06',
-        '',
-        'You: ',
+        'You:',
         'What is on the roadmap?',
-        '',
-        'Assistant: ',
+        'Assistant:',
         'The roadmap has two items.',
-        '',
     ]
     doc = Document(io.BytesIO(resp.data))
-    assert doc.paragraphs[0].style.name == 'Title'
+    assert [p.style.name for p in doc.paragraphs] == [
+        'Title', 'Normal', 'Conversation Role', 'Normal', 'Conversation Role', 'Normal']
     bold = [r.text for p in doc.paragraphs for r in p.runs if r.bold]
-    assert bold == ['You: ', 'Assistant: ', 'roadmap']
+    assert bold == ['You:', 'Assistant:', 'roadmap']
+    assert all(r._element.rPr is None or r._element.rPr.rFonts is None for p in doc.paragraphs for r in p.runs)
+    assert doc.styles['Normal'].element.rPr.rFonts.get(qn('w:ascii')) == 'Arial'
 
 
 def test_filter_paragraph_lists_names_in_order(user_id):
@@ -148,7 +149,7 @@ def test_no_filter_paragraph_without_filters(user_id, filters):
     resp = _post(user_id, body)
     assert resp.status_code == 200
     paragraphs = _paragraphs(resp)
-    assert paragraphs[2] == ''
+    assert paragraphs[2] == 'You:'
     assert not any(p.startswith(('Tags:', 'Dates:', 'Speakers:')) for p in paragraphs)
 
 
@@ -175,17 +176,17 @@ def test_partial_turns_are_kept_and_blank_turns_skipped(user_id):
         {'role': 'user', 'content': 'And the timeline?'},
         {'role': 'assistant', 'content': 'The timeline moves to'},
     ]})
-    assert _paragraphs(resp)[3:] == [
-        'You: ', 'Summarise the budget', '',
-        'You: ', 'And the timeline?', '',
-        'Assistant: ', 'The timeline moves to', '',
+    assert _paragraphs(resp)[2:] == [
+        'You:', 'Summarise the budget',
+        'You:', 'And the timeline?',
+        'Assistant:', 'The timeline moves to',
     ]
 
 
 def test_missing_or_odd_role_is_unknown(user_id):
     resp = _post(user_id, {'messages': [{'content': 'A'}, {'role': 3, 'content': 'B'}, {'role': 'system', 'content': 'C'}]})
-    labels = _paragraphs(resp)[3::3]
-    assert labels == ['Unknown: ', 'Unknown: ', 'System: ']
+    labels = _paragraphs(resp)[2::2]
+    assert labels == ['Unknown:', 'Unknown:', 'System:']
 
 
 def test_keeps_non_ascii(user_id):
@@ -199,7 +200,7 @@ def test_keeps_non_ascii(user_id):
 
 
 def test_build_failure_500(user_id):
-    with patch('docx.Document', side_effect=RuntimeError('boom')):
+    with patch('src.services.document.Document', side_effect=RuntimeError('boom')):
         resp = _post(user_id, {'messages': _TURNS})
     assert resp.status_code == 500
     assert resp.get_json()['code'] == 'word_document_failed'

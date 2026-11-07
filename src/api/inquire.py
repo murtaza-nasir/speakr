@@ -925,19 +925,17 @@ def download_inquire_conversation():
         return jsonify(api_error('no_messages_to_download')), 400
 
     try:
-        from docx import Document
         from src.services.document import (
-            add_unicode_heading, add_unicode_paragraph, append_conversation_turn, docx_attachment_response,
+            add_document_header, append_conversation_turn, docx_attachment_response, new_document,
         )
         from src.utils.timezones import now_local
 
-        doc = Document()
-        add_unicode_heading(doc, 'Inquire', 0)
-        add_unicode_paragraph(doc, f'Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}')
+        metadata = [f'Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}']
         filter_line = _inquire_filter_line(data.get('filters'))
         if filter_line:
-            add_unicode_paragraph(doc, filter_line)
-        doc.add_paragraph('')  # Empty line
+            metadata.append(filter_line)
+        doc = new_document()
+        add_document_header(doc, 'Inquire', metadata)
 
         for role, content in turns:
             append_conversation_turn(doc, role, content)

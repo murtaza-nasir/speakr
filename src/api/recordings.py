@@ -51,7 +51,7 @@ from src.services.speaker import (
 # Incognito mode - disabled by default, enable via environment variable
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 from src.services.document import (
-    add_unicode_heading, add_unicode_paragraph, append_conversation_turn, docx_attachment_response,
+    add_document_header, append_conversation_turn, docx_attachment_response, new_document,
     process_markdown_to_docx,
 )
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
@@ -306,7 +306,6 @@ def download_transcript_with_template(recording_id):
 def download_summary_word(recording_id):
     """Download recording summary as a Word document."""
     try:
-        from docx import Document
         import re
 
         recording = db.session.get(Recording, recording_id)
@@ -316,25 +315,19 @@ def download_summary_word(recording_id):
         if not recording.summary:
             return jsonify(api_error('no_summary')), 400
 
-        # Create Word document
-        doc = Document()
-
-        # Add title
-        title_text = f'Summary: {recording.title or "Untitled Recording"}'
-        add_unicode_heading(doc, title_text, 0)
-
-        # Add metadata
+        # Title and metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
-        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
+        metadata = [f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}']
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
+            metadata.append(f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
-            add_unicode_paragraph(doc, f'Participants: {recording.participants}')
+            metadata.append(f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
         if visible_tags:
             tags_str = ', '.join([tag.name for tag in visible_tags])
-            add_unicode_paragraph(doc, f'Tags: {tags_str}')
-        doc.add_paragraph('')  # Empty line
+            metadata.append(f'Tags: {tags_str}')
+        doc = new_document()
+        add_document_header(doc, f'Summary: {recording.title or "Untitled Recording"}', metadata)
 
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.summary)
@@ -357,7 +350,6 @@ def download_summary_word(recording_id):
 def download_chat_word(recording_id):
     """Download chat conversation as a Word document."""
     try:
-        from docx import Document
         import re
 
         recording = db.session.get(Recording, recording_id)
@@ -373,18 +365,13 @@ def download_chat_word(recording_id):
         if not messages:
             return jsonify(api_error('no_messages_to_download')), 400
 
-        # Create Word document
-        doc = Document()
-
-        # Add title
-        title_text = f'Chat Conversation: {recording.title or "Untitled Recording"}'
-        add_unicode_heading(doc, title_text, 0)
-
-        # Add metadata
+        # Title and metadata
         from src.utils.timezones import to_user_local, now_local, user_timezone  # owner's local time (#412)
-        add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date or recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
-        add_unicode_paragraph(doc, f'Chat Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}')
-        doc.add_paragraph('')  # Empty line
+        doc = new_document()
+        add_document_header(doc, f'Chat Conversation: {recording.title or "Untitled Recording"}', [
+            f'Recording Date: {to_user_local(recording.meeting_date or recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}',
+            f'Chat Export Date: {now_local(user_timezone(current_user)).strftime("%Y-%m-%d %H:%M")}',
+        ])
 
         # Add chat messages
         for message in messages:
@@ -413,7 +400,6 @@ def download_chat_word(recording_id):
 def download_notes_word(recording_id):
     """Download recording notes as a Word document."""
     try:
-        from docx import Document
         import re
 
         recording = db.session.get(Recording, recording_id)
@@ -423,25 +409,19 @@ def download_notes_word(recording_id):
         if not recording.notes:
             return jsonify(api_error('no_notes')), 400
 
-        # Create Word document
-        doc = Document()
-
-        # Add title
-        title_text = f'Notes: {recording.title or "Untitled Recording"}'
-        add_unicode_heading(doc, title_text, 0)
-
-        # Add metadata
+        # Title and metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
-        add_unicode_paragraph(doc, f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}')
+        metadata = [f'Uploaded: {to_user_local(recording.created_at, recording.owner).strftime("%Y-%m-%d %H:%M")}']
         if recording.meeting_date:
-            add_unicode_paragraph(doc, f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
+            metadata.append(f'Recording Date: {to_user_local(recording.meeting_date, recording.owner).strftime("%Y-%m-%d")}')
         if recording.participants:
-            add_unicode_paragraph(doc, f'Participants: {recording.participants}')
+            metadata.append(f'Participants: {recording.participants}')
         visible_tags = recording.get_visible_tags(current_user)
         if visible_tags:
             tags_str = ', '.join([tag.name for tag in visible_tags])
-            add_unicode_paragraph(doc, f'Tags: {tags_str}')
-        doc.add_paragraph('')  # Empty line
+            metadata.append(f'Tags: {tags_str}')
+        doc = new_document()
+        add_document_header(doc, f'Notes: {recording.title or "Untitled Recording"}', metadata)
 
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.notes)
