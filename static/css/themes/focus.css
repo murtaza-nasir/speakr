@@ -12,6 +12,11 @@
  * file never sets. It supplies the neutrals, shapes, type and status tones.
  * The --f-* names below are this theme's own tokens.
  *
+ * Legacy markup still carries Tailwind utilities and inline styles for
+ * backgrounds, borders and colours. The few `!important` declarations below
+ * are the ones that must beat them; removing all of them changed the main
+ * views visibly, so they stay.
+ *
  * No font file is bundled. The reading face is a system serif stack ordered
  * by quality of the face and by how widely it is installed.
  * ========================================================================= */
