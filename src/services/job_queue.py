@@ -75,25 +75,12 @@ def queue_name_for(job_type: str) -> str:
     return 'transcription'
 
 
-def is_index_job(job_type: str) -> bool:
-    """Whether ``job_type`` builds a recording's Inquire chunks (embeddings).
-
-    Centralises the "is this an index job" decision so callers do not need to
-    import the ``INDEX_JOBS`` list directly. Mirrors ``is_background``.
-
-    Derived from ``QUEUES['index']`` (which references ``INDEX_JOBS``) so the
-    predicate and the queue membership accessor can never drift apart.
-    """
-    return job_type in QUEUES.get('index', [])
-
-
 def jobs_for_queue(queue_name: str) -> list:
-    """Job types that run on the named queue.
+    """A copy of the job types that run on the named queue.
 
-    Centralises queue membership lookup so callers do not need to index the
-    ``QUEUES`` mapping directly.
+    Raises KeyError for an unknown queue name.
     """
-    return list(QUEUES.get(queue_name, []))
+    return list(QUEUES[queue_name])
 
 
 class FairJobQueue:
@@ -351,10 +338,6 @@ class FairJobQueue:
     def is_background(self, job_type: str) -> bool:
         """Whether ``job_type`` is a background job (see module helper)."""
         return is_background(job_type)
-
-    def is_index_job(self, job_type: str) -> bool:
-        """Whether ``job_type`` is an index (Inquire chunks) job."""
-        return is_index_job(job_type)
 
     def jobs_for_queue(self, queue_name: str) -> list:
         """Job types that run on the named queue (see module helper)."""

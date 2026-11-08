@@ -28,7 +28,6 @@ from src.services.job_queue import (
     TRANSCRIPTION_JOBS,
     SUMMARY_JOBS,
     MAX_RETRIES,
-    is_index_job,
     jobs_for_queue,
 )
 
@@ -872,20 +871,17 @@ def test_a_failed_summary_job_keeps_the_transcript(track):
 
 
 # --------------------------------------------------------------------------
-# Candidate K: index-job predicate + queue membership accessor
+# Queue membership accessor
 # --------------------------------------------------------------------------
 
-def test_is_index_job_predicate():
-    assert is_index_job('index_chunks') is True
-    assert is_index_job('transcribe') is False
-    assert is_index_job('summarize') is False
-    assert is_index_job('') is False
-
-
-def test_jobs_for_queue_returns_known_and_unknown():
+def test_jobs_for_queue_lists_the_job_types_of_a_queue():
     assert jobs_for_queue('index') == ['index_chunks']
     assert jobs_for_queue('transcription') == TRANSCRIPTION_JOBS
-    assert jobs_for_queue('nope') == []
+
+
+def test_jobs_for_queue_refuses_an_unknown_queue():
+    with pytest.raises(KeyError):
+        jobs_for_queue('nope')
 
 
 def test_jobs_for_queue_returns_a_copy():
@@ -894,7 +890,5 @@ def test_jobs_for_queue_returns_a_copy():
     assert jobs_for_queue('index') == ['index_chunks']
 
 
-def test_fair_job_queue_methods_delegate():
-    assert job_queue.is_index_job('index_chunks') is True
-    assert job_queue.is_index_job('transcribe') is False
+def test_the_queue_method_delegates():
     assert job_queue.jobs_for_queue('index') == ['index_chunks']
