@@ -384,12 +384,16 @@ def download_chat_word(recording_id):
                 base_url=base_url,
             )
 
-        # Create safe filename
+        # Create safe filename; "scope": "response" (one answer and its
+        # question) adds -response. Any other value, a non-string included,
+        # names the whole chat.
+        scope = data.get('scope')
+        suffix = '-response' if isinstance(scope, str) and scope == 'response' else ''
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
-        filename = f'chat-{safe_title}.docx' if safe_title else f'chat-recording-{recording_id}.docx'
+        filename = f'chat-{safe_title}{suffix}.docx' if safe_title else f'chat-recording-{recording_id}{suffix}.docx'
 
-        return docx_attachment_response(doc, filename, f'download-{recording_id}.docx')
+        return docx_attachment_response(doc, filename, f'download-{recording_id}{suffix}.docx')
 
     except Exception as e:
         current_app.logger.error(f"Error generating chat Word document: {e}")

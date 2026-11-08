@@ -4,6 +4,7 @@
  */
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
+import { responseWithQuestion } from '../utils/chat-turn.js';
 
 export function useChat(state, utils) {
     const {
@@ -362,7 +363,21 @@ export function useChat(state, utils) {
             showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
+        await postChatDownload(chatMessages.value);
+    };
 
+    // One response and the question before it, as chat-<title>-response.docx.
+    const downloadChatResponse = async (index) => {
+        const messages = responseWithQuestion(chatMessages.value, index);
+        if (!selectedRecording.value || messages.length === 0) {
+            showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
+            return;
+        }
+        await postChatDownload(messages, 'response');
+    };
+
+    // scope 'response' marks a one-response download; it only changes the filename.
+    const postChatDownload = async (messages, scope) => {
         try {
             const csrfTokenValue = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             const response = await fetch(`/recording/${selectedRecording.value.id}/download/chat`, {
@@ -371,9 +386,7 @@ export function useChat(state, utils) {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfTokenValue
                 },
-                body: JSON.stringify({
-                    messages: chatMessages.value
-                })
+                body: JSON.stringify(scope ? { messages, scope } : { messages })
             });
 
             if (!response.ok) {
@@ -389,7 +402,7 @@ export function useChat(state, utils) {
             a.href = url;
 
             const contentDisposition = response.headers.get('Content-Disposition');
-            a.download = filenameFromContentDisposition(contentDisposition, 'chat.docx');
+            a.download = filenameFromContentDisposition(contentDisposition, scope ? 'chat-response.docx' : 'chat.docx');
 
             document.body.appendChild(a);
             a.click();
@@ -466,6 +479,7 @@ export function useChat(state, utils) {
         handleChatKeydown,
         clearChat,
         downloadChat,
+        downloadChatResponse,
         copyMessage,
         animateCopyButton,
         fallbackCopyTextToClipboard

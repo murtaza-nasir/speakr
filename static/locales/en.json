@@ -893,6 +893,7 @@
     "downloadAudio": "Download audio",
     "downloadChat": "Download chat as Word document",
     "downloadNotes": "Download Notes as Word Document",
+    "downloadResponse": "Download response as Word document",
     "downloadSummary": "Download Summary as Word Document",
     "editNotes": "Edit notes",
     "editSetting": "Edit Setting",

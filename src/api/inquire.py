@@ -992,6 +992,16 @@ def _inquire_download_turns(messages):
     return turns
 
 
+def _response_scope(data):
+    """True when the body asks for one answer ("scope": "response").
+
+    The scope only chooses the filename. Any other value, a non-string
+    included, counts as the whole conversation.
+    """
+    scope = data.get('scope')
+    return isinstance(scope, str) and scope == 'response'
+
+
 @inquire_bp.route('/api/inquire/download', methods=['POST'])
 @login_required
 def download_inquire_conversation():
@@ -1025,7 +1035,8 @@ def download_inquire_conversation():
         for role, content, sources in turns:
             append_conversation_turn(doc, role, content, base_url=base_url, sources=sources)
 
-        return docx_attachment_response(doc, 'inquire.docx', 'inquire.docx')
+        filename = 'inquire-response.docx' if _response_scope(data) else 'inquire.docx'
+        return docx_attachment_response(doc, filename, filename)
 
     except Exception as e:
         current_app.logger.error(f"Error generating inquire Word document: {e}")

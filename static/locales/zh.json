@@ -892,6 +892,7 @@
     "downloadAudio": "下载音频",
     "downloadChat": "下载聊天记录为Word文档",
     "downloadNotes": "下载笔记为Word文档",
+    "downloadResponse": "下载此回复为Word文档",
     "downloadSummary": "下载摘要为Word文档",
     "editNotes": "编辑笔记",
     "editSetting": "编辑设置",

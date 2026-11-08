@@ -261,6 +261,8 @@ Your entire chat conversation can be exported for future reference or sharing. T
 
 **Download as Word Document**: The download button exports your complete chat history as a formatted Microsoft Word (.docx) file. This includes all questions and responses in a clean, professional format that's easy to share with group members or include in reports. The file is automatically named with the recording title and export date, making it easy to organize multiple chat exports.
 
+**Download one response**: Each response has a download button beside its copy button. With it you save that response and the question before it as a Word file. The file name is that of the chat download with `-response` added, such as `chat-Weekly-Sync-response.docx`. When the response has model reasoning, the reasoning is included, as in the chat download.
+
 These export features are particularly useful when you've used the chat to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
 
 ## Adding and Managing Notes

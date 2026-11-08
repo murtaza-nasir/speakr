@@ -560,6 +560,25 @@
                                      :class="message.role === 'user' ? 'prose-invert' : ''"
                                      v-html="message.html">
                                 </div>
+                                <!-- Copy and Download for one finished answer, below
+                                     its Sources list. Download saves this answer and
+                                     the question before it. -->
+                                <div v-if="showAnswerActions(message, index)"
+                                     class="inquire-answer-actions flex items-center justify-end"
+                                     style="gap: 2px; margin-top: var(--sp-1);">
+                                    <button @click="copyInquireAnswer(message, $event)"
+                                            class="btn btn--icon btn--sm"
+                                            :title="t('buttons.copyMessage')"
+                                            :aria-label="t('buttons.copyMessage')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button @click="downloadInquireResponse(index)"
+                                            class="btn btn--icon btn--sm"
+                                            :title="t('buttons.downloadResponse')"
+                                            :aria-label="t('buttons.downloadResponse')">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -752,6 +771,8 @@
             await initializeI18n();
             // Notifications for the shared header's user menu.
             const { useNotifications } = await import('/static/js/modules/composables/notifications.js');
+            const { showToast } = await import('/static/js/modules/utils/toast.js');
+            const { responseWithQuestion } = await import('/static/js/modules/utils/chat-turn.js');
             
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
             const i18nInstance = window.i18n;
@@ -846,6 +867,12 @@
                     const hasTurnContent = (message) => typeof message.content === 'string' && message.content !== '';
 
                     const canDownloadInquire = computed(() => inquireChatMessages.value.some(hasTurnContent));
+
+                    // An answer streams while the request runs and it is the
+                    // last message; its Copy and Download appear after that.
+                    const showAnswerActions = (message, index) => message.role === 'assistant' &&
+                        hasTurnContent(message) &&
+                        !(isInquireChatLoading.value && index === inquireChatMessages.value.length - 1);
 
                     // Short readout of the active filters for the
                     // conversation header, in the wording of the Active
@@ -1245,10 +1272,17 @@
                         ? message.sources.map(s => ({ title: s.title, url: '/recordings/' + s.recording_id }))
                         : undefined;
 
-                    const downloadInquireConversation = async () => {
-                        const messages = inquireChatMessages.value
-                            .filter(hasTurnContent)
-                            .map(m => ({ role: m.role, content: m.content, sources: downloadSources(m) }));
+                    const downloadTurn = (m) => ({ role: m.role, content: m.content, sources: downloadSources(m) });
+
+                    const downloadInquireConversation = () => postInquireDownload(
+                        inquireChatMessages.value.filter(hasTurnContent).map(downloadTurn));
+
+                    // One answer and the question before it, as inquire-response.docx.
+                    const downloadInquireResponse = (index) => postInquireDownload(
+                        responseWithQuestion(inquireChatMessages.value, index).map(downloadTurn), 'response');
+
+                    // scope 'response' marks a one-answer download; it only changes the filename.
+                    const postInquireDownload = async (messages, scope) => {
                         if (messages.length === 0) return;
 
                         const tFailed = t('chat.downloadFailed');
@@ -1260,7 +1294,7 @@
                                     'Content-Type': 'application/json',
                                     'X-CSRFToken': csrfToken.value
                                 },
-                                body: JSON.stringify({ messages, filters: inquireDownloadFilters() })
+                                body: JSON.stringify({ messages, filters: inquireDownloadFilters(), scope })
                             });
 
                             if (!response.ok) {
@@ -1274,7 +1308,7 @@
                             const a = document.createElement('a');
                             a.style.display = 'none';
                             a.href = url;
-                            a.download = 'inquire.docx';
+                            a.download = scope === 'response' ? 'inquire-response.docx' : 'inquire.docx';
                             document.body.appendChild(a);
                             a.click();
                             window.URL.revokeObjectURL(url);
@@ -1282,6 +1316,62 @@
                         } catch (error) {
                             console.error('Inquire download failed:', error);
                             setGlobalError(failedMessage);
+                        }
+                    };
+
+                    // Copy an answer's markdown, with the feedback of the
+                    // recording chat's Copy button (copyMessage in chat.js):
+                    // a toast and a check mark on the button for 1.5 s.
+                    const flashCopied = (button) => {
+                        button.classList.add('copy-success');
+                        const originalContent = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-check"></i>';
+                        setTimeout(() => {
+                            button.classList.remove('copy-success');
+                            button.innerHTML = originalContent;
+                        }, 1500);
+                    };
+
+                    const fallbackCopy = (text, button) => {
+                        try {
+                            const textArea = document.createElement('textarea');
+                            textArea.value = text;
+                            textArea.style.position = 'fixed';
+                            textArea.style.left = '-999999px';
+                            textArea.style.top = '-999999px';
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            const successful = document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            if (successful) {
+                                showToast(t('messages.copiedSuccessfully'));
+                                flashCopied(button);
+                            } else {
+                                showToast(t('messages.copyNotSupported'), 'fa-exclamation-circle');
+                            }
+                        } catch (err) {
+                            console.error('Fallback copy failed:', err);
+                            showToast(t('messages.copyFailed') + ': ' + err.message, 'fa-exclamation-circle');
+                        }
+                    };
+
+                    const copyInquireAnswer = (message, event) => {
+                        const button = event.currentTarget;
+                        const text = message.content;
+                        if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(text)
+                                .then(() => {
+                                    showToast(t('messages.copiedSuccessfully'));
+                                    flashCopied(button);
+                                })
+                                .catch(err => {
+                                    console.error('Copy failed:', err);
+                                    showToast(t('messages.copyFailed') + ': ' + err.message, 'fa-exclamation-circle');
+                                    fallbackCopy(text, button);
+                                });
+                        } else {
+                            fallbackCopy(text, button);
                         }
                     };
 
@@ -1503,6 +1593,9 @@
                         handleInquireChatKeydown,
                         clearInquireFilters,
                         downloadInquireConversation,
+                        downloadInquireResponse,
+                        showAnswerActions,
+                        copyInquireAnswer,
                         loadAvailableFilters,
                         setGlobalError,
                         formatDate,

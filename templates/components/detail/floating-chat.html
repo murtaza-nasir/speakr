@@ -143,14 +143,27 @@
                 <div v-for="(message, index) in chatMessages" :key="index"
                      :class="['message relative group',
                               message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
-                              message.role === 'assistant' ? 'pr-10' : '']">
-                    <button v-if="message.role === 'assistant'"
-                            @click="copyMessage(message.content, $event)"
-                            class="btn btn--icon btn--sm absolute"
-                            style="top: var(--sp-2); right: var(--sp-2);"
-                            :title="t('buttons.copyMessage')">
-                        <i class="fas fa-copy"></i>
-                    </button>
+                              message.role === 'assistant' ? 'pr-20' : '']">
+                    <!-- Copy and Download (this response and its question).
+                         pr-20 keeps the text clear of the two buttons, which are
+                         36px wide each below 768px. -->
+                    <div v-if="message.role === 'assistant'"
+                         class="absolute flex items-center"
+                         style="top: var(--sp-2); right: var(--sp-1); gap: 2px;">
+                        <button @click="copyMessage(message.content, $event)"
+                                class="btn btn--icon btn--sm"
+                                :title="t('buttons.copyMessage')"
+                                :aria-label="t('buttons.copyMessage')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button v-if="message.content"
+                                @click="downloadChatResponse(index)"
+                                class="btn btn--icon btn--sm"
+                                :title="t('buttons.downloadResponse')"
+                                :aria-label="t('buttons.downloadResponse')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
                     <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
                         <button @click="message.thinkingExpanded = !message.thinkingExpanded"
                                 class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
