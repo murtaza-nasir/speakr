@@ -124,11 +124,11 @@ def test_an_upload_that_fits_is_accepted(world):
 def _overlapping_uploads(u, size):
     """Two uploads by u, both past the early check before either is stored (#509)."""
     import threading
-    import src.api.recordings as rec_module
+    import src.services.recording_ingestion as ingestion
     barrier = threading.Barrier(2, timeout=20)
     results = []
     with _upload_mocks(_staging()) as (storage, enqueue):
-        convert = rec_module.convert_if_needed     # the mock _upload_mocks installed
+        convert = ingestion.convert_if_needed      # the mock _upload_mocks installed
 
         def _convert_then_wait(*args, **kwargs):
             result = convert(*args, **kwargs)
@@ -141,7 +141,7 @@ def _overlapping_uploads(u, size):
             resp = _do_upload(client, filename=name, payload=os.urandom(size))
             results.append((resp.status_code, resp.get_json()))
 
-        with patch("src.api.recordings.convert_if_needed", side_effect=_convert_then_wait):
+        with patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert_then_wait):
             threads = [threading.Thread(target=_one, args=(n,)) for n in ("a.mp3", "b.mp3")]
             for t in threads:
                 t.start()

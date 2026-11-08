@@ -13,7 +13,7 @@ import subprocess
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from src.services.llm_settings import get_temperature
-from src.services.job_queue import job_queue, CONVERT_WORKERS
+from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -35,13 +35,9 @@ from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZ
 # existing references in this file keep working.
 from src.services.transcription_defaults import (
     resolve_transcription_model as _resolve_transcription_model,
-    resolve_transcription_params,
 )
 from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
-from src.utils.ffmpeg_utils import (
-    FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError,
-)
 from src.utils.titles import resolve_upload_title, upload_title_source
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
@@ -60,13 +56,7 @@ from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.filenames import shorten_filename
 from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
-from src.utils.ffprobe import (
-    get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError,
-    has_audio_stream, probe_rejected_input,
-)
-from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
-from src.utils.file_hash import compute_file_sha256
 from src.services.recording_ingestion import ingest
 from src.utils.localization import api_error, format_number, translate
 
@@ -94,8 +84,6 @@ ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() =
 DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
 USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
-VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
@@ -2024,21 +2012,6 @@ def upload_file():
         uploaded_file=request.files.get('file'),
         form=request.form,
     )
-
-
-def _discard_staging(path):
-    """Remove an upload's staging copy when the upload fails.
-
-    A file handed to storage has already left the staging directory, so
-    after that point this finds nothing to remove.
-    """
-    if not path:
-        return
-    try:
-        if os.path.exists(path):
-            os.remove(path)
-    except OSError as e:
-        current_app.logger.warning(f"Could not remove staging file {path}: {e}")
 
 
 def ingest_uploaded_recording(

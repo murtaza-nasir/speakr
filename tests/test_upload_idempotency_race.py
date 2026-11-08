@@ -49,7 +49,7 @@ def test_a_retry_that_overlaps_the_first_upload_replays_it(world):
         return CODEC
 
     with _no_media_tools() as enqueue, \
-            patch("src.api.recordings.get_codec_info", side_effect=_codec), \
+            patch("src.services.recording_ingestion.get_codec_info", side_effect=_codec), \
             patch.object(StorageService, "upload_local_file", autospec=True, side_effect=store) as stored:
         loser = _upload(world, idempotency_key="msg-race")
         assert enqueue.call_count == 1 and stored.call_count == 1

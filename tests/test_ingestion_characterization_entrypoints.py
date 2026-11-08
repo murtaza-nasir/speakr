@@ -130,8 +130,8 @@ def test_api_v1_refusals(world, media):
 def test_api_v1_on_conflict_race(world, media):
     """A retry with the same key commits first while this upload is in flight (#476)."""
     token = world.token()
-    from src.api import recordings as rec_api
-    real_probe = rec_api.get_codec_info
+    from src.services import recording_ingestion as ingestion
+    real_probe = ingestion.get_codec_info
     winner = []
 
     def _probe(*args, **kwargs):
@@ -141,7 +141,7 @@ def test_api_v1_on_conflict_race(world, media):
             winner[0] = _api(world, token, media["wav"], "a.wav", {"idempotency_key": "race"})
         return real_probe(*args, **kwargs)
 
-    with knobs(), patch("src.api.recordings.get_codec_info", side_effect=_probe):
+    with knobs(), patch("src.services.recording_ingestion.get_codec_info", side_effect=_probe):
         loser = _api(world, token, media["wav"], "a.wav", {"idempotency_key": "race"})
     check("api/on-conflict-race", world.observe(winner[0], loser))
 

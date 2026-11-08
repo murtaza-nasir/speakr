@@ -125,11 +125,11 @@ def _upload_mocks(staging, durations=None):
         return durations.pop(0) if durations else 60.0
 
     with patch("src.api.recordings.get_storage_service", return_value=storage), \
-         patch("src.api.recordings.get_codec_info",
+         patch("src.services.recording_ingestion.get_codec_info",
                return_value={"has_video": False, "audio_codec": "mp3", "duration": 60.0}), \
-         patch("src.api.recordings.convert_if_needed", side_effect=_convert), \
-         patch("src.api.recordings.get_duration", side_effect=_duration), \
-         patch("src.api.recordings.get_creation_date", return_value=None), \
+         patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert), \
+         patch("src.services.recording_ingestion.get_duration", side_effect=_duration), \
+         patch("src.services.recording_ingestion.get_creation_date", return_value=None), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as webhook, \
          patch("src.services.job_queue.job_queue.enqueue", return_value=1) as enqueue:
         yield storage, enqueue, webhook
@@ -460,19 +460,19 @@ def test_audio_parts_skip_conversion_but_video_parts_do_not(ctx):
         return {"has_video": video, "audio_codec": "aac", "video_codec": "h264" if video else None, "duration": 60.0}
 
     with _upload_mocks(ctx):
-        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
-             patch("src.api.recordings.get_codec_info", return_value=_probe(False)):
+        with patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.services.recording_ingestion.get_codec_info", return_value=_probe(False)):
             _part(c, _group(), 0, 2, name="long.m4a")
         assert convert.call_count == 0
 
-        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
-             patch("src.api.recordings.get_codec_info", return_value=_probe(True)), \
-             patch("src.api.recordings.VIDEO_RETENTION", False):
+        with patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.services.recording_ingestion.get_codec_info", return_value=_probe(True)), \
+             patch("src.services.recording_ingestion.VIDEO_RETENTION", False):
             _part(c, _group(), 0, 2, name="talk.mp4")
         assert convert.call_count == 1
 
-        with patch("src.api.recordings.convert_if_needed", side_effect=_convert) as convert, \
-             patch("src.api.recordings.get_codec_info", return_value=_probe(False)):
+        with patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert) as convert, \
+             patch("src.services.recording_ingestion.get_codec_info", return_value=_probe(False)):
             data = {"file": (io.BytesIO(os.urandom(512)), "single.m4a")}
             r = c.post("/upload", data=data, content_type="multipart/form-data")
         assert r.status_code == 202 and convert.call_count == 1

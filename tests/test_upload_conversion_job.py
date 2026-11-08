@@ -44,7 +44,7 @@ def _webm(tmp_path):
 @pytest.fixture(autouse=True)
 def _convert_workers():
     # The test run has no workers; the jobs are run by hand below.
-    with patch("src.api.recordings.CONVERT_WORKERS", 1):
+    with patch("src.services.recording_ingestion.CONVERT_WORKERS", 1):
         yield
 
 
@@ -267,7 +267,7 @@ def test_the_job_list_shows_the_conversion_in_its_own_queue(user, tmp_path):
 
 
 def test_without_convert_workers_the_upload_converts_the_file_itself(user, tmp_path):
-    with app.app_context(), patch("src.api.recordings.CONVERT_WORKERS", 0):
+    with app.app_context(), patch("src.services.recording_ingestion.CONVERT_WORKERS", 0):
         res = _upload(user, _webm(tmp_path), "meeting.webm")
 
         rid = res.get_json()["id"]

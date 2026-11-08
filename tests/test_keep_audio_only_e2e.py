@@ -53,8 +53,8 @@ def test_upload_with_keep_audio_only_persists_flag_on_recording():
 
         # Mock the codec probe to claim "video file" without invoking ffprobe.
         # Mock convert_if_needed so we don't actually shell out to ffmpeg.
-        with patch('src.api.recordings.get_codec_info') as mock_probe, \
-             patch('src.api.recordings.convert_if_needed') as mock_convert, \
+        with patch('src.services.recording_ingestion.get_codec_info') as mock_probe, \
+             patch('src.services.recording_ingestion.convert_if_needed') as mock_convert, \
              patch('src.services.job_queue.job_queue.enqueue', return_value=1):
             mock_probe.return_value = {
                 'has_video': True,
@@ -109,12 +109,12 @@ def test_upload_without_keep_audio_only_leaves_flag_off_when_video_retention_on(
     the server and no form-field override, the flag stays False so the
     processing pipeline keeps the video stream."""
     with app.app_context(), \
-         patch('src.api.recordings.VIDEO_RETENTION', True):
+         patch('src.services.recording_ingestion.VIDEO_RETENTION', True):
         user = _setup_user('keep_e2e_off')
         client = app.test_client()
         _login(client, user)
 
-        with patch('src.api.recordings.get_codec_info') as mock_probe, \
+        with patch('src.services.recording_ingestion.get_codec_info') as mock_probe, \
              patch('src.services.job_queue.job_queue.enqueue', return_value=1):
             mock_probe.return_value = {
                 'has_video': True,

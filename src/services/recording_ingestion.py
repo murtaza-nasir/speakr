@@ -72,14 +72,44 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from src.database import db
-from src.models import Folder, GroupMembership, ProcessingJob, Recording, RecordingTag, Tag
-from src.services.job_queue import job_queue
+from src.models import (
+    Folder, GroupMembership, ProcessingJob, Recording, RecordingTag, SystemSetting, Tag,
+)
+from src.services.job_queue import CONVERT_WORKERS, job_queue
 from src.services.transcription_defaults import resolve_transcription_params
+from src.utils.audio_conversion import convert_if_needed
 from src.utils.dates import to_utc_naive
+from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
+from src.utils.ffprobe import (
+    FFProbeError, get_codec_info, get_creation_date, get_duration, has_audio_stream,
+    probe_rejected_input, try_repair_malformed_webm,
+)
 from src.utils.filenames import shorten_filename
 from src.utils.localization import api_error, format_number, translate
 from src.utils.mime import served_media_mime
 from src.utils.titles import resolve_upload_title, upload_title_source
+
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
+
+# Extensions taken as video before (or without) a probe: the size limit
+# before the upload is saved, and the fallback when the probe fails.
+VIDEO_EXTENSIONS = frozenset({'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'})
+
+
+def _discard_staging(path):
+    """Remove an upload's staging copy when the upload fails.
+
+    A file handed to storage has already left the staging directory, so
+    after that point this finds nothing to remove.
+    """
+    if not path:
+        return
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        current_app.logger.warning(f"Could not remove staging file {path}: {e}")
 
 
 class DuplicateLookup(NamedTuple):
@@ -156,9 +186,6 @@ def handle_duplicate_replay(existing, *, owner, filepath, file_hash, success_sta
     Removes the retry's staging copy and queues the transcription again if
     the recording is still waiting without a job. Returns the response.
     """
-    # Deferred: src.api.recordings imports this module.
-    from src.api.recordings import _discard_staging
-
     # The existing recording already owns the durable media object, so
     # the retry's staging copy is never needed for job recovery. Remove
     # it before enqueueing to avoid leaking one full file each time a
@@ -214,10 +241,9 @@ def resolve_size_policy(*, file, form, original_filename, enforce_upload_limits)
     and whether chunking lifts the per-type limit. Raises nothing itself:
     :func:`enforce_size_policy` refuses an upload over the limits.
     """
-    # Read from src.api.recordings at call time: tests patch these, and init sets chunking_service.
-    from src.api.recordings import (
-        SystemSetting, USE_NEW_TRANSCRIPTION_ARCHITECTURE, VIDEO_RETENTION, chunking_service,
-    )
+    # Read from src.api.recordings at call time: its routes use
+    # USE_NEW_TRANSCRIPTION_ARCHITECTURE too, and init sets chunking_service.
+    from src.api.recordings import USE_NEW_TRANSCRIPTION_ARCHITECTURE, chunking_service
 
     # Per-upload override for VIDEO_RETENTION. When True, the
     # processing pipeline extracts audio and discards the video stream
@@ -233,9 +259,8 @@ def resolve_size_policy(*, file, form, original_filename, enforce_upload_limits)
     # size-gate can pick the right limit before reading any bytes.
     # ffprobe runs later and is authoritative for the keep-video
     # decision; the extension list here is a pre-save heuristic.
-    _VIDEO_EXTS = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
     _ext_lower = os.path.splitext(original_filename)[1].lower()
-    is_likely_video_by_ext = _ext_lower in _VIDEO_EXTS
+    is_likely_video_by_ext = _ext_lower in VIDEO_EXTENSIONS
 
     # Get original file size
     file.seek(0, os.SEEK_END)
@@ -340,9 +365,6 @@ def recheck_size_after_probe(*, codec_info, has_video, original_filename, is_lik
     regular limit. too_large is True where the upload is over it; the caller
     then binds the returned limits and raises RequestEntityTooLarge.
     """
-    # Read from src.api.recordings at call time: tests patch these there.
-    from src.api.recordings import VIDEO_PASSTHROUGH_ASR, VIDEO_RETENTION
-
     # The extension is only a pre-probe size hint. Once ffprobe proves the
     # upload is audio-only, do not let a video-looking filename grant the
     # larger video upload ceiling.
@@ -355,9 +377,8 @@ def recheck_size_after_probe(*, codec_info, has_video, original_filename, is_lik
     # A file the probe could not read, with a video extension, under
     # VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR (see has_video_after_failed_probe).
     if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
-        video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
         file_ext = os.path.splitext(original_filename)[1].lower()
-        if file_ext in video_extensions:
+        if file_ext in VIDEO_EXTENSIONS:
             # A failed probe cannot justify the larger video ceiling: an
             # arbitrary blob or audio file can also carry a video-looking
             # extension. Require positive video detection for oversized
@@ -383,9 +404,6 @@ def probe_upload(*, filepath, original_filename):
     probe_error; a .webm, .mkv or .mka whose header is not at the front is
     trimmed to it and probed again (#340).
     """
-    # Read from src.api.recordings at call time: tests patch these there.
-    from src.api.recordings import FFProbeError, get_codec_info, try_repair_malformed_webm
-
     # Probe once and use shared conversion utility
     # Scale timeout based on file size — large files (especially MP4 with moov at end) need more time
     file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
@@ -426,15 +444,11 @@ def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original
     Only under VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR. A probe that read the
     file and rejected it is not overruled. Returns has_video.
     """
-    # Read from src.api.recordings at call time: tests patch these there.
-    from src.api.recordings import VIDEO_PASSTHROUGH_ASR, VIDEO_RETENTION, probe_rejected_input
-
     # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
     # to avoid silently discarding video from files we couldn't probe
     if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
-        video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
         file_ext = os.path.splitext(original_filename)[1].lower()
-        if file_ext in video_extensions:
+        if file_ext in VIDEO_EXTENSIONS:
             if probe_error is not None and probe_rejected_input(probe_error):
                 # ffprobe read the file and could not make sense of it.
                 # Only a probe that did not finish is trusted to the
@@ -473,10 +487,8 @@ def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, orig
     a readable file with audio is left to the convert job (#543). Anything
     else has convert_in_request set: :func:`convert_upload_in_request`.
     """
-    # Read from src.api.recordings at call time: tests patch these, and init sets chunking_service.
-    from src.api.recordings import (
-        CONVERT_WORKERS, VIDEO_PASSTHROUGH_ASR, VIDEO_RETENTION, chunking_service, has_audio_stream,
-    )
+    # Read from src.api.recordings at call time: init sets it.
+    from src.api.recordings import chunking_service
 
     # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
     # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
@@ -556,11 +568,8 @@ def convert_upload_in_request(filepath, *, original_filename, codec_info,
     cannot decode the file, the staging copy is removed and error_response
     holds the answer (500, 500 or 400) for the caller to return.
     """
-    # Read from src.api.recordings at call time: tests patch these there.
-    from src.api.recordings import (
-        FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, USE_ASR_ENDPOINT, _discard_staging,
-        convert_if_needed,
-    )
+    # Read from src.api.recordings at call time: its routes use it too.
+    from src.api.recordings import USE_ASR_ENDPOINT
 
     # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
     try:
@@ -608,9 +617,6 @@ def check_extracted_audio_size(*, filepath, final_file_size, extracted_audio_lim
     Removes the staging copy and returns the 413 answer, or None when the
     file fits (or the convert job checks it later).
     """
-    # Deferred: src.api.recordings imports this module.
-    from src.api.recordings import _discard_staging
-
     # Post-extraction size guard. When the upload exceeded the regular
     # max_file_size_mb under the "audio-only video" exception, the
     # stored file (after audio extraction) must still fit the regular
@@ -715,8 +721,6 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
     IntegrityError from the commit propagates to the caller's handler
     (:func:`handle_unique_conflict`).
     """
-    # Deferred: src.api.recordings imports this module.
-    from src.api.recordings import _discard_staging
     from src.services.storage_quota import StorageQuotaExceeded
 
     # The early check above ran before the conversion, which another
@@ -802,9 +806,6 @@ def handle_unique_conflict(error, *, filepath, on_conflict):
     removes the staging copy, then returns on_conflict()'s response, or the
     500 unexpected_error_upload answer when there is none.
     """
-    # Deferred: src.api.recordings imports this module.
-    from src.api.recordings import _discard_staging
-
     # Another upload committed the same unique key first (#476): keep
     # nothing of this one and let the caller answer with that recording.
     db.session.rollback()
@@ -837,7 +838,8 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
     transcription itself; otherwise the transcribe job is queued. Returns
     nothing.
     """
-    # Read from src.api.recordings at call time: tests patch it there.
+    # Read from src.api.recordings at call time: its routes use it too, and
+    # tests replace it there.
     from src.api.recordings import job_queue
 
     # --- Queue transcription job ---
@@ -895,11 +897,11 @@ def ingest(
     with the 500 unexpected_error_upload answer, each after removing the
     staging copy in ``filepath``.
     """
-    # Read from src.api.recordings at call time: tests patch these, init sets
-    # chunking_service, and the join path and _discard_staging live there.
+    # Read from src.api.recordings at call time: its routes use USE_ASR_ENDPOINT
+    # and get_storage_service too, init sets chunking_service, and the join
+    # path lives there.
     from src.api.recordings import (
-        USE_ASR_ENDPOINT, _discard_staging, _ingest_join_part, chunking_service, get_creation_date,
-        get_duration, get_storage_service, resolve_transcription_params,
+        USE_ASR_ENDPOINT, _ingest_join_part, chunking_service, get_storage_service,
     )
 
     filepath = None
@@ -999,7 +1001,6 @@ def ingest(
             )
 
         # --- Convert files only when chunking is needed ---
-        filename_lower = original_filename.lower()
 
         # Check if chunking will be needed for this file (uses connector-aware logic)
         needs_chunking_for_processing = bool(

@@ -252,7 +252,7 @@ def _policy(filename="talk.wav", size=3 * MB, form=None, enforce_upload_limits=T
     upload.seek(5)
     with patch("src.api.recordings.SystemSetting.get_setting",
                side_effect=_settings(**(settings or {}))), \
-            patch("src.api.recordings.VIDEO_RETENTION", retention), \
+            patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
             patch("src.api.recordings.USE_NEW_TRANSCRIPTION_ARCHITECTURE", False), \
             patch("src.api.recordings.chunking_service", MagicMock() if chunking else None), \
             patch("src.audio_chunking.get_effective_chunking_config", return_value=chunking), \
@@ -362,8 +362,8 @@ def test_enforce_size_policy_applies_the_request_ceiling_whatever_the_chunking()
 
 def _recheck(codec_info, has_video=False, filename="talk.mp4", size=11 * MB, enforce=True,
              retention=False, passthrough=False):
-    with patch("src.api.recordings.VIDEO_RETENTION", retention), \
-            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough):
+    with patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
+            patch("src.services.recording_ingestion.VIDEO_PASSTHROUGH_ASR", passthrough):
         return recheck_size_after_probe(
             codec_info=codec_info, has_video=has_video, original_filename=filename,
             is_likely_video_by_ext=filename.endswith(".mp4"), effective_limit_mb=40,
@@ -398,8 +398,8 @@ def test_recheck_leaves_an_unreadable_file_alone_without_video_settings():
 def _probe(staged, filename, codec=None, error=None, repaired=None, size=None):
     get_info = MagicMock(return_value=codec, side_effect=error)
     repair = MagicMock(return_value=repaired)
-    with patch("src.api.recordings.get_codec_info", get_info), \
-            patch("src.api.recordings.try_repair_malformed_webm", repair), \
+    with patch("src.services.recording_ingestion.get_codec_info", get_info), \
+            patch("src.services.recording_ingestion.try_repair_malformed_webm", repair), \
             patch("os.path.getsize", return_value=size if size is not None else 3 * MB):
         result = probe_upload(filepath=staged, original_filename=filename)
     return result, get_info, repair
@@ -454,8 +454,8 @@ def test_probe_upload_keeps_the_error_when_the_repair_fails(staged):
 
 def _fallback(filename="talk.mp4", codec_info=None, error=None, has_video=False,
               retention=False, passthrough=False):
-    with patch("src.api.recordings.VIDEO_RETENTION", retention), \
-            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough):
+    with patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
+            patch("src.services.recording_ingestion.VIDEO_PASSTHROUGH_ASR", passthrough):
         return has_video_after_failed_probe(codec_info=codec_info, probe_error=error,
                                             has_video=has_video, original_filename=filename)
 
@@ -498,9 +498,9 @@ def _decide(convert_workers=1, retention=False, passthrough=False, chunking=Fals
                 effective_audio_only=True, is_likely_video_by_ext=False, regular_limit_mb=10,
                 original_file_size=3 * MB)
     args.update(overrides)
-    with patch("src.api.recordings.CONVERT_WORKERS", convert_workers), \
-            patch("src.api.recordings.VIDEO_RETENTION", retention), \
-            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough), \
+    with patch("src.services.recording_ingestion.CONVERT_WORKERS", convert_workers), \
+            patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
+            patch("src.services.recording_ingestion.VIDEO_PASSTHROUGH_ASR", passthrough), \
             patch("src.api.recordings.chunking_service", MagicMock() if chunking else None):
         return decide_conversion(**args)
 
@@ -580,7 +580,7 @@ def test_extracted_audio_limit_applies_to_an_audio_only_video_without_chunking()
 def _convert(staged, outcome):
     convert = MagicMock(side_effect=outcome) if isinstance(outcome, Exception) else MagicMock(return_value=outcome)
     specs = object()
-    with patch("src.api.recordings.convert_if_needed", convert), \
+    with patch("src.services.recording_ingestion.convert_if_needed", convert), \
             patch("src.api.recordings.USE_ASR_ENDPOINT", True):
         converted = convert_upload_in_request(staged, original_filename="talk.m4a", codec_info=AUDIO,
                                               needs_chunking_for_processing=False, connector_specs=specs)
@@ -1047,7 +1047,7 @@ def _ingest_upload(tmp_path, filename="talk.wav", **kwargs):
     storage.get_staging_dir.return_value = str(tmp_path)
     discarded = []
     with patch("src.api.recordings.get_storage_service", return_value=storage), \
-            patch("src.api.recordings._discard_staging", side_effect=discarded.append):
+            patch("src.services.recording_ingestion._discard_staging", side_effect=discarded.append):
         result = ingest(owner=SimpleNamespace(id=1), form={},
                         uploaded_file=FileStorage(io.BytesIO(b"x" * 64), filename=filename), **kwargs)
     return result, discarded
@@ -1113,3 +1113,53 @@ def test_ingest_any_other_error_rolls_back_and_removes_staging(tmp_path):
     rollback.assert_called_once_with()
     assert len(discarded) == 1 and discarded[0].startswith(str(tmp_path))
     log_error.assert_called_once_with("Error during file upload: boom", exc_info=True)
+
+
+# --- _discard_staging and VIDEO_EXTENSIONS ----------------------------------------------
+
+def test_discard_staging_removes_the_file(staged):
+    with app.app_context(), patch.object(app.logger, "warning") as warning:
+        recording_ingestion._discard_staging(staged)
+    assert not os.path.exists(staged)
+    warning.assert_not_called()
+
+
+@pytest.mark.parametrize("path", [None, "", "/nonexistent/ing3/staged.wav"])
+def test_discard_staging_without_a_file_does_nothing(path):
+    with app.app_context(), patch.object(app.logger, "warning") as warning, \
+            patch("os.remove") as remove:
+        recording_ingestion._discard_staging(path)
+    remove.assert_not_called()
+    warning.assert_not_called()
+
+
+def test_discard_staging_logs_a_failed_removal(staged):
+    with app.app_context(), patch.object(app.logger, "warning") as warning, \
+            patch("os.remove", side_effect=OSError("busy")):
+        recording_ingestion._discard_staging(staged)
+    warning.assert_called_once_with(f"Could not remove staging file {staged}: busy")
+
+
+@pytest.mark.parametrize("ext", sorted(recording_ingestion.VIDEO_EXTENSIONS))
+def test_every_video_extension_counts_in_all_three_places(ext):
+    """The size limit before the save and both probe-failure fallbacks use one list."""
+    filename = f"clip{ext.upper()}"
+    with app.app_context():
+        policy = _policy(filename=filename)
+        assert policy.is_likely_video_by_ext is True
+        # Over the regular limit, a failed probe of a video extension is refused.
+        with patch.object(recording_ingestion, "VIDEO_RETENTION", True):
+            recheck = recheck_size_after_probe(
+                codec_info=None, has_video=False, original_filename=filename,
+                is_likely_video_by_ext=True, effective_limit_mb=40, regular_limit_mb=10,
+                should_enforce_size_limit=True, original_file_size=20 * MB)
+            assert recheck.too_large is True
+            assert has_video_after_failed_probe(codec_info=None, probe_error=None, has_video=False,
+                                                original_filename=filename) is True
+
+
+def test_video_extensions_are_the_listed_ones():
+    assert recording_ingestion.VIDEO_EXTENSIONS == frozenset(
+        {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'})
+    with app.app_context():
+        assert _policy(filename="talk.mka").is_likely_video_by_ext is False

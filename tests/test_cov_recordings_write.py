@@ -142,12 +142,12 @@ def _upload_mocks(staging_dir, has_video=False, audio_codec="mp3"):
         return result
 
     with patch("src.api.recordings.get_storage_service", return_value=fake_storage), \
-         patch("src.api.recordings.get_codec_info",
+         patch("src.services.recording_ingestion.get_codec_info",
                return_value={"has_video": has_video, "audio_codec": audio_codec,
                              "video_codec": "h264" if has_video else None, "duration": 12.0}), \
-         patch("src.api.recordings.convert_if_needed", side_effect=_convert), \
-         patch("src.api.recordings.get_duration", return_value=12.0), \
-         patch("src.api.recordings.get_creation_date", return_value=None), \
+         patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert), \
+         patch("src.services.recording_ingestion.get_duration", return_value=12.0), \
+         patch("src.services.recording_ingestion.get_creation_date", return_value=None), \
          patch("src.services.job_queue.job_queue.enqueue", return_value=1) as enqueue_mock:
         yield fake_storage, enqueue_mock
 
@@ -302,7 +302,7 @@ def test_upload_keep_audio_only_flag_persisted():
 
 
 def test_upload_keep_audio_only_default_when_video_retention_off():
-    with app.app_context(), patch("src.api.recordings.VIDEO_RETENTION", False):
+    with app.app_context(), patch("src.services.recording_ingestion.VIDEO_RETENTION", False):
         user = _mk_user("up_vroff")
         client = app.test_client()
         _login(client, user)
@@ -639,8 +639,8 @@ def test_upload_ffmpeg_error_returns_400_without_ffmpeg_details():
         from src.utils.ffmpeg_utils import FFmpegError
         fake_storage = _FakeStorage(staging)
         with patch("src.api.recordings.get_storage_service", return_value=fake_storage), \
-             patch("src.api.recordings.get_codec_info", side_effect=FFProbeError("unprobeable")), \
-             patch("src.api.recordings.convert_if_needed",
+             patch("src.services.recording_ingestion.get_codec_info", side_effect=FFProbeError("unprobeable")), \
+             patch("src.services.recording_ingestion.convert_if_needed",
                    side_effect=FFmpegError(_FFMPEG_FAILURE)), \
              patch("src.services.job_queue.job_queue.enqueue", return_value=1) as enqueue:
             resp = _do_upload(client, filename="not-audio.mp3", payload=b"This is not audio.\n")
@@ -664,8 +664,8 @@ def test_upload_empty_file_is_rejected_before_conversion():
         _login(client, user)
         staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
         with _upload_mocks(staging), \
-             patch("src.api.recordings.get_codec_info") as probe, \
-             patch("src.api.recordings.convert_if_needed") as convert:
+             patch("src.services.recording_ingestion.get_codec_info") as probe, \
+             patch("src.services.recording_ingestion.convert_if_needed") as convert:
             resp = _do_upload(client, filename="empty.mp3", payload=b"")
         assert resp.status_code == 400
         assert resp.get_json() == {"error": "The uploaded file is empty.", "code": "empty_file"}
@@ -684,7 +684,7 @@ def test_upload_conversion_timeout_is_a_server_error():
         staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
         from src.utils.ffmpeg_utils import FFmpegTimeoutError
         with _upload_mocks(staging), \
-             patch("src.api.recordings.convert_if_needed",
+             patch("src.services.recording_ingestion.convert_if_needed",
                    side_effect=FFmpegTimeoutError("Compression of x.flac to mp3 timed out after 3600s")):
             resp = _do_upload(client, filename="long.flac")
         assert resp.status_code == 500
@@ -701,7 +701,7 @@ def test_upload_ffmpeg_missing_stays_500_and_removes_staging_copy():
         staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
         from src.utils.ffmpeg_utils import FFmpegNotFoundError
         with _upload_mocks(staging), \
-             patch("src.api.recordings.convert_if_needed", side_effect=FFmpegNotFoundError("no ffmpeg")):
+             patch("src.services.recording_ingestion.convert_if_needed", side_effect=FFmpegNotFoundError("no ffmpeg")):
             resp = _do_upload(client, filename="a.flac")
         assert resp.status_code == 500
         assert resp.get_json() == {"error": "Audio conversion tool (FFmpeg) not found on server.",
@@ -717,7 +717,7 @@ def test_upload_unexpected_error_removes_staging_copy():
         _login(client, user)
         staging = os.path.join(app.config["UPLOAD_FOLDER"], f"stg_{uuid.uuid4().hex[:6]}")
         with _upload_mocks(staging), \
-             patch("src.api.recordings.resolve_transcription_params",
+             patch("src.services.recording_ingestion.resolve_transcription_params",
                    side_effect=RuntimeError("secret internal detail")):
             resp = _do_upload(client)
         assert resp.status_code == 500

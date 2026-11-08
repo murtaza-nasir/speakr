@@ -110,10 +110,10 @@ def _upload_mocks(staging_dir):
         return job.id
 
     with patch("src.api.recordings.get_storage_service", return_value=storage), \
-         patch("src.api.recordings.get_codec_info", return_value={"has_video": False, "audio_codec": "aac"}), \
-         patch("src.api.recordings.convert_if_needed", side_effect=convert), \
-         patch("src.api.recordings.get_duration", return_value=12.5), \
-         patch("src.api.recordings.get_creation_date", return_value=None), \
+         patch("src.services.recording_ingestion.get_codec_info", return_value={"has_video": False, "audio_codec": "aac"}), \
+         patch("src.services.recording_ingestion.convert_if_needed", side_effect=convert), \
+         patch("src.services.recording_ingestion.get_duration", return_value=12.5), \
+         patch("src.services.recording_ingestion.get_creation_date", return_value=None), \
          patch("src.services.job_queue.job_queue.enqueue", side_effect=enqueue) as enqueue_mock, \
          patch("src.services.webhook_dispatch.emit_webhook_event") as webhook_mock:
         yield storage, enqueue_mock, webhook_mock
@@ -398,8 +398,8 @@ def test_unprobeable_video_named_upload_uses_audio_limit_and_cleans_staging(tmp_
         try:
             with patch("src.api.recordings.get_storage_service", return_value=storage), \
                  patch("src.api.recordings.SystemSetting.get_setting", side_effect=setting), \
-                 patch("src.api.recordings.get_codec_info", side_effect=FFProbeError("unprobeable")), \
-                 patch("src.api.recordings.VIDEO_RETENTION", True), \
+                 patch("src.services.recording_ingestion.get_codec_info", side_effect=FFProbeError("unprobeable")), \
+                 patch("src.services.recording_ingestion.VIDEO_RETENTION", True), \
                  patch("src.api.recordings.chunking_service", None):
                 response = _post(
                     client,
@@ -460,8 +460,8 @@ def test_undecodable_upload_returns_400_without_ffmpeg_details(tmp_path, route):
         client = app.test_client()
         try:
             with _upload_mocks(str(tmp_path)) as (_, enqueue, webhook), \
-                 patch("src.api.recordings.get_codec_info", side_effect=FFProbeError("unprobeable")), \
-                 patch("src.api.recordings.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
+                 patch("src.services.recording_ingestion.get_codec_info", side_effect=FFProbeError("unprobeable")), \
+                 patch("src.services.recording_ingestion.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
                 if route == "api":
                     response = _post_api(client, token, b"This is not audio.\n", idempotency_key="k-482")
                 else:
@@ -486,7 +486,7 @@ def test_empty_upload_returns_400_before_conversion(tmp_path, route):
         client = app.test_client()
         try:
             with _upload_mocks(str(tmp_path)), \
-                 patch("src.api.recordings.convert_if_needed") as convert:
+                 patch("src.services.recording_ingestion.convert_if_needed") as convert:
                 if route == "api":
                     response = _post_api(client, token, b"")
                 else:
@@ -510,7 +510,7 @@ def test_retry_after_a_rejected_upload_with_the_same_key_succeeds(tmp_path):
         client = app.test_client()
         try:
             with _upload_mocks(str(tmp_path)):
-                with patch("src.api.recordings.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
+                with patch("src.services.recording_ingestion.convert_if_needed", side_effect=FFmpegError(_FFMPEG_FAILURE)):
                     refused = _post_api(client, token, b"broken", idempotency_key="k-retry")
                 accepted = _post_api(client, token, b"real-audio", idempotency_key="k-retry")
             assert refused.status_code == 400

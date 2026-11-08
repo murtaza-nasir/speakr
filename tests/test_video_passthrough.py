@@ -80,7 +80,7 @@ class TestPassthroughConfig(unittest.TestCase):
     FILES_THAT_NEED_IT = [
         ('src/config/app_config.py', APP_CONFIG),
         ('src/tasks/processing.py', PROCESSING),
-        ('src/api/recordings.py', RECORDINGS),
+        ('src/services/recording_ingestion.py', read_file('src/services/recording_ingestion.py')),
     ]
 
     def test_defined_in_all_files(self):

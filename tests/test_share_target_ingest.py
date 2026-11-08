@@ -39,11 +39,11 @@ def _no_media_tools():
         r.original_codec = r.final_codec = "opus"
         r.size_reduction_percent = 0.0
         return r
-    with _patch("src.api.recordings.convert_if_needed", side_effect=_convert), \
-         _patch("src.api.recordings.get_codec_info",
+    with _patch("src.services.recording_ingestion.convert_if_needed", side_effect=_convert), \
+         _patch("src.services.recording_ingestion.get_codec_info",
                 return_value={"has_video": False, "audio_codec": "opus", "video_codec": None, "duration": 5.0}), \
-         _patch("src.api.recordings.get_duration", return_value=5.0), \
-         _patch("src.api.recordings.get_creation_date", return_value=None):
+         _patch("src.services.recording_ingestion.get_duration", return_value=5.0), \
+         _patch("src.services.recording_ingestion.get_creation_date", return_value=None):
         yield
 
 

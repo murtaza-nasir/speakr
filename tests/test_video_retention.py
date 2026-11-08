@@ -29,7 +29,7 @@ class TestVideoRetentionConfig(unittest.TestCase):
         'src/app.py',
         'src/tasks/processing.py',
         'src/api/system.py',
-        'src/api/recordings.py',
+        'src/services/recording_ingestion.py',
     ]
 
     def _read_file(self, rel_path):

@@ -119,9 +119,9 @@ def knobs(*, convert_workers=0, retention=False, passthrough=False, chunking=Fal
           max_mb=None, video_mb=None, max_content=None):
     """Pin every setting that steers ingestion to a known value for one case."""
     with ExitStack() as stack:
-        stack.enter_context(patch("src.api.recordings.CONVERT_WORKERS", convert_workers))
-        stack.enter_context(patch("src.api.recordings.VIDEO_RETENTION", retention))
-        stack.enter_context(patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough))
+        stack.enter_context(patch("src.services.recording_ingestion.CONVERT_WORKERS", convert_workers))
+        stack.enter_context(patch("src.services.recording_ingestion.VIDEO_RETENTION", retention))
+        stack.enter_context(patch("src.services.recording_ingestion.VIDEO_PASSTHROUGH_ASR", passthrough))
         if chunking:
             service = MagicMock()
             service.needs_chunking.return_value = False

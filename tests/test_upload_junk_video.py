@@ -89,10 +89,10 @@ def _upload(user_id, payload, filename, *, retention=False, passthrough=False, p
         sess["_fresh"] = True
     extra = []
     if probe_error is not None:
-        extra.append(patch("src.api.recordings.get_codec_info", side_effect=probe_error))
+        extra.append(patch("src.services.recording_ingestion.get_codec_info", side_effect=probe_error))
     with patch("src.api.recordings.get_storage_service", return_value=storage), \
-         patch("src.api.recordings.VIDEO_RETENTION", retention), \
-         patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough), \
+         patch("src.services.recording_ingestion.VIDEO_RETENTION", retention), \
+         patch("src.services.recording_ingestion.VIDEO_PASSTHROUGH_ASR", passthrough), \
          patch("src.api.recordings.chunking_service", None), \
          patch("src.services.job_queue.job_queue.enqueue", return_value=1) as enqueue:
         for p in extra:
@@ -230,9 +230,9 @@ def test_mp3_with_cover_art_is_kept_as_audio_under_retention(user, tmp_path):
 
 def test_a_probe_that_timed_out_still_trusts_the_video_extension(user):
     """A large MP4 can be slow to probe: it is kept as a video, as before."""
-    with patch("src.api.recordings.convert_if_needed") as convert, \
-         patch("src.api.recordings.get_duration", return_value=12.0), \
-         patch("src.api.recordings.get_creation_date", return_value=None):
+    with patch("src.services.recording_ingestion.convert_if_needed") as convert, \
+         patch("src.services.recording_ingestion.get_duration", return_value=12.0), \
+         patch("src.services.recording_ingestion.get_creation_date", return_value=None):
         resp, storage, enqueue, leftovers = _upload(
             user, JUNK, "slow.mp4", retention=True,
             probe_error=FFProbeTimeoutError("ffprobe timed out after 10 seconds"))
