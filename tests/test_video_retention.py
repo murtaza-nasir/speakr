@@ -209,8 +209,11 @@ class TestFileMonitorVideoRetention(unittest.TestCase):
     def setUpClass(cls):
         with open(os.path.join(PROJECT_ROOT, 'src/file_monitor.py'), 'r') as f:
             cls.monitor = f.read()
-        with open(os.path.join(PROJECT_ROOT, 'src/api/recordings.py'), 'r') as f:
-            cls.ingest = f.read()
+        # The shared path: ingest_uploaded_recording and the steps it calls.
+        cls.ingest = ''
+        for rel_path in ('src/api/recordings.py', 'src/services/recording_ingestion.py'):
+            with open(os.path.join(PROJECT_ROOT, rel_path), 'r') as f:
+                cls.ingest += f.read()
 
     def test_monitor_delegates_to_shared_ingestion(self):
         """The monitor hands the watched file to the shared ingestion path."""
@@ -431,7 +434,8 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         """The file monitor delegates to the shared ingestion path, which has
         both the video retention/passthrough skip and normal conversion paths."""
         monitor = self._read_file('src/file_monitor.py')
-        ingest = self._read_file('src/api/recordings.py')
+        ingest = (self._read_file('src/api/recordings.py')
+                  + self._read_file('src/services/recording_ingestion.py'))
         self.assertIn('ingest_uploaded_recording(', monitor)
         self.assertNotIn('convert_if_needed', monitor)
         self.assertIn('keep_video_for_this_upload = (', ingest)
@@ -453,8 +457,8 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         honour the per-recording keep_audio_only override; file monitor
         does not (it has no per-file override surface)."""
         for rel_path, marker in [
-            # Upload handler: per-upload override factored in.
-            ('src/api/recordings.py', 'VIDEO_RETENTION and not keep_audio_only_flag'),
+            # Upload handler (its conversion step): per-upload override factored in.
+            ('src/services/recording_ingestion.py', 'VIDEO_RETENTION and not keep_audio_only_flag'),
             # File monitor: delegates to the shared path below.
             ('src/file_monitor.py', 'ingest_uploaded_recording('),
             # Processing task: effective flag (env var AND per-recording).

@@ -28,6 +28,15 @@ Probe:
 * :func:`has_video_after_failed_probe` takes a video extension as video
   when the probe did not finish, under VIDEO_RETENTION or
   VIDEO_PASSTHROUGH_ASR.
+
+Conversion:
+
+* :func:`decide_conversion` keeps a retained video or a join part as it is,
+  leaves a readable file to the convert job, or asks for conversion now.
+* :func:`convert_upload_in_request` converts the file before the request is
+  answered and turns an FFmpeg failure into the error answer.
+* :func:`check_extracted_audio_size` refuses a video whose extracted audio
+  is over the regular limit.
 """
 
 import os
@@ -41,6 +50,7 @@ from src.models import ProcessingJob, Recording
 from src.services.job_queue import job_queue
 from src.services.transcription_defaults import resolve_transcription_params
 from src.utils.dates import to_utc_naive
+from src.utils.localization import api_error, format_number, translate
 
 
 class DuplicateLookup(NamedTuple):
@@ -412,3 +422,194 @@ def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original
                     f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
                 )
     return has_video
+
+
+class ConversionDecision(NamedTuple):
+    """How :func:`decide_conversion` treats one upload's media."""
+    keep_video_for_this_upload: bool
+    skip_conversion_for_join: bool
+    chunking_will_handle_large_audio: bool
+    extracted_audio_limit_mb: Optional[int]
+    can_defer_conversion: bool
+    conversion_deferred: bool
+    convert_in_request: bool
+
+
+def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, original_filename,
+                      should_enforce_size_limit, enforce_upload_limits, effective_audio_only,
+                      is_likely_video_by_ext, regular_limit_mb, original_file_size):
+    """Decide whether the upload is kept as it is, converted later or converted now.
+
+    A retained or passed-through video and an audio part of a join are kept;
+    a readable file with audio is left to the convert job (#543). Anything
+    else has convert_in_request set: :func:`convert_upload_in_request`.
+    """
+    # Read from src.api.recordings at call time: tests patch these, and init sets chunking_service.
+    from src.api.recordings import (
+        CONVERT_WORKERS, VIDEO_PASSTHROUGH_ASR, VIDEO_RETENTION, chunking_service, has_audio_stream,
+    )
+
+    # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
+    # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
+    # sends video directly to the ASR endpoint — left untouched here.
+    # A video without an audio track has nothing to transcribe: it goes
+    # through conversion, which refuses it, as without these settings.
+    keep_video_for_this_upload = (
+        ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
+        and has_video
+        and (codec_info is None or has_audio_stream(codec_info))
+    )
+    # An audio file uploaded to be joined is decoded and re-encoded by the
+    # merge job anyway, so converting it here would only delay the upload
+    # response (minutes for a long recording). Video parts still have their
+    # audio extracted, which is a fast stream copy and keeps a large video
+    # from being stored whole until the join.
+    skip_conversion_for_join = bool(join) and codec_info is not None and not has_video
+    chunking_will_handle_large_audio = (
+        chunking_service is not None and not should_enforce_size_limit
+    )
+    # Only the extracted audio of a video has to fit the regular limit.
+    extracted_audio_limit_mb = (
+        regular_limit_mb
+        if (enforce_upload_limits and effective_audio_only and is_likely_video_by_ext
+            and not chunking_will_handle_large_audio)
+        else None
+    )
+    # A file ffprobe could read, with an audio track, is converted after
+    # the upload is answered, by the convert job (#543). The request still
+    # refuses at once what it can: a file ffprobe could not read goes
+    # through the conversion here, which refuses it with
+    # audio_decode_failed, and so does a video without audio. So does a
+    # video that only passes the size limit once its audio is extracted,
+    # and parts of a join, which the merge job converts. Without convert
+    # workers (CONVERT_QUEUE_WORKERS=0) every file is converted here.
+    can_defer_conversion = (
+        CONVERT_WORKERS > 0
+        and not join
+        and codec_info is not None
+        and has_audio_stream(codec_info)
+        and not (extracted_audio_limit_mb and original_file_size > extracted_audio_limit_mb * 1024 * 1024)
+    )
+    conversion_deferred = False
+    convert_in_request = False
+    if keep_video_for_this_upload:
+        current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
+    elif skip_conversion_for_join:
+        current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
+    elif can_defer_conversion:
+        conversion_deferred = True
+        current_app.logger.info(f"Upload {original_filename}: converting after the upload is answered")
+    else:
+        convert_in_request = True
+    return ConversionDecision(
+        keep_video_for_this_upload=keep_video_for_this_upload,
+        skip_conversion_for_join=skip_conversion_for_join,
+        chunking_will_handle_large_audio=chunking_will_handle_large_audio,
+        extracted_audio_limit_mb=extracted_audio_limit_mb,
+        can_defer_conversion=can_defer_conversion,
+        conversion_deferred=conversion_deferred,
+        convert_in_request=convert_in_request,
+    )
+
+
+class ConvertedUpload(NamedTuple):
+    """The file :func:`convert_upload_in_request` left, or the error answer."""
+    filepath: Optional[str]
+    error_response: Optional[tuple]
+
+
+def convert_upload_in_request(filepath, *, original_filename, codec_info,
+                              needs_chunking_for_processing, connector_specs):
+    """Convert the staged upload before the request is answered.
+
+    Returns the path of the file left (the same path when nothing needed
+    converting). When FFmpeg is missing, times out or
+    cannot decode the file, the staging copy is removed and error_response
+    holds the answer (500, 500 or 400) for the caller to return.
+    """
+    # Read from src.api.recordings at call time: tests patch these there.
+    from src.api.recordings import (
+        FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, USE_ASR_ENDPOINT, _discard_staging,
+        convert_if_needed,
+    )
+
+    # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
+    try:
+        result = convert_if_needed(
+            filepath,
+            original_filename=original_filename,
+            codec_info=codec_info,
+            needs_chunking=needs_chunking_for_processing,
+            is_asr_endpoint=USE_ASR_ENDPOINT,
+            delete_original=True,
+            connector_specs=connector_specs  # Pass connector specs for codec restrictions
+        )
+        filepath = result.output_path
+
+        # Log what happened
+        if result.was_converted:
+            current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+        if result.was_compressed:
+            current_app.logger.info(f"File compressed: {result.size_change_label}")
+
+    except FFmpegNotFoundError as e:
+        current_app.logger.error(f"FFmpeg not found: {e}")
+        _discard_staging(filepath)
+        return ConvertedUpload(None, (jsonify(api_error('audio_converter_missing')), 500))
+    except FFmpegTimeoutError as e:
+        # A timeout is the server's limit, not proof the file is bad.
+        current_app.logger.error(f"FFmpeg conversion timed out for {filepath}: {e}")
+        _discard_staging(filepath)
+        return ConvertedUpload(None, (jsonify({'error': translate('server.apiError.audio_conversion_timeout'),
+                                               'code': 'audio_conversion_timeout'}), 500))
+    except FFmpegError as e:
+        # The probe is allowed to fail, so a payload that is not audio
+        # at all is first refused here, as the client's error.
+        current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+        _discard_staging(filepath)
+        return ConvertedUpload(None, (jsonify(api_error('audio_decode_failed')), 400))
+
+    return ConvertedUpload(filepath, None)
+
+
+def check_extracted_audio_size(*, filepath, final_file_size, extracted_audio_limit_mb,
+                               conversion_deferred, regular_limit_mb):
+    """Refuse a video whose extracted audio is over the regular limit.
+
+    Removes the staging copy and returns the 413 answer, or None when the
+    file fits (or the convert job checks it later).
+    """
+    # Deferred: src.api.recordings imports this module.
+    from src.api.recordings import _discard_staging
+
+    # Post-extraction size guard. When the upload exceeded the regular
+    # max_file_size_mb under the "audio-only video" exception, the
+    # stored file (after audio extraction) must still fit the regular
+    # limit. If it does not, the user picked a video whose audio track
+    # alone is enormous AND chunking is off; reject the upload,
+    # clean up, and let the user know. When chunking is on the
+    # large extracted audio is fine — the chunking pipeline will
+    # split it for the ASR call. extracted_audio_limit_mb is None when
+    # the upload limits are not enforced (watched files); a deferred
+    # conversion is checked by the convert job, after the extraction.
+    if (
+        extracted_audio_limit_mb
+        and not conversion_deferred
+        and final_file_size > extracted_audio_limit_mb * 1024 * 1024
+    ):
+        _discard_staging(filepath)
+        current_app.logger.warning(
+            f"Audio-only extraction left {final_file_size/1024/1024:.1f}MB of audio, "
+            f"which exceeds regular limit {regular_limit_mb}MB and chunking is off. "
+            f"Rejecting upload."
+        )
+        return jsonify({
+            **api_error('extracted_audio_too_large',
+                        size=format_number(final_file_size / 1024 / 1024),
+                        limit=format_number(regular_limit_mb)),
+            'max_size_mb': float(regular_limit_mb),
+            'extracted_audio_mb': round(final_file_size / 1024 / 1024, 1),
+            'audio_only_mode': True,
+            'chunking_enabled': False,
+        }), 413
+    return None

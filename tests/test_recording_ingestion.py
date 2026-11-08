@@ -4,7 +4,8 @@ lookup_duplicate hashes the staged upload and finds an earlier recording of
 it; handle_duplicate_replay answers a retried upload with that recording.
 resolve_size_policy, enforce_size_policy and recheck_size_after_probe set
 and apply the upload size limits; probe_upload and has_video_after_failed_probe
-read the upload's codecs.
+read the upload's codecs. decide_conversion, convert_upload_in_request and
+check_extracted_audio_size decide on and run the conversion.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
@@ -27,10 +28,12 @@ from src.app import app, db
 from src.models import ProcessingJob, Recording, User
 from src.services import recording_ingestion
 from src.services.recording_ingestion import (
-    SizePolicy, SizeRecheck, UploadProbe, enforce_size_policy, handle_duplicate_replay,
-    has_video_after_failed_probe, lookup_duplicate, probe_upload, recheck_size_after_probe,
-    resolve_size_policy,
+    ConversionDecision, ConvertedUpload, SizePolicy, SizeRecheck, UploadProbe,
+    check_extracted_audio_size, convert_upload_in_request, decide_conversion, enforce_size_policy,
+    handle_duplicate_replay, has_video_after_failed_probe, lookup_duplicate, probe_upload,
+    recheck_size_after_probe, resolve_size_policy,
 )
+from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
 from src.utils.ffprobe import FFProbeError, FFProbeTimeoutError
 
 PAYLOAD = b"duplicate-detection-bytes"
@@ -472,3 +475,161 @@ def test_extension_fallback_needs_a_failed_probe_a_video_extension_and_a_video_s
         assert _fallback(codec_info={"has_video": False}, retention=True) is False
         assert _fallback(codec_info={"has_video": True}, has_video=True, retention=True) is True
     info.assert_not_called()
+
+
+# --- conversion decision ----------------------------------------------------------
+
+AUDIO = {"audio_codec": "aac", "has_video": False}
+VIDEO = {"audio_codec": "aac", "has_video": True}
+SILENT_VIDEO = {"audio_codec": None, "has_video": True}
+
+
+def _decide(convert_workers=1, retention=False, passthrough=False, chunking=False, **overrides):
+    args = dict(codec_info=AUDIO, has_video=False, keep_audio_only_flag=False, join=None,
+                original_filename="talk.m4a", should_enforce_size_limit=True, enforce_upload_limits=True,
+                effective_audio_only=True, is_likely_video_by_ext=False, regular_limit_mb=10,
+                original_file_size=3 * MB)
+    args.update(overrides)
+    with patch("src.api.recordings.CONVERT_WORKERS", convert_workers), \
+            patch("src.api.recordings.VIDEO_RETENTION", retention), \
+            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough), \
+            patch("src.api.recordings.chunking_service", MagicMock() if chunking else None):
+        return decide_conversion(**args)
+
+
+def test_decide_conversion_defers_when_probe_succeeds():
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        decision = _decide()
+    assert decision == ConversionDecision(
+        keep_video_for_this_upload=False, skip_conversion_for_join=False,
+        chunking_will_handle_large_audio=False, extracted_audio_limit_mb=None,
+        can_defer_conversion=True, conversion_deferred=True, convert_in_request=False,
+    )
+    info.assert_called_once_with("Upload talk.m4a: converting after the upload is answered")
+
+
+@pytest.mark.parametrize("overrides", [
+    {"convert_workers": 0},
+    {"codec_info": None},
+    {"codec_info": SILENT_VIDEO, "has_video": True},
+    # The extracted audio of a large video is checked here, not by the convert job.
+    {"is_likely_video_by_ext": True, "original_file_size": 11 * MB},
+])
+def test_decide_conversion_converts_in_the_request(overrides):
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        decision = _decide(**overrides)
+    assert (decision.can_defer_conversion, decision.conversion_deferred, decision.convert_in_request) == \
+        (False, False, True)
+    info.assert_not_called()
+
+
+@pytest.mark.parametrize("retention,passthrough,keep_audio_only,label", [
+    (True, False, False, "retention"),
+    (False, True, False, "passthrough"),
+    (True, True, True, "passthrough"),
+])
+def test_decide_conversion_keeps_a_video(retention, passthrough, keep_audio_only, label):
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        decision = _decide(retention=retention, passthrough=passthrough, codec_info=VIDEO, has_video=True,
+                           keep_audio_only_flag=keep_audio_only, original_filename="talk.mp4")
+    assert decision.keep_video_for_this_upload is True
+    assert (decision.conversion_deferred, decision.convert_in_request) == (False, False)
+    info.assert_called_once_with(f"Video {label}: keeping original video, skipping conversion")
+
+
+def test_decide_conversion_keeps_no_video_without_audio_or_with_keep_audio_only():
+    with app.app_context():
+        assert _decide(retention=True, codec_info=SILENT_VIDEO, has_video=True).keep_video_for_this_upload is False
+        assert _decide(retention=True, codec_info=VIDEO, has_video=True,
+                       keep_audio_only_flag=True).keep_video_for_this_upload is False
+        # A video the probe could not read but its extension showed (has_video) is kept.
+        assert _decide(retention=True, codec_info=None, has_video=True).keep_video_for_this_upload is True
+
+
+def test_decide_conversion_skips_an_audio_join_part():
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        decision = _decide(join=("group", 0, 2))
+    assert decision.skip_conversion_for_join is True
+    assert (decision.can_defer_conversion, decision.conversion_deferred, decision.convert_in_request) == \
+        (False, False, False)
+    info.assert_called_once_with("Join part talk.m4a: skipping conversion, the merge re-encodes it")
+    with app.app_context():
+        video_part = _decide(join=("group", 0, 2), codec_info=VIDEO, has_video=True)
+    assert (video_part.skip_conversion_for_join, video_part.convert_in_request) == (False, True)
+
+
+def test_extracted_audio_limit_applies_to_an_audio_only_video_without_chunking():
+    video = dict(is_likely_video_by_ext=True, original_filename="talk.mp4")
+    with app.app_context():
+        assert _decide(**video).extracted_audio_limit_mb == 10
+        assert _decide(**video, effective_audio_only=False).extracted_audio_limit_mb is None
+        assert _decide(**video, enforce_upload_limits=False).extracted_audio_limit_mb is None
+        assert _decide().extracted_audio_limit_mb is None
+        chunked = _decide(**video, chunking=True, should_enforce_size_limit=False)
+    assert (chunked.chunking_will_handle_large_audio, chunked.extracted_audio_limit_mb) == (True, None)
+
+
+def _convert(staged, outcome):
+    convert = MagicMock(side_effect=outcome) if isinstance(outcome, Exception) else MagicMock(return_value=outcome)
+    specs = object()
+    with patch("src.api.recordings.convert_if_needed", convert), \
+            patch("src.api.recordings.USE_ASR_ENDPOINT", True):
+        converted = convert_upload_in_request(staged, original_filename="talk.m4a", codec_info=AUDIO,
+                                              needs_chunking_for_processing=False, connector_specs=specs)
+    convert.assert_called_once_with(staged, original_filename="talk.m4a", codec_info=AUDIO,
+                                    needs_chunking=False, is_asr_endpoint=True, delete_original=True,
+                                    connector_specs=specs)
+    return converted
+
+
+def test_convert_upload_in_request_returns_the_converted_path(staged):
+    result = SimpleNamespace(output_path="/staging/talk.mp3", was_converted=True, was_compressed=False,
+                             original_codec="alac", final_codec="mp3")
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        converted = _convert(staged, result)
+    assert converted == ConvertedUpload("/staging/talk.mp3", None)
+    info.assert_called_once_with("File converted: alac -> mp3")
+
+
+@pytest.mark.parametrize("error,status,code", [
+    (FFmpegNotFoundError("no ffmpeg"), 500, "audio_converter_missing"),
+    (FFmpegTimeoutError("too slow"), 500, "audio_conversion_timeout"),
+    (FFmpegError("bad data"), 400, "audio_decode_failed"),
+])
+def test_immediate_conversion_errors_remove_staging_and_answer(staged, error, status, code):
+    with app.app_context(), patch.object(app.logger, "error") as log_error:
+        converted = _convert(staged, error)
+        response, got_status = converted.error_response
+        assert converted.filepath is None
+        assert got_status == status
+        assert response.get_json()["code"] == code
+    assert not os.path.exists(staged)
+    log_error.assert_called_once()
+
+
+def _guard(staged, final_mb, limit=10, deferred=False):
+    return check_extracted_audio_size(filepath=staged, final_file_size=int(final_mb * MB),
+                                      extracted_audio_limit_mb=limit, conversion_deferred=deferred,
+                                      regular_limit_mb=10)
+
+
+def test_post_extraction_size_guard_returns_413(staged):
+    with app.app_context(), patch.object(app.logger, "warning") as warning:
+        response, status = _guard(staged, 12.5)
+        body = response.get_json()
+    assert status == 413
+    assert body["code"] == "extracted_audio_too_large"
+    assert {k: body[k] for k in ("max_size_mb", "extracted_audio_mb", "audio_only_mode", "chunking_enabled")} == \
+        {"max_size_mb": 10.0, "extracted_audio_mb": 12.5, "audio_only_mode": True, "chunking_enabled": False}
+    assert not os.path.exists(staged)
+    warning.assert_called_once_with("Audio-only extraction left 12.5MB of audio, which exceeds regular "
+                                    "limit 10MB and chunking is off. Rejecting upload.")
+
+
+def test_post_extraction_size_guard_lets_the_rest_through(staged):
+    with app.app_context():
+        assert _guard(staged, 10) is None
+        assert _guard(staged, 12.5, limit=None) is None
+        # The convert job checks a deferred conversion.
+        assert _guard(staged, 12.5, deferred=True) is None
+    assert os.path.exists(staged)

@@ -68,8 +68,9 @@ from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
 from src.services.recording_ingestion import (
-    enforce_size_policy, handle_duplicate_replay, has_video_after_failed_probe, lookup_duplicate,
-    probe_upload, recheck_size_after_probe, resolve_size_policy,
+    check_extracted_audio_size, convert_upload_in_request, decide_conversion, enforce_size_policy,
+    handle_duplicate_replay, has_video_after_failed_probe, lookup_duplicate, probe_upload,
+    recheck_size_after_probe, resolve_size_policy,
 )
 from src.utils.localization import api_error, format_number, translate
 
@@ -2202,125 +2203,46 @@ def ingest_uploaded_recording(
             has_video=has_video,
             original_filename=original_filename,
         )
-        # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
-        # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
-        # sends video directly to the ASR endpoint — left untouched here.
-        # A video without an audio track has nothing to transcribe: it goes
-        # through conversion, which refuses it, as without these settings.
-        keep_video_for_this_upload = (
-            ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
-            and has_video
-            and (codec_info is None or has_audio_stream(codec_info))
+        conversion = decide_conversion(
+            codec_info=codec_info,
+            has_video=has_video,
+            keep_audio_only_flag=keep_audio_only_flag,
+            join=join,
+            original_filename=original_filename,
+            should_enforce_size_limit=should_enforce_size_limit,
+            enforce_upload_limits=enforce_upload_limits,
+            effective_audio_only=effective_audio_only,
+            is_likely_video_by_ext=is_likely_video_by_ext,
+            regular_limit_mb=regular_limit_mb,
+            original_file_size=original_file_size,
         )
-        # An audio file uploaded to be joined is decoded and re-encoded by the
-        # merge job anyway, so converting it here would only delay the upload
-        # response (minutes for a long recording). Video parts still have their
-        # audio extracted, which is a fast stream copy and keeps a large video
-        # from being stored whole until the join.
-        skip_conversion_for_join = bool(join) and codec_info is not None and not has_video
-        chunking_will_handle_large_audio = (
-            chunking_service is not None and not should_enforce_size_limit
-        )
-        # Only the extracted audio of a video has to fit the regular limit.
-        extracted_audio_limit_mb = (
-            regular_limit_mb
-            if (enforce_upload_limits and effective_audio_only and is_likely_video_by_ext
-                and not chunking_will_handle_large_audio)
-            else None
-        )
-        # A file ffprobe could read, with an audio track, is converted after
-        # the upload is answered, by the convert job (#543). The request still
-        # refuses at once what it can: a file ffprobe could not read goes
-        # through the conversion here, which refuses it with
-        # audio_decode_failed, and so does a video without audio. So does a
-        # video that only passes the size limit once its audio is extracted,
-        # and parts of a join, which the merge job converts. Without convert
-        # workers (CONVERT_QUEUE_WORKERS=0) every file is converted here.
-        can_defer_conversion = (
-            CONVERT_WORKERS > 0
-            and not join
-            and codec_info is not None
-            and has_audio_stream(codec_info)
-            and not (extracted_audio_limit_mb and original_file_size > extracted_audio_limit_mb * 1024 * 1024)
-        )
-        conversion_deferred = False
-        if keep_video_for_this_upload:
-            current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
-        elif skip_conversion_for_join:
-            current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
-        elif can_defer_conversion:
-            conversion_deferred = True
-            current_app.logger.info(f"Upload {original_filename}: converting after the upload is answered")
-        else:
-            # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
-            try:
-                result = convert_if_needed(
-                    filepath,
-                    original_filename=original_filename,
-                    codec_info=codec_info,
-                    needs_chunking=needs_chunking_for_processing,
-                    is_asr_endpoint=USE_ASR_ENDPOINT,
-                    delete_original=True,
-                    connector_specs=connector_specs  # Pass connector specs for codec restrictions
-                )
-                filepath = result.output_path
-
-                # Log what happened
-                if result.was_converted:
-                    current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
-                if result.was_compressed:
-                    current_app.logger.info(f"File compressed: {result.size_change_label}")
-
-            except FFmpegNotFoundError as e:
-                current_app.logger.error(f"FFmpeg not found: {e}")
-                _discard_staging(filepath)
-                return jsonify(api_error('audio_converter_missing')), 500
-            except FFmpegTimeoutError as e:
-                # A timeout is the server's limit, not proof the file is bad.
-                current_app.logger.error(f"FFmpeg conversion timed out for {filepath}: {e}")
-                _discard_staging(filepath)
-                return jsonify({'error': translate('server.apiError.audio_conversion_timeout'),
-                                'code': 'audio_conversion_timeout'}), 500
-            except FFmpegError as e:
-                # The probe is allowed to fail, so a payload that is not audio
-                # at all is first refused here, as the client's error.
-                current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
-                _discard_staging(filepath)
-                return jsonify(api_error('audio_decode_failed')), 400
+        keep_video_for_this_upload = conversion.keep_video_for_this_upload
+        extracted_audio_limit_mb = conversion.extracted_audio_limit_mb
+        conversion_deferred = conversion.conversion_deferred
+        if conversion.convert_in_request:
+            converted = convert_upload_in_request(
+                filepath,
+                original_filename=original_filename,
+                codec_info=codec_info,
+                needs_chunking_for_processing=needs_chunking_for_processing,
+                connector_specs=connector_specs,
+            )
+            if converted.error_response is not None:
+                return converted.error_response
+            filepath = converted.filepath
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
 
-        # Post-extraction size guard. When the upload exceeded the regular
-        # max_file_size_mb under the "audio-only video" exception, the
-        # stored file (after audio extraction) must still fit the regular
-        # limit. If it does not, the user picked a video whose audio track
-        # alone is enormous AND chunking is off; reject the upload,
-        # clean up, and let the user know. When chunking is on the
-        # large extracted audio is fine — the chunking pipeline will
-        # split it for the ASR call. extracted_audio_limit_mb is None when
-        # the upload limits are not enforced (watched files); a deferred
-        # conversion is checked by the convert job, after the extraction.
-        if (
-            extracted_audio_limit_mb
-            and not conversion_deferred
-            and final_file_size > extracted_audio_limit_mb * 1024 * 1024
-        ):
-            _discard_staging(filepath)
-            current_app.logger.warning(
-                f"Audio-only extraction left {final_file_size/1024/1024:.1f}MB of audio, "
-                f"which exceeds regular limit {regular_limit_mb}MB and chunking is off. "
-                f"Rejecting upload."
-            )
-            return jsonify({
-                **api_error('extracted_audio_too_large',
-                            size=format_number(final_file_size / 1024 / 1024),
-                            limit=format_number(regular_limit_mb)),
-                'max_size_mb': float(regular_limit_mb),
-                'extracted_audio_mb': round(final_file_size / 1024 / 1024, 1),
-                'audio_only_mode': True,
-                'chunking_enabled': False,
-            }), 413
+        extracted_audio_response = check_extracted_audio_size(
+            filepath=filepath,
+            final_file_size=final_file_size,
+            extracted_audio_limit_mb=extracted_audio_limit_mb,
+            conversion_deferred=conversion_deferred,
+            regular_limit_mb=regular_limit_mb,
+        )
+        if extracted_audio_response is not None:
+            return extracted_audio_response
 
         # (file_hash and duplicate_warning already computed above, before conversion)
 
