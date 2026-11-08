@@ -66,7 +66,7 @@ UI_THEMES = (
     UiTheme(DEFAULT_THEME, available=True),
     UiTheme('classic', available=False),
     UiTheme('workspace', available=False),
-    UiTheme('focus', available=False),
+    UiTheme('focus', available=True),
     UiTheme('desk', available=True),
     UiTheme('cards', available=False),
 )
