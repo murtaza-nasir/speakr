@@ -601,7 +601,7 @@ html[data-ui-theme="desk"] .desk-row.is-failed .desk-row__title { color: var(--o
    min-height and keeps its look. */
 html[data-ui-theme="desk"] header[style*="min-height"] {
     min-height: var(--hdr-h) !important;
-    padding: 4px 12px;
+    padding: .25rem .75rem;
     gap: var(--sp-2);
     background: var(--surface);
     border-bottom: 1px solid var(--line);
@@ -793,13 +793,14 @@ html[data-ui-theme="desk"] table tbody tr:hover { background: var(--row-hover); 
 
 /* ---- Chat (recording and Inquire): log lines, not bubbles ------------------- */
 
-html[data-ui-theme="desk"] .message { box-shadow: none; line-height: 1.5; margin-bottom: var(--sp-3); font-size: var(--fs-subhead); }
+html[data-ui-theme="desk"] .message { max-width: 100%; box-shadow: none; line-height: 1.5; margin-bottom: var(--sp-3); font-size: var(--fs-subhead); }
 html[data-ui-theme="desk"] .user-message {
     background-color: var(--primary-container);
     color: var(--text-primary);
     border: 0;
     border-radius: var(--r-3);
     padding: 6px var(--sp-3);
+    max-width: 88%;
 }
 html[data-ui-theme="desk"] .ai-message {
     background-color: transparent;
@@ -807,7 +808,10 @@ html[data-ui-theme="desk"] .ai-message {
     border-inline-start: 2px solid var(--divider);
     border-radius: 0;
     padding: 2px 0 2px var(--sp-3);
+    max-width: 100%;
 }
+/* Inquire answers keep their 48rem column */
+html[data-ui-theme="desk"] .chat-message.max-w-3xl { max-width: 48rem; }
 html[data-ui-theme="desk"] .chat-message .prose a[href^="/recordings/"],
 html[data-ui-theme="desk"] .chat-ts-chip {
     border-radius: var(--r-2);
