@@ -8,7 +8,8 @@ read the upload's codecs. decide_conversion, convert_upload_in_request and
 check_extracted_audio_size decide on and run the conversion.
 select_tags_and_folder, store_recording, handle_unique_conflict and
 build_ingestion_response write the recording and assemble the answer;
-enqueue_ingestion_jobs queues its first job.
+enqueue_ingestion_jobs queues its first job. ingest runs them all inside the
+outer error handling; ingest_uploaded_recording is its facade.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
@@ -37,7 +38,7 @@ from src.services.recording_ingestion import (
     TagFolderSelection, UploadProbe, build_ingestion_response, check_extracted_audio_size,
     convert_upload_in_request, decide_conversion, enforce_size_policy, enqueue_ingestion_jobs,
     handle_duplicate_replay,
-    handle_unique_conflict, has_video_after_failed_probe, lookup_duplicate, probe_upload,
+    handle_unique_conflict, has_video_after_failed_probe, ingest, lookup_duplicate, probe_upload,
     recheck_size_after_probe, resolve_size_policy, select_tags_and_folder, store_recording,
 )
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
@@ -1020,3 +1021,95 @@ def test_enqueue_failure_emits_nothing(owner):
                 enqueue_ingestion_jobs(rec, owner=db.session.get(User, owner), resolved_params=PARAMS,
                                        conversion_deferred=False, extracted_audio_limit_mb=None)
         emit.assert_not_called()
+
+
+# --- ingest and the ingest_uploaded_recording facade ------------------------------------
+
+def test_facade_hands_every_argument_to_ingest():
+    from src.api import recordings
+    args = dict(owner=object(), uploaded_file=object(), form={"a": "b"}, original_filename="x.wav",
+                processing_source="api_v1", success_status=201, reuse_duplicate=True,
+                prepare=object(), on_conflict=object(), source=object(), enforce_upload_limits=False)
+    with patch("src.api.recordings.ingest", return_value=("answer", 299)) as run:
+        assert recordings.ingest_uploaded_recording(**args) == ("answer", 299)
+        run.assert_called_once_with(**args)
+        run.reset_mock()
+        recordings.ingest_uploaded_recording(owner=args["owner"], form={})
+        run.assert_called_once_with(owner=args["owner"], uploaded_file=None, form={},
+                                    original_filename=None, processing_source="upload",
+                                    success_status=202, reuse_duplicate=False, prepare=None,
+                                    on_conflict=None, source=None, enforce_upload_limits=True)
+
+
+def _ingest_upload(tmp_path, filename="talk.wav", **kwargs):
+    from werkzeug.datastructures import FileStorage
+    storage = MagicMock()
+    storage.get_staging_dir.return_value = str(tmp_path)
+    discarded = []
+    with patch("src.api.recordings.get_storage_service", return_value=storage), \
+            patch("src.api.recordings._discard_staging", side_effect=discarded.append):
+        result = ingest(owner=SimpleNamespace(id=1), form={},
+                        uploaded_file=FileStorage(io.BytesIO(b"x" * 64), filename=filename), **kwargs)
+    return result, discarded
+
+
+def test_ingest_without_a_file():
+    with app.app_context():
+        response, status = ingest(owner=SimpleNamespace(id=1), form={})
+        assert (status, response.get_json()["code"]) == (400, "no_file_provided")
+
+
+def test_ingest_too_large_before_the_limit_is_known(tmp_path):
+    with app.test_request_context(), \
+            patch.dict(app.config, {"MAX_CONTENT_LENGTH": 8 * MB}), \
+            patch.object(recording_ingestion, "resolve_size_policy", side_effect=RequestEntityTooLarge()):
+        (response, status), discarded = _ingest_upload(tmp_path)
+        body = response.get_json()
+    assert status == 413
+    assert {k: body[k] for k in ("max_size_mb", "effective_limit_mb", "audio_only_mode")} == \
+        {"max_size_mb": 8.0, "effective_limit_mb": 8.0, "audio_only_mode": False}
+    assert len(discarded) == 1 and discarded[0].startswith(str(tmp_path)) and discarded[0].endswith("_talk.wav")
+
+
+def test_ingest_too_large_reports_the_limit_that_fired(tmp_path):
+    policy = SizePolicy(keep_audio_only_flag=True, effective_audio_only=True, is_likely_video_by_ext=True,
+                        original_file_size=64, regular_limit_mb=10, audio_only_limit_mb=40,
+                        effective_limit_mb=40, effective_limit_bytes=40 * MB, max_content_length=None,
+                        connector_specs=None, should_enforce_size_limit=True)
+    with app.test_request_context(), \
+            patch.object(recording_ingestion, "resolve_size_policy", return_value=policy), \
+            patch.object(recording_ingestion, "enforce_size_policy", side_effect=RequestEntityTooLarge()):
+        (response, status), discarded = _ingest_upload(tmp_path, filename="talk.mp4")
+        body = response.get_json()
+    assert status == 413
+    assert {k: body[k] for k in ("max_size_mb", "effective_limit_mb", "audio_only_mode")} == \
+        {"max_size_mb": 40.0, "effective_limit_mb": 40.0, "audio_only_mode": True}
+    assert len(discarded) == 1
+
+
+def test_ingest_answers_a_unique_conflict_through_handle_unique_conflict(tmp_path):
+    from sqlalchemy.exc import IntegrityError
+    error = IntegrityError("INSERT", {}, Exception("UNIQUE"))
+    on_conflict = MagicMock()
+    with app.test_request_context(), \
+            patch.object(recording_ingestion, "enforce_size_policy", side_effect=error), \
+            patch.object(recording_ingestion, "handle_unique_conflict",
+                         return_value=("replayed", 200)) as handle:
+        result, _ = _ingest_upload(tmp_path, on_conflict=on_conflict)
+    assert result == ("replayed", 200)
+    handle.assert_called_once()
+    assert handle.call_args.args == (error,)
+    assert handle.call_args.kwargs["on_conflict"] is on_conflict
+    assert handle.call_args.kwargs["filepath"].startswith(str(tmp_path))
+
+
+def test_ingest_any_other_error_rolls_back_and_removes_staging(tmp_path):
+    with app.test_request_context(), \
+            patch.object(recording_ingestion, "enforce_size_policy", side_effect=RuntimeError("boom")), \
+            patch.object(db.session, "rollback") as rollback, \
+            patch.object(app.logger, "error") as log_error:
+        (response, status), discarded = _ingest_upload(tmp_path)
+    assert (status, response.get_json()["code"]) == (500, "unexpected_error_upload")
+    rollback.assert_called_once_with()
+    assert len(discarded) == 1 and discarded[0].startswith(str(tmp_path))
+    log_error.assert_called_once_with("Error during file upload: boom", exc_info=True)
