@@ -963,6 +963,38 @@
     "errorWithMessage": "Erro: {{error}}",
     "emptyHint": "Digite uma pergunta abaixo. Markdown é suportado."
   },
+  "uiTheme": {
+    "title": "Tema da interface",
+    "help": "O layout e o estilo da interface. O esquema de cores e o modo claro ou escuro valem para todos os temas.",
+    "appearance": "Aparência",
+    "colorSchemeLink": "Esquema de cores e modo claro ou escuro",
+    "themes": {
+      "default": {
+        "name": "Padrão",
+        "description": "A interface habitual do Speakr."
+      },
+      "classic": {
+        "name": "Clássico",
+        "description": "Página com tom suave e o painel principal sobre um cartão branco."
+      },
+      "workspace": {
+        "name": "Espaço de trabalho",
+        "description": "Barra de navegação, itens em uma linha e uma barra de ferramentas com rótulos."
+      },
+      "focus": {
+        "name": "Foco",
+        "description": "Layout tranquilo com uma coluna de leitura em fonte serifada para as transcrições."
+      },
+      "desk": {
+        "name": "Mesa",
+        "description": "Tabela compacta de gravações com barra de status."
+      },
+      "cards": {
+        "name": "Cartões",
+        "description": "Gravações como cartões em uma página com tom suave e destaques discretos."
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "Escolha uma gravação na barra lateral para visualizar sua transcrição e resumo",
     "darkThemes": "Temas Escuros",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "O valor deve ser um fuso horário IANA válido, por exemplo Europe/Berlin",
       "invalid_total_bytes": "total_bytes deve ser um inteiro positivo",
       "invalid_transcript_data": "Dados de transcrição inválidos",
+      "invalid_ui_theme": "ui_theme inválido",
       "invalid_updated_since": "updated_since deve ser uma data e hora ISO 8601",
       "invalid_username_length": "O nome de usuário deve ter de 2 a 20 caracteres.",
       "invalid_with_sources": "with_sources deve ser true ou false",

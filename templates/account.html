@@ -493,6 +493,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
     <script src="{{ url_for('static', filename='js/timezone-sync.js') }}" defer></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
@@ -1094,6 +1095,19 @@
                       <div class="tab-scroll">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.preferences">Preferences</h2>
                         <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Display and editor behaviour preferences. These settings are saved to your account and apply across devices.</p>
+                        {% if ui_theme_choices|length > 1 %}
+                        <!-- Appearance: the UI theme (includes/ui_theme_picker.html),
+                             applied at once and saved with the account. The colour
+                             scheme and light/dark mode stay in the appearance
+                             dialog of the main page. -->
+                        <section id="account-appearance" class="mb-6 space-y-3">
+                            <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{{ ui_theme_labels.appearance }}</h3>
+                            {% include 'includes/ui_theme_picker.html' %}
+                            <a href="{{ url_for('recordings.index') }}?open=appearance" class="btn btn--ghost btn--sm">
+                                <i class="fas fa-palette" aria-hidden="true"></i><span>{{ ui_theme_labels.colorSchemeLink }}</span>
+                            </a>
+                        </section>
+                        {% endif %}
 
                         <form id="preferencesForm" method="POST" action="{{ url_for('auth.account') }}" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

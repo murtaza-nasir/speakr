@@ -116,6 +116,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     {% set page_label = 'Group Management' %}

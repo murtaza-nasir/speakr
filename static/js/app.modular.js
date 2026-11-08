@@ -6,6 +6,7 @@ import { resolveInitialSort } from './modules/utils/sort-preference.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
+import { useUiTheme } from './modules/composables/ui-theme.js';
 import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
@@ -1869,6 +1870,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             // COLLECT ALL STATE INTO SINGLE OBJECT FOR COMPOSABLES
             // =========================================================================
+            // UI theme (templates/includes/ui_theme.html); the theme slots
+            // (templates/themes/slot.html) switch on it without a reload.
+            const { uiTheme, setUiTheme } = useUiTheme(ref);
+
             const state = {
                 // Core
                 currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending, dragover, recordings, selectedRecording, selectedTab, searchQuery,
@@ -4646,6 +4651,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,
+                uiTheme,
+                setUiTheme,
                 formatStatus,
                 formatRecordingStatus,
                 getStatusClass,

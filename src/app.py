@@ -888,7 +888,36 @@ def inject_account_theme():
     if not has_request_context() or not current_user.is_authenticated:
         return {'account_theme': None}
     return {'account_theme': {'dark': current_user.theme_dark_mode,
-                              'scheme': current_user.theme_color_scheme}}
+                              'scheme': current_user.theme_color_scheme,
+                              'ui_theme': current_user.ui_theme}}
+
+
+@app.context_processor
+def inject_ui_themes():
+    """UI themes (src/config/ui_themes.py) for includes/ui_theme.html, the
+    theme cards (includes/ui_theme_picker.html) and the template slots
+    (themes/slot.html). Only available themes are listed."""
+    from flask import has_request_context, url_for
+    from flask_login import current_user
+    from src.config import ui_themes
+    from src.utils.localization import translate
+
+    def static_url(path):
+        return url_for('static', filename=path) if has_request_context() else '/static/' + path
+
+    available = ui_themes.available_themes()
+    signed_in = has_request_context() and current_user.is_authenticated
+    return {
+        'ui_theme_assets': {t.id: (static_url(t.stylesheet) if t.stylesheet else '') for t in available},
+        'ui_theme_choices': [{'id': t.id, 'name': translate(t.name_key),
+                              'description': translate(t.description_key),
+                              'preview_url': static_url(t.preview)} for t in available],
+        'ui_theme_labels': {key: translate(f'uiTheme.{key}')
+                            for key in ('title', 'help', 'appearance', 'colorSchemeLink')},
+        'account_ui_theme': ui_themes.resolve_theme(current_user.ui_theme) if signed_in
+                            else ui_themes.DEFAULT_THEME,
+        'ui_theme_slot_overrides': ui_themes.slot_overrides,
+    }
 
 
 @app.context_processor

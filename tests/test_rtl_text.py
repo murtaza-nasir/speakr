@@ -40,5 +40,5 @@ def test_transcript_and_chat_text_follow_their_own_direction():
     for selector in (".speaker-text", ".speaker-bubble-content", ".transcript-segment", ".bidi-auto"):
         assert selector in rule
     assert "unicode-bidi: plaintext" in rule and "text-align: start" in rule
-    for path in ("templates/components/header.html", "templates/components/sidebar.html"):
+    for path in ("templates/components/header.html", "templates/themes/default/sidebar-row.html"):
         assert 'dir="auto"' in open(os.path.join(ROOT, path)).read(), path

@@ -963,6 +963,38 @@
     "errorWithMessage": "Error: {{error}}",
     "emptyHint": "Escriba una pregunta abajo. Se admite Markdown."
   },
+  "uiTheme": {
+    "title": "Tema de la interfaz",
+    "help": "La disposición y el estilo de la interfaz. El esquema de color y el modo claro u oscuro se aplican a todos los temas.",
+    "appearance": "Apariencia",
+    "colorSchemeLink": "Esquema de color y modo claro u oscuro",
+    "themes": {
+      "default": {
+        "name": "Estándar",
+        "description": "La interfaz habitual de Speakr."
+      },
+      "classic": {
+        "name": "Clásico",
+        "description": "Página tintada con el panel principal sobre una tarjeta blanca."
+      },
+      "workspace": {
+        "name": "Espacio de trabajo",
+        "description": "Barra de navegación, filas de una sola línea y una barra de herramientas con etiquetas."
+      },
+      "focus": {
+        "name": "Enfoque",
+        "description": "Diseño tranquilo con una columna de lectura en letra serif para las transcripciones."
+      },
+      "desk": {
+        "name": "Escritorio",
+        "description": "Tabla compacta de grabaciones con barra de estado."
+      },
+      "cards": {
+        "name": "Tarjetas",
+        "description": "Grabaciones como tarjetas sobre una página tintada, con acentos suaves."
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "Elige una grabación de la barra lateral para ver su transcripción y resumen",
     "darkThemes": "Temas Oscuros",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "El valor debe ser una zona horaria IANA válida, por ejemplo Europe/Berlin",
       "invalid_total_bytes": "total_bytes debe ser un número entero positivo",
       "invalid_transcript_data": "Se proporcionaron datos de transcripción no válidos",
+      "invalid_ui_theme": "ui_theme no válido",
       "invalid_updated_since": "updated_since debe ser una fecha y hora ISO 8601",
       "invalid_username_length": "El nombre de usuario debe tener entre 2 y 20 caracteres.",
       "invalid_with_sources": "with_sources debe ser true o false",

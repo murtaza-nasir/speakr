@@ -963,6 +963,38 @@
     "errorWithMessage": "Erreur : {{error}}",
     "emptyHint": "Saisissez une question ci-dessous. Markdown est pris en charge."
   },
+  "uiTheme": {
+    "title": "Thème de l'interface",
+    "help": "La disposition et le style de l'interface. Le schéma de couleurs et le mode clair ou sombre s'appliquent à chaque thème.",
+    "appearance": "Apparence",
+    "colorSchemeLink": "Schéma de couleurs et mode clair ou sombre",
+    "themes": {
+      "default": {
+        "name": "Standard",
+        "description": "L'interface habituelle de Speakr."
+      },
+      "classic": {
+        "name": "Classique",
+        "description": "Page teintée avec la zone principale sur une carte blanche."
+      },
+      "workspace": {
+        "name": "Espace de travail",
+        "description": "Barre de navigation, lignes compactes et barre d'outils avec libellés."
+      },
+      "focus": {
+        "name": "Concentration",
+        "description": "Mise en page calme avec une colonne de lecture en police à empattements pour les transcriptions."
+      },
+      "desk": {
+        "name": "Bureau",
+        "description": "Tableau dense des enregistrements avec barre d'état."
+      },
+      "cards": {
+        "name": "Cartes",
+        "description": "Enregistrements sous forme de cartes sur une page teintée, avec des accents doux."
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "Choisissez un enregistrement dans la barre latérale pour voir sa transcription et son résumé",
     "darkThemes": "Thèmes Sombres",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "La valeur doit être un fuseau horaire IANA valide, par exemple Europe/Berlin",
       "invalid_total_bytes": "total_bytes doit être un entier positif",
       "invalid_transcript_data": "Données de transcription fournies invalides",
+      "invalid_ui_theme": "ui_theme invalide",
       "invalid_updated_since": "updated_since doit être une date et heure ISO 8601",
       "invalid_username_length": "Le nom d'utilisateur doit comporter de 2 à 20 caractères.",
       "invalid_with_sources": "with_sources doit valoir true ou false",

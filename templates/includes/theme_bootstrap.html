@@ -14,7 +14,12 @@
     // Until the stylesheets are loaded, the page background is the browser's
     // default (white). The background last seen with this mode and scheme is
     // used for that moment, and saved again once the page has loaded.
-    var key = 'themeBg:' + (dark ? 'dark' : 'light') + ':' + (scheme || 'blue');
+    // A UI theme other than the default (includes/ui_theme.html) has its own
+    // background, so it keeps its own entry.
+    var uiTheme = null;
+    try { uiTheme = localStorage.getItem('uiTheme'); } catch (e) {}
+    var key = 'themeBg:' + (dark ? 'dark' : 'light') + ':' + (scheme || 'blue')
+      + (uiTheme && uiTheme !== 'default' ? ':' + uiTheme.replace(/[^\w-]/g, '') : '');
     try {
       var bg = localStorage.getItem(key);
       if (bg) {

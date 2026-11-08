@@ -1,0 +1,21 @@
+{#- One UI theme slot (docs/advanced/ui-themes.md). Used as
+        {% with ui_slot = '<slot>' %}{% include 'themes/slot.html' %}{% endwith %}
+    With no available theme overriding the slot, this is the default partial
+    alone, so the page is the same as before slots existed. Otherwise each
+    overriding theme gets a branch of a v-if chain on the Vue app's reactive
+    uiTheme, with the default partial as v-else, so a theme switch takes
+    effect without a reload. Only one branch is rendered at a time, so ids and
+    refs repeated between the branches do not clash. -#}
+{%- set _ui_overrides = ui_theme_slot_overrides(ui_slot) -%}
+{%- if _ui_overrides -%}
+{%- for _ui_theme in _ui_overrides %}
+<template v-{{ 'if' if loop.first else 'else-if' }}="uiTheme === '{{ _ui_theme }}'">
+{% include 'themes/' ~ _ui_theme ~ '/' ~ ui_slot ~ '.html' %}
+</template>
+{%- endfor %}
+<template v-else>
+{% include 'themes/default/' ~ ui_slot ~ '.html' %}
+</template>
+{%- else -%}
+{% include 'themes/default/' ~ ui_slot ~ '.html' %}
+{%- endif -%}

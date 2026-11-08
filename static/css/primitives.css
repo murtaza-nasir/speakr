@@ -2071,3 +2071,32 @@ select option:hover {
     background-color: var(--bg-accent);
     color: var(--text-accent);
 }
+
+
+/* ==========================================================================
+   UI theme cards (templates/includes/ui_theme_picker.html). The selected
+   card is the one with aria-pressed="true".
+   ========================================================================== */
+.ui-theme-picker { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.ui-theme-picker__help { font-size: var(--fs-meta); color: var(--text-muted); margin-top: var(--sp-1); }
+.ui-theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-3); }
+.ui-theme-card {
+    position: relative; display: flex; flex-direction: column; text-align: start;
+    padding: 0; overflow: hidden; cursor: pointer;
+    background: var(--bg-secondary); color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-secondary); border-radius: var(--radius-lg);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.ui-theme-card:hover { border-color: var(--border-accent); }
+.ui-theme-card:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.ui-theme-card[aria-pressed="true"] { border-color: var(--bg-button); box-shadow: 0 0 0 1px var(--bg-button); }
+.ui-theme-card__preview { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-tertiary); }
+.ui-theme-card__text { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2) var(--sp-3) var(--sp-3); }
+.ui-theme-card__name { font-size: var(--fs-body); font-weight: 600; }
+.ui-theme-card__description { font-size: var(--fs-meta); color: var(--text-muted); line-height: var(--lh-snug); }
+.ui-theme-card__check {
+    position: absolute; top: var(--sp-2); inset-inline-end: var(--sp-2); display: none;
+    width: 22px; height: 22px; border-radius: var(--radius-pill); align-items: center; justify-content: center;
+    font-size: 11px; background: var(--bg-button); color: var(--text-button);
+}
+.ui-theme-card[aria-pressed="true"] .ui-theme-card__check { display: inline-flex; }

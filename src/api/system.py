@@ -91,6 +91,15 @@ def save_user_preferences():
         if data['color_scheme'] not in THEME_COLOR_SCHEMES:
             return jsonify(api_error('invalid_color_scheme')), 400
         current_user.theme_color_scheme = data['color_scheme']
+    # UI theme (src/config/ui_themes.py): an available theme id, or null to
+    # go back to the default. Ids that are unknown or not offered yet are
+    # refused.
+    if 'ui_theme' in data:
+        from src.config import ui_themes
+        value = data['ui_theme']
+        if value is not None and not ui_themes.is_available(value):
+            return jsonify(api_error('invalid_ui_theme')), 400
+        current_user.ui_theme = value
 
     db.session.commit()
     

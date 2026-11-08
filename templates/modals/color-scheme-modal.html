@@ -10,6 +10,7 @@
             <button @click="closeColorSchemeModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
+            {% with ui_picker_vue = true %}{% include 'includes/ui_theme_picker.html' %}{% endwith %}
             <div class="color-scheme-section">
                 <h3 class="t-label flex items-center gap-2" style="margin-bottom: var(--sp-3);">
                     <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'"></i>

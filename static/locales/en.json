@@ -963,6 +963,38 @@
     "errorWithMessage": "Error: {{error}}",
     "emptyHint": "Type a question below. Markdown supported."
   },
+  "uiTheme": {
+    "title": "Interface theme",
+    "help": "The layout and style of the interface. The color scheme and light or dark mode apply to every theme.",
+    "appearance": "Appearance",
+    "colorSchemeLink": "Color scheme and light or dark mode",
+    "themes": {
+      "default": {
+        "name": "Standard",
+        "description": "The usual Speakr interface."
+      },
+      "classic": {
+        "name": "Classic",
+        "description": "A tinted page with the main pane on a white card."
+      },
+      "workspace": {
+        "name": "Workspace",
+        "description": "A navigation rail, single-line rows and a labelled toolbar."
+      },
+      "focus": {
+        "name": "Focus",
+        "description": "A calm layout with a serif reading column for transcripts."
+      },
+      "desk": {
+        "name": "Desk",
+        "description": "A dense table of recordings with a status bar."
+      },
+      "cards": {
+        "name": "Cards",
+        "description": "Recordings as cards on a tinted page, with soft accents."
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "Choose a recording from the sidebar to view its transcription and summary",
     "darkThemes": "Dark Themes",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "Value must be a valid IANA timezone, for example Europe/Berlin",
       "invalid_total_bytes": "total_bytes must be a positive integer",
       "invalid_transcript_data": "Invalid transcript data provided",
+      "invalid_ui_theme": "Invalid ui_theme",
       "invalid_updated_since": "updated_since must be an ISO 8601 date-time",
       "invalid_username_length": "The username must be 2 to 20 characters.",
       "invalid_with_sources": "with_sources must be true or false",

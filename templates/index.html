@@ -76,6 +76,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
     <!-- Scripts after every stylesheet, so that no page is painted while a
          script blocks the parser before the stylesheets are known. -->
     {% include 'includes/loading_overlay.html' %}
@@ -138,7 +139,7 @@
         {% include 'components/upload-view.html' %}
 
         <!-- Upload Progress Popup -->
-        {% include 'components/progress-popup.html' %}
+        {% with ui_slot = 'status-area' %}{% include 'themes/slot.html' %}{% endwith %}
 
         <!-- Modals -->
         {% include 'modals/edit-modal.html' %}

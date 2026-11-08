@@ -1,0 +1,61 @@
+{#- The UI theme (src/config/ui_themes.py, docs/advanced/ui-themes.md).
+    Include at the end of <head>, after the compiled stylesheet. Before the
+    first paint it sets data-ui-theme on <html> and, for a theme with its own
+    stylesheet, adds that stylesheet as the last one in <head>. The theme is
+    read from localStorage, where includes/theme_account.html has put the
+    account's saved theme; an unknown or unavailable id means the default.
+    window.speakrApplyUiTheme(id) switches the theme on the open page without
+    a reload: it updates the attribute, the stylesheet and the theme cards,
+    saves the choice, and tells the page's Vue apps (event speakr:ui-theme). -#}
+<script>
+  (function () {
+    var themes = {{ ui_theme_assets|tojson }};
+    var root = document.documentElement, LINK_ID = 'speakr-ui-theme-css';
+    function known(id) { return typeof id === 'string' && Object.prototype.hasOwnProperty.call(themes, id); }
+    function syncCards(id) {
+      var cards = document.querySelectorAll('[data-ui-theme-choice]');
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].setAttribute('aria-pressed', cards[i].getAttribute('data-ui-theme-choice') === id ? 'true' : 'false');
+      }
+    }
+    function apply(id) {
+      if (!known(id)) id = 'default';
+      root.setAttribute('data-ui-theme', id);
+      var link = document.getElementById(LINK_ID), href = themes[id];
+      if (href) {
+        if (!link) {
+          link = document.createElement('link');
+          link.id = LINK_ID;
+          link.rel = 'stylesheet';
+          link.setAttribute('blocking', 'render');
+          document.head.appendChild(link);
+        }
+        if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+      } else if (link) {
+        link.parentNode.removeChild(link);
+      }
+      syncCards(id);
+      return id;
+    }
+    var stored = null;
+    try { stored = localStorage.getItem('uiTheme'); } catch (e) {}
+    apply(stored);
+    window.speakrApplyUiTheme = function (id, options) {
+      id = apply(id);
+      try { localStorage.setItem('uiTheme', id); } catch (e) {}
+      if (!(options && options.save === false) && window.speakrSaveTheme) window.speakrSaveTheme('uiTheme');
+      try { window.dispatchEvent(new CustomEvent('speakr:ui-theme', { detail: { id: id } })); } catch (e) {}
+      return id;
+    };
+    // A theme chosen in another tab of this browser applies here too.
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'uiTheme') window.speakrApplyUiTheme(e.newValue, { save: false });
+    });
+    // Theme cards outside a Vue app (includes/ui_theme_picker.html).
+    document.addEventListener('click', function (e) {
+      var card = e.target && e.target.closest ? e.target.closest('[data-ui-theme-choice]') : null;
+      if (card) { e.preventDefault(); window.speakrApplyUiTheme(card.getAttribute('data-ui-theme-choice')); }
+    });
+    document.addEventListener('DOMContentLoaded', function () { syncCards(root.getAttribute('data-ui-theme')); });
+  })();
+</script>

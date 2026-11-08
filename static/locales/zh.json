@@ -963,6 +963,38 @@
     "errorWithMessage": "错误：{{error}}",
     "emptyHint": "在下方输入问题。支持 Markdown。"
   },
+  "uiTheme": {
+    "title": "界面主题",
+    "help": "界面的布局和样式。配色方案以及浅色或深色模式适用于所有主题。",
+    "appearance": "外观",
+    "colorSchemeLink": "配色方案与浅色或深色模式",
+    "themes": {
+      "default": {
+        "name": "标准",
+        "description": "Speakr 的常规界面。"
+      },
+      "classic": {
+        "name": "经典",
+        "description": "带色调的页面，主区域位于白色卡片上。"
+      },
+      "workspace": {
+        "name": "工作区",
+        "description": "导航栏、单行列表项和带标签的工具栏。"
+      },
+      "focus": {
+        "name": "专注",
+        "description": "安静的布局，转录内容使用衬线字体的阅读栏。"
+      },
+      "desk": {
+        "name": "桌面",
+        "description": "紧凑的录音表格，带状态栏。"
+      },
+      "cards": {
+        "name": "卡片",
+        "description": "录音以卡片形式显示在带色调的页面上，强调色柔和。"
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "从侧边栏选择一个录音以查看其转录和摘要",
     "darkThemes": "深色主题",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "值必须是有效的 IANA 时区，例如 Europe/Berlin",
       "invalid_total_bytes": "total_bytes 必须是正整数",
       "invalid_transcript_data": "提供的转录数据无效",
+      "invalid_ui_theme": "无效的 ui_theme",
       "invalid_updated_since": "updated_since 必须是 ISO 8601 日期时间",
       "invalid_username_length": "用户名必须为 2 到 20 个字符。",
       "invalid_with_sources": "with_sources 必须为 true 或 false",

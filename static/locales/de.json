@@ -963,6 +963,38 @@
     "errorWithMessage": "Fehler: {{error}}",
     "emptyHint": "Geben Sie unten eine Frage ein. Markdown wird unterstützt."
   },
+  "uiTheme": {
+    "title": "Oberflächendesign",
+    "help": "Aufbau und Stil der Oberfläche. Farbschema und heller oder dunkler Modus gelten für jedes Design.",
+    "appearance": "Darstellung",
+    "colorSchemeLink": "Farbschema und heller oder dunkler Modus",
+    "themes": {
+      "default": {
+        "name": "Standard",
+        "description": "Die gewohnte Speakr-Oberfläche."
+      },
+      "classic": {
+        "name": "Klassisch",
+        "description": "Getönte Seite mit dem Hauptbereich auf einer weißen Karte."
+      },
+      "workspace": {
+        "name": "Arbeitsbereich",
+        "description": "Navigationsleiste, einzeilige Einträge und eine beschriftete Werkzeugleiste."
+      },
+      "focus": {
+        "name": "Fokus",
+        "description": "Ruhiges Layout mit einer Lesespalte in Serifenschrift für Transkripte."
+      },
+      "desk": {
+        "name": "Schreibtisch",
+        "description": "Kompakte Tabelle der Aufnahmen mit Statusleiste."
+      },
+      "cards": {
+        "name": "Karten",
+        "description": "Aufnahmen als Karten auf einer getönten Seite, mit sanften Akzenten."
+      }
+    }
+  },
   "colorScheme": {
     "chooseRecording": "Wählen Sie eine Aufnahme aus der Seitenleiste, um ihre Transkription und Zusammenfassung zu sehen",
     "darkThemes": "Dunkle Themen",
@@ -3329,6 +3361,7 @@
       "invalid_timezone_value": "Der Wert muss eine gültige IANA-Zeitzone sein, zum Beispiel Europe/Berlin",
       "invalid_total_bytes": "total_bytes muss eine positive ganze Zahl sein",
       "invalid_transcript_data": "Ungültige Transkriptdaten übermittelt",
+      "invalid_ui_theme": "Ungültiges ui_theme",
       "invalid_updated_since": "updated_since muss ein Datum mit Uhrzeit nach ISO 8601 sein",
       "invalid_username_length": "Der Benutzername muss 2 bis 20 Zeichen lang sein.",
       "invalid_with_sources": "with_sources muss true oder false sein",

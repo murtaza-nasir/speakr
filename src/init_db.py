@@ -535,6 +535,10 @@ def _run_migrations(app, engine):
             app.logger.info("Added theme_dark_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'theme_color_scheme', 'VARCHAR(16)'):
             app.logger.info("Added theme_color_scheme column to user table")
+        # UI theme saved with the account (src/config/ui_themes.py); null
+        # means the default theme
+        if add_column_if_not_exists(engine, 'user', 'ui_theme', 'VARCHAR(32)'):
+            app.logger.info("Added ui_theme column to user table")
 
         # Raised when the password is set, to end the account's sign-ins (#437)
         if add_column_if_not_exists(engine, 'user', 'session_version', 'INTEGER'):

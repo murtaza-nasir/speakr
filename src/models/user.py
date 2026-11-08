@@ -119,6 +119,10 @@ class User(db.Model, UserMixin):
     # the user changes them; until then each browser keeps its own setting.
     theme_dark_mode = db.Column(db.Boolean, nullable=True)
     theme_color_scheme = db.Column(db.String(16), nullable=True)
+    # UI theme (src/config/ui_themes.py), saved when the user picks one.
+    # Null means the default theme; an id that is unknown or no longer
+    # available is shown as the default as well.
+    ui_theme = db.Column(db.String(32), nullable=True)
     # Audio player placement in the recording-detail view. 'bottom'
     # (default) keeps the player anchored under the content columns;
     # 'top' renders it above the columns so it sits closer to the

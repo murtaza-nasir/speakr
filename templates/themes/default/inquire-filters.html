@@ -1,0 +1,175 @@
+            <!-- Left Panel: Filters -->
+            <div class="w-80 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col flex-shrink-0 z-50"
+                 style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+                 :class="[
+                     'lg:relative lg:translate-x-0',
+                     isMobileSidebarOpen ? 'fixed inset-y-0 left-0 translate-x-0' : 'fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0'
+                 ]">
+                <!-- Mobile close button — matches the design system
+                     icon-button primitive. -->
+                <div class="lg:hidden flex items-center justify-between p-3 border-b"
+                     style="border-bottom-color: var(--border-primary);">
+                    <h2 class="text-base font-semibold">${ t('inquire.filters') }</h2>
+                    <button @click="isMobileSidebarOpen = false"
+                            class="btn btn--icon">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="p-3 space-y-3">
+                    <!-- Filters header — h2 on desktop is hidden because
+                         the sidebar already carries an "Filters" label
+                         in the mobile close header above; on desktop
+                         the Clear all button alone is enough chrome. -->
+                    <div class="flex items-center justify-between lg:justify-end">
+                        <h2 class="text-base font-semibold lg:hidden">${ t('inquire.filters') }</h2>
+                        <button @click="clearInquireFilters" class="btn btn--sm btn--ghost">
+                            <i class="fas fa-times"></i><span>${ t('inquire.clearAll') }</span>
+                        </button>
+                    </div>
+
+                    <!-- Tag Filters -->
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-tags mr-2" style="color: var(--text-accent);"></i>${ t('inquire.tags') }
+                        </h3>
+                        <input type="text" v-model="tagSearchQuery" :placeholder="t('form.searchTags')"
+                               class="field mb-2"
+                               style="font-size: var(--fs-meta);">
+                        <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                            <label v-for="tag in filteredTags" :key="tag.id"
+                                   class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                <input type="checkbox" :value="tag.id" v-model="inquireFilters.selectedTags"
+                                       class="filter-checkbox">
+                                <span class="ml-2 text-sm font-medium flex-1" :style="{ color: tag.color }">${ tag.name }</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full"
+                                      style="background: var(--bg-tertiary); color: var(--text-muted);">${ tag.recording_count }</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Folder Filters (#428), shown when folders are enabled -->
+                    <div v-if="availableFilters.folders.length > 0" class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-folder mr-2" style="color: var(--text-accent);"></i>${ t('inquire.folders') }
+                        </h3>
+                        <input type="text" v-model="folderSearchQuery" :placeholder="t('form.searchFolders')"
+                               class="field mb-2"
+                               style="font-size: var(--fs-meta);">
+                        <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                            <label v-for="folder in filteredFolders" :key="folder.id"
+                                   class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
+                                       class="filter-checkbox">
+                                <span class="ml-2 text-sm font-medium flex-1" :style="{ color: folder.color }">${ folder.name }</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full"
+                                      style="background: var(--bg-tertiary); color: var(--text-muted);">${ folder.recording_count }</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Speaker Filters -->
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-users mr-2" style="color: var(--text-accent);"></i>${ t('inquire.speakers') }
+                        </h3>
+                        <div v-if="availableFilters.speakers.length > 0">
+                            <input type="text" v-model="speakerSearchQuery" :placeholder="t('form.searchSpeakers')"
+                                   class="field mb-2"
+                                   style="font-size: var(--fs-meta);">
+                            <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                                <label v-for="speaker in filteredSpeakers" :key="speaker"
+                                       class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                    <input type="checkbox" :value="speaker" v-model="inquireFilters.selectedSpeakers"
+                                           class="filter-checkbox">
+                                    <span class="ml-2 text-sm flex-1" style="color: var(--text-primary);">${ speaker }</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div v-else class="empty" style="padding: var(--sp-3);">
+                            <div class="empty__icon"><i class="fas fa-users"></i></div>
+                            <div class="t-meta">${ t('inquire.noSpeakerData') }</div>
+                            <div class="t-meta" style="font-size: var(--fs-label); margin-top: var(--sp-1);">${ t('inquire.speakerRequirement') }</div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range Filters -->
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-calendar mr-2" style="color: var(--text-accent);"></i>${ t('inquire.dateRange') }
+                        </h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="t-label mb-1 block">${ t('inquire.from') }</label>
+                                <input type="date" v-model="inquireFilters.dateFrom" class="field" style="font-size: var(--fs-meta);">
+                            </div>
+                            <div>
+                                <label class="t-label mb-1 block">${ t('inquire.to') }</label>
+                                <input type="date" v-model="inquireFilters.dateTo" class="field" style="font-size: var(--fs-meta);">
+                            </div>
+                        </div>
+                    </div>
+                
+                <!-- Recording Filters - Commented Out -->
+                <!--
+                <div class="flex-1 flex flex-col px-6 pb-6 min-h-0">
+                    <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-4 flex flex-col flex-1 min-h-0">
+                        <h3 class="font-medium mb-3 flex items-center flex-shrink-0 text-[var(--text-primary)]">
+                            <i class="fas fa-file-audio mr-2 text-[var(--text-accent)]"></i>Recordings
+                        </h3>
+                        <div class="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
+                            <label v-for="recording in availableFilters.recordings" :key="recording.id" class="flex items-center cursor-pointer hover:bg-[var(--bg-tertiary)] p-3 rounded-md transition-colors border border-transparent hover:border-[var(--border-secondary)]">
+                                <input type="checkbox" :value="recording.id" v-model="inquireFilters.selectedRecordings" class="h-4 w-4 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)] flex-shrink-0">
+                                <div class="ml-3 flex-1 min-w-0">
+                                    <div class="text-sm font-medium truncate text-[var(--text-primary)]" :title="recording.title">${recording.title}</div>
+                                    <div v-if="recording.meeting_date" class="text-xs text-[var(--text-muted)] mt-1">${formatDate(recording.meeting_date)}</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                -->
+                
+                    <!-- Active Filters Summary — small pill-style
+                         readout of what's currently filtered, with the
+                         accent colour on the icon so it reads as an
+                         "active" indicator. -->
+                    <div v-if="hasActiveFilters" class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <div class="t-label mb-2 flex items-center">
+                            <i class="fas fa-filter mr-1" style="color: var(--text-accent);"></i>${ t('inquire.activeFilters') }
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-if="inquireFilters.selectedTags.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-tags"></i>
+                                <span>${ inquireFilters.selectedTags.length } ${ t('inquire.tagsCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.selectedFolders.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-folder"></i>
+                                <span>${ inquireFilters.selectedFolders.length } ${ t('inquire.foldersCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.selectedSpeakers.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-users"></i>
+                                <span>${ inquireFilters.selectedSpeakers.length } ${ t('inquire.speakersCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.dateFrom || inquireFilters.dateTo"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-calendar"></i>
+                                <span>${ t('inquire.dateRangeActive') }</span>
+                            </span>
+                        </div>
+                    </div>
+                    </div><!-- End of p-4 space-y-4 div -->
+                </div><!-- End of flex-1 overflow-y-auto div -->
+            </div><!-- End of w-80 sidebar div -->

@@ -125,6 +125,14 @@ The expandable tips section provides guidance on crafting better instructions. F
 
 The Preferences tab is the home for display and editor behaviour settings that should follow you across devices.
 
+### Appearance
+
+**Interface theme.** The interface theme is the layout and style of the interface: the shape of the sidebar and its recording rows, the recording header, the transcript, the Inquire filter column, surfaces, corners and type. The **Appearance** section at the top of the Preferences tab shows one card per theme, with a preview, its name and a one-line description. Clicking a card applies the theme at once, without reloading the page. The choice is saved with your account and follows you to other devices and browsers. The same cards are shown in the **Color scheme** dialog, which opens from the user menu in the header.
+
+The theme, the color scheme and light or dark mode are three separate settings that combine freely: every color scheme and both modes work with every theme. Neutral surfaces and shapes come from the theme, and the accent color comes from the color scheme. The **Color scheme and light or dark mode** link below the theme cards opens the color scheme dialog; light or dark mode is also switched with the sun and moon toggle in the user menu.
+
+Until you pick a theme, the standard theme is used. New themes arrive with Speakr upgrades, and the Appearance section is shown only once the server offers more than one theme. If a theme you picked is withdrawn from a server, the standard theme is shown instead.
+
 ### Language Preferences
 
 Three language settings shape your Speakr experience. The interface language dropdown immediately transforms all menus, buttons, and messages to your chosen language; the transcription language field sets a default ISO 639-1 code that the recognition service uses to optimise accuracy when auto-detect is too slow or ambiguous; and the preferred output language controls the language of titles, summaries, and chat responses regardless of the source audio's language. Leaving the transcription language on **Auto-detect** is the right default for multilingual content.
