@@ -7,7 +7,8 @@ and apply the upload size limits; probe_upload and has_video_after_failed_probe
 read the upload's codecs. decide_conversion, convert_upload_in_request and
 check_extracted_audio_size decide on and run the conversion.
 select_tags_and_folder, store_recording, handle_unique_conflict and
-build_ingestion_response write the recording and assemble the answer.
+build_ingestion_response write the recording and assemble the answer;
+enqueue_ingestion_jobs queues its first job.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
@@ -34,7 +35,8 @@ from src.services import recording_ingestion
 from src.services.recording_ingestion import (
     ConversionDecision, ConvertedUpload, SizePolicy, SizeRecheck, StoredRecording,
     TagFolderSelection, UploadProbe, build_ingestion_response, check_extracted_audio_size,
-    convert_upload_in_request, decide_conversion, enforce_size_policy, handle_duplicate_replay,
+    convert_upload_in_request, decide_conversion, enforce_size_policy, enqueue_ingestion_jobs,
+    handle_duplicate_replay,
     handle_unique_conflict, has_video_after_failed_probe, lookup_duplicate, probe_upload,
     recheck_size_after_probe, resolve_size_policy, select_tags_and_folder, store_recording,
 )
@@ -953,3 +955,68 @@ def test_build_ingestion_response(owner, warning, reuse, expected):
                                                     reuse_duplicate=reuse, success_status=201)
         assert status == 201
         assert response.get_json() == {**rec.to_dict(viewer_user=user), **expected}
+
+
+# --- enqueue_ingestion_jobs -------------------------------------------------------------
+
+PARAMS = {"language": "de", "min_speakers": 2, "transcription_model": "whisper-1"}
+
+
+def _enqueue(uid, rec, deferred, limit=None):
+    events = []
+    with patch("src.api.recordings.job_queue") as queue, \
+            patch("src.services.webhook_dispatch.emit_recording_created",
+                  side_effect=lambda r: events.append(("emit", r.id))) as emit, \
+            patch.object(app.logger, "info") as info:
+        queue.enqueue.side_effect = lambda **kw: events.append(("enqueue", kw["job_type"]))
+        result = enqueue_ingestion_jobs(rec, owner=db.session.get(User, uid), resolved_params=PARAMS,
+                                        conversion_deferred=deferred, extracted_audio_limit_mb=limit)
+    return result, queue, emit, info, events
+
+
+def test_deferred_conversion_enqueues_convert_job(owner):
+    with app.app_context():
+        rec = _recording(owner, status="PENDING")
+        result, queue, emit, info, events = _enqueue(owner, rec, deferred=True, limit=40)
+        assert result is None
+        queue.enqueue.assert_called_once_with(
+            user_id=owner, recording_id=rec.id, job_type="convert",
+            params={"transcribe": PARAMS, "extracted_audio_limit_mb": 40}, is_new_upload=True)
+        assert events == [("enqueue", "convert"), ("emit", rec.id)]
+        emit.assert_called_once_with(rec)
+        assert [c.args for c in info.call_args_list] == [
+            (f"Conversion job queued for recording ID: {rec.id}",)]
+
+
+def test_convert_job_carries_no_limit_when_none_applies(owner):
+    with app.app_context():
+        rec = _recording(owner, status="PENDING")
+        _, queue, _, _, _ = _enqueue(owner, rec, deferred=True, limit=None)
+        assert queue.enqueue.call_args.kwargs["params"] == {"transcribe": PARAMS,
+                                                            "extracted_audio_limit_mb": None}
+
+
+def test_without_deferral_enqueues_transcribe_job(owner):
+    with app.app_context():
+        rec = _recording(owner, status="PENDING")
+        result, queue, emit, info, events = _enqueue(owner, rec, deferred=False, limit=40)
+        assert result is None
+        queue.enqueue.assert_called_once_with(user_id=owner, recording_id=rec.id, job_type="transcribe",
+                                              params=PARAMS, is_new_upload=True)
+        assert events == [("enqueue", "transcribe"), ("emit", rec.id)]
+        assert [c.args for c in info.call_args_list] == [
+            (f"Queueing transcription for recording {rec.id} with params: {PARAMS}",),
+            (f"Transcription job queued for recording ID: {rec.id}",),
+        ]
+
+
+def test_enqueue_failure_emits_nothing(owner):
+    with app.app_context():
+        rec = _recording(owner, status="PENDING")
+        with patch("src.api.recordings.job_queue") as queue, \
+                patch("src.services.webhook_dispatch.emit_recording_created") as emit:
+            queue.enqueue.side_effect = RuntimeError("queue down")
+            with pytest.raises(RuntimeError):
+                enqueue_ingestion_jobs(rec, owner=db.session.get(User, owner), resolved_params=PARAMS,
+                                       conversion_deferred=False, extracted_audio_limit_mb=None)
+        emit.assert_not_called()

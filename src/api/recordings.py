@@ -71,7 +71,7 @@ from src.services.recording_ingestion import (
     build_ingestion_response, check_extracted_audio_size, convert_upload_in_request,
     decide_conversion, enforce_size_policy, handle_duplicate_replay, handle_unique_conflict,
     has_video_after_failed_probe, lookup_duplicate, probe_upload, recheck_size_after_probe,
-    resolve_size_policy, select_tags_and_folder, store_recording,
+    resolve_size_policy, select_tags_and_folder, store_recording, enqueue_ingestion_jobs,
 )
 from src.utils.localization import api_error, format_number, translate
 
@@ -2463,36 +2463,13 @@ def ingest_uploaded_recording(
             return stored.error_response
         recording = stored.recording
 
-        # --- Queue transcription job ---
-        # Params were already resolved (incl. admin model validation) above.
-        job_params = resolved_params
-
-        if conversion_deferred:
-            # The convert job queues the transcription with these params.
-            job_queue.enqueue(
-                user_id=owner.id,
-                recording_id=recording.id,
-                job_type='convert',
-                params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
-                is_new_upload=True
-            )
-            current_app.logger.info(f"Conversion job queued for recording ID: {recording.id}")
-        else:
-            current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
-            job_queue.enqueue(
-                user_id=owner.id,
-                recording_id=recording.id,
-                job_type='transcribe',
-                params=job_params,
-                is_new_upload=True
-            )
-            current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
-
-        # Webhook event (#275). Fan-out happens off-request via the
-        # dispatcher; this call only enqueues a delivery row per matching
-        # subscription, so it is cheap and safe inside the request path.
-        from src.services.webhook_dispatch import emit_recording_created
-        emit_recording_created(recording)
+        enqueue_ingestion_jobs(
+            recording,
+            owner=owner,
+            resolved_params=resolved_params,
+            conversion_deferred=conversion_deferred,
+            extracted_audio_limit_mb=extracted_audio_limit_mb,
+        )
 
         return build_ingestion_response(
             recording,

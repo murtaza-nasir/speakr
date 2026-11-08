@@ -47,6 +47,11 @@ Storage and database writes:
 * :func:`handle_unique_conflict` answers, from the caller's error handling,
   an upload whose rows hit a unique index (#476).
 * :func:`build_ingestion_response` assembles the success answer.
+
+Enqueue:
+
+* :func:`enqueue_ingestion_jobs` queues the convert job of a deferred
+  conversion or the transcribe job, then emits recording.created.
 """
 
 import os
@@ -809,3 +814,47 @@ def build_ingestion_response(recording, *, owner, duplicate_warning, reuse_dupli
     if reuse_duplicate:
         response_data['idempotent_replay'] = False
     return jsonify(response_data), success_status
+
+
+def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_deferred,
+                           extracted_audio_limit_mb):
+    """Queue the committed recording's first job and emit its recording.created event.
+
+    A deferred conversion queues the convert job, which carries the
+    transcribe params and extracted_audio_limit_mb and queues the
+    transcription itself; otherwise the transcribe job is queued. Returns
+    nothing.
+    """
+    # Read from src.api.recordings at call time: tests patch it there.
+    from src.api.recordings import job_queue
+
+    # --- Queue transcription job ---
+    # Params were already resolved (incl. admin model validation) above.
+    job_params = resolved_params
+
+    if conversion_deferred:
+        # The convert job queues the transcription with these params.
+        job_queue.enqueue(
+            user_id=owner.id,
+            recording_id=recording.id,
+            job_type='convert',
+            params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
+            is_new_upload=True
+        )
+        current_app.logger.info(f"Conversion job queued for recording ID: {recording.id}")
+    else:
+        current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
+        job_queue.enqueue(
+            user_id=owner.id,
+            recording_id=recording.id,
+            job_type='transcribe',
+            params=job_params,
+            is_new_upload=True
+        )
+        current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
+
+    # Webhook event (#275). Fan-out happens off-request via the
+    # dispatcher; this call only enqueues a delivery row per matching
+    # subscription, so it is cheap and safe inside the request path.
+    from src.services.webhook_dispatch import emit_recording_created
+    emit_recording_created(recording)
