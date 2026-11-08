@@ -14,6 +14,12 @@ A companion app for recording on the device and uploading the recordings to your
 
 A tray app for recording both sides of a Teams, Zoom, Meet or WhatsApp call, the microphone together with the other participants, without a virtual audio cable. A recording is started and stopped with a hotkey and uploaded to Speakr with an API token, with Speakr tags chosen from the tray menu. Uploads are retried when the server cannot be reached. It is installed from the project's releases page or with `winget install Feridoun.MeetingRecorder`.
 
+## Mimio
+
+**Platform:** Windows (x64). **Source:** [github.com/i-iooi-i/Mimio](https://github.com/i-iooi-i/Mimio) (MIT).
+
+A desktop client based on Minutes for Speakr, with a compact floating recorder, recording search, a transcript and summary workspace, and an English and Simplified Chinese interface. Automatic summarization and the transcription and summary settings of a folder can be changed from the app. The Windows build is not code-signed, and its release files are uploaded by hand, not built by a release workflow.
+
 ## Adding an app
 
 To suggest an app for this page, please open a discussion with a link to its source code.

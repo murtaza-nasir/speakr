@@ -83,6 +83,7 @@ These apps were built by members of the community for use with your own Speakr s
 |---|---|---|
 | [Minutes for Speakr](https://github.com/Inrego/SpeakrApp) | Android, Windows | Recording on the device with upload to Speakr, including automatic recording and automatic folder uploads |
 | [MeetingRecorder](https://github.com/Feridoun/MeetingRecorder) | Windows | Tray app for recording both sides of a call, with upload to Speakr through an API token |
+| [Mimio](https://github.com/i-iooi-i/Mimio) | Windows | Desktop client based on Minutes for Speakr, with a floating recorder and an English and Simplified Chinese interface |
 
 See [Companion Apps](https://murtaza-nasir.github.io/speakr/user-guide/companion-apps) in the documentation.
 
