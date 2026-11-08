@@ -28,6 +28,8 @@ from src.services.job_queue import (
     TRANSCRIPTION_JOBS,
     SUMMARY_JOBS,
     MAX_RETRIES,
+    is_index_job,
+    jobs_for_queue,
 )
 
 
@@ -867,3 +869,32 @@ def test_a_failed_summary_job_keeps_the_transcript(track):
     assert rec.status == "FAILED"
     assert rec.transcription == "Speaker 1: the real transcript we must keep."
     assert rec.summary and "model gone" in rec.summary
+
+
+# --------------------------------------------------------------------------
+# Candidate K: index-job predicate + queue membership accessor
+# --------------------------------------------------------------------------
+
+def test_is_index_job_predicate():
+    assert is_index_job('index_chunks') is True
+    assert is_index_job('transcribe') is False
+    assert is_index_job('summarize') is False
+    assert is_index_job('') is False
+
+
+def test_jobs_for_queue_returns_known_and_unknown():
+    assert jobs_for_queue('index') == ['index_chunks']
+    assert jobs_for_queue('transcription') == TRANSCRIPTION_JOBS
+    assert jobs_for_queue('nope') == []
+
+
+def test_jobs_for_queue_returns_a_copy():
+    first = jobs_for_queue('index')
+    first.append('injected')
+    assert jobs_for_queue('index') == ['index_chunks']
+
+
+def test_fair_job_queue_methods_delegate():
+    assert job_queue.is_index_job('index_chunks') is True
+    assert job_queue.is_index_job('transcribe') is False
+    assert job_queue.jobs_for_queue('index') == ['index_chunks']
