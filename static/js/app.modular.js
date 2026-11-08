@@ -6,7 +6,7 @@ import { resolveInitialSort } from './modules/utils/sort-preference.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
-import { useUiTheme } from './modules/composables/ui-theme.js';
+import { useUiTheme, currentUiTheme } from './modules/composables/ui-theme.js';
 import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
@@ -383,7 +383,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const processingMessage = ref('');
             const isProcessingActive = ref(false);
             const pollInterval = ref(null);
-            const progressPopupMinimized = ref(false);
+            // The Desk theme starts with the queue collapsed (its status bar has the queue button);
+            // every other theme starts it open, as before.
+            const progressPopupMinimized = ref(currentUiTheme(document) === 'desk');
             const progressPopupClosed = ref(false);
             const maxFileSizeMB = ref(250);
             const chunkingEnabled = ref(true);
