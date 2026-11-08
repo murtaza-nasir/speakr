@@ -597,8 +597,9 @@ html[data-ui-theme="classic"] textarea {
     color: var(--text);
     transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-html[data-ui-theme="classic"] .field { min-height: 40px; padding: 0 12px; font-size: 14px; }
-html[data-ui-theme="classic"] textarea.field { padding: 10px 12px; }
+/* Vertical padding only: the inline padding stays with .field (12px) so a pl-9 / pr-10 utility for an icon or button inside the field still applies */
+html[data-ui-theme="classic"] .field { min-height: 40px; padding-top: 0; padding-bottom: 0; font-size: 14px; }
+html[data-ui-theme="classic"] textarea.field { padding-top: 10px; padding-bottom: 10px; }
 html[data-ui-theme="classic"] .field:focus,
 html[data-ui-theme="classic"] .field:focus-visible,
 html[data-ui-theme="classic"] input:focus,
@@ -619,7 +620,7 @@ html[data-ui-theme="classic"] .tabs { gap: 2px; min-height: 44px; border-bottom:
 html[data-ui-theme="classic"] .tab {
     font-size: 14px;
     font-weight: 500;
-    padding: 0 16px;
+    padding: 0 12px;
     color: var(--text-2);
     border-bottom-width: 3px;
     margin-bottom: -1px;
