@@ -415,8 +415,13 @@ def process_recording_chunks(recording_id):
             db.session.commit()
             return True
 
-        # Generate embeddings (recording owner gets billed for API-mode usage)
-        embeddings = generate_embeddings([c['text'] for c in chunks], user_id=recording.user_id)
+        if EMBEDDINGS_AVAILABLE:
+            # Generate embeddings (recording owner gets billed for API-mode usage)
+            embeddings = generate_embeddings([c['text'] for c in chunks], user_id=recording.user_id)
+        else:
+            # No embedding backend: the chunks are stored without vectors for
+            # the keyword search Inquire uses then (#563).
+            embeddings = [None] * len(chunks)
 
         # Verify we got one embedding per chunk. _api_embed returns [] on
         # exhausted retries, and a partial provider response could return
@@ -449,7 +454,10 @@ def process_recording_chunks(recording_id):
             db.session.add(chunk)
 
         db.session.commit()
-        current_app.logger.info(f"Created {len(chunks)} chunks for recording {recording_id}")
+        if EMBEDDINGS_AVAILABLE:
+            current_app.logger.info(f"Created {len(chunks)} chunks for recording {recording_id}")
+        else:
+            current_app.logger.info(f"Created {len(chunks)} chunks without embeddings for recording {recording_id}")
         return True
 
     except Exception as e:
