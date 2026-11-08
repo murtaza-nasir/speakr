@@ -3,8 +3,8 @@
 The theme is saved with the account (User.ui_theme, null = the default),
 written to localStorage by includes/theme_account.html and applied before the
 first paint by includes/ui_theme.html. Only available themes are offered and
-accepted; today that is the default alone, so nothing on the pages changes
-until a second theme is made available.
+accepted. These tests pin the registry to the default alone (see the
+only_the_default_available fixture); test_ui_themes_shipped.py covers the six that ship.
 
 SHARED-DB: the test users are removed afterwards.
 """
@@ -275,9 +275,9 @@ def test_a_theme_override_becomes_a_branch_switched_by_uiTheme(user, classic_ava
     override = '<div class="classic-row-marker" @click="selectRecording(recording)">x</div>'
     monkeypatch.setattr(app.jinja_env, "loader", ChoiceLoader([
         DictLoader({"themes/classic/sidebar-row.html": override}), original]))
-    real = ui_themes.slot_overrides
+    # Only this slot is overridden here, whatever the ported themes override.
     monkeypatch.setattr(ui_themes, "slot_overrides",
-                        lambda slot: ["classic"] if slot == "sidebar-row" else real(slot))
+                        lambda slot: ["classic"] if slot == "sidebar-row" else [])
     app.jinja_env.cache.clear()
     try:
         page = _client(user).get("/").get_data(as_text=True)
