@@ -255,13 +255,13 @@ The chat feature works best for factual questions about what was said in the rec
 
 ### Exporting Chat Conversations
 
-Your entire chat conversation can be exported for future reference or sharing. The chat interface provides two export options:
+The chat has three export options:
 
-**Copy to Clipboard**: Click the copy button to copy the entire chat conversation to your clipboard. This preserves the question-and-answer format, making it easy to paste into emails, reports, or documentation. Each message includes a label indicating whether it's from you or the AI assistant.
+**Copy a response**: The copy button on a response copies that response to your clipboard as markdown.
 
-**Download as Word Document**: The download button exports your complete chat history as a formatted Microsoft Word (.docx) file. This includes all questions and responses in a clean, professional format that's easy to share with group members or include in reports. The file is automatically named with the recording title and export date, making it easy to organize multiple chat exports.
+**Download the chat**: The download button in the chat header saves the whole conversation as a Microsoft Word (.docx) file named after the recording, such as `chat-Weekly-Sync.docx`.
 
-**Download one response**: Each response has a download button beside its copy button. With it you save that response and the question before it as a Word file. The file name is that of the chat download with `-response` added, such as `chat-Weekly-Sync-response.docx`. When the response has model reasoning, the reasoning is included, as in the chat download.
+**Download one response**: Each response has a download button beside its copy button. With it, that response and the question before it are saved as a Word file, such as `chat-Weekly-Sync-response.docx`. Model reasoning is included when the response has it, as in the chat download.
 
 These export features are particularly useful when you've used the chat to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
 
