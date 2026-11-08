@@ -120,12 +120,15 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
 
 
 class TestUploadHandlerVideoRetention(unittest.TestCase):
-    """Test recordings.py upload handler video retention code paths."""
+    """Test the upload handler's video retention code paths: recordings.py
+    and the ingestion steps it calls in recording_ingestion.py."""
 
     @classmethod
     def setUpClass(cls):
-        with open(os.path.join(PROJECT_ROOT, 'src/api/recordings.py'), 'r') as f:
-            cls.content = f.read()
+        cls.content = ''
+        for rel_path in ('src/api/recordings.py', 'src/services/recording_ingestion.py'):
+            with open(os.path.join(PROJECT_ROOT, rel_path), 'r') as f:
+                cls.content += f.read()
 
     def test_upload_handler_parses_keep_audio_only_form_field(self):
         """The shared upload core parses the `keep_audio_only` form field.

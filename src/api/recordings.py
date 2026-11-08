@@ -67,7 +67,10 @@ from src.utils.ffprobe import (
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
-from src.services.recording_ingestion import lookup_duplicate, handle_duplicate_replay
+from src.services.recording_ingestion import (
+    enforce_size_policy, handle_duplicate_replay, lookup_duplicate, recheck_size_after_probe,
+    resolve_size_policy,
+)
 from src.utils.localization import api_error, format_number, translate
 
 # Create blueprint
@@ -2101,87 +2104,21 @@ def ingest_uploaded_recording(
             f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}_{safe_filename}",
         )
 
-        # Per-upload override for VIDEO_RETENTION. When True, the
-        # processing pipeline extracts audio and discards the video stream
-        # regardless of the server's VIDEO_RETENTION env var. Also signals
-        # that this upload is allowed to exceed max_file_size_mb because
-        # only the extracted audio needs to fit that limit. Sent by the
-        # frontend either explicitly (toggle) or implicitly when
-        # VIDEO_RETENTION is off and the queued file is video.
-        keep_audio_only_flag = form.get('keep_audio_only', 'false').lower() == 'true'
-        effective_audio_only = keep_audio_only_flag or not VIDEO_RETENTION
-
-        # Detect "this looks like a video" by extension up front so the
-        # size-gate can pick the right limit before reading any bytes.
-        # ffprobe runs later and is authoritative for the keep-video
-        # decision; the extension list here is a pre-save heuristic.
-        _VIDEO_EXTS = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
-        _ext_lower = os.path.splitext(original_filename)[1].lower()
-        is_likely_video_by_ext = _ext_lower in _VIDEO_EXTS
-
-        # Get original file size
-        file.seek(0, os.SEEK_END)
-        original_file_size = file.tell()
-        file.seek(0)
-
-        # Resolve effective size limit. Video files (by extension) get
-        # the larger video cap regardless of whether the user opted
-        # into "Keep audio only". Audio files use the regular cap.
-        # This is the option-B model: admins set a single per-file-type
-        # upload cap and don't have to think about how the keep-audio
-        # toggle interacts with size validation. The post-extraction
-        # guard further down still enforces that the *stored* artifact
-        # fits the regular limit when only audio is kept.
-        regular_limit_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
-        audio_only_limit_mb = int(
-            SystemSetting.get_setting('max_audio_only_video_size_mb', regular_limit_mb * 4)
+        size_policy = resolve_size_policy(
+            file=file,
+            form=form,
+            original_filename=original_filename,
+            enforce_upload_limits=enforce_upload_limits,
         )
-        if is_likely_video_by_ext:
-            effective_limit_mb = audio_only_limit_mb
-        else:
-            effective_limit_mb = regular_limit_mb
-        effective_limit_bytes = effective_limit_mb * 1024 * 1024
-
-        # Check size limit before saving - only enforce if chunking is disabled or connector handles it
-        max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
-
-        # Get connector specifications for chunking decisions
-        connector_specs = None
-        if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
-            try:
-                from src.services.transcription import get_registry
-                registry = get_registry()
-                connector = registry.get_active_connector()
-                if connector:
-                    connector_specs = connector.specifications
-            except Exception as e:
-                current_app.logger.warning(f"Could not get connector specs for upload: {e}")
-
-        # Chunking (app-level, or inside the connector) lifts the per-type
-        # policy cap; the WSGI ceiling below always applies (#533).
-        should_enforce_size_limit = enforce_upload_limits
-        if chunking_service:
-            from src.audio_chunking import get_effective_chunking_config
-            chunking_config = get_effective_chunking_config(connector_specs)
-            if chunking_config.enabled or chunking_config.source == 'connector_internal':
-                should_enforce_size_limit = False
-                if chunking_config.source == 'connector_internal':
-                    current_app.logger.info(f"Connector handles chunking internally - skipping {original_file_size/1024/1024:.1f}MB size limit check")
-                elif chunking_config.mode == 'size':
-                    current_app.logger.info(f"Size-based chunking enabled ({chunking_config.limit_value}MB, source={chunking_config.source}) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
-                else:
-                    current_app.logger.info(f"Duration-based chunking enabled ({chunking_config.limit_value}s, source={chunking_config.source}) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
-
-        # Two ceilings to consider. The Werkzeug `max_content_length` is
-        # the WSGI hard cap; Werkzeug enforces it as well, and it is checked
-        # here on every upload whatever the chunking setting (#533). The
-        # smaller `effective_limit_bytes` is the per-request policy cap
-        # (which differs between regular and audio-only-video uploads), and
-        # chunking lifts it.
-        if enforce_upload_limits and max_content_length and original_file_size > max_content_length:
-            raise RequestEntityTooLarge()
-        if should_enforce_size_limit and original_file_size > effective_limit_bytes:
-            raise RequestEntityTooLarge()
+        keep_audio_only_flag = size_policy.keep_audio_only_flag
+        effective_audio_only = size_policy.effective_audio_only
+        is_likely_video_by_ext = size_policy.is_likely_video_by_ext
+        original_file_size = size_policy.original_file_size
+        regular_limit_mb = size_policy.regular_limit_mb
+        effective_limit_mb = size_policy.effective_limit_mb
+        connector_specs = size_policy.connector_specs
+        should_enforce_size_limit = size_policy.should_enforce_size_limit
+        enforce_size_policy(size_policy, enforce_upload_limits=enforce_upload_limits)
 
         # Storage quota (#413). A recording made in this browser was checked
         # when it started and is not refused at the end, so it is never lost;
@@ -2270,14 +2207,20 @@ def ingest_uploaded_recording(
         # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False
 
-        # The extension is only a pre-probe size hint. Once ffprobe proves the
-        # upload is audio-only, do not let a video-looking filename grant the
-        # larger video upload ceiling.
-        if codec_info is not None and is_likely_video_by_ext and not has_video:
-            is_likely_video_by_ext = False
-            if should_enforce_size_limit and original_file_size > regular_limit_mb * 1024 * 1024:
-                effective_limit_mb = regular_limit_mb
-                raise RequestEntityTooLarge()
+        size_recheck = recheck_size_after_probe(
+            codec_info=codec_info,
+            has_video=has_video,
+            original_filename=original_filename,
+            is_likely_video_by_ext=is_likely_video_by_ext,
+            effective_limit_mb=effective_limit_mb,
+            regular_limit_mb=regular_limit_mb,
+            should_enforce_size_limit=should_enforce_size_limit,
+            original_file_size=original_file_size,
+        )
+        is_likely_video_by_ext = size_recheck.is_likely_video_by_ext
+        effective_limit_mb = size_recheck.effective_limit_mb
+        if size_recheck.too_large:
+            raise RequestEntityTooLarge()
 
         # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
         # to avoid silently discarding video from files we couldn't probe
@@ -2285,14 +2228,6 @@ def ingest_uploaded_recording(
             video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
             file_ext = os.path.splitext(original_filename)[1].lower()
             if file_ext in video_extensions:
-                # A failed probe cannot justify the larger video ceiling: an
-                # arbitrary blob or audio file can also carry a video-looking
-                # extension. Require positive video detection for oversized
-                # uploads; smaller files can continue through conversion.
-                if should_enforce_size_limit and original_file_size > regular_limit_mb * 1024 * 1024:
-                    effective_limit_mb = regular_limit_mb
-                    is_likely_video_by_ext = False
-                    raise RequestEntityTooLarge()
                 if probe_error is not None and probe_rejected_input(probe_error):
                     # ffprobe read the file and could not make sense of it.
                     # Only a probe that did not finish is trusted to the

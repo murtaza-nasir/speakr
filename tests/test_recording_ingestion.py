@@ -1,26 +1,34 @@
-"""Duplicate detection steps of upload ingestion (src/services/recording_ingestion.py).
+"""Steps of upload ingestion (src/services/recording_ingestion.py).
 
 lookup_duplicate hashes the staged upload and finds an earlier recording of
 it; handle_duplicate_replay answers a retried upload with that recording.
+resolve_size_policy, enforce_size_policy and recheck_size_after_probe set
+and apply the upload size limits.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
 
 import hashlib
+import io
 import os
 import sys
 import uuid
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
+from werkzeug.exceptions import RequestEntityTooLarge
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
 from src.models import ProcessingJob, Recording, User
 from src.services import recording_ingestion
-from src.services.recording_ingestion import handle_duplicate_replay, lookup_duplicate
+from src.services.recording_ingestion import (
+    SizePolicy, SizeRecheck, enforce_size_policy, handle_duplicate_replay, lookup_duplicate,
+    recheck_size_after_probe, resolve_size_policy,
+)
 
 PAYLOAD = b"duplicate-detection-bytes"
 PAYLOAD_HASH = hashlib.sha256(PAYLOAD).hexdigest()
@@ -213,3 +221,159 @@ def test_replay_removes_staging_before_enqueueing(owner, staged):
                           side_effect=lambda **kw: seen.append(os.path.exists(staged))):
             _replay(owner, rec, staged)
         assert seen == [False]
+
+
+# --- size policy ----------------------------------------------------------------
+
+MB = 1024 * 1024
+
+
+def _settings(**values):
+    return lambda key, default=None: values.get(key, default)
+
+
+def _policy(filename="talk.wav", size=3 * MB, form=None, enforce_upload_limits=True,
+            settings=None, chunking=None, retention=False, max_content_length=None):
+    upload = io.BytesIO(b"x" * size)
+    upload.seek(5)
+    with patch("src.api.recordings.SystemSetting.get_setting",
+               side_effect=_settings(**(settings or {}))), \
+            patch("src.api.recordings.VIDEO_RETENTION", retention), \
+            patch("src.api.recordings.USE_NEW_TRANSCRIPTION_ARCHITECTURE", False), \
+            patch("src.api.recordings.chunking_service", MagicMock() if chunking else None), \
+            patch("src.audio_chunking.get_effective_chunking_config", return_value=chunking), \
+            patch.dict(app.config, {"MAX_CONTENT_LENGTH": max_content_length}):
+        policy = resolve_size_policy(file=upload, form=form or {}, original_filename=filename,
+                                     enforce_upload_limits=enforce_upload_limits)
+    assert upload.tell() == 0
+    return policy
+
+
+def test_size_policy_for_an_audio_file():
+    with app.app_context():
+        policy = _policy(settings={"max_file_size_mb": 10}, max_content_length=500 * MB)
+    assert policy == SizePolicy(
+        keep_audio_only_flag=False, effective_audio_only=True, is_likely_video_by_ext=False,
+        original_file_size=3 * MB, regular_limit_mb=10, audio_only_limit_mb=40,
+        effective_limit_mb=10, effective_limit_bytes=10 * MB, max_content_length=500 * MB,
+        connector_specs=None, should_enforce_size_limit=True,
+    )
+
+
+def test_size_policy_gives_a_video_extension_the_video_limit():
+    with app.app_context():
+        policy = _policy("talk.MOV", settings={"max_file_size_mb": 10, "max_audio_only_video_size_mb": 25})
+    assert policy.is_likely_video_by_ext is True
+    assert (policy.regular_limit_mb, policy.audio_only_limit_mb) == (10, 25)
+    assert (policy.effective_limit_mb, policy.effective_limit_bytes) == (25, 25 * MB)
+
+
+@pytest.mark.parametrize("form,retention,expected", [
+    ({}, False, (False, True)),
+    ({}, True, (False, False)),
+    ({"keep_audio_only": "TRUE"}, True, (True, True)),
+])
+def test_size_policy_reads_keep_audio_only(form, retention, expected):
+    with app.app_context():
+        policy = _policy("talk.mp4", form=form, retention=retention)
+    assert (policy.keep_audio_only_flag, policy.effective_audio_only) == expected
+
+
+@pytest.mark.parametrize("config,message", [
+    (SimpleNamespace(enabled=True, source="app", mode="size", limit_value=20),
+     "Size-based chunking enabled (20MB, source=app) - skipping 3.0MB size limit check"),
+    (SimpleNamespace(enabled=True, source="env", mode="duration", limit_value=600),
+     "Duration-based chunking enabled (600s, source=env) - skipping 3.0MB size limit check"),
+    (SimpleNamespace(enabled=False, source="connector_internal", mode="size", limit_value=0),
+     "Connector handles chunking internally - skipping 3.0MB size limit check"),
+])
+def test_chunking_lifts_the_size_limit(config, message):
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        policy = _policy(chunking=config)
+    assert policy.should_enforce_size_limit is False
+    info.assert_called_once_with(message)
+
+
+def test_size_limit_stays_when_chunking_is_off():
+    off = SimpleNamespace(enabled=False, source="app", mode="size", limit_value=20)
+    with app.app_context():
+        assert _policy(chunking=off).should_enforce_size_limit is True
+        # Without enforce_upload_limits (watched files) nothing is enforced.
+        assert _policy(enforce_upload_limits=False).should_enforce_size_limit is False
+
+
+def test_size_policy_reads_the_connector_specs():
+    specs = object()
+    registry = MagicMock()
+    registry.get_active_connector.return_value.specifications = specs
+    with app.app_context(), patch("src.api.recordings.USE_NEW_TRANSCRIPTION_ARCHITECTURE", True), \
+            patch("src.services.transcription.get_registry", return_value=registry), \
+            patch("src.api.recordings.chunking_service", None):
+        policy = resolve_size_policy(file=io.BytesIO(b"abc"), form={}, original_filename="a.wav",
+                                     enforce_upload_limits=True)
+    assert policy.connector_specs is specs
+
+
+def test_size_policy_logs_a_connector_lookup_failure():
+    with app.app_context(), patch("src.api.recordings.USE_NEW_TRANSCRIPTION_ARCHITECTURE", True), \
+            patch("src.services.transcription.get_registry", side_effect=RuntimeError("no registry")), \
+            patch("src.api.recordings.chunking_service", None), \
+            patch.object(app.logger, "warning") as warning:
+        policy = resolve_size_policy(file=io.BytesIO(b"abc"), form={}, original_filename="a.wav",
+                                     enforce_upload_limits=True)
+    assert policy.connector_specs is None
+    warning.assert_called_once_with("Could not get connector specs for upload: no registry")
+
+
+def _limits(size, limit_mb=10, enforce=True, ceiling=None):
+    return SizePolicy(False, True, False, size, limit_mb, limit_mb * 4, limit_mb, limit_mb * MB,
+                      ceiling, None, enforce)
+
+
+def test_enforce_size_policy_applies_the_per_type_limit():
+    enforce_size_policy(_limits(10 * MB), enforce_upload_limits=True)
+    with pytest.raises(RequestEntityTooLarge):
+        enforce_size_policy(_limits(10 * MB + 1), enforce_upload_limits=True)
+    # Chunking lifts it.
+    enforce_size_policy(_limits(10 * MB + 1, enforce=False), enforce_upload_limits=True)
+
+
+def test_enforce_size_policy_applies_the_request_ceiling_whatever_the_chunking():
+    with pytest.raises(RequestEntityTooLarge):
+        enforce_size_policy(_limits(21 * MB, enforce=False, ceiling=20 * MB), enforce_upload_limits=True)
+    enforce_size_policy(_limits(20 * MB, enforce=False, ceiling=20 * MB), enforce_upload_limits=True)
+    # Watched files are not HTTP requests.
+    enforce_size_policy(_limits(21 * MB, enforce=False, ceiling=20 * MB), enforce_upload_limits=False)
+
+
+def _recheck(codec_info, has_video=False, filename="talk.mp4", size=11 * MB, enforce=True,
+             retention=False, passthrough=False):
+    with patch("src.api.recordings.VIDEO_RETENTION", retention), \
+            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough):
+        return recheck_size_after_probe(
+            codec_info=codec_info, has_video=has_video, original_filename=filename,
+            is_likely_video_by_ext=filename.endswith(".mp4"), effective_limit_mb=40,
+            regular_limit_mb=10, should_enforce_size_limit=enforce, original_file_size=size,
+        )
+
+
+def test_recheck_gives_an_audio_only_probe_the_regular_limit():
+    audio = {"audio_codec": "aac", "has_video": False}
+    assert _recheck(audio) == SizeRecheck(False, 10, True)
+    assert _recheck(audio, size=10 * MB) == SizeRecheck(False, 40, False)
+    assert _recheck(audio, enforce=False) == SizeRecheck(False, 40, False)
+    # A probed video keeps the video limit.
+    assert _recheck({"has_video": True}, has_video=True) == SizeRecheck(True, 40, False)
+
+
+@pytest.mark.parametrize("retention,passthrough", [(True, False), (False, True)])
+def test_recheck_refuses_a_large_unreadable_file_with_a_video_extension(retention, passthrough):
+    assert _recheck(None, retention=retention, passthrough=passthrough) == SizeRecheck(False, 10, True)
+    small = _recheck(None, size=10 * MB, retention=retention, passthrough=passthrough)
+    assert small == SizeRecheck(True, 40, False)
+    assert _recheck(None, enforce=False, retention=retention, passthrough=passthrough) == SizeRecheck(True, 40, False)
+
+
+def test_recheck_leaves_an_unreadable_file_alone_without_video_settings():
+    assert _recheck(None) == SizeRecheck(True, 40, False)
+    assert _recheck(None, filename="talk.wav", retention=True) == SizeRecheck(False, 40, False)
