@@ -1,0 +1,137 @@
+                        <div v-for="recording in group.items"
+                             :key="recording.id"
+                             @mousedown="$event.shiftKey && $event.preventDefault()"
+                             @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
+                             :class="[
+                                 'recording-row desk-row relative cursor-pointer transition-colors',
+                                 selectionMode && isSelected(recording.id)
+                                     ? 'is-active'
+                                     : selectedRecording?.id === recording.id && !selectionMode
+                                         ? 'is-active'
+                                         : '',
+                                 recording.status === 'FAILED' ? 'is-failed' : '',
+                                 recording.is_inbox && recording.status === 'COMPLETED' ? 'is-unread' : ''
+                             ]">
+                            <!-- Selection checkbox: sits in the title cell so the
+                                 columns keep their place in selection mode. -->
+                            <div class="col-title" :title="recording.participants || ''">
+                                <input v-if="selectionMode"
+                                       type="checkbox"
+                                       :checked="isSelected(recording.id)"
+                                       class="selection-checkbox desk-row__check"
+                                       @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)">
+                                <h4 dir="auto" class="desk-row__title" :class="selectedRecording?.id === recording.id && !selectionMode ? 'is-selected' : ''">
+                                    ${ recording.title || t('common.untitled') }
+                                </h4>
+                            </div>
+
+                            <!-- Folder + tags column: one line, clipped at the column edge -->
+                            <div class="col-tags"
+                                 :title="getRecordingTags(recording).map(tag => tag.name).join(', ')">
+                                <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
+                                      class="chip"
+                                      :style="{ '--chip-color': recording.folder.color || '#6B7280' }"
+                                      :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
+                                    <i class="fas fa-share-nodes"></i>
+                                    <span class="chip__label" v-text="recording.folder.name"></span>
+                                </span>
+                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito && !(recording.folder && recording.folder.is_foreign)"
+                                        @click.stop="filterFolder = recording.folder_id"
+                                        class="chip chip--clickable"
+                                        :style="{ '--chip-color': getFolderColor(recording.folder_id) }"
+                                        :title="t('tooltips.folderLabel', { name: getFolderName(recording.folder_id) })">
+                                    <i class="fas fa-folder"></i>
+                                    <span class="chip__label" v-text="getFolderName(recording.folder_id)"></span>
+                                </button>
+                                <template v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id">
+                                    <span v-if="tag.is_foreign"
+                                          class="chip"
+                                          :style="{ '--chip-color': tag.color }"
+                                          :title="t('sharing.sharedBadge') + ': ' + tag.name">
+                                        <i class="fas fa-share-nodes"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </span>
+                                    <button v-else
+                                            @click.stop="filterByTag(tag)"
+                                            class="chip chip--clickable"
+                                            :style="{ '--chip-color': tag.color }"
+                                            :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : t('tooltips.filterByName', { name: tag.name })">
+                                        <i v-if="tag.group_id" class="fas fa-users"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </button>
+                                </template>
+                                <span v-if="getRecordingTags(recording).length > 4"
+                                      class="desk-row__more"
+                                      :title="t('tooltips.moreTags')">
+                                    +${getRecordingTags(recording).length - 4}
+                                </span>
+                            </div>
+
+                            <div class="col-date">${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}</div>
+                            <div class="col-dur">${ recording.audio_duration ? formatTime(recording.audio_duration) : '' }</div>
+
+                            <!-- Status column: one dot or one icon cluster -->
+                            <div class="col-status">
+                                <span v-if="recording.duplicate_info"
+                                      @click.stop="openDuplicatesModal(recording.duplicate_info)"
+                                      class="desk-ico is-warn"
+                                      role="button"
+                                      :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
+                                    <i class="fas fa-copy"></i>
+                                </span>
+                                <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
+                                      class="desk-ico"
+                                      :title="t('tooltips.video')">
+                                    <i class="fas fa-video"></i>
+                                </span>
+                                <span v-if="recording.is_shared || recording.has_group_tags || recording.shared_with_count > 0 || recording.public_share_count > 0"
+                                      class="desk-ico"
+                                      :title="[
+                                          recording.is_shared ? t('sharing.sharedBy') + ' ' + (recording.owner_username || t('sharing.unknown')) : '',
+                                          recording.has_group_tags ? t('sharing.teamRecording') : '',
+                                          !recording.is_shared && recording.shared_with_count > 0 ? t('sharing.sharedWith') + ' ' + recording.shared_with_count + ' ' + t('sharing.users') : '',
+                                          !recording.is_shared && recording.public_share_count > 0 ? recording.public_share_count + ' ' + t('sharing.publicLinksGenerated') : ''
+                                      ].filter(s => s).join(' • ')">
+                                    <i v-if="recording.is_shared" class="fas fa-arrow-down"></i>
+                                    <i v-else-if="recording.has_group_tags" class="fas fa-users"></i>
+                                    <i v-else-if="recording.shared_with_count > 0" class="fas fa-arrow-up"></i>
+                                    <i v-else class="fas fa-globe"></i>
+                                </span>
+                                <span v-if="recording.audio_deleted_at" class="desk-ico" :title="t('audioRemoved.label')">
+                                    <i class="fas fa-volume-xmark"></i>
+                                </span>
+                                <span v-if="recording.is_archived" class="desk-ico" :title="t('archive.archived')">
+                                    <i class="fas fa-box-archive"></i>
+                                </span>
+
+                                <span v-if="recording.status === 'FAILED'"
+                                      class="desk-state is-failed"
+                                      :title="formatRecordingStatus(recording)">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span class="desk-state__text">${formatRecordingStatus(recording)}</span>
+                                </span>
+                                <span v-else-if="recording.status !== 'COMPLETED'"
+                                      :class="getStatusClass(recording.status)"
+                                      class="desk-state is-busy"
+                                      :title="formatRecordingStatus(recording)">
+                                    <span class="desk-state__dot"></span>
+                                    <span class="desk-state__text">${formatRecordingStatus(recording)}</span>
+                                </span>
+                                <template v-else>
+                                    <span v-if="recording.is_highlighted"
+                                          @click.stop="toggleHighlight(recording)"
+                                          class="desk-ico is-star"
+                                          role="button"
+                                          :title="t('sidebar.removeFromHighlighted')">
+                                        <i class="fas fa-star"></i>
+                                    </span>
+                                    <span v-if="recording.is_inbox"
+                                          @click.stop="toggleInbox(recording)"
+                                          class="desk-ico is-inbox"
+                                          role="button"
+                                          :title="t('sidebar.markAsRead')">
+                                        <i class="fas fa-circle"></i>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>

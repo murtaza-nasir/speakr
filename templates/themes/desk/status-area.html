@@ -1,0 +1,235 @@
+<!-- Desk: status bar (desktop). Counts on the left, the processing-queue
+     button on the right; the button drives the same popup state as before. -->
+<footer class="desk-statusbar" v-show="!isMobileScreen" role="status">
+    <span class="desk-statusbar__item tnum" v-text="t('sidebar.totalRecordingsPlural', { count: totalRecordings })"></span>
+    <span v-if="selectionMode && selectedCount > 0" class="desk-statusbar__item tnum is-accent" v-text="t('bulkActions.selectedCount', { count: selectedCount })"></span>
+    <span class="desk-statusbar__grow"></span>
+    <button v-if="showProcessingPopup" type="button" class="desk-statusbar__queue"
+            :class="{ 'is-busy': totalProcessingCount > 0 }"
+            @click="progressPopupClosed = false; progressPopupMinimized = !progressPopupMinimized"
+            :aria-expanded="!progressPopupMinimized && !progressPopupClosed">
+        <span class="desk-statusbar__dot"></span>
+        <span v-text="t('progressQueue.title')"></span>
+        <span class="tnum" v-text="totalProcessingCount"></span>
+    </button>
+</footer>
+<!-- Processing Queue Popup.
+
+     Two distinct layouts driven by viewport:
+     - DESKTOP (≥ 641 px): bottom-left floating card, 320 px wide,
+       16 px from bottom and left. Same behaviour the user has always
+       had.
+     - MOBILE (≤ 640 px): full-width bottom-sheet that anchors ABOVE
+       the audio player + tab navigation (instead of overlapping
+       them as in the previous wiring); rounded top corners only,
+       slide-up animation, content takes the whole row width so the
+       compact desktop card no longer reads like a pasted desktop
+       widget on a phone. When minimized on mobile the sheet
+       collapses to just its header strip, still sitting above the
+       player / nav — never obscures content. -->
+<div v-if="showProcessingPopup && !progressPopupClosed && !(isMobileScreen && !isSidebarCollapsed)"
+     :class="[
+         {# z-50 ties with the sidebar and the modal overlays; DOM order
+            settles the ties (sidebar < this popup < modals, per the include
+            order in index.html), so the popup sits above the sidebar but
+            can never cover a modal's action footer. #}
+         'progress-popup fixed z-50 transition-all duration-300',
+         progressPopupMinimized ? 'minimized' : ''
+     ]">
+    <div class="progress-popup__card bg-[var(--bg-secondary)] border border-[var(--bg-accent)] shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
+        <!-- Compact Header. On mobile, when minimized this collapses (via
+             CSS) to a compact pill — icon + count + expand chevron — and
+             tapping it expands. -->
+        <div class="progress-popup__header bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2"
+             @click="progressPopupMinimized && (progressPopupMinimized = false)">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fas fa-tasks text-sm text-gray-800 dark:text-white"></i>
+                    <span class="progress-popup__title-text font-medium text-sm text-gray-800 dark:text-white">${ t('progressQueue.title') }</span>
+                    <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
+                        ${totalProcessingCount}
+                    </span>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <button v-if="allCompletedCount > 0" @click.stop="clearAllCompleted()"
+                            class="progress-popup__clear px-1.5 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all text-gray-800 dark:text-white">
+                        ${ t('progressQueue.clear') }
+                    </button>
+                    <button @click.stop="progressPopupMinimized = !progressPopupMinimized"
+                            class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
+                        <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
+                    </button>
+                    <button @click.stop="progressPopupClosed = true"
+                            class="progress-popup__close p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Compact Summary Line.
+                 Each entry is "<count> <label>" — split into two interpolations
+                 because Vue's `${...}` delimiter parser can't see past a nested
+                 object literal like `{ count: ... }`, so we keep the count and
+                 the localized noun as separate interpolations and translate the
+                 label alone via progressQueue.*Short keys. -->
+            <div v-if="activeProgressItems.length > 0" class="progress-popup__summary text-xs text-gray-800 dark:text-white opacity-70 mt-1">
+                <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.stage === 'joining').length > 0">
+                    ${ activeProgressItems.filter(i => i.stage === 'joining').length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && i.stage !== 'joining').length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.stage === 'converting').length > 0">
+                    ${ activeProgressItems.filter(i => i.stage === 'converting').length } ${ t('progressQueue.convertingShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && !i.stage).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'queued').length } ${ t('progressQueue.queuedShort') }
+                </span>
+            </div>
+        </div>
+
+        <!-- Compact Content -->
+        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5">
+            <!-- Active Items -->
+            <template v-for="item in activeProgressItems" :key="item.id">
+                <div :class="[
+                    'px-2 py-1.5 rounded-md transition-all',
+                    item.status === 'uploading' ? 'bg-blue-500/10 border-l-2 border-blue-500' :
+                    item.status === 'transcribing' ? 'bg-purple-500/10 border-l-2 border-purple-500' :
+                    item.status === 'summarizing' ? 'bg-green-500/10 border-l-2 border-green-500' :
+                    'bg-[var(--bg-tertiary)]/50 border-l-2 border-yellow-500'
+                ]">
+                    <!-- Title row with status icon -->
+                    <div class="flex items-center gap-2">
+                        <i :class="[
+                            'fas text-xs',
+                            getStatusDisplay(item.status).icon,
+                            item.status === 'uploading' ? 'text-blue-500' :
+                            item.status === 'transcribing' ? 'text-purple-500' :
+                            item.status === 'summarizing' ? 'text-green-500' :
+                            'text-yellow-500',
+                            getStatusDisplay(item.status).animate ? 'animate-pulse' : ''
+                        ]"></i>
+                        <span class="text-xs font-medium truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                        <span v-if="item.status === 'uploading' && item.progress !== null"
+                              class="text-xs font-bold text-blue-500">${ formatPercent(item.progress) }</span>
+                        <span v-else :class="[
+                            'text-xs font-medium px-1.5 py-0.5 rounded',
+                            item.status === 'uploading' ? 'bg-blue-500/20 text-blue-500' :
+                            item.status === 'transcribing' ? 'bg-purple-500/20 text-purple-500' :
+                            item.status === 'summarizing' ? 'bg-green-500/20 text-green-500' :
+                            'bg-yellow-500/20 text-yellow-500'
+                        ]">${item.statusLabel || getStatusDisplay(item.status).label}</span>
+                    </div>
+                    <!-- Progress bar for uploads -->
+                    <div v-if="item.status === 'uploading' && item.progress !== null"
+                         class="mt-1 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 rounded-full transition-all duration-300"
+                             :style="{width: item.progress + '%'}"></div>
+                    </div>
+                    <!-- Compact message -->
+                    <div class="flex items-center justify-between mt-0.5">
+                        <span class="text-[10px] text-[var(--text-muted)]">${item.progressMessage}</span>
+                        <button v-if="item.status === 'ready' && item.clientId"
+                                @click="removeProgressItem(item)"
+                                class="text-[10px] text-red-500 hover:text-red-600">
+                            <i class="fas fa-times"></i> ${ t('progressQueue.cancel') }
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Failed Items -->
+            <div v-if="failedProgressItems.length > 0" class="mt-2">
+                <div class="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${ t('progressQueue.failed') } (${failedProgressItems.length})
+                </div>
+                <div v-for="item in failedProgressItems"
+                     :key="item.id"
+                     :class="[
+                         'px-2 py-1.5 rounded-md mb-1 border-l-2',
+                         item.friendlyError?.type === 'size_limit' ? 'bg-amber-500/10 border-amber-500' :
+                         item.friendlyError?.type === 'timeout' ? 'bg-orange-500/10 border-orange-500' :
+                         item.friendlyError?.type === 'auth' ? 'bg-red-500/10 border-red-500' :
+                         item.friendlyError?.type === 'rate_limit' ? 'bg-yellow-500/10 border-yellow-500' :
+                         item.friendlyError?.type === 'connection' ? 'bg-blue-500/10 border-blue-500' :
+                         item.friendlyError?.type === 'service_error' ? 'bg-purple-500/10 border-purple-500' :
+                         'bg-red-500/10 border-red-500'
+                     ]">
+                    <div class="flex items-center gap-2">
+                        <i :class="[
+                            'fas text-xs',
+                            item.friendlyError?.icon || 'fa-exclamation-circle',
+                            item.friendlyError?.type === 'size_limit' ? 'text-amber-500' :
+                            item.friendlyError?.type === 'timeout' ? 'text-orange-500' :
+                            item.friendlyError?.type === 'auth' ? 'text-red-500' :
+                            item.friendlyError?.type === 'rate_limit' ? 'text-yellow-500' :
+                            item.friendlyError?.type === 'connection' ? 'text-blue-500' :
+                            item.friendlyError?.type === 'service_error' ? 'text-purple-500' :
+                            'text-red-500'
+                        ]"></i>
+                        <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                        <div class="flex items-center gap-1">
+                            <button v-if="item.jobId" @click.stop="retryProgressItem(item)"
+                                    class="p-1 rounded bg-blue-500/20 hover:bg-blue-500/40 transition-colors"
+                                    :title="t('progressQueue.retry')">
+                                <i class="fas fa-redo text-blue-500 text-[10px]"></i>
+                            </button>
+                            <button @click.stop="removeProgressItem(item)"
+                                    class="p-1 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors"
+                                    :title="t('progressQueue.delete')">
+                                <i class="fas fa-trash text-red-500 text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Friendly error title and message -->
+                    <div v-if="item.friendlyError" class="mt-0.5">
+                        <span :class="[
+                            'text-[10px] font-medium',
+                            item.friendlyError.type === 'size_limit' ? 'text-amber-500' :
+                            item.friendlyError.type === 'timeout' ? 'text-orange-500' :
+                            item.friendlyError.type === 'auth' ? 'text-red-500' :
+                            item.friendlyError.type === 'rate_limit' ? 'text-yellow-500' :
+                            item.friendlyError.type === 'connection' ? 'text-blue-500' :
+                            item.friendlyError.type === 'service_error' ? 'text-purple-500' :
+                            'text-red-400'
+                        ]">${item.friendlyError.title}</span>
+                        <span v-if="item.friendlyError.guidance" class="text-[10px] text-[var(--text-muted)] block truncate">${item.friendlyError.guidance}</span>
+                    </div>
+                    <!-- Fallback to raw error message if no friendly error -->
+                    <span v-else-if="item.errorMessage" class="text-[10px] text-red-400 block truncate mt-0.5">${item.errorMessage}</span>
+                </div>
+            </div>
+
+            <!-- Completed Items -->
+            <div v-if="completedProgressItems.length > 0" class="mt-2">
+                <div class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i class="fas fa-check-double"></i>
+                    ${ t('progressQueue.completed') } (${completedProgressItems.length})
+                </div>
+                <div v-for="item in completedProgressItems"
+                     :key="item.id"
+                     @click="item.recordingId && selectRecording({id: item.recordingId})"
+                     class="px-2 py-1 bg-[var(--bg-tertiary)]/30 rounded-md flex items-center gap-2 hover:bg-[var(--bg-tertiary)]/50 cursor-pointer mb-1">
+                    <i class="fas fa-check-circle text-xs text-green-500"></i>
+                    <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                    <i v-if="item.duplicateWarning" class="fas fa-copy text-xs text-amber-500" :title="t('progressQueue.duplicateWarning')"></i>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">${ t('progressQueue.done') }</span>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="unifiedProgressItems.length === 0"
+                 class="text-center py-3 text-[var(--text-muted)] text-xs">
+                <i class="fas fa-inbox text-lg mb-1 opacity-50"></i>
+                <p>${ t('progressQueue.empty') }</p>
+            </div>
+        </div>
+    </div>
+</div>
