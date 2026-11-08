@@ -37,6 +37,16 @@ Conversion:
   answered and turns an FFmpeg failure into the error answer.
 * :func:`check_extracted_audio_size` refuses a video whose extracted audio
   is over the regular limit.
+
+Storage and database writes:
+
+* :func:`select_tags_and_folder` reads the upload's tags and folder from the
+  form and keeps those the owner may use.
+* :func:`store_recording` reserves the owner's quota, creates the recording,
+  stores the file and commits the recording with its tags and folder shares.
+* :func:`handle_unique_conflict` answers, from the caller's error handling,
+  an upload whose rows hit a unique index (#476).
+* :func:`build_ingestion_response` assembles the success answer.
 """
 
 import os
@@ -46,11 +56,13 @@ from typing import Any, NamedTuple, Optional
 from flask import current_app, jsonify
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from src.models import ProcessingJob, Recording
+from src.database import db
+from src.models import Folder, GroupMembership, ProcessingJob, Recording, RecordingTag, Tag
 from src.services.job_queue import job_queue
 from src.services.transcription_defaults import resolve_transcription_params
 from src.utils.dates import to_utc_naive
 from src.utils.localization import api_error, format_number, translate
+from src.utils.titles import resolve_upload_title, upload_title_source
 
 
 class DuplicateLookup(NamedTuple):
@@ -613,3 +625,187 @@ def check_extracted_audio_size(*, filepath, final_file_size, extracted_audio_lim
             'chunking_enabled': False,
         }), 413
     return None
+
+
+class TagFolderSelection(NamedTuple):
+    """The tags and folder :func:`select_tags_and_folder` accepted for one upload."""
+    selected_tags: list
+    selected_folder: Optional[Folder]
+
+
+def select_tags_and_folder(*, form, owner):
+    """Read the upload's tags and folder from the form, keeping those owner may use.
+
+    A tag or folder is accepted when it is owner's own or a group's of which
+    owner is a member. tag_ids[0], tag_ids[1], ... are read in order up to
+    the first missing index; tag_id is read only when none was accepted.
+    """
+    # Get selected tags if provided (multiple tags support)
+    selected_tags = []
+    tag_index = 0
+    while True:
+        tag_id_key = f'tag_ids[{tag_index}]'
+        tag_id = form.get(tag_id_key)
+        if not tag_id:
+            break
+
+        # Check if tag belongs to user OR is a group tag where user is a member
+        tag = Tag.query.filter_by(id=tag_id).first()
+        if tag:
+            # Allow tag if it's user's own tag OR it's a group tag where user is a member
+            if tag.user_id == owner.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=owner.id).first()):
+                selected_tags.append(tag)
+        tag_index += 1
+
+    # For backward compatibility with single tag uploads
+    if not selected_tags:
+        single_tag_id = form.get('tag_id')
+        if single_tag_id:
+            # Check if tag belongs to user OR is a group tag where user is a member
+            tag = Tag.query.filter_by(id=single_tag_id).first()
+            if tag and (tag.user_id == owner.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=owner.id).first())):
+                selected_tags.append(tag)
+
+    # Get folder_id if provided
+    selected_folder = None
+    folder_id = form.get('folder_id')
+    if folder_id:
+        folder = Folder.query.filter_by(id=folder_id).first()
+        if folder:
+            # Allow folder if it's user's own folder OR it's a group folder where user is a member
+            if folder.user_id == owner.id or (folder.group_id and GroupMembership.query.filter_by(group_id=folder.group_id, user_id=owner.id).first()):
+                selected_folder = folder
+    return TagFolderSelection(selected_tags, selected_folder)
+
+
+class StoredRecording(NamedTuple):
+    """The recording :func:`store_recording` committed, or the quota refusal."""
+    recording: Optional[Recording]
+    error_response: Optional[tuple]
+
+
+def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_filename,
+                    user_title, final_file_size, meeting_date, mime_type, audio_duration_seconds,
+                    notes, selected_folder, selected_tags, processing_source, file_hash,
+                    prompt_variables, effective_audio_only, prepare):
+    """Create the recording, store the staged file and commit both.
+
+    Unless the upload was recorded in this browser, the owner's quota is
+    reserved first; a refusal rolls back, removes the staging copy and is
+    returned in error_response. The recording is flushed, then prepare runs,
+    then the file moves to storage (the staging copy is gone after that) and
+    the tags and folder shares are added before the one commit. An
+    IntegrityError from the commit propagates to the caller's handler
+    (:func:`handle_unique_conflict`).
+    """
+    # Deferred: src.api.recordings imports this module.
+    from src.api.recordings import _discard_staging
+    from src.services.storage_quota import StorageQuotaExceeded
+
+    # The early check above ran before the conversion, which another
+    # upload can overlap. Count again, with the quota held until the
+    # commit below, the bytes that will be stored (#509).
+    if not recorded_in_app:
+        from src.services.storage_quota import reserve_room
+        try:
+            reserve_room(owner, final_file_size)
+        except StorageQuotaExceeded as quota_error:
+            db.session.rollback()
+            current_app.logger.info(f"Upload refused for user {owner.id}: {quota_error}")
+            _discard_staging(filepath)
+            return StoredRecording(None, quota_error.response())
+
+    recording = Recording(
+        audio_path=None,
+        original_filename=original_filename,
+        title=resolve_upload_title(user_title, original_filename),
+        title_source=upload_title_source(user_title),
+        file_size=final_file_size,
+        status='PENDING',
+        meeting_date=meeting_date,
+        user_id=owner.id,
+        mime_type=mime_type,
+        audio_duration_seconds=audio_duration_seconds,
+        notes=notes,
+        folder_id=selected_folder.id if selected_folder else None,
+        processing_source=processing_source,
+        file_hash=file_hash,
+        prompt_variables=prompt_variables,
+        # Per-upload override: record the effective audio-only flag so
+        # the processing task knows whether to drop the video stream
+        # regardless of the server's VIDEO_RETENTION setting. True when
+        # the user explicitly toggled it or when VIDEO_RETENTION is off.
+        keep_audio_only=effective_audio_only,
+    )
+    db.session.add(recording)
+    db.session.flush()  # Assign recording.id without committing transaction yet
+    if prepare is not None:
+        prepare(recording)
+
+    storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
+    stored_object = storage.upload_local_file(
+        filepath,
+        storage_key,
+        content_type=mime_type,
+        delete_source=True,
+    )
+    # Intentionally do not reuse `filepath` after upload: with delete_source=True
+    # the staging file may already be gone (notably on S3 backend). Workers should
+    # always read from recording.audio_path via the storage facade.
+    recording.audio_path = stored_object.locator
+
+    # Add tags to recording if selected (preserve order)
+    for order, tag in enumerate(selected_tags, 1):
+        new_association = RecordingTag(
+            recording_id=recording.id,
+            tag_id=tag.id,
+            order=order,
+            added_at=datetime.utcnow()
+        )
+        db.session.add(new_association)
+
+    if selected_folder:
+        from src.api.folders import apply_group_folder_shares
+        apply_group_folder_shares(recording, selected_folder)
+
+    db.session.commit()
+
+    if selected_tags:
+        tag_names = [tag.name for tag in selected_tags]
+        current_app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
+
+    current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
+    return StoredRecording(recording, None)
+
+
+def handle_unique_conflict(error, *, filepath, on_conflict):
+    """Answer an upload whose rows hit a unique index (#476).
+
+    Called from the caller's ``except IntegrityError`` block: rolls back,
+    removes the staging copy, then returns on_conflict()'s response, or the
+    500 unexpected_error_upload answer when there is none.
+    """
+    # Deferred: src.api.recordings imports this module.
+    from src.api.recordings import _discard_staging
+
+    # Another upload committed the same unique key first (#476): keep
+    # nothing of this one and let the caller answer with that recording.
+    db.session.rollback()
+    _discard_staging(filepath)
+    replay = on_conflict() if on_conflict is not None else None
+    if replay is not None:
+        current_app.logger.info("Upload lost a race on a unique key; answering with the earlier recording")
+        return replay
+    current_app.logger.error(f"Error during file upload: {error}", exc_info=True)
+    return jsonify(api_error('unexpected_error_upload')), 500
+
+
+def build_ingestion_response(recording, *, owner, duplicate_warning, reuse_duplicate,
+                             success_status):
+    """The success answer for a stored recording: its dict, the duplicate warning, the replay flag."""
+    response_data = recording.to_dict(viewer_user=owner)
+    if duplicate_warning:
+        response_data['duplicate_warning'] = duplicate_warning
+    if reuse_duplicate:
+        response_data['idempotent_replay'] = False
+    return jsonify(response_data), success_status

@@ -6,6 +6,8 @@ resolve_size_policy, enforce_size_policy and recheck_size_after_probe set
 and apply the upload size limits; probe_upload and has_video_after_failed_probe
 read the upload's codecs. decide_conversion, convert_upload_in_request and
 check_extracted_audio_size decide on and run the conversion.
+select_tags_and_folder, store_recording, handle_unique_conflict and
+build_ingestion_response write the recording and assemble the answer.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
@@ -25,13 +27,16 @@ from werkzeug.exceptions import RequestEntityTooLarge
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
-from src.models import ProcessingJob, Recording, User
+from src.models import (
+    Folder, Group, GroupMembership, ProcessingJob, Recording, RecordingTag, Tag, User,
+)
 from src.services import recording_ingestion
 from src.services.recording_ingestion import (
-    ConversionDecision, ConvertedUpload, SizePolicy, SizeRecheck, UploadProbe,
-    check_extracted_audio_size, convert_upload_in_request, decide_conversion, enforce_size_policy,
-    handle_duplicate_replay, has_video_after_failed_probe, lookup_duplicate, probe_upload,
-    recheck_size_after_probe, resolve_size_policy,
+    ConversionDecision, ConvertedUpload, SizePolicy, SizeRecheck, StoredRecording,
+    TagFolderSelection, UploadProbe, build_ingestion_response, check_extracted_audio_size,
+    convert_upload_in_request, decide_conversion, enforce_size_policy, handle_duplicate_replay,
+    handle_unique_conflict, has_video_after_failed_probe, lookup_duplicate, probe_upload,
+    recheck_size_after_probe, resolve_size_policy, select_tags_and_folder, store_recording,
 )
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
 from src.utils.ffprobe import FFProbeError, FFProbeTimeoutError
@@ -633,3 +638,318 @@ def test_post_extraction_size_guard_lets_the_rest_through(staged):
         # The convert job checks a deferred conversion.
         assert _guard(staged, 12.5, deferred=True) is None
     assert os.path.exists(staged)
+
+
+# --- select_tags_and_folder ---------------------------------------------------------
+
+@pytest.fixture
+def tagworld(owner):
+    """The owner, another user, a group the owner is in and one the owner is not in."""
+    with app.app_context():
+        s = uuid.uuid4().hex[:8]
+        other = User(username=f"ing3o_{s}", email=f"ing3o_{s}@local.test", password="x")
+        member_of = Group(name=f"ing3g_{s}")
+        not_in = Group(name=f"ing3n_{s}")
+        db.session.add_all([other, member_of, not_in])
+        db.session.flush()
+        db.session.add(GroupMembership(group_id=member_of.id, user_id=owner))
+        db.session.add(GroupMembership(group_id=not_in.id, user_id=other.id))
+        ids = SimpleNamespace(owner=owner, other=other.id, group=member_of.id, foreign_group=not_in.id)
+
+        def tag(name, user_id, group_id=None):
+            t = Tag(name=name, user_id=user_id, group_id=group_id)
+            db.session.add(t)
+            db.session.flush()
+            return t.id
+
+        def folder(name, user_id, group_id=None):
+            f = Folder(name=name, user_id=user_id, group_id=group_id)
+            db.session.add(f)
+            db.session.flush()
+            return f.id
+
+        ids.own_tag = tag("own", owner)
+        ids.own_tag2 = tag("own2", owner)
+        ids.others_tag = tag("others", other.id)
+        ids.group_tag = tag("group", other.id, member_of.id)
+        ids.foreign_group_tag = tag("foreign", other.id, not_in.id)
+        ids.own_folder = folder("own", owner)
+        ids.others_folder = folder("others", other.id)
+        ids.group_folder = folder("group", other.id, member_of.id)
+        ids.foreign_group_folder = folder("foreign", other.id, not_in.id)
+        db.session.commit()
+    yield ids
+    with app.app_context():
+        rec_ids = [r.id for r in Recording.query.filter_by(user_id=owner)]
+        if rec_ids:
+            RecordingTag.query.filter(RecordingTag.recording_id.in_(rec_ids)).delete(synchronize_session=False)
+        Recording.query.filter_by(user_id=owner).update({"folder_id": None})
+        Tag.query.filter(Tag.user_id.in_([owner, ids.other])).delete(synchronize_session=False)
+        Folder.query.filter(Folder.user_id.in_([owner, ids.other])).delete(synchronize_session=False)
+        GroupMembership.query.filter(GroupMembership.group_id.in_([ids.group, ids.foreign_group])).delete(
+            synchronize_session=False)
+        Group.query.filter(Group.id.in_([ids.group, ids.foreign_group])).delete(synchronize_session=False)
+        db.session.delete(db.session.get(User, ids.other))
+        db.session.commit()
+
+
+def _select(uid, form):
+    selection = select_tags_and_folder(form=form, owner=db.session.get(User, uid))
+    assert isinstance(selection, TagFolderSelection)
+    return [t.id for t in selection.selected_tags], (
+        selection.selected_folder.id if selection.selected_folder else None)
+
+
+def test_select_keeps_own_and_member_group_tags_in_order(tagworld):
+    w = tagworld
+    with app.app_context():
+        form = {"tag_ids[0]": str(w.group_tag), "tag_ids[1]": str(w.others_tag),
+                "tag_ids[2]": str(w.own_tag), "tag_ids[3]": str(w.foreign_group_tag),
+                "tag_ids[4]": "999999999", "tag_ids[5]": str(w.own_tag2)}
+        assert _select(w.owner, form) == ([w.group_tag, w.own_tag, w.own_tag2], None)
+
+
+def test_select_stops_at_the_first_missing_index(tagworld):
+    w = tagworld
+    with app.app_context():
+        form = {"tag_ids[0]": str(w.own_tag), "tag_ids[2]": str(w.own_tag2)}
+        assert _select(w.owner, form) == ([w.own_tag], None)
+        assert _select(w.owner, {"tag_ids[0]": "", "tag_ids[1]": str(w.own_tag)}) == ([], None)
+
+
+def test_select_reads_tag_id_only_when_no_tag_was_accepted(tagworld):
+    w = tagworld
+    with app.app_context():
+        assert _select(w.owner, {"tag_id": str(w.own_tag2)}) == ([w.own_tag2], None)
+        assert _select(w.owner, {"tag_id": str(w.group_tag)}) == ([w.group_tag], None)
+        assert _select(w.owner, {"tag_id": str(w.others_tag)}) == ([], None)
+        # A refused tag_ids entry still lets tag_id through; an accepted one does not.
+        assert _select(w.owner, {"tag_ids[0]": str(w.others_tag), "tag_id": str(w.own_tag2)}) == \
+            ([w.own_tag2], None)
+        assert _select(w.owner, {"tag_ids[0]": str(w.own_tag), "tag_id": str(w.own_tag2)}) == \
+            ([w.own_tag], None)
+
+
+def test_select_keeps_own_and_member_group_folders(tagworld):
+    w = tagworld
+    with app.app_context():
+        assert _select(w.owner, {"folder_id": str(w.own_folder)}) == ([], w.own_folder)
+        assert _select(w.owner, {"folder_id": str(w.group_folder)}) == ([], w.group_folder)
+        assert _select(w.owner, {"folder_id": str(w.others_folder)}) == ([], None)
+        assert _select(w.owner, {"folder_id": str(w.foreign_group_folder)}) == ([], None)
+        assert _select(w.owner, {"folder_id": "999999999"}) == ([], None)
+        assert _select(w.owner, {}) == ([], None)
+
+
+# --- store_recording ------------------------------------------------------------------
+
+class _Storage:
+    """Moves the staged file away like delete_source=True, and records each call."""
+
+    def __init__(self, events=None):
+        self.events = events if events is not None else []
+        self.calls = []
+
+    def build_recording_key(self, original_filename, recording_id, *, now):
+        self.calls.append(("key", original_filename, recording_id, now))
+        return f"recordings/{recording_id}/{original_filename}"
+
+    def upload_local_file(self, filepath, key, *, content_type, delete_source):
+        self.events.append("upload")
+        self.calls.append(("upload", filepath, key, content_type, delete_source))
+        os.remove(filepath)
+        return SimpleNamespace(locator=f"local://{key}")
+
+
+def _store(uid, staged, storage, **overrides):
+    args = dict(
+        owner=db.session.get(User, uid), storage=storage, filepath=staged,
+        now=datetime(2026, 5, 6, 7, 8, 9), recorded_in_app=False, original_filename="talk.wav",
+        user_title=None, final_file_size=len(PAYLOAD), meeting_date=datetime(2026, 1, 2, 3, 4, 5),
+        mime_type="audio/wav", audio_duration_seconds=12.5, notes="the notes", selected_folder=None,
+        selected_tags=[], processing_source="api_v1", file_hash=PAYLOAD_HASH,
+        prompt_variables={"client": "Acme"}, effective_audio_only=True, prepare=None,
+    )
+    args.update(overrides)
+    return store_recording(**args)
+
+
+def test_store_recording_commits_and_returns_response(owner, staged):
+    now = datetime(2026, 5, 6, 7, 8, 9)
+    with app.app_context():
+        storage = _Storage()
+        with patch("src.services.storage_quota.reserve_room") as reserve, \
+                patch.object(app.logger, "info") as info:
+            stored = _store(owner, staged, storage, now=now)
+        assert isinstance(stored, StoredRecording) and stored.error_response is None
+        rec_id = stored.recording.id
+        reserve.assert_called_once()
+        assert reserve.call_args.args[0].id == owner and reserve.call_args.args[1] == len(PAYLOAD)
+        assert storage.calls == [
+            ("key", "talk.wav", rec_id, now),
+            ("upload", staged, f"recordings/{rec_id}/talk.wav", "audio/wav", True),
+        ]
+        info.assert_called_once_with(f"Initial recording record created with ID: {rec_id}")
+        db.session.expire_all()
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert (rec.audio_path, rec.status, rec.original_filename, rec.file_size, rec.user_id) == \
+            (f"local://recordings/{rec_id}/talk.wav", "PENDING", "talk.wav", len(PAYLOAD), owner)
+        assert (rec.meeting_date, rec.mime_type, rec.audio_duration_seconds, rec.notes) == \
+            (datetime(2026, 1, 2, 3, 4, 5), "audio/wav", 12.5, "the notes")
+        assert (rec.processing_source, rec.file_hash, rec.prompt_variables, rec.keep_audio_only) == \
+            ("api_v1", PAYLOAD_HASH, {"client": "Acme"}, True)
+        from src.utils.titles import placeholder_title
+        assert rec.folder_id is None and rec.title == placeholder_title("talk.wav")
+        assert rec.title_source is None
+        body, status = build_ingestion_response(rec, owner=db.session.get(User, owner),
+                                                duplicate_warning=None, reuse_duplicate=False,
+                                                success_status=202)
+        assert status == 202 and body.get_json()["id"] == rec_id
+
+
+def test_store_recording_runs_prepare_after_the_flush_and_before_storage(owner, staged):
+    with app.app_context():
+        events = []
+        storage = _Storage(events)
+
+        def prepare(recording):
+            # The row has an id but the file is not stored yet.
+            events.append(("prepare", recording.id is not None, recording.audio_path,
+                           recording in db.session.new, os.path.exists(staged)))
+            recording.notes = "set by prepare"
+
+        with patch("src.services.storage_quota.reserve_room"):
+            stored = _store(owner, staged, storage, prepare=prepare)
+        assert events == [("prepare", True, None, False, True), "upload"]
+        rec_id = stored.recording.id
+    with app.app_context():
+        assert db.session.get(Recording, rec_id).notes == "set by prepare"
+
+
+def test_store_recording_adds_tags_in_order_and_the_folder(tagworld, staged):
+    w = tagworld
+    with app.app_context():
+        tags = [db.session.get(Tag, w.own_tag2), db.session.get(Tag, w.group_tag)]
+        folder = db.session.get(Folder, w.own_folder)
+        with patch("src.services.storage_quota.reserve_room"), \
+                patch("src.api.folders.apply_group_folder_shares") as shares, \
+                patch.object(app.logger, "info") as info:
+            stored = _store(w.owner, staged, _Storage(), selected_tags=tags, selected_folder=folder,
+                            user_title="Board meeting")
+        rec_id = stored.recording.id
+        shares.assert_called_once_with(stored.recording, folder)
+        assert info.call_args_list[0].args == (f"Added 2 tags to recording {rec_id}: own2, group",)
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert rec.folder_id == w.own_folder
+        assert (rec.title, rec.title_source) == ("Board meeting", "user")
+        rows = RecordingTag.query.filter_by(recording_id=rec_id).order_by(RecordingTag.order).all()
+        assert [(r.tag_id, r.order) for r in rows] == [(w.own_tag2, 1), (w.group_tag, 2)]
+
+
+def test_store_recording_without_a_folder_shares_nothing(owner, staged):
+    with app.app_context():
+        with patch("src.services.storage_quota.reserve_room"), \
+                patch("src.api.folders.apply_group_folder_shares") as shares:
+            _store(owner, staged, _Storage())
+        shares.assert_not_called()
+
+
+def test_store_recording_recorded_in_app_skips_the_quota(owner, staged):
+    with app.app_context():
+        with patch("src.services.storage_quota.reserve_room") as reserve:
+            stored = _store(owner, staged, _Storage(), recorded_in_app=True)
+        reserve.assert_not_called()
+        assert stored.recording is not None
+
+
+def test_store_recording_quota_refusal_rolls_back_and_removes_staging(owner, staged):
+    from src.services.storage_quota import StorageQuotaExceeded
+    with app.app_context():
+        storage = _Storage()
+        before = Recording.query.filter_by(user_id=owner).count()
+        with patch("src.services.storage_quota.reserve_room",
+                   side_effect=StorageQuotaExceeded(900, 1000, 200)), \
+                patch.object(db.session, "rollback", wraps=db.session.rollback) as rollback, \
+                patch.object(app.logger, "info") as info:
+            stored = _store(owner, staged, storage)
+        assert stored.recording is None
+        response, status = stored.error_response
+        assert status == 507 and response.get_json()["code"] == "storage_quota_exceeded"
+        rollback.assert_called_once_with()
+        info.assert_called_once_with(f"Upload refused for user {owner}: "
+                                     "Storage quota exceeded: 900 used + 200 new > 1000")
+        assert not os.path.exists(staged)
+        assert storage.calls == []
+        assert Recording.query.filter_by(user_id=owner).count() == before
+
+
+def test_store_recording_lets_a_unique_index_error_through(owner, staged):
+    from sqlalchemy.exc import IntegrityError
+    with app.app_context():
+        error = IntegrityError("INSERT", {}, Exception("UNIQUE constraint failed"))
+        with patch("src.services.storage_quota.reserve_room"), \
+                patch.object(db.session, "commit", side_effect=error):
+            with pytest.raises(IntegrityError):
+                _store(owner, staged, _Storage())
+        db.session.rollback()
+
+
+# --- handle_unique_conflict -------------------------------------------------------------
+
+def _conflict(staged, on_conflict):
+    from sqlalchemy.exc import IntegrityError
+    try:
+        raise IntegrityError("INSERT", {}, Exception("UNIQUE constraint failed"))
+    except IntegrityError as e:
+        return handle_unique_conflict(e, filepath=staged, on_conflict=on_conflict)
+
+
+def test_unique_conflict_answers_with_on_conflict(staged):
+    with app.app_context():
+        seen = []
+
+        def on_conflict():
+            seen.append(("on_conflict", os.path.exists(staged), rollback.call_count))
+            return ("earlier recording", 200)
+
+        with patch.object(db.session, "rollback") as rollback, \
+                patch.object(app.logger, "info") as info, patch.object(app.logger, "error") as error:
+            assert _conflict(staged, on_conflict) == ("earlier recording", 200)
+        # Rolled back and the staging copy removed before on_conflict runs.
+        assert seen == [("on_conflict", False, 1)]
+        info.assert_called_once_with("Upload lost a race on a unique key; answering with the earlier recording")
+        error.assert_not_called()
+
+
+@pytest.mark.parametrize("on_conflict", [None, lambda: None])
+def test_unique_conflict_without_a_replay_is_the_usual_error(staged, on_conflict):
+    with app.app_context():
+        with patch.object(db.session, "rollback") as rollback, \
+                patch.object(app.logger, "error") as error:
+            response, status = _conflict(staged, on_conflict)
+        assert status == 500 and response.get_json()["code"] == "unexpected_error_upload"
+        rollback.assert_called_once_with()
+        assert not os.path.exists(staged)
+        error.assert_called_once()
+        assert error.call_args.args[0].startswith("Error during file upload: (builtins.Exception) UNIQUE")
+        assert error.call_args.kwargs == {"exc_info": True}
+
+
+# --- build_ingestion_response -----------------------------------------------------------
+
+@pytest.mark.parametrize("warning,reuse,expected", [
+    (None, False, {}),
+    ({"existing_recording_id": 1}, False, {"duplicate_warning": {"existing_recording_id": 1}}),
+    (None, True, {"idempotent_replay": False}),
+    ({}, True, {"idempotent_replay": False}),
+])
+def test_build_ingestion_response(owner, warning, reuse, expected):
+    with app.app_context():
+        rec = _recording(owner)
+        user = db.session.get(User, owner)
+        response, status = build_ingestion_response(rec, owner=user, duplicate_warning=warning,
+                                                    reuse_duplicate=reuse, success_status=201)
+        assert status == 201
+        assert response.get_json() == {**rec.to_dict(viewer_user=user), **expected}
