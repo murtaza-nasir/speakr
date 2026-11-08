@@ -59,7 +59,6 @@ Assembly:
 """
 
 import json
-import mimetypes
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -86,7 +85,7 @@ from src.utils.ffprobe import (
 )
 from src.utils.filenames import shorten_filename
 from src.utils.localization import api_error, format_number, translate
-from src.utils.mime import served_media_mime
+from src.utils.mime import guess_media_type, served_media_mime
 from src.utils.titles import resolve_upload_title, upload_title_source
 
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
@@ -1078,7 +1077,7 @@ def ingest(
         # (file_hash and duplicate_warning already computed above, before conversion)
 
         # Determine MIME type of the final file
-        mime_type, _ = mimetypes.guess_type(filepath)
+        mime_type = guess_media_type(filepath)
 
         # For a retained-video file, derive the MIME from the file's ACTUAL
         # container via the shared probe-driven resolver (the same one the

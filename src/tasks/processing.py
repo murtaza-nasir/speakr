@@ -12,7 +12,6 @@ import os
 import re
 import json
 import time
-import mimetypes
 import tempfile
 import subprocess
 import httpx
@@ -29,6 +28,7 @@ from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, 
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
+from src.utils.mime import guess_media_type
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, VIDEO_PASSTHROUGH_ASR
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.transcription_prompts import (
@@ -1731,7 +1731,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
 
             # Handle video extraction (keep existing logic)
             actual_filepath = filepath
-            actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+            actual_content_type = mime_type or guess_media_type(original_filename) or 'application/octet-stream'
             actual_filename = original_filename
             audio_filepath = None  # Track temp audio extracted from video (for cleanup)
 
@@ -2449,7 +2449,6 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         dict with transcription, title, processing_time, etc.
     """
     import time
-    import mimetypes
     from src.services.transcription import get_registry, TranscriptionRequest
 
     start_time = time.time()
@@ -2485,7 +2484,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # utilities and connectors log the filename they are given, and user
         # filenames can themselves be sensitive (HIPAA guidance: no PHI in
         # logs — "jane-doe-session-3.mp3" is PHI even if the audio never is).
-        mime_type = mimetypes.guess_type(original_filename)[0] or 'audio/mpeg'
+        mime_type = guess_media_type(original_filename) or 'audio/mpeg'
         _anon_ext = os.path.splitext(original_filename)[1].lower() or '.audio'
         anon_filename = f"incognito{_anon_ext}"
 

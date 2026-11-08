@@ -10,10 +10,11 @@ per request via the OpenAI-compatible chat completions API.
 import base64
 import json
 import logging
-import mimetypes
 import re
 import httpx
 from typing import Dict, Any, Set, List, Optional
+
+from src.utils.mime import guess_media_type
 
 from ..base import (
     BaseTranscriptionConnector,
@@ -124,7 +125,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
             # Determine MIME type
             mime = request.mime_type
             if not mime and request.filename:
-                mime, _ = mimetypes.guess_type(request.filename)
+                mime = guess_media_type(request.filename)
             if not mime:
                 mime = 'audio/wav'
 

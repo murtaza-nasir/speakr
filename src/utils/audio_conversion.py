@@ -152,10 +152,10 @@ def convert_if_needed(
     # Get original file size
     original_size = os.path.getsize(filepath)
     if getattr(connector_specs, 'preserve_original_audio', False):
-        import mimetypes
+        from src.utils.mime import guess_media_type
         return ConversionResult(
             output_path=filepath,
-            mime_type=mimetypes.guess_type(original_filename)[0] or 'application/octet-stream',
+            mime_type=guess_media_type(original_filename) or 'application/octet-stream',
             was_converted=False, was_compressed=False,
             original_size=original_size, final_size=original_size)
 
@@ -433,6 +433,5 @@ def _guess_mime_type(filepath: str) -> str:
     Returns:
         MIME type string
     """
-    import mimetypes
-    mime_type, _ = mimetypes.guess_type(filepath)
-    return mime_type or 'application/octet-stream'
+    from src.utils.mime import guess_media_type
+    return guess_media_type(filepath) or 'application/octet-stream'

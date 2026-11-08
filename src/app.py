@@ -22,12 +22,9 @@ import mimetypes
 import bleach
 
 # Add common audio MIME type mappings that might be missing
-mimetypes.add_type('audio/mp4', '.m4a')
-mimetypes.add_type('audio/aac', '.aac')
-mimetypes.add_type('audio/x-m4a', '.m4a')
-mimetypes.add_type('audio/webm', '.webm')
-mimetypes.add_type('audio/flac', '.flac')
-mimetypes.add_type('audio/ogg', '.ogg')
+from src.utils.mime import SPEAKR_MEDIA_TYPES
+for _media_type, _media_ext in SPEAKR_MEDIA_TYPES:
+    mimetypes.add_type(_media_type, _media_ext)
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm

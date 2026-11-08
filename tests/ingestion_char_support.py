@@ -450,4 +450,18 @@ def check(case_id, observation):
         return
     expected = _load().get(case_id)
     assert expected is not None, f"no pinned observation for {case_id}; record it with INGEST_CHAR_RECORD=1"
-    assert observation == expected
+    assert observation == expected, f"{case_id} differs from the pinned observation:\n" + "\n".join(
+        _differences(observation, expected))
+
+
+def _differences(got, pinned, path=""):
+    """One line per differing field, so a failure on another host names the field."""
+    if isinstance(got, dict) and isinstance(pinned, dict):
+        return [line for key in sorted(set(got) | set(pinned))
+                for line in _differences(got.get(key), pinned.get(key), f"{path}.{key}")]
+    if isinstance(got, list) and isinstance(pinned, list) and len(got) == len(pinned):
+        return [line for i, (a, b) in enumerate(zip(got, pinned))
+                for line in _differences(a, b, f"{path}[{i}]")]
+    if got != pinned:
+        return [f"  {path or '.'}: got {got!r:.200}, pinned {pinned!r:.200}"]
+    return []
