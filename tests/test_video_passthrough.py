@@ -27,6 +27,8 @@ def read_file(rel_path):
 # Cache file contents once — they don't change during the run
 PROCESSING = read_file('src/tasks/processing.py')
 RECORDINGS = read_file('src/api/recordings.py')
+# The upload handler and the ingestion steps it calls.
+INGESTION = RECORDINGS + read_file('src/services/recording_ingestion.py')
 FILE_MONITOR = read_file('src/file_monitor.py')
 APP_CONFIG = read_file('src/config/app_config.py')
 ENV_EXAMPLE = read_file('config/env.transcription.example')
@@ -287,11 +289,11 @@ class TestIncognitoPassthrough(unittest.TestCase):
 
 
 # ===========================================================================
-# 5. Upload handler (recordings.py)
+# 5. Upload handler (recordings.py, recording_ingestion.py)
 # ===========================================================================
 
 class TestUploadHandlerPassthrough(unittest.TestCase):
-    """Test recordings.py upload handler respects VIDEO_PASSTHROUGH_ASR."""
+    """Test the upload handler and its ingestion steps respect VIDEO_PASSTHROUGH_ASR."""
 
     def test_skip_conversion_for_passthrough_video(self):
         """Upload handler skips conversion when passthrough is on OR
@@ -301,11 +303,11 @@ class TestUploadHandlerPassthrough(unittest.TestCase):
         # The new decision string keeps VIDEO_PASSTHROUGH_ASR as an
         # admin-level escape hatch and gates retention on the per-upload
         # keep_audio_only flag.
-        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
-        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', RECORDINGS)
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', INGESTION)
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', INGESTION)
         # The extension fallback (used when ffprobe fails) still uses
         # the original `or` shape since it predates the upload decision.
-        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', RECORDINGS)
+        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', INGESTION)
 
     def test_extension_fallback_checks_passthrough(self):
         """Extension-based video detection also fires for VIDEO_PASSTHROUGH_ASR.
@@ -313,15 +315,15 @@ class TestUploadHandlerPassthrough(unittest.TestCase):
         because the extension fallback only decides whether `has_video`
         should be treated as True when ffprobe failed; the per-upload
         keep_audio_only logic runs afterwards."""
-        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', RECORDINGS)
+        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', INGESTION)
 
     def test_convert_if_needed_still_in_else(self):
         """convert_if_needed still runs for audio files or when both flags are off."""
-        self.assertIn('convert_if_needed(', RECORDINGS)
+        self.assertIn('convert_if_needed(', INGESTION)
 
     def test_passthrough_log_message(self):
         """Upload handler logs which mode caused the skip."""
-        self.assertIn("'VIDEO_PASSTHROUGH_ASR'", RECORDINGS)
+        self.assertIn("'VIDEO_PASSTHROUGH_ASR'", INGESTION)
 
 
 # ===========================================================================
@@ -338,26 +340,26 @@ class TestFileMonitorPassthrough(unittest.TestCase):
 
     def test_passthrough_defined(self):
         """VIDEO_PASSTHROUGH_ASR is handled by the shared ingestion path."""
-        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', INGESTION)
 
     def test_skip_conversion_for_passthrough_or_retention(self):
         """The shared path skips conversion for passthrough/retention videos."""
-        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
-        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', RECORDINGS)
-        self.assertIn('and has_video', RECORDINGS)
-        self.assertIn('skipping conversion', RECORDINGS)
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', INGESTION)
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', INGESTION)
+        self.assertIn('and has_video', INGESTION)
+        self.assertIn('skipping conversion', INGESTION)
 
     def test_convert_if_needed_in_else_branch(self):
         """The shared path keeps the skip decision ahead of conversion."""
-        self.assertIn('keep_video_for_this_upload = (', RECORDINGS)
-        self.assertIn('elif can_defer_conversion:', RECORDINGS)
-        self.assertIn('convert_if_needed(', RECORDINGS)
+        self.assertIn('keep_video_for_this_upload = (', INGESTION)
+        self.assertIn('elif can_defer_conversion:', INGESTION)
+        self.assertIn('convert_if_needed(', INGESTION)
         self.assertNotIn('convert_if_needed', FILE_MONITOR)
 
     def test_log_distinguishes_passthrough_from_retention(self):
         """Log message indicates whether passthrough or retention caused the skip."""
-        self.assertIn("'passthrough'", RECORDINGS)
-        self.assertIn("'retention'", RECORDINGS)
+        self.assertIn("'passthrough'", INGESTION)
+        self.assertIn("'retention'", INGESTION)
 
 
 # ===========================================================================
@@ -378,13 +380,13 @@ class TestAudioUnaffected(unittest.TestCase):
 
     def test_upload_handler_gated_on_has_video(self):
         """Upload handler skip is gated on `has_video`."""
-        self.assertIn('and has_video', RECORDINGS)
+        self.assertIn('and has_video', INGESTION)
 
     def test_file_monitor_gated_on_has_video(self):
         """The file monitor delegates to the shared path, whose skip is gated
         on `has_video`."""
         self.assertIn('ingest_uploaded_recording(', FILE_MONITOR)
-        self.assertIn('and has_video', RECORDINGS)
+        self.assertIn('and has_video', INGESTION)
 
 
 # ===========================================================================

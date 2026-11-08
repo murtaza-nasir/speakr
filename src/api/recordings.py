@@ -68,8 +68,8 @@ from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
 from src.services.recording_ingestion import (
-    enforce_size_policy, handle_duplicate_replay, lookup_duplicate, recheck_size_after_probe,
-    resolve_size_policy,
+    enforce_size_policy, handle_duplicate_replay, has_video_after_failed_probe, lookup_duplicate,
+    probe_upload, recheck_size_after_probe, resolve_size_policy,
 )
 from src.utils.localization import api_error, format_number, translate
 
@@ -2176,36 +2176,10 @@ def ingest_uploaded_recording(
             chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT, connector_specs)
         )
 
-        # Probe once and use shared conversion utility
-        # Scale timeout based on file size — large files (especially MP4 with moov at end) need more time
-        file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
-        probe_timeout = max(10, min(60, int(file_size_mb / 10)))  # 10s min, scales ~1s per 10MB, 60s max
-        codec_info = None
-        probe_error = None
-        try:
-            codec_info = get_codec_info(filepath, timeout=probe_timeout)
-            current_app.logger.info(
-                f"Detected codec for {original_filename}: "
-                f"audio_codec={codec_info.get('audio_codec')}, "
-                f"has_video={codec_info.get('has_video', False)}"
-            )
-        except FFProbeError as e:
-            current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
-            codec_info = None
-            probe_error = e
-            # #340: a browser MediaRecorder can produce a .webm whose EBML header
-            # isn't at the front (chunk-order artifact, seen on crash-recovered
-            # recordings). If so, trim to the real header and re-probe before we
-            # fall through to a conversion that would just fail again.
-            if os.path.splitext(original_filename)[1].lower() in ('.webm', '.mkv', '.mka'):
-                repaired_info = try_repair_malformed_webm(filepath, timeout=probe_timeout)
-                if repaired_info is not None:
-                    codec_info = repaired_info
-                    probe_error = None
-                    current_app.logger.info(f"Recovered malformed WebM header for {original_filename}; probe succeeded after trim")
-
-        # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
-        has_video = codec_info.get('has_video', False) if codec_info else False
+        upload_probe = probe_upload(filepath=filepath, original_filename=original_filename)
+        codec_info = upload_probe.codec_info
+        probe_error = upload_probe.probe_error
+        has_video = upload_probe.has_video
 
         size_recheck = recheck_size_after_probe(
             codec_info=codec_info,
@@ -2222,27 +2196,12 @@ def ingest_uploaded_recording(
         if size_recheck.too_large:
             raise RequestEntityTooLarge()
 
-        # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
-        # to avoid silently discarding video from files we couldn't probe
-        if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
-            video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
-            file_ext = os.path.splitext(original_filename)[1].lower()
-            if file_ext in video_extensions:
-                if probe_error is not None and probe_rejected_input(probe_error):
-                    # ffprobe read the file and could not make sense of it.
-                    # Only a probe that did not finish is trusted to the
-                    # extension: this file goes through conversion, which
-                    # refuses it with audio_decode_failed, as without these
-                    # settings (#482).
-                    current_app.logger.info(
-                        f"ffprobe could not read '{file_ext}' upload; converting it as audio"
-                    )
-                else:
-                    has_video = True
-                    current_app.logger.info(
-                        f"Probe failed but file extension '{file_ext}' indicates video — "
-                        f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
-                    )
+        has_video = has_video_after_failed_probe(
+            codec_info=codec_info,
+            probe_error=probe_error,
+            has_video=has_video,
+            original_filename=original_filename,
+        )
         # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
         # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
         # sends video directly to the ASR endpoint — left untouched here.

@@ -3,7 +3,8 @@
 lookup_duplicate hashes the staged upload and finds an earlier recording of
 it; handle_duplicate_replay answers a retried upload with that recording.
 resolve_size_policy, enforce_size_policy and recheck_size_after_probe set
-and apply the upload size limits.
+and apply the upload size limits; probe_upload and has_video_after_failed_probe
+read the upload's codecs.
 
 SHARED-DB: the user, recordings and jobs are removed afterwards.
 """
@@ -26,9 +27,11 @@ from src.app import app, db
 from src.models import ProcessingJob, Recording, User
 from src.services import recording_ingestion
 from src.services.recording_ingestion import (
-    SizePolicy, SizeRecheck, enforce_size_policy, handle_duplicate_replay, lookup_duplicate,
-    recheck_size_after_probe, resolve_size_policy,
+    SizePolicy, SizeRecheck, UploadProbe, enforce_size_policy, handle_duplicate_replay,
+    has_video_after_failed_probe, lookup_duplicate, probe_upload, recheck_size_after_probe,
+    resolve_size_policy,
 )
+from src.utils.ffprobe import FFProbeError, FFProbeTimeoutError
 
 PAYLOAD = b"duplicate-detection-bytes"
 PAYLOAD_HASH = hashlib.sha256(PAYLOAD).hexdigest()
@@ -377,3 +380,95 @@ def test_recheck_refuses_a_large_unreadable_file_with_a_video_extension(retentio
 def test_recheck_leaves_an_unreadable_file_alone_without_video_settings():
     assert _recheck(None) == SizeRecheck(True, 40, False)
     assert _recheck(None, filename="talk.wav", retention=True) == SizeRecheck(False, 40, False)
+
+
+# --- probe ----------------------------------------------------------------------
+
+def _probe(staged, filename, codec=None, error=None, repaired=None, size=None):
+    get_info = MagicMock(return_value=codec, side_effect=error)
+    repair = MagicMock(return_value=repaired)
+    with patch("src.api.recordings.get_codec_info", get_info), \
+            patch("src.api.recordings.try_repair_malformed_webm", repair), \
+            patch("os.path.getsize", return_value=size if size is not None else 3 * MB):
+        result = probe_upload(filepath=staged, original_filename=filename)
+    return result, get_info, repair
+
+
+def test_probe_upload_reads_the_codecs(staged):
+    codec = {"audio_codec": "aac", "has_video": True}
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        result, get_info, repair = _probe(staged, "talk.mp4", codec=codec)
+    assert result == UploadProbe(codec, None, True)
+    get_info.assert_called_once_with(staged, timeout=10)
+    repair.assert_not_called()
+    info.assert_called_once_with("Detected codec for talk.mp4: audio_codec=aac, has_video=True")
+
+
+@pytest.mark.parametrize("size_mb,timeout", [(50, 10), (250, 25), (900, 60)])
+def test_probe_timeout_scales_with_the_file_size(staged, size_mb, timeout):
+    with app.app_context():
+        _, get_info, _ = _probe(staged, "a.wav", codec={"audio_codec": "pcm_s16le"}, size=size_mb * MB)
+    get_info.assert_called_once_with(staged, timeout=timeout)
+
+
+def test_probe_upload_keeps_a_failed_probe(staged):
+    error = FFProbeError("unreadable")
+    with app.app_context(), patch.object(app.logger, "warning") as warning:
+        result, _, repair = _probe(staged, "talk.mp3", error=error)
+    assert result == UploadProbe(None, error, False)
+    repair.assert_not_called()
+    warning.assert_called_once_with(
+        "Failed to probe talk.mp3 (timeout=10s): unreadable. Will attempt conversion.")
+
+
+@pytest.mark.parametrize("filename", ["rec.webm", "rec.MKV", "rec.mka"])
+def test_probe_upload_repairs_webm(staged, filename):
+    repaired = {"audio_codec": "opus", "has_video": False}
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        result, _, repair = _probe(staged, filename, error=FFProbeError("EBML header not found"),
+                                   repaired=repaired)
+    assert result == UploadProbe(repaired, None, False)
+    repair.assert_called_once_with(staged, timeout=10)
+    info.assert_called_once_with(
+        f"Recovered malformed WebM header for {filename}; probe succeeded after trim")
+
+
+def test_probe_upload_keeps_the_error_when_the_repair_fails(staged):
+    error = FFProbeError("EBML header not found")
+    with app.app_context():
+        result, _, repair = _probe(staged, "rec.webm", error=error, repaired=None)
+    assert result == UploadProbe(None, error, False)
+    repair.assert_called_once_with(staged, timeout=10)
+
+
+def _fallback(filename="talk.mp4", codec_info=None, error=None, has_video=False,
+              retention=False, passthrough=False):
+    with patch("src.api.recordings.VIDEO_RETENTION", retention), \
+            patch("src.api.recordings.VIDEO_PASSTHROUGH_ASR", passthrough):
+        return has_video_after_failed_probe(codec_info=codec_info, probe_error=error,
+                                            has_video=has_video, original_filename=filename)
+
+
+@pytest.mark.parametrize("retention,passthrough,label", [
+    (True, False, "VIDEO_RETENTION"), (False, True, "VIDEO_PASSTHROUGH_ASR"), (True, True, "VIDEO_PASSTHROUGH_ASR"),
+])
+def test_unfinished_probe_takes_a_video_extension_as_video(retention, passthrough, label):
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        assert _fallback(error=FFProbeTimeoutError("slow"), retention=retention, passthrough=passthrough) is True
+    info.assert_called_once_with(
+        f"Probe failed but file extension '.mp4' indicates video — treating as video for {label}")
+
+
+def test_rejecting_probe_is_not_overruled_by_the_extension():
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        assert _fallback("talk.MOV", error=FFProbeError("invalid data"), retention=True) is False
+    info.assert_called_once_with("ffprobe could not read '.mov' upload; converting it as audio")
+
+
+def test_extension_fallback_needs_a_failed_probe_a_video_extension_and_a_video_setting():
+    with app.app_context(), patch.object(app.logger, "info") as info:
+        assert _fallback(error=FFProbeTimeoutError("slow")) is False
+        assert _fallback("talk.wav", error=FFProbeTimeoutError("slow"), retention=True) is False
+        assert _fallback(codec_info={"has_video": False}, retention=True) is False
+        assert _fallback(codec_info={"has_video": True}, has_video=True, retention=True) is True
+    info.assert_not_called()
