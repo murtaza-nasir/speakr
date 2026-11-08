@@ -301,7 +301,7 @@ def resolve_size_policy(*, file, form, original_filename, enforce_upload_limits)
             current_app.logger.warning(f"Could not get connector specs for upload: {e}")
 
     # Chunking (app-level, or inside the connector) lifts the per-type
-    # policy cap; the WSGI ceiling below always applies (#533).
+    # policy cap; the WSGI ceiling always applies (#533, enforce_size_policy).
     should_enforce_size_limit = enforce_upload_limits
     if chunking_service:
         from src.audio_chunking import get_effective_chunking_config
@@ -723,7 +723,7 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
     """
     from src.services.storage_quota import StorageQuotaExceeded
 
-    # The early check above ran before the conversion, which another
+    # The early check in ingest ran before the conversion, which another
     # upload can overlap. Count again, with the quota held until the
     # commit below, the bytes that will be stored (#509).
     if not recorded_in_app:
@@ -843,7 +843,7 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
     from src.api.recordings import job_queue
 
     # --- Queue transcription job ---
-    # Params were already resolved (incl. admin model validation) above.
+    # Params were already resolved (incl. admin model validation) in ingest.
     job_params = resolved_params
 
     if conversion_deferred:

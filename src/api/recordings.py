@@ -7,14 +7,10 @@ This blueprint was auto-generated from app.py route extraction.
 import os
 import json
 import re
-import mimetypes
-import time
-import subprocess
-import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from src.services.llm_settings import get_temperature
 from src.services.job_queue import job_queue
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -26,7 +22,7 @@ from src.database import db
 from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
 from src.models import *
 from src.utils import *
-from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
+from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 
 
 # Model validation + the full default-resolution chain now live in one shared
@@ -38,7 +34,6 @@ from src.services.transcription_defaults import (
 )
 from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
-from src.utils.titles import resolve_upload_title, upload_title_source
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
     update_speaker_usage, apply_speaker_map, participants_from_segments, update_voice_profiles,
@@ -50,11 +45,10 @@ from src.services.document import (
     add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
     new_document, process_markdown_to_docx,
 )
-from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
+from src.services.llm import client, chat_client, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
-from src.file_exporter import export_recording, mark_export_as_deleted
+from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.filenames import shorten_filename
 from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
