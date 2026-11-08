@@ -39,11 +39,22 @@ LOCALES = ('en', 'de', 'es', 'fr', 'pt-BR', 'ru', 'zh')
 # Every entry needs a comment with the reason. Kinds are the keys of
 # behaviours() below.
 ALLOWED = {
+    ('workspace', 'sidebar-nav'): {
+        # The folder dropdown became the Folders section of the navigation rail:
+        # its rows set filterFolder on click, so the select and its v-model are gone.
+        'models': {'filterFolder'},
+        # New Recording is the filled button of the header (header-controls.html),
+        # which every theme shows; the rail has no second one.
+        'handlers': {'switchToUploadView'},
+        'label_keys': {'nav.newRecording'},
+    },
 }
 
 # (theme, slot) -> (other slot, ...): the override of `slot` may have moved
 # behaviour into the theme's overrides of these slots.
 MOVED = {
+    # The recording's actions moved from the header into the toolbar above the recording.
+    ('workspace', 'header-actions'): ('detail-meta',),
 }
 
 KINDS = ('handlers', 'models', 'refs', 'ids', 'data', 'label_keys')

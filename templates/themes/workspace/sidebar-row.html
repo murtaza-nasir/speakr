@@ -1,0 +1,114 @@
+                        {#- Workspace: one 32px line per recording. The status dot is the one state
+                            signal; tag and folder colours are dots (names in the tooltip and the rail). -#}
+                        <div v-for="recording in group.items"
+                             :key="recording.id"
+                             @mousedown="$event.shiftKey && $event.preventDefault()"
+                             @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
+                             :class="[
+                                 'recording-row ws-row relative cursor-pointer',
+                                 (selectionMode && isSelected(recording.id)) || (selectedRecording?.id === recording.id && !selectionMode) ? 'is-active' : ''
+                             ]"
+                             :title="[recording.title, recording.participants, getRecordingTags(recording).map(tg => tg.name).join(', ')].filter(s => s).join(' · ')">
+                            <!-- Selection checkbox (replaces the status dot while selecting) -->
+                            <span v-if="selectionMode"
+                                  @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)"
+                                  class="ws-row__lead">
+                                <input type="checkbox"
+                                       :checked="isSelected(recording.id)"
+                                       class="selection-checkbox"
+                                       @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)">
+                            </span>
+                            <!-- Status dot: one signal for state. Completed rows stay quiet. -->
+                            <span v-else class="ws-row__lead">
+                                <span class="ws-status"
+                                      :class="'ws-status--' + String(recording.status || '').toLowerCase()"
+                                      :title="recording.status === 'COMPLETED' ? '' : formatRecordingStatus(recording)"></span>
+                            </span>
+
+                            <h4 dir="auto" class="ws-row__title">
+                                ${ recording.title || t('common.untitled') }
+                            </h4>
+
+                            <!-- State text for work in progress or failed -->
+                            <span v-if="recording.status !== 'COMPLETED'"
+                                  :class="getStatusClass(recording.status)"
+                                  class="status-badge ws-row__state">
+                                ${formatRecordingStatus(recording)}
+                            </span>
+
+                            <span class="ws-row__meta">
+                                <!-- Folder dot, only in the All view and while folders are on -->
+                                <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
+                                      class="ws-glyph"
+                                      :style="{ color: recording.folder.color || '' }"
+                                      :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
+                                    <i class="fas fa-share-nodes"></i>
+                                </span>
+                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito && !(recording.folder && recording.folder.is_foreign)"
+                                        type="button"
+                                        @click.stop="filterFolder = recording.folder_id"
+                                        class="ws-glyph ws-glyph--folder"
+                                        :style="{ color: getFolderColor(recording.folder_id) }"
+                                        :title="t('tooltips.folderLabel', { name: getFolderName(recording.folder_id) })">
+                                    <i class="fas fa-folder"></i>
+                                </button>
+
+                                <!-- Tag dots: click filters by the tag -->
+                                <span v-if="getRecordingTags(recording).length > 0" class="ws-tagdots">
+                                    <template v-for="tag in getRecordingTags(recording).slice(0, 3)" :key="tag.id">
+                                        <span v-if="tag.is_foreign" class="ws-dot ws-dot--sm"
+                                              :style="{ backgroundColor: tag.color || '#6B7280' }"
+                                              :title="t('sharing.sharedBadge') + ': ' + tag.name"></span>
+                                        <button v-else type="button" class="ws-dot ws-dot--sm ws-dot--btn"
+                                                @click.stop="filterByTag(tag)"
+                                                :style="{ backgroundColor: tag.color || '#6B7280' }"
+                                                :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : t('tooltips.filterByName', { name: tag.name })"></button>
+                                    </template>
+                                    <span v-if="getRecordingTags(recording).length > 3" class="ws-more"
+                                          :title="t('tooltips.moreTags')">+${getRecordingTags(recording).length - 3}</span>
+                                </span>
+
+                                <!-- Sharing -->
+                                <span v-if="recording.is_shared || recording.has_group_tags || recording.shared_with_count > 0 || recording.public_share_count > 0"
+                                      class="ws-glyph"
+                                      :title="[
+                                          recording.is_shared ? t('sharing.sharedBy') + ' ' + (recording.owner_username || t('sharing.unknown')) : '',
+                                          recording.has_group_tags ? t('sharing.teamRecording') : '',
+                                          !recording.is_shared && recording.shared_with_count > 0 ? t('sharing.sharedWith') + ' ' + recording.shared_with_count + ' ' + t('sharing.users') : '',
+                                          !recording.is_shared && recording.public_share_count > 0 ? recording.public_share_count + ' ' + t('sharing.publicLinksGenerated') : ''
+                                      ].filter(s => s).join(' • ')">
+                                    <i v-if="recording.is_shared" class="fas fa-arrow-down"></i>
+                                    <i v-else-if="recording.has_group_tags" class="fas fa-users"></i>
+                                    <i v-else-if="recording.shared_with_count > 0" class="fas fa-arrow-up"></i>
+                                    <i v-else class="fas fa-globe"></i>
+                                </span>
+                                <span v-if="recording.audio_deleted_at" class="ws-glyph" :title="t('audioRemoved.label')"><i class="fas fa-volume-xmark"></i></span>
+                                <span v-if="recording.is_archived" class="ws-glyph" :title="t('archive.archived')"><i class="fas fa-box-archive"></i></span>
+                                <button v-if="recording.duplicate_info" type="button" class="ws-glyph ws-glyph--warn"
+                                        @click.stop="openDuplicatesModal(recording.duplicate_info)"
+                                        :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
+                                      class="ws-glyph" :title="t('tooltips.video')"><i class="fas fa-video"></i></span>
+
+                                <!-- Star and inbox keep their click-to-toggle behaviour -->
+                                <template v-if="recording.status === 'COMPLETED'">
+                                    <button v-if="recording.is_highlighted" type="button"
+                                            @click.stop="toggleHighlight(recording)"
+                                            class="ws-glyph ws-glyph--star"
+                                            :title="t('sidebar.removeFromHighlighted')">
+                                        <i class="fas fa-star"></i>
+                                    </button>
+                                    <button v-if="recording.is_inbox" type="button"
+                                            @click.stop="toggleInbox(recording)"
+                                            class="ws-glyph ws-glyph--inbox"
+                                            :title="t('sidebar.markAsRead')">
+                                        <i class="fas fa-circle"></i>
+                                    </button>
+                                </template>
+
+                                <span class="ws-row__dur" v-text="recording.audio_duration ? formatTime(recording.audio_duration) : ''"></span>
+                                <span class="ws-row__date" v-text="formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)"></span>
+                            </span>
+                        </div>

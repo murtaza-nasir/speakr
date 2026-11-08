@@ -47,6 +47,15 @@ def user():
         db.session.commit()
 
 
+@pytest.fixture(autouse=True)
+def only_the_default(monkeypatch):
+    """These tests describe the registry with the default alone available,
+    whichever themes have been ported."""
+    themes = tuple(ui_themes.UiTheme(t.id, available=t.id == ui_themes.DEFAULT_THEME)
+                   for t in ui_themes.UI_THEMES)
+    monkeypatch.setattr(ui_themes, "UI_THEMES", themes)
+
+
 @pytest.fixture
 def classic_available(monkeypatch):
     """The classic theme offered, as it will be once it is ported."""

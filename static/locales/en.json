@@ -3757,5 +3757,10 @@
     "preferences": "Translation preferences",
     "toggle": "Toggle translation",
     "incognitoUnavailable": "Translation is unavailable for incognito recordings."
+  },
+  "workspace": {
+    "library": "Library",
+    "recordings": "Recordings",
+    "share": "Share"
   }
 }
