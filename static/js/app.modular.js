@@ -2151,6 +2151,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Clock time of a list row ("1:13 AM"), for themes with a time column in the sidebar list.
+            const formatShortTime = (dateString) => {
+                if (!dateString) return '';
+                const date = parseServerInstant(dateString);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleTimeString(window.i18n?.getIntlLocale?.(), { hour: 'numeric', minute: '2-digit' });
+            };
+
             const formatStatus = (status) => {
                 const statusMap = {
                     'PENDING': t('status.pending'),
@@ -4651,6 +4659,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,
+                formatShortTime,
                 uiTheme,
                 setUiTheme,
                 formatStatus,

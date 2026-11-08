@@ -64,7 +64,7 @@ class UiTheme:
 
 UI_THEMES = (
     UiTheme(DEFAULT_THEME, available=True),
-    UiTheme('classic', available=False),
+    UiTheme('classic', available=True),
     UiTheme('workspace', available=False),
     UiTheme('focus', available=False),
     UiTheme('desk', available=False),
