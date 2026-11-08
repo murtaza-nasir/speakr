@@ -1,0 +1,1201 @@
+/* ============================================================================
+ * UI theme "Focus": calm and content first (docs/advanced/ui-themes.md).
+ *
+ * The transcript and the summary are the product, so the interface steps
+ * back: a quiet sidebar on a warm page tint, one raised reading surface, a
+ * centred serif reading column, speaker names in a margin column and almost
+ * no borders.
+ *
+ * Colour contract: the accent, accent container, accent text, accent line and
+ * focus colours come from the active colour scheme (--bg-button, --bg-accent,
+ * --text-accent, --border-accent, --border-focus, --ring-focus), which this
+ * file never sets. It supplies the neutrals, shapes, type and status tones.
+ * The --f-* names below are this theme's own tokens.
+ *
+ * No font file is bundled. The reading face is a system serif stack ordered
+ * by quality of the face and by how widely it is installed.
+ * ========================================================================= */
+
+/* ---- Tokens: type, geometry, motion (same in light and dark) -------------- */
+html[data-ui-theme="focus"] {
+    --f-font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --f-font-read: "Source Serif 4", "Source Serif Pro", "Iowan Old Style", Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, "Noto Serif", "DejaVu Serif", serif;
+    --f-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --f-fs-micro: 12px;     /* timestamps, counts */
+    --f-fs-meta: 13px;      /* metadata, labels */
+    --f-fs-ui: 14px;        /* controls, list rows */
+    --f-fs-read: 17.5px;    /* transcript and summary text */
+    --f-lh-read: 1.62;
+    --f-measure: 41rem;     /* reading column width */
+    --f-r-sm: 6px;
+    --f-r-md: 10px;
+    --f-r-lg: 16px;
+    --f-sidebar-w: 296px;
+    --f-ctl-h: 36px;
+    --f-gutter: 28px;
+    --f-ease: cubic-bezier(0.2, 0, 0, 1);
+    --f-t-fast: 120ms;
+    --f-t-base: 180ms;
+
+    /* accent, taken from the colour scheme */
+    --f-accent: var(--bg-button);
+    --f-on-accent: var(--text-button);
+    --f-accent-hover: var(--bg-button-hover);
+    --f-accent-c: var(--bg-accent);
+    --f-accent-c-2: var(--bg-accent-hover);
+    --f-on-accent-c: var(--text-accent);
+    --f-accent-text: var(--text-accent);
+    --f-accent-line: var(--border-accent);
+    --f-focus: var(--border-focus);
+    --f-focus-ring: var(--ring-focus);
+
+    /* shape tokens of static/css/primitives.css */
+    --radius-sm: var(--f-r-sm);
+    --radius-md: var(--f-r-md);
+    --radius-lg: var(--f-r-lg);
+    --shadow-sm: var(--f-shadow-1);
+    --shadow-md: var(--f-shadow-2);
+    --shadow-lg: var(--f-shadow-2);
+}
+
+/* ---- Light: warm paper ---------------------------------------------------- */
+html[data-ui-theme="focus"] {
+    --f-bg: #f4f0e9;            /* page: sidebar and header sit directly on it */
+    --f-surface: #fdfbf7;       /* reading surface */
+    --f-surface-2: #efeae1;     /* inputs, hover, quiet fills */
+    --f-surface-3: #e6e0d4;     /* pressed, track */
+    --f-text: #26221d;
+    --f-text-2: #554f46;
+    --f-text-3: #766f63;        /* >= 4.5:1 on --f-surface and --f-bg */
+    --f-divider: #e8e2d6;
+    --f-border: #d6cfc1;
+    --f-shadow-1: 0 1px 2px rgba(60, 45, 20, 0.06);
+    --f-shadow-2: 0 8px 28px rgba(60, 45, 20, 0.14), 0 1px 3px rgba(60, 45, 20, 0.08);
+    --f-scrim: rgba(38, 34, 29, 0.38);
+    --f-danger: #a4372c;
+    --f-danger-c: #f6dcd6;
+    --f-warn: #8a5a12;
+    --f-warn-c: #f5e6c4;
+    --f-ok: #2e6b46;
+    --f-ok-c: #d8ead9;
+    --f-info-c: #dde6ea;
+
+    --bg-primary: var(--f-bg);
+    --bg-secondary: var(--f-surface);
+    --bg-tertiary: var(--f-surface-2);
+    --bg-input: var(--f-surface);
+    --bg-audio-player: var(--f-surface);
+    --text-primary: var(--f-text);
+    --text-secondary: var(--f-text-2);
+    --text-muted: var(--f-text-3);
+    --text-light: var(--f-text-3);
+    --border-primary: var(--f-divider);
+    --border-secondary: var(--f-border);
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: #d3ccbd;
+    --scrollbar-thumb-hover: #b9b1a0;
+
+    /* status tones */
+    --bg-danger: var(--f-danger);
+    --bg-danger-hover: #8c2d24;
+    --bg-danger-light: var(--f-danger-c);
+    --bg-warn-light: var(--f-warn-c);
+    --bg-success-light: var(--f-ok-c);
+    --bg-pending-light: var(--f-surface-2);
+    --text-danger: var(--f-danger);
+    --text-danger-strong: #7d2a21;
+    --text-warn-strong: var(--f-warn);
+    --text-success-strong: var(--f-ok);
+    --border-danger: #cf8a80;
+    --tint-info: var(--f-info-c);       --tint-info-fg: #2d5566;      --tint-info-border: transparent;
+    --tint-success: var(--f-ok-c);      --tint-success-fg: var(--f-ok);   --tint-success-border: transparent;
+    --tint-warn: var(--f-warn-c);       --tint-warn-fg: var(--f-warn);    --tint-warn-border: transparent;
+    --tint-danger: var(--f-danger-c);   --tint-danger-fg: var(--f-danger);--tint-danger-border: transparent;
+    --tint-processing: #e6dff0;         --tint-processing-fg: #5b4682;    --tint-processing-border: transparent;
+    --tint-pending: var(--f-surface-2); --tint-pending-fg: var(--f-text-2);--tint-pending-border: transparent;
+}
+
+/* ---- Dark: warm charcoal -------------------------------------------------- */
+html[data-ui-theme="focus"].dark {
+    --f-bg: #181614;
+    --f-surface: #201d1a;
+    --f-surface-2: #2a2622;
+    --f-surface-3: #353029;
+    --f-text: #ece7de;
+    --f-text-2: #bdb6a9;
+    --f-text-3: #9a9385;
+    --f-divider: #2f2b26;
+    --f-border: #443e36;
+    --f-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --f-shadow-2: 0 10px 32px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --f-scrim: rgba(0, 0, 0, 0.55);
+    --f-danger: #f0958a;
+    --f-danger-c: #4a2823;
+    --f-warn: #e6bb6e;
+    --f-warn-c: #46371a;
+    --f-ok: #8fcaa0;
+    --f-ok-c: #1f3a2a;
+    --f-info-c: #243239;
+
+    --scrollbar-thumb: #413b33;
+    --scrollbar-thumb-hover: #5a5247;
+    --bg-danger: #c4463a;
+    --bg-danger-hover: #d65a4d;
+    --text-danger-strong: #f6b5ac;
+    --border-danger: #8d4a42;
+    --tint-info-fg: #a9cddb;
+    --tint-processing: #332b45;  --tint-processing-fg: #c8b6ec;
+}
+
+/* ---- Base ---------------------------------------------------------------- */
+html[data-ui-theme="focus"] body {
+    font-family: var(--f-font-ui);
+    font-size: var(--f-fs-ui);
+    background: var(--f-bg);
+    color: var(--f-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01";
+}
+html[data-ui-theme="focus"] body button,
+html[data-ui-theme="focus"] body input,
+html[data-ui-theme="focus"] body select,
+html[data-ui-theme="focus"] body textarea { font-family: inherit; }
+html[data-ui-theme="focus"] body ::selection { background: var(--f-accent-c-2); color: var(--f-on-accent-c); }
+html[data-ui-theme="focus"] body * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+html[data-ui-theme="focus"] body .font-mono,
+html[data-ui-theme="focus"] body .tabular { font-variant-numeric: tabular-nums; }
+
+/* ============================================================================
+ * Controls: one geometry for buttons, icon buttons, fields, toggles, chips.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body .btn {
+    font-size: var(--f-fs-ui);
+    font-weight: 500;
+    min-height: var(--f-ctl-h);
+    padding: 0 16px;
+    border-radius: 999px;
+    letter-spacing: 0;
+    transition: background var(--f-t-fast) var(--f-ease), color var(--f-t-fast) var(--f-ease), border-color var(--f-t-fast) var(--f-ease), box-shadow var(--f-t-fast) var(--f-ease);
+}
+html[data-ui-theme="focus"] body .btn--sm { min-height: 32px; padding: 0 12px; font-size: var(--f-fs-meta); }
+html[data-ui-theme="focus"] body .btn--lg { min-height: 44px; padding: 0 22px; }
+html[data-ui-theme="focus"] body .btn--primary {
+    background: var(--f-accent);
+    color: var(--f-on-accent);
+    border-color: transparent;
+    box-shadow: none;
+}
+html[data-ui-theme="focus"] body .btn--primary:hover:not(:disabled) { background: var(--f-accent-hover); }
+html[data-ui-theme="focus"] body .btn--ghost,
+html[data-ui-theme="focus"] body .btn--quiet {
+    background: transparent;
+    color: var(--f-text-2);
+    border-color: transparent;
+}
+html[data-ui-theme="focus"] body .btn--ghost:hover:not(:disabled),
+html[data-ui-theme="focus"] body .btn--quiet:hover:not(:disabled) { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] body .btn--danger { background: var(--f-danger-c); color: var(--f-danger); border-color: transparent; }
+html[data-ui-theme="focus"] body .btn--danger:hover:not(:disabled) { background: var(--f-danger); color: #fff; }
+html[data-ui-theme="focus"] body .btn:disabled,
+html[data-ui-theme="focus"] body .btn.is-disabled { opacity: 0.45; }
+html[data-ui-theme="focus"] body .btn--icon { width: var(--f-ctl-h); padding: 0; border-radius: 999px; }
+html[data-ui-theme="focus"] body .btn--icon.btn--sm { width: 28px; min-height: 28px; }
+html[data-ui-theme="focus"] body .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet) { color: var(--f-text-3); }
+@media (hover: hover) {
+    html[data-ui-theme="focus"] body .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet):hover:not(:disabled) { background: var(--f-surface-2); color: var(--f-text); }
+}
+html[data-ui-theme="focus"] body .btn:focus-visible,
+html[data-ui-theme="focus"] body .tab:focus-visible,
+html[data-ui-theme="focus"] body .toggle:focus-visible,
+html[data-ui-theme="focus"] body summary:focus-visible {
+    outline: 2px solid var(--f-focus); outline-offset: 2px; box-shadow: none;
+}
+
+html[data-ui-theme="focus"] body .field,
+html[data-ui-theme="focus"] body select.field,
+html[data-ui-theme="focus"] body input.field,
+html[data-ui-theme="focus"] body textarea.field {
+    background: var(--f-surface);
+    border: 1px solid var(--f-border);
+    border-radius: var(--f-r-md);
+    color: var(--f-text);
+    min-height: var(--f-ctl-h);
+    font-size: var(--f-fs-ui);
+}
+html[data-ui-theme="focus"] body .field:focus,
+html[data-ui-theme="focus"] body .field:focus-visible { border-color: var(--f-focus); box-shadow: 0 0 0 3px var(--f-focus-ring); outline: none; }
+html[data-ui-theme="focus"] body input[type="text"],
+html[data-ui-theme="focus"] body input[type="search"],
+html[data-ui-theme="focus"] body input[type="email"],
+html[data-ui-theme="focus"] body input[type="password"],
+html[data-ui-theme="focus"] body input[type="url"],
+html[data-ui-theme="focus"] body input[type="number"],
+html[data-ui-theme="focus"] body input[type="date"],
+html[data-ui-theme="focus"] body input[type="time"],
+html[data-ui-theme="focus"] body textarea,
+html[data-ui-theme="focus"] body select {
+    border-color: var(--f-border);
+    border-radius: var(--f-r-md);
+    background-color: var(--f-surface);
+    color: var(--f-text);
+}
+html[data-ui-theme="focus"] body input:focus,
+html[data-ui-theme="focus"] body textarea:focus,
+html[data-ui-theme="focus"] body select:focus {
+    border-color: var(--f-focus);
+    box-shadow: 0 0 0 3px var(--f-focus-ring);
+    outline: none;
+}
+html[data-ui-theme="focus"] body input::placeholder,
+html[data-ui-theme="focus"] body textarea::placeholder { color: var(--f-text-3); opacity: 0.85; }
+html[data-ui-theme="focus"] body input[type="checkbox"],
+html[data-ui-theme="focus"] body input[type="radio"] { accent-color: var(--f-accent); }
+
+/* Tabs: text + 2px underline, accent only on the active underline. */
+html[data-ui-theme="focus"] body .tabs,
+html[data-ui-theme="focus"] body .tabs-bar { border-bottom-color: var(--f-divider); min-height: 48px; }
+html[data-ui-theme="focus"] body .tab {
+    font-size: var(--f-fs-ui);
+    font-weight: 500;
+    color: var(--f-text-3);
+    padding: 12px 12px;
+    border-bottom-width: 2px;
+}
+html[data-ui-theme="focus"] body .tab:hover { color: var(--f-text); }
+html[data-ui-theme="focus"] body .tab.is-active { color: var(--f-text); border-bottom-color: var(--f-accent); font-weight: 600; }
+html[data-ui-theme="focus"] body .tab__count { font-size: var(--f-fs-micro); color: var(--f-text-3); font-variant-numeric: tabular-nums; }
+html[data-ui-theme="focus"] body .tabs-bar__actions .btn--icon { width: 32px; min-height: 32px; }
+html[data-ui-theme="focus"] body .toggle {
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--f-text-3);
+    font-size: var(--f-fs-meta);
+}
+html[data-ui-theme="focus"] body .toggle:hover { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] body .toggle.is-on { background: var(--f-accent-c); color: var(--f-on-accent-c); border-color: transparent; }
+
+/* Chips: the tag colour survives as a 7px dot, the label is quiet text.
+   The inline background-colour is covered by --chip-cover and re-used by
+   ::before (background-color: inherit), so no markup or binding changes. */
+html[data-ui-theme="focus"] body .chip {
+    --chip-cover: var(--f-surface);
+    background-image: linear-gradient(var(--chip-cover), var(--chip-cover));
+    color: var(--f-text-2) !important;
+    box-shadow: none;
+    padding: 0 8px 0 0;
+    gap: 6px;
+    font-size: var(--f-fs-micro);
+    font-weight: 500;
+    border-radius: 999px;
+    letter-spacing: 0;
+    position: relative;
+    isolation: isolate;
+    padding-left: 15px;
+}
+html[data-ui-theme="focus"] body .chip::before {
+    content: "";
+    position: absolute;
+    left: 3px; top: 50%;
+    width: 8px; height: 8px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background-color: inherit;
+    background-image: none;
+}
+html[data-ui-theme="focus"] body .chip > i { color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .chip--clickable:hover { opacity: 1; color: var(--f-text) !important; }
+html[data-ui-theme="focus"] body .chip-meta {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    color: var(--f-text-3);
+    font-size: var(--f-fs-meta);
+}
+html[data-ui-theme="focus"] body .chip-meta > i { color: var(--f-text-3); opacity: 0.8; }
+html[data-ui-theme="focus"] body .chip-meta--clickable:hover { color: var(--f-text); background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Status: container pairs, quiet. */
+html[data-ui-theme="focus"] body .status-badge,
+html[data-ui-theme="focus"] body [class*="status-processing"],
+html[data-ui-theme="focus"] body [class*="status-summarizing"],
+html[data-ui-theme="focus"] body [class*="status-pending"],
+html[data-ui-theme="focus"] body [class*="status-failed"],
+html[data-ui-theme="focus"] body [class*="status-completed"] {
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border: 0;
+    box-shadow: none;
+    opacity: 1;
+    border-radius: 999px;
+    letter-spacing: 0;
+}
+html[data-ui-theme="focus"] body .status-processing { background: var(--tint-processing); color: var(--tint-processing-fg); }
+html[data-ui-theme="focus"] body .status-summarizing { background: var(--f-warn-c); color: var(--f-warn); }
+html[data-ui-theme="focus"] body .status-completed { background: var(--f-ok-c); color: var(--f-ok); }
+html[data-ui-theme="focus"] body .status-failed { background: var(--f-danger-c); color: var(--f-danger); }
+html[data-ui-theme="focus"] body .status-pending { background: var(--f-surface-2); color: var(--f-text-2); }
+
+/* Menus, popovers, modals: one elevation, one radius. */
+html[data-ui-theme="focus"] body .surface-raised {
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: 12px;
+    box-shadow: var(--f-shadow-2);
+}
+html[data-ui-theme="focus"] body .modal-overlay { background: var(--f-scrim); backdrop-filter: none; }
+html[data-ui-theme="focus"] body .modal-panel {
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: 20px;
+    box-shadow: var(--f-shadow-2);
+}
+html[data-ui-theme="focus"] body .modal-header { padding: 22px 28px 10px; border-bottom: 0; }
+html[data-ui-theme="focus"] body .modal-title { font-family: var(--f-font-read); font-size: 21px; font-weight: 600; letter-spacing: -0.005em; color: var(--f-text); }
+html[data-ui-theme="focus"] body .modal-subtitle { font-size: var(--f-fs-meta); color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .modal-body { padding: 8px 28px 20px; }
+html[data-ui-theme="focus"] body .modal-footer { border-top: 0; padding: 12px 28px 22px; gap: 8px; }
+html[data-ui-theme="focus"] body .modal-close { border-radius: 999px; color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .modal-close:hover { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] body .banner,
+html[data-ui-theme="focus"] body .notice { border-radius: 12px; border: 0; }
+html[data-ui-theme="focus"] body .banner--info { background: var(--f-info-c); color: var(--f-text); }
+html[data-ui-theme="focus"] body .banner--info > i { color: var(--tint-info-fg); }
+html[data-ui-theme="focus"] body .empty__icon { background: var(--f-surface-2); color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .empty__title { font-family: var(--f-font-read); font-size: 19px; font-weight: 600; color: var(--f-text); }
+
+/* ============================================================================
+ * Shell: header and sidebar sit on the page, the reading pane is the surface.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body header.flex-shrink-0 {
+    background: var(--f-bg);
+    border-bottom: 0;
+    min-height: 60px !important;
+}
+html[data-ui-theme="focus"] body header.flex-shrink-0 h1 { font-weight: 600; letter-spacing: -0.01em; }
+html[data-ui-theme="focus"] body header .header-action.btn--icon { color: var(--f-text-3); }
+/* Header controls: one filled action (New Recording), Inquire as a quiet text button. */
+html[data-ui-theme="focus"] body header .header-action[href="/inquire"] {
+    background: transparent !important;
+    color: var(--f-text-2) !important;
+    border-color: transparent !important;
+}
+html[data-ui-theme="focus"] body header .header-action[href="/inquire"]:hover { background: var(--f-surface-2) !important; color: var(--f-text) !important; }
+html[data-ui-theme="focus"] body header .btn--primary.header-action { padding: 0 18px; }
+html[data-ui-theme="focus"] body header .btn[style*="#16a34a"] { background: var(--f-ok-c) !important; color: var(--f-ok) !important; }
+html[data-ui-theme="focus"] body header [data-notification-badge],
+html[data-ui-theme="focus"] body header span.bg-red-600 { background: var(--f-danger) !important; }
+
+/* recording title in the header: serif, quiet edit affordances */
+html[data-ui-theme="focus"] body header h1[dir="auto"] { font-family: var(--f-font-read); font-size: 21px; font-weight: 600; letter-spacing: -0.005em; color: var(--f-text); }
+html[data-ui-theme="focus"] body header .btn--icon.btn--sm { opacity: 0; transition: opacity var(--f-t-base) var(--f-ease); }
+html[data-ui-theme="focus"] body header .min-w-0.flex-1:hover .btn--icon.btn--sm,
+html[data-ui-theme="focus"] body header .btn--icon.btn--sm:focus-visible { opacity: 1; }
+html[data-ui-theme="focus"] body header span.rounded-full[class*="status-"],
+html[data-ui-theme="focus"] body header span.rounded-full.inline-flex { font-size: 11.5px; padding: 2px 10px; }
+
+/* Primary recording action + overflow */
+html[data-ui-theme="focus"] body .focus-share {
+    background: var(--f-surface-2);
+    color: var(--f-text);
+    border: 0;
+    padding: 0 14px;
+}
+html[data-ui-theme="focus"] body .focus-share:hover { background: var(--f-surface-3); }
+html[data-ui-theme="focus"] body .focus-share i { color: var(--f-text-3); font-size: 12px; }
+html[data-ui-theme="focus"] .focus-more { position: relative; }
+html[data-ui-theme="focus"] .focus-more > summary { list-style: none; cursor: pointer; user-select: none; }
+html[data-ui-theme="focus"] .focus-more > summary::-webkit-details-marker { display: none; }
+html[data-ui-theme="focus"] .focus-more[open] > summary { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] .focus-more__panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    width: 260px;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: 14px;
+    box-shadow: var(--f-shadow-2);
+    z-index: 70;
+}
+html[data-ui-theme="focus"] .focus-more__panel > * { display: flex !important; width: 100%; position: relative; }
+html[data-ui-theme="focus"] .focus-more__panel .btn--icon,
+html[data-ui-theme="focus"] .focus-more__panel [data-header-folder-toggle],
+html[data-ui-theme="focus"] .focus-more__panel [data-header-reprocess-menu] > button,
+html[data-ui-theme="focus"] .focus-more__panel [data-header-more-menu] > button {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 12px;
+    border-radius: 8px;
+    min-height: 38px;
+    font-size: var(--f-fs-ui);
+    font-weight: 500;
+    color: var(--f-text);
+}
+html[data-ui-theme="focus"] .focus-more__panel .btn--icon > i { width: 16px; text-align: center; color: var(--f-text-3); }
+html[data-ui-theme="focus"] .focus-more__panel .btn--icon::after { content: attr(title); }
+html[data-ui-theme="focus"] .focus-more__panel [data-header-reprocess-menu] > button > i + i { display: none; }
+html[data-ui-theme="focus"] .focus-more__panel [data-header-reprocess-menu] { flex-direction: column; }
+html[data-ui-theme="focus"] .focus-more__panel [data-header-more-menu] { flex-direction: column; }
+html[data-ui-theme="focus"] .focus-more__panel [data-header-folder-toggle] { }
+html[data-ui-theme="focus"] .focus-more__panel > div.relative { flex-direction: column; }
+html[data-ui-theme="focus"] .focus-more__panel .surface-raised {
+    position: static !important;
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+    margin: 0 0 4px 28px;
+    min-width: 0;
+    width: auto;
+    background: transparent;
+}
+html[data-ui-theme="focus"] .focus-more__panel .w-px { width: auto !important; height: 1px !important; margin: 4px 8px !important; background: var(--f-divider); display: block !important; }
+
+/* ---- Sidebar ------------------------------------------------------------ */
+html[data-ui-theme="focus"] body .sidebar {
+    width: var(--f-sidebar-w);
+    background: var(--f-bg);
+    border-right: 0;
+    top: 60px;
+}
+html[data-ui-theme="focus"] body .sidebar-content-wrapper { width: var(--f-sidebar-w); }
+html[data-ui-theme="focus"] body .main-content.sidebar-open,
+html[data-ui-theme="focus"] body .main-content { padding-left: var(--f-sidebar-w); }
+html[data-ui-theme="focus"] body .main-content:not(.sidebar-open) { padding-left: 0; }
+@media (max-width: 1023px) {
+    html[data-ui-theme="focus"] body .sidebar { width: min(320px, 88vw); top: 0; background: var(--f-bg); }
+    html[data-ui-theme="focus"] body .sidebar-content-wrapper { width: 100%; }
+    html[data-ui-theme="focus"] body .main-content,
+html[data-ui-theme="focus"] body .main-content.sidebar-open { padding-left: 0 !important; }
+}
+html[data-ui-theme="focus"] body .fixed.left-80 { left: var(--f-sidebar-w); }
+
+/* head: search first, then the folder title + New, then quiet toggles */
+html[data-ui-theme="focus"] body .focus-side-head {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 14px 8px;
+    border: 0;
+    gap: 6px;
+}
+html[data-ui-theme="focus"] body .focus-side-tools { display: contents; }
+html[data-ui-theme="focus"] body .focus-side-tools > * { margin: 0 !important; }
+html[data-ui-theme="focus"] body .focus-search { order: 1; }
+html[data-ui-theme="focus"] body .focus-filters { order: 2; }
+html[data-ui-theme="focus"] body .focus-side-title { order: 3; margin: 10px 0 0 !important; padding: 0 4px; }
+html[data-ui-theme="focus"] body .focus-toggles { order: 4; padding: 0 0 4px; }
+
+/* Search: command-palette field */
+html[data-ui-theme="focus"] body .focus-search > button:first-child {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    box-shadow: var(--f-shadow-1);
+    font-size: var(--f-fs-ui);
+    color: var(--f-text-3);
+    transition: border-color var(--f-t-fast) var(--f-ease), box-shadow var(--f-t-fast) var(--f-ease);
+}
+html[data-ui-theme="focus"] body .focus-search > button:first-child:hover { background: var(--f-surface); border-color: var(--f-border); }
+html[data-ui-theme="focus"] body .focus-search > button:first-child i.fa-search { font-size: 13px !important; margin-right: 10px; color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .focus-search > button:first-child > span:first-child { flex: 1; text-align: start; }
+html[data-ui-theme="focus"] body .focus-search > button:first-child .fa-chevron-down { display: none; }
+html[data-ui-theme="focus"] body .focus-search > button:first-child::after {
+    content: "\f1de";
+    flex: none;
+    margin-left: auto;
+    font: 900 12px/1 "Font Awesome 6 Free", "Font Awesome 5 Free";
+    color: var(--f-text-3);
+}
+html[data-ui-theme="focus"] body .focus-search > button:first-child .text-\[var\(--text-accent\)\] { color: var(--f-accent-text); font-weight: 600; }
+html[data-ui-theme="focus"] body .focus-search > button:not(:first-child) {
+    width: 32px; height: 32px; border-radius: 999px; border: 0; background: var(--f-surface-2);
+}
+html[data-ui-theme="focus"] body .focus-filters {
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: 12px;
+    padding: 12px;
+}
+html[data-ui-theme="focus"] body .focus-filters label { font-size: 12px; font-weight: 600; color: var(--f-text-3); text-transform: none; letter-spacing: 0; }
+html[data-ui-theme="focus"] body .focus-filters button { border-radius: 999px; }
+html[data-ui-theme="focus"] body .focus-filters > div { }
+html[data-ui-theme="focus"] body .focus-filters .bg-\[var\(--bg-secondary\)\] { background: transparent; border: 0; padding: 0; }
+html[data-ui-theme="focus"] body .focus-filters button[class*="min-h-"] { border-radius: 10px; }
+
+/* Title row: folder selector + new */
+html[data-ui-theme="focus"] body .focus-side-title h2,
+html[data-ui-theme="focus"] body .focus-side-title select {
+    font-family: var(--f-font-read);
+    font-size: 19px !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--f-text);
+}
+html[data-ui-theme="focus"] body .focus-side-title > .flex.gap-2 > button:not(.btn--primary) {
+    width: 32px; height: 32px;
+    background: transparent;
+    color: var(--f-text-3);
+    border-radius: 999px;
+}
+html[data-ui-theme="focus"] body .focus-side-title > .flex.gap-2 > button:not(.btn--primary):hover { background: var(--f-surface-2); opacity: 1; color: var(--f-text); }
+html[data-ui-theme="focus"] body .focus-side-title .btn--primary { min-height: 32px; padding: 0 14px; font-size: var(--f-fs-meta); }
+html[data-ui-theme="focus"] body .focus-side-title .btn--icon.btn--primary { width: 32px; padding: 0; }
+
+/* Quiet toggles: text segments, accent only when on */
+html[data-ui-theme="focus"] body .focus-toggles { gap: 2px; }
+html[data-ui-theme="focus"] body .focus-toggles > button {
+    flex: 0 1 auto;
+    min-height: 30px;
+    padding: 0 10px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    color: var(--f-text-3) !important;
+    font-size: var(--f-fs-meta);
+    font-weight: 500;
+}
+html[data-ui-theme="focus"] body .focus-toggles > button:hover { background: var(--f-surface-2) !important; color: var(--f-text) !important; }
+html[data-ui-theme="focus"] body .focus-toggles > button[aria-pressed="true"] { background: var(--f-accent-c) !important; color: var(--f-on-accent-c) !important; }
+html[data-ui-theme="focus"] body .focus-toggles > button .fa-exchange-alt { display: none; }
+html[data-ui-theme="focus"] body .focus-toggles > button i { font-size: 12px; }
+html[data-ui-theme="focus"] body .focus-toggles > button span { display: inline !important; }
+
+/* ---- Recording list ------------------------------------------------------ */
+html[data-ui-theme="focus"] body .sidebar .flex-1.overflow-y-auto { padding: 0 8px 16px; }
+html[data-ui-theme="focus"] body .recording-group-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--f-bg);
+    border: 0;
+    text-align: start;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--f-fs-meta);
+    font-weight: 600;
+    color: var(--f-text-3);
+    padding: 14px 12px 6px;
+}
+html[data-ui-theme="focus"] body .recording-group { gap: 1px; }
+html[data-ui-theme="focus"] body .recording-group > .recording-row + .recording-row { border-top: 0; }
+html[data-ui-theme="focus"] body .recording-row {
+    --row-bg: transparent;
+    --chip-cover: var(--row-bg);
+    background: var(--row-bg) !important;
+    border-radius: 10px;
+    padding: 9px 12px 9px 14px !important;
+    margin: 0;
+    transition: background var(--f-t-fast) var(--f-ease);
+}
+html[data-ui-theme="focus"] body .recording-row::before {
+    content: "";
+    position: absolute; left: 3px; top: 12px; bottom: 12px;
+    width: 3px; border-radius: 3px;
+    background: transparent;
+}
+html[data-ui-theme="focus"] body .recording-row:hover { --row-bg: var(--f-surface-2); }
+html[data-ui-theme="focus"] body .recording-row.is-active { --row-bg: var(--f-surface); box-shadow: var(--f-shadow-1), 0 0 0 1px var(--f-divider); }
+html[data-ui-theme="focus"] body .recording-row.is-active::before { background: var(--f-accent); }
+html[data-ui-theme="focus"] body .recording-row h4 {
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--f-text) !important;
+    margin: 0;
+}
+html[data-ui-theme="focus"] body .recording-row.is-active h4 { font-weight: 600; }
+html[data-ui-theme="focus"] body .recording-row > div { margin-top: 0 !important; }
+html[data-ui-theme="focus"] body .recording-row > div:first-of-type { margin-bottom: 2px !important; }
+/* meta line: "Nov 8 · Jordan Avery, Priya…" in one quiet 12.5px line, no icons */
+html[data-ui-theme="focus"] body .recording-row .text-xs.text-\[var\(--text-muted\)\],
+html[data-ui-theme="focus"] body .recording-row .text-xs { font-size: 12.5px; color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .recording-row .fa-calendar-alt,
+html[data-ui-theme="focus"] body .recording-row .fa-users.mr-1 { display: none; }
+html[data-ui-theme="focus"] body .recording-row .flex-wrap.items-center.gap-x-3 { gap: 0 6px !important; flex-wrap: nowrap; }
+html[data-ui-theme="focus"] body .recording-row .flex-wrap.items-center.gap-x-3 > div:first-child:not(:last-child)::after { content: "·"; margin-left: 6px; opacity: 0.7; }
+html[data-ui-theme="focus"] body .recording-row .gap-1.mt-1 { margin-top: 5px !important; gap: 2px 6px !important; }
+html[data-ui-theme="focus"] body .recording-row .chip { font-size: 12px; padding-right: 4px; }
+/* status badges: icon glyphs in text-3, failure and starred keep a hue */
+html[data-ui-theme="focus"] body .recording-row span.rounded-full {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 3px !important;
+    height: auto;
+}
+html[data-ui-theme="focus"] body .recording-row span.rounded-full i { color: var(--f-text-3) !important; font-size: 11px; }
+html[data-ui-theme="focus"] body .recording-row span[class*="bg-amber"] i { color: var(--f-warn) !important; }
+html[data-ui-theme="focus"] body .recording-row span[class*="bg-red"] i { color: var(--f-danger) !important; }
+html[data-ui-theme="focus"] body .recording-row span[class*="bg-blue"] i { color: var(--f-accent-text) !important; }
+html[data-ui-theme="focus"] body .recording-row .status-badge { margin-left: 6px; font-size: 11px; padding: 1px 8px; }
+html[data-ui-theme="focus"] body .recording-row .selection-checkbox { accent-color: var(--f-accent); }
+
+/* ---- Reading pane --------------------------------------------------------- */
+html[data-ui-theme="focus"] body .main-content { padding-right: 12px; padding-bottom: 12px; }
+@media (max-width: 1023px) { html[data-ui-theme="focus"] body .main-content { padding: 0 !important; } }
+html[data-ui-theme="focus"] body .main-content > .flex-1 {
+    background: var(--f-surface);
+    border-radius: var(--f-r-lg);
+    border: 1px solid var(--f-divider);
+    overflow: hidden;
+}
+@media (max-width: 1023px) {
+    html[data-ui-theme="focus"] body .main-content > .flex-1 { border-radius: 0; border: 0; }
+}
+
+/* ============================================================================
+ * Recording detail: a quiet metadata line, one reading column per pane.
+ * ========================================================================= */
+/* metadata strip: one 13px line, no tablets, no border */
+html[data-ui-theme="focus"] body .main-content .bg-\[var\(--bg-secondary\)\].border-b.px-5.py-2\.5 {
+    background: transparent;
+    border-bottom: 0;
+    padding: 14px var(--f-gutter) 6px;
+    gap: 4px 14px;
+    font-size: var(--f-fs-meta);
+}
+html[data-ui-theme="focus"] body #mainContentColumns { border-top: 1px solid var(--f-divider); }
+html[data-ui-theme="focus"] body #mainColumnResizer { width: 1px; background: var(--f-divider); cursor: col-resize; position: relative; }
+html[data-ui-theme="focus"] body #mainColumnResizer::before { display: none; }
+html[data-ui-theme="focus"] body #mainColumnResizer::after { content: ""; position: absolute; inset: 0 -4px; }
+html[data-ui-theme="focus"] body #mainColumnResizer:hover,
+html[data-ui-theme="focus"] body #mainColumnResizer.is-resizing { background: var(--f-accent-line); }
+
+/* pane tab bars: 48px, no border, aligned to the reading column */
+html[data-ui-theme="focus"] body #leftMainColumn > .tabs-bar,
+html[data-ui-theme="focus"] body #rightMainColumn .tabs-bar {
+    padding-inline: var(--f-gutter) !important;
+    border-bottom: 0;
+}
+html[data-ui-theme="focus"] body #leftMainColumn > .tabs-bar .tab,
+html[data-ui-theme="focus"] body #rightMainColumn .tabs-bar .tab { padding-inline: 2px; margin-right: 14px; }
+html[data-ui-theme="focus"] body #leftMainColumn > .tabs-bar .tab i { display: none; }
+
+/* transcript */
+html[data-ui-theme="focus"] body #leftMainColumn > .flex-1.overflow-y-auto {
+    padding: 8px max(var(--f-gutter), calc((100% - var(--f-measure) - 9rem) / 2)) 48px !important;
+}
+html[data-ui-theme="focus"] body .transcription-simple-view {
+    font-family: var(--f-font-read);
+    font-size: var(--f-fs-read);
+    line-height: var(--f-lh-read);
+    color: var(--f-text);
+}
+html[data-ui-theme="focus"] body .speaker-run {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    column-gap: 22px;
+    margin-bottom: 1.6rem;
+    position: relative;
+}
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet,
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet-group {
+    grid-column: 1;
+    grid-row: 1 / span 200;
+    align-self: start;
+    position: sticky;
+    top: 10px;
+    z-index: 2;
+    display: block;
+    margin: 0;
+    padding: 6px 0 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent !important;
+    background-image: none !important;
+    overflow: visible;
+    text-align: end;
+    font-family: var(--f-font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: normal;
+    /* the speaker's own colour stays on `color` (it feeds the dot); the
+       glyphs themselves are painted neutral */
+    -webkit-text-fill-color: var(--f-text-2);
+    opacity: 1;
+}
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet::before,
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet-group .speaker-tablet-name::before {
+    content: "";
+    display: inline-block;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor; margin-inline-end: 7px; vertical-align: 1px;
+}
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet-group { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 1px; }
+html[data-ui-theme="focus"] body .speaker-tablet-group .speaker-tablet-name { padding: 0; }
+html[data-ui-theme="focus"] body .speaker-tablet-group .speaker-tablet-time {
+    padding: 0; background: transparent !important; background-image: none !important;
+    -webkit-text-fill-color: var(--f-text-3);
+    font-family: var(--f-font-mono); font-size: 12px; font-weight: 400;
+}
+html[data-ui-theme="focus"] body .speaker-run > .speaker-segment { grid-column: 2; margin-bottom: 0.9rem; padding: 0; }
+html[data-ui-theme="focus"] body .speaker-run > .speaker-segment:last-child { margin-bottom: 0; }
+html[data-ui-theme="focus"] body .speaker-text { font-size: inherit; line-height: inherit; color: var(--f-text); margin: 0; }
+html[data-ui-theme="focus"] body .speaker-segment { border-radius: 8px; cursor: pointer; }
+html[data-ui-theme="focus"] body .speaker-segment:hover { background: color-mix(in srgb, var(--f-surface-2) 55%, transparent); box-shadow: -10px 0 0 color-mix(in srgb, var(--f-surface-2) 55%, transparent), 10px 0 0 color-mix(in srgb, var(--f-surface-2) 55%, transparent); }
+html[data-ui-theme="focus"] body .speaker-segment.active-playing-segment,
+html[data-ui-theme="focus"] body .transcript-segment.active-playing-segment {
+    background-color: var(--f-accent-c) !important;
+    box-shadow: -10px 0 0 var(--f-accent-c), 10px 0 0 var(--f-accent-c) !important;
+    padding: 0 !important;
+    margin: 0 0 0.9rem !important;
+    animation: none;
+    border-radius: 6px !important;
+}
+html[data-ui-theme="focus"] body .transcript-segment { font-family: var(--f-font-read); }
+@media (max-width: 1100px) {
+    html[data-ui-theme="focus"] body .speaker-run { grid-template-columns: 1fr; }
+    html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet,
+html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet-group {
+        grid-column: 1; grid-row: auto; position: static; flex-direction: row; align-items: baseline; gap: 8px; text-align: start; padding: 0 0 2px;
+    }
+    html[data-ui-theme="focus"] body .speaker-run > .speaker-segment { grid-column: 1; }
+}
+/* bubble view stays available but is calmed */
+html[data-ui-theme="focus"] body .speaker-bubble { border: 0; box-shadow: none; border-radius: 16px; font-family: var(--f-font-read); font-size: 16.5px; line-height: 1.6; }
+html[data-ui-theme="focus"] body .speaker-bubble:hover { transform: none; box-shadow: none; }
+html[data-ui-theme="focus"] body .speaker-bubble.active-playing-segment { transform: none; opacity: 1; box-shadow: 0 0 0 2px var(--f-accent-line) !important; }
+html[data-ui-theme="focus"] body .speaker-legend { border-radius: 12px; border-color: var(--f-divider); background: var(--f-surface-2); }
+
+/* summary + notes: same measure and face */
+html[data-ui-theme="focus"] body .prose-flush {
+    font-family: var(--f-font-read);
+    font-size: var(--f-fs-read);
+    line-height: var(--f-lh-read);
+    color: var(--f-text);
+    padding: 8px max(var(--f-gutter), calc((100% - var(--f-measure)) / 2)) 48px !important;
+}
+html[data-ui-theme="focus"] body .prose-flush h1,
+html[data-ui-theme="focus"] body .prose-flush h2,
+html[data-ui-theme="focus"] body .prose-flush h3,
+html[data-ui-theme="focus"] body .prose-flush h4 {
+    font-family: var(--f-font-ui);
+    color: var(--f-text);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+html[data-ui-theme="focus"] body .prose-flush h1 { font-size: 22px; }
+html[data-ui-theme="focus"] body .prose-flush h2 { font-size: 15px; text-transform: none; color: var(--f-text-3); font-weight: 600; letter-spacing: 0.01em; border-bottom: 1px solid var(--f-divider); padding-bottom: 6px; margin-bottom: 0.75rem; }
+html[data-ui-theme="focus"] body .prose-flush h3 { font-size: 16px; }
+/* the scope outweighs primitives.css ".prose-flush > *:first-child", so the first heading keeps its zero top margin here */
+html[data-ui-theme="focus"] body .prose-flush > :first-child { margin-top: 0; }
+html[data-ui-theme="focus"] body .prose-flush p { margin: 0 0 1rem; }
+html[data-ui-theme="focus"] body .prose-flush ul,
+html[data-ui-theme="focus"] body .prose-flush ol { padding-inline-start: 1.4rem; }
+html[data-ui-theme="focus"] body .prose-flush li { margin-bottom: 0.45rem; }
+html[data-ui-theme="focus"] body .prose-flush li::marker { color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .prose-flush strong { color: var(--f-text); }
+html[data-ui-theme="focus"] body .prose-flush a { color: var(--f-accent-text); text-underline-offset: 3px; }
+html[data-ui-theme="focus"] body .prose-flush blockquote { border-inline-start: 2px solid var(--f-accent-line); color: var(--f-text-2); padding-inline-start: 1rem; }
+html[data-ui-theme="focus"] body .prose-flush code { background: var(--f-surface-2); border-radius: 5px; font-family: var(--f-font-mono); font-size: 0.85em; }
+html[data-ui-theme="focus"] body .prose-flush th { font-family: var(--f-font-ui); font-size: 12.5px; color: var(--f-text-3); }
+html[data-ui-theme="focus"] body .prose-flush table { font-size: 15px; font-family: var(--f-font-ui); }
+html[data-ui-theme="focus"] body .prose-flush input[type="checkbox"] { margin-inline-end: 8px; width: 15px; height: 15px; vertical-align: -2px; }
+
+/* stats / events / notes surfaces: hairlines, not boxes */
+html[data-ui-theme="focus"] body #rightMainColumn .rounded-lg.border,
+html[data-ui-theme="focus"] body #rightMainColumn .rounded-xl.border { border-color: var(--f-divider); border-radius: 12px; }
+html[data-ui-theme="focus"] body #rightMainColumn .bg-\[var\(--bg-tertiary\)\] { background: var(--f-surface-2); }
+html[data-ui-theme="focus"] body #rightMainColumn .text-xs.uppercase,
+html[data-ui-theme="focus"] body #rightMainColumn .uppercase { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+
+/* player: a thin, quiet footer */
+html[data-ui-theme="focus"] body #mainContentColumns + div.flex-shrink-0,
+html[data-ui-theme="focus"] body .flex-shrink-0.border-t.border-\[var\(--border-primary\)\].bg-\[var\(--bg-secondary\)\].px-5.py-2 {
+    background: var(--f-surface);
+    border-top: 1px solid var(--f-divider);
+    padding: 8px var(--f-gutter);
+}
+html[data-ui-theme="focus"] body .player-play-button {
+    width: 38px !important; height: 38px !important;
+    background: var(--f-accent) !important;
+    color: var(--f-on-accent) !important;
+    box-shadow: none !important;
+}
+html[data-ui-theme="focus"] body .player-play-button:hover { transform: none; background: var(--f-accent-hover) !important; }
+html[data-ui-theme="focus"] body .progress-track { height: 4px !important; background: var(--f-surface-3) !important; opacity: 1 !important; }
+html[data-ui-theme="focus"] body .progress-track > div { background: var(--f-accent) !important; }
+html[data-ui-theme="focus"] body .bg-\[var\(--text-accent\)\].rounded-full.shadow-md { box-shadow: none !important; width: 12px; height: 12px; }
+html[data-ui-theme="focus"] body .volume-slider { accent-color: var(--f-accent); }
+html[data-ui-theme="focus"] body [class*="px-5 py-2"] .btn--icon { color: var(--f-text-3) !important; }
+
+/* chat panel: unboxed assistant text, tonal user bubble, calm FAB */
+html[data-ui-theme="focus"] body .floating-chat-fab { background: var(--f-surface); color: var(--f-accent-text); border: 1px solid var(--f-divider); box-shadow: var(--f-shadow-2); width: 48px; height: 48px; font-size: 18px; }
+html[data-ui-theme="focus"] body .floating-chat-panel { border-radius: 18px; border: 1px solid var(--f-divider); background: var(--f-surface); box-shadow: var(--f-shadow-2); }
+html[data-ui-theme="focus"] body .floating-chat-header { background: transparent; border-bottom: 1px solid var(--f-divider); }
+html[data-ui-theme="focus"] body .floating-chat-messages { font-family: var(--f-font-read); font-size: 16px; line-height: 1.65; }
+html[data-ui-theme="focus"] body .message.user-message {
+    background: var(--f-accent-c);
+    color: var(--f-on-accent-c);
+    border: 0;
+    box-shadow: none;
+    border-radius: 18px 18px 4px 18px;
+    padding: 10px 16px;
+    max-width: 85%;
+}
+html[data-ui-theme="focus"] body .message.ai-message {
+    background: transparent;
+    color: var(--f-text);
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 2px 0;
+    max-width: 100%;
+}
+html[data-ui-theme="focus"] body .message.ai-message p,
+html[data-ui-theme="focus"] body .message.ai-message li { font-family: var(--f-font-read); }
+html[data-ui-theme="focus"] body .message.ai-message h1,
+html[data-ui-theme="focus"] body .message.ai-message h2,
+html[data-ui-theme="focus"] body .message.ai-message h3 { font-family: var(--f-font-ui); color: var(--f-text); }
+html[data-ui-theme="focus"] body .message.ai-message code { background: var(--f-surface-2); color: var(--f-text); border-radius: 5px; font-family: var(--f-font-mono); }
+html[data-ui-theme="focus"] body .message .btn--icon.btn--sm { opacity: 0.0; transition: opacity var(--f-t-base) var(--f-ease); }
+html[data-ui-theme="focus"] body .message:hover .btn--icon.btn--sm,
+html[data-ui-theme="focus"] body .message .btn--icon.btn--sm:focus-visible { opacity: 1; }
+html[data-ui-theme="focus"] body .chat-ts-chip { background: var(--f-surface-2); color: var(--f-text-2); border: 0; font-family: var(--f-font-mono); font-size: 0.8em; }
+html[data-ui-theme="focus"] body .floating-chat-input { border-radius: 18px; background: var(--f-surface-2); border-color: transparent; }
+
+/* progress popup: a small card at the foot of the sidebar, not a sheet */
+html[data-ui-theme="focus"] body .progress-popup__card,
+html[data-ui-theme="focus"] body .progress-popup .surface-raised { border-radius: 14px; box-shadow: var(--f-shadow-2); background: var(--f-surface); border: 1px solid var(--f-divider); }
+
+/* empty state */
+html[data-ui-theme="focus"] body .main-content .text-center h2,
+html[data-ui-theme="focus"] body .main-content .text-center h3 { font-family: var(--f-font-read); }
+
+/* labels: sentence case, no tracking, everywhere */
+html[data-ui-theme="focus"] body .t-label,
+html[data-ui-theme="focus"] body .section-label,
+html[data-ui-theme="focus"] body th {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--f-text-3);
+}
+html[data-ui-theme="focus"] body th { font-weight: 500; }
+/* speaker chips in tables/legends: a dot and neutral text */
+html[data-ui-theme="focus"] body #rightMainColumn td [class*="speaker-color-"],
+html[data-ui-theme="focus"] body .speaker-legend-item {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-text-fill-color: var(--f-text);
+    padding-inline: 0 !important;
+    font-weight: 500;
+}
+html[data-ui-theme="focus"] body #rightMainColumn td [class*="speaker-color-"]::before,
+html[data-ui-theme="focus"] body .speaker-legend-item::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-inline-end: 7px; vertical-align: 1px;
+}
+html[data-ui-theme="focus"] body .floating-chat-messages { padding: 14px 18px; }
+
+/* ============================================================================
+ * Inquire: a reading / writing surface, filters in collapsible groups.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body #inquire-app > header { background: var(--f-bg); border-bottom: 0; }
+html[data-ui-theme="focus"] body #inquire-app > .flex-1 > .w-80 {
+    width: var(--f-sidebar-w);
+    background: var(--f-bg);
+    border-right: 0;
+}
+html[data-ui-theme="focus"] body #inquire-app .custom-scrollbar { scrollbar-width: thin; }
+html[data-ui-theme="focus"] body #inquire-app > .flex-1 > .flex-1.flex-col {
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: var(--f-r-lg);
+    margin: 0 12px 12px 0;
+}
+@media (max-width: 1023px) {
+    html[data-ui-theme="focus"] body #inquire-app > .flex-1 > .flex-1.flex-col { margin: 0; border-radius: 0; border: 0; }
+    html[data-ui-theme="focus"] body #inquire-app > .flex-1 > .w-80 { width: min(320px, 88vw); }
+}
+html[data-ui-theme="focus"] body .focus-filter {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    border-bottom: 1px solid var(--f-divider) !important;
+}
+html[data-ui-theme="focus"] body .focus-filter__sum {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: var(--f-fs-ui);
+    font-weight: 500;
+    color: var(--f-text);
+    border-radius: 8px;
+}
+html[data-ui-theme="focus"] body .focus-filter__sum::-webkit-details-marker { display: none; }
+html[data-ui-theme="focus"] body .focus-filter__sum:hover { background: var(--f-surface-2); }
+html[data-ui-theme="focus"] body .focus-filter__sum i:first-child { color: var(--f-text-3) !important; width: 20px; font-size: 13px; }
+html[data-ui-theme="focus"] body .focus-filter__caret { margin-inline-start: auto; font-size: 10px; color: var(--f-text-3); transition: transform var(--f-t-base) var(--f-ease); }
+html[data-ui-theme="focus"] body .focus-filter[open] .focus-filter__caret { transform: rotate(180deg); }
+html[data-ui-theme="focus"] body .focus-filter > :not(summary) { margin-left: 6px; margin-right: 6px; }
+html[data-ui-theme="focus"] body .focus-filter > .field,
+html[data-ui-theme="focus"] body .focus-filter input.field { margin-top: 2px; }
+html[data-ui-theme="focus"] body .focus-filter[open] { padding-bottom: 10px !important; }
+html[data-ui-theme="focus"] body .filter-checkbox { border-width: 1.5px; border-radius: 5px; }
+html[data-ui-theme="focus"] body .filter-checkbox:checked { background-color: var(--f-accent); border-color: var(--f-accent); }
+html[data-ui-theme="focus"] body .filter-checkbox:checked::after { color: var(--f-on-accent); }
+html[data-ui-theme="focus"] body #inquire-app label span[style*="color: rgb"],
+html[data-ui-theme="focus"] body #inquire-app label span.font-medium { color: var(--f-text) !important; }
+html[data-ui-theme="focus"] body #inquire-app .space-y-3 > .rounded-md.border { background: var(--f-surface-2) !important; border: 0 !important; border-radius: 12px; }
+
+html[data-ui-theme="focus"] body .inquire-conversation-header { background: transparent !important; border-bottom: 0 !important; padding-inline: var(--f-gutter) !important; min-height: 48px; }
+html[data-ui-theme="focus"] body #inquire-app [class*="overflow-y-auto"].p-6 {
+    padding-inline: max(var(--f-gutter), calc((100% - 46rem) / 2)) !important;
+    padding-top: 12px;
+}
+html[data-ui-theme="focus"] body #inquire-app .message.user-message { font-family: var(--f-font-ui); font-size: 15px; }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose { font-family: var(--f-font-read); font-size: 17px; line-height: 1.7; max-width: none; }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose p,
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose li { line-height: 1.7; color: var(--f-text); }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose h1,
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose h2,
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose h3 {
+    font-family: var(--f-font-ui); color: var(--f-text); font-weight: 600;
+}
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose h2 { font-size: 15px; color: var(--f-text-3); border-bottom: 1px solid var(--f-divider); padding-bottom: 5px; }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose a[href^="/recordings/"] {
+    background: var(--f-surface-2); color: var(--f-text-2); border: 0; border-radius: 999px;
+    font-family: var(--f-font-ui); font-size: 0.72em; padding: 1px 9px;
+}
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose a[href^="/recordings/"]:hover { background: var(--f-accent-c); color: var(--f-on-accent-c); }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .citation-refs { border-top: 1px solid var(--f-divider); font-family: var(--f-font-ui); }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .citation-refs__label { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+html[data-ui-theme="focus"] body #inquire-app .chat-message .prose code { background: var(--f-surface-2); color: var(--f-text); }
+/* empty state: one quiet heading, example questions as plain lines */
+html[data-ui-theme="focus"] body #inquire-app h2.text-2xl { font-family: var(--f-font-read); font-size: 30px; font-weight: 600; letter-spacing: -0.015em; }
+html[data-ui-theme="focus"] body #inquire-app .w-20.h-20 { width: 44px; height: 44px; background: transparent !important; }
+html[data-ui-theme="focus"] body #inquire-app .w-20.h-20 i { font-size: 22px; }
+html[data-ui-theme="focus"] body #inquire-app .surface-raised.max-w-md { background: transparent; border: 0; box-shadow: none; max-width: 32rem; padding: 0 !important; }
+html[data-ui-theme="focus"] body #inquire-app .surface-raised.max-w-md ul li { padding: 12px 4px; border-top: 1px solid var(--f-divider); font-family: var(--f-font-read); font-size: 16px; cursor: default; }
+html[data-ui-theme="focus"] body #inquire-app .surface-raised.max-w-md ul { margin: 0; }
+html[data-ui-theme="focus"] body #inquire-app .surface-raised.max-w-md .t-label { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--f-text-3); margin-bottom: 8px; }
+
+/* composer */
+html[data-ui-theme="focus"] body #inquire-app textarea { border-radius: 16px; background: var(--f-surface-2); border-color: transparent; font-size: 16px; }
+html[data-ui-theme="focus"] body #inquire-app textarea:focus { background: var(--f-surface); border-color: var(--f-focus); }
+html[data-ui-theme="focus"] body #inquire-app .border-t[style*="border"],
+html[data-ui-theme="focus"] body #inquire-app .flex-shrink-0.border-t { border-top: 0 !important; background: transparent !important; }
+
+/* ============================================================================
+ * Login, register, forgot password: one calm card on the page tint.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body main.flex-grow.flex.items-center > .max-w-md {
+    background: var(--f-surface);
+    border: 1px solid var(--f-divider);
+    border-radius: 22px;
+    box-shadow: var(--f-shadow-2);
+    padding: 40px 36px !important;
+}
+html[data-ui-theme="focus"] body main.flex-grow h2 { font-family: var(--f-font-read); font-size: 28px; font-weight: 600; letter-spacing: -0.015em; text-align: start; margin-bottom: 24px; }
+html[data-ui-theme="focus"] body main.flex-grow label { font-size: var(--f-fs-meta); font-weight: 500; color: var(--f-text-2); }
+html[data-ui-theme="focus"] body main.flex-grow input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="hidden"]) {
+    display: block;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid var(--f-border);
+    border-radius: 12px;
+    background: var(--f-surface);
+    box-shadow: none;
+    font-size: 15px;
+    color: var(--f-text);
+}
+html[data-ui-theme="focus"] body main.flex-grow input:focus { border-color: var(--f-focus); box-shadow: 0 0 0 3px var(--f-focus-ring); outline: none; }
+html[data-ui-theme="focus"] body main.flex-grow input[type="submit"],
+html[data-ui-theme="focus"] body main.flex-grow button[type="submit"] {
+    background: var(--f-accent);
+    color: var(--f-on-accent);
+    border: 0;
+    border-radius: 999px;
+    min-height: 46px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: none;
+    cursor: pointer;
+}
+html[data-ui-theme="focus"] body main.flex-grow input[type="submit"]:hover,
+html[data-ui-theme="focus"] body main.flex-grow button[type="submit"]:hover { background: var(--f-accent-hover); }
+html[data-ui-theme="focus"] body main.flex-grow a { color: var(--f-accent-text); }
+html[data-ui-theme="focus"] body header.flex-shrink-0.sticky ~ main,
+html[data-ui-theme="focus"] body .min-h-screen > header:first-child { background: transparent; }
+html[data-ui-theme="focus"] body footer { border-top: 0 !important; color: var(--f-text-3) !important; }
+
+/* ============================================================================
+ * Share page: the same reading surface as the app, minus the chrome.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body #app > header.px-4.py-3 { background: var(--f-bg); border-bottom: 0; padding: 18px var(--f-gutter) 10px; }
+html[data-ui-theme="focus"] body #app > header h1 { font-family: var(--f-font-read); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-secondary\)\].p-4.border-b { background: transparent; border-bottom: 0; padding: 6px var(--f-gutter) 14px; }
+html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b { background: transparent; border-bottom: 1px solid var(--f-divider); }
+html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b button { font-size: var(--f-fs-ui); font-weight: 500; border-radius: 0; background: transparent !important; }
+html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b button i { display: none; }
+html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b button.border-b-2 { border-bottom-color: var(--f-accent) !important; color: var(--f-text) !important; font-weight: 600; }
+html[data-ui-theme="focus"] body #app button.rounded-full.bg-\[var\(--bg-accent\)\] { background: var(--f-accent); color: var(--f-on-accent); box-shadow: none; }
+html[data-ui-theme="focus"] body #app button.rounded-full.bg-\[var\(--bg-accent\)\]:hover { background: var(--f-accent-hover); }
+html[data-ui-theme="focus"] body #app .bg-\[var\(--bg-accent\)\].rounded-full:not(button) { background: var(--f-accent); }
+html[data-ui-theme="focus"] body .transcription-box,
+html[data-ui-theme="focus"] body #app .prose-flush,
+html[data-ui-theme="focus"] body #app .summary-box,
+html[data-ui-theme="focus"] body #app .notes-box { background: transparent; border: 0; box-shadow: none; }
+html[data-ui-theme="focus"] body .transcription-box { padding: 0 max(0px, calc((100% - 48rem) / 2)); }
+html[data-ui-theme="focus"] body .transcription-box .speaker-segment {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    column-gap: 22px;
+    margin-bottom: 0.9rem !important;
+    padding: 0 !important;
+}
+html[data-ui-theme="focus"] body .transcription-box .speaker-tablet {
+    grid-column: 1; grid-row: 1;
+    background: transparent !important; border: 0; box-shadow: none; padding: 6px 0 0; margin: 0;
+    text-align: end; font-size: 13px; font-weight: 600;
+    -webkit-text-fill-color: var(--f-text-2);
+}
+html[data-ui-theme="focus"] body .transcription-box .speaker-tablet::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-inline-end: 7px; vertical-align: 1px; }
+html[data-ui-theme="focus"] body .transcription-box .speaker-text { grid-column: 2; grid-row: 1; font-family: var(--f-font-read); font-size: var(--f-fs-read); line-height: var(--f-lh-read); color: var(--f-text); }
+html[data-ui-theme="focus"] body .view-mode-toggle { background: var(--f-surface-2); border: 0; box-shadow: none; border-radius: 999px; padding: 2px; }
+html[data-ui-theme="focus"] body .toggle-button { border-radius: 999px; font-size: var(--f-fs-meta); }
+html[data-ui-theme="focus"] body .toggle-button.active { background: var(--f-surface); color: var(--f-text); box-shadow: var(--f-shadow-1); }
+html[data-ui-theme="focus"] body .copy-btn { background: transparent; border: 0; box-shadow: none; color: var(--f-text-3); border-radius: 999px; }
+html[data-ui-theme="focus"] body .copy-btn:hover { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] body .transcription-box .speaker-tablet { font-family: var(--f-font-ui); }
+
+/* ============================================================================
+ * Phone layouts (fixes the audit's mobile findings).
+ * ========================================================================= */
+@media (max-width: 1023px) {
+    html[data-ui-theme="focus"] body header.flex-shrink-0 { min-height: 56px !important; padding-inline: 8px; }
+    html[data-ui-theme="focus"] body header h1[dir="auto"] { font-size: 18px; }
+    html[data-ui-theme="focus"] body .focus-side-head { padding-top: 14px; }
+    /* mobile detail header: participants, tags, then one tidy action row
+       (no chips wrapping under icons, no overlap) */
+    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer.flex.items-center.gap-3 {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 6px;
+        padding: 10px 16px 6px;
+    }
+    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1.min-w-0 { display: contents; }
+    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1 > .flex.items-center { grid-row: 1; }
+    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1 > .flex-wrap { grid-row: 2; margin-top: 0; }
+    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-shrink-0 {
+        grid-row: 3;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        margin-inline: -6px;
+    }
+    html[data-ui-theme="focus"] body [data-mobile-player],
+html[data-ui-theme="focus"] body [data-mobile-bottom-nav] { background: var(--f-surface); border-top: 1px solid var(--f-divider); }
+    html[data-ui-theme="focus"] body [data-mobile-bottom-nav] button { font-size: 11px; }
+    html[data-ui-theme="focus"] body .prose-flush { font-size: 17px; padding-inline: 20px !important; }
+    html[data-ui-theme="focus"] body .transcription-simple-view { font-size: 17px; }
+}
+@media (max-width: 639px) {
+    /* upload sheet footer: primary actions on one full-width row, Cancel below */
+    html[data-ui-theme="focus"] body .modal-footer--between { flex-wrap: wrap; justify-content: stretch; gap: 8px; padding: 8px 20px 20px; }
+    html[data-ui-theme="focus"] body .modal-footer--between > div.flex { order: -1; flex: 1 1 100%; gap: 8px; }
+    html[data-ui-theme="focus"] body .modal-footer--between > div.flex > .btn { flex: 1 1 0; min-width: 0; padding: 0 10px; }
+    html[data-ui-theme="focus"] body .modal-footer--between > .btn { flex: 1 1 100%; }
+    html[data-ui-theme="focus"] body .modal-footer--between > .btn--primary { flex: 1 1 100%; }
+    html[data-ui-theme="focus"] body .modal-header { padding: 18px 20px 6px; }
+    html[data-ui-theme="focus"] body .modal-body { padding-inline: 20px; }
+    html[data-ui-theme="focus"] body .modal-overlay { padding: 0; align-items: flex-end; }
+    html[data-ui-theme="focus"] body .modal-overlay .modal-panel { border-radius: 22px 22px 0 0; max-width: none; }
+    html[data-ui-theme="focus"] body .progress-popup__card { box-shadow: var(--f-shadow-2); }
+    html[data-ui-theme="focus"] body main.flex-grow.flex.items-center > .max-w-md { padding: 28px 22px !important; border-radius: 20px; }
+    html[data-ui-theme="focus"] body #inquire-app [class*="overflow-y-auto"].p-6 { padding-inline: 16px !important; }
+    html[data-ui-theme="focus"] body .transcription-box { padding-inline: 0; }
+    html[data-ui-theme="focus"] body .transcription-box .speaker-segment { grid-template-columns: 1fr; }
+    html[data-ui-theme="focus"] body .transcription-box .speaker-tablet,
+html[data-ui-theme="focus"] body .transcription-box .speaker-text { grid-column: 1; grid-row: auto; text-align: start; }
+}
+@media (max-width: 639px) {
+    html[data-ui-theme="focus"] body header .btn--primary.header-action { width: 36px; min-height: 36px; padding: 0; }
+    html[data-ui-theme="focus"] body header .header-action.btn--icon { width: 36px; min-height: 36px; }
+}
+
+/* ============================================================================
+ * Processing queue popup (slot status-area, default markup): a quiet card.
+ * The header gradient and the per-status tinted rows of the markup are
+ * flattened; the status stays readable through the icon and the label.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body .progress-popup__header {
+    background: transparent;
+    background-image: none;
+    color: var(--f-text);
+    border-bottom: 1px solid var(--f-divider);
+    padding: 10px 14px;
+}
+html[data-ui-theme="focus"] body .progress-popup__header [class*="text-gray-800"] { color: var(--f-text); }
+html[data-ui-theme="focus"] body .progress-popup__header .progress-popup__summary { color: var(--f-text-3); opacity: 1; }
+html[data-ui-theme="focus"] body .progress-popup__header .rounded-full,
+html[data-ui-theme="focus"] body .progress-popup__clear { background: var(--f-surface-2); color: var(--f-text-2); }
+html[data-ui-theme="focus"] body .progress-popup__clear:hover { background: var(--f-surface-3); }
+html[data-ui-theme="focus"] body .progress-popup__card .p-2 { padding: 8px; }
+html[data-ui-theme="focus"] body .progress-popup__card [class*="border-l-2"] {
+    background: transparent;
+    border-left-width: 0;
+    border-radius: 8px;
+}
+html[data-ui-theme="focus"] body .progress-popup__card [class*="border-l-2"]:hover { background: var(--f-surface-2); }
+html[data-ui-theme="focus"] body .progress-popup__card [class*="/20"].rounded { background: var(--f-surface-2); color: var(--f-text-2); border-radius: 999px; padding-inline: 8px; }
+html[data-ui-theme="focus"] body .progress-popup__card [class*="uppercase"] { text-transform: none; letter-spacing: 0; font-size: 12px; }
+
+/* ============================================================================
+ * Identify Speakers modal (templates/modals/speaker-modal.html): the same
+ * language as the transcript. Speaker names are a dot and quiet text, the
+ * lines are read in the serif face, rows and segments use the tonal fills.
+ * ========================================================================= */
+html[data-ui-theme="focus"] body .spk-modal .spk-row { border-radius: var(--f-r-md); }
+html[data-ui-theme="focus"] body .spk-modal .spk-row:hover { background: var(--f-surface-2); }
+html[data-ui-theme="focus"] body .spk-modal .spk-row.is-selected {
+    background: var(--f-surface);
+    border-color: var(--f-divider);
+    box-shadow: var(--f-shadow-1), inset 3px 0 0 var(--f-accent);
+}
+html[data-ui-theme="focus"] body .spk-modal .spk-seg { border-radius: 8px; padding-block: 8px; }
+html[data-ui-theme="focus"] body .spk-modal .spk-seg:hover { background: var(--f-surface-2); }
+html[data-ui-theme="focus"] body .spk-modal .spk-seg.is-playing { background: var(--f-accent-c); }
+html[data-ui-theme="focus"] body .spk-modal .spk-seg-text { font-family: var(--f-font-read); font-size: 15.5px; line-height: 1.55; }
+html[data-ui-theme="focus"] body .spk-modal .spk-seg-time { font-family: var(--f-font-mono); font-size: var(--f-fs-micro); }
+html[data-ui-theme="focus"] body .spk-modal .spk-seg-speaker {
+    background: transparent;
+    background-image: none;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    font-weight: 600;
+    /* the speaker colour stays on `color` and feeds the dot */
+    -webkit-text-fill-color: var(--f-text-2);
+}
+html[data-ui-theme="focus"] body .spk-modal .spk-seg-speaker::before {
+    content: "";
+    display: inline-block;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor; margin-inline-end: 7px; vertical-align: 1px;
+}
+html[data-ui-theme="focus"] body .spk-modal .spk-tab { font-size: var(--f-fs-ui); font-weight: 500; }
+html[data-ui-theme="focus"] body .spk-modal .spk-tab.is-active { border-bottom-width: 2px; }
+html[data-ui-theme="focus"] body .spk-modal .spk-voice-pill,
+html[data-ui-theme="focus"] body .spk-modal .spk-options { border-radius: 999px; }
+html[data-ui-theme="focus"] body .spk-modal .spk-options { border-radius: var(--f-r-md); box-shadow: var(--f-shadow-2); border: 1px solid var(--f-divider); }
+html[data-ui-theme="focus"] body .spk-modal .spk-seek,
+html[data-ui-theme="focus"] body .spk-modal .spk-seek > div { height: 4px; }
