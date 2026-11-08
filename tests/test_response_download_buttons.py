@@ -91,11 +91,12 @@ def test_inquire_functions_exposed_to_the_template():
 @pytest.mark.parametrize('view', CHAT_VIEWS)
 def test_chat_views_have_copy_then_download(view):
     page, actions = _chat_actions(view)
-    assert actions.startswith('<div v-if="message.role === \'assistant\'"')
-    assert 'absolute flex' in actions
+    assert actions.startswith(
+        '<div v-if="message.role === \'assistant\' && message.content'
+        ' && !(isChatLoading && index === chatMessages.length - 1)"')
+    assert 'absolute' not in actions
     assert actions.index('fas fa-copy') < actions.index('fas fa-download')
     assert '@click="downloadChatResponse(index)"' in actions
-    assert '<button v-if="message.content"' in actions
     assert actions.count('class="btn btn--icon btn--sm"') == 2
     for key in ('buttons.copyMessage', 'buttons.downloadResponse'):
         assert f":title=\"t('{key}')\"" in actions
@@ -103,10 +104,11 @@ def test_chat_views_have_copy_then_download(view):
 
 
 @pytest.mark.parametrize('view', CHAT_VIEWS)
-def test_chat_views_reserve_room_for_both_buttons(view):
+def test_chat_view_buttons_sit_below_the_response(view):
     page, _ = _chat_actions(view)
-    assert "message.role === 'assistant' ? 'pr-20' : ''" in page
-    assert 'pr-10' not in page
+    # Below the text, so the buttons never cover it; no room is reserved.
+    assert page.index('${message.content}</div>') < page.index('@click="copyMessage(message.content, $event)"')
+    assert 'pr-20' not in page and 'pr-10' not in page
 
 
 def test_chat_composable_exposes_the_response_download():
