@@ -67,6 +67,7 @@ from src.utils.ffprobe import (
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
 from src.utils.file_hash import compute_file_sha256
+from src.services.recording_ingestion import lookup_duplicate, handle_duplicate_replay
 from src.utils.localization import api_error, format_number, translate
 
 # Create blueprint
@@ -2209,81 +2210,24 @@ def ingest_uploaded_recording(
         # Compute file hash on the ORIGINAL upload before any conversion/compression.
         # Lossy re-encoding (e.g. FLAC→MP3) produces different bytes each run,
         # so hashing after conversion would miss duplicates.
-        file_hash = None
-        duplicate_warning = None
-        existing = None
-        try:
-            file_hash = compute_file_sha256(filepath)
-            duplicate_query = Recording.query.filter_by(
-                user_id=owner.id,
+        duplicate = lookup_duplicate(
+            owner=owner,
+            filepath=filepath,
+            form=form,
+            processing_source=processing_source,
+            original_filename=original_filename,
+            reuse_duplicate=reuse_duplicate,
+        )
+        file_hash = duplicate.file_hash
+        duplicate_warning = duplicate.duplicate_warning
+
+        if duplicate.existing and reuse_duplicate:
+            return handle_duplicate_replay(
+                duplicate.existing,
+                owner=owner,
+                filepath=filepath,
                 file_hash=file_hash,
-            )
-            if reuse_duplicate:
-                duplicate_query = duplicate_query.filter_by(
-                    processing_source=processing_source,
-                    original_filename=original_filename,
-                    notes=form.get('notes'),
-                )
-                replay_meeting_date = None
-                raw_meeting_date = form.get('meeting_date')
-                if raw_meeting_date:
-                    try:
-                        replay_meeting_date = to_utc_naive(
-                            datetime.fromisoformat(raw_meeting_date.replace('Z', '+00:00'))
-                        )
-                    except (ValueError, TypeError):
-                        pass
-                if replay_meeting_date is not None:
-                    duplicate_query = duplicate_query.filter_by(meeting_date=replay_meeting_date)
-                else:
-                    duplicate_query = duplicate_query.filter(
-                        Recording.created_at >= datetime.utcnow() - timedelta(days=1)
-                    )
-            existing = duplicate_query.first()
-        except Exception as e:
-            current_app.logger.warning(f"Could not compute file hash or check duplicates: {e}")
-
-        if existing and reuse_duplicate:
-            # The existing recording already owns the durable media object, so
-            # the retry's staging copy is never needed for job recovery. Remove
-            # it before enqueueing to avoid leaking one full file each time a
-            # temporarily unavailable queue makes ASR retry the delivery.
-            _discard_staging(filepath)
-
-            # A pending conversion queues the transcription when it is done.
-            existing_job = ProcessingJob.query.filter(
-                ProcessingJob.recording_id == existing.id,
-                ProcessingJob.job_type.in_(('transcribe', 'convert')),
-            ).first()
-            if existing.status in ('PENDING', 'QUEUED') and existing_job is None:
-                # Resolve from the existing recording (tags/folder aware), not
-                # just the owner: equivalent for ASR-sourced recordings today,
-                # but robust if another caller ever reuses this recovery path.
-                recovery_params = resolve_transcription_params(existing)
-                job_queue.enqueue(
-                    user_id=owner.id,
-                    recording_id=existing.id,
-                    job_type='transcribe',
-                    params=recovery_params,
-                    is_new_upload=True,
-                )
-            current_app.logger.info(
-                f"Idempotent upload replay for user {owner.id}: "
-                f"hash={file_hash[:12]}... matches recording {existing.id}"
-            )
-            response_data = existing.to_dict(viewer_user=owner)
-            response_data['idempotent_replay'] = True
-            return jsonify(response_data), success_status
-
-        if existing:
-            duplicate_warning = {
-                'existing_recording_id': existing.id,
-                'existing_title': existing.title,
-                'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
-            }
-            current_app.logger.info(
-                f"Duplicate file detected for user {owner.id}: "
-                f"hash={file_hash[:12]}... matches recording {existing.id}"
+                success_status=success_status,
             )
 
         # --- Convert files only when chunking is needed ---
