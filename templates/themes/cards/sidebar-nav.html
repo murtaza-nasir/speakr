@@ -1,0 +1,254 @@
+        <!-- Sidebar Header -->
+        <div class="sb-head flex-shrink-0">
+            <div class="flex items-center gap-2 mb-3">
+                <!-- Folder Selector (replaces static "Recording" title) -->
+                <div v-if="foldersEnabled && availableFolders.length > 0" class="relative flex-1 min-w-0">
+                    <select v-model="filterFolder"
+                            class="sb-folder-select w-full h-9 pl-8 pr-7 text-base font-semibold rounded-md cursor-pointer appearance-none border-0 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                            style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center;">
+                        <option value="">${ t('sidebar.allRecordings') }</option>
+                        <option value="none">${ t('sidebar.unfiled') }</option>
+                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                            ${ folder.name }
+                        </option>
+                    </select>
+                    <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
+                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
+                </div>
+                <h2 v-else class="sb-title text-lg font-semibold flex-1" v-text="t('nav.recording')"></h2>
+                <div class="flex gap-2 flex-shrink-0">
+                    <!-- Selection Mode Toggle -->
+                    <button v-if="!selectionMode && recordings.length > 0"
+                            @click="enterSelectionMode"
+                            class="sb-iconbtn"
+                            :title="t('bulkActions.selectMultipleHint')">
+                        <i class="fas fa-list-check"></i>
+                    </button>
+                    <button v-if="selectionMode"
+                            @click="exitSelectionMode"
+                            class="btn btn--primary"
+                            :title="t('bulkActions.exitSelection')">
+                        <i class="fas fa-times mr-1"></i>${ t('common.done') }
+                    </button>
+                    <!-- New button - compact when folders enabled -->
+                    <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
+                            @click="switchToUploadView"
+                            class="btn btn--primary btn--icon"
+                            :title="t('nav.newRecording')">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button v-else-if="!selectionMode"
+                            @click="switchToUploadView"
+                            class="btn btn--primary">
+                        <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Sort Controls -->
+            <div class="space-y-3">
+                <!-- Filter Toggle Button -->
+                <div class="flex items-center gap-1.5">
+                    <button @click="showAdvancedFilters = !showAdvancedFilters"
+                            class="sb-search">
+                        <span class="flex items-center">
+                            <i class="fas fa-filter mr-1.5 text-[var(--text-muted)] text-[10px]"></i>
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox && !filterAudioRemoved && !filterNeedsTranscription && !filterNeedsSummary && !filterNeedsSpeakers"
+                                  v-text="t('sidebar.searchRecordings')">
+                            </span>
+                            <span v-else class="text-[var(--text-accent)]">
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) })
+                            </span>
+                        </span>
+                        <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)] text-[10px]', showAdvancedFilters ? 'rotate-180' : '']"></i>
+                    </button>
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterAudioRemoved || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
+                            @click="clearAllFilters"
+                            class="sb-iconbtn sb-iconbtn--sm"
+                            :title="t('buttons.clearAllFilters')">
+                        <i class="fas fa-times text-[var(--text-muted)] text-[10px]"></i>
+                    </button>
+                </div>
+
+                <!-- Advanced Filters Panel -->
+                <div v-show="showAdvancedFilters" class="sb-adv space-y-3">
+                    <!-- Text Search -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
+                        <div class="relative">
+                            <input v-model="filterTextQuery"
+                                   type="text"
+                                   :placeholder="t('sidebar.searchRecordings')"
+                                   class="sb-input w-full pl-8 pr-8">
+                            <i class="fas fa-search absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-xs"></i>
+                            <button v-if="filterTextQuery"
+                                    @click="filterTextQuery = ''"
+                                    class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                                    :title="t('buttons.clearSearchText')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Filters (Starred/Inbox/Audio removed). Wraps when the
+                         sidebar is too narrow for all three labels. -->
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="filterStarred = !filterStarred"
+                                :class="['sb-chip', filterStarred ? 'is-on' : '']">
+                            <i class="fas fa-star" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.starred')"></span>
+                        </button>
+                        <button @click="filterInbox = !filterInbox"
+                                :class="['sb-chip', filterInbox ? 'is-on' : '']">
+                            <i class="fas fa-inbox" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.inbox')"></span>
+                        </button>
+                        <button v-if="enableAudioRemovedFilter" @click="filterAudioRemoved = !filterAudioRemoved"
+                                :aria-pressed="filterAudioRemoved"
+                                :title="t('audioRemoved.filterHint')"
+                                :class="['sb-chip', filterAudioRemoved ? 'is-on' : '']">
+                            <i class="fas fa-volume-xmark" style="font-size: 10px;"></i>
+                            <span class="whitespace-nowrap" v-text="t('audioRemoved.label')"></span>
+                        </button>
+                    </div>
+
+                    <!-- Needs Filters -->
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="filterNeedsTranscription = !filterNeedsTranscription"
+                                :aria-pressed="filterNeedsTranscription"
+                                :aria-label="t('sidebar.needsTranscription')"
+                                :class="['sb-chip', filterNeedsTranscription ? 'is-on' : '']">
+                            <i class="fas fa-keyboard text-[11px] leading-none"></i>
+                            <span class="block max-w-full text-[10px] leading-[1.15] whitespace-normal break-normal" v-text="t('sidebar.needsTranscription')"></span>
+                        </button>
+                        <button @click="filterNeedsSummary = !filterNeedsSummary"
+                                :aria-pressed="filterNeedsSummary"
+                                :aria-label="t('sidebar.needsSummary')"
+                                :class="['sb-chip', filterNeedsSummary ? 'is-on' : '']">
+                            <i class="fas fa-list-alt text-[11px] leading-none"></i>
+                            <span class="block max-w-full whitespace-normal break-normal" v-text="t('sidebar.needsSummary')"></span>
+                        </button>
+                        <button @click="filterNeedsSpeakers = !filterNeedsSpeakers"
+                                :aria-pressed="filterNeedsSpeakers"
+                                :aria-label="t('sidebar.needsSpeakers')"
+                                :class="['sb-chip', filterNeedsSpeakers ? 'is-on' : '']">
+                            <i class="fas fa-user-edit text-[11px] leading-none"></i>
+                            <span class="block max-w-full whitespace-normal break-normal" v-text="t('sidebar.needsSpeakers')"></span>
+                        </button>
+                    </div>
+
+                    <!-- Tag Filter -->
+                    <div class="sb-group">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('tags.filterByTag')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableTags.length > 5">
+                                <input v-model="filterTagSearch"
+                                       type="text"
+                                       :placeholder="t('tags.searchTags')"
+                                       class="sb-input sb-input--sm w-full pl-7">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="tag in filteredTagsForFilter"
+                                        :key="tag.id"
+                                        @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                                        :class="['sb-chip', filterTags.includes(tag.id) ? 'is-on' : '']">
+                                    <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                    ${ tag.name }
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="availableTags.length === 0" class="text-xs text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                        <p v-else-if="filteredTagsForFilter.length === 0" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('tags.noMatchingTags')"></p>
+                    </div>
+
+                    <!-- Speaker Filter -->
+                    <div v-if="availableSpeakers.length > 0" class="sb-group">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('speakers.filterBySpeaker')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableSpeakers.length > 5">
+                                <input v-model="filterSpeakerSearch"
+                                       type="text"
+                                       :placeholder="t('speakers.searchSpeakers')"
+                                       class="sb-input sb-input--sm w-full pl-7">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="speaker in filteredSpeakersForFilter"
+                                        :key="speaker.id"
+                                        @click="filterSpeakers.includes(speaker.name) ? filterSpeakers = filterSpeakers.filter(n => n !== speaker.name) : filterSpeakers.push(speaker.name)"
+                                        :class="['sb-chip', filterSpeakers.includes(speaker.name) ? 'is-on' : '']">
+                                    <i class="fas fa-user mr-1" style="font-size: 9px;"></i>
+                                    ${ speaker.name }
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="filteredSpeakersForFilter.length === 0 && filterSpeakerSearch" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('speakers.noMatchingSpeakers')"></p>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.dateRange')"></label>
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                            <button v-for="preset in datePresetOptions"
+                                    :key="preset.value"
+                                    @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                                    :class="['sb-chip', filterDatePreset === preset.value ? 'is-on' : '']"
+                                    :title="preset.label">
+                                ${ preset.label }
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <input v-model="filterDateRange.start"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="sb-input sb-input--sm w-full"
+                                       :placeholder="t('form.dateFrom')">
+                            </div>
+                            <div>
+                                <input v-model="filterDateRange.end"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="sb-input sb-input--sm w-full"
+                                       :placeholder="t('form.dateTo')">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Controls Row -->
+                <div class="flex items-center gap-1.5">
+                    <!-- Sort Toggle -->
+                    <button @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+                            class="sb-chip"
+                            :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
+                        <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('common.sort')"></span>
+                        <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
+                    </button>
+
+                    <!-- Archived view (#394): the user's archive, always available -->
+                    <button @click="showArchivedRecordings = !showArchivedRecordings"
+                            :aria-pressed="showArchivedRecordings"
+                            :class="['sb-chip', showArchivedRecordings ? 'is-on' : '']"
+                            :title="t('archive.showArchived')">
+                        <i class="fas fa-box-archive"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('archive.archived')"></span>
+                    </button>
+                    <!-- Shared Toggle. The highlighted background shows the state;
+                         the on/off icon was dropped so the labels fit (#394). -->
+                    <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
+                            :aria-pressed="showSharedWithMe"
+                            :class="['sb-chip', showSharedWithMe ? 'is-on' : '']"
+                            :title="t('sidebar.sharedWithMe')">
+                        <i class="fas fa-users"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.shared')"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
