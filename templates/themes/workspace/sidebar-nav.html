@@ -1,0 +1,217 @@
+        {#- Workspace: a navigation rail (Library, Folders, Tags) beside the list controls.
+            These elements sit directly in .sidebar-content-wrapper, which the theme
+            stylesheet lays out as a two-column grid: the rail on the left, the search,
+            filter panel and list header above the recordings list on the right. -#}
+        <!-- Navigation rail. On phones it is a disclosure above the list;
+             from lg up it is always open (the summary is hidden). -->
+        <details class="ws-nav" :open="!isMobileScreen">
+            <summary class="ws-nav__summary">
+                <i class="fas fa-layer-group"></i>
+                <span v-text="t('workspace.library')"></span>
+                <i class="fas fa-chevron-down ws-nav__chev"></i>
+            </summary>
+
+            <div class="ws-nav__body">
+                <div class="ws-section">
+                    <div class="ws-section__head">
+                        <span class="ws-section__title" v-text="t('workspace.library')"></span>
+                    </div>
+                    <button type="button" class="ws-nav-item"
+                            :class="{ 'is-active': !filterInbox && !filterStarred && !showArchivedRecordings && !showSharedWithMe && !filterFolder }"
+                            @click="filterInbox = false; filterStarred = false; showArchivedRecordings = false; showSharedWithMe = false; filterFolder = ''">
+                        <i class="fas fa-layer-group ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('sidebar.allRecordings')"></span>
+                        <span class="ws-nav-item__count" v-text="totalRecordings"></span>
+                    </button>
+                    <button type="button" class="ws-nav-item"
+                            :class="{ 'is-active': filterInbox }"
+                            :aria-pressed="filterInbox"
+                            @click="filterInbox = !filterInbox">
+                        <i class="fas fa-inbox ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('sidebar.inbox')"></span>
+                    </button>
+                    <button type="button" class="ws-nav-item"
+                            :class="{ 'is-active': filterStarred }"
+                            :aria-pressed="filterStarred"
+                            @click="filterStarred = !filterStarred">
+                        <i class="fas fa-star ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('sidebar.starred')"></span>
+                    </button>
+                    <button type="button" class="ws-nav-item"
+                            :class="{ 'is-active': showArchivedRecordings }"
+                            :aria-pressed="showArchivedRecordings"
+                            :title="t('archive.showArchived')"
+                            @click="showArchivedRecordings = !showArchivedRecordings">
+                        <i class="fas fa-box-archive ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('archive.archived')"></span>
+                    </button>
+                    <button v-if="enableInternalSharing" type="button" class="ws-nav-item"
+                            :class="{ 'is-active': showSharedWithMe }"
+                            :aria-pressed="showSharedWithMe"
+                            :title="t('sidebar.sharedWithMe')"
+                            @click="showSharedWithMe = !showSharedWithMe">
+                        <i class="fas fa-users ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('sidebar.shared')"></span>
+                    </button>
+                </div>
+
+                <!-- Folders: replaces the old folder dropdown; same state. -->
+                <div v-if="foldersEnabled && availableFolders.length > 0" class="ws-section">
+                    <div class="ws-section__head">
+                        <span class="ws-section__title" v-text="t('inquire.folders')"></span>
+                    </div>
+                    <button type="button" class="ws-nav-item"
+                            :class="{ 'is-active': filterFolder === 'none' }"
+                            @click="filterFolder = filterFolder === 'none' ? '' : 'none'">
+                        <i class="far fa-folder ws-nav-item__icon"></i>
+                        <span class="ws-nav-item__label" v-text="t('sidebar.unfiled')"></span>
+                    </button>
+                    <button v-for="folder in availableFolders" :key="folder.id" type="button"
+                            class="ws-nav-item"
+                            :class="{ 'is-active': filterFolder == folder.id }"
+                            @click="filterFolder = filterFolder == folder.id ? '' : folder.id">
+                        <span class="ws-dot" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
+                        <span class="ws-nav-item__label" v-text="folder.name"></span>
+                        <span class="ws-nav-item__count" v-text="folder.recording_count || 0"></span>
+                    </button>
+                </div>
+
+                <!-- Tags: replaces the tag chips of the filter panel; same state. -->
+                <div class="ws-section">
+                    <div class="ws-section__head">
+                        <span class="ws-section__title" v-text="t('sidebar.tags')"></span>
+                        <button v-if="filterTags.length > 0" type="button" class="ws-section__action"
+                                @click="filterTags = []" v-text="t('common.clearAll')"></button>
+                    </div>
+                    <div v-if="availableTags.length > 5" class="ws-nav-search">
+                        <i class="fas fa-search"></i>
+                        <input v-model="filterTagSearch" type="text" :placeholder="t('tags.searchTags')" :aria-label="t('tags.searchTags')">
+                    </div>
+                    <button v-for="tag in filteredTagsForFilter" :key="tag.id" type="button"
+                            class="ws-nav-item"
+                            :class="{ 'is-active': filterTags.includes(tag.id) }"
+                            :aria-pressed="filterTags.includes(tag.id)"
+                            @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)">
+                        <span class="ws-dot" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                        <span class="ws-nav-item__label" v-text="tag.name"></span>
+                        <span class="ws-nav-item__count" v-text="tag.recording_count"></span>
+                    </button>
+                    <p v-if="availableTags.length === 0" class="ws-nav-empty" v-text="t('tags.noTags')"></p>
+                    <p v-else-if="filteredTagsForFilter.length === 0" class="ws-nav-empty" v-text="t('tags.noMatchingTags')"></p>
+                </div>
+            </div>
+        </details>
+
+        <!-- Recording list column -->
+            <div class="ws-list__top">
+                <div class="ws-search">
+                    <i class="fas fa-search ws-search__icon"></i>
+                    <input v-model="filterTextQuery" type="text"
+                           :placeholder="t('sidebar.searchRecordings')"
+                           :aria-label="t('sidebar.searchRecordings')">
+                    <button v-if="filterTextQuery" type="button" class="ws-search__clear"
+                            @click="filterTextQuery = ''"
+                            :title="t('buttons.clearSearchText')" :aria-label="t('buttons.clearSearchText')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <button type="button" class="ws-iconbtn" :class="{ 'is-on': showAdvancedFilters }"
+                        @click="showAdvancedFilters = !showAdvancedFilters"
+                        :aria-expanded="showAdvancedFilters"
+                        :title="t('sidebar.filters')" :aria-label="t('sidebar.filters')">
+                    <i class="fas fa-sliders-h"></i>
+                    <span v-if="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) > 0"
+                          class="ws-iconbtn__badge"
+                          v-text="(filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0)"></span>
+                </button>
+                <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterAudioRemoved || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
+                        type="button" class="ws-iconbtn"
+                        @click="clearAllFilters"
+                        :title="t('buttons.clearAllFilters')" :aria-label="t('buttons.clearAllFilters')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Filter panel (needs-attention flags, speakers, dates) -->
+            <div v-show="showAdvancedFilters" class="ws-filters">
+                <div class="ws-filters__group">
+                    <button type="button" class="ws-toggle" :class="{ 'is-on': filterNeedsTranscription }"
+                            @click="filterNeedsTranscription = !filterNeedsTranscription"
+                            :aria-pressed="filterNeedsTranscription"
+                            :aria-label="t('sidebar.needsTranscription')">
+                        <i class="fas fa-keyboard"></i><span v-text="t('sidebar.needsTranscription')"></span>
+                    </button>
+                    <button type="button" class="ws-toggle" :class="{ 'is-on': filterNeedsSummary }"
+                            @click="filterNeedsSummary = !filterNeedsSummary"
+                            :aria-pressed="filterNeedsSummary"
+                            :aria-label="t('sidebar.needsSummary')">
+                        <i class="fas fa-list-alt"></i><span v-text="t('sidebar.needsSummary')"></span>
+                    </button>
+                    <button type="button" class="ws-toggle" :class="{ 'is-on': filterNeedsSpeakers }"
+                            @click="filterNeedsSpeakers = !filterNeedsSpeakers"
+                            :aria-pressed="filterNeedsSpeakers"
+                            :aria-label="t('sidebar.needsSpeakers')">
+                        <i class="fas fa-user-edit"></i><span v-text="t('sidebar.needsSpeakers')"></span>
+                    </button>
+                    <button v-if="enableAudioRemovedFilter" type="button" class="ws-toggle" :class="{ 'is-on': filterAudioRemoved }"
+                            @click="filterAudioRemoved = !filterAudioRemoved"
+                            :aria-pressed="filterAudioRemoved"
+                            :title="t('audioRemoved.filterHint')">
+                        <i class="fas fa-volume-xmark"></i><span v-text="t('audioRemoved.label')"></span>
+                    </button>
+                </div>
+
+                <div v-if="availableSpeakers.length > 0" class="ws-filters__group ws-filters__group--col">
+                    <div class="ws-filters__label">
+                        <span v-text="t('speakers.filterBySpeaker')"></span>
+                        <input v-if="availableSpeakers.length > 5" v-model="filterSpeakerSearch" type="text"
+                               class="ws-filters__mini" :placeholder="t('speakers.searchSpeakers')" :aria-label="t('speakers.searchSpeakers')">
+                    </div>
+                    <div class="ws-filters__scroll">
+                        <button v-for="speaker in filteredSpeakersForFilter" :key="speaker.id" type="button"
+                                class="ws-toggle" :class="{ 'is-on': filterSpeakers.includes(speaker.name) }"
+                                @click="filterSpeakers.includes(speaker.name) ? filterSpeakers = filterSpeakers.filter(n => n !== speaker.name) : filterSpeakers.push(speaker.name)">
+                            <i class="fas fa-user"></i><span v-text="speaker.name"></span>
+                        </button>
+                    </div>
+                    <p v-if="filteredSpeakersForFilter.length === 0 && filterSpeakerSearch" class="ws-nav-empty" v-text="t('speakers.noMatchingSpeakers')"></p>
+                </div>
+
+                <div class="ws-filters__group ws-filters__group--col">
+                    <div class="ws-filters__label"><span v-text="t('sidebar.dateRange')"></span></div>
+                    <div class="ws-segmented">
+                        <button v-for="preset in datePresetOptions" :key="preset.value" type="button"
+                                :class="{ 'is-on': filterDatePreset === preset.value }"
+                                @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                                :title="preset.label" v-text="preset.label"></button>
+                    </div>
+                    <div class="ws-filters__dates">
+                        <input v-model="filterDateRange.start" @change="filterDatePreset = ''" type="date"
+                               class="ws-input" :aria-label="t('form.dateFrom')">
+                        <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date"
+                               class="ws-input" :aria-label="t('form.dateTo')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- List header: count, sort, multi-select -->
+            <div class="ws-list__head">
+                <span class="ws-section__title" v-text="t('workspace.recordings')"></span>
+                <span class="ws-list__count" v-text="totalRecordings"></span>
+                <span class="ws-grow"></span>
+                <button type="button" class="ws-chipbtn"
+                        @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+                        :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
+                    <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
+                    <span v-text="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')"></span>
+                </button>
+                <button v-if="!selectionMode && recordings.length > 0" type="button" class="ws-iconbtn ws-iconbtn--sm"
+                        @click="enterSelectionMode"
+                        :title="t('bulkActions.selectMultipleHint')" :aria-label="t('bulkActions.selectMultipleHint')">
+                    <i class="fas fa-list-check"></i>
+                </button>
+                <button v-if="selectionMode" type="button" class="ws-chipbtn is-on"
+                        @click="exitSelectionMode" :title="t('bulkActions.exitSelection')">
+                    <span v-text="t('common.done')"></span><kbd class="ws-kbd">Esc</kbd>
+                </button>
+            </div>

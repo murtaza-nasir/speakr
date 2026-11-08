@@ -3757,5 +3757,10 @@
     "preferences": "Übersetzungseinstellungen",
     "toggle": "Übersetzung umschalten",
     "incognitoUnavailable": "Die Übersetzung ist für Inkognito-Aufnahmen nicht verfügbar."
+  },
+  "workspace": {
+    "library": "Bibliothek",
+    "recordings": "Aufnahmen",
+    "share": "Teilen"
   }
 }

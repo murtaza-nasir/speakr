@@ -3757,5 +3757,10 @@
     "preferences": "翻译偏好设置",
     "toggle": "切换翻译",
     "incognitoUnavailable": "翻译不适用于无痕录音。"
+  },
+  "workspace": {
+    "library": "资源库",
+    "recordings": "录音",
+    "share": "分享"
   }
 }

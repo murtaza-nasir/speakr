@@ -3757,5 +3757,10 @@
     "preferences": "Preferências de tradução",
     "toggle": "Alternar tradução",
     "incognitoUnavailable": "A tradução não está disponível para gravações incógnitas."
+  },
+  "workspace": {
+    "library": "Biblioteca",
+    "recordings": "Gravações",
+    "share": "Compartilhar"
   }
 }
