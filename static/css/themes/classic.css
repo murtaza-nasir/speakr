@@ -455,7 +455,8 @@ html[data-ui-theme="classic"] .rr-when {
 }
 html[data-ui-theme="classic"] .rr-time { font-size: 13px; font-weight: 500; line-height: 18px; color: var(--text); }
 html[data-ui-theme="classic"] .rr-dur { font-size: 12px; line-height: 16px; color: var(--text-3); }
-html[data-ui-theme="classic"] .recording-row.is-active .rr-dur { color: var(--text-2); }
+html[data-ui-theme="classic"] .recording-row.is-active .rr-dur,
+html[data-ui-theme="classic"] .recording-row.is-active .text-\[var\(--text-muted\)\] { color: var(--text-2); }
 html[data-ui-theme="classic"] .rr-main { min-width: 0; }
 html[data-ui-theme="classic"] .rr-main > div:first-child { margin-bottom: 0; }
 
@@ -553,7 +554,7 @@ html[data-ui-theme="classic"] .btn {
     transition: background var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 html[data-ui-theme="classic"] .btn--primary { background: var(--primary); color: var(--on-primary); border-color: transparent; }
-html[data-ui-theme="classic"] .btn--primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, var(--text)); box-shadow: var(--shadow-1); }
+html[data-ui-theme="classic"] .btn--primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); box-shadow: var(--shadow-1); }
 html[data-ui-theme="classic"] .btn--ghost { background: transparent; color: var(--text); border-color: var(--border); }
 html[data-ui-theme="classic"] .btn--ghost:hover:not(:disabled) { background: var(--hover); }
 html[data-ui-theme="classic"] .btn--quiet { background: transparent; color: var(--accent); }

@@ -51,7 +51,7 @@ body.unloaded {
     --text-primary: #1f2937; /* gray-800 */
     --text-secondary: #374151; /* gray-700 */
     --text-muted: #565e6b; /* between gray-600 and gray-500: 4.5:1 on the muted grey, blue accent and scheme surfaces */
-    --text-light: #9ca3af; /* gray-400 */
+    --text-light: #5f6773; /* 4.5:1 or more on the muted grey and accent-free surfaces */
     --text-accent: #1d4ed8; /* blue-700 */
     --text-button: #ffffff; /* white */
     --text-danger: #b91c1c; /* red-700 */
@@ -190,7 +190,7 @@ body.unloaded {
     --text-primary: #f3f4f6; /* gray-100 */
     --text-secondary: #d1d5db; /* gray-300 */
     --text-muted: #cbd5e1; /* slate-300 - improved contrast */
-    --text-light: #94a3b8; /* slate-400 - better visibility */
+    --text-light: #a1aec2; /* 4.5:1 or more on bg-tertiary */
     --text-accent: #7ab3fb; /* between blue-300 and blue-400: 4.5:1 on the accent and tertiary surfaces */
     --text-button: #ffffff; /* white */
     --text-danger: #f87171; /* red-400 */
