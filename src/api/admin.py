@@ -147,13 +147,19 @@ def admin_get_users():
     if page < 1:
         page = 1
 
+    # Cap kept high enough for admin tooling/exports while still bounding
+    # response size and query cost. Out-of-range values are clamped to the
+    # nearest bound instead of silently falling back to the default.
+    MAX_PER_PAGE = 1000
     per_page_raw = request.args.get('per_page', 15, type=int)
     try:
         per_page = int(per_page_raw) if per_page_raw is not None else 15
     except (TypeError, ValueError):
         per_page = 15
-    if per_page < 1 or per_page > 100:
+    if per_page < 1:
         per_page = 15
+    elif per_page > MAX_PER_PAGE:
+        per_page = MAX_PER_PAGE
 
     search = (request.args.get('search') or '').strip()
 
