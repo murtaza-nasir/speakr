@@ -244,7 +244,7 @@ def test_settings_post_file_size_recomputes_ceiling(admin_client):
 def test_list_users_includes_admin(admin_client, admin_user):
     resp = admin_client.get('/admin/users')
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['users']
     assert any(u['id'] == admin_user.id for u in data)
 
 
@@ -752,7 +752,7 @@ def test_list_users_storage_used_excludes_deleted_audio_and_none_is_zero(admin_c
     try:
         resp = admin_client.get('/admin/users')
         assert resp.status_code == 200
-        rows = {u['id']: u for u in resp.get_json()}
+        rows = {u['id']: u for u in resp.get_json()['users']}
         # Only the live recording's bytes count.
         assert rows[sid]['storage_used'] == 1234
         # No recordings -> 0, not null (the `or 0` fallback).

@@ -264,7 +264,7 @@ def test_admin_unlock_and_list_flag(_ctx):
     for _ in range(5):
         _login(user, 'wrong')
     client = _as(admin)
-    rows = {r['id']: r for r in client.get('/admin/users').get_json()}
+    rows = {r['id']: r for r in client.get('/admin/users').get_json()['users']}
     assert rows[user.id]['login_locked'] is True
     assert rows[admin.id]['login_locked'] is False
     assert 'failed_count' not in rows[user.id] and 'address' not in rows[user.id]
@@ -274,7 +274,7 @@ def test_admin_unlock_and_list_flag(_ctx):
     assert resp.get_json()['login_locked'] is False
     db.session.expire_all()
     assert _rows(user) == []
-    rows = {r['id']: r for r in client.get('/admin/users').get_json()}
+    rows = {r['id']: r for r in client.get('/admin/users').get_json()['users']}
     assert rows[user.id]['login_locked'] is False
     _, signed_in = _login(user, PW)
     assert signed_in
