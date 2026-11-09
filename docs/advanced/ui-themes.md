@@ -95,6 +95,17 @@ Only one branch is rendered at a time, so an id or a `ref` that appears in two b
 
 Changes that only add a class or adjust an inline style on shared chrome (the header bar, the account tab strip, the sign-in body) are made in the theme's CSS against the existing selectors instead of in a slot. A JavaScript default that differs per theme (for example whether the queue popup starts minimized) is read from `uiTheme` in `static/js/app.modular.js`. A formatting helper needed by a theme partial is added to the main app's returned scope, where it is available to every theme.
 
+### Shared hooks a theme can use
+
+Two pieces of shared markup are prepared for themes and need no slot.
+
+| Hook | Where | How a theme uses it |
+|---|---|---|
+| Back link | `<a class="page-header__back">` in `templates/components/page-header.html`, the header of the Account, Admin and group management pages. It holds an arrow icon and the label `nav.backToRecordings`, and links to the recordings. | It is `display: none` in `static/css/primitives.css`, so no theme shows it by default. A theme shows it with `html[data-ui-theme="<id>"] .page-header__back { display: inline-flex; }` and styles it like the other header buttons of the theme (workspace and desk do this). |
+| Close on outside click | `<details data-close-outside>` | `static/js/modules/utils/close-outside.js`, installed in the main app and in the header app, closes every open menu of this kind when a click lands outside it and when Escape is pressed. A theme menu built on `<details>` (for example the overflow menu of the Focus header) adds the attribute and keeps any handlers it already has. |
+
+The floating chat button (`.floating-chat-fab`) is 44px and see-through (`opacity: 0.6`) until it is hovered or focused. A theme that overrides it keeps a target of at least 44px and does not set `opacity`; a `transition` override includes `opacity` so the change is smooth.
+
 ## The guard test
 
 In `tests/test_ui_theme_slots.py`, every override, `templates/themes/<id>/<slot>.html`, is compared with the default partial of the same slot. An override may add behaviour and change markup and classes freely, but it must keep everything in this list that the default has:
@@ -116,7 +127,7 @@ Further checks in the same file: every slot has a default partial and is placed 
 
 1. **Registry.** The theme is already listed in `UI_THEMES` in `src/config/ui_themes.py` if it is one of the five designs; otherwise add a `UiTheme('<id>', available=False)` entry. Keep `available=False` until the steps below are done.
 2. **Locale keys.** Add `uiTheme.themes.<id>.name` and `.description` (one line) to all seven files in `static/locales/`, with real translations.
-3. **Stylesheet.** Create `static/css/themes/<id>.css`. Start every selector with `html[data-ui-theme="<id>"]`, including the ones inside `@media`. Define the neutral variables for light and dark (see the color contract) and leave the accent variables to the scheme. The file is served as it is; no build step is needed. The stylesheet is loaded after `tailwind.css`, and with the scope each rule is more specific than a single Tailwind utility, so `!important` is rarely needed.
+3. **Stylesheet.** Create `static/css/themes/<id>.css`. Start every selector with `html[data-ui-theme="<id>"]`, including the ones inside `@media`. Define the neutral variables for light and dark (see the color contract) and leave the accent variables to the scheme. The file is served as it is; no build step is needed. The stylesheet is loaded after `tailwind.css`, and with the scope each rule is more specific than a single Tailwind utility, so `!important` is rarely needed. A theme that needs a font face bundles it as Focus does with Source Serif 4: woff2 files and the licence are listed with their SHA-256 in `scripts/download_offline_deps.py`, land in `static/vendor/fonts/<name>/`, and are declared with `@font-face` (`font-display: swap`) in the theme's own stylesheet, so a browser fetches them only while the theme is active.
 4. **Slots.** For each slot the design changes, create `templates/themes/<id>/<slot>.html`, starting from a copy of `templates/themes/default/<slot>.html`. Keep the Vue bindings; add and restyle around them. Tailwind classes used in the partial are compiled because `tailwind.config.js` scans `templates/**/*.html`; run `scripts/build_css.sh` after adding new ones.
 5. **Guard test.** Run `tests/test_ui_theme_slots.py`. Every dropped behaviour is listed; restore it, or add it to `ALLOWED` or `MOVED` with the reason.
 6. **Preview.** Save a screenshot of the theme with the fictional demo data as `static/img/themes/<id>.webp`, 480 by 300 pixels (16:10), light mode, blue scheme. Never use real recordings.
