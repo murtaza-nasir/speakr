@@ -2,7 +2,7 @@
      mobile-header's contextual toolbar so this panel now drops
      straight into its event list. -->
 <div v-if="mobileTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0" class="h-full flex flex-col">
-    <div class="flex-grow overflow-y-auto px-3 py-3 space-y-3">
+    <div class="flex-grow overflow-y-auto px-3 py-3 space-y-3" tabindex="0" role="region" :aria-label="t('events.title')">
         <div v-for="event in selectedRecording.events" :key="event.id"
              class="bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)]">
             <div class="flex justify-between items-start mb-2">

@@ -175,6 +175,14 @@ html[data-ui-theme="desk"] .btn--icon { width: var(--ctl-h); min-height: var(--c
 html[data-ui-theme="desk"] .btn--icon.btn--sm { width: 24px; min-height: 24px; }
 html[data-ui-theme="desk"] .btn--icon.btn--lg { width: 32px; min-height: 32px; }
 html[data-ui-theme="desk"] .btn--ghost { border-color: var(--line); background: var(--surface); }
+/* Keyboard focus: the theme resets the button shadow, so the generic ring of
+   primitives.css never shows. An outline in the scheme's focus colour does. */
+html[data-ui-theme="desk"] .btn:focus-visible,
+html[data-ui-theme="desk"] .tab:focus-visible,
+html[data-ui-theme="desk"] .toggle:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
 html[data-ui-theme="desk"] .btn--primary { box-shadow: none; }
 html[data-ui-theme="desk"] .btn i.fas,
 html[data-ui-theme="desk"] .btn i.far { font-size: 12px; }
@@ -546,18 +554,45 @@ html[data-ui-theme="desk"] .desk-row .col-tags {
     min-width: 0;
     overflow: hidden;
     flex-wrap: nowrap;
-    -webkit-mask-image: linear-gradient(to right, #000 80%, transparent);
-    mask-image: linear-gradient(to right, #000 80%, transparent);
+    container-type: inline-size;
 }
-html[data-ui-theme="desk"][dir="rtl"] .desk-row .col-tags,
-html[data-ui-theme="desk"] [dir="rtl"] .desk-row .col-tags {
-    -webkit-mask-image: linear-gradient(to left, #000 80%, transparent);
-    mask-image: linear-gradient(to left, #000 80%, transparent);
+/* Whole chips only: the column fits 1 to 4 chips by its own width (chips beyond
+   that are display: none, a long name ends in an ellipsis inside its chip), and
+   the "+N" variant for that count stays visible after them. */
+html[data-ui-theme="desk"] .desk-row .col-tags .chip {
+    --desk-chips: 1;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(100px, calc((100cqw - 30px - 4px * var(--desk-chips)) / var(--desk-chips)));
 }
-html[data-ui-theme="desk"] .desk-row .col-tags .chip { flex: 0 0 auto; max-width: 100px; }
-html[data-ui-theme="desk"] .desk-row__more { font-size: 11px; color: var(--text-3); flex: none; }
+html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+2) { display: none; }
+html[data-ui-theme="desk"] .desk-row__more { display: none; font-size: 11px; color: var(--text-3); flex: none; }
+html[data-ui-theme="desk"] .desk-row__more--1 { display: inline; }
+@container (min-width: 150px) {
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip { --desk-chips: 2; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+2) { display: inline-flex; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+3) { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--1 { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--2 { display: inline; }
+}
+@container (min-width: 260px) {
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip { --desk-chips: 3; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+3) { display: inline-flex; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+4) { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--2 { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--3 { display: inline; }
+}
+@container (min-width: 360px) {
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip { --desk-chips: 4; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+4) { display: inline-flex; }
+    html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+5) { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--3 { display: none; }
+    html[data-ui-theme="desk"] .desk-row__more--4 { display: inline; }
+}
 html[data-ui-theme="desk"] .desk-row .col-date { font-size: var(--fs-meta); color: var(--text-2); }
 html[data-ui-theme="desk"] .desk-row .col-dur { font-size: var(--fs-meta); color: var(--text-3); }
+html[data-ui-theme="desk"] .desk-row.is-active .col-dur,
+html[data-ui-theme="desk"] .desk-row.is-active .desk-row__more { color: var(--text-2); }
 html[data-ui-theme="desk"] .desk-ico { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: var(--text-3); font-size: 11px; flex: none; }
 html[data-ui-theme="desk"] .desk-ico.is-star { color: #c98a0a; }
 html[data-ui-theme="desk"] .desk-ico.is-inbox { color: var(--primary); font-size: 7px; }

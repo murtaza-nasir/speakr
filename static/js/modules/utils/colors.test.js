@@ -1,9 +1,11 @@
 /**
  * Unit tests for getContrastTextColor in colors.js.
  *
- * The helper returns 'black' for backgrounds whose simple luminance exceeds
- * 0.65 and 'white' otherwise, falling back to 'white' for falsy input or when
- * the luminance computation throws.
+ * The helper returns whichever of 'black' and 'white' has the higher WCAG
+ * contrast ratio against the background (relative luminance with sRGB
+ * linearisation), falling back to 'white' for falsy input or when the
+ * luminance computation throws. The crossover is at a relative luminance of
+ * about 0.179; the better colour always reaches at least 4.58:1 (WCAG AA).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,14 +20,23 @@ describe('getContrastTextColor', () => {
 
     it('returns black for very light backgrounds', () => {
         expect(getContrastTextColor('#ffffff')).toBe('black');
-        expect(getContrastTextColor('#ffff00')).toBe('black'); // yellow, lum ~0.886
-        expect(getContrastTextColor('#cccccc')).toBe('black'); // lum 0.8
+        expect(getContrastTextColor('#ffff00')).toBe('black'); // yellow
+        expect(getContrastTextColor('#cccccc')).toBe('black');
     });
 
-    it('returns white for dark and medium backgrounds', () => {
+    it('returns black on mid-tone backgrounds where black has more contrast', () => {
+        // #808080: L = 0.216, black 5.32:1 against white 3.95:1
+        expect(getContrastTextColor('#808080')).toBe('black');
+        // Tag colours that gave white text 2.5 to 4.2:1 before
+        expect(getContrastTextColor('#10b981')).toBe('black'); // white 2.53:1
+        expect(getContrastTextColor('#3b82f6')).toBe('black'); // white 3.67:1
+        expect(getContrastTextColor('#8b5cf6')).toBe('black'); // white 4.23:1
+    });
+
+    it('returns white for dark backgrounds', () => {
         expect(getContrastTextColor('#000000')).toBe('white');
-        expect(getContrastTextColor('#008000')).toBe('white'); // green
-        expect(getContrastTextColor('#808080')).toBe('white'); // mid grey, lum ~0.5
+        expect(getContrastTextColor('#008000')).toBe('white'); // green, white 5.1:1
+        expect(getContrastTextColor('#1e3a8a')).toBe('white');
     });
 
     it('expands 3-digit hex shorthand', () => {

@@ -35,8 +35,8 @@ html[data-ui-theme="workspace"] {
 
     --text-primary: #1b1b1f;
     --text-secondary: #3d3d45;
-    --text-muted: #6a6a74;
-    --text-light: #9a9aa4;       /* counts, glyphs */
+    --text-muted: #555560;       /* 4.5:1 or more on every light surface, including the selected row */
+    --text-light: #62626c;       /* counts, glyphs; 4.75:1 on the selected row, 6.0:1 on the content surface */
 
     --border-primary: #e7e7ea;   /* dividers */
     --border-secondary: #d6d6db; /* control outlines */
@@ -116,8 +116,8 @@ html[data-ui-theme="workspace"].dark {
 
     --text-primary: #ececf0;
     --text-secondary: #c8c8d0;
-    --text-muted: #9c9ca6;
-    --text-light: #70707a;
+    --text-muted: #b2b2bc;
+    --text-light: #9a9aa4;       /* counts, glyphs; 4.9:1 on the selected row, 6.7:1 on the content surface */
 
     --border-primary: #2a2a30;
     --border-secondary: #3b3b43;

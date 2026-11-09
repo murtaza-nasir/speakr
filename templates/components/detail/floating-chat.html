@@ -197,7 +197,8 @@
                     <button @click="sendChatMessage"
                             :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
                             class="btn btn--primary btn--icon btn--lg"
-                            :title="t('buttons.send') || 'Send'">
+                            :title="t('buttons.send') || 'Send'"
+                            :aria-label="t('buttons.send')">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>

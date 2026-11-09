@@ -63,6 +63,7 @@
                     </button>
                     <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
                            @input="(e) => { if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.volume = parseFloat(e.target.value); }"
+                           :aria-label="t('speakerModal.volume')"
                            class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
                 </div>
                 <!-- Speed Control (compact - tap to cycle) -->

@@ -12,7 +12,7 @@
          = primary-success, New Recording = primary). -->
     <!-- Inquire Mode Button -->
     {% if inquire_mode_enabled %}
-    <a href="/inquire" class="btn btn--sm header-action" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
+    <a href="/inquire" class="btn btn--sm header-action" :aria-label="t('inquire.title')" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
         <i class="fas fa-search"></i>
         <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
     </a>
@@ -29,7 +29,7 @@
     </button>
 
     <!-- New Recording Button -->
-    <button @click="switchToUploadView" class="btn btn--sm btn--primary header-action">
+    <button @click="switchToUploadView" class="btn btn--sm btn--primary header-action" :aria-label="t('nav.newRecording')">
         <i class="fas fa-plus"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
     </button>
 

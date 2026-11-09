@@ -50,8 +50,8 @@ body.unloaded {
 
     --text-primary: #1f2937; /* gray-800 */
     --text-secondary: #374151; /* gray-700 */
-    --text-muted: #6b7280; /* gray-500 */
-    --text-light: #9ca3af; /* gray-400 */
+    --text-muted: #565e6b; /* between gray-600 and gray-500: 4.5:1 on the muted grey, blue accent and scheme surfaces */
+    --text-light: #5f6773; /* 4.5:1 or more on the muted grey and accent-free surfaces */
     --text-accent: #1d4ed8; /* blue-700 */
     --text-button: #ffffff; /* white */
     --text-danger: #b91c1c; /* red-700 */
@@ -84,10 +84,10 @@ body.unloaded {
     --bg-tertiary: #ebf4ed; /* light muted green */
     --bg-accent: #d0e8d7; /* muted pastel green */
     --bg-accent-hover: #c1e0ca; /* deeper muted green */
-    --bg-button: #059669; /* keep button visible */
-    --bg-button-hover: #047857; /* keep button visible */
+    --bg-button: #047857; /* keep button visible */
+    --bg-button-hover: #065f46; /* keep button visible */
     --bg-input: #f9fcfa; /* slightly green white */
-    --text-accent: #047857; /* keep accent text visible */
+    --text-accent: #037252; /* keep accent text visible */
     --border-primary: #d4e5d8; /* muted green border */
     --border-secondary: #c2dcc9; /* soft green border */
     --border-accent: #a8d0b3; /* medium green border */
@@ -123,7 +123,7 @@ body.unloaded {
     --bg-button: #e11d48; /* keep button visible */
     --bg-button-hover: #be185d; /* keep button visible */
     --bg-input: #fcf9fa; /* slightly rose white */
-    --text-accent: #be185d; /* keep accent text visible */
+    --text-accent: #b41658; /* keep accent text visible */
     --border-primary: #e5d6de; /* muted rose border */
     --border-secondary: #dbc8d2; /* soft rose border */
     --border-accent: #d0b0bf; /* medium rose border */
@@ -138,10 +138,10 @@ body.unloaded {
     --bg-tertiary: #f3efe9; /* light muted amber */
     --bg-accent: #e5ddd1; /* muted pastel amber */
     --bg-accent-hover: #ddd2c2; /* deeper muted amber */
-    --bg-button: #d97706; /* keep button visible */
-    --bg-button-hover: #b45309; /* keep button visible */
+    --bg-button: #b45309; /* keep button visible */
+    --bg-button-hover: #92400e; /* keep button visible */
     --bg-input: #fbfaf8; /* slightly amber white */
-    --text-accent: #b45309; /* keep accent text visible */
+    --text-accent: #994607; /* keep accent text visible */
     --border-primary: #e2dace; /* muted amber border */
     --border-secondary: #d9cdb9; /* soft amber border */
     --border-accent: #cdbca1; /* medium amber border */
@@ -156,10 +156,10 @@ body.unloaded {
     --bg-tertiary: #ecf4f3; /* light muted teal */
     --bg-accent: #d2e5e2; /* muted pastel teal */
     --bg-accent-hover: #c3ddd9; /* deeper muted teal */
-    --bg-button: #0d9488; /* keep button visible */
-    --bg-button-hover: #0f766e; /* keep button visible */
+    --bg-button: #0f766e; /* keep button visible */
+    --bg-button-hover: #115e59; /* keep button visible */
     --bg-input: #f9fcfb; /* slightly teal white */
-    --text-accent: #0f766e; /* keep accent text visible */
+    --text-accent: #0e7068; /* keep accent text visible */
     --border-primary: #c8dfdc; /* muted teal border */
     --border-secondary: #b5d3ce; /* soft teal border */
     --border-accent: #9cc5be; /* medium teal border */
@@ -176,7 +176,7 @@ body.unloaded {
     --bg-accent: #1e3a8a; /* blue-900 */
     --bg-accent-hover: #1e40af; /* blue-800 */
     --bg-button: #2563eb; /* blue-600 */
-    --bg-button-hover: #3b82f6; /* blue-500 */
+    --bg-button-hover: #1d4ed8; /* blue-700, as in light mode: white text keeps 6.7:1 (blue-500 gave 3.67:1) */
     --bg-danger: #dc2626; /* red-600 */
     --bg-danger-hover: #ef4444; /* red-500 */
     --bg-danger-light: #7f1d1d; /* red-900 */
@@ -190,8 +190,8 @@ body.unloaded {
     --text-primary: #f3f4f6; /* gray-100 */
     --text-secondary: #d1d5db; /* gray-300 */
     --text-muted: #cbd5e1; /* slate-300 - improved contrast */
-    --text-light: #94a3b8; /* slate-400 - better visibility */
-    --text-accent: #60a5fa; /* blue-400 */
+    --text-light: #a1aec2; /* 4.5:1 or more on bg-tertiary */
+    --text-accent: #7ab3fb; /* between blue-300 and blue-400: 4.5:1 on the accent and tertiary surfaces */
     --text-button: #ffffff; /* white */
     --text-danger: #f87171; /* red-400 */
     --text-danger-strong: #fca5a5; /* red-300 */
@@ -219,8 +219,8 @@ body.unloaded {
     --bg-tertiary: #2e3c30; /* lighter dark with emerald hint */
     --bg-accent: #384838; /* visible emerald accent */
     --bg-accent-hover: #425440; /* lighter emerald accent */
-    --bg-button: #059669; /* keep button visible */
-    --bg-button-hover: #10b981; /* keep button visible */
+    --bg-button: #047857; /* keep button visible */
+    --bg-button-hover: #065f46; /* keep button visible */
     --bg-input: #2e3c30; /* darker emerald input background */
     --text-accent: #7dd3ae; /* muted pastel emerald text */
     --border-primary: #3a4540; /* visible emerald border */
@@ -240,7 +240,7 @@ body.unloaded {
     --bg-accent: #423c48; /* visible purple accent */
     --bg-accent-hover: #4e4854; /* lighter purple accent */
     --bg-button: #7c3aed; /* keep button visible */
-    --bg-button-hover: #8b5cf6; /* keep button visible */
+    --bg-button-hover: #6d28d9; /* keep button visible */
     --bg-input: #36303c; /* darker purple input background */
     --text-accent: #b8a5d4; /* muted pastel purple text */
     --border-primary: #484050; /* visible purple border */
@@ -260,7 +260,7 @@ body.unloaded {
     --bg-accent: #483c40; /* visible rose accent */
     --bg-accent-hover: #54484c; /* lighter rose accent */
     --bg-button: #e11d48; /* keep button visible */
-    --bg-button-hover: #f43f5e; /* keep button visible */
+    --bg-button-hover: #be123c; /* keep button visible */
     --bg-input: #3c3030; /* darker rose input background */
     --text-accent: #d4a5b4; /* muted pastel rose text */
     --border-primary: #504048; /* visible rose border */
@@ -279,8 +279,8 @@ body.unloaded {
     --bg-tertiary: #3c342e; /* lighter dark with amber hint */
     --bg-accent: #484038; /* visible amber accent */
     --bg-accent-hover: #544c42; /* lighter amber accent */
-    --bg-button: #d97706; /* keep button visible */
-    --bg-button-hover: #f59e0b; /* keep button visible */
+    --bg-button: #b45309; /* keep button visible */
+    --bg-button-hover: #92400e; /* keep button visible */
     --bg-input: #3c342e; /* darker amber input background */
     --text-accent: #d4c5a5; /* muted pastel amber text */
     --border-primary: #504840; /* visible amber border */
@@ -299,8 +299,8 @@ body.unloaded {
     --bg-tertiary: #2e3c3c; /* lighter dark with teal hint */
     --bg-accent: #384848; /* visible teal accent */
     --bg-accent-hover: #425454; /* lighter teal accent */
-    --bg-button: #0d9488; /* keep button visible */
-    --bg-button-hover: #14b8a6; /* keep button visible */
+    --bg-button: #0f766e; /* keep button visible */
+    --bg-button-hover: #115e59; /* keep button visible */
     --bg-input: #2e3c3c; /* darker teal input background */
     --text-accent: #a5d4d0; /* muted pastel teal text */
     --border-primary: #404848; /* visible teal border */
@@ -634,7 +634,6 @@ div[v-if="!editingNotes"] {
      letter-spacing: 0.025em;
      vertical-align: middle; /* Align with text */
      margin-left: 0.5rem; /* Less space */
-     opacity: 0.85; /* Slightly more subtle */
      transition: opacity 0.2s ease;
  }
  .status-badge:hover {
@@ -1170,7 +1169,7 @@ body {
 
 .speaker-highlight.speaker-color-4 {
     background-color: #FFF3E0;
-    color: #E65100;
+    color: #B23C00;
     box-shadow: 0 0 8px rgba(255, 243, 224, 0.6), 0 0 12px rgba(230, 81, 0, 0.2);
 }
 
@@ -1188,7 +1187,7 @@ body {
 
 .speaker-highlight.speaker-color-7 {
     background-color: #FFF9C4;
-    color: #F57F17;
+    color: #8A5A00;
     box-shadow: 0 0 8px rgba(255, 249, 196, 0.6), 0 0 12px rgba(245, 127, 23, 0.2);
 }
 
@@ -1206,7 +1205,7 @@ body {
 
 .speaker-highlight.speaker-color-10 {
     background-color: #F1F8E9;
-    color: #558B2F;
+    color: #476F26;
     box-shadow: 0 0 8px rgba(241, 248, 233, 0.6), 0 0 12px rgba(85, 139, 47, 0.2);
 }
 
@@ -1224,7 +1223,7 @@ body {
 
 .speaker-highlight.speaker-color-13 {
     background-color: #FFF8E1;
-    color: #FF8F00;
+    color: #8A5200;
     box-shadow: 0 0 8px rgba(255, 248, 225, 0.6), 0 0 12px rgba(255, 143, 0, 0.2);
 }
 
@@ -1450,7 +1449,7 @@ body {
     flex-direction: row;
     flex-wrap: wrap;
     overflow: hidden;
-    max-height: 3rem; /* Allow up to 2 rows of speakers */
+    max-height: 4.5rem; /* Two full rows of speaker chips (about 27px each) plus the padding */
     padding: 0.25rem 0.75rem;
 }
 
@@ -2118,16 +2117,16 @@ body {
 .speaker-color-1  { background-color: #E3F2FD; color: #0D47A1; --speaker-fg: #0D47A1; } /* Blue */
 .speaker-color-2  { background-color: #F3E5F5; color: #6A1B9A; --speaker-fg: #6A1B9A; } /* Purple */
 .speaker-color-3  { background-color: #E8F5E9; color: #1B5E20; --speaker-fg: #1B5E20; } /* Green */
-.speaker-color-4  { background-color: #FFF3E0; color: #E65100; --speaker-fg: #E65100; } /* Orange */
+.speaker-color-4  { background-color: #FFF3E0; color: #B23C00; --speaker-fg: #B23C00; } /* Orange */
 .speaker-color-5  { background-color: #FCE4EC; color: #AD1457; --speaker-fg: #AD1457; } /* Pink */
 .speaker-color-6  { background-color: #E0F7FA; color: #006064; --speaker-fg: #006064; } /* Cyan */
-.speaker-color-7  { background-color: #FFF9C4; color: #F57F17; --speaker-fg: #F57F17; } /* Yellow */
+.speaker-color-7  { background-color: #FFF9C4; color: #8A5A00; --speaker-fg: #8A5A00; } /* Yellow */
 .speaker-color-8  { background-color: #EFEBE9; color: #5D4037; --speaker-fg: #5D4037; } /* Brown */
 .speaker-color-9  { background-color: #E8EAF6; color: #283593; --speaker-fg: #283593; } /* Indigo */
-.speaker-color-10 { background-color: #F1F8E9; color: #558B2F; --speaker-fg: #558B2F; } /* Lime */
+.speaker-color-10 { background-color: #F1F8E9; color: #476F26; --speaker-fg: #476F26; } /* Lime */
 .speaker-color-11 { background-color: #FFEBEE; color: #C62828; --speaker-fg: #C62828; } /* Red */
 .speaker-color-12 { background-color: #ECEFF1; color: #37474F; --speaker-fg: #37474F; } /* Blue Grey */
-.speaker-color-13 { background-color: #FFF8E1; color: #FF8F00; --speaker-fg: #FF8F00; } /* Amber */
+.speaker-color-13 { background-color: #FFF8E1; color: #8A5200; --speaker-fg: #8A5200; } /* Amber */
 .speaker-color-14 { background-color: #EDE7F6; color: #4527A0; --speaker-fg: #4527A0; } /* Deep Purple */
 .speaker-color-15 { background-color: #E0F2F1; color: #00695C; --speaker-fg: #00695C; } /* Teal */
 .speaker-color-16 { background-color: #FBE9E7; color: #BF360C; --speaker-fg: #BF360C; } /* Deep Orange */

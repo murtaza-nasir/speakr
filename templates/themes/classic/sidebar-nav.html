@@ -249,14 +249,16 @@
                                        @change="filterDatePreset = ''"
                                        type="date"
                                        class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
-                                       :placeholder="t('form.dateFrom')">
+                                       :placeholder="t('form.dateFrom')"
+                                       :aria-label="t('form.dateFrom')">
                             </div>
                             <div>
                                 <input v-model="filterDateRange.end"
                                        @change="filterDatePreset = ''"
                                        type="date"
                                        class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
-                                       :placeholder="t('form.dateTo')">
+                                       :placeholder="t('form.dateTo')"
+                                       :aria-label="t('form.dateTo')">
                             </div>
                         </div>
                     </div>

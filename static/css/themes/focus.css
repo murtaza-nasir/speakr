@@ -98,7 +98,7 @@ html[data-ui-theme="focus"] {
     --f-surface-3: #e6e0d4;     /* pressed, track */
     --f-text: #26221d;
     --f-text-2: #554f46;
-    --f-text-3: #766f63;        /* >= 4.5:1 on --f-surface and --f-bg */
+    --f-text-3: #686256;        /* >= 4.5:1 on --f-bg, --f-surface, --f-surface-2 and --f-surface-3 */
     --f-divider: #e8e2d6;
     --f-border: #d6cfc1;
     --f-shadow-1: 0 1px 2px rgba(60, 45, 20, 0.06);

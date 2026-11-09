@@ -501,7 +501,8 @@ html.dark {
 }
 
 .toggle.is-on:hover {
-    opacity: 0.92;
+    /* a filter, not opacity: opacity blends the label into the page and drops its contrast */
+    filter: brightness(0.94);
 }
 
 
@@ -1423,6 +1424,18 @@ select:focus-visible,
 textarea:focus-visible {
     outline: 2px solid var(--border-focus);
     outline-offset: 2px;
+}
+
+/* Reduced motion: the view toggles change colour at once, not over a fade */
+@media (prefers-reduced-motion: reduce) {
+    .toggle, .toggle-button { transition: none; }
+}
+
+/* Scroll panes made keyboard-focusable (tabindex="0" role="region"): the ring
+   sits inside the pane so a clipping ancestor cannot cut it. */
+[role="region"][tabindex="0"]:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
 }
 
 /* But override outline for elements that already provide their own ring */

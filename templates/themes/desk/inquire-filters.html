@@ -11,7 +11,8 @@
                      style="border-bottom-color: var(--border-primary);">
                     <h2 class="text-base font-semibold">${ t('inquire.filters') }</h2>
                     <button @click="isMobileSidebarOpen = false"
-                            class="btn btn--icon">
+                            class="btn btn--icon"
+                            :aria-label="t('buttons.close')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -102,11 +103,11 @@
                         <div class="space-y-2">
                             <div>
                                 <label class="t-label mb-1 block">${ t('inquire.from') }</label>
-                                <input type="date" v-model="inquireFilters.dateFrom" class="field" style="font-size: var(--fs-meta);">
+                                <input type="date" v-model="inquireFilters.dateFrom" :aria-label="t('inquire.from')" class="field" style="font-size: var(--fs-meta);">
                             </div>
                             <div>
                                 <label class="t-label mb-1 block">${ t('inquire.to') }</label>
-                                <input type="date" v-model="inquireFilters.dateTo" class="field" style="font-size: var(--fs-meta);">
+                                <input type="date" v-model="inquireFilters.dateTo" :aria-label="t('inquire.to')" class="field" style="font-size: var(--fs-meta);">
                             </div>
                         </div>
                     </div>

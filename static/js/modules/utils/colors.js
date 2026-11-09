@@ -22,14 +22,17 @@ function calculateLuminance(hexColor) {
     const g = parseInt(fullHex.substr(2, 2), 16) / 255;
     const b = parseInt(fullHex.substr(4, 2), 16) / 255;
 
-    // Calculate relative luminance using simplified formula
-    // (More accurate would use gamma correction, but this is sufficient)
-    return 0.299 * r + 0.587 * g + 0.114 * b;
+    // WCAG 2.x relative luminance: linearise each sRGB channel first
+    const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
 /**
- * Get the appropriate text color (black or white) for a given background color
- * Ensures readable contrast based on background luminance
+ * Get the appropriate text color (black or white) for a given background color.
+ * Picks whichever of the two has the higher WCAG contrast ratio against the
+ * background. Contrast with white is 1.05 / (L + 0.05), with black it is
+ * (L + 0.05) / 0.05, so the two are equal at L of about 0.179 and the better
+ * of them is never below 4.58:1, which meets WCAG AA for normal text.
  * @param {string} bgColor - Background color in hex format
  * @returns {string} Either 'white' or 'black'
  */
@@ -40,9 +43,10 @@ export function getContrastTextColor(bgColor) {
 
     try {
         const luminance = calculateLuminance(bgColor);
-        // Threshold of 0.65: only very light backgrounds get black text
-        // This ensures medium/dark colors like greens, blues still get white text
-        return luminance > 0.65 ? 'black' : 'white';
+        const contrastWithWhite = 1.05 / (luminance + 0.05);
+        const contrastWithBlack = (luminance + 0.05) / 0.05;
+        // A NaN luminance (unparseable input) makes the comparison false: white
+        return contrastWithBlack > contrastWithWhite ? 'black' : 'white';
     } catch (e) {
         console.warn('Failed to calculate contrast color for:', bgColor, e);
         return 'white'; // Fallback to white
