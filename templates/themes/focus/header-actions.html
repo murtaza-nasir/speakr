@@ -11,7 +11,7 @@
                     :title="t('buttons.shareRecording')">
                 <i class="fas fa-share-alt"></i><span v-text="t('buttons.shareRecording')"></span>
             </button>
-            <details class="focus-more hidden md:block" data-focus-more
+            <details class="focus-more hidden md:block" data-focus-more data-close-outside
                      @focusout="$event.currentTarget.contains($event.relatedTarget) || $event.currentTarget.removeAttribute('open')"
                      @keydown.esc="$event.currentTarget.removeAttribute('open')">
                 <summary class="btn btn--icon" :title="t('headerActions.more')" :aria-label="t('headerActions.more')">

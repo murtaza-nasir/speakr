@@ -642,6 +642,23 @@ html[data-ui-theme="desk"] header[style*="min-height"] .header-action { min-heig
 html[data-ui-theme="desk"] header[style*="min-height"] .header-action.btn--icon { width: var(--ctl-h); }
 html[data-ui-theme="desk"] header[style*="min-height"] .btn--icon { color: var(--text-2); }
 html[data-ui-theme="desk"] header[style*="min-height"] .w-px { height: 16px; background: var(--divider); }
+/* Back link of the account, admin and group pages: the outlined, transparent button of this header. */
+html[data-ui-theme="desk"] header[style*="min-height"] .page-header__back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: var(--ctl-h);
+    margin-inline-start: var(--sp-1);
+    padding: 0 var(--sp-2);
+    background: transparent;
+    color: var(--text-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-meta);
+    text-decoration: none;
+}
+html[data-ui-theme="desk"] header[style*="min-height"] .page-header__back:hover { background: var(--row-hover); color: var(--text-primary); }
+html[data-ui-theme="desk"] header[style*="min-height"] .page-header__back i { font-size: 10px; color: var(--text-3); }
 
 /* ---- Recording detail: metadata strip --------------------------------------- */
 
@@ -845,7 +862,7 @@ html[data-ui-theme="desk"] .chat-ts-chip {
     font-variant-numeric: tabular-nums;
 }
 html[data-ui-theme="desk"] .floating-chat-header { min-height: 36px; padding: 0 var(--sp-3); }
-html[data-ui-theme="desk"] .floating-chat-fab { border-radius: var(--r-3); width: 40px; height: 40px; box-shadow: var(--shadow-md); }
+html[data-ui-theme="desk"] .floating-chat-fab { border-radius: var(--r-3); width: 44px; height: 44px; box-shadow: var(--shadow-md); }
 
 /* ---- Player bar and phones -------------------------------------------------- */
 

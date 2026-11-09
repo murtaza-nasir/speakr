@@ -741,7 +741,7 @@ html[data-ui-theme="cards"] .floating-chat-input .btn--primary.btn--icon { borde
 html[data-ui-theme="cards"] .floating-chat-fab {
     background: var(--c-primary-c); color: var(--c-on-primary-c);
     box-shadow: var(--c-e3); border-radius: var(--c-r-lg);
-    transition: transform var(--c-dur) var(--c-ease), box-shadow var(--c-dur) var(--c-ease);
+    transition: transform var(--c-dur) var(--c-ease), box-shadow var(--c-dur) var(--c-ease), opacity var(--c-dur) var(--c-ease);
 }
 html[data-ui-theme="cards"] .floating-chat-fab:hover { transform: translateY(-2px); }
 html[data-ui-theme="cards"] .user-message,
@@ -928,6 +928,14 @@ html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover
 @media (min-width: 641px) {
     html[data-ui-theme="cards"] .progress-popup { left: 16px; bottom: 16px; width: 324px; }
 }
+/* With the sidebar collapsed there is no sidebar column to sit in, and the
+   bottom-left corner would cover the left edge of the main card. The popup then
+   moves to the bottom-right, above the player bar and left of the chat button. */
+@media (min-width: 641px) {
+    html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+        left: auto; right: 88px; bottom: 92px; width: 300px;
+    }
+}
 html[data-ui-theme="cards"] .progress-popup__card {
     background: var(--c-surface);
     border: 1px solid var(--c-divider);
@@ -1067,3 +1075,10 @@ html[data-ui-theme="cards"] #rightMainColumn table.w-full th.px-3,
 html[data-ui-theme="cards"] #rightMainColumn table.w-full td.px-3 { padding-left: 8px; padding-right: 8px; }
 /* below ~300px of pane the table cannot fit: let the card scroll sideways instead of cutting columns */
 html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { overflow-x: auto; }
+
+/* Phones: the tool icons under the header and the header's Inquire and New buttons keep the
+   design's heights (icon buttons 38px tall, header buttons 40px) instead of the 30px of btn--sm. */
+@media (max-width: 767px) {
+    html[data-ui-theme="cards"] .mh-tools .btn--icon.btn--sm { min-height: 38px; }
+    html[data-ui-theme="cards"] #app > header .btn.header-action.btn--sm { min-height: 40px; }
+}

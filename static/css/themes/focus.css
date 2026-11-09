@@ -17,9 +17,36 @@
  * are the ones that must beat them; removing all of them changed the main
  * views visibly, so they stay.
  *
- * No font file is bundled. The reading face is a system serif stack ordered
- * by quality of the face and by how widely it is installed.
+ * The reading face is Source Serif 4 (SIL Open Font License; files and licence
+ * in static/vendor/fonts/source-serif-4/, fetched at build by
+ * scripts/download_offline_deps.py). The @font-face rules below sit in this
+ * stylesheet, so a browser downloads the files only while the Focus theme is
+ * active and only for the styles a page uses. The rest of the stack is the
+ * fallback while the files load or when they are missing.
  * ========================================================================= */
+
+/* ---- Reading face ----------------------------------------------------------- */
+@font-face {
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../../vendor/fonts/source-serif-4/SourceSerif4-Regular.otf.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Source Serif 4";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../../vendor/fonts/source-serif-4/SourceSerif4-It.otf.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 600 700;
+    font-display: swap;
+    src: url("../../vendor/fonts/source-serif-4/SourceSerif4-Semibold.otf.woff2") format("woff2");
+}
 
 /* ---- Tokens: type, geometry, motion (same in light and dark) -------------- */
 html[data-ui-theme="focus"] {
@@ -576,6 +603,12 @@ html[data-ui-theme="focus"] body .focus-toggles > button span { display: inline 
 
 /* ---- Recording list ------------------------------------------------------ */
 html[data-ui-theme="focus"] body .sidebar .flex-1.overflow-y-auto { padding: 0 8px 16px; }
+/* The padding shorthand above would defeat the room primitives.css leaves at the end of the
+   list while the queue popup floats over it, so the same values are restated here. */
+@media (min-width: 641px) {
+    html[data-ui-theme="focus"] body:has(.progress-popup:not(.minimized)) .sidebar .flex-1.overflow-y-auto { padding-bottom: calc(min(16rem, 25vh) + 7rem); }
+    html[data-ui-theme="focus"] body:has(.progress-popup.minimized) .sidebar .flex-1.overflow-y-auto { padding-bottom: 5rem; }
+}
 html[data-ui-theme="focus"] body .recording-group-header {
     position: sticky;
     top: 0;
