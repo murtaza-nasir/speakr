@@ -585,6 +585,9 @@ html[data-ui-theme="cards"] #mainColumnResizer::before { background: transparent
 
 /* summary / notes: one raised card inside the tinted column */
 html[data-ui-theme="cards"] #rightMainColumn .prose-flush {
+    /* the shared rule gives it width:100%, which plus the margin ran past the pane */
+    width: auto;
+    max-height: calc(100% - 28px);
     margin: 14px;
     padding: 18px 22px;
     background: var(--c-surface);
@@ -675,6 +678,8 @@ html[data-ui-theme="cards"] .speaker-bubble.active-playing-segment { background-
 html[data-ui-theme="cards"] .view-mode-toggle { border-radius: var(--c-r-pill); background: var(--c-surface-2); border-color: var(--c-divider); }
 
 /* player: a floating pill, not a full-width bar */
+/* player placed above the split view (account setting): space above the pill as well */
+html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button):has(+ #mainContentColumns) { margin-top: 14px; }
 html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button) {
     margin: 0 16px 14px;
     padding: 8px 18px;
@@ -694,6 +699,28 @@ html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button) .font-m
 
 /* tab bars */
 html[data-ui-theme="cards"] .tabs-bar { min-height: 52px; padding-left: 12px; padding-right: 12px; }
+/* a narrow pane: the tab strip scrolls and the action buttons keep their place */
+html[data-ui-theme="cards"] .tabs-bar > .tabs { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+html[data-ui-theme="cards"] .tabs-bar > .tabs::-webkit-scrollbar { display: none; }
+html[data-ui-theme="cards"] .tabs-bar > .tabs > .tab { flex: none; padding-left: 10px; padding-right: 10px; }
+html[data-ui-theme="cards"] .tabs-bar__actions { flex: none; }
+/* Narrow panes (sidebar open, 1024-1280 wide windows): the action buttons drop under the tabs
+   instead of squeezing the tab labels until they are cut mid-word. Container queries read the pane's
+   own width, which the viewport width does not give (it also depends on the sidebar and the divider). */
+html[data-ui-theme="cards"] #leftMainColumn,
+html[data-ui-theme="cards"] #rightMainColumn { container-type: inline-size; }
+@container (max-width: 500px) {
+    html[data-ui-theme="cards"] .tabs-bar { flex-wrap: wrap; row-gap: 0; padding-top: 4px; padding-bottom: 4px; min-height: 0; }
+    html[data-ui-theme="cards"] .tabs-bar__actions { margin-left: auto; padding-bottom: 2px; }
+    html[data-ui-theme="cards"] .tabs-bar > .tabs { max-width: 100%; }
+}
+@container (max-width: 380px) {
+    html[data-ui-theme="cards"] .tabs-bar .tab__count { display: none; }
+}
+@container (max-width: 300px) {
+    /* the strip scrolls here: fade its right edge so a cut tab reads as "more" */
+    html[data-ui-theme="cards"] .tabs-bar > .tabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent); }
+}
 
 /* ============================================================================
  * 6. Chat: modern bubble conversation, floating card with a calm header.
@@ -869,8 +896,10 @@ html[data-ui-theme="cards"] .chat-message.ai-message .prose h3 { font-weight: 70
 /* ============================================================================
  * 9. Menus, popup, toasts.
  * ========================================================================= */
+/* data-header-reprocess-menu marks the wrapper around the button, not the panel: the panel is its
+   [role="menu"] child (setting the width on the wrapper left a 240px hole in the header row) */
 html[data-ui-theme="cards"] [data-user-menu-dropdown],
-html[data-ui-theme="cards"] [data-header-reprocess-menu] {
+html[data-ui-theme="cards"] [data-header-reprocess-menu] > [role="menu"] {
     padding: 6px;
     width: 15rem;
     border-radius: var(--c-r-md);
@@ -890,8 +919,8 @@ html[data-ui-theme="cards"] [data-user-menu-dropdown] form button:hover,
 html[data-ui-theme="cards"] [data-user-menu-dropdown] > div[class*="cursor-pointer"]:hover { background: var(--c-hover); }
 html[data-ui-theme="cards"] [data-user-menu-dropdown] i.fas { color: var(--c-text-3); }
 html[data-ui-theme="cards"] [data-user-menu-dropdown] .border-t { border-color: var(--c-divider); margin: 4px 8px; }
-html[data-ui-theme="cards"] [data-header-reprocess-menu] button { border-radius: var(--c-r-sm); }
-html[data-ui-theme="cards"] [data-header-reprocess-menu] button:hover { background: var(--c-hover); }
+html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"] { border-radius: var(--c-r-sm); }
+html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover { background: var(--c-hover); }
 
 /* Processing queue. On desktop it sits at the bottom of the sidebar column
    (the list is 356px wide), so it never covers the recording being read; the
@@ -1032,3 +1061,9 @@ html[data-ui-theme="cards"] #app header .btn[style*="#16a34a"] {
     color: var(--c-on-ok-c) !important;
 }
 html[data-ui-theme="cards"] header button.rounded-full > span.w-6.h-6.text-white { color: var(--text-accent); }
+
+/* Stats table in a narrow right pane: tighter cell padding so the last column (wpm) is not cut off */
+html[data-ui-theme="cards"] #rightMainColumn table.w-full th.px-3,
+html[data-ui-theme="cards"] #rightMainColumn table.w-full td.px-3 { padding-left: 8px; padding-right: 8px; }
+/* below ~300px of pane the table cannot fit: let the card scroll sideways instead of cutting columns */
+html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { overflow-x: auto; }
