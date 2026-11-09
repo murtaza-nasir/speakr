@@ -736,6 +736,12 @@ class FairJobQueue:
             from src.models import ProcessingJob, Recording
             from sqlalchemy.exc import IntegrityError
 
+            # Take this session's connection before the lock (D564). A
+            # thread that holds the lock must never wait for the pool: with
+            # every connection checked out by threads queued on the lock,
+            # that wait could only end in the 30 s pool timeout.
+            db.session.connection()
+
             with self._enqueue_lock:
                 # Check for existing active job of the SAME TYPE for this recording
                 # Allow different job types to coexist (e.g., transcribe and summarize)

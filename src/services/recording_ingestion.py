@@ -843,26 +843,43 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
     # Params were already resolved (incl. admin model validation) in ingest.
     job_params = resolved_params
 
+    # enqueue() works in a session of its own. The recording was committed,
+    # but reading it again opened a new transaction that would hold one
+    # pool connection for the rest of the request while enqueue() takes a
+    # second; with many uploads in one process the pool ran out (D564).
+    # Ending that read-only transaction here gives the connection back. The
+    # loaded objects are kept as they are, so the response reports what it
+    # did before and reading them does not open a transaction again.
+    recording_id, owner_id = recording.id, owner.id
+    from src.database import db
+    session = db.session()
+    expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = expire_on_commit
+
     if conversion_deferred:
         # The convert job queues the transcription with these params.
         job_queue.enqueue(
-            user_id=owner.id,
-            recording_id=recording.id,
+            user_id=owner_id,
+            recording_id=recording_id,
             job_type='convert',
             params={'transcribe': job_params, 'extracted_audio_limit_mb': extracted_audio_limit_mb},
             is_new_upload=True
         )
-        current_app.logger.info(f"Conversion job queued for recording ID: {recording.id}")
+        current_app.logger.info(f"Conversion job queued for recording ID: {recording_id}")
     else:
-        current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
+        current_app.logger.info(f"Queueing transcription for recording {recording_id} with params: {job_params}")
         job_queue.enqueue(
-            user_id=owner.id,
-            recording_id=recording.id,
+            user_id=owner_id,
+            recording_id=recording_id,
             job_type='transcribe',
             params=job_params,
             is_new_upload=True
         )
-        current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
+        current_app.logger.info(f"Transcription job queued for recording ID: {recording_id}")
 
     # Webhook event (#275). Fan-out happens off-request via the
     # dispatcher; this call only enqueues a delivery row per matching
