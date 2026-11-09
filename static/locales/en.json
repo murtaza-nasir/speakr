@@ -3764,5 +3764,20 @@
     "library": "Library",
     "recordings": "Recordings",
     "share": "Share"
+  },
+  "whatsNew": {
+    "title": "What's new in Speakr {{version}}",
+    "dismiss": "Got it",
+    "releases": {
+      "0_10_20": {
+        "1": "Choose how Speakr looks: six layouts in Account → Appearance, each with your colour scheme and dark mode.",
+        "2": "Download a whole Inquire conversation as a Word document, or clear it and start again.",
+        "3": "Copy or download a single answer in Inquire and in a recording's chat.",
+        "4": "Word downloads have working links, and Inquire answers include their sources.",
+        "5": "The transcript editor shows every sentence in full.",
+        "6": "Transcript templates can start with a header and can write WebVTT subtitle timestamps.",
+        "7": "Buttons stay visible on smaller screens and in narrow panes."
+      }
+    }
   }
 }

@@ -400,6 +400,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pendingRecordingMode = ref(null);
             const uploadDisclaimer = ref('');
             const showUploadDisclaimerModal = ref(false);
+            const whatsNew = ref({ show: false, items: [], version: '' });
+            // Close the What's new dialog and record it for the account, so
+            // other devices do not show it again.
+            const dismissWhatsNew = async () => {
+                whatsNew.value = { ...whatsNew.value, show: false };
+                try {
+                    await fetch('/api/user/whats-new/seen', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken.value },
+                    });
+                } catch (e) {
+                    console.warn('Could not record that What\'s new was read:', e);
+                }
+            };
             const customBanner = ref('');
             const showBanner = ref(true);
 
@@ -1906,6 +1920,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
+                whatsNew, dismissWhatsNew,
                 customBanner, showBanner,
                 showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, hintsPopoverStyle, toggleHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
@@ -4321,6 +4336,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
+                        // What's new after an update: once per account, only
+                        // when this release has notes in the locale files.
+                        const wn = config.whats_new;
+                        if (wn && wn.enabled && wn.release && wn.seen !== wn.release && window.i18n?.items) {
+                            const items = window.i18n.items('whatsNew.releases.' + wn.release);
+                            if (items.length) {
+                                whatsNew.value = { show: true, items,
+                                    version: String(wn.version || '').replace(/^v/, '').replace(/-.*$/, '') };
+                            }
+                        }
                         maxConcurrentUploads.value = config.max_concurrent_uploads || 3;
                         // Video / audio-only upload config. videoRetention from
                         // the server controls whether the "Keep audio only"

@@ -540,6 +540,11 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'ui_theme', 'VARCHAR(32)'):
             app.logger.info("Added ui_theme column to user table")
 
+        # Release whose "What's new" notes the user has seen; NULL (existing
+        # accounts) shows the current notes once
+        if add_column_if_not_exists(engine, 'user', 'whats_new_seen', 'VARCHAR(32)'):
+            app.logger.info("Added whats_new_seen column to user table")
+
         # Raised when the password is set, to end the account's sign-ins (#437)
         if add_column_if_not_exists(engine, 'user', 'session_version', 'INTEGER'):
             app.logger.info("Added session_version column to user table")
@@ -1215,6 +1220,15 @@ def _run_migrations(app, engine):
                 setting_type='string'
             )
             app.logger.info("Initialized admin_default_initial_prompt setting")
+
+        if not SystemSetting.query.filter_by(key='show_whats_new').first():
+            SystemSetting.set_setting(
+                key='show_whats_new',
+                value='true',
+                description="After an update, show each user a short list of the new features once.",
+                setting_type='boolean'
+            )
+            app.logger.info("Initialized show_whats_new setting")
 
         if not SystemSetting.query.filter_by(key='enable_folders').first():
             SystemSetting.set_setting(

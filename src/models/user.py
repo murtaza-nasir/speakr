@@ -11,6 +11,12 @@ from sqlalchemy import func
 from src.database import db
 
 
+
+def _current_release_key():
+    from src.config.version import release_key
+    return release_key()
+
+
 class User(db.Model, UserMixin):
     """User model for authentication and profile management."""
 
@@ -123,6 +129,10 @@ class User(db.Model, UserMixin):
     # Null means the default theme; an id that is unknown or no longer
     # available is shown as the default as well.
     ui_theme = db.Column(db.String(32), nullable=True)
+    # Release whose "What's new" notes the user has seen (src.config.version
+    # release_key). NULL for accounts from before the column, so they see the
+    # current notes once; new accounts start at the current release.
+    whats_new_seen = db.Column(db.String(32), nullable=True, default=lambda: _current_release_key())
     # Audio player placement in the recording-detail view. 'bottom'
     # (default) keeps the player anchored under the content columns;
     # 'top' renders it above the columns so it sits closer to the

@@ -224,6 +224,30 @@ class I18n {
     }
 
     /**
+     * The strings of a list or numbered object, in order (e.g. a release's
+     * notes, whatsNew.releases.0_10_20 = { "1": "...", "2": "..." }). The
+     * English list is used when the current language has none.
+     * @param {string} key - Dot-separated key path
+     * @returns {string[]} The strings, or an empty list
+     */
+    items(key) {
+        const pick = (locale) => {
+            let value = this.translations[locale];
+            for (const k of key.split('.')) {
+                if (value && typeof value === 'object' && k in value) value = value[k];
+                else return null;
+            }
+            if (!value || typeof value !== 'object') return null;
+            const list = Array.isArray(value)
+                ? value
+                : Object.keys(value).sort((a, b) => Number(a) - Number(b)).map((k) => value[k]);
+            const strings = list.filter((v) => typeof v === 'string' && v.trim());
+            return strings.length ? strings : null;
+        };
+        return pick(this.currentLocale) || pick(this.fallbackLocale) || [];
+    }
+
+    /**
      * Replace template variables in translation string
      * @param {string} text - Text with placeholders like {{variable}}
      * @param {Object} params - Parameters to replace

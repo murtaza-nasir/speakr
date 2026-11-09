@@ -53,6 +53,14 @@ jobs:
       - name: Install dependencies
         run: pip install --require-hashes --no-deps -r requirements.lock -r requirements-dev.lock
 
+      # The pinned Tailwind CLI is downloaded once per version and kept, so a
+      # failing GitHub release download does not fail the tests.
+      - name: Cache the Tailwind CLI
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v6.1.0
+        with:
+          path: .cache/tailwindcss
+          key: tailwindcss-${{ runner.os }}-${{ hashFiles('scripts/build_css.sh') }}
+
       - name: Build the Tailwind stylesheet as the image build does
         run: scripts/build_css.sh
 
@@ -99,6 +107,14 @@ jobs:
 
       - name: Install dependencies
         run: pip install --require-hashes --no-deps -r requirements.lock -r requirements-dev.lock
+
+      # The pinned Tailwind CLI is downloaded once per version and kept, so a
+      # failing GitHub release download does not fail the tests.
+      - name: Cache the Tailwind CLI
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v6.1.0
+        with:
+          path: .cache/tailwindcss
+          key: tailwindcss-${{ runner.os }}-${{ hashFiles('scripts/build_css.sh') }}
 
       - name: Build the Tailwind stylesheet as the image build does
         run: scripts/build_css.sh
@@ -218,6 +234,14 @@ jobs:
 
       - name: Download vendor files as the image build does
         run: PRODUCTION=1 python scripts/download_offline_deps.py
+
+      # The pinned Tailwind CLI is downloaded once per version and kept, so a
+      # failing GitHub release download does not fail the tests.
+      - name: Cache the Tailwind CLI
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v6.1.0
+        with:
+          path: .cache/tailwindcss
+          key: tailwindcss-${{ runner.os }}-${{ hashFiles('scripts/build_css.sh') }}
 
       - name: Build the Tailwind stylesheet as the image build does
         run: scripts/build_css.sh

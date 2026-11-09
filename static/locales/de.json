@@ -3764,5 +3764,20 @@
     "library": "Bibliothek",
     "recordings": "Aufnahmen",
     "share": "Teilen"
+  },
+  "whatsNew": {
+    "title": "Neu in Speakr {{version}}",
+    "dismiss": "Verstanden",
+    "releases": {
+      "0_10_20": {
+        "1": "Wählen Sie das Aussehen von Speakr: sechs Layouts unter Konto → Erscheinungsbild, jeweils mit Ihrem Farbschema und dem dunklen Modus.",
+        "2": "Laden Sie ein ganzes Inquire-Gespräch als Word-Dokument herunter, oder leeren Sie es und beginnen Sie neu.",
+        "3": "Kopieren Sie eine einzelne Antwort in Inquire und im Chat einer Aufnahme, oder laden Sie sie herunter.",
+        "4": "Word-Downloads enthalten funktionierende Links, und Inquire-Antworten enthalten ihre Quellen.",
+        "5": "Der Transkript-Editor zeigt jeden Satz vollständig.",
+        "6": "Transkriptvorlagen können mit einer Kopfzeile beginnen und WebVTT-Untertitelzeitstempel schreiben.",
+        "7": "Schaltflächen bleiben auf kleineren Bildschirmen und in schmalen Bereichen sichtbar."
+      }
+    }
   }
 }

@@ -26,4 +26,14 @@ def get_version():
     return "unknown"
 
 
+def release_key(version=None):
+    """'v0.10.20-alpha' -> '0_10_20': the key of a release's notes in the
+    locale files (whatsNew.releases.<key>). None when there is no version."""
+    import re
+    if version is None:
+        version = get_version()
+    match = re.match(r"v?(\d+)\.(\d+)\.(\d+)", str(version or "").strip())
+    return "_".join(match.groups()) if match else None
+
+
 

@@ -3764,5 +3764,20 @@
     "library": "Biblioteca",
     "recordings": "Gravações",
     "share": "Compartilhar"
+  },
+  "whatsNew": {
+    "title": "Novidades do Speakr {{version}}",
+    "dismiss": "Entendi",
+    "releases": {
+      "0_10_20": {
+        "1": "Escolha a aparência do Speakr: seis layouts em Conta → Aparência, cada um com o seu esquema de cores e o modo escuro.",
+        "2": "Baixe uma conversa inteira do Inquire como documento do Word, ou limpe-a e comece de novo.",
+        "3": "Copie ou baixe uma única resposta no Inquire e no chat de uma gravação.",
+        "4": "Os downloads do Word têm links que funcionam, e as respostas do Inquire incluem as fontes.",
+        "5": "O editor de transcrição mostra cada frase por inteiro.",
+        "6": "Os modelos de transcrição podem começar com um cabeçalho e gravar marcações de tempo de legendas WebVTT.",
+        "7": "Os botões continuam visíveis em telas menores e em painéis estreitos."
+      }
+    }
   }
 }
