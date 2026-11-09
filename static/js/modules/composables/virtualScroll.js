@@ -11,7 +11,17 @@
  *       containerRef: scrollContainerRef,
  *       overscan: 5
  *   });
+ *
+ * With variableHeight: true, itemHeight is only the estimate for rows that
+ * have not been rendered yet. Rendered rows (found with rowSelector, each
+ * carrying its item index in rowIndexAttr) are measured after every render
+ * and whenever they resize, and their real heights place the rows. When rows
+ * above the viewport turn out taller or shorter, the scroll position moves by
+ * the difference, so the visible rows stay where they are. beforeMeasure(rows)
+ * runs before each measurement, e.g. to size textareas to their text.
  */
+
+import { buildOffsets, indexAtOffset, applyMeasurements } from '../utils/row-offsets.js';
 
 export function useVirtualScroll(options) {
     const { ref, computed, watch, onMounted, onUnmounted } = Vue;
@@ -21,8 +31,23 @@ export function useVirtualScroll(options) {
         itemHeight = 48,    // Height of each item in pixels (fixed height mode)
         containerRef,       // Ref to the scrollable container element
         overscan = 5,       // Number of items to render outside viewport
-        keyField = null     // Optional field to use for unique keys
+        keyField = null,    // Optional field to use for unique keys
+        variableHeight = false,
+        rowSelector = '[data-virtual-index]',
+        rowIndexAttr = 'virtualIndex',
+        beforeMeasure = null
     } = options;
+
+    // Measured heights (variable-height mode); `heightsVersion` re-runs the
+    // offset computation after a measurement.
+    const measured = new Map();
+    const heightsVersion = ref(0);
+    const offsets = computed(() => {
+        void heightsVersion.value;
+        const count = items.value ? items.value.length : 0;
+        return buildOffsets(count, itemHeight, variableHeight ? measured : new Map());
+    });
+    const topOf = (index) => (variableHeight ? offsets.value[index] : index * itemHeight);
 
     // Internal state
     const scrollTop = ref(0);
@@ -40,15 +65,21 @@ export function useVirtualScroll(options) {
             return { start: 0, end: 0 };
         }
 
-        // Calculate first visible item
-        const firstVisible = Math.floor(scrollTop.value / itemHeight);
-
-        // Calculate number of items that fit in viewport
-        const visibleCount = Math.ceil(containerHeight.value / itemHeight);
+        let firstVisible;
+        let lastVisible;
+        if (variableHeight) {
+            firstVisible = indexAtOffset(offsets.value, scrollTop.value);
+            lastVisible = indexAtOffset(offsets.value, scrollTop.value + containerHeight.value);
+        } else {
+            // Calculate first visible item
+            firstVisible = Math.floor(scrollTop.value / itemHeight);
+            // Calculate number of items that fit in viewport
+            lastVisible = firstVisible + Math.ceil(containerHeight.value / itemHeight);
+        }
 
         // Add overscan for smooth scrolling
         const start = Math.max(0, firstVisible - overscan);
-        const end = Math.min(totalItems, firstVisible + visibleCount + overscan);
+        const end = Math.min(totalItems, lastVisible + overscan);
 
         return { start, end };
     });
@@ -71,12 +102,15 @@ export function useVirtualScroll(options) {
 
     // Spacer height before visible items (for scroll position)
     const spacerBefore = computed(() => {
-        return visibleRange.value.start * itemHeight;
+        return topOf(visibleRange.value.start);
     });
 
     // Spacer height after visible items
     const spacerAfter = computed(() => {
         if (!items.value) return 0;
+        if (variableHeight) {
+            return Math.max(0, offsets.value[items.value.length] - offsets.value[visibleRange.value.end]);
+        }
         const remainingItems = items.value.length - visibleRange.value.end;
         return Math.max(0, remainingItems * itemHeight);
     });
@@ -84,7 +118,7 @@ export function useVirtualScroll(options) {
     // Total height of all items (for scroll container)
     const totalHeight = computed(() => {
         if (!items.value) return 0;
-        return items.value.length * itemHeight;
+        return topOf(items.value.length);
     });
 
     // Handle scroll events
@@ -116,7 +150,7 @@ export function useVirtualScroll(options) {
         if (!containerRef.value || !items.value) return;
 
         const targetIndex = Math.max(0, Math.min(index, items.value.length - 1));
-        const targetScrollTop = targetIndex * itemHeight;
+        const targetScrollTop = topOf(targetIndex);
 
         containerRef.value.scrollTo({
             top: targetScrollTop,
@@ -136,13 +170,62 @@ export function useVirtualScroll(options) {
         }
 
         // Center the index in the viewport
-        const targetIndex = Math.max(0, index - Math.floor(containerHeight.value / itemHeight / 2));
+        let targetIndex;
+        if (variableHeight) {
+            targetIndex = indexAtOffset(offsets.value, Math.max(0, topOf(index) - containerHeight.value / 2));
+        } else {
+            targetIndex = Math.max(0, index - Math.floor(containerHeight.value / itemHeight / 2));
+        }
         scrollToIndex(targetIndex, 'smooth');
     };
+
+    // ---- Measuring rendered rows (variable-height mode).
+    let rowObserver = null;
+    let measureFrame = 0;
+    const measureRendered = () => {
+        measureFrame = 0;
+        const container = containerRef.value;
+        if (!variableHeight || !container) return;
+        const rows = Array.from(container.querySelectorAll(rowSelector));
+        if (beforeMeasure) beforeMeasure(rows);
+        const updates = [];
+        rows.forEach((row) => {
+            const index = Number(row.dataset[rowIndexAttr]);
+            if (Number.isFinite(index)) updates.push([index, row.getBoundingClientRect().height]);
+        });
+        const { changed, shiftAbove } = applyMeasurements(
+            measured, offsets.value, itemHeight, container.scrollTop, updates);
+        if (!changed) return;
+        heightsVersion.value++;
+        if (shiftAbove) {
+            container.scrollTop += shiftAbove;
+            scrollTop.value = container.scrollTop;
+        }
+        if (rowObserver) {
+            rowObserver.disconnect();
+            rows.forEach((row) => rowObserver.observe(row));
+        }
+    };
+    const scheduleMeasure = () => {
+        if (!measureFrame) measureFrame = requestAnimationFrame(measureRendered);
+    };
+    if (variableHeight) {
+        if (window.ResizeObserver) rowObserver = new ResizeObserver(scheduleMeasure);
+        watch(visibleItems, () => Vue.nextTick(scheduleMeasure), { flush: 'post' });
+        // Inserted or removed rows shift every index below them.
+        watch(() => (items.value ? items.value.length : 0), () => {
+            measured.clear();
+            heightsVersion.value++;
+        });
+    }
 
     // Reset scroll state (call when modal opens or items change completely)
     const reset = () => {
         scrollTop.value = 0;
+        if (variableHeight) {
+            measured.clear();
+            heightsVersion.value++;
+        }
         isInitialized.value = false;
         // Re-initialize after a tick to allow DOM to render
         Vue.nextTick(() => {
@@ -165,6 +248,8 @@ export function useVirtualScroll(options) {
         if (resizeObserver) {
             resizeObserver.disconnect();
         }
+        if (rowObserver) rowObserver.disconnect();
+        if (measureFrame) cancelAnimationFrame(measureFrame);
     });
 
     return {
@@ -186,6 +271,7 @@ export function useVirtualScroll(options) {
 
         // Control
         reset,
+        measureRendered,
 
         // State (for debugging/testing)
         scrollTop,

@@ -11,6 +11,9 @@
  */
 
 import { useNotifications } from './modules/composables/notifications.js';
+import { installCloseOutside } from './modules/utils/close-outside.js';
+
+installCloseOutside();
 
 const SCHEMES = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];
 

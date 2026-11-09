@@ -29,6 +29,7 @@ import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
+import { installCloseOutside } from './modules/utils/close-outside.js';
 import {
     detectPlatform,
     getAudioCapabilities,
@@ -205,6 +206,7 @@ const parseUnformattedError = (text) => {
 
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', async () => {
+    installCloseOutside();
     // Initialize i18n before creating Vue app (if not already initialized)
     try {
         if (window.i18n && !window.i18n.currentLocale) {
@@ -2813,11 +2815,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // Virtual scroll for ASR editor modal (uses editingSegments)
+            // Rows grow to show their whole sentence, so the editor measures
+            // them (44px is only the estimate for rows not yet rendered).
+            const sizeAsrEditorTextareas = (rows) => {
+                rows.forEach((row) => {
+                    const box = row.querySelector('textarea');
+                    if (!box) return;
+                    const key = box.value.length + ':' + box.clientWidth;
+                    if (box.dataset.sizedFor === key) return;
+                    box.style.height = 'auto';
+                    box.style.height = box.scrollHeight + 'px';
+                    box.dataset.sizedFor = key;
+                });
+            };
             const asrEditorVirtualScroll = useVirtualScroll({
                 items: editingSegments,
-                itemHeight: 44,  // Table row height
+                itemHeight: 44,
                 containerRef: asrEditorRef,
-                overscan: 10
+                overscan: 10,
+                variableHeight: true,
+                rowSelector: 'tr[data-segment-index]',
+                rowIndexAttr: 'segmentIndex',
+                beforeMeasure: sizeAsrEditorTextareas
             });
 
             // Scroll a transcript segment into view by index.

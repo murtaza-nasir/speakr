@@ -23,6 +23,11 @@
         <span class="t-meta hidden sm:inline">{{ page_label }}</span>
         {% endif %}
         {% endif %}
+        {# Hidden in the default look; a UI theme may show it (docs/advanced/ui-themes.md). #}
+        <a href="{{ url_for('recordings.index') }}" class="page-header__back">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            <span v-text="t('nav.backToRecordings')">Recordings</span>
+        </a>
     </div>
 
     <!-- Right: the same controls as the main app's header -->
