@@ -341,6 +341,42 @@ html.dark {
     min-height: 0;
 }
 
+/* Narrow panes. The tab list and the actions did not fit a pane narrower
+   than about 520px (the right pane at 1440px with the sidebar open, both
+   panes at 1024px), so the actions, and Save in edit mode, ran past the
+   pane. Now the actions move to a second row when they do not fit, the
+   tabs lose their counts and some padding in a narrow pane, and in the
+   narrowest panes the tab list scrolls sideways. */
+.tabs-bar {
+    flex-wrap: wrap;
+    row-gap: 0;
+    container-type: inline-size;
+}
+.tabs-bar > .tabs {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.tabs-bar > .tabs::-webkit-scrollbar {
+    display: none;
+}
+.tabs-bar > .tabs > .tab {
+    flex: none;
+}
+.tabs-bar__actions {
+    flex: none;
+    margin-left: auto;
+}
+@container (max-width: 560px) {
+    .tabs-bar > .tabs > .tab {
+        padding-inline: var(--sp-2);
+    }
+    .tabs-bar > .tabs .tab__count {
+        display: none;
+    }
+}
+
 .tabs-bar__actions {
     display: inline-flex;
     align-items: center;

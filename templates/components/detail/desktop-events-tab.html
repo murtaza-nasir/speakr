@@ -3,8 +3,8 @@
     <div class="space-y-4">
         <div v-for="event in selectedRecording.events" :key="event.id"
              class="bg-[var(--bg-tertiary)] rounded-lg p-4 border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors">
-            <div class="flex justify-between items-start mb-3">
-                <div class="flex-1">
+            <div class="flex flex-wrap justify-between items-start gap-2 mb-3">
+                <div class="flex-1 min-w-0 basis-48">
                     <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-1">
                         <i class="fas fa-calendar-check mr-2 text-[var(--text-accent)]"></i>
                         ${ event.title }

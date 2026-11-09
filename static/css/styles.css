@@ -3700,6 +3700,11 @@ body {
     flex-shrink: 0;
 }
 
+.markdown-editor-container .EasyMDEContainer .editor-toolbar i.separator {
+    border-left-color: var(--border-primary);
+    border-right-color: transparent;
+}
+
 .markdown-editor-container .EasyMDEContainer .editor-toolbar button {
     background: transparent;
     border: 1px solid transparent;

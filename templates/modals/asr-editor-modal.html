@@ -128,10 +128,10 @@
                             </teleport>
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" class="w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-top">
                             <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
