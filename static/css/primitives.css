@@ -1460,13 +1460,27 @@ textarea:focus-visible {
     z-index: 40;
 }
 
+/* Back link of the page header (components/page-header.html). Hidden in
+   the default look; a UI theme may show it with display: inline-flex. */
+.page-header__back {
+    display: none;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    font-size: var(--fs-meta);
+    white-space: nowrap;
+}
+.page-header__back:hover {
+    color: var(--text-accent);
+}
+
 /* FAB (collapsed) */
 .floating-chat-fab {
     position: fixed;
     bottom: 84px;
     right: 24px;
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     background: var(--bg-button);
     color: var(--text-button);
@@ -1476,11 +1490,16 @@ textarea:focus-visible {
     align-items: center;
     justify-content: center;
     box-shadow: var(--shadow-lg);
-    font-size: 22px;
-    transition: transform var(--t-fast) ease, box-shadow var(--t-fast) ease;
+    font-size: 18px;
+    /* The button floats over the pane's text, so it stays see-through
+       until it is pointed at or focused. */
+    opacity: 0.6;
+    transition: transform var(--t-fast) ease, box-shadow var(--t-fast) ease, opacity var(--t-fast) ease;
     pointer-events: auto;
 }
-.floating-chat-fab:hover {
+.floating-chat-fab:hover,
+.floating-chat-fab:focus-visible {
+    opacity: 1;
     transform: scale(1.06);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
 }
@@ -2029,6 +2048,22 @@ details.disclosure-card[open] {
 }
 .progress-popup__card {
     border-radius: 0.5rem;
+}
+
+/* On desktop the queue floats over the bottom of the recording list. Its
+   list is capped by the window height as well, and while it is shown the
+   recording list gets room at its end, so every row can be scrolled above
+   the popup. */
+@media (min-width: 641px) {
+    .progress-popup:not(.minimized) .progress-popup__card > .p-2 {
+        max-height: min(16rem, 25vh);
+    }
+    body:has(.progress-popup:not(.minimized)) .sidebar-list {
+        padding-bottom: calc(min(16rem, 25vh) + 7rem);
+    }
+    body:has(.progress-popup.minimized) .sidebar-list {
+        padding-bottom: 5rem;
+    }
 }
 
 @media (max-width: 640px) {

@@ -76,16 +76,13 @@
 
         {% include 'components/find-replace-bar.html' %}
 
-        <!-- Editor table uses VIRTUAL SCROLLING with fixed itemHeight=44
-             (set in app.modular.js's asrEditorVirtualScroll). This
-             modal is spreadsheet-like — every row carries the same
-             single-line inputs and a textarea capped at max-h-20 (80
-             px), so row heights are bounded and uniform enough for
-             the fixed-height estimate to be accurate. The variable-
-             height tricks the speaker modal uses (content-visibility
-             + bounded hydration) are overkill here and were caught
-             introducing CLS shifts of ~3.0 in the editor — exactly
-             the regression we were trying to avoid. -->
+        <!-- Editor table uses VIRTUAL SCROLLING with measured row heights
+             (asrEditorVirtualScroll in app.modular.js, variableHeight).
+             Each sentence box is sized to its whole text, rendered rows
+             are measured, and 44px is only the estimate for rows not yet
+             rendered. When rows above the viewport are measured, the
+             scroll position moves by the difference, so the rows in view
+             do not jump. -->
         <div ref="asrEditorRef" class="flex-grow overflow-y-auto custom-scrollbar" @scroll="closeAllSpeakerSuggestions(); onAsrEditorScroll($event)">
             <table class="min-w-full asr-editor-table border border-[var(--border-primary)]">
                 <thead class="sticky top-0 z-10">
@@ -134,7 +131,7 @@
                             <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-top">
-                            <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
+                            <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none overflow-hidden block" @input="autoResizeTextarea($event)"></textarea>
                         </td>
                         <td class="px-1 text-center align-middle">
                             <div class="flex items-center justify-center gap-1">
