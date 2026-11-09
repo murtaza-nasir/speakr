@@ -401,6 +401,30 @@ html[data-ui-theme="workspace"] .tabs-bar .tab { flex: 0 0 auto; padding: 0 8px;
 html[data-ui-theme="workspace"] .tabs-bar .tab:not(.is-active) .tab__count { display: none; }
 html[data-ui-theme="workspace"] .tabs-bar__actions { flex: 0 0 auto; gap: 0; margin-inline-start: auto; }
 html[data-ui-theme="workspace"] .tabs-bar__actions .btn--icon { width: 24px; min-height: 24px; }
+/* In a very narrow right pane the tab group itself wraps instead of being clipped by
+   the pane (the tabs never shrink, so the last ones used to sit outside it). */
+html[data-ui-theme="workspace"] #rightMainColumn .tabs-bar > .tabs { flex-wrap: wrap; max-width: 100%; }
+
+/* Stats table: the right pane is narrower here than in the default layout (sidebar rail
+   plus list), so the table uses tighter cell padding and, when it still does not fit,
+   scrolls inside its card instead of running past the card edge. */
+html[data-ui-theme="workspace"] #rightMainColumn div:has(> table.w-full) { overflow-x: auto; }
+html[data-ui-theme="workspace"] #rightMainColumn table.w-full th,
+html[data-ui-theme="workspace"] #rightMainColumn table.w-full td { padding-left: 5px; padding-right: 5px; }
+html[data-ui-theme="workspace"] #rightMainColumn table.w-full .speaker-tablet { line-height: 1.35; }
+html[data-ui-theme="workspace"] #rightMainColumn table.w-full th:first-child,
+html[data-ui-theme="workspace"] #rightMainColumn table.w-full td:first-child { padding-left: 12px; }
+
+/* Events cards: title block and actions wrap instead of pushing the actions out of the card. */
+html[data-ui-theme="workspace"] #rightMainColumn .space-y-4 > div > .flex.justify-between.items-start { flex-wrap: wrap; gap: 8px; }
+
+/* Narrow desktop: a slimmer rail and list leave the right pane more room. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    html[data-ui-theme="workspace"] {
+        --sidebar-nav-w: 168px;
+        --sidebar-w: 456px;           /* 168px rail + 288px list */
+    }
+}
 
 /* Chips and status pills */
 html[data-ui-theme="workspace"] .chip {
