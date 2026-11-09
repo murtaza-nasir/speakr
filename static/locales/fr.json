@@ -2545,6 +2545,7 @@
   "sidebar": {
     "advancedSearch": "Recherche Avancée",
     "allRecordings": "Tous les enregistrements",
+    "recordingsList": "Liste des enregistrements",
     "archived": "Archivé",
     "archivedRecordings": "Enregistrements Archivés",
     "dateRange": "Plage de Dates",

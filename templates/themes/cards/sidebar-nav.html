@@ -208,14 +208,16 @@
                                        @change="filterDatePreset = ''"
                                        type="date"
                                        class="sb-input sb-input--sm w-full"
-                                       :placeholder="t('form.dateFrom')">
+                                       :placeholder="t('form.dateFrom')"
+                                       :aria-label="t('form.dateFrom')">
                             </div>
                             <div>
                                 <input v-model="filterDateRange.end"
                                        @change="filterDatePreset = ''"
                                        type="date"
                                        class="sb-input sb-input--sm w-full"
-                                       :placeholder="t('form.dateTo')">
+                                       :placeholder="t('form.dateTo')"
+                                       :aria-label="t('form.dateTo')">
                             </div>
                         </div>
                     </div>

@@ -10,7 +10,8 @@
                      style="border-bottom-color: var(--border-primary);">
                     <h2 class="text-base font-semibold">${ t('inquire.filters') }</h2>
                     <button @click="isMobileSidebarOpen = false"
-                            class="btn btn--icon">
+                            class="btn btn--icon"
+                            :aria-label="t('buttons.close')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -101,11 +102,11 @@
                         <div class="ws-inq-dates">
                             <label>
                                 <span class="ws-filters__label">${ t('inquire.from') }</span>
-                                <input type="date" v-model="inquireFilters.dateFrom" class="ws-input">
+                                <input type="date" v-model="inquireFilters.dateFrom" :aria-label="t('inquire.from')" class="ws-input">
                             </label>
                             <label>
                                 <span class="ws-filters__label">${ t('inquire.to') }</span>
-                                <input type="date" v-model="inquireFilters.dateTo" class="ws-input">
+                                <input type="date" v-model="inquireFilters.dateTo" :aria-label="t('inquire.to')" class="ws-input">
                             </label>
                         </div>
                     </div>

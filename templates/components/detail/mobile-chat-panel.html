@@ -62,7 +62,8 @@
                       rows="2"></textarea>
             <button @click="sendChatMessage"
                     :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
-                    class="btn btn--primary btn--icon btn--lg">
+                    class="btn btn--primary btn--icon btn--lg"
+                    :aria-label="t('buttons.send')">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>

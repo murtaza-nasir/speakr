@@ -1425,6 +1425,13 @@ textarea:focus-visible {
     outline-offset: 2px;
 }
 
+/* Scroll panes made keyboard-focusable (tabindex="0" role="region"): the ring
+   sits inside the pane so a clipping ancestor cannot cut it. */
+[role="region"][tabindex="0"]:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+
 /* But override outline for elements that already provide their own ring */
 .field:focus-visible,
 .btn:focus-visible,

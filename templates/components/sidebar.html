@@ -16,6 +16,7 @@
              toolbar's bottom border above; bottom padding keeps a
              little breathing room below the final row. -->
         <div class="sidebar-list flex-1 overflow-y-auto pb-3"
+             tabindex="0" role="region" :aria-label="t('sidebar.recordingsList')"
              @scroll="(e) => {
                 const element = e.target;
                 const threshold = 100; // Load more when 100px from bottom

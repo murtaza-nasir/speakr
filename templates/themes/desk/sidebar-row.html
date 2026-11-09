@@ -60,11 +60,18 @@
                                         <span class="chip__label" v-text="tag.name"></span>
                                     </button>
                                 </template>
-                                <span v-if="getRecordingTags(recording).length > 4"
-                                      class="desk-row__more"
-                                      :title="t('tooltips.moreTags')">
-                                    +${getRecordingTags(recording).length - 4}
-                                </span>
+                                <!-- The column shows as many whole chips as fit (desk.css: 1 to 4,
+                                     by the column width); one "+N" variant per count, the one that
+                                     matches the number of visible chips is shown. -->
+                                <template v-for="chipTotal in [getRecordingTags(recording).length + ((!recording.incognito && ((recording.folder && recording.folder.is_foreign) || (foldersEnabled && !filterFolder && recording.folder_id))) ? 1 : 0)]" :key="'more-' + recording.id">
+                                    <template v-for="shown in 4" :key="shown">
+                                        <span v-if="chipTotal > shown"
+                                              :class="['desk-row__more', 'desk-row__more--' + shown]"
+                                              :title="t('tooltips.moreTags')">
+                                            +${chipTotal - shown}
+                                        </span>
+                                    </template>
+                                </template>
                             </div>
 
                             <div class="col-date">${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}</div>

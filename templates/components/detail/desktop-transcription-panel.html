@@ -93,7 +93,7 @@
     </div>
 
     <!-- Transcription Content -->
-    <div class="flex-1 overflow-y-auto p-4 relative">
+    <div class="flex-1 overflow-y-auto p-4 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
         <!-- Floating Processing Indicator -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
              :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">

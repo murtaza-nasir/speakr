@@ -11,7 +11,8 @@
                      style="border-bottom-color: var(--border-primary);">
                     <h2 class="text-base font-semibold">${ t('inquire.filters') }</h2>
                     <button @click="isMobileSidebarOpen = false"
-                            class="btn btn--icon">
+                            class="btn btn--icon"
+                            :aria-label="t('buttons.close')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -64,7 +65,8 @@
                                    class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
                                 <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
                                        class="filter-checkbox">
-                                <span class="ml-2 text-sm font-medium flex-1" :style="{ color: folder.color }">${ folder.name }</span>
+                                <span class="ml-2 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: folder.color }" aria-hidden="true"></span>
+                                <span class="ml-2 text-sm font-medium flex-1">${ folder.name }</span>
                                 <span class="text-xs px-1.5 py-0.5 rounded-full"
                                       style="background: var(--bg-tertiary); color: var(--text-muted);">${ folder.recording_count }</span>
                             </label>
@@ -106,11 +108,11 @@
                         <div class="space-y-2">
                             <div>
                                 <label class="t-label mb-1 block">${ t('inquire.from') }</label>
-                                <input type="date" v-model="inquireFilters.dateFrom" class="field" style="font-size: var(--fs-meta);">
+                                <input type="date" v-model="inquireFilters.dateFrom" :aria-label="t('inquire.from')" class="field" style="font-size: var(--fs-meta);">
                             </div>
                             <div>
                                 <label class="t-label mb-1 block">${ t('inquire.to') }</label>
-                                <input type="date" v-model="inquireFilters.dateTo" class="field" style="font-size: var(--fs-meta);">
+                                <input type="date" v-model="inquireFilters.dateTo" :aria-label="t('inquire.to')" class="field" style="font-size: var(--fs-meta);">
                             </div>
                         </div>
                     </div>

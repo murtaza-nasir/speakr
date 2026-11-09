@@ -2,7 +2,7 @@
      copy / download / edit) now lives in the chevron row of
      mobile-header.html instead of taking a whole separate row here. -->
 <div v-if="mobileTab === 'transcript'" class="h-full flex flex-col">
-    <div class="flex-grow overflow-y-auto px-3 py-3 relative">
+    <div class="flex-grow overflow-y-auto px-3 py-3 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
         <!-- Floating Processing Indicator (Mobile) -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
              :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">

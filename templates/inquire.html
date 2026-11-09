@@ -222,7 +222,8 @@
                      icon-button primitive so it matches the rest of
                      the app's icon button rhythm. -->
                 <button @click="isMobileSidebarOpen = !isMobileSidebarOpen"
-                        class="btn btn--icon lg:hidden flex-shrink-0">
+                        class="btn btn--icon lg:hidden flex-shrink-0"
+                        :aria-label="t('sidebar.filters')">
                     <i class="fas fa-bars"></i>
                 </button>
                 
@@ -475,7 +476,8 @@
                                   rows="2"></textarea>
                         <button @click="sendInquireChatMessage"
                                 :disabled="!inquireChatInput.trim() || isInquireChatLoading"
-                                class="btn btn--primary btn--icon btn--lg flex-shrink-0">
+                                class="btn btn--primary btn--icon btn--lg flex-shrink-0"
+                                :aria-label="t('buttons.send')">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
@@ -515,7 +517,7 @@
                     <i class="fas fa-exclamation-circle mr-3"></i>
                     <span class="text-sm font-medium">${ globalError }</span>
                 </div>
-                <button @click="globalError = null" class="ml-4 text-white hover:text-gray-200">
+                <button @click="globalError = null" class="ml-4 text-white hover:text-gray-200" :aria-label="t('buttons.close')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>

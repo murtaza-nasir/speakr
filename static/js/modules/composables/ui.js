@@ -575,6 +575,9 @@ export function useUI(state, utils, processedTranscription) {
                 theme: isDarkMode.value ? "dark" : "light"
             });
 
+            // CodeMirror's hidden input is the editor's only text field: name it
+            summaryMarkdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('summary.editSummary'));
+
             // Add auto-save functionality
             summaryMarkdownEditorInstance.value.codemirror.on('change', () => {
                 if (autoSaveTimer.value) {
@@ -690,6 +693,9 @@ export function useUI(state, utils, processedTranscription) {
                 previewClass: ["editor-preview", "notes-preview"],
                 theme: isDarkMode.value ? "dark" : "light"
             });
+
+            // CodeMirror's hidden input is the editor's only text field: name it
+            markdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('notes.editNotes'));
 
             // Add auto-save functionality
             markdownEditorInstance.value.codemirror.on('change', () => {
@@ -2038,6 +2044,9 @@ export function useUI(state, utils, processedTranscription) {
                 previewClass: ["editor-preview", "notes-preview"],
                 theme: isDarkMode.value ? "dark" : "light"
             });
+
+            // CodeMirror's hidden input is the editor's only text field: name it
+            recordingMarkdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('notes.editNotes'));
 
             // Sync changes back to recordingNotes
             recordingMarkdownEditorInstance.value.codemirror.on('change', () => {

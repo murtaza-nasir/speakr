@@ -2545,6 +2545,7 @@
   "sidebar": {
     "advancedSearch": "高级搜索",
     "allRecordings": "所有录音",
+    "recordingsList": "录音列表",
     "archived": "已归档",
     "archivedRecordings": "已归档录音",
     "dateRange": "日期范围",

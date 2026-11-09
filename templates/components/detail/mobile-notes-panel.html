@@ -21,7 +21,7 @@
     </div>
 
     <!-- Reading-mode body. -->
-    <div v-else class="flex-grow overflow-y-auto px-3 py-3" @click="clickToEditNotes">
+    <div v-else class="flex-grow overflow-y-auto px-3 py-3" tabindex="0" role="region" :aria-label="t('notes.title')" @click="clickToEditNotes">
         <div v-if="!selectedRecording.notes" class="empty">
             <div class="empty__icon"><i class="fas fa-sticky-note"></i></div>
             <div class="empty__title" v-text="t('help.clickToAddNotes')"></div>

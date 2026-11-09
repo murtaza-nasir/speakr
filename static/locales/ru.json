@@ -2545,6 +2545,7 @@
   "sidebar": {
     "advancedSearch": "Расширенный поиск",
     "allRecordings": "Все записи",
+    "recordingsList": "Список записей",
     "archived": "Архивировано",
     "archivedRecordings": "Архивные записи",
     "dateRange": "Диапазон дат",

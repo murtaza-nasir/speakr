@@ -15,9 +15,11 @@
 
     <!-- Always-visible meta strip -->
     <div @click="isMetadataExpanded = !isMetadataExpanded"
-         class="cursor-pointer px-4 py-2 flex items-center gap-3">
+         class="cursor-pointer px-4 py-2 flex flex-wrap items-center gap-3">
 
-        <div class="flex-1 min-w-0">
+        <!-- flex-wrap + a 10rem basis: when the tab toolbar leaves the chips less
+             than 10rem, the toolbar drops to its own row instead of sliding over them. -->
+        <div class="flex-1 min-w-0" style="flex-basis: 10rem;">
             <!-- Participants, single line, truncates. The processing
                  status badge is intentionally NOT duplicated here — it
                  already shows in the title area (components/header.html). -->
@@ -63,7 +65,7 @@
              user the actions next to where their eye is anyway.
              Hidden when the active tab is in an editing mode since
              the editor's own Cancel/Save footer takes over. -->
-        <div class="flex items-center gap-0.5 flex-shrink-0">
+        <div class="flex items-center gap-0.5 flex-shrink-0 ml-auto">
             <template v-if="mobileTab === 'summary' && !editingSummary">
                 <button v-if="selectedRecording.summary" @click.stop="copySummary" class="btn btn--icon btn--sm" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
                 <button v-if="selectedRecording.summary" @click.stop="downloadSummary" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>

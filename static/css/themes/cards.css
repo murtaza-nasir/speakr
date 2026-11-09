@@ -184,6 +184,14 @@ html[data-ui-theme="cards"] .btn {
     transition: background var(--c-dur) var(--c-ease), color var(--c-dur) var(--c-ease),
                 box-shadow var(--c-dur) var(--c-ease), border-color var(--c-dur) var(--c-ease);
 }
+/* Keyboard focus: the theme resets the button shadow, so the generic ring of
+   primitives.css never shows. An outline in the scheme's focus colour does. */
+html[data-ui-theme="cards"] .btn:focus-visible,
+html[data-ui-theme="cards"] .tab:focus-visible,
+html[data-ui-theme="cards"] .toggle:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
 html[data-ui-theme="cards"] .btn--primary {
     background: var(--c-primary);
     border-color: var(--c-primary);

@@ -455,6 +455,7 @@ html[data-ui-theme="classic"] .rr-when {
 }
 html[data-ui-theme="classic"] .rr-time { font-size: 13px; font-weight: 500; line-height: 18px; color: var(--text); }
 html[data-ui-theme="classic"] .rr-dur { font-size: 12px; line-height: 16px; color: var(--text-3); }
+html[data-ui-theme="classic"] .recording-row.is-active .rr-dur { color: var(--text-2); }
 html[data-ui-theme="classic"] .rr-main { min-width: 0; }
 html[data-ui-theme="classic"] .rr-main > div:first-child { margin-bottom: 0; }
 
