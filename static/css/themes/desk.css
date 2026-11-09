@@ -98,6 +98,7 @@ html[data-ui-theme="desk"].dark {
     --bg-success-light: #14392b;
 }
 @media (max-width: 1279px) { html[data-ui-theme="desk"] { --desk-sidebar-w: 400px; } }
+@media (max-width: 1100px) { html[data-ui-theme="desk"] { --desk-sidebar-w: 340px; } }
 @media (min-width: 1700px) { html[data-ui-theme="desk"] { --desk-sidebar-w: 520px; } }
 
 /* ---- Base: type scale and shapes -------------------------------------------
@@ -193,6 +194,19 @@ html[data-ui-theme="desk"] .tab { padding: 0 var(--sp-3); font-size: var(--fs-bo
 html[data-ui-theme="desk"] .tab.is-active { color: var(--on-primary-container); border-bottom-color: var(--primary); }
 html[data-ui-theme="desk"] .tab__count { font-size: var(--fs-label); padding: 0 5px; border-radius: 8px; background: var(--surface-dim); color: var(--text-3); }
 html[data-ui-theme="desk"] .tabs-bar { padding-inline: var(--sp-3); background: var(--surface); }
+/* The two panes share a narrow column next to the table list. When the tabs
+   and the action buttons no longer fit on one line, the actions wrap under
+   the tabs, so no tab and no button leaves the pane. */
+html[data-ui-theme="desk"] .tabs-bar { flex-wrap: wrap; column-gap: var(--sp-2); row-gap: 0; min-width: 0; }
+html[data-ui-theme="desk"] .tabs-bar > .tabs { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; }
+html[data-ui-theme="desk"] .tabs-bar__actions { flex: 0 0 auto; margin-inline-start: auto; min-height: 34px; }
+@media (max-width: 1599px) {
+    html[data-ui-theme="desk"] .tabs-bar { padding-inline: var(--sp-2); }
+    html[data-ui-theme="desk"] .tab { padding-inline: var(--sp-2); }
+}
+@media (max-width: 1279px) {
+    html[data-ui-theme="desk"] .tabs-bar__actions .toggle > span { display: none; }
+}
 html[data-ui-theme="desk"] .toggle { border-radius: var(--r-2); }
 
 /* Chips: quiet outline plus a colour dot (the tag colour arrives as --chip-color) */
@@ -575,6 +589,12 @@ html[data-ui-theme="desk"] .desk-row.is-failed .desk-row__title { color: var(--o
     html[data-ui-theme="desk"] .desk-colhead .col-tags,
     html[data-ui-theme="desk"] .desk-row .col-tags { display: none; }
 }
+/* The column header sits outside the list container, so the container query
+   above does not reach it; it follows the sidebar width (400px and below) */
+@media (max-width: 1279px) {
+    html[data-ui-theme="desk"] .desk-colhead { grid-template-columns: minmax(0, 1fr) 44px 40px 72px; }
+    html[data-ui-theme="desk"] .desk-colhead .col-tags { display: none; }
+}
 /* Phones: two-line rows (title and status, then date, duration and tags) */
 @media (max-width: 1023px) {
     html[data-ui-theme="desk"] .desk-colhead { display: none; }
@@ -647,6 +667,8 @@ html[data-ui-theme="desk"] .desk-meta > *:first-child { padding-inline-start: 0;
 html[data-ui-theme="desk"] .desk-meta > *:last-child { border-inline-end: 0; }
 html[data-ui-theme="desk"] .desk-meta > .flex-wrap { flex-wrap: nowrap; overflow: hidden; gap: 4px; }
 html[data-ui-theme="desk"] .desk-meta .chip__label { overflow: hidden; text-overflow: ellipsis; }
+html[data-ui-theme="desk"] .desk-meta > .flex-wrap .chip { flex: 0 1 auto; min-width: 0; max-width: 140px; overflow: hidden; }
+html[data-ui-theme="desk"] .desk-meta .chip__label { min-width: 0; white-space: nowrap; }
 html[data-ui-theme="desk"] .desk-meta .chip-meta {
     background: transparent;
     border: 0;
@@ -743,6 +765,8 @@ html[data-ui-theme="desk"] .desk-run .speaker-bubble.active-playing-segment { tr
 
 html[data-ui-theme="desk"] .desk-filters { width: 300px; }
 html[data-ui-theme="desk"] .desk-fstack { display: flex; flex-direction: column; }
+/* The Clear all row is the first child of the stack and has no padding of its own */
+html[data-ui-theme="desk"] .desk-fstack > :first-child { padding: var(--sp-2) var(--sp-3) var(--sp-1); }
 html[data-ui-theme="desk"] .desk-fsec {
     border: 0;
     border-bottom: 1px solid var(--divider);
