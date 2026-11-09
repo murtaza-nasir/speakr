@@ -57,7 +57,7 @@ def test_group_admin_only_sees_own_group_members():
 
         client = app.test_client()
         _login(client, group_admin)
-        resp = client.get('/admin/users')
+        resp = client.get('/admin/users?per_page=100')
         assert resp.status_code == 200
         returned_ids = {u['id'] for u in resp.get_json()['users']}
 
@@ -80,7 +80,7 @@ def test_site_admin_still_sees_all_users():
 
         client = app.test_client()
         _login(client, site_admin)
-        resp = client.get('/admin/users')
+        resp = client.get('/admin/users?per_page=100')
         assert resp.status_code == 200
         ids = {u['id'] for u in resp.get_json()['users']}
         assert site_admin.id in ids and other.id in ids
