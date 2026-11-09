@@ -3725,5 +3725,10 @@
     "preferences": "Preferências de tradução",
     "toggle": "Alternar tradução",
     "incognitoUnavailable": "A tradução não está disponível para gravações incógnitas."
+  },
+  "whatsNew": {
+    "title": "Novidades do Speakr {{version}}",
+    "dismiss": "Entendi",
+    "releases": {}
   }
 }

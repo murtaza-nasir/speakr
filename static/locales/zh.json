@@ -3725,5 +3725,10 @@
     "preferences": "翻译偏好设置",
     "toggle": "切换翻译",
     "incognitoUnavailable": "翻译不适用于无痕录音。"
+  },
+  "whatsNew": {
+    "title": "Speakr {{version}} 新功能",
+    "dismiss": "知道了",
+    "releases": {}
   }
 }

@@ -1474,6 +1474,17 @@ textarea:focus-visible {
     color: var(--text-accent);
 }
 
+/* What's new dialog (modals/whats-new-modal.html) */
+.whats-new-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+    display: grid;
+    gap: var(--sp-2);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
 /* FAB (collapsed) */
 .floating-chat-fab {
     position: fixed;

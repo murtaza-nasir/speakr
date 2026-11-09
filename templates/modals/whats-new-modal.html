@@ -1,0 +1,20 @@
+<!-- What's new: shown once per account after an update (show_whats_new
+     admin setting; the notes are whatsNew.releases.<release> in the locale
+     files, English as the fallback). -->
+<div v-if="whatsNew.show" @click.self="dismissWhatsNew" class="modal-overlay">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+        <div class="modal-header">
+            <i class="fas fa-gift text-2xl text-[var(--text-accent)]" aria-hidden="true"></i>
+            <h3 id="whats-new-title" class="modal-title" v-text="t('whatsNew.title', { version: whatsNew.version })"></h3>
+            <button @click="dismissWhatsNew" class="modal-close" :title="t('buttons.close')" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <ul class="whats-new-list">
+                <li v-for="(item, i) in whatsNew.items" :key="i" v-text="item"></li>
+            </ul>
+        </div>
+        <div class="modal-footer">
+            <button @click="dismissWhatsNew" class="btn btn--primary" v-text="t('whatsNew.dismiss')"></button>
+        </div>
+    </div>
+</div>

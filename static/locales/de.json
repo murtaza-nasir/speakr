@@ -3725,5 +3725,10 @@
     "preferences": "Übersetzungseinstellungen",
     "toggle": "Übersetzung umschalten",
     "incognitoUnavailable": "Die Übersetzung ist für Inkognito-Aufnahmen nicht verfügbar."
+  },
+  "whatsNew": {
+    "title": "Neu in Speakr {{version}}",
+    "dismiss": "Verstanden",
+    "releases": {}
   }
 }

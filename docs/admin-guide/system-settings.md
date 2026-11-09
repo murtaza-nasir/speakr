@@ -124,6 +124,14 @@ Like the disclaimers, the banner supports full markdown formatting, so you can i
 
 Leave this field empty to hide the banner completely.
 
+## What's New After Updates
+
+After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
+
+The **show_whats_new** setting turns the dialog on or off for everyone. It is on by default; switch it off if you announce updates to your users yourself.
+
+The list for each release is part of Speakr's translations, so it appears in the user's interface language, with English as the fallback.
+
 ## System-Wide Impact
 
 Every setting on this page affects all users immediately. Changes take effect as soon as you save them, without requiring system restarts or user logouts. This immediate application means you should test changes carefully and communicate significant modifications to your users.

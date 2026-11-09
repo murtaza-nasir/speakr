@@ -3725,5 +3725,10 @@
     "preferences": "Настройки перевода",
     "toggle": "Показать или скрыть перевод",
     "incognitoUnavailable": "Перевод недоступен для инкогнито-записей."
+  },
+  "whatsNew": {
+    "title": "Что нового в Speakr {{version}}",
+    "dismiss": "Понятно",
+    "releases": {}
   }
 }

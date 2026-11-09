@@ -101,6 +101,16 @@ def save_user_preferences():
     })
 
 
+@system_bp.route('/api/user/whats-new/seen', methods=['POST'])
+@login_required
+def mark_whats_new_seen():
+    """Record that the user has read the current release's What's new notes."""
+    from src.config.version import release_key
+    current_user.whats_new_seen = release_key()
+    db.session.commit()
+    return jsonify({'success': True, 'seen': current_user.whats_new_seen})
+
+
 def _storage_meter(user):
     """Storage against the quota; has_quota is False without one. The labels
     are in the interface language's number format (#481)."""
@@ -342,7 +352,7 @@ def get_config():
         # empty strings on uploads that fall through to this prompt.
         admin_default_summary_prompt = SystemSetting.get_setting('admin_default_summary_prompt', '') or ''
 
-        return jsonify({
+        payload = {
             'max_file_size_mb': max_file_size_mb,
             'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
             'upload_disclaimer': SystemSetting.get_setting('upload_disclaimer', ''),
@@ -370,7 +380,21 @@ def get_config():
             'admin_default_summary_prompt': admin_default_summary_prompt,
             'transcription_model_options': _get_transcription_model_options(),
             **chunking_info
-        })
+        }
+        # "What's new" after an update (src/config/version.py release_key)
+        try:
+            from flask_login import current_user
+            if current_user and current_user.is_authenticated:
+                from src.config.version import get_version, release_key
+                payload['whats_new'] = {
+                    'enabled': bool(SystemSetting.get_setting('show_whats_new', True)),
+                    'release': release_key(),
+                    'version': get_version(),
+                    'seen': current_user.whats_new_seen,
+                }
+        except Exception as e:
+            current_app.logger.warning(f"Could not read the What's new state: {e}")
+        return jsonify(payload)
     except Exception as e:
         current_app.logger.error(f"Error fetching configuration: {e}")
         return jsonify({'error': str(e)}), 500
