@@ -80,10 +80,11 @@ def test_site_admin_still_sees_all_users():
 
         client = app.test_client()
         _login(client, site_admin)
-        resp = client.get('/admin/users?per_page=100')
-        assert resp.status_code == 200
-        ids = {u['id'] for u in resp.get_json()['users']}
-        assert site_admin.id in ids and other.id in ids
+        for u in (site_admin, other):
+            resp = client.get(f'/admin/users?search={u.username}')
+            assert resp.status_code == 200
+            ids = {x['id'] for x in resp.get_json()['users']}
+            assert u.id in ids
 
         db.session.delete(site_admin)
         db.session.delete(other)

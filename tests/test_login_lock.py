@@ -264,17 +264,18 @@ def test_admin_unlock_and_list_flag(_ctx):
     for _ in range(5):
         _login(user, 'wrong')
     client = _as(admin)
-    rows = {r['id']: r for r in client.get('/admin/users?per_page=100').get_json()['users']}
-    assert rows[user.id]['login_locked'] is True
-    assert rows[admin.id]['login_locked'] is False
-    assert 'failed_count' not in rows[user.id] and 'address' not in rows[user.id]
+    user_rows = {r['id']: r for r in client.get(f'/admin/users?search={user.username}').get_json()['users']}
+    admin_rows = {r['id']: r for r in client.get(f'/admin/users?search={admin.username}').get_json()['users']}
+    assert user_rows[user.id]['login_locked'] is True
+    assert admin_rows[admin.id]['login_locked'] is False
+    assert 'failed_count' not in user_rows[user.id] and 'address' not in user_rows[user.id]
 
     resp = client.put(f'/admin/users/{user.id}', json={'unlock_login': True})
     assert resp.status_code == 200
     assert resp.get_json()['login_locked'] is False
     db.session.expire_all()
     assert _rows(user) == []
-    rows = {r['id']: r for r in client.get('/admin/users?per_page=100').get_json()['users']}
+    rows = {r['id']: r for r in client.get(f'/admin/users?search={user.username}').get_json()['users']}
     assert rows[user.id]['login_locked'] is False
     _, signed_in = _login(user, PW)
     assert signed_in
