@@ -17,6 +17,34 @@ import mimetypes
 import os
 
 
+# Types Speakr registers on top of Python's built-in table. src/app.py also
+# registers them in the process-wide table, which Flask uses to serve files.
+SPEAKR_MEDIA_TYPES = (
+    ('audio/mp4', '.m4a'),
+    ('audio/aac', '.aac'),
+    ('audio/x-m4a', '.m4a'),
+    ('audio/webm', '.webm'),
+    ('audio/flac', '.flac'),
+    ('audio/ogg', '.ogg'),
+)
+
+# ``mimetypes.guess_type`` also reads the host's /etc/mime.types, so the same
+# file name gave different types on different hosts: ``.mkv`` is
+# video/x-matroska on one system, video/matroska on another and unknown in the
+# Docker image, and ``.ts`` is a Qt translation file wherever the media-types
+# package is installed. A ``MimeTypes`` instance built without file names holds
+# only Python's built-in table, which is what the Docker image uses, so every
+# host gets the image's answer.
+_HOST_INDEPENDENT_TYPES = mimetypes.MimeTypes()
+for _type, _ext in SPEAKR_MEDIA_TYPES:
+    _HOST_INDEPENDENT_TYPES.add_type(_type, _ext)
+
+
+def guess_media_type(path):
+    """The MIME type for ``path``'s extension, the same on every host, or None."""
+    return _HOST_INDEPENDENT_TYPES.guess_type(path)[0]
+
+
 # Extension fallback for files known to carry video, used only when a probe is
 # unavailable. Notably '.webm' (registered as audio/webm in src/app.py).
 _VIDEO_MIME_BY_EXT = {
@@ -46,7 +74,7 @@ def video_mime_for_path(path):
     ext = os.path.splitext(path)[1].lower()
     if ext in _VIDEO_MIME_BY_EXT:
         return _VIDEO_MIME_BY_EXT[ext]
-    guessed, _ = mimetypes.guess_type(path)
+    guessed = guess_media_type(path)
     if guessed and guessed.startswith('video/'):
         return guessed
     return 'video/mp4'
@@ -137,7 +165,7 @@ def resolve_media_mime(path, codec_info=None, has_video=None, timeout=10):
     # No usable probe data — fall back to the filename.
     if hv:
         return video_mime_for_path(path)
-    guessed, _ = mimetypes.guess_type(path)
+    guessed = guess_media_type(path)
     return guessed or 'application/octet-stream'
 
 
@@ -152,7 +180,7 @@ def served_media_mime(mime, path=None):
     guessed from ``path`` under the same rule.
     """
     if not mime and path:
-        mime, _ = mimetypes.guess_type(path)
+        mime = guess_media_type(path)
     base = (mime or '').split(';')[0].strip().lower()
     if base.startswith(('audio/', 'video/')):
         return mime

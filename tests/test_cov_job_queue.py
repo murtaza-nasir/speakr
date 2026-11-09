@@ -28,6 +28,7 @@ from src.services.job_queue import (
     TRANSCRIPTION_JOBS,
     SUMMARY_JOBS,
     MAX_RETRIES,
+    jobs_for_queue,
 )
 
 
@@ -867,3 +868,27 @@ def test_a_failed_summary_job_keeps_the_transcript(track):
     assert rec.status == "FAILED"
     assert rec.transcription == "Speaker 1: the real transcript we must keep."
     assert rec.summary and "model gone" in rec.summary
+
+
+# --------------------------------------------------------------------------
+# Queue membership accessor
+# --------------------------------------------------------------------------
+
+def test_jobs_for_queue_lists_the_job_types_of_a_queue():
+    assert jobs_for_queue('index') == ['index_chunks']
+    assert jobs_for_queue('transcription') == TRANSCRIPTION_JOBS
+
+
+def test_jobs_for_queue_refuses_an_unknown_queue():
+    with pytest.raises(KeyError):
+        jobs_for_queue('nope')
+
+
+def test_jobs_for_queue_returns_a_copy():
+    first = jobs_for_queue('index')
+    first.append('injected')
+    assert jobs_for_queue('index') == ['index_chunks']
+
+
+def test_the_queue_method_delegates():
+    assert job_queue.jobs_for_queue('index') == ['index_chunks']

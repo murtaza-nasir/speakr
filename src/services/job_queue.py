@@ -75,6 +75,14 @@ def queue_name_for(job_type: str) -> str:
     return 'transcription'
 
 
+def jobs_for_queue(queue_name: str) -> list:
+    """A copy of the job types that run on the named queue.
+
+    Raises KeyError for an unknown queue name.
+    """
+    return list(QUEUES[queue_name])
+
+
 class FairJobQueue:
     """
     A database-backed job queue with fair scheduling across users.
@@ -330,6 +338,10 @@ class FairJobQueue:
     def is_background(self, job_type: str) -> bool:
         """Whether ``job_type`` is a background job (see module helper)."""
         return is_background(job_type)
+
+    def jobs_for_queue(self, queue_name: str) -> list:
+        """Job types that run on the named queue (see module helper)."""
+        return jobs_for_queue(queue_name)
 
     def _is_permanent_error(self, error_str: str) -> bool:
         """Delegate to src.services.error_classification.is_permanent_error.
@@ -859,11 +871,11 @@ class FairJobQueue:
                 "index_queue": {
                     "queued": ProcessingJob.query.filter(
                         ProcessingJob.status == 'queued',
-                        ProcessingJob.job_type.in_(INDEX_JOBS)
+                        ProcessingJob.job_type.in_(jobs_for_queue('index'))
                     ).count(),
                     "processing": ProcessingJob.query.filter(
                         ProcessingJob.status == 'processing',
-                        ProcessingJob.job_type.in_(INDEX_JOBS)
+                        ProcessingJob.job_type.in_(jobs_for_queue('index'))
                     ).count(),
                     "workers": INDEX_WORKERS
                 },
@@ -888,7 +900,7 @@ class FairJobQueue:
             if not job:
                 return None
 
-            order = self.turn_order(QUEUES[queue_name_for(job.job_type)])
+            order = self.turn_order(jobs_for_queue(queue_name_for(job.job_type)))
             return next(i for i, queued in enumerate(order, 1) if queued.id == job.id)
 
     # Names of the queues as the API reports a recording's stage.

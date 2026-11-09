@@ -2662,7 +2662,7 @@ def get_job_queue_status():
     """
     try:
         from src.models import ProcessingJob
-        from src.services.job_queue import job_queue, INDEX_JOBS, QUEUES, queue_name_for
+        from src.services.job_queue import job_queue, queue_name_for
         from datetime import timedelta
 
         # Expire all cached objects to ensure we see latest data from worker threads
@@ -2673,7 +2673,7 @@ def get_job_queue_status():
         # Inquire chunk jobs run unseen after a recording is completed.
         all_jobs = ProcessingJob.query.filter(
             ProcessingJob.user_id == current_user.id,
-            ProcessingJob.job_type.notin_(INDEX_JOBS),
+            ProcessingJob.job_type.notin_(job_queue.jobs_for_queue('index')),
             db.or_(
                 ProcessingJob.status.in_(['queued', 'processing']),
                 db.and_(
@@ -2685,10 +2685,11 @@ def get_job_queue_status():
 
         places = {}
         for name in {queue_name_for(job.job_type) for job in all_jobs if job.status == 'queued'}:
-            order = job_queue.turn_order(QUEUES[name])
+            queue_jobs = job_queue.jobs_for_queue(name)
+            order = job_queue.turn_order(queue_jobs)
             currently_processing = ProcessingJob.query.filter(
                 ProcessingJob.status == 'processing',
-                ProcessingJob.job_type.in_(QUEUES[name])
+                ProcessingJob.job_type.in_(queue_jobs)
             ).count()
             for place, queued in enumerate(order, 1):
                 places[queued.id] = place + currently_processing

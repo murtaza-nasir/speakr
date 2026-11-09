@@ -7,7 +7,6 @@ result in place of the original and then queues the transcription. A file that
 ffprobe cannot read is still converted, and refused, in the request.
 """
 
-import mimetypes
 import os
 import shutil
 import uuid
@@ -28,8 +27,8 @@ class ConversionFailed(Exception):
 
 
 def _stored_mime(path, codec_info=None):
-    from src.utils.mime import resolve_media_mime, served_media_mime
-    mime_type, _ = mimetypes.guess_type(path)
+    from src.utils.mime import guess_media_type, resolve_media_mime, served_media_mime
+    mime_type = guess_media_type(path)
     if not (mime_type or '').startswith(('audio/', 'video/')):
         mime_type = served_media_mime(resolve_media_mime(path, codec_info=codec_info))
     return mime_type
