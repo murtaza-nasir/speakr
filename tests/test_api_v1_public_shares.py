@@ -90,8 +90,15 @@ def test_update_existing_and_force_new(world):
                                        ("no_permission", "not_permitted")])
 def test_refusals(world, case, code):
     if case == "off":
-        with patch.dict(os.environ, {"ENABLE_PUBLIC_SHARING": "false"}):
+        with app.app_context():
+            from src.models import SystemSetting
+            SystemSetting.set_setting('enable_public_sharing', 'false', setting_type='boolean')
+        try:
             resp = _post(world)
+        finally:
+            with app.app_context():
+                from src.models import SystemSetting
+                SystemSetting.set_setting('enable_public_sharing', 'true', setting_type='boolean')
     elif case == "no_permission":
         with app.app_context():
             db.session.get(User, world["owner"]).can_share_publicly = False

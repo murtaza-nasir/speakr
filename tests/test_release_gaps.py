@@ -221,7 +221,19 @@ def test_api_v1_delete_audio_refusals(ctx):
     assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=_token(other)).status_code == 404
     assert c.post(f'/api/v1/recordings/{busy.id}/delete-audio', headers=h).status_code == 409
     with patch.dict(os.environ, {"USERS_CAN_DELETE": "false"}):
-        assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=h).status_code == 403
+        from src.models import SystemSetting
+        from src.app import db
+        row = SystemSetting.query.filter_by(key='users_can_delete').first()
+        saved = row.value if row else None
+        SystemSetting.set_setting('users_can_delete', 'false', setting_type='boolean')
+        try:
+            assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=h).status_code == 403
+        finally:
+            if saved is None:
+                SystemSetting.query.filter_by(key='users_can_delete').delete()
+            else:
+                SystemSetting.set_setting('users_can_delete', saved, setting_type='boolean')
+            db.session.commit()
     with patch("src.services.retention.get_storage_service", return_value=MagicMock()):
         assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=h).status_code == 200
         assert c.post(f'/api/v1/recordings/{done.id}/delete-audio', headers=h).status_code == 409

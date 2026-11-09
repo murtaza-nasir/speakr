@@ -3327,6 +3327,7 @@
       "invalid_temperature": "{{kind}} 温度必须是 0 到 2 之间的数字",
       "invalid_temperature_values": "values 必须是温度对象",
       "invalid_threshold": "无效的阈值",
+      "invalid_deletion_mode_value": "删除模式必须为 audio_only 或 full_recording。",
       "invalid_timezone_value": "值必须是有效的 IANA 时区，例如 Europe/Berlin",
       "invalid_total_bytes": "total_bytes 必须是正整数",
       "invalid_transcript_data": "提供的转录数据无效",

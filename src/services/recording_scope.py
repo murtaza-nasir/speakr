@@ -22,7 +22,8 @@ def sharing_enabled():
 
 
 def _show_usernames():
-    return os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
+    from src.models import SystemSetting
+    return bool(SystemSetting.get_setting('show_usernames_in_ui', os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'))
 
 
 def scope_condition(user_id, scope):

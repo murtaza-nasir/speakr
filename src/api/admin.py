@@ -29,12 +29,7 @@ admin_bp = Blueprint('admin', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
-DELETION_MODE = os.environ.get('DELETION_MODE', 'hard')
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -76,7 +71,7 @@ def admin():
     return render_template('admin.html',
                          title='Admin Dashboard',
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
-                         global_retention_days=GLOBAL_RETENTION_DAYS,
+                         global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          is_group_admin_only=False,
                          user_language=user_language)
 
@@ -102,7 +97,7 @@ def group_management():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('group-admin.html',
                          title='Group Management',
-                         global_retention_days=GLOBAL_RETENTION_DAYS,
+                         global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          user_language=user_language)
 
 
@@ -894,7 +889,8 @@ def admin_get_settings():
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
     
-    settings = SystemSetting.query.all()
+    from sqlalchemy import func
+    settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
     return jsonify([setting.to_dict() for setting in settings])
 
 
@@ -942,6 +938,10 @@ def admin_update_setting():
         from src.utils.timezones import is_valid_timezone
         if not is_valid_timezone(value):
             return jsonify(api_error('invalid_timezone_value')), 400
+
+    if key == 'deletion_mode':
+        if value not in ('audio_only', 'full_recording'):
+            return jsonify(api_error('invalid_deletion_mode_value')), 400
 
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
@@ -998,16 +998,16 @@ def get_auto_deletion_stats():
 
     try:
         stats = {
-            'enabled': ENABLE_AUTO_DELETION,
-            'global_retention_days': GLOBAL_RETENTION_DAYS,
-            'deletion_mode': DELETION_MODE,
+            'enabled': _self.ENABLE_AUTO_DELETION,
+            'global_retention_days': _self.GLOBAL_RETENTION_DAYS,
+            'deletion_mode': _self.DELETION_MODE,
             'eligible_count': 0,
             'exempted_count': 0,
             'no_retention_count': 0,
             'archived_count': 0
         }
 
-        if ENABLE_AUTO_DELETION:
+        if _self.ENABLE_AUTO_DELETION:
             # Check ALL completed recordings (per-recording retention)
             all_recordings = Recording.query.filter(
                 Recording.status == 'COMPLETED'
@@ -1062,7 +1062,7 @@ def preview_auto_deletion():
         return jsonify(api_error('admin_required')), 403
 
     try:
-        if not ENABLE_AUTO_DELETION:
+        if not _self.ENABLE_AUTO_DELETION:
             return jsonify(api_error('auto_deletion_disabled')), 400
 
         # Check ALL completed recordings (per-recording retention)
@@ -1075,8 +1075,8 @@ def preview_auto_deletion():
             'would_delete': [],
             'would_exempt': [],
             'no_retention': [],
-            'deletion_mode': DELETION_MODE,
-            'global_retention_days': GLOBAL_RETENTION_DAYS,
+            'deletion_mode': _self.DELETION_MODE,
+            'global_retention_days': _self.GLOBAL_RETENTION_DAYS,
             'supports_per_recording_retention': True
         }
 
@@ -1790,3 +1790,17 @@ def admin_voice_embedding_rebaseline():
     current_app.logger.info(
         "Voice embedding reference re-baselined by admin user %s", current_user.id)
     return jsonify(result)
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
+    "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

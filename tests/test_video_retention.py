@@ -45,7 +45,7 @@ class TestVideoRetentionConfig(unittest.TestCase):
     def test_exposed_in_api_config(self):
         """VIDEO_RETENTION is exposed in the /api/config response."""
         content = self._read_file('src/api/system.py')
-        self.assertIn("'video_retention': VIDEO_RETENTION", content)
+        self.assertIn("'video_retention': _self.VIDEO_RETENTION", content)
 
     def test_default_is_false(self):
         """All VIDEO_RETENTION reads default to 'false'."""
@@ -83,7 +83,7 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         This is what lets a single upload opt out of retention even when
         VIDEO_RETENTION is on globally."""
         self.assertIn(
-            "effective_video_retention = VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)",
+            "effective_video_retention = _self.VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)",
             self.content,
         )
 
@@ -414,7 +414,7 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         content = self._read_file('src/tasks/processing.py')
         # The effective flag must be derived from both the env var and
         # the per-recording override.
-        self.assertIn('effective_video_retention = VIDEO_RETENTION and not', content)
+        self.assertIn('effective_video_retention = _self.VIDEO_RETENTION and not', content)
         # And it must be the gate inside the is_video block.
         self.assertIn('elif effective_video_retention:', content)
         # The else branch (extract audio + delete original) must still
@@ -448,7 +448,7 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         incognito_section = content[content.find('[Incognito]'):]
         # VIDEO_RETENTION should not appear in incognito section
         # (incognito always strips video per the plan)
-        self.assertNotIn('VIDEO_RETENTION', incognito_section,
+        self.assertNotIn('_self.VIDEO_RETENTION', incognito_section,
                         "VIDEO_RETENTION should not be referenced in incognito processing")
 
     def test_all_three_entry_points_skip_for_video_retention(self):

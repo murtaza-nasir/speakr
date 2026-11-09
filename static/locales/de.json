@@ -3327,6 +3327,7 @@
       "invalid_temperature": "Die Temperatur für {{kind}} muss eine Zahl zwischen 0 und 2 sein",
       "invalid_temperature_values": "values muss ein Objekt mit Temperaturen sein",
       "invalid_threshold": "Ungültiger Schwellenwert",
+      "invalid_deletion_mode_value": "Der Löschmodus muss audio_only oder full_recording sein.",
       "invalid_timezone_value": "Der Wert muss eine gültige IANA-Zeitzone sein, zum Beispiel Europe/Berlin",
       "invalid_total_bytes": "total_bytes muss eine positive ganze Zahl sein",
       "invalid_transcript_data": "Ungültige Transkriptdaten übermittelt",

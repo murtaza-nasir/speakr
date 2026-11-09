@@ -12,7 +12,6 @@ from src.database import db
 
 
 # Get sharing configuration from environment
-SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 
 
 class Share(db.Model):
@@ -99,7 +98,7 @@ class InternalShare(db.Model):
             'id': self.id,
             'recording_id': self.recording_id,
             'owner_id': self.owner_id,
-            'owner_username': self.owner.username if SHOW_USERNAMES_IN_UI else None,
+            'owner_username': self.owner.username if _self.SHOW_USERNAMES_IN_UI else None,
             'user_id': self.shared_with_user_id,  # For frontend compatibility
             'username': self.shared_with.username,  # Always include username
             'can_edit': self.can_edit,
@@ -258,3 +257,13 @@ class SharedRecordingState(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "SHOW_USERNAMES_IN_UI": ('show_usernames_in_ui', 'SHOW_USERNAMES_IN_UI', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

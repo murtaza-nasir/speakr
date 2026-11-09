@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 from flask import current_app
 from src.utils.localization import api_error
 
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
 
 # Cross-process elections for work that must run in exactly one process.
 #
@@ -109,11 +107,11 @@ def initialize_auto_deletion_scheduler(app):
     """Initialize the daily auto-deletion scheduler if enabled."""
     from src.services.retention import process_auto_deletion
 
-    if not ENABLE_AUTO_DELETION:
+    if not _self.ENABLE_AUTO_DELETION:
         app.logger.info("Auto-deletion scheduler not started (ENABLE_AUTO_DELETION=false)")
         return
 
-    if GLOBAL_RETENTION_DAYS <= 0:
+    if _self.GLOBAL_RETENTION_DAYS <= 0:
         app.logger.info("Auto-deletion scheduler not started (GLOBAL_RETENTION_DAYS not set)")
         return
 
@@ -380,3 +378,14 @@ def run_startup_tasks(app):
         # sweep, nothing to duplicate. If it ever grows a background task it
         # needs to move up into the block above.
         initialize_file_exporter(app)
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

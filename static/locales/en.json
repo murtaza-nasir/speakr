@@ -3327,6 +3327,7 @@
       "invalid_temperature": "{{kind}} temperature must be a number between 0 and 2",
       "invalid_temperature_values": "values must be an object of temperatures",
       "invalid_threshold": "Invalid threshold value",
+      "invalid_deletion_mode_value": "Deletion mode must be audio_only or full_recording.",
       "invalid_timezone_value": "Value must be a valid IANA timezone, for example Europe/Berlin",
       "invalid_total_bytes": "total_bytes must be a positive integer",
       "invalid_transcript_data": "Invalid transcript data provided",
