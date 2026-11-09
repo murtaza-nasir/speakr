@@ -934,6 +934,11 @@ html[data-ui-theme="workspace"] .ws-row__meta {
 html[data-ui-theme="workspace"] .ws-tagdots { display: inline-flex; gap: 3px; align-items: center; }
 html[data-ui-theme="workspace"] .ws-glyph { font-size: 10px; color: var(--text-light); line-height: 1; display: inline-flex; align-items: center; }
 html[data-ui-theme="workspace"] button.ws-glyph:hover { color: var(--text-primary); }
+/* The folder glyph overlaps the row's right padding instead of taking meta width, so titles keep their full width. */
+html[data-ui-theme="workspace"] .ws-glyph--folder {
+    position: absolute; top: 0; bottom: 0; right: -4px; width: 10px;
+    justify-content: center; padding: 0; border: 0; background: transparent;
+}
 html[data-ui-theme="workspace"] .ws-glyph--star { color: var(--ws-star); }
 html[data-ui-theme="workspace"] .ws-glyph--inbox { color: var(--bg-button); }
 html[data-ui-theme="workspace"] .ws-glyph--inbox i { font-size: 7px; }
@@ -1238,16 +1243,16 @@ html[data-ui-theme="workspace"] .floating-chat-panel {
     border: 1px solid var(--border-primary);
 }
 html[data-ui-theme="workspace"] .floating-chat-fab {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
 }
 /* The app places the button 24px inside the bottom-right corner of the content area
-   (inline style). A strip of 24 + 40 + 4px below the right pane keeps it clear of the
+   (inline style). A strip of 24 + 44 + 4px below the right pane keeps it clear of the
    summary, notes, stats and events; the strip exists only where the button is shown. */
 @media (min-width: 769px) {
-    html[data-ui-theme="workspace"] #rightMainColumn { padding-bottom: 68px; }
+    html[data-ui-theme="workspace"] #rightMainColumn { padding-bottom: 72px; }
 }
 html[data-ui-theme="workspace"] .floating-chat-header { min-height: 40px; padding: 0 8px 0 12px; background: var(--bg-primary); border-bottom: 1px solid var(--border-primary); }
 
@@ -1566,3 +1571,30 @@ html[data-ui-theme="workspace"] main > .overflow-hidden:has(> .tabs-scroller) .t
 
 html[data-ui-theme="workspace"] body > .container > main { justify-content: center; }
 html[data-ui-theme="workspace"] body > .container > main > .max-w-md { margin-inline: auto; }
+
+/* Account > Tags & Folders and Templates: the sub-tab strip starts on the same left edge as the
+   content column below it (tab-scroll: 32px padding, centered column of at most 1000px). */
+html[data-ui-theme="workspace"] #content-organize > .border-b,
+html[data-ui-theme="workspace"] #content-templates > .border-b {
+    padding-top: 12px;
+    padding-inline: max(32px, calc((100% - 1000px) / 2)) 32px;
+}
+
+/* Back link of the account, admin and group pages: the quiet outlined button of this header. */
+html[data-ui-theme="workspace"] .page-header__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--ctl-h);
+    margin-inline-start: 4px;
+    padding: 0 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    text-decoration: none;
+}
+html[data-ui-theme="workspace"] .page-header__back:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+html[data-ui-theme="workspace"] .page-header__back i { font-size: 10px; color: var(--text-muted); }
