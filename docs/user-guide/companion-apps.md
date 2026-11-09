@@ -1,12 +1,12 @@
 # Unofficial Companion Apps
 
-The apps on this page were built by members of the community. They are used with your own Speakr server through the [REST API](api-reference.md), usually with an [API token](api-tokens.md). They are maintained by their authors, not by the Speakr project, and they have not been tested by the Speakr maintainer. Please report problems with an app to its own repository.
+The apps on this page were built by members of the community. They are used with your own Speakr server through the [REST API](api-reference.md), usually with an [API token](api-tokens.md). They are maintained by their authors, not by the Speakr project, and we have not tested them ourselves. Please report problems with an app to its own repository.
 
 ## Minutes for Speakr
 
 **Platforms:** Android, Windows. **Source:** [github.com/Inrego/SpeakrApp](https://github.com/Inrego/SpeakrApp) (MIT).
 
-A companion app for recording on the device and uploading the recordings to your Speakr server, with automatic recording and automatic uploads from a folder. The Android package is built and published by the project's public release workflow.
+A companion app for recording on the device and uploading the recordings to your Speakr server, with automatic recording and automatic uploads from a folder.
 
 ## MeetingRecorder
 
@@ -18,7 +18,7 @@ A tray app for recording both sides of a Teams, Zoom, Meet or WhatsApp call, the
 
 **Platform:** Windows (x64). **Source:** [github.com/i-iooi-i/Mimio](https://github.com/i-iooi-i/Mimio) (MIT).
 
-A desktop client based on Minutes for Speakr, with a compact floating recorder, recording search, a transcript and summary workspace, and an English and Simplified Chinese interface. Automatic summarization and the transcription and summary settings of a folder can be changed from the app. The Windows build is not code-signed, and its release files are uploaded by hand, not built by a release workflow.
+A desktop client based on Minutes for Speakr, with a compact floating recorder, recording search, a transcript and summary workspace, and an English and Simplified Chinese interface. Automatic summarization and the transcription and summary settings of a folder can be changed from the app.
 
 ## Adding an app
 
