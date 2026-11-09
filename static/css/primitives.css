@@ -501,7 +501,8 @@ html.dark {
 }
 
 .toggle.is-on:hover {
-    opacity: 0.92;
+    /* a filter, not opacity: opacity blends the label into the page and drops its contrast */
+    filter: brightness(0.94);
 }
 
 
