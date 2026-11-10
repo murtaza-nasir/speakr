@@ -690,9 +690,9 @@
                          string here and put them out of sync. -->
                     <div class="space-y-4">
                         <div v-for="setting in displayedSettings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-grow">
-                                    <h4 class="text-md font-medium text-[var(--text-primary)] mb-1">${ setting.key }</h4>
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="flex-grow min-w-0">
+                                    <h4 class="text-md font-medium text-[var(--text-primary)] mb-1 break-all">${ setting.key }</h4>
                                     <p class="text-sm text-[var(--text-muted)] mb-2">${ getSettingDescription(setting) }</p>
                                     <div class="flex items-center space-x-2">
                                         <span class="text-xs px-2 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded">${ setting.setting_type }</span>
@@ -700,8 +700,8 @@
                                         <span v-else class="text-xs text-[var(--text-muted)]">${t('adminDashboard.lastUpdated')}: ${ formatDate(setting.updated_at) }</span>
                                     </div>
                                 </div>
-                                <div class="ml-4 flex items-center space-x-2">
-                                    <div class="text-right">
+                                <div class="ml-4 flex items-center space-x-2 min-w-0">
+                                    <div class="text-right min-w-0 break-all">
                                         <div class="text-sm font-medium text-[var(--text-primary)]">
                                             <span v-if="setting.setting_type === 'boolean'">
                                                 <span v-if="setting.value === 'true'" class="text-[var(--text-success-strong)]">
@@ -727,7 +727,7 @@
                                             <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
                                         </div>
                                     </div>
-                                    <button @click="editSetting(setting)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] p-1" :title="t('buttons.editSetting')">
+                                    <button @click="editSetting(setting)" class="flex-shrink-0 text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] p-1" :title="t('buttons.editSetting')" :aria-label="t('buttons.editSetting')">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                 </div>
