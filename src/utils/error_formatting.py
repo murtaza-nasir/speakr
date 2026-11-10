@@ -9,6 +9,20 @@ import re
 import json
 from typing import Dict, Optional, Tuple
 
+# Prefixes of stored transcription text that is a failure, not content. Shared
+# by the SQL "needs transcription" predicate and is_transcription_error, so the
+# database path and the in-process path cannot disagree about what an error
+# transcript is. ERROR_JSON: is the structured form written by
+# format_error_for_storage; the rest are the legacy plain-text forms.
+TRANSCRIPTION_ERROR_PREFIXES = (
+    'ERROR_JSON:',
+    'Transcription failed:',
+    'Processing failed:',
+    'ASR processing failed:',
+    'Audio extraction failed:',
+    'Upload/Processing failed:',
+)
+
 
 def _code(status):
     """A status code as a separate token ("status 401", "(429)"), never inside
@@ -405,22 +419,4 @@ def is_transcription_error(transcription_text: str) -> bool:
     """
     if not transcription_text:
         return False
-
-    # Check for JSON-formatted error
-    if transcription_text.startswith('ERROR_JSON:'):
-        return True
-
-    # Check for legacy error prefixes
-    error_prefixes = [
-        'Transcription failed:',
-        'Processing failed:',
-        'ASR processing failed:',
-        'Audio extraction failed:',
-        'Upload/Processing failed:',
-    ]
-
-    for prefix in error_prefixes:
-        if transcription_text.startswith(prefix):
-            return True
-
-    return False
+    return transcription_text.startswith(TRANSCRIPTION_ERROR_PREFIXES)
