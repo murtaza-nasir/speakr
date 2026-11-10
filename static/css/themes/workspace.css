@@ -1145,6 +1145,10 @@ html[data-ui-theme="workspace"] .speaker-run > .speaker-tablet-group .speaker-ta
     vertical-align: 0.5px;
 }
 html[data-ui-theme="workspace"] .speaker-run .speaker-tablet-group .speaker-tablet-name { padding: 0; display: block; }
+/* A name longer than the column (UNKNOWN_SPEAKER, long real names) wraps
+   inside it instead of running into the text. */
+html[data-ui-theme="workspace"] .speaker-run > .speaker-tablet,
+html[data-ui-theme="workspace"] .speaker-run > .speaker-tablet-group { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 html[data-ui-theme="workspace"] .speaker-run .speaker-tablet-group .speaker-tablet-time {
     padding: 0 0 0 13px;
     background: transparent;
