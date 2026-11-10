@@ -70,7 +70,7 @@ Each user maintains their own inbox and favorite status for shared recordings. Y
 
 Recordings that others have shared with you appear in your main recording list with distinctive visual indicators. Shared recordings display with an accent-colored title and a subtle border to make them immediately distinguishable from your own recordings. When you hover over a shared recording, you can see the owner's username (if your administrator has enabled username visibility), so you always know the content source.
 
-The "Shared with Me" toggle in the sidebar filters your view to show only recordings that others have shared with you. This focused view helps when you need to review collaborative content without distraction from your own recordings.
+The **From others** filter in the sidebar filters your view to show only recordings that others have shared with you. This focused view helps when you need to review collaborative content without distraction from your own recordings.
 
 Your permissions determine what you can do with shared recordings. View-only access means read and listen capabilities, while edit permissions let you contribute to the recording's metadata and shared summary. Regardless of your permission level, you can always add and edit your own personal notes - these are private to you and don't require any special permissions. The interface adapts to your permissions, showing or hiding controls based on your access level.
 

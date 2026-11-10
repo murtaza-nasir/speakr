@@ -163,7 +163,7 @@ To add personal notes to a shared recording, simply click on the **Notes** tab a
 
 ### Viewing Recordings Shared With You
 
-Recordings that others have shared with you appear in your main recording list with a subtle visual indicator. Use the **"Shared with Me"** filter in the sidebar to view only recordings others have shared with you, making it easy to focus on collaborative content.
+Recordings that others have shared with you appear in your main recording list with a subtle visual indicator. Use the **From others** filter in the sidebar to view only recordings others have shared with you, making it easy to focus on collaborative content.
 
 For complete details on all collaboration features, see the [Sharing & Collaboration guide](sharing.md).
 
