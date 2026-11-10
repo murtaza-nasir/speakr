@@ -48,91 +48,24 @@ from src.services.llm import client, chat_client, call_chat_completion, process_
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
+from src.services.recording_filters import (
+    needs_transcription_condition,
+    needs_summary_condition,
+    needs_speakers_condition,
+)
 from src.utils.localization import api_error, format_number, translate
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
-
-ACTIVE_RECORDING_STATUSES = ['QUEUED', 'PENDING', 'PROCESSING', 'SUMMARIZING']
-TRANSCRIPTION_ERROR_PREFIXES = [
-    'ERROR_JSON:',
-    'Transcription failed:',
-    'Processing failed:',
-    'ASR processing failed:',
-    'Audio extraction failed:',
-    'Upload/Processing failed:',
-]
-SUMMARY_NEEDS_PREFIXES = [
-    '[Summary generation failed:',
-    '[Summary skipped:',
-    '[Summary not generated]',
-]
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
-
-def _idle_recording_condition():
-    """Recordings that are not currently queued or running work."""
-    return db.or_(
-        Recording.status.is_(None),
-        ~Recording.status.in_(ACTIVE_RECORDING_STATUSES),
-    )
-
-
-def _blank_column_condition(column):
-    return db.or_(column.is_(None), db.func.trim(column) == '')
-
-
-def _prefixed_column_condition(column, prefixes):
-    # Escape LIKE metacharacters in the literal prefixes so a '_' or '%' in a
-    # prefix (e.g. 'ERROR_JSON:') matches literally instead of as a wildcard.
-    return db.or_(*[column.like(f'{escape_like(prefix)}%', escape=LIKE_ESCAPE) for prefix in prefixes])
-
-
-def _transcription_error_condition():
-    return _prefixed_column_condition(Recording.transcription, TRANSCRIPTION_ERROR_PREFIXES)
-
-
-def _valid_transcription_condition():
-    return db.and_(
-        ~_blank_column_condition(Recording.transcription),
-        ~_transcription_error_condition(),
-    )
-
-
-def _needs_transcription_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        db.or_(
-            _blank_column_condition(Recording.transcription),
-            _transcription_error_condition(),
-        ),
-    )
-
-
-def _needs_summary_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        _valid_transcription_condition(),
-        db.or_(
-            _blank_column_condition(Recording.summary),
-            _prefixed_column_condition(Recording.summary, SUMMARY_NEEDS_PREFIXES),
-        ),
-    )
-
-
-def _needs_speakers_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        _valid_transcription_condition(),
-        Recording.transcription.like('%SPEAKER\\_%', escape='\\'),
-    )
 
 def reindex_recording_chunks_async(recording_id):
     """Queue a rebuild of a recording's semantic-search (Inquire) chunks.
@@ -1288,13 +1221,13 @@ def get_recordings_paginated():
                                 'code': 'invalid_parameter'}), 400
 
         if needs_transcription:
-            stmt = stmt.where(_needs_transcription_condition())
+            stmt = stmt.where(needs_transcription_condition())
 
         if needs_summary:
-            stmt = stmt.where(_needs_summary_condition())
+            stmt = stmt.where(needs_summary_condition())
 
         if needs_speakers:
-            stmt = stmt.where(_needs_speakers_condition())
+            stmt = stmt.where(needs_speakers_condition())
 
         # Apply search filters if provided
         if search_query:
