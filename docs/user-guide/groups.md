@@ -61,7 +61,7 @@ The recording cards show multiple badges that communicate status at a glance. A 
 
 Group tags themselves appear on recording cards, each marked with the users icon. When you see multiple tags on a recording, the icon helps identify which are group-wide (accessible to all group members) versus personal tags (visible only to the owner).
 
-The "Shared with Me" filter in the sidebar isolates recordings others have shared with you, including those shared via group tags. This filtered view helps focus on collaborative content when you need to review group discussions without distraction from your personal recordings.
+The **From others** filter in the sidebar isolates recordings others have shared with you, including those shared via group tags. This filtered view helps focus on collaborative content when you need to review group discussions without distraction from your personal recordings.
 
 ### Your Permissions on Group Recordings
 
