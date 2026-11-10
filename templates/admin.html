@@ -696,7 +696,8 @@
                                     <p class="text-sm text-[var(--text-muted)] mb-2">${ getSettingDescription(setting) }</p>
                                     <div class="flex items-center space-x-2">
                                         <span class="text-xs px-2 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded">${ setting.setting_type }</span>
-                                        <span class="text-xs text-[var(--text-muted)]">${t('adminDashboard.lastUpdated')}: ${ formatDate(setting.updated_at) }</span>
+                                        <span v-if="setting.source === 'env'" class="text-xs text-[var(--text-muted)]">${t('adminDashboard.settingFromEnv')}</span>
+                                        <span v-else class="text-xs text-[var(--text-muted)]">${t('adminDashboard.lastUpdated')}: ${ formatDate(setting.updated_at) }</span>
                                     </div>
                                 </div>
                                 <div class="ml-4 flex items-center space-x-2">
@@ -1631,11 +1632,11 @@ Summarization Instructions:
                         <div v-else-if="editingSetting.key === 'deletion_mode'" class="flex items-center space-x-4">
                             <label class="flex items-center cursor-pointer">
                                 <input v-model="settingNewValue" type="radio" value="audio_only" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="text-[var(--text-primary)]">audio_only</span>
+                                <span class="text-[var(--text-primary)]">${ t('adminDashboard.deletionModeAudioOnly') }</span>
                             </label>
                             <label class="flex items-center cursor-pointer">
                                 <input v-model="settingNewValue" type="radio" value="full_recording" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="text-[var(--text-primary)]">full_recording</span>
+                                <span class="text-[var(--text-primary)]">${ t('adminDashboard.deletionModeFullRecording') }</span>
                             </label>
                         </div>
 
@@ -1651,6 +1652,11 @@ Summarization Instructions:
                 </div>
 
                 <div class="modal-footer">
+                    <button v-if="editingSetting && editingSetting.env_backed && editingSetting.source !== 'env'"
+                            @click="useEnvSettingValue"
+                            class="btn btn--ghost mr-auto">
+                        ${ t('adminDashboard.useEnvValue') }
+                    </button>
                     <button @click="showEditSettingModal = false"
                             class="btn btn--ghost">
                         ${ t('buttons.cancel') }
@@ -2867,6 +2873,17 @@ Summarization Instructions:
                     showEditSettingModal.value = false;
                 };
                 
+                const useEnvSettingValue = async () => {
+                    settingError.value = '';
+                    await updateSetting(
+                        editingSetting.value.key,
+                        null,
+                        editingSetting.value.description,
+                        editingSetting.value.setting_type
+                    );
+                    showEditSettingModal.value = false;
+                };
+
                 const updateSetting = async (key, value, description, settingType) => {
                     try {
                         // Get CSRF token
@@ -4275,6 +4292,7 @@ Summarization Instructions:
                     selectMemberUser,
                     loadStats,
                     loadSettings,
+                    useEnvSettingValue,
                     loadOverview, setStatsDays, refreshStats,
                     editSetting,
                     saveSettingValue,

@@ -951,8 +951,19 @@ def admin_get_settings():
         return jsonify(api_error('unauthorized')), 403
     
     from sqlalchemy import func
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_backed_display_value
     settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
-    return jsonify([setting.to_dict() for setting in settings])
+    result = []
+    for setting in settings:
+        data = setting.to_dict()
+        if setting.key in ENV_BACKED_SETTINGS:
+            data['env_backed'] = True
+            if setting.value is None:
+                # No value saved: the value from .env applies.
+                data['value'] = env_backed_display_value(setting.key)
+                data['source'] = 'env'
+        result.append(data)
+    return jsonify(result)
 
 
 
@@ -975,6 +986,18 @@ def admin_update_setting():
     if not key:
         return jsonify(api_error('setting_key_required')), 400
     
+    # An empty value for a setting that falls back to .env clears the saved
+    # value, so the .env value applies again (#567).
+    from src.utils.system_settings import ENV_BACKED_SETTINGS
+    if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
+        try:
+            setting = SystemSetting.set_setting(key, None, description, ENV_BACKED_SETTINGS[key][2])
+            return jsonify(setting.to_dict())
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error clearing setting {key}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     # Validate setting type
     valid_types = ['string', 'integer', 'boolean', 'float']
     if setting_type not in valid_types:
