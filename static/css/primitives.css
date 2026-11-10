@@ -2195,3 +2195,10 @@ select option:hover {
     font-size: 11px; background: var(--bg-button); color: var(--text-button);
 }
 .ui-theme-card[aria-pressed="true"] .ui-theme-card__check { display: inline-flex; }
+
+/* Modal footers on a phone: the two ends of a --between footer wrap onto two rows
+   instead of pushing the primary button past the panel's edge (upload sheet). */
+@media (max-width: 639px) {
+    .modal-footer--between { flex-wrap: wrap; }
+    .modal-footer--between > div { margin-inline-start: auto; }
+}

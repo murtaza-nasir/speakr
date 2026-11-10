@@ -3,7 +3,8 @@
      In recording-detail view: title + inline meta + recording action
      icons take that slot, so the separate detail header is no longer
      needed (it used to add ~72px of vertical chrome). -->
-<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3" style="min-height: 56px;">
+<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3" style="min-height: 56px;"
+        :class="{ 'app-header--detail': currentView === 'detail' && selectedRecording }">
     <!-- Left side: Menu toggle + (logo OR recording title+meta+actions) -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <!-- Menu Toggle Button -->

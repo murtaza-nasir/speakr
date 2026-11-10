@@ -24,7 +24,7 @@
         </div>
 
         <!-- Per-speaker breakdown table -->
-        <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-x-auto">
+        <div class="stats-speaker-card bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-x-auto">
             <div class="px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
                 <h3 class="t-subhead">${ t('stats.perSpeaker') }</h3>
                 <span class="t-meta">${ t('stats.sortedBySpeakingTime') }</span>
@@ -34,10 +34,10 @@
                     <tr class="text-left t-label">
                         <th class="py-2 px-4">${ t('stats.speaker') }</th>
                         <th class="py-2 px-3 text-right">${ t('stats.time') }</th>
-                        <th class="py-2 px-3 text-right">${ t('stats.pctAudio') }</th>
-                        <th class="py-2 px-3 text-right">${ t('stats.turns') }</th>
-                        <th class="py-2 px-3 text-right">${ t('stats.words') }</th>
-                        <th class="py-2 px-3 text-right">${ t('stats.wpm') }</th>
+                        <th class="stats-col-pct py-2 px-3 text-right">${ t('stats.pctAudio') }</th>
+                        <th class="stats-col-extra py-2 px-3 text-right">${ t('stats.turns') }</th>
+                        <th class="stats-col-extra py-2 px-3 text-right">${ t('stats.words') }</th>
+                        <th class="stats-col-extra py-2 px-3 text-right">${ t('stats.wpm') }</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,10 +55,10 @@
                             </div>
                         </td>
                         <td class="py-2 px-3 font-mono text-right">${ row.durationLabel }</td>
-                        <td class="py-2 px-3 text-right">${ formatPercent(row.pct) }</td>
-                        <td class="py-2 px-3 text-right">${ row.turns }</td>
-                        <td class="py-2 px-3 text-right">${ row.words.toLocaleString(uiLocale()) }</td>
-                        <td class="py-2 px-3 text-right">${ row.wpm || '—' }</td>
+                        <td class="stats-col-pct py-2 px-3 text-right">${ formatPercent(row.pct) }</td>
+                        <td class="stats-col-extra py-2 px-3 text-right">${ row.turns }</td>
+                        <td class="stats-col-extra py-2 px-3 text-right">${ row.words.toLocaleString(uiLocale()) }</td>
+                        <td class="stats-col-extra py-2 px-3 text-right">${ row.wpm || '—' }</td>
                     </tr>
                     <!-- Silence row -->
                     <tr v-if="recordingStats.silence.seconds > 0"
@@ -70,10 +70,10 @@
                             </div>
                         </td>
                         <td class="py-2 px-3 font-mono text-right">${ recordingStats.silence.durationLabel }</td>
-                        <td class="py-2 px-3 text-right">${ formatPercent(recordingStats.silence.pct) }</td>
-                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
-                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
-                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                        <td class="stats-col-pct py-2 px-3 text-right">${ formatPercent(recordingStats.silence.pct) }</td>
+                        <td class="stats-col-extra py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                        <td class="stats-col-extra py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                        <td class="stats-col-extra py-2 px-3 text-right text-[var(--text-muted)]">—</td>
                     </tr>
                 </tbody>
             </table>

@@ -5056,3 +5056,33 @@ select:disabled {
     background: var(--bg-accent);
     color: var(--text-accent);
 }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Colour-scheme dialog: the selected card has the accent fill, on which the
+   muted description fell under 4.5:1 in several themes. */
+.color-scheme-option.active .color-scheme-description { color: var(--text-secondary); }
+
+/* Recording header between 768 and 1023px: the title, its edit buttons and the
+   recording actions share one row; Inquire and New Recording drop their labels
+   (icon and accessible name stay) so the title keeps room instead of its buttons
+   running under the actions. */
+@media (max-width: 1023px) {
+    .app-header--detail .header-action__label { display: none; }
+}
+
+/* Per-speaker stats table in the narrow right pane: the lesser columns drop out
+   as the card narrows instead of making it scroll sideways. */
+.stats-speaker-card { container-type: inline-size; }
+@container (max-width: 440px) {
+    .stats-col-extra { display: none; }
+}
+@container (max-width: 300px) {
+    .stats-col-pct { display: none; }
+    .stats-speaker-card th, .stats-speaker-card td { padding-inline: 8px; }
+}
+
+/* Transcript editor on a phone: tighter header cells so the five columns fit 390px */
+@media (max-width: 639px) {
+    .asr-editor-table th { padding: 0.5rem 0.375rem; letter-spacing: 0; }
+}

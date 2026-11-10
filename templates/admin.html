@@ -1261,30 +1261,30 @@ Summarization Instructions:
                                 <thead class="bg-[var(--bg-tertiary)]">
                                     <tr>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.groupName')}</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.description')}</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.members')}</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.created')}</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
+                                        <th scope="col" class="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.description')}</th>
+                                        <th scope="col" class="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.members')}</th>
+                                        <th scope="col" class="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.created')}</th>
+                                        <th scope="col" class="px-4 sm:px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
                                     <tr v-for="group in groups" :key="group.id" class="hover:bg-[var(--bg-tertiary)]">
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-[var(--text-primary)]">${ group.name }</div>
                                         </td>
-                                        <td class="px-6 py-4">
+                                        <td class="hidden lg:table-cell px-4 sm:px-6 py-4">
                                             <div class="text-sm text-[var(--text-secondary)]">${ group.description || t('adminDashboard.noDescription') }</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-[var(--text-secondary)]">
                                                 <i class="fas fa-users mr-1"></i>
                                                 ${ group.member_count || 0 } ${t('adminDashboard.membersCount')}
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
+                                        <td class="hidden lg:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
                                             ${ parseInstant(group.created_at).toLocaleDateString(uiLocale()) }
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                             <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" :title="t('tooltips.manageMembers')">
                                                 <i class="fas fa-users-cog"></i>
                                             </button>

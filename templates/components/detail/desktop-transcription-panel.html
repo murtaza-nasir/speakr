@@ -16,7 +16,7 @@
             <button type="button" class="tab" v-if="!(selectedRecording && selectedRecording.incognito)" :class="{ 'is-active': viewingTranslation }" @click="viewingTranslation = true">
                 <i class="fas fa-language" style="font-size: 13px; opacity: 0.7;"></i>
                 <span v-text="t('translation.title')" data-i18n="translation.title"></span>
-                <span v-if="selectedRecording && selectedRecording.transcription_translation_language" class="ml-1 text-xs opacity-80">(${ translationLanguageLabel(selectedRecording.transcription_translation_language) })</span>
+                <span v-if="selectedRecording && selectedRecording.transcription_translation_language" class="ml-1 text-xs">(${ translationLanguageLabel(selectedRecording.transcription_translation_language) })</span>
             </button>
         </div>
         <div class="tabs-bar__actions">
