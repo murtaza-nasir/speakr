@@ -56,10 +56,14 @@
                         ${ t('progressQueue.clear') }
                     </button>
                     <button @click.stop="progressPopupMinimized = !progressPopupMinimized"
+                            :title="progressPopupMinimized ? t('tooltips.expand') : t('tooltips.minimize')"
+                            :aria-label="progressPopupMinimized ? t('tooltips.expand') : t('tooltips.minimize')"
+                            :aria-expanded="progressPopupMinimized ? 'false' : 'true'"
                             class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
                         <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
                     </button>
                     <button @click.stop="progressPopupClosed = true"
+                            :title="t('buttons.close')" :aria-label="t('buttons.close')"
                             class="progress-popup__close p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
                         <i class="fas fa-times text-xs"></i>
                     </button>
@@ -94,7 +98,8 @@
         </div>
 
         <!-- Compact Content -->
-        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5">
+        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5"
+             tabindex="0" role="region" :aria-label="t('progressQueue.region')">
             <!-- Active Items -->
             <template v-for="item in activeProgressItems" :key="item.id">
                 <div :class="[
@@ -137,7 +142,7 @@
                         <span class="text-[10px] text-[var(--text-muted)]">${item.progressMessage}</span>
                         <button v-if="item.status === 'ready' && item.clientId"
                                 @click="removeProgressItem(item)"
-                                class="text-[10px] text-red-500 hover:text-red-600">
+                                class="text-[10px] text-[var(--text-danger)] hover:text-[var(--text-danger-strong)]">
                             <i class="fas fa-times"></i> ${ t('progressQueue.cancel') }
                         </button>
                     </div>
@@ -146,7 +151,7 @@
 
             <!-- Failed Items -->
             <div v-if="failedProgressItems.length > 0" class="mt-2">
-                <div class="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <div class="text-[10px] font-semibold text-[var(--text-danger)] uppercase tracking-wider mb-1 flex items-center gap-1">
                     <i class="fas fa-exclamation-triangle"></i>
                     ${ t('progressQueue.failed') } (${failedProgressItems.length})
                 </div>
