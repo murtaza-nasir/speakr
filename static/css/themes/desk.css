@@ -949,3 +949,23 @@ html[data-ui-theme="desk"] .desk-row.is-failed .desk-row__title.is-selected { co
 
 /* Processing queue header: the summary line at full strength */
 html[data-ui-theme="desk"] .progress-popup__summary { opacity: 1; }
+
+/* ---- Round 4 QA fixes: hairlines where two regions meet --------------------- */
+
+/* List | detail: the sidebar draws its border-right, but the content wrapper
+   is as wide as the sidebar and paints over it, so the seam never showed.
+   The wrapper carries the same 1px line. */
+html[data-ui-theme="desk"] .sidebar-content-wrapper { border-inline-end: 1px solid var(--line); }
+
+/* Player at the top (Account > Display): its top edge already meets the
+   metadata strip's line, and nothing separated it from the tab bars below.
+   The line moves to its bottom edge. */
+html[data-ui-theme="desk"] .flex-shrink-0.border-t:has(+ #mainContentColumns) {
+    border-top: 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+/* Speaker column: a name longer than the 112px column (UNKNOWN_SPEAKER, long
+   real names) wraps inside it, as in Workspace, instead of being cut to an
+   ellipsis that hides which speaker it is. */
+html[data-ui-theme="desk"] .desk-run .speaker-segment .desk-spk { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
