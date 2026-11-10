@@ -176,7 +176,8 @@
       "clearNote": "New voice profiles will be created when you identify these speakers in future recordings.",
       "mergeSubtitle": "Combine speaker profiles",
       "mergeInstruction": "Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.",
-      "editNameTitle": "Edit Speaker Name"
+      "editNameTitle": "Edit Speaker Name",
+      "selectSpeaker": "Select {{name}}"
     },
     "confirmDeleteNamed": "Are you sure you want to delete \"{{name}}\"?",
     "loadFailed": "Failed to load",
@@ -814,7 +815,13 @@
   "asrEditor": {
     "saved": "Saved",
     "ctrlSHint": "Ctrl+S to save",
-    "saveWithoutClosing": "Save without closing (Ctrl+S)"
+    "saveWithoutClosing": "Save without closing (Ctrl+S)",
+    "speakerInput": "Speaker, segment {{n}}",
+    "startTimeInput": "Start time, segment {{n}}",
+    "endTimeInput": "End time, segment {{n}}",
+    "textInput": "Text, segment {{n}}",
+    "speakerSuggestions": "Choose speaker, segment {{n}}",
+    "volume": "Volume"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",
@@ -2274,7 +2281,8 @@
     "uploadingMessage": "Uploading...",
     "waiting": "Waiting",
     "waitingForProcessing": "Uploaded, waiting for processing...",
-    "waitingToUpload": "Waiting to upload..."
+    "waitingToUpload": "Waiting to upload...",
+    "region": "Processing queue items"
   },
   "promptVariables": {
     "title": "Prompt variables",
@@ -2446,7 +2454,8 @@
     "fromOwner": "From {{name}}",
     "open": "Open",
     "accessRevoked": "Access revoked",
-    "revokeFailed": "Could not revoke access."
+    "revokeFailed": "Could not revoke access.",
+    "shareLinkFor": "Share link for {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "You have not shared any transcripts yet."
@@ -2736,7 +2745,8 @@
     "currentTags": "Current Tags",
     "done": "Done",
     "noTagsAssigned": "No tags assigned to this recording",
-    "searchTags": "Search tags..."
+    "searchTags": "Search tags...",
+    "removeTagNamed": "Remove tag {{name}}"
   },
   "time": {
     "dayAgo": "1 day ago",
@@ -2758,7 +2768,9 @@
     "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
     "summaryLabel": "Give the summarization agent timestamps",
     "chatLabel": "Give the chat agent timestamps",
-    "defaultFormat": "Default timestamp format"
+    "defaultFormat": "Default timestamp format",
+    "summaryTemplateLabel": "Timestamp format for the summarization agent",
+    "chatTemplateLabel": "Timestamp format for the chat agent"
   },
   "summaryNotes": {
     "title": "Notes in Summaries",
@@ -3603,7 +3615,8 @@
     "subtitle": "Shared Recording",
     "pageTitle": "Shared Recording - {{title}}",
     "poweredBy": "Powered by advanced AI transcription",
-    "builtWith": "Built with"
+    "builtWith": "Built with",
+    "followPlayer": "Follow audio playback"
   },
   "datePicker": {
     "apply": "Apply",

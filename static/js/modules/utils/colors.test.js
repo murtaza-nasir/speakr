@@ -1,9 +1,9 @@
 /**
  * Unit tests for getContrastTextColor in colors.js.
  *
- * The helper returns 'black' for backgrounds whose simple luminance exceeds
- * 0.65 and 'white' otherwise, falling back to 'white' for falsy input or when
- * the luminance computation throws.
+ * The helper returns whichever of black and white has the higher WCAG
+ * contrast ratio against the background, falling back to 'white' for falsy
+ * input, an unparseable string, or when the luminance computation throws.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -22,10 +22,16 @@ describe('getContrastTextColor', () => {
         expect(getContrastTextColor('#cccccc')).toBe('black'); // lum 0.8
     });
 
-    it('returns white for dark and medium backgrounds', () => {
+    it('returns white for dark backgrounds', () => {
         expect(getContrastTextColor('#000000')).toBe('white');
-        expect(getContrastTextColor('#008000')).toBe('white'); // green
-        expect(getContrastTextColor('#808080')).toBe('white'); // mid grey, lum ~0.5
+        expect(getContrastTextColor('#008000')).toBe('white'); // green: white 5.1, black 4.1
+        expect(getContrastTextColor('#1d4ed8')).toBe('white'); // blue-700
+    });
+
+    it('returns black for medium backgrounds where white falls below black', () => {
+        expect(getContrastTextColor('#808080')).toBe('black'); // mid grey: black 5.3, white 3.9
+        expect(getContrastTextColor('#3b82f6')).toBe('black'); // blue-500: black 5.7, white 3.7
+        expect(getContrastTextColor('#6366f1')).toBe('black'); // indigo-500: black 4.7, white 4.5
     });
 
     it('expands 3-digit hex shorthand', () => {

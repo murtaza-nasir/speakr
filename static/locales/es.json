@@ -176,7 +176,8 @@
       "clearNote": "Se crearán nuevos perfiles de voz cuando identifique a estos hablantes en futuras grabaciones.",
       "mergeSubtitle": "Combinar perfiles de hablantes",
       "mergeInstruction": "Haga clic en el hablante que desea conservar. Todos los datos de voz, fragmentos y estadísticas de uso de los demás hablantes se fusionarán en él.",
-      "editNameTitle": "Editar nombre del hablante"
+      "editNameTitle": "Editar nombre del hablante",
+      "selectSpeaker": "Seleccionar a {{name}}"
     },
     "confirmDeleteNamed": "¿Está seguro de que desea eliminar \"{{name}}\"?",
     "loadFailed": "Error al cargar",
@@ -814,7 +815,13 @@
   "asrEditor": {
     "saved": "Guardado",
     "ctrlSHint": "Ctrl+S para guardar",
-    "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
+    "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)",
+    "speakerInput": "Hablante, segmento {{n}}",
+    "startTimeInput": "Hora de inicio, segmento {{n}}",
+    "endTimeInput": "Hora de fin, segmento {{n}}",
+    "textInput": "Texto, segmento {{n}}",
+    "speakerSuggestions": "Elegir hablante, segmento {{n}}",
+    "volume": "Volumen"
   },
   "findReplace": {
     "open": "Buscar y reemplazar (Ctrl+F)",
@@ -2274,7 +2281,8 @@
     "uploadingMessage": "Subiendo...",
     "waiting": "En espera",
     "waitingForProcessing": "Subido, esperando el procesamiento...",
-    "waitingToUpload": "Esperando para subir..."
+    "waitingToUpload": "Esperando para subir...",
+    "region": "Elementos de la cola de procesamiento"
   },
   "promptVariables": {
     "title": "Variables del prompt",
@@ -2446,7 +2454,8 @@
     "fromOwner": "De {{name}}",
     "open": "Abrir",
     "accessRevoked": "Acceso retirado",
-    "revokeFailed": "No se pudo retirar el acceso."
+    "revokeFailed": "No se pudo retirar el acceso.",
+    "shareLinkFor": "Enlace compartido de {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Aún no has compartido ninguna transcripción."
@@ -2736,7 +2745,8 @@
     "currentTags": "Etiquetas Actuales",
     "done": "Listo",
     "noTagsAssigned": "No hay etiquetas asignadas a esta grabación",
-    "searchTags": "Buscar etiquetas..."
+    "searchTags": "Buscar etiquetas...",
+    "removeTagNamed": "Quitar la etiqueta {{name}}"
   },
   "time": {
     "dayAgo": "Hace 1 día",
@@ -2758,7 +2768,9 @@
     "description": "Elige si los agentes de resumen y de chat reciben marcas de tiempo en la transcripción, para que puedan indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
     "summaryLabel": "Dar marcas de tiempo al agente de resumen",
     "chatLabel": "Dar marcas de tiempo al agente de chat",
-    "defaultFormat": "Formato de marca de tiempo predeterminado"
+    "defaultFormat": "Formato de marca de tiempo predeterminado",
+    "summaryTemplateLabel": "Formato de marcas de tiempo para el agente de resumen",
+    "chatTemplateLabel": "Formato de marcas de tiempo para el agente de chat"
   },
   "summaryNotes": {
     "title": "Notas en los resúmenes",
@@ -3603,7 +3615,8 @@
     "subtitle": "Grabación compartida",
     "pageTitle": "Grabación compartida - {{title}}",
     "poweredBy": "Con tecnología de transcripción avanzada por IA",
-    "builtWith": "Creado con"
+    "builtWith": "Creado con",
+    "followPlayer": "Seguir la reproducción de audio"
   },
   "datePicker": {
     "apply": "Aplicar",

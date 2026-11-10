@@ -176,7 +176,8 @@
       "clearNote": "De nouveaux profils vocaux seront créés lorsque vous identifierez ces intervenants dans de futurs enregistrements.",
       "mergeSubtitle": "Combiner les profils des intervenants",
       "mergeInstruction": "Cliquez sur l'intervenant à conserver. Toutes les données vocales, extraits et statistiques d'utilisation des autres intervenants y seront fusionnés.",
-      "editNameTitle": "Modifier le nom de l'intervenant"
+      "editNameTitle": "Modifier le nom de l'intervenant",
+      "selectSpeaker": "Sélectionner {{name}}"
     },
     "confirmDeleteNamed": "Êtes-vous sûr de vouloir supprimer « {{name}} » ?",
     "loadFailed": "Échec du chargement",
@@ -814,7 +815,13 @@
   "asrEditor": {
     "saved": "Enregistré",
     "ctrlSHint": "Ctrl+S pour enregistrer",
-    "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
+    "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)",
+    "speakerInput": "Intervenant, segment {{n}}",
+    "startTimeInput": "Heure de début, segment {{n}}",
+    "endTimeInput": "Heure de fin, segment {{n}}",
+    "textInput": "Texte, segment {{n}}",
+    "speakerSuggestions": "Choisir l'intervenant, segment {{n}}",
+    "volume": "Volume"
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",
@@ -2274,7 +2281,8 @@
     "uploadingMessage": "Envoi en cours...",
     "waiting": "En attente",
     "waitingForProcessing": "Envoyé, en attente de traitement...",
-    "waitingToUpload": "En attente d’envoi..."
+    "waitingToUpload": "En attente d’envoi...",
+    "region": "Éléments de la file de traitement"
   },
   "promptVariables": {
     "title": "Variables de l'invite",
@@ -2446,7 +2454,8 @@
     "fromOwner": "De {{name}}",
     "open": "Ouvrir",
     "accessRevoked": "Accès retiré",
-    "revokeFailed": "Impossible de retirer l'accès."
+    "revokeFailed": "Impossible de retirer l'accès.",
+    "shareLinkFor": "Lien de partage pour {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Vous n'avez pas encore partagé de transcriptions."
@@ -2736,7 +2745,8 @@
     "currentTags": "Étiquettes Actuelles",
     "done": "Terminé",
     "noTagsAssigned": "Aucune étiquette assignée à cet enregistrement",
-    "searchTags": "Rechercher des étiquettes..."
+    "searchTags": "Rechercher des étiquettes...",
+    "removeTagNamed": "Retirer l'étiquette {{name}}"
   },
   "time": {
     "dayAgo": "Il y a 1 jour",
@@ -2758,7 +2768,9 @@
     "description": "Choisissez si les agents de résumé et de chat reçoivent les horodatages dans la transcription, afin qu'ils puissent indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
     "summaryLabel": "Fournir les horodatages à l'agent de résumé",
     "chatLabel": "Fournir les horodatages à l'agent de chat",
-    "defaultFormat": "Format d'horodatage par défaut"
+    "defaultFormat": "Format d'horodatage par défaut",
+    "summaryTemplateLabel": "Format d'horodatage pour l'agent de résumé",
+    "chatTemplateLabel": "Format d'horodatage pour l'agent de chat"
   },
   "summaryNotes": {
     "title": "Notes dans les résumés",
@@ -3603,7 +3615,8 @@
     "subtitle": "Enregistrement partagé",
     "pageTitle": "Enregistrement partagé - {{title}}",
     "poweredBy": "Propulsé par une transcription IA avancée",
-    "builtWith": "Créé avec"
+    "builtWith": "Créé avec",
+    "followPlayer": "Suivre la lecture audio"
   },
   "datePicker": {
     "apply": "Appliquer",

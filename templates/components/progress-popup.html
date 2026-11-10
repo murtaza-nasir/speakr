@@ -41,10 +41,14 @@
                         ${ t('progressQueue.clear') }
                     </button>
                     <button @click.stop="progressPopupMinimized = !progressPopupMinimized"
+                            :title="progressPopupMinimized ? t('tooltips.expand') : t('tooltips.minimize')"
+                            :aria-label="progressPopupMinimized ? t('tooltips.expand') : t('tooltips.minimize')"
+                            :aria-expanded="progressPopupMinimized ? 'false' : 'true'"
                             class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
                         <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
                     </button>
                     <button @click.stop="progressPopupClosed = true"
+                            :title="t('buttons.close')" :aria-label="t('buttons.close')"
                             class="progress-popup__close p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
                         <i class="fas fa-times text-xs"></i>
                     </button>
@@ -79,7 +83,8 @@
         </div>
 
         <!-- Compact Content -->
-        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5">
+        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5"
+             tabindex="0" role="region" :aria-label="t('progressQueue.region')">
             <!-- Active Items -->
             <template v-for="item in activeProgressItems" :key="item.id">
                 <div :class="[
@@ -102,13 +107,13 @@
                         ]"></i>
                         <span class="text-xs font-medium truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
                         <span v-if="item.status === 'uploading' && item.progress !== null"
-                              class="text-xs font-bold text-blue-500">${ formatPercent(item.progress) }</span>
+                              class="text-xs font-bold text-[var(--text-info-strong)]">${ formatPercent(item.progress) }</span>
                         <span v-else :class="[
                             'text-xs font-medium px-1.5 py-0.5 rounded',
-                            item.status === 'uploading' ? 'bg-blue-500/20 text-blue-500' :
-                            item.status === 'transcribing' ? 'bg-purple-500/20 text-purple-500' :
-                            item.status === 'summarizing' ? 'bg-green-500/20 text-green-500' :
-                            'bg-yellow-500/20 text-yellow-500'
+                            item.status === 'uploading' ? 'bg-[var(--bg-info-light)] text-[var(--text-info-strong)]' :
+                            item.status === 'transcribing' ? 'bg-[var(--bg-processing-light)] text-[var(--text-processing-strong)]' :
+                            item.status === 'summarizing' ? 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]' :
+                            'bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]'
                         ]">${item.statusLabel || getStatusDisplay(item.status).label}</span>
                     </div>
                     <!-- Progress bar for uploads -->
@@ -119,7 +124,7 @@
                     </div>
                     <!-- Compact message -->
                     <div class="flex items-center justify-between mt-0.5">
-                        <span class="text-[10px] text-[var(--text-muted)]">${item.progressMessage}</span>
+                        <span class="text-[10px] text-[var(--text-secondary)]">${item.progressMessage}</span>
                         <button v-if="item.status === 'ready' && item.clientId"
                                 @click="removeProgressItem(item)"
                                 class="text-[10px] text-red-500 hover:text-red-600">
@@ -205,7 +210,7 @@
                     <i class="fas fa-check-circle text-xs text-green-500"></i>
                     <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
                     <i v-if="item.duplicateWarning" class="fas fa-copy text-xs text-amber-500" :title="t('progressQueue.duplicateWarning')"></i>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">${ t('progressQueue.done') }</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)] font-medium">${ t('progressQueue.done') }</span>
                 </div>
             </div>
 

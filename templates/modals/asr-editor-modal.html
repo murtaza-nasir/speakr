@@ -58,17 +58,20 @@
                 <!-- Volume -->
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.muted = !$refs.asrEditorAudioRef.muted)"
-                            class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
+                            class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
+                            :title="t('tooltips.mute')" :aria-label="t('tooltips.mute')">
                         <i :class="playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
                     </button>
                     <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
                            @input="(e) => { if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.volume = parseFloat(e.target.value); }"
+                           :aria-label="t('asrEditor.volume')"
                            class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
                 </div>
                 <!-- Speed Control (compact - tap to cycle) -->
                 <button @click="cycleModalPlaybackRate(); if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.playbackRate = modalPlaybackRate"
                         class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                        :title="t('tooltips.playbackSpeedTapToChange')">
+                        :title="t('tooltips.playbackSpeedTapToChange')"
+                        :aria-label="t('tooltips.playbackSpeed') + ': ' + formatPlaybackRate(modalPlaybackRate)">
                     <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
                 </button>
             </div>
@@ -106,8 +109,10 @@
                                            @input="openSpeakerSuggestions(segment._originalIndex, { filter: true })"
                                            @focus="openSpeakerSuggestions(segment._originalIndex)"
                                            @click.stop="openSpeakerSuggestions(segment._originalIndex)"
-                                           class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
+                                           :aria-label="t('asrEditor.speakerInput', { n: segment._originalIndex + 1 })"
+                                           class="asr-editor-field w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
                                     <button type="button" @click.stop="openSpeakerSuggestions(segment._originalIndex)"
+                                            :aria-label="t('asrEditor.speakerSuggestions', { n: segment._originalIndex + 1 })"
                                             class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
                                         <i class="fas fa-chevron-down text-xs"></i>
                                     </button>
@@ -125,13 +130,13 @@
                             </teleport>
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" class="w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" :aria-label="t('asrEditor.startTimeInput', { n: segment._originalIndex + 1 })" class="asr-editor-field w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-middle">
-                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" :aria-label="t('asrEditor.endTimeInput', { n: segment._originalIndex + 1 })" class="asr-editor-field w-full px-1 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
                         </td>
                         <td class="border-r border-[var(--border-primary)] align-top">
-                            <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none overflow-hidden block" @input="autoResizeTextarea($event)"></textarea>
+                            <textarea dir="auto" v-model="editingSegments[segment._originalIndex].sentence" rows="1" :aria-label="t('asrEditor.textInput', { n: segment._originalIndex + 1 })" class="asr-editor-field w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none overflow-hidden block" @input="autoResizeTextarea($event)"></textarea>
                         </td>
                         <td class="px-1 text-center align-middle">
                             <div class="flex items-center justify-center gap-1">

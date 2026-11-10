@@ -176,7 +176,8 @@
       "clearNote": "当您在以后的录音中识别这些发言人时，将创建新的声纹档案。",
       "mergeSubtitle": "合并发言人档案",
       "mergeInstruction": "点击要保留的发言人。其他发言人的所有声音数据、片段和使用统计都将合并到该发言人中。",
-      "editNameTitle": "编辑发言人名称"
+      "editNameTitle": "编辑发言人名称",
+      "selectSpeaker": "选择 {{name}}"
     },
     "confirmDeleteNamed": "确定要删除“{{name}}”吗？",
     "loadFailed": "加载失败",
@@ -814,7 +815,13 @@
   "asrEditor": {
     "saved": "已保存",
     "ctrlSHint": "Ctrl+S 保存",
-    "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
+    "saveWithoutClosing": "保存但不关闭 (Ctrl+S)",
+    "speakerInput": "说话人，第 {{n}} 段",
+    "startTimeInput": "开始时间，第 {{n}} 段",
+    "endTimeInput": "结束时间，第 {{n}} 段",
+    "textInput": "文本，第 {{n}} 段",
+    "speakerSuggestions": "选择说话人，第 {{n}} 段",
+    "volume": "音量"
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",
@@ -2274,7 +2281,8 @@
     "uploadingMessage": "正在上传...",
     "waiting": "等待中",
     "waitingForProcessing": "已上传，等待处理...",
-    "waitingToUpload": "等待上传..."
+    "waitingToUpload": "等待上传...",
+    "region": "处理队列项目"
   },
   "promptVariables": {
     "title": "提示变量",
@@ -2446,7 +2454,8 @@
     "fromOwner": "来自 {{name}}",
     "open": "打开",
     "accessRevoked": "已撤销访问",
-    "revokeFailed": "无法撤销访问。"
+    "revokeFailed": "无法撤销访问。",
+    "shareLinkFor": "{{title}} 的分享链接"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "您尚未分享任何转录。"
@@ -2736,7 +2745,8 @@
     "currentTags": "当前标签",
     "done": "完成",
     "noTagsAssigned": "此录音未分配标签",
-    "searchTags": "搜索标签..."
+    "searchTags": "搜索标签...",
+    "removeTagNamed": "移除标签 {{name}}"
   },
   "time": {
     "dayAgo": "1 天前",
@@ -2758,7 +2768,9 @@
     "description": "选择摘要代理和聊天代理是否在转录中收到时间戳，以便它们能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
     "summaryLabel": "让摘要代理获得时间戳",
     "chatLabel": "让聊天代理获得时间戳",
-    "defaultFormat": "默认时间戳格式"
+    "defaultFormat": "默认时间戳格式",
+    "summaryTemplateLabel": "摘要代理的时间戳格式",
+    "chatTemplateLabel": "聊天代理的时间戳格式"
   },
   "summaryNotes": {
     "title": "摘要中的笔记",
@@ -3603,7 +3615,8 @@
     "subtitle": "共享录音",
     "pageTitle": "共享录音 - {{title}}",
     "poweredBy": "由先进的 AI 转录技术驱动",
-    "builtWith": "构建于"
+    "builtWith": "构建于",
+    "followPlayer": "跟随音频播放"
   },
   "datePicker": {
     "apply": "应用",

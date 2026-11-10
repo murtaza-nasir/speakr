@@ -176,7 +176,8 @@
       "clearNote": "Neue Stimmprofile entstehen, wenn Sie diese Sprecher in künftigen Aufnahmen zuordnen.",
       "mergeSubtitle": "Sprecherprofile zusammenführen",
       "mergeInstruction": "Klicken Sie auf den Sprecher, der erhalten bleiben soll. Alle Stimmdaten, Ausschnitte und Nutzungsstatistiken der anderen Sprecher werden in ihn übernommen.",
-      "editNameTitle": "Sprechernamen bearbeiten"
+      "editNameTitle": "Sprechernamen bearbeiten",
+      "selectSpeaker": "{{name}} auswählen"
     },
     "confirmDeleteNamed": "Möchten Sie „{{name}}“ wirklich löschen?",
     "loadFailed": "Laden fehlgeschlagen",
@@ -814,7 +815,13 @@
   "asrEditor": {
     "saved": "Gespeichert",
     "ctrlSHint": "Strg+S zum Speichern",
-    "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)"
+    "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)",
+    "speakerInput": "Sprecher, Segment {{n}}",
+    "startTimeInput": "Startzeit, Segment {{n}}",
+    "endTimeInput": "Endzeit, Segment {{n}}",
+    "textInput": "Text, Segment {{n}}",
+    "speakerSuggestions": "Sprecher wählen, Segment {{n}}",
+    "volume": "Lautstärke"
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",
@@ -2274,7 +2281,8 @@
     "uploadingMessage": "Wird hochgeladen...",
     "waiting": "Wartet",
     "waitingForProcessing": "Hochgeladen, wartet auf Verarbeitung...",
-    "waitingToUpload": "Wartet auf Upload..."
+    "waitingToUpload": "Wartet auf Upload...",
+    "region": "Einträge der Verarbeitungswarteschlange"
   },
   "promptVariables": {
     "title": "Prompt-Variablen",
@@ -2446,7 +2454,8 @@
     "fromOwner": "Von {{name}}",
     "open": "Öffnen",
     "accessRevoked": "Zugriff entzogen",
-    "revokeFailed": "Der Zugriff konnte nicht entzogen werden."
+    "revokeFailed": "Der Zugriff konnte nicht entzogen werden.",
+    "shareLinkFor": "Freigabelink für {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Sie haben noch keine Transkripte geteilt."
@@ -2736,7 +2745,8 @@
     "currentTags": "Aktuelle Tags",
     "done": "Fertig",
     "noTagsAssigned": "Dieser Aufnahme sind keine Tags zugewiesen",
-    "searchTags": "Tags suchen..."
+    "searchTags": "Tags suchen...",
+    "removeTagNamed": "Tag {{name}} entfernen"
   },
   "time": {
     "dayAgo": "Vor 1 Tag",
@@ -2758,7 +2768,9 @@
     "description": "Legen Sie fest, ob der Zusammenfassungs- und der Chat-Agent Zeitstempel im Transkript erhalten, damit sie sich darauf beziehen können, wann etwas gesagt wurde. Wählen Sie das Standardformat oder eine Ihrer Transkriptvorlagen.",
     "summaryLabel": "Dem Zusammenfassungs-Agenten Zeitstempel geben",
     "chatLabel": "Dem Chat-Agenten Zeitstempel geben",
-    "defaultFormat": "Standard-Zeitstempelformat"
+    "defaultFormat": "Standard-Zeitstempelformat",
+    "summaryTemplateLabel": "Zeitstempelformat für den Zusammenfassungsagenten",
+    "chatTemplateLabel": "Zeitstempelformat für den Chat-Agenten"
   },
   "summaryNotes": {
     "title": "Notizen in Zusammenfassungen",
@@ -3603,7 +3615,8 @@
     "subtitle": "Geteilte Aufnahme",
     "pageTitle": "Geteilte Aufnahme – {{title}}",
     "poweredBy": "Mit fortschrittlicher KI-Transkription",
-    "builtWith": "Erstellt mit"
+    "builtWith": "Erstellt mit",
+    "followPlayer": "Der Audiowiedergabe folgen"
   },
   "datePicker": {
     "apply": "Übernehmen",
