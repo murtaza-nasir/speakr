@@ -2136,6 +2136,12 @@ Summarization Instructions:
                     // Default Prompts tab (#411).
                     'llm_temperature_summary', 'llm_temperature_title',
                     'llm_temperature_chat', 'llm_temperature_event',
+                    // Internal state for voice profiles (#380): which voice
+                    // embedding space is in use, and the reference embedding
+                    // used to detect a change of embedding model. Written by
+                    // Speakr; editing them by hand breaks voice matching.
+                    'voice_space_current', 'voice_space_legacy',
+                    'voice_embedding_reference',
                 ]);
                 const displayedSettings = computed(() =>
                     (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key)).slice().sort((a, b) => String(a.key).localeCompare(String(b.key)))
