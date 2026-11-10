@@ -24,7 +24,7 @@ html[data-ui-theme="desk"] {
     --text-primary: #1b2430;
     --text-secondary: #36414f;
     --text-muted: #5b6676;
-    --text-light: #8892a0;
+    --text-light: #5f6773; /* 4.5:1 or more on bg-primary and bg-tertiary */
     --border-primary: #dde2e8;
     --border-secondary: #c6ced8;
     --scrollbar-track: #e9ecf0;
@@ -86,7 +86,7 @@ html[data-ui-theme="desk"].dark {
     --text-primary: #e7eaef;
     --text-secondary: #c6ccd5;
     --text-muted: #9ba5b2;
-    --text-light: #7b8593;
+    --text-light: #939dab; /* 4.5:1 or more on bg-tertiary */
     --border-primary: #2b313b;
     --border-secondary: #3a424e;
     --scrollbar-track: #121519;
@@ -940,3 +940,12 @@ html[data-ui-theme="desk"] .container > main > div.max-w-md input[type="text"] {
 html[data-ui-theme="desk"] .container > main > div.max-w-md input:focus { outline: 2px solid var(--ring-focus); outline-offset: 0; border-color: var(--border-focus); }
 html[data-ui-theme="desk"] .container > main > div.max-w-md button[type="submit"] { height: 34px; border-radius: var(--r-2); font-size: var(--fs-body); }
 html[data-ui-theme="desk"] .container > main > div.max-w-md label { font-size: var(--fs-meta); font-weight: 600; color: var(--text-2); }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* A failed recording's title is red; selected, it takes the selected-row colour
+   (the Failed chip still says it), since red on the accent fill falls under 4.5:1. */
+html[data-ui-theme="desk"] .desk-row.is-failed .desk-row__title.is-selected { color: var(--on-primary-container); }
+
+/* Processing queue header: the summary line at full strength */
+html[data-ui-theme="desk"] .progress-popup__summary { opacity: 1; }

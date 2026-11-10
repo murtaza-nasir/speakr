@@ -1090,3 +1090,12 @@ html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { o
     html[data-ui-theme="cards"] .mh-tools .btn--icon.btn--sm { min-height: 38px; }
     html[data-ui-theme="cards"] #app > header .btn.header-action.btn--sm { min-height: 40px; }
 }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Sign-in / register button: a visible keyboard focus ring */
+html[data-ui-theme="cards"] body > .container > main input[type="submit"]:focus-visible,
+html[data-ui-theme="cards"] body > .container > main button[type="submit"]:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+/* Processing queue header: the "1 transcribing, 3 queued" line at full strength */
+html[data-ui-theme="cards"] .progress-popup .progress-popup__summary { opacity: 1; }

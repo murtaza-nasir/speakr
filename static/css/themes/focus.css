@@ -1237,3 +1237,15 @@ html[data-ui-theme="focus"] body .spk-modal .spk-options { border-radius: 999px;
 html[data-ui-theme="focus"] body .spk-modal .spk-options { border-radius: var(--f-r-md); box-shadow: var(--f-shadow-2); border: 1px solid var(--f-divider); }
 html[data-ui-theme="focus"] body .spk-modal .spk-seek,
 html[data-ui-theme="focus"] body .spk-modal .spk-seek > div { height: 4px; }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Sign-in and register fields: the focus ring has to outrank the field's own
+   :not() chain above (same chain plus :focus), or the ring never shows. */
+html[data-ui-theme="focus"] body main.flex-grow input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="hidden"]):focus {
+    border-color: var(--f-focus);
+    box-shadow: 0 0 0 3px var(--f-focus-ring);
+    outline: none;
+}
+html[data-ui-theme="focus"] body main.flex-grow input[type="submit"]:focus-visible,
+html[data-ui-theme="focus"] body main.flex-grow button[type="submit"]:focus-visible { outline: 2px solid var(--f-focus); outline-offset: 2px; }

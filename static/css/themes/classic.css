@@ -1049,3 +1049,12 @@ html[data-ui-theme="classic"] .chip.bg-teal-500 {
     background: var(--primary-container) !important;
     color: var(--on-primary-container) !important;
 }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Sign-in / register button: a visible keyboard focus ring (the pill drops box-shadow) */
+html[data-ui-theme="classic"] main input[type='submit'].w-full:focus-visible,
+html[data-ui-theme="classic"] main button[type='submit'].w-full:focus-visible { outline: 2px solid var(--border-focus) !important; outline-offset: 2px; }
+
+/* Speaker dialog transcript: no bleed margins inside its own scroller (they made it scroll sideways by 8px) */
+html[data-ui-theme="classic"] .speaker-modal-transcript .speaker-segment { margin-inline: 0; }

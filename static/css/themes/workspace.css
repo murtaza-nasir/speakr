@@ -1543,10 +1543,13 @@ html[data-ui-theme="workspace"] [data-mobile-bottom-nav] {
 /* Upload sheet footer: wraps instead of overflowing a 390px screen. */
 @media (max-width: 640px) {
     html[data-ui-theme="workspace"] .modal-footer--between { flex-wrap: wrap; gap: 8px; }
-    html[data-ui-theme="workspace"] .modal-footer--between > .btn { flex: 1 1 100%; }
-    html[data-ui-theme="workspace"] .modal-footer--between > div.flex { flex: 1 1 100%; width: 100%; }
+    html[data-ui-theme="workspace"] .modal-footer--between > .btn { flex: 1 1 100%; order: 2; }
+    html[data-ui-theme="workspace"] .modal-footer--between > div { flex: 1 1 100%; width: 100%; min-width: 0; }
     html[data-ui-theme="workspace"] .modal-footer--between > div.flex > .btn { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.2; padding-block: 6px; }
-    html[data-ui-theme="workspace"] .modal-footer--between { flex-direction: column-reverse; align-items: stretch; }
+    /* Row wrap, not column-reverse: in a column a 100% flex-basis is a height, which
+       pushed the speaker dialog's Cancel / Save Names off the right edge.
+       The secondary button still ends up last (order: 2). */
+    html[data-ui-theme="workspace"] .modal-footer--between { align-items: stretch; }
 }
 
 
@@ -1598,3 +1601,28 @@ html[data-ui-theme="workspace"] .page-header__back {
 }
 html[data-ui-theme="workspace"] .page-header__back:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 html[data-ui-theme="workspace"] .page-header__back i { font-size: 10px; color: var(--text-muted); }
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Sign-in and register fields: ring on focus (the field rule above outranks a bare input:focus) */
+html[data-ui-theme="workspace"] body > .container input:not([type="checkbox"]):not([type="hidden"]):not([type="submit"]):focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--ring-focus);
+}
+
+/* Settings headings are text-primary; the API token notice keeps its light amber
+   box in dark mode, so its heading keeps the dark amber of text-amber-800. */
+html[data-ui-theme="workspace"] main > .overflow-hidden:has(> .tabs-scroller) .tab-scroll .bg-amber-50 h3 { color: #92400e; }
+
+/* Filled danger buttons in dark mode: the light red that reads well as text
+   (--ws-danger) is too light behind white text; a deeper red keeps 5:1. */
+html[data-ui-theme="workspace"].dark .btn--danger,
+html[data-ui-theme="workspace"].dark .btn--danger:hover:not(:disabled) { background: #c93434; border-color: #c93434; }
+
+/* Recording toolbar: the Share / More group stays at the right end even when it
+   wraps to a second row (the spacer used to end the first row and leave the
+   group at the left, where the More menu, aligned to its right edge, ran off
+   the pane). */
+html[data-ui-theme="workspace"] .ws-toolbar > .ws-grow { display: none; }
+html[data-ui-theme="workspace"] .ws-toolbar > .ws-grow + .ws-tb-group { margin-inline-start: auto; }
