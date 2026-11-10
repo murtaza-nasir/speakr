@@ -63,7 +63,7 @@ services:
 | `latest` | ~4.4GB | Full image with semantic search via PyTorch embeddings |
 | `lite` | ~725MB | Lightweight image without PyTorch — all features work, Inquire Mode falls back to text search |
 
-If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Just replace `latest` with `lite` in the configuration above.
+If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Replace `latest` with `lite` in the configuration above.
 
 Or download the example configuration:
 
@@ -87,7 +87,7 @@ Download the unified transcription configuration template:
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.transcription.example -O .env
 ```
 
-Configure your transcription service with just two key settings:
+Configure your transcription service with two key settings:
 
 ```bash
 TRANSCRIPTION_API_KEY=sk-your-openai-key-here
@@ -187,7 +187,7 @@ ASR_BASE_URL=http://whisperx-asr:9000
 ASR_BASE_URL=http://whisper-asr:9000
 ```
 
-> **Note:** The `USE_ASR_ENDPOINT=true` setting is deprecated. Just setting `ASR_BASE_URL` automatically enables ASR mode.
+> **Note:** The `USE_ASR_ENDPOINT=true` setting is deprecated. Setting `ASR_BASE_URL` automatically enables ASR mode.
 
 The ASR_BASE_URL depends on your deployment architecture:
 

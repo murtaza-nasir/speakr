@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get Speakr up and running in just a few minutes using the pre-built Docker image! This guide will walk you through the fastest way to deploy Speakr with either OpenAI Whisper API or a [custom ASR endpoint](features.md#speaker-diarization).
+Get Speakr up and running in a few minutes using the pre-built Docker image! This guide will walk you through the fastest way to deploy Speakr with either OpenAI Whisper API or a [custom ASR endpoint](features.md#speaker-diarization).
 
 > **Note:** If you want to use the ASR endpoint option for speaker diarization features, you'll need to run an additional Docker container (`onerahmet/openai-whisper-asr-webservice`). See [Running ASR Service for Speaker Diarization](getting-started/installation.md#running-asr-service-for-speaker-diarization) for detailed setup instructions.
 

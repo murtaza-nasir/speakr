@@ -161,16 +161,16 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 
 | Option | Setup | Speaker Diarization | Voice Profiles |
 |--------|-------|---------------------|----------------|
-| **OpenAI Transcribe** | Just API key | Yes (`gpt-4o-transcribe-diarize`) | No |
+| **OpenAI Transcribe** | API key | Yes (`gpt-4o-transcribe-diarize`) | No |
 | **WhisperX ASR** | GPU container | Yes (best quality) | Yes |
-| **Mistral Voxtral** | Just API key | Yes (built-in) | No |
+| **Mistral Voxtral** | API key | Yes (built-in) | No |
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
 | **MOSI/Mossland MOSS** | Hosted API key | Yes (built-in) | No |
-| **AssemblyAI** | Just API key | Yes (built-in) | No |
+| **AssemblyAI** | API key | Yes (built-in) | No |
 | **Tencent Cloud ASR** | API keys (+ S3/COS bucket for files over 5 MiB) | Yes (built-in) | No |
 | **OpenASR** | Self-hosted server | Yes (built-in) | No |
 | **Alibaba FunASR** | API key + OSS bucket | Yes (built-in) | No |
-| **Legacy Whisper** | Just API key | No | No |
+| **Legacy Whisper** | API key | No | No |
 
 **Simplest setup (OpenAI with diarization):**
 ```bash
