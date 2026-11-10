@@ -249,7 +249,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
-                                <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
+                                <tr v-for="user in users" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.id }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }<i v-if="user.login_locked" class="fas fa-lock ml-2 text-[var(--text-warning-strong)]" :title="t('adminDashboard.loginLocked')" :aria-label="t('adminDashboard.loginLocked')"></i></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.email }</td>
@@ -287,7 +287,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredUsers.length === 0">
+                                <tr v-if="users.length === 0">
                                     <td colspan="8" class="px-6 py-4 text-center text-sm text-[var(--text-muted)]">
                                         <div v-if="isLoadingUsers">
                                             <i class="fas fa-spinner fa-spin mr-2"></i> ${ t('adminDashboard.loadingUsers') }
@@ -299,6 +299,33 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Pagination controls -->
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <select :value="userPerPage" @change="changeUserPerPage($event.target.value)" aria-label="Per page" title="Per page" class="px-2 py-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                            </select>
+                            <span class="text-sm text-[var(--text-muted)]">${ t('adminDashboard.total') || 'Total' }: ${ userTotal }</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-[var(--text-muted)]">${ userPage } / ${ userTotalPages }</span>
+                            <button @click="loadUsers(1)" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
+                                <i class="fas fa-angle-double-left"></i>
+                            </button>
+                            <button @click="loadUsers(userPage - 1)" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
+                                <i class="fas fa-angle-left"></i>
+                            </button>
+                            <button @click="loadUsers(userPage + 1)" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
+                                <i class="fas fa-angle-right"></i>
+                            </button>
+                            <button @click="loadUsers(userTotalPages)" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
+                                <i class="fas fa-angle-double-right"></i>
+                            </button>
+                        </div>
                     </div>
                   </div><!-- /.tab-scroll -->
                   <div class="tab-footer"></div>
@@ -1677,27 +1704,32 @@ Summarization Instructions:
                 <!-- Add Member Section -->
                 <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
                     <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.addMember') }</h4>
-                    <div class="flex space-x-2">
-                        <div class="flex-1">
-                            <select v-model="newMemberUserId"
-                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="">${ t('groups.selectUser') }</option>
-                                <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                                    ${ user.username } (${ user.email })
-                                </option>
-                            </select>
+                    <div class="space-y-2">
+                        <div class="flex space-x-2">
+                            <div class="flex-1">
+                                <input type="text" v-model="memberSearchQuery" :placeholder="t('adminDashboard.searchUsers')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+                            <div>
+                                <select v-model="newMemberRole"
+                                        class="px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="member">${ t('groups.roleMember') }</option>
+                                    <option value="admin">${ t('groups.roleAdmin') }</option>
+                                </select>
+                            </div>
+                            <button @click="addTeamMember" :disabled="!newMemberUserId"
+                                    class="btn btn--primary">
+                                <i class="fas fa-plus"></i> ${ t('unifiedShareModal.add') }
+                            </button>
                         </div>
-                        <div>
-                            <select v-model="newMemberRole"
-                                    class="px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="member">${ t('groups.roleMember') }</option>
-                                <option value="admin">${ t('groups.roleAdmin') }</option>
-                            </select>
+                        <div v-if="selectedMemberUser" class="text-sm text-[var(--text-secondary)]">
+                            ${ selectedMemberUser.username } (${ selectedMemberUser.email })
+                            <button @click="selectedMemberUser=null; newMemberUserId=''" class="ml-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"><i class="fas fa-times"></i></button>
                         </div>
-                        <button @click="addTeamMember" :disabled="!newMemberUserId"
-                                class="btn btn--primary">
-                            <i class="fas fa-plus"></i> ${ t('unifiedShareModal.add') }
-                        </button>
+                        <div v-if="memberSearchResults.length" class="max-h-40 overflow-y-auto border border-[var(--border-secondary)] rounded-md">
+                            <button v-for="u in memberSearchResults" :key="u.id" @click="selectMemberUser(u)" class="block w-full text-left px-3 py-2 hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]">
+                                ${ u.username } (${ u.email })
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2230,6 +2262,15 @@ Summarization Instructions:
                 const isLoadingUsers = ref(true);
                 const isLoadingSettings = ref(false);
                 const userSearchQuery = ref('');
+                const userPage = ref(1);
+                const userPerPage = ref(15);
+                const userTotal = ref(0);
+                const userTotalPages = ref(1);
+                const userHasNext = ref(false);
+                const userHasPrev = ref(false);
+                const memberSearchQuery = ref('');
+                const memberSearchResults = ref([]);
+                const selectedMemberUser = ref(null);
                 const isDarkMode = ref(false);
                 const isUserMenuOpen = ref(false);
                 
@@ -2352,37 +2393,68 @@ Summarization Instructions:
                 {% endraw %}
                 
                 // Computed properties
-                const filteredUsers = computed(() => {
-                    if (!userSearchQuery.value) return users.value;
-
-                    const query = userSearchQuery.value.toLowerCase();
-                    return users.value.filter(user =>
-                        user.username.toLowerCase().includes(query) ||
-                        user.email.toLowerCase().includes(query)
-                    );
-                });
-
-                const availableUsers = computed(() => {
-                    if (!currentTeam.value) return users.value;
-                    const memberUserIds = teamMembers.value.map(m => m.user_id);
-                    return users.value.filter(user => !memberUserIds.includes(user.id));
-                });
-                
                 // Methods
-                const loadUsers = async () => {
+                let userSearchTimer = null;
+                const loadUsers = async (page) => {
+                    const targetPage = (page === undefined || page === null) ? userPage.value : page;
                     isLoadingUsers.value = true;
                     try {
-                        const response = await fetch('/admin/users');
+                        const params = new URLSearchParams();
+                        params.set('page', targetPage);
+                        params.set('per_page', userPerPage.value);
+                        if (userSearchQuery.value) params.set('search', userSearchQuery.value);
+                        const response = await fetch('/admin/users?' + params.toString());
                         if (!response.ok) throw new Error('Failed to load users');
-                        
+
                         const data = await response.json();
-                        users.value = data;
+                        users.value = data.users || [];
+                        const p = data.pagination || {};
+                        userPage.value = p.page != null ? p.page : targetPage;
+                        userPerPage.value = p.per_page != null ? p.per_page : userPerPage.value;
+                        userTotal.value = p.total != null ? p.total : 0;
+                        userTotalPages.value = p.total_pages != null ? p.total_pages : 1;
+                        userHasNext.value = !!p.has_next;
+                        userHasPrev.value = !!p.has_prev;
                     } catch (error) {
                         console.error('Error loading users:', error);
-                        // Show error notification
                     } finally {
                         isLoadingUsers.value = false;
                     }
+                };
+
+                watch(userSearchQuery, () => {
+                    if (userSearchTimer) clearTimeout(userSearchTimer);
+                    userSearchTimer = setTimeout(() => { loadUsers(1); }, 300);
+                });
+
+                const changeUserPerPage = (val) => {
+                    userPerPage.value = parseInt(val, 10) || 15;
+                    loadUsers(1);
+                };
+
+                let memberSearchTimer = null;
+                watch(memberSearchQuery, (q) => {
+                    if (memberSearchTimer) clearTimeout(memberSearchTimer);
+                    if (!q) { memberSearchResults.value = []; return; }
+                    memberSearchTimer = setTimeout(async () => {
+                        try {
+                            const params = new URLSearchParams();
+                            params.set('search', q);
+                            params.set('per_page', 25);
+                            const r = await fetch('/admin/users?' + params.toString());
+                            if (r.ok) {
+                                const d = await r.json();
+                                memberSearchResults.value = d.users || [];
+                            }
+                        } catch (e) { console.error(e); }
+                    }, 300);
+                });
+
+                const selectMemberUser = (u) => {
+                    selectedMemberUser.value = u;
+                    newMemberUserId.value = u.id;
+                    memberSearchQuery.value = '';
+                    memberSearchResults.value = [];
                 };
                 
                 const loadVoiceEmbedding = async () => {
@@ -3250,6 +3322,7 @@ Summarization Instructions:
                         }
 
                         newMemberUserId.value = '';
+                        selectedMemberUser.value = null;
                         newMemberRole.value = 'member';
                         await loadTeamMembers(currentTeam.value.id);
                         await loadGroups(); // Refresh to update member count
@@ -4097,6 +4170,15 @@ Summarization Instructions:
                     isLoadingUsers,
                     isLoadingSettings,
                     userSearchQuery,
+                    userPage,
+                    userPerPage,
+                    userTotal,
+                    userTotalPages,
+                    userHasNext,
+                    userHasPrev,
+                    memberSearchQuery,
+                    memberSearchResults,
+                    selectedMemberUser,
                     isDarkMode,
                     isUserMenuOpen,
                     
@@ -4172,13 +4254,13 @@ Summarization Instructions:
                     contextualPromptSaveError,
 
                     // Computed
-                    filteredUsers,
-                    availableUsers,
                     getProcessingProgress,
                     recordingsNeedProcessingMessage,
 
                     // Methods
                     loadUsers,
+                    changeUserPerPage,
+                    selectMemberUser,
                     loadStats,
                     loadSettings,
                     loadOverview, setStatsDays, refreshStats,

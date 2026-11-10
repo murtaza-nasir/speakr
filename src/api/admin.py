@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
+from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
@@ -120,7 +121,7 @@ def admin_get_users():
         return jsonify(api_error('unauthorized')), 403
 
     if current_user.is_admin:
-        users = User.query.all()
+        base_query = User.query
     else:
         # Group admin (not a site admin): scope to members of the groups this
         # user actually administers. Returning User.query.all() here leaked the
@@ -135,29 +136,76 @@ def admin_get_users():
             .filter(GroupMembership.group_id.in_(admined_group_ids)).all()
         }
         member_ids.add(current_user.id)
-        users = User.query.filter(User.id.in_(member_ids)).all()
+        base_query = User.query.filter(User.id.in_(member_ids))
+
+    # Parse pagination params (normalize gracefully).
+    page_raw = request.args.get('page', 1, type=int)
+    try:
+        page = int(page_raw) if page_raw is not None else 1
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    # Cap kept high enough for admin tooling/exports while still bounding
+    # response size and query cost. Out-of-range values are clamped to the
+    # nearest bound instead of silently falling back to the default.
+    MAX_PER_PAGE = 1000
+    per_page_raw = request.args.get('per_page', 15, type=int)
+    try:
+        per_page = int(per_page_raw) if per_page_raw is not None else 15
+    except (TypeError, ValueError):
+        per_page = 15
+    if per_page < 1:
+        per_page = 15
+    elif per_page > MAX_PER_PAGE:
+        per_page = MAX_PER_PAGE
+
+    search = (request.args.get('search') or '').strip()
+
+    if search:
+        pattern = contains_pattern(search)
+        base_query = base_query.filter(db.or_(
+            User.username.ilike(pattern, escape=LIKE_ESCAPE),
+            User.email.ilike(pattern, escape=LIKE_ESCAPE),
+        ))
+
+    total = base_query.count()
+
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    if total_pages < 1:
+        total_pages = 1
+    if page > total_pages:
+        page = total_pages
+    if page < 1:
+        page = 1
+
+    users = base_query.order_by(User.id.asc()).offset((page - 1) * per_page).limit(per_page).all()
 
     user_data = []
     # Only a site admin can unlock an account, so only a site admin sees the lock (#529)
     locked_ids = login_lock.locked_user_ids([u.id for u in users]) if current_user.is_admin else set()
 
-    # Aggregate recordings_count and storage_used in two grouped queries
-    # so the page doesn't re-query the recording table once per user.
-    # Previously: 100 users -> ~200 lazy SELECTs from user.recordings.
-    counts_by_uid = dict(
-        db.session.query(Recording.user_id, db.func.count(Recording.id))
-        .group_by(Recording.user_id)
-        .all()
-    )
-    # Storage = audio bytes actually on disk. Exclude recordings whose audio
-    # was removed by audio-only retention (audio_deleted_at set): the file is
-    # gone but file_size is still recorded, so summing it overcounts storage.
-    sizes_by_uid = dict(
-        db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
-        .filter(Recording.audio_deleted_at.is_(None))
-        .group_by(Recording.user_id)
-        .all()
-    )
+    # Aggregate recordings_count and storage_used for the users on the current
+    # page only, to keep the page request cheap.
+    page_ids = [u.id for u in users]
+    if page_ids:
+        counts_by_uid = dict(
+            db.session.query(Recording.user_id, db.func.count(Recording.id))
+            .filter(Recording.user_id.in_(page_ids))
+            .group_by(Recording.user_id)
+            .all()
+        )
+        sizes_by_uid = dict(
+            db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
+            .filter(Recording.user_id.in_(page_ids))
+            .filter(Recording.audio_deleted_at.is_(None))
+            .group_by(Recording.user_id)
+            .all()
+        )
+    else:
+        counts_by_uid = {}
+        sizes_by_uid = {}
 
     for user in users:
         recordings_count = counts_by_uid.get(user.id, 0)
@@ -190,8 +238,21 @@ def admin_get_users():
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
             'login_locked': user.id in locked_ids
         })
-    
-    return jsonify(user_data)
+
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    return jsonify({
+        'users': user_data,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'total_pages': total_pages,
+            'has_next': has_next,
+            'has_prev': has_prev
+        }
+    })
 
 
 
