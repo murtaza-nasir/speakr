@@ -29,6 +29,8 @@ from src.services.job_queue import (
     SUMMARY_JOBS,
     MAX_RETRIES,
     jobs_for_queue,
+    JOB_RUNNERS,
+    QUEUES,
 )
 
 
@@ -892,3 +894,55 @@ def test_jobs_for_queue_returns_a_copy():
 
 def test_the_queue_method_delegates():
     assert job_queue.jobs_for_queue('index') == ['index_chunks']
+
+
+# --------------------------------------------------------------------------
+# Candidate J: job dispatch registry
+# --------------------------------------------------------------------------
+
+def test_job_runners_covers_every_queued_job_type():
+    queued = {jt for jts in QUEUES.values() for jt in jts}
+    assert set(JOB_RUNNERS.keys()) == queued
+    assert not (set(JOB_RUNNERS.keys()) - queued)
+    assert not (queued - set(JOB_RUNNERS.keys()))
+
+
+def test_job_runners_aliases_share_one_object():
+    import src.services.job_queue as jq
+    for name in ("JOB_RUNNERS", "JOB_DISPATCH", "JOB_REGISTRY", "JOB_HANDLERS",
+                 "_JOB_RUNNERS", "_JOB_DISPATCH", "_JOB_REGISTRY", "_JOB_HANDLERS"):
+        assert getattr(jq, name) is jq.JOB_RUNNERS
+
+
+def test_job_runners_exposed_on_queue_instance():
+    assert job_queue.JOB_RUNNERS is JOB_RUNNERS
+    assert job_queue.JOB_DISPATCH is JOB_RUNNERS
+    assert job_queue.JOB_REGISTRY is JOB_RUNNERS
+    assert job_queue.JOB_HANDLERS is JOB_RUNNERS
+    assert job_queue._JOB_RUNNERS is JOB_RUNNERS
+
+
+def test_job_runners_names_are_callable_methods():
+    for name in JOB_RUNNERS.values():
+        assert hasattr(FairJobQueue, name)
+        assert callable(getattr(FairJobQueue, name))
+
+
+@pytest.mark.parametrize("job_type", list(JOB_RUNNERS.keys()))
+def test_process_job_dispatches_each_registered_type(track, job_type):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, job_type)
+    track.job_ids.append(jid)
+
+    job = db.session.get(ProcessingJob, jid)
+    runner_name = JOB_RUNNERS[job_type]
+
+    with patch.object(job_queue, runner_name) as runner:
+        job_queue._process_job(job)
+
+    runner.assert_called_once()
+    assert runner.call_args.kwargs.get("job_type") == job_type
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "completed"
