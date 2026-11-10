@@ -133,11 +133,25 @@ export function useRecordings(state, utils, reprocessComposable) {
             isLoadingRecordings.value = false;
             isLoadingMore.value = false;
         }
+        fillShortList();
     };
 
     const loadMoreRecordings = async () => {
         if (!hasNextPage.value || isLoadingMore.value) return;
         await loadRecordings(currentPage.value + 1, true, searchQuery.value);
+    };
+
+    // The next page is requested when the list is scrolled near its end. When
+    // a page of rows does not fill the list (compact rows, a tall window),
+    // there is nothing to scroll, so the next page is requested here instead.
+    // A hidden list (clientHeight 0, e.g. the phone detail view) is skipped.
+    const fillShortList = () => {
+        if (!hasNextPage.value || typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+        requestAnimationFrame(() => {
+            const list = document.querySelector('.sidebar-list');
+            if (!list || list.clientHeight === 0) return;
+            if (list.scrollHeight - list.clientHeight < 100) loadMoreRecordings();
+        });
     };
 
     const performSearch = async (query = '') => {

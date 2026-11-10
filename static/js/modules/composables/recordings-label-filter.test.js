@@ -194,3 +194,60 @@ describe('loadRecordings auto-selection after a label deep link', () => {
         expect(state.labelDeepLinkPending.value).toBe(true);
     });
 });
+
+describe("short list", () => {
+    function stubPages(pages) {
+        const fetch = vi.fn();
+        pages.forEach((count, i) => fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                recordings: Array.from({ length: count }, (_, j) => ({ id: i * 100 + j })),
+                pagination: {
+                    page: i + 1, per_page: 25, total: 30, total_pages: pages.length,
+                    has_next: i + 1 < pages.length, has_prev: i > 0
+                }
+            })
+        }));
+        globalThis.fetch = fetch;
+        return fetch;
+    }
+
+    function stubList(list) {
+        globalThis.document = { querySelector: () => list };
+        globalThis.requestAnimationFrame = (cb) => { cb(); return 0; };
+    }
+
+    afterEach(() => {
+        delete globalThis.document;
+        delete globalThis.requestAnimationFrame;
+    });
+
+    it("requests the next page when the first one does not fill the list", async () => {
+        const fetch = stubPages([25, 5]);
+        stubList({ clientHeight: 800, scrollHeight: 800 });
+        const { state, composable } = setup();
+
+        await composable.loadRecordings(1, false, "");
+        await vi.waitFor(() => expect(state.recordings.value).toHaveLength(30));
+        expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits for scrolling when the list overflows", async () => {
+        const fetch = stubPages([25, 5]);
+        stubList({ clientHeight: 800, scrollHeight: 2000 });
+        const { state, composable } = setup();
+
+        await composable.loadRecordings(1, false, "");
+        expect(state.recordings.value).toHaveLength(25);
+        expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves a hidden list alone", async () => {
+        const fetch = stubPages([25, 5]);
+        stubList({ clientHeight: 0, scrollHeight: 0 });
+        const { composable } = setup();
+
+        await composable.loadRecordings(1, false, "");
+        expect(fetch).toHaveBeenCalledTimes(1);
+    });
+});
