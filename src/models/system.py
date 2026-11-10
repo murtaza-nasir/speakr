@@ -6,7 +6,11 @@ dynamic system configuration in the database.
 """
 
 from datetime import datetime
+from flask import g, has_app_context
 from src.database import db
+
+# Global generation counter for SystemSetting read cache invalidation.
+_SYSTEM_SETTING_CACHE_GENERATION = 0
 
 
 class SystemSetting(db.Model):
@@ -39,24 +43,45 @@ class SystemSetting(db.Model):
     @staticmethod
     def get_setting(key, default_value=None):
         """Get a system setting value by key, with optional default."""
+        # Per-request cache keyed by (global generation, value) so hot-applied
+        # changes invalidate stale entries even when the app context is reused
+        # (e.g. in tests or nested contexts).
+        if has_app_context():
+            cache = getattr(g, '_system_setting_cache', None)
+            if cache is None:
+                cache = {}
+                setattr(g, '_system_setting_cache', cache)
+            entry = cache.get(key)
+            if entry is not None and entry[0] == _SYSTEM_SETTING_CACHE_GENERATION:
+                return entry[1]
+
         setting = SystemSetting.query.filter_by(key=key).first()
         if setting:
             # Convert value based on type
             if setting.setting_type == 'integer':
                 try:
-                    return int(setting.value) if setting.value is not None else default_value
+                    value = int(setting.value) if setting.value is not None else default_value
                 except (ValueError, TypeError):
-                    return default_value
+                    value = default_value
             elif setting.setting_type == 'boolean':
-                return setting.value.lower() in ('true', '1', 'yes') if setting.value else default_value
+                value = setting.value.lower() in ('true', '1', 'yes') if setting.value else default_value
             elif setting.setting_type == 'float':
                 try:
-                    return float(setting.value) if setting.value is not None else default_value
+                    value = float(setting.value) if setting.value is not None else default_value
                 except (ValueError, TypeError):
-                    return default_value
+                    value = default_value
             else:  # string
-                return setting.value if setting.value is not None else default_value
-        return default_value
+                value = setting.value if setting.value is not None else default_value
+        else:
+            value = default_value
+
+        if has_app_context():
+            cache = getattr(g, '_system_setting_cache', None)
+            if cache is None:
+                cache = {}
+                setattr(g, '_system_setting_cache', cache)
+            cache[key] = (_SYSTEM_SETTING_CACHE_GENERATION, value)
+        return value
 
     @staticmethod
     def set_setting(key, value, description=None, setting_type='string'):
@@ -78,4 +103,31 @@ class SystemSetting(db.Model):
             )
             db.session.add(setting)
         db.session.commit()
+        global _SYSTEM_SETTING_CACHE_GENERATION
+        _SYSTEM_SETTING_CACHE_GENERATION += 1
         return setting
+
+
+# Automatic cache invalidation for any SQL write to system_setting, including
+# bulk deletes/updates that bypass ORM instance events.
+_SYSTEM_SETTING_CACHE_INVALIDATION_REGISTERED = False
+
+
+def register_system_setting_cache_invalidation():
+    """Register an engine-level listener that bumps the read-cache generation
+    whenever ``system_setting`` is written to. Safe to call repeatedly."""
+    global _SYSTEM_SETTING_CACHE_INVALIDATION_REGISTERED
+    if _SYSTEM_SETTING_CACHE_INVALIDATION_REGISTERED:
+        return
+    from src.database import db
+    from sqlalchemy import event
+
+    def _listener(conn, cursor, statement, parameters, context, executemany):
+        global _SYSTEM_SETTING_CACHE_GENERATION
+        stripped = statement.lstrip().upper()
+        if stripped.startswith(('INSERT', 'UPDATE', 'DELETE', 'REPLACE')) \
+                and 'system_setting' in statement.lower():
+            _SYSTEM_SETTING_CACHE_GENERATION += 1
+
+    event.listen(db.engine, 'before_cursor_execute', _listener)
+    _SYSTEM_SETTING_CACHE_INVALIDATION_REGISTERED = True

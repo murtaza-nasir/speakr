@@ -124,12 +124,16 @@ def test_sharing_off_gives_nothing_shared(world):
 
 
 def test_owner_names_follow_the_ui_setting(world):
-    with patch.dict(os.environ, {"SHOW_USERNAMES_IN_UI": "false"}):
-        hidden = _get(world, "/api/v1/recordings?scope=shared")["recordings"][0]["owner"]
+    with app.app_context():
+        from src.models import SystemSetting
+        SystemSetting.set_setting('show_usernames_in_ui', 'false', setting_type='boolean')
+    hidden = _get(world, "/api/v1/recordings?scope=shared")["recordings"][0]["owner"]
     assert hidden["username"] is None and hidden["name"] is None
-    with patch.dict(os.environ, {"SHOW_USERNAMES_IN_UI": "true"}):
-        shown = next(r for r in _get(world, "/api/v1/recordings?scope=shared")["recordings"]
-                     if r["id"] == world["manual"])["owner"]
+    with app.app_context():
+        from src.models import SystemSetting
+        SystemSetting.set_setting('show_usernames_in_ui', 'true', setting_type='boolean')
+    shown = next(r for r in _get(world, "/api/v1/recordings?scope=shared")["recordings"]
+                 if r["id"] == world["manual"])["owner"]
     assert shown["name"] == "Evan Ross" and shown["username"].startswith("evan_")
 
 

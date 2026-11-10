@@ -3327,6 +3327,7 @@
       "invalid_temperature": "Температура {{kind}} должна быть числом от 0 до 2",
       "invalid_temperature_values": "values должно быть объектом с температурами",
       "invalid_threshold": "Недопустимое пороговое значение",
+      "invalid_deletion_mode_value": "Режим удаления должен быть audio_only или full_recording.",
       "invalid_timezone_value": "Значение должно быть допустимым часовым поясом IANA, например Europe/Berlin",
       "invalid_total_bytes": "total_bytes должно быть положительным целым числом",
       "invalid_transcript_data": "Переданы недопустимые данные транскрипта",

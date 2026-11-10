@@ -26,8 +26,8 @@ Probe:
 * :func:`probe_upload` reads the upload's codecs with ffprobe, repairing a
   malformed .webm/.mkv header.
 * :func:`has_video_after_failed_probe` takes a video extension as video
-  when the probe did not finish, under VIDEO_RETENTION or
-  VIDEO_PASSTHROUGH_ASR.
+  when the probe did not finish, under _self.VIDEO_RETENTION or
+  _self.VIDEO_PASSTHROUGH_ASR.
 
 Conversion:
 
@@ -88,8 +88,6 @@ from src.utils.localization import api_error, format_number, translate
 from src.utils.mime import guess_media_type, served_media_mime
 from src.utils.titles import resolve_upload_title, upload_title_source
 
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
-VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 
 # Extensions taken as video before (or without) a probe: the size limit
 # before the upload is saved, and the fallback when the probe fails.
@@ -252,7 +250,7 @@ def resolve_size_policy(*, file, form, original_filename, enforce_upload_limits)
     # frontend either explicitly (toggle) or implicitly when
     # VIDEO_RETENTION is off and the queued file is video.
     keep_audio_only_flag = form.get('keep_audio_only', 'false').lower() == 'true'
-    effective_audio_only = keep_audio_only_flag or not VIDEO_RETENTION
+    effective_audio_only = keep_audio_only_flag or not _self.VIDEO_RETENTION
 
     # Detect "this looks like a video" by extension up front so the
     # size-gate can pick the right limit before reading any bytes.
@@ -375,7 +373,7 @@ def recheck_size_after_probe(*, codec_info, has_video, original_filename, is_lik
 
     # A file the probe could not read, with a video extension, under
     # VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR (see has_video_after_failed_probe).
-    if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
+    if codec_info is None and (_self.VIDEO_RETENTION or _self.VIDEO_PASSTHROUGH_ASR) and not has_video:
         file_ext = os.path.splitext(original_filename)[1].lower()
         if file_ext in VIDEO_EXTENSIONS:
             # A failed probe cannot justify the larger video ceiling: an
@@ -440,12 +438,12 @@ def probe_upload(*, filepath, original_filename):
 def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original_filename):
     """Take a video extension as video when the probe did not finish.
 
-    Only under VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR. A probe that read the
+    Only under _self.VIDEO_RETENTION or _self.VIDEO_PASSTHROUGH_ASR. A probe that read the
     file and rejected it is not overruled. Returns has_video.
     """
     # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
     # to avoid silently discarding video from files we couldn't probe
-    if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
+    if codec_info is None and (_self.VIDEO_RETENTION or _self.VIDEO_PASSTHROUGH_ASR) and not has_video:
         file_ext = os.path.splitext(original_filename)[1].lower()
         if file_ext in VIDEO_EXTENSIONS:
             if probe_error is not None and probe_rejected_input(probe_error):
@@ -461,7 +459,7 @@ def has_video_after_failed_probe(*, codec_info, probe_error, has_video, original
                 has_video = True
                 current_app.logger.info(
                     f"Probe failed but file extension '{file_ext}' indicates video — "
-                    f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
+                    f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if _self.VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
                 )
     return has_video
 
@@ -495,7 +493,7 @@ def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, orig
     # A video without an audio track has nothing to transcribe: it goes
     # through conversion, which refuses it, as without these settings.
     keep_video_for_this_upload = (
-        ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
+        ((_self.VIDEO_RETENTION and not keep_audio_only_flag) or _self.VIDEO_PASSTHROUGH_ASR)
         and has_video
         and (codec_info is None or has_audio_stream(codec_info))
     )
@@ -533,7 +531,7 @@ def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, orig
     conversion_deferred = False
     convert_in_request = False
     if keep_video_for_this_upload:
-        current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
+        current_app.logger.info(f"Video {'passthrough' if _self.VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
     elif skip_conversion_for_join:
         current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
     elif can_defer_conversion:
@@ -1338,3 +1336,14 @@ def ingest(
         _discard_staging(filepath)
         current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error_upload')), 500
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "VIDEO_RETENTION": ('video_retention', 'VIDEO_RETENTION', False),
+    "VIDEO_PASSTHROUGH_ASR": ('video_passthrough_asr', 'VIDEO_PASSTHROUGH_ASR', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

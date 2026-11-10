@@ -34,7 +34,6 @@ from src.database import db
 from src.models import Recording, TranscriptChunk, InternalShare, RecordingTag
 from src.utils.search import LIKE_ESCAPE, contains_pattern
 
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
 # Embedding model used to generate semantic-search vectors. By default Speakr
 # loads sentence-transformers locally; setting EMBEDDING_BASE_URL switches to
@@ -376,7 +375,7 @@ def get_accessible_recording_ids(user_id):
     accessible_ids.update([r.id for r in own_recordings])
 
     # 2. Internally shared recordings
-    if ENABLE_INTERNAL_SHARING:
+    if _self.ENABLE_INTERNAL_SHARING:
         shared_recordings = db.session.query(InternalShare.recording_id).filter_by(
             shared_with_user_id=user_id
         ).all()
@@ -786,3 +785,12 @@ def embeddings_are_local():
     except ValueError:
         return False
 
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

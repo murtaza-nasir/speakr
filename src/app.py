@@ -61,26 +61,34 @@ except ImportError as e:
 # Load environment variables from .env file
 load_dotenv()
 
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_AUTO_DELETION": ("enable_auto_deletion", "ENABLE_AUTO_DELETION", False),
+    "GLOBAL_RETENTION_DAYS": ("global_retention_days", "GLOBAL_RETENTION_DAYS", 0),
+    "DELETION_MODE": ("deletion_mode", "DELETION_MODE", "full_recording"),
+    "USERS_CAN_DELETE": ("users_can_delete", "USERS_CAN_DELETE", True),
+    "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
+    "SHOW_USERNAMES_IN_UI": ("show_usernames_in_ui", "SHOW_USERNAMES_IN_UI", False),
+    "ENABLE_PUBLIC_SHARING": ("enable_public_sharing", "ENABLE_PUBLIC_SHARING", True),
+    "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+
 # Early check for Inquire Mode configuration (needed for startup message)
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 
 # Auto-deletion and retention configuration
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))  # 0 = disabled
-DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
 
 # Permission-based deletion control
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'  # true = all users can delete, false = admin only
 
 # Internal sharing configuration
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
-SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 
 # Public sharing configuration
-ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
 
 # Video retention - when enabled, video files keep their video stream for playback
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
 # Log embedding status on startup. Two paths can power Inquire mode: a local
 # sentence-transformers model (full image) or an OpenAI-compatible HTTP
@@ -106,35 +114,35 @@ elif not ENABLE_INQUIRE_MODE:
     print("ℹ️  Inquire Mode: Disabled (set ENABLE_INQUIRE_MODE=true to enable)")
 
 # Log auto-deletion status
-if ENABLE_AUTO_DELETION:
-    if GLOBAL_RETENTION_DAYS > 0:
-        print(f"✅ Auto-deletion: Enabled (global retention: {GLOBAL_RETENTION_DAYS} days, mode: {DELETION_MODE})")
+if _self.ENABLE_AUTO_DELETION:
+    if _self.GLOBAL_RETENTION_DAYS > 0:
+        print(f"✅ Auto-deletion: Enabled (global retention: {_self.GLOBAL_RETENTION_DAYS} days, mode: {_self.DELETION_MODE})")
     else:
         print("⚠️  Auto-deletion: Enabled but no global retention period set (configure GLOBAL_RETENTION_DAYS)")
 else:
     print("ℹ️  Auto-deletion: Disabled (set ENABLE_AUTO_DELETION=true to enable)")
 
 # Log deletion permissions
-if USERS_CAN_DELETE:
+if _self.USERS_CAN_DELETE:
     print("ℹ️  User deletion: Enabled (all users can delete their recordings)")
 else:
     print("🔒 User deletion: Restricted (only admins can delete recordings)")
 
 # Log internal sharing status
-if ENABLE_INTERNAL_SHARING:
-    username_visibility = "visible" if SHOW_USERNAMES_IN_UI else "hidden"
+if _self.ENABLE_INTERNAL_SHARING:
+    username_visibility = "visible" if _self.SHOW_USERNAMES_IN_UI else "hidden"
     print(f"✅ Internal sharing: Enabled (usernames {username_visibility})")
 else:
     print("ℹ️  Internal sharing: Disabled (set ENABLE_INTERNAL_SHARING=true to enable)")
 
 # Log public sharing status
-if ENABLE_PUBLIC_SHARING:
+if _self.ENABLE_PUBLIC_SHARING:
     print("✅ Public sharing: Enabled (users can create public share links)")
 else:
     print("🔒 Public sharing: Disabled (public share links are not allowed)")
 
 # Log video retention status
-if VIDEO_RETENTION:
+if _self.VIDEO_RETENTION:
     print("✅ Video retention: Enabled (video files preserve video stream for playback)")
 else:
     print("ℹ️  Video retention: Disabled (video uploads extract audio only)")
@@ -199,7 +207,7 @@ def has_recording_access(recording, user, require_edit=False, require_reshare=Fa
         return True
 
     # If internal sharing is not enabled, only owner has access
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return False
 
     # Check for shared access
@@ -250,7 +258,7 @@ def editable_recording_ids(recordings, user, share_map):
     the group-admin rule instead of one per row (D#483).
     """
     editable = {r.id for r in recordings if r.user_id == user.id}
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return editable
     needs_admin = []
     for recording in recordings:
@@ -901,9 +909,10 @@ def inject_help_center_link():
     Admins hosting their own FAQ/tutorial page set HELP_CENTER_URL (and
     optionally HELP_CENTER_LABEL) to surface it prominently for users.
     """
+    from src.models import SystemSetting
     return {
-        'help_center_url': os.environ.get('HELP_CENTER_URL', '').strip(),
-        'help_center_label': os.environ.get('HELP_CENTER_LABEL', '').strip(),
+        'help_center_url': (SystemSetting.get_setting('help_center_url', os.environ.get('HELP_CENTER_URL', '')) or '').strip(),
+        'help_center_label': (SystemSetting.get_setting('help_center_label', os.environ.get('HELP_CENTER_LABEL', '')) or '').strip(),
     }
 
 @app.context_processor
@@ -1046,6 +1055,8 @@ from src.api.webhooks import webhooks_bp
 # Database initialization (extracted to src/init_db.py)
 from src.init_db import initialize_database
 with app.app_context():
+    from src.models.system import register_system_setting_cache_invalidation
+    register_system_setting_cache_invalidation()
     initialize_database(app)
 
 # Application configuration (extracted to src/config/app_config.py)

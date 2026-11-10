@@ -29,7 +29,8 @@ from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as f
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
 from src.utils.mime import guess_media_type
-from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, VIDEO_PASSTHROUGH_ASR
+from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
+import src.config.app_config as _app_config
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.transcription_prompts import (
     _SHARED_LLM_SYSTEM_MSG as _SHARED_LLM_SYSTEM_MSG,
@@ -49,10 +50,8 @@ from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
 
 # Configuration for internal sharing
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
 # Video retention - when enabled, video files keep their video stream for playback
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
 # Prefix-cache-friendly prompts (opt-in, default off).
 #
@@ -149,7 +148,7 @@ def apply_team_tag_auto_shares(recording_id):
     Args:
         recording_id: ID of the recording to apply auto-shares for
     """
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return
 
     recording = db.session.get(Recording, recording_id)
@@ -172,7 +171,7 @@ def apply_team_tag_auto_shares(recording_id):
     shares_created = 0
     for tag in group_tags:
         shares_created += apply_tag_shares(recording, tag, require_completed=False,
-                                           sharing_enabled=ENABLE_INTERNAL_SHARING)
+                                           sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
 
     if shares_created > 0:
         db.session.commit()
@@ -1672,7 +1671,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
         # treat VIDEO_RETENTION as off for this run regardless of the env
         # var. Set at upload time (web or v1 API) and persists with the
         # recording so re-processing/reprocess honours it too.
-        effective_video_retention = VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)
+        effective_video_retention = _self.VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)
 
         try:
             current_app.logger.info(f"Starting connector-based transcription for recording {recording_id}...")
@@ -1752,7 +1751,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 )
 
             if is_video:
-                if VIDEO_PASSTHROUGH_ASR:
+                if _self.VIDEO_PASSTHROUGH_ASR:
                     # Video passthrough: send original video directly to ASR without audio extraction
                     current_app.logger.info(f"Video passthrough: sending original video to ASR (no audio extraction)")
                     actual_filepath = filepath  # Send video as-is to connector
@@ -1860,7 +1859,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # - AUDIO_COMPRESS_UPLOADS setting (lossless compression)
             connector_specs = connector.specifications
             converted_filepath = None  # Track converted file for cleanup and retry
-            video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR
+            video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR
 
             if video_passthrough_active:
                 # Skip conversion and chunking — ASR backend handles the raw video
@@ -2508,10 +2507,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
                 is_video = any(original_filename.lower().endswith(ext) for ext in video_extensions)
 
-        video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR
+        video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR
 
         if is_video:
-            if VIDEO_PASSTHROUGH_ASR:
+            if _self.VIDEO_PASSTHROUGH_ASR:
                 current_app.logger.info(f"[Incognito] Video passthrough: sending original video to ASR (no audio extraction)")
             else:
                 current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
@@ -2845,3 +2844,15 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
 
         translate_transcription(recording, user_id=uid, target_language=lang)
         return recording.id
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
+    "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
+    "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

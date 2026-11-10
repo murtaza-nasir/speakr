@@ -11,9 +11,6 @@ from src.models import Recording, RecordingTag, Tag
 from src.services.storage import get_storage_service
 from src.utils.localization import api_error
 
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
-DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')
 
 
 
@@ -70,8 +67,8 @@ def get_retention_days_for_recording(recording):
         return min(tag_retention_periods)
 
     # Fall back to global retention
-    if GLOBAL_RETENTION_DAYS > 0:
-        return GLOBAL_RETENTION_DAYS
+    if _self.GLOBAL_RETENTION_DAYS > 0:
+        return _self.GLOBAL_RETENTION_DAYS
 
     return None
 
@@ -88,11 +85,11 @@ def process_auto_deletion():
     Returns:
         Dictionary with deletion statistics
     """
-    if not ENABLE_AUTO_DELETION:
+    if not _self.ENABLE_AUTO_DELETION:
         return api_error('auto_deletion_disabled')
 
     # Check if any retention policy exists (global or tag-level)
-    has_global_retention = GLOBAL_RETENTION_DAYS > 0
+    has_global_retention = _self.GLOBAL_RETENTION_DAYS > 0
     # We'll check for tag-level retention on a per-recording basis
 
     if not has_global_retention:
@@ -114,7 +111,7 @@ def process_auto_deletion():
         # In audio_only mode: Skip recordings where audio was already deleted
         # In full_recording mode: Include all (to catch audio-only deletions for full cleanup)
         settled_statuses = ['COMPLETED', 'FAILED']
-        if DELETION_MODE == 'audio_only':
+        if _self.DELETION_MODE == 'audio_only':
             all_recordings = Recording.query.filter(
                 Recording.status.in_(settled_statuses),
                 Recording.audio_deleted_at.is_(None)  # Skip already-deleted audio
@@ -153,7 +150,7 @@ def process_auto_deletion():
                 # Recording is past retention period - process deletion
 
                 # Determine deletion mode
-                if DELETION_MODE == 'audio_only':
+                if _self.DELETION_MODE == 'audio_only':
                     # Delete only the audio file, keep transcription
                     current_app.logger.info(f"Recording {recording.id} is past retention ({retention_days} days), removing audio")
                     if remove_recording_audio(recording):
@@ -224,3 +221,15 @@ def remove_recording_audio(recording):
         recording.audio_deleted_at = datetime.utcnow()
     db.session.commit()
     return deleted
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
+    "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

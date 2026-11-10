@@ -95,7 +95,6 @@ AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
 
 # Video passthrough - send original video files directly to ASR without extracting audio
 # Useful for custom ASR backends that handle video/multi-track audio internally
-VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 
 # File storage backend configuration (dual local / S3-compatible)
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
@@ -125,8 +124,6 @@ _unsupported_codecs_str = os.environ.get('AUDIO_UNSUPPORTED_CODECS', '')
 AUDIO_UNSUPPORTED_CODECS = {c.strip().lower() for c in _unsupported_codecs_str.split(',') if c.strip()}
 
 # Email verification configuration
-ENABLE_EMAIL_VERIFICATION = os.environ.get('ENABLE_EMAIL_VERIFICATION', 'false').lower() == 'true'
-REQUIRE_EMAIL_VERIFICATION = os.environ.get('REQUIRE_EMAIL_VERIFICATION', 'false').lower() == 'true'
 SMTP_HOST = os.environ.get('SMTP_HOST', '')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')
@@ -213,3 +210,15 @@ def _validate_legacy_transcription_config(app):
             app.logger.error("ERROR: No transcription service configured!")
             sys.exit(1)
         app.logger.info(f"Using Whisper API: {transcription_base_url}")
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
+    "ENABLE_EMAIL_VERIFICATION": ("enable_email_verification", "ENABLE_EMAIL_VERIFICATION", False),
+    "REQUIRE_EMAIL_VERIFICATION": ("require_email_verification", "REQUIRE_EMAIL_VERIFICATION", False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

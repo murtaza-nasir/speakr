@@ -1010,8 +1010,9 @@ def get_capabilities():
     """Feature discovery for API clients; read this instead of the version string."""
     from src.config.version import get_version
     features = dict(CAPABILITY_FEATURES)
-    features['internal_sharing'] = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
-    features['public_sharing'] = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
+    from src.models import SystemSetting
+    features['internal_sharing'] = bool(SystemSetting.get_setting('enable_internal_sharing', os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'))
+    features['public_sharing'] = bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'))
     features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
     from src.services.search_v1 import semantic_available
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
@@ -1556,7 +1557,8 @@ def create_public_share(recording_id):
     """Create or reuse a public link (mailr spec G10). Notes are not shared
     unless asked, and a reused link's flags change only with update_existing."""
     from src.services.public_shares import get_or_create, link_is_https, public_url, share_dict
-    if os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() != 'true':
+    from src.models import SystemSetting
+    if not bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true')):
         return jsonify({'error': translate('server.apiError.public_sharing_off'), 'code': 'feature_disabled'}), 403
     if not getattr(current_user, 'can_share_publicly', True):
         return jsonify({'error': translate('server.apiError.public_link_not_permitted'), 'code': 'not_permitted'}), 403
@@ -2073,7 +2075,8 @@ def delete_recording(recording_id):
         return jsonify(api_error('delete_owner_only')), 403
 
     # Check if deletion is allowed
-    USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
+    from src.models import SystemSetting
+    USERS_CAN_DELETE = bool(SystemSetting.get_setting('users_can_delete', os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'))
     if not USERS_CAN_DELETE and not current_user.is_admin:
         return jsonify(api_error('deletion_not_allowed')), 403
 
@@ -2101,7 +2104,8 @@ def delete_recording_audio(recording_id):
         return jsonify(api_error('recording_not_found')), 404
     if recording.user_id != current_user.id:
         return jsonify(api_error('delete_owner_only')), 403
-    USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
+    from src.models import SystemSetting
+    USERS_CAN_DELETE = bool(SystemSetting.get_setting('users_can_delete', os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'))
     if not USERS_CAN_DELETE and not current_user.is_admin:
         return jsonify(api_error('deletion_not_allowed')), 403
     if recording.audio_deleted_at:
@@ -3623,7 +3627,8 @@ def batch_delete_recordings():
     if not recording_ids:
         return jsonify(api_error('recording_ids_required')), 400
 
-    USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
+    from src.models import SystemSetting
+    USERS_CAN_DELETE = bool(SystemSetting.get_setting('users_can_delete', os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'))
     if not USERS_CAN_DELETE and not current_user.is_admin:
         return jsonify(api_error('deletion_not_allowed')), 403
 

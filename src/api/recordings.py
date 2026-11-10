@@ -40,7 +40,6 @@ from src.services.speaker import (
 )
 
 # Incognito mode - disabled by default, enable via environment variable
-ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 from src.services.document import (
     add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
     new_document, process_markdown_to_docx,
@@ -74,10 +73,6 @@ SUMMARY_NEEDS_PREFIXES = [
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
@@ -1039,7 +1034,7 @@ def index(recording_id=None, label_name=None):
 
     # The "Audio removed" filter matters when retention removes audio; users
     # who can delete recordings can also remove audio by hand.
-    enable_audio_removed_filter = (ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only') or USERS_CAN_DELETE or current_user.is_admin
+    enable_audio_removed_filter = (_self.ENABLE_AUTO_DELETION and _self.DELETION_MODE == 'audio_only') or _self.USERS_CAN_DELETE or current_user.is_admin
 
     # Get connector capabilities (new architecture)
     # Defaults to USE_ASR_ENDPOINT for backwards compatibility
@@ -1109,7 +1104,7 @@ def index(recording_id=None, label_name=None):
                          connector_supports_initial_prompt=connector_supports_initial_prompt,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          enable_audio_removed_filter=enable_audio_removed_filter,
-                         enable_internal_sharing=ENABLE_INTERNAL_SHARING,
+                         enable_internal_sharing=_self.ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
                          default_translation_language=default_translation_language,
                          is_team_admin=is_team_admin,
@@ -1143,7 +1138,7 @@ def get_accessible_recording_ids(user_id):
     accessible_ids.update([r.id for r in own_recordings])
 
     # 2. Internally shared recordings
-    if ENABLE_INTERNAL_SHARING:
+    if _self.ENABLE_INTERNAL_SHARING:
         shared_recordings = db.session.query(InternalShare.recording_id).filter_by(
             shared_with_user_id=user_id
         ).all()
@@ -1516,7 +1511,7 @@ def get_recordings_paginated():
             rec_dict['can_edit'] = recording.id in editable_ids
 
             # Add delete permission info (only owner can delete)
-            rec_dict['can_delete'] = is_owner and (USERS_CAN_DELETE or current_user.is_admin)
+            rec_dict['can_delete'] = is_owner and (_self.USERS_CAN_DELETE or current_user.is_admin)
 
             if not is_owner:
                 # This is a shared recording - get owner info and share permissions
@@ -1885,7 +1880,7 @@ def delete_recording_audio(recording_id):
             return jsonify(api_error('recording_not_found')), 404
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify(api_error('recording_delete_denied')), 403
-        if not USERS_CAN_DELETE and not current_user.is_admin:
+        if not _self.USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify(api_error('recording_delete_admin_only')), 403
         if recording.audio_deleted_at:
             return jsonify(api_error('audio_already_removed')), 409
@@ -2107,7 +2102,7 @@ def upload_incognito():
     Results are returned directly and only stored client-side in sessionStorage.
     """
     # Check if incognito mode is enabled
-    if not ENABLE_INCOGNITO_MODE:
+    if not _self.ENABLE_INCOGNITO_MODE:
         return jsonify(api_error('incognito_disabled')), 403
 
     import tempfile
@@ -2291,7 +2286,7 @@ def chat_incognito():
     is passed directly in the request.
     """
     # Check if incognito mode is enabled
-    if not ENABLE_INCOGNITO_MODE:
+    if not _self.ENABLE_INCOGNITO_MODE:
         return jsonify(api_error('incognito_disabled')), 403
 
     try:
@@ -2373,7 +2368,7 @@ def generate_incognito_summary_endpoint():
     is passed directly in the request.
     """
     # Check if incognito mode is enabled
-    if not ENABLE_INCOGNITO_MODE:
+    if not _self.ENABLE_INCOGNITO_MODE:
         return jsonify(api_error('incognito_disabled')), 403
 
     from src.tasks.processing import generate_incognito_summary
@@ -2431,7 +2426,7 @@ def delete_recording(recording_id):
             return jsonify(api_error('recording_delete_denied')), 403
 
         # Check deletion permissions (admin-only if USERS_CAN_DELETE is false)
-        if not USERS_CAN_DELETE and not current_user.is_admin:
+        if not _self.USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify(api_error('recording_delete_admin_only')), 403
 
         # Log embeddings cleanup for Inquire Mode if enabled
@@ -2521,7 +2516,7 @@ def get_recording_detail(recording_id):
         has_access = recording.user_id == current_user.id
 
         # Check if recording has been shared with current user (if internal sharing is enabled)
-        if not has_access and ENABLE_INTERNAL_SHARING:
+        if not has_access and _self.ENABLE_INTERNAL_SHARING:
             share = InternalShare.query.filter_by(
                 recording_id=recording_id,
                 shared_with_user_id=current_user.id
@@ -2542,7 +2537,7 @@ def get_recording_detail(recording_id):
         rec_dict['can_edit'] = has_recording_access(recording, current_user, require_edit=True)
 
         # Add delete permission info (only owner can delete)
-        rec_dict['can_delete'] = is_owner and (USERS_CAN_DELETE or current_user.is_admin)
+        rec_dict['can_delete'] = is_owner and (_self.USERS_CAN_DELETE or current_user.is_admin)
 
         # Add sharing-related fields
         if not is_owner:
@@ -2874,7 +2869,7 @@ def get_audio(recording_id):
         has_access = recording.user_id == current_user.id
 
         # Check if recording has been shared with current user (if internal sharing is enabled)
-        if not has_access and ENABLE_INTERNAL_SHARING:
+        if not has_access and _self.ENABLE_INTERNAL_SHARING:
             share = InternalShare.query.filter_by(
                 recording_id=recording_id,
                 shared_with_user_id=current_user.id
@@ -3146,7 +3141,7 @@ def add_tag_to_recording(recording_id):
         # A group tag with sharing shares the completed recording (same rule
         # as API v1 and the end of processing: src/services/tag_sharing.py).
         from src.services.tag_sharing import apply_tag_shares
-        shares_created = apply_tag_shares(recording, tag, sharing_enabled=ENABLE_INTERNAL_SHARING)
+        shares_created = apply_tag_shares(recording, tag, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
         if shares_created > 0:
             current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag '{tag.name}'")
 
@@ -3215,7 +3210,7 @@ def remove_tag_from_recording(recording_id, tag_id):
         db.session.delete(recording_tag)
 
         # Clean up shares created by this group tag
-        if tag and tag.group_id and ENABLE_INTERNAL_SHARING:
+        if tag and tag.group_id and _self.ENABLE_INTERNAL_SHARING:
             shares_to_check = InternalShare.query.filter_by(
                 recording_id=recording_id,
                 source_tag_id=tag_id
@@ -3327,7 +3322,7 @@ def bulk_delete_recordings():
             return jsonify(api_error('bulk_delete_limit')), 400
 
         # Check deletion permissions
-        if not USERS_CAN_DELETE and not current_user.is_admin:
+        if not _self.USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify(api_error('recording_delete_admin_only')), 403
 
         deleted_ids = []
@@ -3655,3 +3650,17 @@ def process_recording_chunks_endpoint(recording_id):
 
 
 # --- Inquire Mode API Endpoints ---
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_AUTO_DELETION": ("enable_auto_deletion", "ENABLE_AUTO_DELETION", False),
+    "DELETION_MODE": ("deletion_mode", "DELETION_MODE", "full_recording"),
+    "USERS_CAN_DELETE": ("users_can_delete", "USERS_CAN_DELETE", True),
+    "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
+    "ENABLE_INCOGNITO_MODE": ("enable_incognito_mode", "ENABLE_INCOGNITO_MODE", False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
