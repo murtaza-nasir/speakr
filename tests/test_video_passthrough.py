@@ -102,22 +102,16 @@ class TestPassthroughConfig(unittest.TestCase):
 
     def test_canonical_definition_in_app_config(self):
         self.assertIn(
-            "VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'",
+            '"VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),',
             APP_CONFIG
         )
 
     def test_documented_in_env_example(self):
         self.assertIn('VIDEO_PASSTHROUGH_ASR', ENV_EXAMPLE)
 
-    def test_processing_imports_from_config(self):
-        self.assertIn('VIDEO_PASSTHROUGH_ASR', PROCESSING)
-        # Should import from app_config, not read os.environ directly
-        self.assertIn('import', PROCESSING)
-        # Verify it's in an import line from app_config
-        import_lines = [l for l in PROCESSING.split('\n')
-                        if 'from src.config.app_config import' in l]
-        found = any('VIDEO_PASSTHROUGH_ASR' in l for l in import_lines)
-        self.assertTrue(found, "processing.py should import VIDEO_PASSTHROUGH_ASR from app_config")
+    def test_processing_reads_hot_applied_setting(self):
+        self.assertIn('_self.VIDEO_PASSTHROUGH_ASR', PROCESSING)
+        self.assertIn('_SYSTEM_SETTING_MAP', PROCESSING)
 
 
 # ===========================================================================
@@ -134,7 +128,7 @@ class TestProcessingMainPath(unittest.TestCase):
         self.assertNotEqual(video_block_start, -1)
 
         after_video = PROCESSING_MAIN[video_block_start:]
-        passthrough_pos = after_video.find('if VIDEO_PASSTHROUGH_ASR:')
+        passthrough_pos = after_video.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         retention_pos = after_video.find('elif effective_video_retention:')
 
         self.assertNotEqual(passthrough_pos, -1, "Missing VIDEO_PASSTHROUGH_ASR check in is_video block")
@@ -145,8 +139,8 @@ class TestProcessingMainPath(unittest.TestCase):
     def test_passthrough_does_not_call_extract_audio(self):
         """The passthrough branch must not call extract_audio_from_video."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
-        # Find the passthrough branch (from `if VIDEO_PASSTHROUGH_ASR:` to `elif VIDEO_RETENTION:`)
-        pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
+        # Find the passthrough branch (from `if _self.VIDEO_PASSTHROUGH_ASR:` to `elif VIDEO_RETENTION:`)
+        pt_start = video_block.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertNotIn('extract_audio_from_video', passthrough_block,
@@ -155,7 +149,7 @@ class TestProcessingMainPath(unittest.TestCase):
     def test_passthrough_keeps_original_filepath(self):
         """Passthrough sets actual_filepath = filepath (the original video)."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
-        pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
+        pt_start = video_block.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('actual_filepath = filepath', passthrough_block)
@@ -163,7 +157,7 @@ class TestProcessingMainPath(unittest.TestCase):
     def test_passthrough_with_retention_preserves_locator(self):
         """When both passthrough and retention are on, persistent media locator is preserved."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
-        pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
+        pt_start = video_block.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('if effective_video_retention:', passthrough_block,
@@ -177,14 +171,14 @@ class TestProcessingMainPath(unittest.TestCase):
 
     def test_video_passthrough_active_flag_set(self):
         """video_passthrough_active flag is computed from is_video and VIDEO_PASSTHROUGH_ASR."""
-        self.assertIn('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR',
+        self.assertIn('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR',
                        PROCESSING_MAIN)
 
     def test_conversion_skipped_when_passthrough(self):
         """convert_if_needed is inside an else block gated by video_passthrough_active."""
         self.assertIn('if video_passthrough_active:', PROCESSING_MAIN)
         # The conversion call should be in the else branch
-        flag_pos = PROCESSING_MAIN.find('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR')
+        flag_pos = PROCESSING_MAIN.find('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR')
         after_flag = PROCESSING_MAIN[flag_pos:]
         passthrough_if = after_flag.find('if video_passthrough_active:')
         else_pos = after_flag.find('else:', passthrough_if)
@@ -195,7 +189,7 @@ class TestProcessingMainPath(unittest.TestCase):
     def test_chunking_skipped_when_passthrough(self):
         """Chunking evaluates to False when video_passthrough_active."""
         # Find the chunking decision area after the flag
-        flag_pos = PROCESSING_MAIN.find('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR')
+        flag_pos = PROCESSING_MAIN.find('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR')
         after_flag = PROCESSING_MAIN[flag_pos:]
         self.assertIn('if video_passthrough_active:\n                should_chunk = False', after_flag)
 
@@ -252,7 +246,7 @@ class TestIncognitoPassthrough(unittest.TestCase):
 
     def test_passthrough_flag_set_in_incognito(self):
         """video_passthrough_active is computed in incognito path."""
-        self.assertIn('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR',
+        self.assertIn('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR',
                        PROCESSING_INCOGNITO)
 
     def test_passthrough_skips_extraction_in_incognito(self):
@@ -273,7 +267,7 @@ class TestIncognitoPassthrough(unittest.TestCase):
 
     def test_incognito_does_not_reference_video_retention(self):
         """Incognito path should NOT reference VIDEO_RETENTION (no retention in incognito)."""
-        self.assertNotIn('VIDEO_RETENTION', PROCESSING_INCOGNITO)
+        self.assertNotIn('_self.VIDEO_RETENTION', PROCESSING_INCOGNITO)
 
     def test_incognito_still_extracts_without_passthrough(self):
         """Without passthrough, incognito still extracts audio from video.
@@ -372,10 +366,10 @@ class TestAudioUnaffected(unittest.TestCase):
     def test_passthrough_flag_gated_on_is_video(self):
         """video_passthrough_active is always `is_video and VIDEO_PASSTHROUGH_ASR`."""
         # Main path
-        self.assertIn('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR',
+        self.assertIn('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR',
                        PROCESSING_MAIN)
         # Incognito path
-        self.assertIn('video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR',
+        self.assertIn('video_passthrough_active = is_video and _self.VIDEO_PASSTHROUGH_ASR',
                        PROCESSING_INCOGNITO)
 
     def test_upload_handler_gated_on_has_video(self):
@@ -438,7 +432,7 @@ class TestInteractionMatrix(unittest.TestCase):
         """Main path has if/elif/else for passthrough/retention/default."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         # All three branches present in order
-        pt_pos = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
+        pt_pos = video_block.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         ret_pos = video_block.find('elif effective_video_retention:')
         else_pos = video_block.find('\n                else:', ret_pos)
         self.assertNotEqual(pt_pos, -1)
@@ -450,7 +444,7 @@ class TestInteractionMatrix(unittest.TestCase):
     def test_incognito_two_way_branch(self):
         """Incognito has if/else for passthrough/extract (no retention)."""
         video_block = PROCESSING_INCOGNITO[PROCESSING_INCOGNITO.find('if is_video:'):]
-        pt_pos = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
+        pt_pos = video_block.find('if _self.VIDEO_PASSTHROUGH_ASR:')
         else_pos = video_block.find('\n            else:', pt_pos)
         self.assertNotEqual(pt_pos, -1)
         self.assertNotEqual(else_pos, -1)

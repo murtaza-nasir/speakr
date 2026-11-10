@@ -765,9 +765,9 @@
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
                         {% if not admin_disabled_auto_summarization %}
                         <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes" data-i18n-title="account.autoSummarizeTitle">
-                            <span class="text-sm text-[var(--text-secondary)]" data-i18n="account.autoSummarize">Auto-summarize</span>
+                            <span id="autoSummarizationToggleLabel" class="text-sm text-[var(--text-secondary)]" data-i18n="account.autoSummarize">Auto-summarize</span>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autoSummarizationToggle" class="sr-only peer" {% if auto_summarization %}checked{% endif %}>
+                                <input type="checkbox" id="autoSummarizationToggle" aria-labelledby="autoSummarizationToggleLabel" class="sr-only peer" {% if auto_summarization %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
                             </label>
                         </div>
@@ -803,6 +803,7 @@
                                     </label>
                                     <select name="summary_timestamp_template_id" id="summary_timestamp_template_id"
                                             data-selected="{{ current_user.summary_timestamp_template_id or '' }}"
+                                            aria-label="Timestamp format for the summarization agent" data-i18n-aria-label="timestamps.summaryTemplateLabel"
                                             class="ts-template-picker mt-2 ml-7 w-[calc(100%-1.75rem)] px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                         <option value="" data-i18n="timestamps.defaultFormat">Default timestamp format</option>
                                     </select>
@@ -819,6 +820,7 @@
                                     </label>
                                     <select name="chat_timestamp_template_id" id="chat_timestamp_template_id"
                                             data-selected="{{ current_user.chat_timestamp_template_id or '' }}"
+                                            aria-label="Timestamp format for the chat agent" data-i18n-aria-label="timestamps.chatTemplateLabel"
                                             class="ts-template-picker mt-2 ml-7 w-[calc(100%-1.75rem)] px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                         <option value="" data-i18n="timestamps.defaultFormat">Default timestamp format</option>
                                     </select>
@@ -1344,9 +1346,9 @@
                         </div>
                         {% if speaker_embeddings_enabled or contextual_labelling_available %}
                         <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="{% if speaker_embeddings_enabled %}Automatically label speakers in new recordings when saved voice profiles match{% else %}Automatically label speakers in new recordings from the conversation context{% endif %}" {% if speaker_embeddings_enabled %}data-i18n-title="account.speakersTab.autoLabelVoiceTitle"{% else %}data-i18n-title="account.speakersTab.autoLabelContextTitle"{% endif %}>
-                            <span class="text-sm text-[var(--text-secondary)] hidden sm:inline" data-i18n="account.autoLabel">Auto-label</span>
+                            <span id="autoSpeakerLabellingToggleLabel" class="text-sm text-[var(--text-secondary)] hidden sm:inline" data-i18n="account.autoLabel">Auto-label</span>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
+                                <input type="checkbox" id="autoSpeakerLabellingToggle" aria-labelledby="autoSpeakerLabellingToggleLabel" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
                             </label>
                             {# Confidence threshold only tunes embedding (voice) matching; the contextual LLM path has no similarity score, so it is hidden there. #}
@@ -2131,13 +2133,13 @@
                                     </h3>
                                     <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-4 space-y-4">
                                         <div>
-                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.usingCurl">Using with curl:</h4>
-                                            <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto"><code>curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+                                            <h4 id="tokensExampleCurlHeading" class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.usingCurl">Using with curl:</h4>
+                                            <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto" tabindex="0" role="region" aria-labelledby="tokensExampleCurlHeading"><code>curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
      https://your-speakr-instance.com/api/recordings</code></pre>
                                         </div>
                                         <div>
-                                            <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.altHeaders">Alternative header formats:</h4>
-                                            <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto"><code># X-API-Token header
+                                            <h4 id="tokensExampleHeadersHeading" class="text-sm font-semibold text-[var(--text-primary)] mb-2" data-i18n="account.tokensTab.altHeaders">Alternative header formats:</h4>
+                                            <pre class="bg-[var(--bg-tertiary)] p-3 rounded text-xs overflow-x-auto" tabindex="0" role="region" aria-labelledby="tokensExampleHeadersHeading"><code># X-API-Token header
 curl -H "X-API-Token: YOUR_TOKEN_HERE" ...
 
 # API-Token header
@@ -3327,7 +3329,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         ? (speaker.confidence_score >= 0.8 ? 'high' : speaker.confidence_score >= 0.6 ? 'medium' : 'low')
                         : null;
                     const confidenceBadge = hasVoiceProfile && confidenceLevel
-                        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style="background-color: ${confidenceLevel === 'high' ? '#10b981' : confidenceLevel === 'medium' ? '#f59e0b' : '#f97316'}; color: white;">
+                        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${confidenceLevel === 'high' ? 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]' : confidenceLevel === 'medium' ? 'bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]' : 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]'}">
                             <i class="fas fa-shield-alt mr-1"></i>${confidenceLevel}
                           </span>`
                         : '';
@@ -3343,7 +3345,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center flex-1 min-w-0 gap-2">
                                     <input type="checkbox" class="speaker-select-checkbox rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)] flex-shrink-0"
-                                           data-speaker-id="${speaker.id}" data-speaker-name="${escapeHtml(speaker.name)}">
+                                           data-speaker-id="${speaker.id}" data-speaker-name="${escapeHtml(speaker.name)}"
+                                           aria-label="${escapeHtml(tf('account.speakersTab.selectSpeaker', 'Select ' + speaker.name, { name: speaker.name }))}">
                                     <i class="fas fa-user text-[var(--text-accent)] text-sm flex-shrink-0"></i>
                                     <h3 class="font-medium text-sm text-[var(--text-primary)] truncate">${escapeHtml(speaker.name)}</h3>
                                 </div>
@@ -4295,7 +4298,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </label>
                             </div>
                             <div class="order-4 col-span-2 lg:order-3 lg:col-span-1 relative min-w-0">
-                                <input value="{{ request.url_root }}share/${share.public_id}" readonly class="share-link-input w-full px-3 py-2 pr-12 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-accent)]">
+                                <input value="{{ request.url_root }}share/${share.public_id}" readonly aria-label="${escapeHtml(tf('sharedTranscripts.shareLinkFor', 'Share link for ' + share.recording_title, { title: share.recording_title }))}" class="share-link-input w-full px-3 py-2 pr-12 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-accent)]">
                                 <button class="copy-share-link-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-colors" title="${t('buttons.copy')}">
                                     <i class="fas fa-copy text-xs"></i>
                                 </button>

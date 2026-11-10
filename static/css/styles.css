@@ -45,6 +45,7 @@ body.unloaded {
     --bg-warn-light: #fef3c7; /* amber-100 */
     --bg-success-light: #c6f0dc; /* muted green */
     --bg-pending-light: #eeeeec; /* stone */
+    --bg-processing-light: #ede9fe; /* violet-100 */
     --bg-input: #fafbfc; /* slightly gray white */
     --bg-audio-player: var(--bg-tertiary);
 
@@ -60,6 +61,7 @@ body.unloaded {
     --text-warn-strong: #b45309; /* amber-700 */
     --text-success-strong: #065f46; /* green-800 */
     --text-pending-strong: #44403c; /* stone-700 */
+    --text-processing-strong: #5b21b6; /* violet-800 */
 
     --border-primary: #e5e7eb; /* gray-200 */
     --border-secondary: #d1d5db; /* gray-300 */
@@ -184,6 +186,7 @@ body.unloaded {
     --bg-warn-light: #78350f; /* amber-900 */
     --bg-success-light: #064e3b; /* green-900 */
     --bg-pending-light: #292524; /* stone-800 */
+    --bg-processing-light: #4c1d95; /* violet-900 */
     --bg-input: #374151; /* gray-700 */
     --bg-audio-player: var(--bg-secondary);
 
@@ -199,6 +202,7 @@ body.unloaded {
     --text-warn-strong: #fcd34d; /* amber-300 */
     --text-success-strong: #6ee7b7; /* green-300 */
     --text-pending-strong: #d6d3d1; /* stone-300 */
+    --text-processing-strong: #c4b5fd; /* violet-300 */
 
     --border-primary: #475569; /* slate-600 - more visible */
     --border-secondary: #64748b; /* slate-500 - better contrast */
@@ -1782,13 +1786,14 @@ body {
     font-size: 0.7rem;
     letter-spacing: 0.02em;
     user-select: none;
-    /* Light mode: blend the speaker palette's saturated foreground
-       with white so the time half reads as a softer-saturated darker
-       shade of the speaker hue (not the full saturated --speaker-fg
-       which was too high-contrast). White text on top stays legible
-       and the hue identity is preserved. color-mix is supported in
-       all evergreens. */
-    background: color-mix(in srgb, var(--speaker-fg, #424242) 70%, #ffffff 30%);
+    /* Light mode: a darker shade of the speaker palette's saturated
+       foreground, so the white time text keeps at least 4.5:1 (WCAG AA)
+       on every speaker colour. Mixing with white (the old 70/30 blend)
+       left blue, green and orange at 3.4-4.1, and the light hues
+       (yellow, amber, lime) are below 4.5 even unmixed; 65% with black
+       puts the lightest of the 16 (amber) at 5.0. The hue identity is
+       preserved. color-mix is supported in all evergreens. */
+    background: color-mix(in srgb, var(--speaker-fg, #424242) 65%, #000000 35%);
     background-image: none;
     color: #ffffff;
     display: inline-flex;
@@ -3523,6 +3528,15 @@ body {
     vertical-align: top;
     min-height: 2.5rem; /* Minimum height for single line */
     line-height: 1.5;
+}
+
+/* The cell inputs have no border and drop the browser outline
+   (focus:outline-none), so a keyboard user could not see which cell has
+   focus. An inset ring in the focus colour marks it; inset so the ring
+   stays inside the cell and is not cut by the neighbouring cells. */
+.asr-editor-table .asr-editor-field:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
 }
 
 /* Sticky header for ASR editor table */

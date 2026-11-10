@@ -28,11 +28,19 @@ EMAIL_VERIFICATION_EXPIRY = 24 * 60 * 60  # 24 hours in seconds
 PASSWORD_RESET_EXPIRY = 1 * 60 * 60  # 1 hour in seconds
 
 
+
+def _sys_setting_bool(key, env, default):
+    try:
+        from src.models import SystemSetting
+        return bool(SystemSetting.get_setting(key, os.environ.get(env, str(default).lower()).lower() == 'true'))
+    except Exception:
+        return os.environ.get(env, str(default).lower()).lower() == 'true'
+
 def get_email_config():
     """Get email configuration from environment variables."""
     return {
-        'enabled': os.environ.get('ENABLE_EMAIL_VERIFICATION', 'false').lower() == 'true',
-        'required': os.environ.get('REQUIRE_EMAIL_VERIFICATION', 'false').lower() == 'true',
+        'enabled': _sys_setting_bool('enable_email_verification', 'ENABLE_EMAIL_VERIFICATION', False),
+        'required': _sys_setting_bool('require_email_verification', 'REQUIRE_EMAIL_VERIFICATION', False),
         'smtp_host': os.environ.get('SMTP_HOST', ''),
         'smtp_port': int(os.environ.get('SMTP_PORT', '587')),
         'smtp_username': os.environ.get('SMTP_USERNAME', ''),

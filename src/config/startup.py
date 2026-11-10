@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 from flask import current_app
 from src.utils.localization import api_error
 
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
 
 # Cross-process elections for work that must run in exactly one process.
 #
@@ -105,17 +103,22 @@ def get_file_monitor_functions(app):
         return start_file_monitor, stop_file_monitor, get_file_monitor_status
 
 # --- Auto-Processing API Endpoints ---
+def scheduled_deletion_due():
+    """Whether the daily auto-deletion run should delete anything.
+
+    The same two conditions that used to decide at startup whether the
+    scheduler started at all: auto-deletion on and a global retention period.
+    """
+    return bool(_self.ENABLE_AUTO_DELETION) and _self.GLOBAL_RETENTION_DAYS > 0
+
+
 def initialize_auto_deletion_scheduler(app):
     """Initialize the daily auto-deletion scheduler if enabled."""
     from src.services.retention import process_auto_deletion
 
-    if not ENABLE_AUTO_DELETION:
-        app.logger.info("Auto-deletion scheduler not started (ENABLE_AUTO_DELETION=false)")
-        return
-
-    if GLOBAL_RETENTION_DAYS <= 0:
-        app.logger.info("Auto-deletion scheduler not started (GLOBAL_RETENTION_DAYS not set)")
-        return
+    # The thread always starts. Whether a run deletes anything is decided at
+    # run time, so enable_auto_deletion and global_retention_days can be
+    # changed in System Settings without a restart (#567).
 
     def run_daily_deletion():
         """Background thread that runs auto-deletion daily at 2 AM."""
@@ -141,11 +144,13 @@ def initialize_auto_deletion_scheduler(app):
                 # Sleep until next run time
                 time.sleep(sleep_seconds)
 
-                # Run auto-deletion
-                app.logger.info("Running scheduled auto-deletion...")
                 with app.app_context():
-                    stats = process_auto_deletion()
-                    app.logger.info(f"Scheduled auto-deletion completed: {stats}")
+                    if scheduled_deletion_due():
+                        app.logger.info("Running scheduled auto-deletion...")
+                        stats = process_auto_deletion()
+                        app.logger.info(f"Scheduled auto-deletion completed: {stats}")
+                    else:
+                        app.logger.info("Scheduled auto-deletion skipped (disabled or no global retention)")
 
             except Exception as e:
                 app.logger.error(f"Error in auto-deletion scheduler: {e}", exc_info=True)
@@ -380,3 +385,14 @@ def run_startup_tasks(app):
         # sweep, nothing to duplicate. If it ever grows a background task it
         # needs to move up into the block above.
         initialize_file_exporter(app)
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

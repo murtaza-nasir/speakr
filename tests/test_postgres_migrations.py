@@ -150,6 +150,17 @@ class TestDatabaseMigrations(unittest.TestCase):
                 setting = SystemSetting.query.filter_by(key=key).first()
                 self.assertIsNotNone(setting, f"Missing system setting: {key}")
 
+    def test_env_backed_settings_have_no_value(self):
+        """Settings that fall back to .env are created without a value, so
+        the .env value applies until an admin saves one (#567)."""
+        with self.app.app_context():
+            from src.models import SystemSetting
+            from src.utils.system_settings import ENV_BACKED_SETTINGS
+            for key in ENV_BACKED_SETTINGS:
+                setting = SystemSetting.query.filter_by(key=key).first()
+                self.assertIsNotNone(setting, f"Missing system setting: {key}")
+                self.assertIsNone(setting.value, f"{key} copied a value at startup")
+
     def test_engine_type_matches_expectation(self):
         """Sanity check: confirm we're testing against the expected engine."""
         with self.app.app_context():

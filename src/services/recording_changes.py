@@ -53,7 +53,6 @@ WEBHOOK_FIELD_NAMES = {
 }
 
 SETTLE_SECONDS = 2
-TOMBSTONE_DAYS = int(os.environ.get('RECORDING_TOMBSTONE_DAYS', '90') or 90)
 FEED_SINCE_KEY = 'changes_feed_since'
 PRUNED_BEFORE_KEY = 'recording_tombstones_pruned_before'
 
@@ -258,7 +257,7 @@ def prune_tombstones(now=None):
     """Remove tombstones older than RECORDING_TOMBSTONE_DAYS. Returns the count."""
     from src.models import RecordingTombstone, SystemSetting
     now = now or datetime.utcnow()
-    horizon = now - timedelta(days=TOMBSTONE_DAYS)
+    horizon = now - timedelta(days=_self.TOMBSTONE_DAYS)
     removed = RecordingTombstone.query.filter(RecordingTombstone.deleted_at < horizon).delete(
         synchronize_session=False)
     db.session.commit()
@@ -423,3 +422,13 @@ def conditional(request, etag, build):
     response.headers['ETag'] = etag
     response.headers['Cache-Control'] = 'private, no-cache'
     return response
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "TOMBSTONE_DAYS": ('recording_tombstone_days', 'RECORDING_TOMBSTONE_DAYS', 90),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

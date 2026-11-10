@@ -21,8 +21,6 @@ from src.utils.localization import api_error
 folders_bp = Blueprint('folders', __name__)
 
 # Configuration from environment
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -184,7 +182,7 @@ def create_folder():
 
     if retention_days == -1:
         # -1 indicates infinite retention (protected from auto-deletion)
-        protect_from_deletion = True if ENABLE_AUTO_DELETION else False
+        protect_from_deletion = True if _self.ENABLE_AUTO_DELETION else False
 
     # Validate naming_template_id if provided
     naming_template_id = data.get('naming_template_id')
@@ -331,7 +329,7 @@ def update_folder(folder_id):
 
         if retention_days == -1:
             # -1 indicates infinite retention (protected from auto-deletion)
-            if ENABLE_AUTO_DELETION:
+            if _self.ENABLE_AUTO_DELETION:
                 folder.protect_from_deletion = True
                 folder.retention_days = -1
         else:
@@ -418,7 +416,7 @@ def create_group_folder(group_id):
     if not folders_enabled:
         return jsonify(api_error('folders_disabled')), 403
 
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('group_folders_require_internal_sharing')), 403
 
     # Verify team exists
@@ -741,7 +739,7 @@ def _apply_folder_auto_shares(recording, folder):
         recording: Recording being assigned to the folder
         folder: Folder with auto-share settings
     """
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return
 
     if not folder.group_id:
@@ -796,3 +794,14 @@ def _apply_folder_auto_shares(recording, folder):
 
     if shares_created > 0:
         current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording.id} via folder assignment")
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

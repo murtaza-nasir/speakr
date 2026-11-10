@@ -229,6 +229,7 @@
                                     <input type="checkbox"
                                            :checked="followPlayerMode"
                                            @click.stop="toggleFollowPlayerMode"
+                                           :aria-label="t('sharePage.followPlayer')"
                                            class="cursor-pointer">
                                     <i class="fas fa-arrows-alt-v follow-icon"></i>
                                 </div>
@@ -263,7 +264,8 @@
                         {% endif %}
 
                         <!-- Transcription Content - Scrollable Box (Server-rendered for accessibility) -->
-                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
+                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick"
+                             tabindex="0" role="region" :aria-label="t('transcription.title')">
                             {% if transcript.is_json and transcript.segments %}
                             <!-- Simple View (server-rendered) -->
                             <div v-show="transcriptView === 'simple'" class="transcription-simple-view">
@@ -327,7 +329,8 @@
                         </div>
 
                         <!-- Transcription Content - Scrollable Box -->
-                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
+                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick"
+                             tabindex="0" role="region" :aria-label="t('transcription.title')">
                             <!-- Simple View -->
                             <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
                                 <div v-for="(segment, index) in processedTranscription.simpleSegments"

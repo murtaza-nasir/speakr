@@ -25,9 +25,6 @@ from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
-ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
-SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 READABLE_PUBLIC_LINKS = os.environ.get('READABLE_PUBLIC_LINKS', 'false').lower() == 'true'
 
@@ -222,7 +219,7 @@ def get_existing_share(recording_id):
 def create_share(recording_id):
     """Create a public share link for a recording."""
     # Check if public sharing is globally enabled
-    if not ENABLE_PUBLIC_SHARING:
+    if not _self.ENABLE_PUBLIC_SHARING:
         return jsonify(api_error('public_sharing_disabled')), 403
 
     # Check if user has permission to create public shares
@@ -316,7 +313,7 @@ def get_shares_overview():
                         Recording.id, Recording.title, Recording.audio_deleted_at))
                     .order_by(Share.created_at.desc(), Share.id.desc()).all()]
     shared_by_me, shared_with_me = [], []
-    if ENABLE_INTERNAL_SHARING:
+    if _self.ENABLE_INTERNAL_SHARING:
         received = _internal(InternalShare.shared_with_user_id == current_user.id)
         # What the user may grant on each recording, for changing a share's
         # permissions in place (D#517): everything on their own recordings,
@@ -360,7 +357,7 @@ def get_shares_overview():
                 'share_id': share.id,
                 'recording_id': recording.id,
                 'recording_title': recording.title or recording.original_filename or f'#{recording.id}',
-                'owner_username': share.owner.username if SHOW_USERNAMES_IN_UI and share.owner else None,
+                'owner_username': share.owner.username if _self.SHOW_USERNAMES_IN_UI and share.owner else None,
                 'can_edit': bool(share.can_edit),
                 'can_reshare': bool(share.can_reshare),
                 'source': _source(share),
@@ -369,8 +366,8 @@ def get_shares_overview():
             })
 
     return jsonify({
-        'public_sharing_enabled': ENABLE_PUBLIC_SHARING,
-        'internal_sharing_enabled': ENABLE_INTERNAL_SHARING,
+        'public_sharing_enabled': _self.ENABLE_PUBLIC_SHARING,
+        'internal_sharing_enabled': _self.ENABLE_INTERNAL_SHARING,
         'public_links': public_links,
         'shared_by_me': shared_by_me,
         'shared_with_me': shared_with_me,
@@ -415,14 +412,14 @@ def search_users():
     with exactly that username. A query under 2 characters returns nothing in
     both modes, so the list of accounts is never sent in one response.
     """
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     query = request.args.get('q', '').strip()
     if len(query) < 2:
         return jsonify([])
 
-    if SHOW_USERNAMES_IN_UI:
+    if _self.SHOW_USERNAMES_IN_UI:
         pattern = contains_pattern(query)
         users = User.query.filter(
             User.id != current_user.id,
@@ -441,7 +438,7 @@ def search_users():
     return jsonify([{
         'id': user.id,
         'username': user.username,
-        'email': user.email if SHOW_USERNAMES_IN_UI else None
+        'email': user.email if _self.SHOW_USERNAMES_IN_UI else None
     } for user in users])
 
 
@@ -577,7 +574,7 @@ def share_recording_internal(recording_id):
 
     A body with `user_ids` shares with several people at once (D#519).
     """
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
@@ -668,7 +665,7 @@ def share_recording_internal(recording_id):
 @login_required
 def get_internal_shares(recording_id):
     """Get list of users a recording is shared with, including owner."""
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     # Check recording exists and user has permission to view shares
@@ -728,7 +725,7 @@ def update_internal_share(share_id):
     what removes those. The share id, the recipient's inbox state and notes
     stay as they are.
     """
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     share = db.session.get(InternalShare, share_id)
@@ -788,7 +785,7 @@ def update_internal_share(share_id):
 @login_required
 def revoke_internal_share(share_id):
     """Revoke an internal share with cascade revocation."""
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     share = db.session.get(InternalShare, share_id)
@@ -869,7 +866,7 @@ def revoke_internal_share(share_id):
 @login_required
 def get_shared_with_me():
     """Get recordings that have been shared with the current user."""
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
@@ -891,7 +888,7 @@ def get_shared_with_me():
             rec_data = recording.to_list_dict(viewer_user=current_user, batch=batch)
             # Mark as shared recording with owner info
             rec_data['is_shared'] = True
-            rec_data['owner_username'] = share.owner.username if SHOW_USERNAMES_IN_UI else None
+            rec_data['owner_username'] = share.owner.username if _self.SHOW_USERNAMES_IN_UI else None
             # Don't show outgoing share counts for recordings you don't own
             rec_data['shared_with_count'] = 0
             rec_data['public_share_count'] = 0
@@ -900,7 +897,7 @@ def get_shared_with_me():
             rec_data['has_group_tags'] = any(tag.is_group_tag for tag in visible_tags) if visible_tags else False
             rec_data['share_info'] = {
                 'share_id': share.id,
-                'owner_username': share.owner.username if SHOW_USERNAMES_IN_UI else None,
+                'owner_username': share.owner.username if _self.SHOW_USERNAMES_IN_UI else None,
                 'can_edit': share.can_edit,
                 'can_reshare': share.can_reshare,
                 'shared_at': share.created_at.isoformat()
@@ -919,5 +916,17 @@ def get_shared_with_me():
 def can_share_publicly():
     """Check if the current user has permission to create public shares."""
     return jsonify({
-        'can_share_publicly': current_user.can_share_publicly and ENABLE_PUBLIC_SHARING
+        'can_share_publicly': current_user.can_share_publicly and _self.ENABLE_PUBLIC_SHARING
     })
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "ENABLE_PUBLIC_SHARING": ('enable_public_sharing', 'ENABLE_PUBLIC_SHARING', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "SHOW_USERNAMES_IN_UI": ('show_usernames_in_ui', 'SHOW_USERNAMES_IN_UI', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

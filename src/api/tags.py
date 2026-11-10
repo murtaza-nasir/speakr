@@ -27,9 +27,6 @@ tags_bp = Blueprint('tags', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_AUTO_PROCESSING = os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true'
 
@@ -218,7 +215,7 @@ def create_tag():
 
     if retention_days == -1:
         # -1 indicates infinite retention (protected from auto-deletion)
-        protect_from_deletion = True if ENABLE_AUTO_DELETION else False
+        protect_from_deletion = True if _self.ENABLE_AUTO_DELETION else False
 
     # Validate naming_template_id if provided
     naming_template_id = data.get('naming_template_id')
@@ -374,7 +371,7 @@ def update_tag(tag_id):
 
         if retention_days == -1:
             # -1 indicates infinite retention (protected from auto-deletion)
-            if ENABLE_AUTO_DELETION:
+            if _self.ENABLE_AUTO_DELETION:
                 tag.protect_from_deletion = True
                 tag.retention_days = -1
         else:
@@ -487,7 +484,7 @@ def delete_tag(tag_id):
 @login_required
 def create_group_tag(group_id):
     """Create a group-scoped tag (group admins only)."""
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('group_tags_require_internal_sharing')), 403
 
     # Verify team exists
@@ -599,4 +596,13 @@ def get_group_tags(group_id):
     return jsonify({'tags': tag_dicts(tags)})
 
 
-
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

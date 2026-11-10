@@ -176,7 +176,8 @@
       "clearNote": "New voice profiles will be created when you identify these speakers in future recordings.",
       "mergeSubtitle": "Combine speaker profiles",
       "mergeInstruction": "Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.",
-      "editNameTitle": "Edit Speaker Name"
+      "editNameTitle": "Edit Speaker Name",
+      "selectSpeaker": "Select {{name}}"
     },
     "confirmDeleteNamed": "Are you sure you want to delete \"{{name}}\"?",
     "loadFailed": "Failed to load",
@@ -447,6 +448,15 @@
     "id": "ID",
     "inquireModeDescription": "Inquire Mode allows users to search across multiple transcriptions using natural language questions. It works by breaking transcriptions into chunks and creating searchable embeddings using AI models.",
     "languagePreferenceNote": "Note: If the user has set an output language preference, \" Ensure your response is in {language}.\" will be added.",
+    "useEnvValue": "Use .env value",
+    "usersPerPage": "Users per page",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page",
+    "settingFromEnv": "Set in .env",
+    "deletionModeAudioOnly": "Audio only",
+    "deletionModeFullRecording": "Full recording",
     "lastUpdated": "Last updated",
     "maxFileSizeHelp": "Maximum file size in megabytes (1-10000 MB)",
     "megabytes": "MB",
@@ -805,7 +815,13 @@
   "asrEditor": {
     "saved": "Saved",
     "ctrlSHint": "Ctrl+S to save",
-    "saveWithoutClosing": "Save without closing (Ctrl+S)"
+    "saveWithoutClosing": "Save without closing (Ctrl+S)",
+    "speakerInput": "Speaker, segment {{n}}",
+    "startTimeInput": "Start time, segment {{n}}",
+    "endTimeInput": "End time, segment {{n}}",
+    "textInput": "Text, segment {{n}}",
+    "speakerSuggestions": "Choose speaker, segment {{n}}",
+    "volume": "Volume"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",
@@ -2297,7 +2313,8 @@
     "uploadingMessage": "Uploading...",
     "waiting": "Waiting",
     "waitingForProcessing": "Uploaded, waiting for processing...",
-    "waitingToUpload": "Waiting to upload..."
+    "waitingToUpload": "Waiting to upload...",
+    "region": "Processing queue items"
   },
   "promptVariables": {
     "title": "Prompt variables",
@@ -2469,7 +2486,8 @@
     "fromOwner": "From {{name}}",
     "open": "Open",
     "accessRevoked": "Access revoked",
-    "revokeFailed": "Could not revoke access."
+    "revokeFailed": "Could not revoke access.",
+    "shareLinkFor": "Share link for {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "You have not shared any transcripts yet."
@@ -2760,7 +2778,8 @@
     "currentTags": "Current Tags",
     "done": "Done",
     "noTagsAssigned": "No tags assigned to this recording",
-    "searchTags": "Search tags..."
+    "searchTags": "Search tags...",
+    "removeTagNamed": "Remove tag {{name}}"
   },
   "time": {
     "dayAgo": "1 day ago",
@@ -2782,7 +2801,9 @@
     "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
     "summaryLabel": "Give the summarization agent timestamps",
     "chatLabel": "Give the chat agent timestamps",
-    "defaultFormat": "Default timestamp format"
+    "defaultFormat": "Default timestamp format",
+    "summaryTemplateLabel": "Timestamp format for the summarization agent",
+    "chatTemplateLabel": "Timestamp format for the chat agent"
   },
   "summaryNotes": {
     "title": "Notes in Summaries",
@@ -3360,6 +3381,7 @@
       "invalid_temperature": "{{kind}} temperature must be a number between 0 and 2",
       "invalid_temperature_values": "values must be an object of temperatures",
       "invalid_threshold": "Invalid threshold value",
+      "invalid_deletion_mode_value": "Deletion mode must be audio_only or full_recording.",
       "invalid_timezone_value": "Value must be a valid IANA timezone, for example Europe/Berlin",
       "invalid_total_bytes": "total_bytes must be a positive integer",
       "invalid_transcript_data": "Invalid transcript data provided",
@@ -3627,7 +3649,8 @@
     "subtitle": "Shared Recording",
     "pageTitle": "Shared Recording - {{title}}",
     "poweredBy": "Powered by advanced AI transcription",
-    "builtWith": "Built with"
+    "builtWith": "Built with",
+    "followPlayer": "Follow audio playback"
   },
   "datePicker": {
     "apply": "Apply",

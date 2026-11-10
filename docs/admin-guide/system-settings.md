@@ -146,9 +146,35 @@ If API costs spike unexpectedly, review your transcript length limit. A single u
 
 Processing backlogs might indicate your timeout is too high. If the system waits 30 minutes for each failed transcription attempt, a series of problematic files could block the queue for hours. Balance patience for slow processing with the need to fail fast when services are actually down.
 
+## Settings That Fall Back to .env
+
+The settings below can be set on this page or in `.env`. Until an admin saves a value on this page, the value from `.env` is used and the setting is marked **Set in .env**. Once a value is saved here, it takes effect without a restart, and later changes to the variable in `.env` are ignored. To return a setting to its `.env` value, open it and select **Use .env value**.
+
+| Setting | Variable in `.env` |
+|---|---|
+| `allow_registration` | `ALLOW_REGISTRATION` |
+| `deletion_mode` | `DELETION_MODE` |
+| `enable_auto_deletion` | `ENABLE_AUTO_DELETION` |
+| `enable_email_verification` | `ENABLE_EMAIL_VERIFICATION` |
+| `enable_incognito_mode` | `ENABLE_INCOGNITO_MODE` |
+| `enable_internal_sharing` | `ENABLE_INTERNAL_SHARING` |
+| `enable_public_sharing` | `ENABLE_PUBLIC_SHARING` |
+| `global_retention_days` | `GLOBAL_RETENTION_DAYS` |
+| `help_center_label` | `HELP_CENTER_LABEL` |
+| `help_center_url` | `HELP_CENTER_URL` |
+| `incognito_mode_default` | `INCOGNITO_MODE_DEFAULT` |
+| `max_concurrent_uploads` | `MAX_CONCURRENT_UPLOADS` |
+| `recording_tombstone_days` | `RECORDING_TOMBSTONE_DAYS` |
+| `registration_allowed_domains` | `REGISTRATION_ALLOWED_DOMAINS` |
+| `require_email_verification` | `REQUIRE_EMAIL_VERIFICATION` |
+| `show_usernames_in_ui` | `SHOW_USERNAMES_IN_UI` |
+| `users_can_delete` | `USERS_CAN_DELETE` |
+| `video_passthrough_asr` | `VIDEO_PASSTHROUGH_ASR` |
+| `video_retention` | `VIDEO_RETENTION` |
+
 ## Environment Variable Configuration
 
-Beyond the UI-configurable settings above, several environment variables in your `.env` file control fundamental system behaviors. These require instance restart to take effect.
+Beyond the UI-configurable settings above, several environment variables in your `.env` file control fundamental system behaviors. Variables that are not in the table above require a restart to take effect.
 
 ### Interface Customization
 
@@ -162,7 +188,7 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 **SHOW_USERNAMES_IN_UI**: Controls username visibility in the interface. When `true`, usernames are displayed throughout the UI when sharing and collaborating, and the share window searches usernames and email addresses (at least two characters, up to ten matches). When `false`, usernames are hidden - users must know each other's usernames to share recordings (they type the username manually). Default: `false`.
 
-**ENABLE_PUBLIC_SHARING**: Controls whether public share links can be created. When `true`, authorized users can generate secure links for external sharing. When `false`, only internal sharing is available. Default: `false`.
+**ENABLE_PUBLIC_SHARING**: Controls whether public share links can be created. When `true`, authorized users can generate secure links for external sharing. When `false`, only internal sharing is available. Default: `true`.
 
 ### User Permissions
 

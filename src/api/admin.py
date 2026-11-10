@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
+from src.utils.search import contains_pattern, LIKE_ESCAPE
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
@@ -29,12 +30,7 @@ admin_bp = Blueprint('admin', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
-GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
-DELETION_MODE = os.environ.get('DELETION_MODE', 'hard')
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -76,7 +72,7 @@ def admin():
     return render_template('admin.html',
                          title='Admin Dashboard',
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
-                         global_retention_days=GLOBAL_RETENTION_DAYS,
+                         global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          is_group_admin_only=False,
                          user_language=user_language)
 
@@ -102,7 +98,7 @@ def group_management():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('group-admin.html',
                          title='Group Management',
-                         global_retention_days=GLOBAL_RETENTION_DAYS,
+                         global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          user_language=user_language)
 
 
@@ -120,7 +116,7 @@ def admin_get_users():
         return jsonify(api_error('unauthorized')), 403
 
     if current_user.is_admin:
-        users = User.query.all()
+        base_query = User.query
     else:
         # Group admin (not a site admin): scope to members of the groups this
         # user actually administers. Returning User.query.all() here leaked the
@@ -135,29 +131,76 @@ def admin_get_users():
             .filter(GroupMembership.group_id.in_(admined_group_ids)).all()
         }
         member_ids.add(current_user.id)
-        users = User.query.filter(User.id.in_(member_ids)).all()
+        base_query = User.query.filter(User.id.in_(member_ids))
+
+    # Parse pagination params (normalize gracefully).
+    page_raw = request.args.get('page', 1, type=int)
+    try:
+        page = int(page_raw) if page_raw is not None else 1
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    # Cap kept high enough for admin tooling/exports while still bounding
+    # response size and query cost. Out-of-range values are clamped to the
+    # nearest bound instead of silently falling back to the default.
+    MAX_PER_PAGE = 1000
+    per_page_raw = request.args.get('per_page', 15, type=int)
+    try:
+        per_page = int(per_page_raw) if per_page_raw is not None else 15
+    except (TypeError, ValueError):
+        per_page = 15
+    if per_page < 1:
+        per_page = 15
+    elif per_page > MAX_PER_PAGE:
+        per_page = MAX_PER_PAGE
+
+    search = (request.args.get('search') or '').strip()
+
+    if search:
+        pattern = contains_pattern(search)
+        base_query = base_query.filter(db.or_(
+            User.username.ilike(pattern, escape=LIKE_ESCAPE),
+            User.email.ilike(pattern, escape=LIKE_ESCAPE),
+        ))
+
+    total = base_query.count()
+
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    if total_pages < 1:
+        total_pages = 1
+    if page > total_pages:
+        page = total_pages
+    if page < 1:
+        page = 1
+
+    users = base_query.order_by(User.id.asc()).offset((page - 1) * per_page).limit(per_page).all()
 
     user_data = []
     # Only a site admin can unlock an account, so only a site admin sees the lock (#529)
     locked_ids = login_lock.locked_user_ids([u.id for u in users]) if current_user.is_admin else set()
 
-    # Aggregate recordings_count and storage_used in two grouped queries
-    # so the page doesn't re-query the recording table once per user.
-    # Previously: 100 users -> ~200 lazy SELECTs from user.recordings.
-    counts_by_uid = dict(
-        db.session.query(Recording.user_id, db.func.count(Recording.id))
-        .group_by(Recording.user_id)
-        .all()
-    )
-    # Storage = audio bytes actually on disk. Exclude recordings whose audio
-    # was removed by audio-only retention (audio_deleted_at set): the file is
-    # gone but file_size is still recorded, so summing it overcounts storage.
-    sizes_by_uid = dict(
-        db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
-        .filter(Recording.audio_deleted_at.is_(None))
-        .group_by(Recording.user_id)
-        .all()
-    )
+    # Aggregate recordings_count and storage_used for the users on the current
+    # page only, to keep the page request cheap.
+    page_ids = [u.id for u in users]
+    if page_ids:
+        counts_by_uid = dict(
+            db.session.query(Recording.user_id, db.func.count(Recording.id))
+            .filter(Recording.user_id.in_(page_ids))
+            .group_by(Recording.user_id)
+            .all()
+        )
+        sizes_by_uid = dict(
+            db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
+            .filter(Recording.user_id.in_(page_ids))
+            .filter(Recording.audio_deleted_at.is_(None))
+            .group_by(Recording.user_id)
+            .all()
+        )
+    else:
+        counts_by_uid = {}
+        sizes_by_uid = {}
 
     for user in users:
         recordings_count = counts_by_uid.get(user.id, 0)
@@ -190,8 +233,21 @@ def admin_get_users():
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
             'login_locked': user.id in locked_ids
         })
-    
-    return jsonify(user_data)
+
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    return jsonify({
+        'users': user_data,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'total_pages': total_pages,
+            'has_next': has_next,
+            'has_prev': has_prev
+        }
+    })
 
 
 
@@ -894,8 +950,20 @@ def admin_get_settings():
     if not current_user.is_admin:
         return jsonify(api_error('unauthorized')), 403
     
-    settings = SystemSetting.query.all()
-    return jsonify([setting.to_dict() for setting in settings])
+    from sqlalchemy import func
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_backed_display_value
+    settings = SystemSetting.query.order_by(func.lower(SystemSetting.key)).all()
+    result = []
+    for setting in settings:
+        data = setting.to_dict()
+        if setting.key in ENV_BACKED_SETTINGS:
+            data['env_backed'] = True
+            if setting.value is None:
+                # No value saved: the value from .env applies.
+                data['value'] = env_backed_display_value(setting.key)
+                data['source'] = 'env'
+        result.append(data)
+    return jsonify(result)
 
 
 
@@ -918,6 +986,18 @@ def admin_update_setting():
     if not key:
         return jsonify(api_error('setting_key_required')), 400
     
+    # An empty value for a setting that falls back to .env clears the saved
+    # value, so the .env value applies again (#567).
+    from src.utils.system_settings import ENV_BACKED_SETTINGS
+    if key in ENV_BACKED_SETTINGS and (value is None or (isinstance(value, str) and not value.strip())):
+        try:
+            setting = SystemSetting.set_setting(key, None, description, ENV_BACKED_SETTINGS[key][2])
+            return jsonify(setting.to_dict())
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error clearing setting {key}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     # Validate setting type
     valid_types = ['string', 'integer', 'boolean', 'float']
     if setting_type not in valid_types:
@@ -942,6 +1022,10 @@ def admin_update_setting():
         from src.utils.timezones import is_valid_timezone
         if not is_valid_timezone(value):
             return jsonify(api_error('invalid_timezone_value')), 400
+
+    if key == 'deletion_mode':
+        if value not in ('audio_only', 'full_recording'):
+            return jsonify(api_error('invalid_deletion_mode_value')), 400
 
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
@@ -998,16 +1082,16 @@ def get_auto_deletion_stats():
 
     try:
         stats = {
-            'enabled': ENABLE_AUTO_DELETION,
-            'global_retention_days': GLOBAL_RETENTION_DAYS,
-            'deletion_mode': DELETION_MODE,
+            'enabled': _self.ENABLE_AUTO_DELETION,
+            'global_retention_days': _self.GLOBAL_RETENTION_DAYS,
+            'deletion_mode': _self.DELETION_MODE,
             'eligible_count': 0,
             'exempted_count': 0,
             'no_retention_count': 0,
             'archived_count': 0
         }
 
-        if ENABLE_AUTO_DELETION:
+        if _self.ENABLE_AUTO_DELETION:
             # Check ALL completed recordings (per-recording retention)
             all_recordings = Recording.query.filter(
                 Recording.status == 'COMPLETED'
@@ -1062,7 +1146,7 @@ def preview_auto_deletion():
         return jsonify(api_error('admin_required')), 403
 
     try:
-        if not ENABLE_AUTO_DELETION:
+        if not _self.ENABLE_AUTO_DELETION:
             return jsonify(api_error('auto_deletion_disabled')), 400
 
         # Check ALL completed recordings (per-recording retention)
@@ -1075,8 +1159,8 @@ def preview_auto_deletion():
             'would_delete': [],
             'would_exempt': [],
             'no_retention': [],
-            'deletion_mode': DELETION_MODE,
-            'global_retention_days': GLOBAL_RETENTION_DAYS,
+            'deletion_mode': _self.DELETION_MODE,
+            'global_retention_days': _self.GLOBAL_RETENTION_DAYS,
             'supports_per_recording_retention': True
         }
 
@@ -1790,3 +1874,17 @@ def admin_voice_embedding_rebaseline():
     current_app.logger.info(
         "Voice embedding reference re-baselined by admin user %s", current_user.id)
     return jsonify(result)
+
+
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
+    "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

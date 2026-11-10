@@ -1252,6 +1252,15 @@ def _run_migrations(app, engine):
             )
             app.logger.info("Initialized default_timezone setting")
 
+        # Settings that can be changed in System Settings and fall back to
+        # .env. The rows have no value, so the .env value applies until an
+        # admin saves one (#567).
+        from src.utils.system_settings import ENV_BACKED_SETTINGS
+        for _key, (_env, _default, _type, _desc) in ENV_BACKED_SETTINGS.items():
+            if not SystemSetting.query.filter_by(key=_key).first():
+                SystemSetting.set_setting(key=_key, value=None, description=_desc, setting_type=_type)
+                app.logger.info(f"Initialized {_key} setting")
+
     with _migration_section(app, failures, "embedding identifier tracking"):
         # Track the embedding identifier (provider + model) in system_setting
         # so we can warn when either changes between restarts. Issue #262 —

@@ -3,7 +3,8 @@
      stacked per-speaker cards instead of a wide HTML table. Gated on
      hasRecordingStats so the tab only surfaces meaningful data (the
      stats are derived from per-segment start/end times). -->
-<div v-if="mobileTab === 'stats'" class="h-full overflow-y-auto px-3 py-3">
+<div v-if="mobileTab === 'stats'" class="h-full overflow-y-auto px-3 py-3"
+     tabindex="0" role="region" :aria-label="t('stats.title')">
     <div v-if="hasRecordingStats" class="space-y-4">
 
         <!-- Headline metrics -->

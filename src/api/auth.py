@@ -193,12 +193,25 @@ def registration_enabled() -> bool:
     the page never advertises a route that refuses (#479). Read per request:
     the environment can change under the test suite.
     """
-    return os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
+    try:
+        from src.models import SystemSetting
+        row = SystemSetting.query.filter_by(key='allow_registration').first()
+        if row is not None and row.value is not None:
+            return row.value.strip().lower() == 'true'
+    except Exception:
+        pass
+    return os.environ.get('ALLOW_REGISTRATION', 'true').strip().lower() == 'true'
 
 
 def registration_allowed_domains() -> list:
     """The domains in REGISTRATION_ALLOWED_DOMAINS, lowercased; empty when unset."""
-    domains_env = os.environ.get('REGISTRATION_ALLOWED_DOMAINS', '')
+    try:
+        from src.models import SystemSetting
+        domains_env = SystemSetting.get_setting('registration_allowed_domains', os.environ.get('REGISTRATION_ALLOWED_DOMAINS', ''))
+    except Exception:
+        domains_env = os.environ.get('REGISTRATION_ALLOWED_DOMAINS', '')
+    if domains_env is None:
+        domains_env = ''
     return [d.strip().lower() for d in domains_env.split(',') if d.strip()]
 
 
@@ -974,6 +987,7 @@ def account():
         else:
             return redirect(url_for('auth.account'))
 
+    from src.models import SystemSetting
     # Get admin default prompt from system settings
     admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
     if admin_default_prompt:
@@ -989,8 +1003,8 @@ def account():
 
     USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
     USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'
-    ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-    ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+    ENABLE_AUTO_DELETION = bool(SystemSetting.get_setting('enable_auto_deletion', os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'))
+    ENABLE_INTERNAL_SHARING = bool(SystemSetting.get_setting('enable_internal_sharing', os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'))
     ASR_RETURN_SPEAKER_EMBEDDINGS = os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
     ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
 
@@ -1056,6 +1070,9 @@ def account():
     # Check if admin has globally disabled auto-summarization or auto-translation
     admin_disabled_auto_summarization = _admin_disabled_setting('disable_auto_summarization', False)
     auto_translation_available = not _admin_disabled_setting('disable_auto_translation', True)
+    from src.models import SystemSetting as _SS
+    r=_SS.query.filter_by(key='disable_auto_translation').first()
+    from src.models.system import _SYSTEM_SETTING_CACHE_GENERATION
 
     # Get user's UI language preference
     user_language = current_user.ui_language if current_user.ui_language else 'en'

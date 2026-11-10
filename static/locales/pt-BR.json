@@ -176,7 +176,8 @@
       "clearNote": "Novos perfis de voz serão criados quando você identificar esses oradores em gravações futuras.",
       "mergeSubtitle": "Combinar perfis de oradores",
       "mergeInstruction": "Clique no orador que deseja manter. Todos os dados de voz, trechos e estatísticas de uso dos outros oradores serão mesclados nele.",
-      "editNameTitle": "Editar nome do orador"
+      "editNameTitle": "Editar nome do orador",
+      "selectSpeaker": "Selecionar {{name}}"
     },
     "confirmDeleteNamed": "Tem certeza de que deseja excluir \"{{name}}\"?",
     "loadFailed": "Falha ao carregar",
@@ -447,6 +448,15 @@
     "id": "ID",
     "inquireModeDescription": "O Modo Consulta permite que os usuários pesquisem em múltiplas transcrições usando perguntas em linguagem natural. Funciona dividindo as transcrições em fragmentos e criando incorporações pesquisáveis usando modelos de IA.",
     "languagePreferenceNote": "Nota: Se o usuário tiver definido uma preferência de idioma de saída, \"Garanta que sua resposta esteja em {language}.\" será adicionada.",
+    "useEnvValue": "Usar o valor do .env",
+    "usersPerPage": "Usuários por página",
+    "firstPage": "Primeira página",
+    "previousPage": "Página anterior",
+    "nextPage": "Próxima página",
+    "lastPage": "Última página",
+    "settingFromEnv": "Definido no .env",
+    "deletionModeAudioOnly": "Somente áudio",
+    "deletionModeFullRecording": "Gravação completa",
     "lastUpdated": "Última atualização",
     "maxFileSizeHelp": "Tamanho máximo do arquivo em megabytes (1-10.000 MB)",
     "megabytes": "MB",
@@ -805,7 +815,13 @@
   "asrEditor": {
     "ctrlSHint": "Ctrl+S para salvar",
     "saveWithoutClosing": "Salvar sem fechar (Ctrl+S)",
-    "saved": "Salvo"
+    "saved": "Salvo",
+    "speakerInput": "Falante, segmento {{n}}",
+    "startTimeInput": "Hora de início, segmento {{n}}",
+    "endTimeInput": "Hora de término, segmento {{n}}",
+    "textInput": "Texto, segmento {{n}}",
+    "speakerSuggestions": "Escolher falante, segmento {{n}}",
+    "volume": "Volume"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",
@@ -2297,7 +2313,8 @@
     "uploadingMessage": "Enviando...",
     "waiting": "Aguardando",
     "waitingForProcessing": "Enviado, aguardando processamento...",
-    "waitingToUpload": "Aguardando envio..."
+    "waitingToUpload": "Aguardando envio...",
+    "region": "Itens da fila de processamento"
   },
   "promptVariables": {
     "hintReprocess": "Estes valores são substituídos nos espaços reservados do prompt resolvido. As edições aqui são salvas na gravação. Valores vazios são substituídos por uma string vazia. Até 8.000 caracteres por valor, 32.000 no total entre todas as variáveis.",
@@ -2469,7 +2486,8 @@
     "fromOwner": "De {{name}}",
     "open": "Abrir",
     "accessRevoked": "Acesso revogado",
-    "revokeFailed": "Não foi possível revogar o acesso."
+    "revokeFailed": "Não foi possível revogar o acesso.",
+    "shareLinkFor": "Link de compartilhamento de {{title}}"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Você ainda não compartilhou nenhuma transcrição."
@@ -2760,7 +2778,8 @@
     "currentTags": "Etiquetas Atuais",
     "done": "Concluído",
     "noTagsAssigned": "Nenhuma etiqueta atribuída a esta gravação",
-    "searchTags": "Pesquisar etiquetas..."
+    "searchTags": "Pesquisar etiquetas...",
+    "removeTagNamed": "Remover a tag {{name}}"
   },
   "time": {
     "dayAgo": "1 dia atrás",
@@ -2782,7 +2801,9 @@
     "description": "Escolha se os agentes de resumo e de chat recebem marcações de tempo na transcrição, para que possam indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
     "summaryLabel": "Dar marcações de tempo ao agente de resumo",
     "chatLabel": "Dar marcações de tempo ao agente de chat",
-    "defaultFormat": "Formato de marcação de tempo padrão"
+    "defaultFormat": "Formato de marcação de tempo padrão",
+    "summaryTemplateLabel": "Formato de carimbo de data/hora para o agente de resumo",
+    "chatTemplateLabel": "Formato de carimbo de data/hora para o agente de chat"
   },
   "summaryNotes": {
     "title": "Notas nos resumos",
@@ -3360,6 +3381,7 @@
       "invalid_temperature": "A temperatura de {{kind}} deve ser um número entre 0 e 2",
       "invalid_temperature_values": "values deve ser um objeto de temperaturas",
       "invalid_threshold": "Valor de limiar inválido",
+      "invalid_deletion_mode_value": "O modo de exclusão deve ser audio_only ou full_recording.",
       "invalid_timezone_value": "O valor deve ser um fuso horário IANA válido, por exemplo Europe/Berlin",
       "invalid_total_bytes": "total_bytes deve ser um inteiro positivo",
       "invalid_transcript_data": "Dados de transcrição inválidos",
@@ -3627,7 +3649,8 @@
     "subtitle": "Gravação compartilhada",
     "pageTitle": "Gravação compartilhada - {{title}}",
     "poweredBy": "Com tecnologia de transcrição avançada por IA",
-    "builtWith": "Feito com"
+    "builtWith": "Feito com",
+    "followPlayer": "Acompanhar a reprodução do áudio"
   },
   "datePicker": {
     "apply": "Aplicar",

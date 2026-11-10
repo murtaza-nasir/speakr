@@ -1,7 +1,8 @@
 <!-- Recording stats tab — per-speaker speaking time, %, turns, words and
      WPM, plus a silence row. Only shown when the transcript has speaker
      segments with start/end times (see hasRecordingStats computed). -->
-<div v-show="selectedTab === 'stats'" class="h-full overflow-y-auto px-5 py-4">
+<div v-show="selectedTab === 'stats'" class="h-full overflow-y-auto px-5 py-4"
+     tabindex="0" role="region" :aria-label="t('stats.title')">
     <div v-if="hasRecordingStats" class="space-y-5">
         <!-- Headline metrics -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -24,7 +25,8 @@
         </div>
 
         <!-- Per-speaker breakdown table -->
-        <div class="stats-speaker-card bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-x-auto">
+        <div class="stats-speaker-card bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-x-auto"
+             tabindex="0" role="region" :aria-label="t(stats.perSpeaker)">
             <div class="px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
                 <h3 class="t-subhead">${ t('stats.perSpeaker') }</h3>
                 <span class="t-meta">${ t('stats.sortedBySpeakingTime') }</span>

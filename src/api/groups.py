@@ -22,9 +22,6 @@ groups_bp = Blueprint('groups', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 
 # Global helpers (will be injected from app)
@@ -63,7 +60,7 @@ def sync_team_tag_shares(group_id):
     if not membership:
         return jsonify(api_error('share_sync_admin_only')), 403
 
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     # Get all group tags with auto-sharing enabled
@@ -180,7 +177,7 @@ def create_team():
     if not current_user.is_admin:
         return jsonify(api_error('admin_required')), 403
 
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('groups_require_internal_sharing')), 403
 
     data = request.get_json()
@@ -289,7 +286,7 @@ def delete_team(group_id):
 @login_required
 def add_team_member(group_id):
     """Add a member to a group (admin or group admin)."""
-    if not ENABLE_INTERNAL_SHARING:
+    if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('groups_require_internal_sharing')), 403
 
     group = db.session.get(Group, group_id)
@@ -393,4 +390,13 @@ def remove_team_member(group_id, user_id):
     return jsonify({'success': True})
 
 
-
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

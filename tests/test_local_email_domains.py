@@ -14,7 +14,7 @@ import pytest
 
 from src.app import app, db
 from src.api import auth as auth_mod
-from src.models import User
+from src.models import User, SystemSetting
 
 PW = "Reg1ster-Pw!"
 
@@ -30,12 +30,31 @@ def _no_csrf():
 @contextlib.contextmanager
 def _env(**overrides):
     saved = {k: os.environ.get(k) for k in overrides}
+    _ENV_TO_SETTING = {
+        'ALLOW_REGISTRATION': 'allow_registration',
+        'REGISTRATION_ALLOWED_DOMAINS': 'registration_allowed_domains',
+    }
+    setting_saved = {}
+    ctx = app.app_context()
+    ctx.push()
     try:
         for k, v in overrides.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+        for k, v in overrides.items():
+            if k in _ENV_TO_SETTING:
+                key = _ENV_TO_SETTING[k]
+                row = SystemSetting.query.filter_by(key=key).first()
+                setting_saved[k] = row.value if row else None
+                if v is None:
+                    SystemSetting.query.filter_by(key=key).delete()
+                else:
+                    SystemSetting.set_setting(
+                        key, v,
+                        setting_type='string' if key == 'registration_allowed_domains' else 'boolean')
+        db.session.commit()
         yield
     finally:
         for k, v in saved.items():
@@ -43,6 +62,16 @@ def _env(**overrides):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+        for k, old in setting_saved.items():
+            key = _ENV_TO_SETTING[k]
+            if old is None:
+                SystemSetting.query.filter_by(key=key).delete()
+            else:
+                SystemSetting.set_setting(
+                    key, old,
+                    setting_type='string' if key == 'registration_allowed_domains' else 'boolean')
+        db.session.commit()
+        ctx.pop()
 
 
 @pytest.fixture

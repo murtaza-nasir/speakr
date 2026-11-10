@@ -26,18 +26,9 @@ system_bp = Blueprint('system', __name__)
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
-DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
-USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
-ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
-SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
-ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
-INCOGNITO_MODE_DEFAULT = os.environ.get('INCOGNITO_MODE_DEFAULT', 'false').lower() == 'true'
-VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
-MAX_CONCURRENT_UPLOADS = int(os.environ.get('MAX_CONCURRENT_UPLOADS', '3'))
 
 # Import chunking service (will be set from app)
 chunking_service = None
@@ -309,13 +300,13 @@ def get_config():
         try:
             from flask_login import current_user
             if current_user and current_user.is_authenticated:
-                can_delete = USERS_CAN_DELETE or current_user.is_admin
+                can_delete = _self.USERS_CAN_DELETE or current_user.is_admin
         except:
             pass  # If not authenticated, use default
 
         # The "Audio removed" filter matters when retention removes audio, or
         # when the user can remove audio by hand (same right as deleting).
-        enable_audio_removed_filter = (ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only') or can_delete
+        enable_audio_removed_filter = (_self.ENABLE_AUTO_DELETION and _self.DELETION_MODE == 'audio_only') or can_delete
 
         # Get connector capabilities (new architecture)
         # Defaults to USE_ASR_ENDPOINT for backwards compatibility
@@ -372,18 +363,18 @@ def get_config():
             'connector_supports_exact_speaker_count': connector_supports_exact_speaker_count,  # Exact-N only (#362)
             'connector_supports_hotwords': connector_supports_hotwords,
             'connector_supports_initial_prompt': connector_supports_initial_prompt,
-            'enable_internal_sharing': ENABLE_INTERNAL_SHARING,
+            'enable_internal_sharing': _self.ENABLE_INTERNAL_SHARING,
             'enable_audio_removed_filter': enable_audio_removed_filter,
-            'show_usernames_in_ui': SHOW_USERNAMES_IN_UI,
+            'show_usernames_in_ui': _self.SHOW_USERNAMES_IN_UI,
             'can_delete_recordings': can_delete,
-            'users_can_delete_enabled': USERS_CAN_DELETE,
-            'enable_incognito_mode': ENABLE_INCOGNITO_MODE,
-            'incognito_mode_default': INCOGNITO_MODE_DEFAULT,
+            'users_can_delete_enabled': _self.USERS_CAN_DELETE,
+            'enable_incognito_mode': _self.ENABLE_INCOGNITO_MODE,
+            'incognito_mode_default': _self.INCOGNITO_MODE_DEFAULT,
             'enable_folders': SystemSetting.get_setting('enable_folders', False) == True,
             'enable_auto_export': ENABLE_AUTO_EXPORT,
-            'video_retention': VIDEO_RETENTION,
+            'video_retention': _self.VIDEO_RETENTION,
             'max_audio_only_video_size_mb': max_audio_only_video_size_mb,
-            'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
+            'max_concurrent_uploads': _self.MAX_CONCURRENT_UPLOADS,
             'user_transcription_language': user_transcription_language,
             'user_summary_prompt': user_summary_prompt,
             'admin_default_summary_prompt': admin_default_summary_prompt,
@@ -431,15 +422,30 @@ def get_csrf_token():
 def check_deletion_permission():
     """Check if the current user can delete recordings."""
     try:
-        can_delete = USERS_CAN_DELETE or current_user.is_admin
+        can_delete = _self.USERS_CAN_DELETE or current_user.is_admin
         return jsonify({
             'can_delete': can_delete,
             'is_admin': current_user.is_admin,
-            'users_can_delete_enabled': USERS_CAN_DELETE
+            'users_can_delete_enabled': _self.USERS_CAN_DELETE
         })
     except Exception as e:
         current_app.logger.error(f"Error checking deletion permissions: {e}")
         return jsonify({'error': str(e)}), 500
 
 
-
+# Hot-applied System Settings (high priority) with environment fallback.
+import sys
+_self = sys.modules[__name__]
+from src.utils.system_settings import make_module_getattr as _make_getattr
+_SYSTEM_SETTING_MAP = {
+    "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
+    "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
+    "SHOW_USERNAMES_IN_UI": ('show_usernames_in_ui', 'SHOW_USERNAMES_IN_UI', False),
+    "ENABLE_INCOGNITO_MODE": ('enable_incognito_mode', 'ENABLE_INCOGNITO_MODE', False),
+    "INCOGNITO_MODE_DEFAULT": ('incognito_mode_default', 'INCOGNITO_MODE_DEFAULT', False),
+    "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
+    "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
+    "VIDEO_RETENTION": ('video_retention', 'VIDEO_RETENTION', False),
+    "MAX_CONCURRENT_UPLOADS": ('max_concurrent_uploads', 'MAX_CONCURRENT_UPLOADS', 3),
+}
+__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)

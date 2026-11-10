@@ -24,10 +24,12 @@
                                    modalDragOverTagIndex === index && modalDraggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : '']"
                           :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
                           :title="t('tooltips.tagDragToReorder', { name: tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : tag.name })">
-                        <span class="opacity-75 mr-1 text-xs">${index + 1}.</span>
+                        <span class="mr-1 text-xs font-normal">${index + 1}.</span>
                         <i v-if="tag.group_id" class="fas fa-users mr-1.5 text-xs"></i>
-                        <span v-if="tag.group_id" class="opacity-75">${ tag.group_name }: </span>${ tag.name }
-                        <button @click.stop="removeTagFromRecording(tag.id)" class="ml-2 hover:opacity-80">
+                        <span v-if="tag.group_id" class="font-normal">${ tag.group_name }: </span>${ tag.name }
+                        <button type="button" @click.stop="removeTagFromRecording(tag.id)" class="ml-2 hover:opacity-80"
+                                :title="t('tagsModal.removeTagNamed', { name: tag.name })"
+                                :aria-label="t('tagsModal.removeTagNamed', { name: tag.name })">
                             <i class="fas fa-times text-xs"></i>
                         </button>
                     </span>
@@ -54,7 +56,7 @@
                             <i v-if="tag.group_id" class="fas fa-users text-xs flex-shrink-0" :style="{ color: tag.color }"></i>
                             <span v-else class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: tag.color }"></span>
                             <span class="text-sm">
-                                <span v-if="tag.group_id" class="opacity-75">${ tag.group_name }: </span>${ tag.name }
+                                <span v-if="tag.group_id" class="text-[var(--text-muted)]">${ tag.group_name }: </span>${ tag.name }
                             </span>
                         </div>
                         <i class="fas fa-plus text-[var(--text-muted)]"></i>
