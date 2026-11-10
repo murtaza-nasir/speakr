@@ -1356,11 +1356,9 @@ def ingest(
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "VIDEO_RETENTION": ('video_retention', 'VIDEO_RETENTION', False),
     "VIDEO_PASSTHROUGH_ASR": ('video_passthrough_asr', 'VIDEO_PASSTHROUGH_ASR', False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+apply_hot_settings(_SYSTEM_SETTING_MAP)

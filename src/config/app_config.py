@@ -213,12 +213,10 @@ def _validate_legacy_transcription_config(app):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
     "ENABLE_EMAIL_VERIFICATION": ("enable_email_verification", "ENABLE_EMAIL_VERIFICATION", False),
     "REQUIRE_EMAIL_VERIFICATION": ("require_email_verification", "REQUIRE_EMAIL_VERIFICATION", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+apply_hot_settings(_SYSTEM_SETTING_MAP)

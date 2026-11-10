@@ -425,10 +425,8 @@ def conditional(request, etag, build):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "TOMBSTONE_DAYS": ('recording_tombstone_days', 'RECORDING_TOMBSTONE_DAYS', 90),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+apply_hot_settings(_SYSTEM_SETTING_MAP)

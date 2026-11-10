@@ -1109,10 +1109,10 @@ def get_available_filters():
         return jsonify({'error': str(e)}), 500
 
 
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_AUTO_DELETION": ("enable_auto_deletion", "ENABLE_AUTO_DELETION", False),
     "USERS_CAN_DELETE": ("users_can_delete", "USERS_CAN_DELETE", True),
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+apply_hot_settings(_SYSTEM_SETTING_MAP)

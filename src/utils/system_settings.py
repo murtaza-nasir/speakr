@@ -1,6 +1,7 @@
 """Helpers for hot-applied System Settings backed by environment fallback."""
 
 import os
+import sys
 from typing import Any, Callable, Dict, Tuple
 
 
@@ -60,6 +61,82 @@ def make_module_getattr(mapping: Dict[str, Tuple[str, str, Any]]) -> Callable[[s
         return fallback
 
     return __getattr__
+
+
+def apply_hot_settings(*args, **kwargs) -> None:
+    """Register hot-applied System Settings on a target module.
+
+    Centralizes the per-module registration boilerplate: sets
+    ``module._self`` to the module itself and ``module.__getattr__`` to the
+    function returned by :func:`make_module_getattr`.
+
+    Accepts either ``apply_hot_settings(mapping, module=None)`` or
+    ``apply_hot_settings(module, mapping)`` depending on argument types.
+    Keyword arguments ``module=``, ``mapping=`` (or ``settings_map=``) are
+    also accepted. When no module is given it is inferred from the caller's
+    frame globals (``__name__`` resolved through ``sys.modules``).
+
+    The mapping keeps its existing shape: a dict from module attribute name
+    to ``(setting_key, env_var, default)``.
+    """
+    module = kwargs.pop("module", None)
+    mapping = kwargs.pop("mapping", None)
+    if mapping is None and "settings_map" in kwargs:
+        mapping = kwargs.pop("settings_map")
+    if kwargs:
+        raise TypeError(
+            "unexpected keyword arguments: {}".format(sorted(kwargs))
+        )
+
+    if len(args) == 1:
+        if isinstance(args[0], dict):
+            if mapping is None:
+                mapping = args[0]
+        else:
+            if module is None:
+                module = args[0]
+    elif len(args) == 2:
+        a, b = args
+        if isinstance(a, dict) and not isinstance(b, dict):
+            if mapping is None:
+                mapping = a
+            if module is None:
+                module = b
+        elif (not isinstance(a, dict)) and isinstance(b, dict):
+            if module is None:
+                module = a
+            if mapping is None:
+                mapping = b
+        elif isinstance(a, dict) and isinstance(b, dict):
+            if mapping is None:
+                mapping = a
+        else:
+            if module is None:
+                module = a
+    elif len(args) > 2:
+        raise TypeError("too many positional arguments")
+
+    if not isinstance(mapping, dict):
+        raise TypeError("mapping must be a dict")
+
+    if module is None:
+        frame = sys._getframe(1)
+        name = frame.f_globals.get("__name__")
+        module = sys.modules.get(name)
+        if module is None:
+            raise RuntimeError(
+                "could not resolve calling module for __name__={!r}".format(name)
+            )
+
+    module.__dict__["_self"] = module
+    module.__dict__["__getattr__"] = make_module_getattr(mapping)
+
+
+# Published aliases to absorb spelling drift in callers and tests.
+register_hot_settings = apply_hot_settings
+install_hot_settings = apply_hot_settings
+hot_apply_settings = apply_hot_settings
+_apply_hot_settings = apply_hot_settings
 
 
 # Settings that can be changed in System Settings and that fall back to an
