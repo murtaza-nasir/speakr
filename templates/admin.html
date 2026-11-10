@@ -304,25 +304,25 @@
                     <!-- Pagination controls -->
                     <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                         <div class="flex items-center gap-2">
-                            <select :value="userPerPage" @change="changeUserPerPage($event.target.value)" aria-label="Per page" title="Per page" class="px-2 py-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <select :value="userPerPage" @change="changeUserPerPage($event.target.value)" :aria-label="t('adminDashboard.usersPerPage')" :title="t('adminDashboard.usersPerPage')" class="px-2 py-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
                                 <option :value="15">15</option>
                                 <option :value="25">25</option>
                                 <option :value="50">50</option>
                             </select>
-                            <span class="text-sm text-[var(--text-muted)]">${ t('adminDashboard.total') || 'Total' }: ${ userTotal }</span>
+                            <span class="text-sm text-[var(--text-muted)]">${ t('adminDashboard.total') }: ${ userTotal }</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-[var(--text-muted)]">${ userPage } / ${ userTotalPages }</span>
-                            <button @click="loadUsers(1)" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
+                            <button @click="loadUsers(1)" :aria-label="t('adminDashboard.firstPage')" :title="t('adminDashboard.firstPage')" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
                                 <i class="fas fa-angle-double-left"></i>
                             </button>
-                            <button @click="loadUsers(userPage - 1)" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
+                            <button @click="loadUsers(userPage - 1)" :aria-label="t('adminDashboard.previousPage')" :title="t('adminDashboard.previousPage')" :disabled="!userHasPrev" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasPrev }">
                                 <i class="fas fa-angle-left"></i>
                             </button>
-                            <button @click="loadUsers(userPage + 1)" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
+                            <button @click="loadUsers(userPage + 1)" :aria-label="t('adminDashboard.nextPage')" :title="t('adminDashboard.nextPage')" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
                                 <i class="fas fa-angle-right"></i>
                             </button>
-                            <button @click="loadUsers(userTotalPages)" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
+                            <button @click="loadUsers(userTotalPages)" :aria-label="t('adminDashboard.lastPage')" :title="t('adminDashboard.lastPage')" :disabled="!userHasNext" class="btn btn--sm btn--ghost" :class="{ 'opacity-50 cursor-not-allowed': !userHasNext }">
                                 <i class="fas fa-angle-double-right"></i>
                             </button>
                         </div>
@@ -2462,7 +2462,8 @@ Summarization Instructions:
                             const r = await fetch('/admin/users?' + params.toString());
                             if (r.ok) {
                                 const d = await r.json();
-                                memberSearchResults.value = d.users || [];
+                                const memberIds = new Set(teamMembers.value.map(m => m.user_id));
+                                memberSearchResults.value = (d.users || []).filter(u => !memberIds.has(u.id));
                             }
                         } catch (e) { console.error(e); }
                     }, 300);
