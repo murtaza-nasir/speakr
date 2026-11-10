@@ -1126,7 +1126,8 @@ html[data-ui-theme="workspace"] .speaker-run > .speaker-tablet-group {
     background: transparent;
     border: 0;
     box-shadow: none;
-    color: var(--text-secondary);
+    /* no `color` here: the name keeps its speaker colour (.speaker-color-N)
+       next to the dot, so speakers stay apart by name colour too */
     font-size: var(--fs-meta);
     font-weight: 600;
     line-height: 1.3;
@@ -1630,3 +1631,8 @@ html[data-ui-theme="workspace"].dark .btn--danger:hover:not(:disabled) { backgro
    the pane). */
 html[data-ui-theme="workspace"] .ws-toolbar > .ws-grow { display: none; }
 html[data-ui-theme="workspace"] .ws-toolbar > .ws-grow + .ws-tb-group { margin-inline-start: auto; }
+
+/* Player at the top (Account > Display): nothing separated it from the tab
+   bars below, and its top edge doubled the metadata strip's line. The
+   hairline moves to its bottom edge. */
+html[data-ui-theme="workspace"] .flex-shrink-0.border-t:has(+ #mainContentColumns) { border-top: 0; border-bottom: 1px solid var(--border-primary); }

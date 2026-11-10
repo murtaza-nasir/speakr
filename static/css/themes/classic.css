@@ -675,6 +675,14 @@ html[data-ui-theme="classic"] .surface-raised a.block {
 }
 html[data-ui-theme="classic"] [role='menuitem']:hover,
 html[data-ui-theme="classic"] .surface-raised button:hover { background: var(--hover); }
+/* Account menu: the links (Settings, Admin, Help Center) take the menu's
+   text colour like the buttons beside them, not the theme's link accent. */
+html[data-ui-theme="classic"] [data-user-menu-dropdown] a.block { color: var(--text); }
+html[data-ui-theme="classic"] [data-user-menu-dropdown] a.block:hover { background: var(--hover); }
+/* The light/dark pill in the Color Scheme row is a button inside the menu:
+   it keeps its own pill shape, not the 36px square menu-row shape above. */
+html[data-ui-theme="classic"] [data-user-menu-dropdown] button.rounded-full { min-height: 0; border-radius: 999px; }
+html[data-ui-theme="classic"] [data-user-menu-dropdown] button.rounded-full:hover { background: var(--bg-secondary); }
 
 html[data-ui-theme="classic"] .modal-overlay { background: var(--scrim); backdrop-filter: none; }
 html[data-ui-theme="classic"].dark .modal-overlay { background: var(--scrim); }
@@ -747,7 +755,6 @@ html[data-ui-theme="classic"] .speaker-run > .speaker-tablet {
     box-shadow: none;
     font-size: 13px;
     font-weight: 600;
-    -webkit-text-fill-color: var(--text-2);
     top: 0;
 }
 html[data-ui-theme="classic"] .speaker-tablet::before {
@@ -768,7 +775,6 @@ html[data-ui-theme="classic"] .speaker-run > .speaker-tablet-group {
     box-shadow: none;
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-2) !important;
 }
 html[data-ui-theme="classic"] .speaker-tablet-group .speaker-tablet-time {
     background: transparent !important;
@@ -779,7 +785,15 @@ html[data-ui-theme="classic"] .speaker-tablet-group .speaker-tablet-time {
     font-weight: 400;
     color: var(--text-3) !important;
 }
-html[data-ui-theme="classic"] .speaker-tablet-group .speaker-tablet-name { color: var(--text-2) !important; }
+/* The name keeps its speaker colour (the .speaker-color-N class on the
+   tablet), with the same dot as the plain tablet. */
+html[data-ui-theme="classic"] .speaker-tablet-group .speaker-tablet-name { display: inline-flex; align-items: center; gap: 8px; padding: 0; }
+html[data-ui-theme="classic"] .speaker-tablet-group .speaker-tablet-name::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+    flex: none;
+}
 html[data-ui-theme="classic"] .speaker-segment {
     border-radius: 8px;
     padding: 4px 8px;
@@ -798,12 +812,13 @@ html[data-ui-theme="classic"] .speaker-bubble.active-playing-segment {
 html[data-ui-theme="classic"] .speaker-text { font-size: 15px; line-height: 24px; }
 html[data-ui-theme="classic"] .speaker-segment-timestamp { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 
-/* Bubble view: tonal bubbles, 18px radius with a 4px tail corner */
+/* Bubble view: tonal bubbles, 18px radius with a 4px tail corner. Each
+   bubble keeps its speaker's container and text colour (.speaker-color-N,
+   the same pair as the legend chips): colour is the only cue that tells
+   speakers apart in this view. */
 html[data-ui-theme="classic"] .speaker-bubble {
     border: 0;
     box-shadow: none;
-    background: var(--surface-container) !important;
-    color: var(--text) !important;
     border-radius: 18px 18px 18px 4px;
 }
 html[data-ui-theme="classic"] .speaker-bubble.speaker-me { background: var(--primary-container) !important; color: var(--on-primary-container) !important; border-radius: 18px 18px 4px 18px; }
@@ -1058,3 +1073,8 @@ html[data-ui-theme="classic"] main button[type='submit'].w-full:focus-visible { 
 
 /* Speaker dialog transcript: no bleed margins inside its own scroller (they made it scroll sideways by 8px) */
 html[data-ui-theme="classic"] .speaker-modal-transcript .speaker-segment { margin-inline: 0; }
+
+/* Player at the top (Account > Display): nothing separated it from the tab
+   bars below, and its top edge doubled the metadata strip's line. The
+   hairline moves to its bottom edge. */
+html[data-ui-theme="classic"] .flex-shrink-0.border-t:has(+ #mainContentColumns) { border-top: 0; border-bottom: 1px solid var(--divider); }
