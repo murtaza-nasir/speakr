@@ -271,6 +271,32 @@ def test_manual_share_survives_folder_unlink(team):
     assert t["other_admin"].id not in _shares(r.id)
 
 
+def test_folder_share_survives_tag_removal_and_tag_share_survives_unlink(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id)
+    db.session.add(tag)
+    db.session.commit()
+    owner = _client(t["owner"])
+    try:
+        assert owner.post(f"/api/recordings/{r.id}/tags", json={"tag_id": tag.id}).status_code == 200
+        _into_folder(t, r, f)
+        # Taking the tag off keeps the share: the folder still gives it
+        assert owner.delete(f"/api/recordings/{r.id}/tags/{tag.id}").status_code == 200
+        share = _shares(r.id)[t["member"].id]
+        assert (share.source_type, share.source_folder_id) == ("group_folder", f.id)
+        # Back on, then out of the folder: the tag still gives it
+        assert owner.post(f"/api/recordings/{r.id}/tags", json={"tag_id": tag.id}).status_code == 200
+        assert owner.delete(f"/api/recordings/{r.id}/folder").status_code == 200
+        share = _shares(r.id)[t["member"].id]
+        assert (share.source_type, share.source_tag_id) == ("group_tag", tag.id)
+    finally:
+        RecordingTag.query.filter_by(tag_id=tag.id).delete()
+        InternalShare.query.filter_by(recording_id=r.id).delete()
+        Tag.query.filter_by(id=tag.id).delete()
+        db.session.commit()
+
+
 def test_folder_moved_to_another_group_ends_old_shares(team):
     t = team
     f, r = t["folder"](), t["recording"]()
@@ -289,3 +315,63 @@ def test_folder_moved_to_another_group_ends_old_shares(team):
         GroupMembership.query.filter_by(group_id=other.id).delete()
         Group.query.filter_by(id=other.id).delete()
         db.session.commit()
+
+
+# --- tag paths (same rule as #570/#582) --------------------------------------
+
+@pytest.fixture
+def tagged(team):
+    """A completed recording carrying a group tag of the team's group."""
+    t = team
+    r = t["recording"]()
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id)
+    db.session.add(tag)
+    db.session.commit()
+    assert _client(t["owner"]).post(f"/api/recordings/{r.id}/tags", json={"tag_id": tag.id}).status_code == 200
+    assert t["member"].id in _shares(r.id)
+    yield dict(t, rec=r, tag=tag)
+    db.session.rollback()
+    RecordingTag.query.filter_by(recording_id=r.id).delete()
+    InternalShare.query.filter_by(recording_id=r.id).delete()
+    Tag.query.filter_by(id=tag.id).delete()
+    db.session.commit()
+
+
+@pytest.mark.parametrize("how", ["web_remove", "web_bulk_remove", "web_delete_tag", "web_make_personal",
+                                 "v1_remove", "v1_replace", "v1_delete_tag", "v1_batch_remove"])
+def test_every_way_a_group_tag_goes_ends_its_shares(tagged, how):
+    t = tagged
+    r, tag, owner = t["rec"], t["tag"], _client(t["owner"])
+    if how == "web_remove":
+        resp = owner.delete(f"/api/recordings/{r.id}/tags/{tag.id}")
+    elif how == "web_bulk_remove":
+        resp = owner.post("/api/recordings/bulk-tags", json={"recording_ids": [r.id], "tag_id": tag.id,
+                                                             "action": "remove"})
+    elif how == "web_delete_tag":
+        resp = owner.delete(f"/api/tags/{tag.id}")
+    elif how == "web_make_personal":
+        resp = owner.put(f"/api/tags/{tag.id}", json={"group_id": None})
+    elif how == "v1_remove":
+        resp = owner.delete(f"/api/v1/recordings/{r.id}/tags/{tag.id}")
+    elif how == "v1_replace":
+        resp = owner.put(f"/api/v1/recordings/{r.id}/tags", json={"tag_ids": []})
+    elif how == "v1_delete_tag":
+        resp = owner.delete(f"/api/v1/tags/{tag.id}")
+    else:
+        resp = owner.patch("/api/v1/recordings/batch", json={"recording_ids": [r.id],
+                                                              "updates": {"remove_tag_ids": [tag.id]}})
+    assert resp.status_code == 200, resp.get_json()
+    assert _shares(r.id) == {}
+    assert not _can_read(t["member"], r.id)
+    assert _can_read(t["owner"], r.id)
+
+
+def test_tag_removal_keeps_a_manual_share(tagged):
+    t = tagged
+    r = t["rec"]
+    InternalShare.query.filter_by(recording_id=r.id, shared_with_user_id=t["member"].id).update(
+        {"source_type": "manual", "source_tag_id": None})
+    db.session.commit()
+    assert _client(t["owner"]).delete(f"/api/recordings/{r.id}/tags/{t['tag'].id}").status_code == 200
+    assert set(_shares(r.id)) == {t["member"].id}
+    assert _can_read(t["member"], r.id)

@@ -3209,36 +3209,12 @@ def remove_tag_from_recording(recording_id, tag_id):
         # Remove the association
         db.session.delete(recording_tag)
 
-        # Clean up shares created by this group tag
-        if tag and tag.group_id and _self.ENABLE_INTERNAL_SHARING:
-            shares_to_check = InternalShare.query.filter_by(
-                recording_id=recording_id,
-                source_tag_id=tag_id
-            ).all()
-
-            shares_removed = 0
-            for share in shares_to_check:
-                # Check if user still has access via another group tag on this recording
-                other_team_tag_access = db.session.query(Tag).join(
-                    RecordingTag, RecordingTag.tag_id == Tag.id
-                ).join(
-                    GroupMembership, GroupMembership.group_id == Tag.group_id
-                ).filter(
-                    RecordingTag.recording_id == recording_id,
-                    GroupMembership.user_id == share.shared_with_user_id,
-                    Tag.id != tag_id,  # Exclude the tag being removed
-                    Tag.group_id.isnot(None),
-                    db.or_(Tag.auto_share_on_apply == True, Tag.share_with_group_lead == True)
-                ).first()
-
-                # Only remove share if user has no other group tag access
-                if not other_team_tag_access:
-                    db.session.delete(share)
-                    shares_removed += 1
-                    current_app.logger.info(f"Removed auto-share for user {share.shared_with_user_id} from recording {recording_id} (group tag '{tag.name}' removed)")
-
-            if shares_removed > 0:
-                current_app.logger.info(f"Cleaned up {shares_removed} auto-shares for recording {recording_id} after removing group tag '{tag.name}'")
+        # Shares this group tag made end, unless another group tag or the
+        # recording's group folder still gives them (#570, #582)
+        from src.services.auto_shares import drop_stale_auto_shares
+        shares_removed = drop_stale_auto_shares(recording_ids=[recording_id])
+        if shares_removed > 0:
+            current_app.logger.info(f"Removed {shares_removed} auto-shares for recording {recording_id} after removing tag {tag_id}")
 
         db.session.commit()
 
@@ -3449,6 +3425,10 @@ def bulk_update_tags():
             except Exception as e:
                 current_app.logger.error(f"Error updating tag for recording {recording_id}: {e}")
 
+        if action == 'remove' and affected_ids:
+            # Shares the tag made end with it (#570, #582)
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=affected_ids)
         db.session.commit()
 
         return jsonify({
