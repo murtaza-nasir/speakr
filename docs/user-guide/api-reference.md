@@ -123,6 +123,23 @@ Every operation in the specification has an `operationId`, which is required to 
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Interactive API documentation with Swagger UI at /api/v1/docs</p>
 </div>
 
+### Open WebUI
+
+Speakr can be added to [Open WebUI](https://openwebui.com/) as an OpenAPI tool server. A model in an Open WebUI chat can then list and search your recordings and read their transcripts, summaries and notes.
+
+1. In Speakr, create a token under **Account Settings** → **API Tokens** (see [API Tokens](api-tokens.md)). A **Read only** token covers searching and reading. Add the `process` scope only if the model may also chat with a recording or start a summary.
+2. In Open WebUI, an administrator opens **Settings** → **Admin** → **Integrations** and adds a connection in the **Tools** section:
+    - **Type:** OpenAPI
+    - **URL:** `https://your-speakr-instance.com/api/v1`
+    - **Auth:** Bearer, with the token from step 1
+3. Save the connection. In a chat, turn on the Speakr tools from the **+** menu under **Tools**.
+
+The specification is read from `/api/v1/openapi.json` under that URL, and each operation in it becomes one tool. With a scoped token, only the operations that token may call are listed, so a **Read only** token cannot delete or change anything.
+
+A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Speakr does not send CORS headers, so the browser blocks those calls unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
+
+Speakr does not offer an OpenAI-compatible transcription endpoint (`/v1/audio/transcriptions`), so it cannot be selected as the speech-to-text engine in Open WebUI. Recordings reach Speakr through the web interface, the upload API or the other integrations described here.
+
 ---
 
 ## Stats
