@@ -6,8 +6,10 @@
          Matches the right-rail tab-bar pattern: 40px tab strip with the
          title on the left and contextual toggles + action icons on the
          right. View mode is a single Bubble *toggle* (Simple is the
-         default; the toggle modifies that default), not a pair of tabs. -->
-    <div class="tabs-bar px-4">
+         default; the toggle modifies that default), not a pair of tabs.
+         The row never wraps: data-tabs-fit shortens it when it does not fit
+         (static/js/modules/utils/tabs-bar-fit.js). -->
+    <div class="tabs-bar px-4" data-tabs-fit>
         <div class="tabs">
             <button type="button" class="tab" :class="{ 'is-active': !viewingTranslation }" @click="viewingTranslation = false">
                 <i class="fas fa-file-text" style="font-size: 13px; opacity: 0.7;"></i>

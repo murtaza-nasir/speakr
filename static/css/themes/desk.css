@@ -195,18 +195,20 @@ html[data-ui-theme="desk"] .field { min-height: var(--ctl-h); font-size: var(--f
 html[data-ui-theme="desk"] input[type="checkbox"],
 html[data-ui-theme="desk"] input[type="radio"] { accent-color: var(--primary); }
 
-/* Tabs: 34px strip, 2px indicator */
+/* Tabs: 34px strip, 2px indicator. The other tabs are regular weight, so the
+   semibold active label stands out; the indicator takes the accent text colour,
+   which keeps 3:1 on the dark surface where the button colour did not. */
 html[data-ui-theme="desk"] .tabs,
 html[data-ui-theme="desk"] .tabs-bar { min-height: 34px; }
-html[data-ui-theme="desk"] .tab { padding: 0 var(--sp-3); font-size: var(--fs-body); font-weight: 600; border-bottom-width: 2px; }
-html[data-ui-theme="desk"] .tab.is-active { color: var(--on-primary-container); border-bottom-color: var(--primary); }
+html[data-ui-theme="desk"] .tab { padding: 0 var(--sp-3); font-size: var(--fs-body); font-weight: 500; border-bottom-width: 2px; }
+html[data-ui-theme="desk"] .tab.is-active { color: var(--on-primary-container); font-weight: 600; border-bottom-color: var(--on-primary-container); }
 html[data-ui-theme="desk"] .tab__count { font-size: var(--fs-label); padding: 0 5px; border-radius: 8px; background: var(--surface-dim); color: var(--text-3); }
 html[data-ui-theme="desk"] .tabs-bar { padding-inline: var(--sp-3); background: var(--surface); }
-/* The two panes share a narrow column next to the table list. When the tabs
-   and the action buttons no longer fit on one line, the actions wrap under
-   the tabs, so no tab and no button leaves the pane. */
-html[data-ui-theme="desk"] .tabs-bar { flex-wrap: wrap; column-gap: var(--sp-2); row-gap: 0; min-width: 0; }
-html[data-ui-theme="desk"] .tabs-bar > .tabs { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; }
+/* The two panes share a narrow column next to the table list. The bars stay
+   one row (styles.css, recording view header row): when the tabs and the
+   action buttons do not fit, the actions fold into a More menu. */
+html[data-ui-theme="desk"] .tabs-bar { column-gap: var(--sp-2); row-gap: 0; min-width: 0; }
+html[data-ui-theme="desk"] .tabs-bar > .tabs { flex: 0 1 auto; min-width: 0; }
 html[data-ui-theme="desk"] .tabs-bar__actions { flex: 0 0 auto; margin-inline-start: auto; min-height: 34px; }
 @media (max-width: 1599px) {
     html[data-ui-theme="desk"] .tabs-bar { padding-inline: var(--sp-2); }

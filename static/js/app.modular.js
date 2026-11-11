@@ -30,6 +30,7 @@ import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.
 import { buildVariableList } from './modules/utils/prompt-variables.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
+import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
     detectPlatform,
     getAudioCapabilities,
@@ -207,6 +208,7 @@ const parseUnformattedError = (text) => {
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', async () => {
     installCloseOutside();
+    installTabsBarFit();
     // Initialize i18n before creating Vue app (if not already initialized)
     try {
         if (window.i18n && !window.i18n.currentLocale) {

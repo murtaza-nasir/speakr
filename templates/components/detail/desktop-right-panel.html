@@ -9,9 +9,11 @@
     <!-- Right-rail tab strip + per-tab action toolbar (design system v1).
          One row carries tab navigation on the left and per-tab actions on
          the right. No card chrome around the content — sections live
-         directly on the rail surface. -->
+         directly on the rail surface. The row never wraps: when the tabs
+         and the actions do not fit, data-tabs-fit folds the actions into
+         the More actions menu (static/js/modules/utils/tabs-bar-fit.js). -->
     <div :class="{'flex-1': !isChatMaximized, 'flex-none': isChatMaximized}" class="flex flex-col overflow-hidden">
-        <div class="tabs-bar px-4">
+        <div class="tabs-bar px-4" data-tabs-fit>
             <div class="tabs">
                 <button @click="selectedTab = 'summary'"
                         class="tab"
@@ -47,10 +49,23 @@
                 <!-- Summary actions -->
                 <template v-if="selectedTab === 'summary' && selectedRecording.summary">
                     <template v-if="!editingSummary">
-                        <button class="btn btn--icon" @click="copySummary" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-                        <button class="btn btn--icon" @click="downloadSummary" :title="t('buttons.downloadSummary')"><i class="fas fa-download"></i></button>
-                        <button class="btn btn--icon" @click="toggleEditSummary" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
-                        <button class="btn btn--icon" @click="openCustomizeSummaryModal" :title="t('summary.customizePrompt') || 'Customize prompt'"><i class="fas fa-sliders-h"></i></button>
+                        <span class="tabs-bar__inline">
+                            <button class="btn btn--icon" @click="copySummary" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+                            <button class="btn btn--icon" @click="downloadSummary" :title="t('buttons.downloadSummary')"><i class="fas fa-download"></i></button>
+                            <button class="btn btn--icon" @click="toggleEditSummary" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
+                            <button class="btn btn--icon" @click="openCustomizeSummaryModal" :title="t('summary.customizePrompt') || 'Customize prompt'"><i class="fas fa-sliders-h"></i></button>
+                        </span>
+                        <details class="tabs-bar__more" data-close-outside
+                                 @click="$event.target.closest('.tabs-bar__menu button') && $event.currentTarget.removeAttribute('open')"
+                                 @keydown.esc="$event.currentTarget.removeAttribute('open')">
+                            <summary class="btn btn--icon" :title="t('headerActions.more')" :aria-label="t('headerActions.more')"><i class="fas fa-ellipsis"></i></summary>
+                            <div class="tabs-bar__menu">
+                                <button type="button" @click="copySummary"><i class="fas fa-copy"></i><span v-text="t('buttons.copySummary')"></span></button>
+                                <button type="button" @click="downloadSummary"><i class="fas fa-download"></i><span v-text="t('buttons.downloadSummary')"></span></button>
+                                <button type="button" @click="toggleEditSummary"><i class="fas fa-pen"></i><span v-text="t('buttons.editSummary')"></span></button>
+                                <button type="button" @click="openCustomizeSummaryModal"><i class="fas fa-sliders-h"></i><span v-text="t('summary.customizePrompt') || 'Customize prompt'"></span></button>
+                            </div>
+                        </details>
                     </template>
                     <template v-else>
                         <button class="btn btn--sm btn--ghost" @click="cancelEditSummary">${ t('buttons.cancel') }</button>
@@ -61,9 +76,21 @@
                 <!-- Notes actions -->
                 <template v-else-if="selectedTab === 'notes'">
                     <template v-if="!editingNotes">
-                        <button v-if="selectedRecording.notes" class="btn btn--icon" @click="copyNotes" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
-                        <button v-if="selectedRecording.notes" class="btn btn--icon" @click="downloadNotes" :title="t('buttons.downloadNotes')"><i class="fas fa-download"></i></button>
-                        <button class="btn btn--icon" @click="toggleEditNotes" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
+                        <span class="tabs-bar__inline">
+                            <button v-if="selectedRecording.notes" class="btn btn--icon" @click="copyNotes" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
+                            <button v-if="selectedRecording.notes" class="btn btn--icon" @click="downloadNotes" :title="t('buttons.downloadNotes')"><i class="fas fa-download"></i></button>
+                            <button class="btn btn--icon" @click="toggleEditNotes" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
+                        </span>
+                        <details class="tabs-bar__more" data-close-outside
+                                 @click="$event.target.closest('.tabs-bar__menu button') && $event.currentTarget.removeAttribute('open')"
+                                 @keydown.esc="$event.currentTarget.removeAttribute('open')">
+                            <summary class="btn btn--icon" :title="t('headerActions.more')" :aria-label="t('headerActions.more')"><i class="fas fa-ellipsis"></i></summary>
+                            <div class="tabs-bar__menu">
+                                <button v-if="selectedRecording.notes" type="button" @click="copyNotes"><i class="fas fa-copy"></i><span v-text="t('buttons.copyNotes')"></span></button>
+                                <button v-if="selectedRecording.notes" type="button" @click="downloadNotes"><i class="fas fa-download"></i><span v-text="t('buttons.downloadNotes')"></span></button>
+                                <button type="button" @click="toggleEditNotes"><i class="fas fa-pen"></i><span v-text="t('buttons.editNotes')"></span></button>
+                            </div>
+                        </details>
                     </template>
                     <template v-else>
                         <button class="btn btn--sm btn--ghost" @click="cancelEditNotes">${ t('buttons.cancel') }</button>

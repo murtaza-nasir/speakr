@@ -5100,3 +5100,77 @@ select:disabled {
 @media (max-width: 639px) {
     .asr-editor-table th { padding: 0.5rem 0.375rem; letter-spacing: 0; }
 }
+
+/* ---- Recording view: one header row across the two panes ------------------- */
+
+/* The middle pane's bar (Transcription | Translation and its toolbar) and the
+   right pane's bar (Summary | Notes | Stats and its actions) read as one header
+   row with one border, so neither may wrap onto a second line. When a bar's
+   tabs and actions do not fit, static/js/modules/utils/tabs-bar-fit.js steps it
+   down: fit-1 drops the Bubble label (icon and tooltip stay) and folds the right
+   pane's actions into its More actions menu, fit-2 drops the tab icons and some
+   tab padding, fit-3 marks a tab list that still has to scroll sideways. The id
+   selectors outrank the themes' own .tabs-bar rules, some of which wrapped. */
+#leftMainColumn > .tabs-bar[data-tabs-fit],
+#rightMainColumn .tabs-bar[data-tabs-fit] { flex-wrap: nowrap; }
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs {
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs-bar__actions,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs-bar__actions { flex: none; }
+#leftMainColumn > .tabs-bar--fit-1 > .tabs-bar__actions .toggle > span { display: none; }
+#leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab > i { display: none; }
+#leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab,
+#rightMainColumn .tabs-bar--fit-2 > .tabs > .tab { padding-inline: var(--sp-2); }
+#leftMainColumn > .tabs-bar--fit-3 > .tabs,
+#rightMainColumn .tabs-bar--fit-3 > .tabs {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+}
+
+/* The right pane's actions: inline buttons, or one More actions menu at fit-1 */
+.tabs-bar__inline { display: contents; }
+.tabs-bar__more { display: none; position: relative; }
+.tabs-bar--fit-1 .tabs-bar__inline { display: none; }
+.tabs-bar--fit-1 .tabs-bar__more { display: block; }
+.tabs-bar__more > summary { list-style: none; cursor: pointer; }
+.tabs-bar__more > summary::-webkit-details-marker { display: none; }
+.tabs-bar__more[open] > summary { background: var(--bg-tertiary); color: var(--text-primary); }
+.tabs-bar__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    padding: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+.tabs-bar__menu > button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    text-align: start;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.tabs-bar__menu > button:hover,
+.tabs-bar__menu > button:focus-visible { background: var(--bg-tertiary); }
+.tabs-bar__menu > button > i { width: 16px; text-align: center; color: var(--text-muted); }

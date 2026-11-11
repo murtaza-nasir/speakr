@@ -712,22 +712,14 @@ html[data-ui-theme="cards"] .tabs-bar > .tabs { min-width: 0; overflow-x: auto; 
 html[data-ui-theme="cards"] .tabs-bar > .tabs::-webkit-scrollbar { display: none; }
 html[data-ui-theme="cards"] .tabs-bar > .tabs > .tab { flex: none; padding-left: 10px; padding-right: 10px; }
 html[data-ui-theme="cards"] .tabs-bar__actions { flex: none; }
-/* Narrow panes (sidebar open, 1024-1280 wide windows): the action buttons drop under the tabs
-   instead of squeezing the tab labels until they are cut mid-word. Container queries read the pane's
-   own width, which the viewport width does not give (it also depends on the sidebar and the divider). */
+/* Narrow panes (sidebar open, 1024-1280 wide windows): the bars stay one row (styles.css,
+   recording view header row); the actions fold into a More menu instead of dropping under the
+   tabs, and the counts go first. Container queries read the pane's own width, which the viewport
+   width does not give (it also depends on the sidebar and the divider). */
 html[data-ui-theme="cards"] #leftMainColumn,
 html[data-ui-theme="cards"] #rightMainColumn { container-type: inline-size; }
-@container (max-width: 500px) {
-    html[data-ui-theme="cards"] .tabs-bar { flex-wrap: wrap; row-gap: 0; padding-top: 4px; padding-bottom: 4px; min-height: 0; }
-    html[data-ui-theme="cards"] .tabs-bar__actions { margin-left: auto; padding-bottom: 2px; }
-    html[data-ui-theme="cards"] .tabs-bar > .tabs { max-width: 100%; }
-}
 @container (max-width: 380px) {
     html[data-ui-theme="cards"] .tabs-bar .tab__count { display: none; }
-}
-@container (max-width: 300px) {
-    /* the strip scrolls here: fade its right edge so a cut tab reads as "more" */
-    html[data-ui-theme="cards"] .tabs-bar > .tabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent); }
 }
 
 /* ============================================================================
