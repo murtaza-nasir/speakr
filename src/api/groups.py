@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
+from src.services.auto_shares import ensure_recipient_state
 
 # Create blueprint
 groups_bp = Blueprint('groups', __name__)
@@ -118,14 +119,8 @@ def sync_team_tag_shares(group_id):
                     )
                     db.session.add(share)
 
-                    # Create SharedRecordingState with default values for the recipient
-                    state = SharedRecordingState(
-                        recording_id=recording.id,
-                        user_id=membership_to_share.user_id,
-                        is_inbox=True,  # New shares appear in inbox by default
-                        is_highlighted=False  # Not favorited by default
-                    )
-                    db.session.add(state)
+                    # The recipient's state row, reused when an earlier share left one (#571)
+                    ensure_recipient_state(recording.id, membership_to_share.user_id)
 
                     shares_created += 1
                     current_app.logger.info(f"Synced share: Recording {recording.id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag '{tag.name}'")

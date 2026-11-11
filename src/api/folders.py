@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
+from src.services.auto_shares import ensure_recipient_state
 
 # Create blueprint
 folders_bp = Blueprint('folders', __name__)
@@ -780,14 +781,8 @@ def _apply_folder_auto_shares(recording, folder):
             )
             db.session.add(share)
 
-            # Create SharedRecordingState with default values for the recipient
-            state = SharedRecordingState(
-                recording_id=recording.id,
-                user_id=membership.user_id,
-                is_inbox=True,
-                is_highlighted=False
-            )
-            db.session.add(state)
+            # The recipient's state row, reused when an earlier share left one (#571)
+            ensure_recipient_state(recording.id, membership.user_id)
 
             shares_created += 1
             current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} via group folder '{folder.name}'")

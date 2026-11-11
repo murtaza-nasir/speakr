@@ -45,7 +45,8 @@ def share_targets(recording, tag, require_completed=True, sharing_enabled=None):
 
 def apply_tag_shares(recording, tag, require_completed=True, sharing_enabled=None):
     """Create the shares for one applied tag (no commit). Returns the count."""
-    from src.models import InternalShare, SharedRecordingState
+    from src.models import InternalShare
+    from src.services.auto_shares import ensure_recipient_state
     created = 0
     for membership in share_targets(recording, tag, require_completed=require_completed,
                                     sharing_enabled=sharing_enabled):
@@ -58,9 +59,7 @@ def apply_tag_shares(recording, tag, require_completed=True, sharing_enabled=Non
             source_type='group_tag',
             source_tag_id=tag.id,
         ))
-        if not SharedRecordingState.query.filter_by(recording_id=recording.id, user_id=membership.user_id).first():
-            db.session.add(SharedRecordingState(recording_id=recording.id, user_id=membership.user_id,
-                                                is_inbox=True, is_highlighted=False))
+        ensure_recipient_state(recording.id, membership.user_id)
         created += 1
         current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} "
                                 f"(role={membership.role}) via group tag '{tag.name}'")
