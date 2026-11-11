@@ -39,8 +39,12 @@
         <button @click="isUserMenuOpen = !isUserMenuOpen"
                 data-user-menu-toggle
                 class="btn btn--icon header-action relative"
-                :title="t('admin.userMenu')">
-            <i class="fas fa-user-circle text-lg"></i>
+                :title="t('admin.userMenu')"
+                :aria-label="t('admin.userMenu')">
+            <!-- A plain user glyph: the button's own fill is the circle or
+                 square (styles.css, page header set), so a user-circle glyph
+                 would draw a circle inside a circle. -->
+            <i class="fas fa-user"></i>
             <!-- Unread badge. The menu is the only always-visible anchor
                  in the header, so the count rides on it rather than on the
                  admin link, which lives inside the dropdown. -->

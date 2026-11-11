@@ -1094,3 +1094,8 @@ html[data-ui-theme="cards"] body > .container > main button[type="submit"]:focus
 
 /* Processing queue header: the "1 transcribing, 3 queued" line at full strength */
 html[data-ui-theme="cards"] .progress-popup .progress-popup__summary { opacity: 1; }
+
+/* Header icon set (styles.css): Search, New and the account menu are 40px circles
+   at every width where their labels are hidden (Search and New were 39x30 and
+   38x30 pills beside a 40px account circle in the 640-1023px recording view). */
+html[data-ui-theme="cards"] { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }
