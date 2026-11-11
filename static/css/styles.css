@@ -5123,6 +5123,12 @@ select:disabled {
 }
 #leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs-bar__actions,
 #rightMainColumn .tabs-bar[data-tabs-fit] > .tabs-bar__actions { flex: none; }
+/* The tab list scrolls sideways, which makes it clip vertically too. A tab's
+   -1px bottom margin (meant to lay the indicator over a .tabs border) pushed
+   the indicator's last pixel outside the list, where it was cut off: Default's
+   2px line showed as 1px and Focus and Classic lost a pixel as well. */
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs > .tab,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs > .tab { margin-bottom: 0; }
 #leftMainColumn > .tabs-bar--fit-1 > .tabs-bar__actions .toggle > span { display: none; }
 #leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab > i { display: none; }
 #leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab,

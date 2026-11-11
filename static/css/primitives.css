@@ -278,9 +278,12 @@ html.dark {
     appearance: none;
     background: transparent;
     border: none;
-    color: var(--text-muted);
+    /* Quieter than the active tab in both colour and weight: in dark mode
+       --text-muted (slate-300) sat next to gray-100 at the same weight, and
+       the two read as equal. --text-light keeps 4.5:1 or more. */
+    color: var(--text-light, var(--text-muted));
     font-size: var(--fs-body);
-    font-weight: 600;
+    font-weight: 500;
     padding: var(--sp-3) var(--sp-3);
     cursor: pointer;
     display: inline-flex;
@@ -299,6 +302,7 @@ html.dark {
 
 .tab.is-active {
     color: var(--text-primary);
+    font-weight: 600;
     border-bottom-color: var(--text-accent);
 }
 
