@@ -118,6 +118,12 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         self.assertIn('duration_probe_candidates = []', self.content)
         self.assertIn('chunking_service.get_audio_duration(candidate_path)', self.content)
 
+    def test_duration_repair_runs_before_the_extract_is_deleted(self):
+        """The cache repair probed the extracted audio after removing it (#580)."""
+        repair = self.content.index('recording.audio_duration_seconds = float(cached_audio_duration)')
+        cleanup = self.content.index('Cleaned up temp audio extracted from video')
+        self.assertLess(repair, cleanup)
+
 
 class TestUploadHandlerVideoRetention(unittest.TestCase):
     """Test the upload handler's video retention code paths: recordings.py

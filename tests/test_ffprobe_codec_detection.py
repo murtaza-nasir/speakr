@@ -289,3 +289,30 @@ def test_a_real_flac_is_still_audio():
         info = get_codec_info(path)
     assert info['has_audio'] is True
     assert info['audio_codec'] == 'flac'
+
+
+def test_webm_without_container_duration_measures_packets(tmp_path, caplog):
+    """A MediaRecorder-style WebM reports format duration N/A (#580)."""
+    from src.audio_chunking import AudioChunkingService
+    out = tmp_path / "clip.webm"
+    pipe = subprocess.Popen(
+        ['ffmpeg', '-hide_banner', '-loglevel', 'error',
+         '-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=10:duration=2',
+         '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2',
+         '-f', 'matroska', 'pipe:1'], stdout=subprocess.PIPE)
+    subprocess.run(
+        ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', 'pipe:0',
+         '-c:v', 'libvpx', '-c:a', 'libopus', '-f', 'webm', '-live', '1', str(out)],
+        stdin=pipe.stdout, check=True)
+    pipe.wait()
+    fmt = subprocess.run(
+        ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+         '-of', 'default=noprint_wrappers=1:nokey=1', str(out)],
+        capture_output=True, text=True, check=True).stdout.strip()
+    if fmt != 'N/A':
+        pytest.skip(f"this ffmpeg wrote a container duration ({fmt})")
+
+    duration = AudioChunkingService().get_audio_duration(str(out))
+    assert duration == pytest.approx(2.0, abs=0.1)
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+

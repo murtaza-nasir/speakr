@@ -2117,6 +2117,35 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     # Not a format error or already retried - propagate the error
                     raise
 
+            # Persist/correct audio duration cache when we have local access during processing.
+            # Prefer the original job input path for billing consistency, but fall back to the
+            # actual processed file (e.g., extracted audio from video) when needed. This runs
+            # before the temp files below are removed: it used to probe the extracted audio
+            # after deleting it (#580).
+            try:
+                cached_audio_duration = None
+                if chunking_service:
+                    # Legacy cache-repair fallback: new uploads should already populate
+                    # recording.audio_duration_seconds, and extracted-video paths above also try to do
+                    # that. This probe exists to repair historical rows and edge cases during
+                    # processing/reprocessing while we still have local access to media.
+                    # TODO(storage-cleanup): after running backfill/migrations for missing
+                    # audio_duration_seconds (and cleaning legacy video-backed objects), remove this
+                    # multi-path probing block and rely on DB-stored duration.
+                    duration_probe_candidates = []
+                    if filepath and os.path.exists(filepath):
+                        duration_probe_candidates.append(filepath)
+                    if (actual_filepath and actual_filepath not in duration_probe_candidates
+                            and os.path.exists(actual_filepath)):
+                        duration_probe_candidates.append(actual_filepath)
+                    for candidate_path in duration_probe_candidates:
+                        cached_audio_duration = chunking_service.get_audio_duration(candidate_path)
+                        if cached_audio_duration and cached_audio_duration > 0:
+                            recording.audio_duration_seconds = float(cached_audio_duration)
+                            break
+            except Exception as duration_err:
+                current_app.logger.warning(f"Failed to update cached audio duration for recording {recording_id}: {duration_err}")
+
             # Clean up converted file if we created one and transcription succeeded
             if converted_filepath and os.path.exists(converted_filepath):
                 try:
@@ -2157,32 +2186,6 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             transcription_end_time = time.time()
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
 
-            # Persist/correct audio duration cache when we have local access during processing.
-            # Prefer the original job input path for billing consistency, but fall back to the
-            # actual processed file (e.g., extracted audio from video) when needed.
-            try:
-                cached_audio_duration = None
-                if chunking_service:
-                    # Legacy cache-repair fallback: new uploads should already populate
-                    # recording.audio_duration_seconds, and extracted-video paths above also try to do
-                    # that. This probe exists to repair historical rows and edge cases during
-                    # processing/reprocessing while we still have local access to media.
-                    # TODO(storage-cleanup): after running backfill/migrations for missing
-                    # audio_duration_seconds (and cleaning legacy video-backed objects), remove this
-                    # multi-path probing block and rely on DB-stored duration.
-                    duration_probe_candidates = []
-                    if filepath:
-                        duration_probe_candidates.append(filepath)
-                    if actual_filepath and actual_filepath not in duration_probe_candidates:
-                        duration_probe_candidates.append(actual_filepath)
-                    for candidate_path in duration_probe_candidates:
-                        cached_audio_duration = chunking_service.get_audio_duration(candidate_path)
-                        if cached_audio_duration and cached_audio_duration > 0:
-                            recording.audio_duration_seconds = float(cached_audio_duration)
-                            break
-            except Exception as duration_err:
-                current_app.logger.warning(f"Failed to update cached audio duration for recording {recording_id}: {duration_err}")
-
             db.session.commit()
             current_app.logger.info(f"Transcription completed in {recording.transcription_duration_seconds}s")
 
@@ -2192,9 +2195,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 audio_duration = recording.audio_duration_seconds
                 if (audio_duration is None or audio_duration <= 0) and chunking_service:
                     duration_probe_candidates = []
-                    if actual_filepath:
+                    if actual_filepath and os.path.exists(actual_filepath):
                         duration_probe_candidates.append(actual_filepath)
-                    if filepath and filepath not in duration_probe_candidates:
+                    if filepath and filepath not in duration_probe_candidates and os.path.exists(filepath):
                         duration_probe_candidates.append(filepath)
                     for candidate_path in duration_probe_candidates:
                         audio_duration = chunking_service.get_audio_duration(candidate_path)
