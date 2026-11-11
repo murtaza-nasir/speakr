@@ -819,6 +819,9 @@ def emit_summary_result(recording, ok, error=None):
     The job queue used to infer these from the job type: the first summary of
     an upload (run inside the transcription job) never fired, a summary that
     failed inside its job fired "completed", and "failed" never fired.
+    A failed summary step raises SummaryStepFailed and does not call this
+    (#583): the job queue sends "failed" once the failure is final, and the
+    auto-summary inside transcription calls this itself.
     Best-effort: never raises.
     """
     try:

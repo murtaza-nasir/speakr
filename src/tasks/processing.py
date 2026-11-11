@@ -780,9 +780,15 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             recording.summary = error_msg
             recording.status = 'FAILED'
+            recording.error_message = _sanitize_error_message(error_msg)
             db.session.commit()
-            from src.services.webhook_dispatch import emit_summary_result
-            emit_summary_result(recording, ok=False, error=error_msg)
+            # The caller owns the outcome (#583). The job queue marks the job
+            # failed (or re-queues a transient error) and sends
+            # recording.summary.failed once the failure is final; the
+            # auto-summary inside transcription catches this and keeps the
+            # transcription job completed.
+            from src.services.error_classification import SummaryStepFailed
+            raise SummaryStepFailed(str(e), stored_summary=error_msg) from e
 
 
 def extract_events_from_transcript(recording_id, transcript_text, summary_text):
@@ -2281,7 +2287,18 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             else:
                 # Auto-generate summary for all recordings
                 current_app.logger.info(f"Auto-generating summary for recording {recording_id}")
-                generate_summary_only_task(app_context, recording_id)
+                from src.services.error_classification import SummaryStepFailed
+                try:
+                    generate_summary_only_task(app_context, recording_id)
+                except SummaryStepFailed as summary_err:
+                    # The transcript is saved, so the transcription job still
+                    # completes; the recording stays FAILED with the summary
+                    # error, and a summary reprocess recovers it (#583).
+                    current_app.logger.error(
+                        f"Auto-summary failed for recording {recording_id}; transcript kept: {summary_err}")
+                    from src.services.webhook_dispatch import emit_summary_result
+                    emit_summary_result(db.session.get(Recording, recording_id), ok=False,
+                                        error=summary_err.stored_summary)
 
             # Auto-translation: admin setting prevails over the user preference.
             # Both must allow it; the recording status stays untouched.
