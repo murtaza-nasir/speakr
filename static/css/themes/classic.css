@@ -367,9 +367,11 @@ html[data-ui-theme="classic"] .sidebar .sb-search:hover { background: var(--surf
 html[data-ui-theme="classic"] .sidebar .sb-search i { font-size: 12px; }
 html[data-ui-theme="classic"] .sidebar .sb-tools { display: flex; flex-direction: column; gap: 8px; margin: 0; }
 
-html[data-ui-theme="classic"] .sidebar .sb-toggles { gap: 6px; }
+/* A toggle keeps its whole label; when the three do not fit one row (longer
+   translations, wider fonts) the last one wraps to a second row. */
+html[data-ui-theme="classic"] .sidebar .sb-toggles { gap: 6px; flex-wrap: wrap; }
 html[data-ui-theme="classic"] .sidebar .sb-toggles > button {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     height: 32px;
     padding: 0 12px;
     border: 1px solid var(--border);

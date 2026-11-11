@@ -585,9 +585,11 @@ html[data-ui-theme="focus"] body .focus-side-title .btn--primary { min-height: 3
 html[data-ui-theme="focus"] body .focus-side-title .btn--icon.btn--primary { width: 32px; padding: 0; }
 
 /* Quiet toggles: text segments, accent only when on */
-html[data-ui-theme="focus"] body .focus-toggles { gap: 2px; }
+/* A toggle keeps its whole label; when the three do not fit one row (longer
+   translations, wider fonts) the last one wraps to a second row. */
+html[data-ui-theme="focus"] body .focus-toggles { gap: 2px; flex-wrap: wrap; }
 html[data-ui-theme="focus"] body .focus-toggles > button {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     min-height: 30px;
     padding: 0 10px !important;
     border: 0 !important;

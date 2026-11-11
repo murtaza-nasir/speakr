@@ -268,12 +268,14 @@
                     </div>
                 </div>
 
-                <!-- Compact Controls Row -->
-                <div class="flex items-center gap-1.5">
+                <!-- Compact Controls Row. A button never gets narrower than its
+                     label (min-w-max); when the three do not fit one row, as
+                     with longer translations, the last one wraps to a second row. -->
+                <div class="flex flex-wrap items-center gap-1.5">
                     <!-- Sort Toggle -->
                     <button @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
                             :class="[
-                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-max flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
                             ]"
                             :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
@@ -286,7 +288,7 @@
                     <button @click="showArchivedRecordings = !showArchivedRecordings"
                             :aria-pressed="showArchivedRecordings"
                             :class="[
-                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-max flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showArchivedRecordings
                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
                                     : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
@@ -300,7 +302,7 @@
                     <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
                             :aria-pressed="showSharedWithMe"
                             :class="[
-                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-max flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showSharedWithMe
                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
                                     : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
