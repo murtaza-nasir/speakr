@@ -5180,3 +5180,42 @@ select:disabled {
 .tabs-bar__menu > button:hover,
 .tabs-bar__menu > button:focus-visible { background: var(--bg-tertiary); }
 .tabs-bar__menu > button > i { width: 16px; text-align: center; color: var(--text-muted); }
+
+/* ---- Page header: Search, New Recording and the account menu as one set ---- */
+
+/* The account button rests on the same fill as Search (a theme that restyles
+   Search restyles this too), so the three read as one set instead of two
+   shapes and a bare glyph. When the labels are hidden (the recording view
+   below 1024px, every view below 640px) all three take one size, which a
+   theme sets with --hdr-icon-w / --hdr-icon-h. The id selector outranks the
+   themes' own header button sizes. */
+:root { --hdr-icon-w: 36px; --hdr-icon-h: 36px; }
+@media (max-width: 639px) {
+    :root { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }
+}
+#app > header .btn.header-action[data-user-menu-toggle] {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-color: transparent;
+}
+@media (max-width: 1023px) {
+    #app > header.app-header--detail .btn.header-action,
+    #app > header .btn.header-action[data-user-menu-toggle] {
+        width: var(--hdr-icon-w);
+        min-width: var(--hdr-icon-w);
+        height: var(--hdr-icon-h);
+        min-height: var(--hdr-icon-h);
+        padding: 0;
+        justify-content: center;
+    }
+}
+@media (max-width: 639px) {
+    #app > header .btn.header-action {
+        width: var(--hdr-icon-w);
+        min-width: var(--hdr-icon-w);
+        height: var(--hdr-icon-h);
+        min-height: var(--hdr-icon-h);
+        padding: 0;
+        justify-content: center;
+    }
+}

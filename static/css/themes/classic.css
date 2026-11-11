@@ -1094,3 +1094,6 @@ html[data-ui-theme="classic"] .speaker-modal-transcript .speaker-segment { margi
    bars below, and its top edge doubled the metadata strip's line. The
    hairline moves to its bottom edge. */
 html[data-ui-theme="classic"] .flex-shrink-0.border-t:has(+ #mainContentColumns) { border-top: 0; border-bottom: 1px solid var(--divider); }
+
+/* Header icon set (styles.css): Search, New and the account menu are 40px circles */
+html[data-ui-theme="classic"] { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }

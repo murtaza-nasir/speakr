@@ -125,7 +125,9 @@
     </div>
 
     <!-- Expanded panel -->
-    <div v-if="isMetadataExpanded" class="px-3 pb-3 space-y-2">
+    <!-- pt-3: the panel sits on its own band (Classic) or below a divider
+         (Cards), and the first row of chips touched its top edge. -->
+    <div v-if="isMetadataExpanded" class="px-3 pt-3 pb-3 space-y-2">
 
         <!-- Metadata: chip-styled so it reads as a tidy row of facts
              instead of a comma-separated string. Each chip is the

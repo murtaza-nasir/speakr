@@ -667,7 +667,6 @@ html[data-ui-theme="desk"] header[style*="min-height"] h1.font-bold { font-size:
 html[data-ui-theme="desk"] header[style*="min-height"] img.app-logo { width: 22px; height: 22px; }
 html[data-ui-theme="desk"] header[style*="min-height"] h1.font-semibold { font-size: var(--fs-subhead); line-height: 20px; }
 html[data-ui-theme="desk"] header[style*="min-height"] .btn--icon .text-lg { font-size: 14px; }
-html[data-ui-theme="desk"] header[style*="min-height"] .btn--icon .fa-user-circle { font-size: 18px; }
 /* The Inquire link carries an inline accent background; the outlined look needs !important */
 html[data-ui-theme="desk"] header[style*="min-height"] a.header-action[style*="--bg-accent"] {
     background: transparent !important;
@@ -869,7 +868,7 @@ html[data-ui-theme="desk"] table thead th { font-size: 11px; letter-spacing: .05
 html[data-ui-theme="desk"] table tbody td { padding-block: 6px; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
 html[data-ui-theme="desk"] table tbody tr:hover { background: var(--row-hover); }
 
-/* ---- Chat (recording and Inquire): log lines, not bubbles ------------------- */
+/* ---- Chat (recording and Inquire): compact panels, not bubbles -------------- */
 
 html[data-ui-theme="desk"] .message { max-width: 100%; box-shadow: none; line-height: 1.5; margin-bottom: var(--sp-3); font-size: var(--fs-subhead); }
 html[data-ui-theme="desk"] .user-message {
@@ -880,12 +879,14 @@ html[data-ui-theme="desk"] .user-message {
     padding: 6px var(--sp-3);
     max-width: 88%;
 }
+/* The answer is a panel like the theme's other panels: the surface colour, a
+   hairline and the small radius. A bare left rule on the grey Inquire canvas
+   left the answer with no surface of its own. */
 html[data-ui-theme="desk"] .ai-message {
-    background-color: transparent;
-    border: 0;
-    border-inline-start: 2px solid var(--divider);
-    border-radius: 0;
-    padding: 2px 0 2px var(--sp-3);
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    padding: var(--sp-2) var(--sp-3);
     max-width: 100%;
 }
 /* Inquire answers keep their 48rem column */
@@ -971,3 +972,16 @@ html[data-ui-theme="desk"] .flex-shrink-0.border-t:has(+ #mainContentColumns) {
    real names) wraps inside it, as in Workspace, instead of being cut to an
    ellipsis that hides which speaker it is. */
 html[data-ui-theme="desk"] .desk-run .speaker-segment .desk-spk { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+
+/* Header icon set (styles.css): square controls of the toolbar height (32px on a
+   phone), and the account menu takes Search's outlined look. */
+html[data-ui-theme="desk"] { --hdr-icon-w: var(--ctl-h); --hdr-icon-h: var(--ctl-h); }
+@media (max-width: 639px) {
+    html[data-ui-theme="desk"] { --hdr-icon-w: 32px; --hdr-icon-h: 32px; }
+}
+html[data-ui-theme="desk"] #app > header .btn.header-action[data-user-menu-toggle] {
+    background: transparent;
+    color: var(--text-2);
+    border: 1px solid var(--line);
+}
+html[data-ui-theme="desk"] #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--row-hover); color: var(--text-primary); }

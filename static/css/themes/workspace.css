@@ -541,7 +541,6 @@ html[data-ui-theme="workspace"] header.flex-shrink-0.z-50 a.btn[href="/inquire"]
     border-color: var(--border-secondary) !important;
 }
 html[data-ui-theme="workspace"] header.flex-shrink-0.z-50 a.btn[href="/inquire"]:hover { background: var(--bg-tertiary) !important; }
-html[data-ui-theme="workspace"] header.flex-shrink-0.z-50 .fa-user-circle { font-size: 20px; }
 
 html[data-ui-theme="workspace"] main.main-content,
 html[data-ui-theme="workspace"] .main-content { background: var(--bg-secondary); }
@@ -1258,7 +1257,10 @@ html[data-ui-theme="workspace"] .floating-chat-fab {
 }
 html[data-ui-theme="workspace"] .floating-chat-header { min-height: 40px; padding: 0 8px 0 12px; background: var(--bg-primary); border-bottom: 1px solid var(--border-primary); }
 
-/* Message bubbles: user in an accent container, assistant unboxed. */
+/* Message bubbles: user in an accent container, assistant on a bordered white
+   card (the theme's card: surface, hairline border, 10px radius, the tail
+   corner mirrored from the user's). Unboxed, the answer sat straight on the
+   grey Inquire canvas with no surface of its own. */
 html[data-ui-theme="workspace"] .user-message {
     background: var(--bg-accent);
     border: 1px solid var(--border-accent);
@@ -1266,11 +1268,11 @@ html[data-ui-theme="workspace"] .user-message {
     color: var(--text-primary);
 }
 html[data-ui-theme="workspace"] .ai-message {
-    background: transparent;
-    border: 0;
-    border-radius: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px 10px 10px 2px;
     box-shadow: none;
-    padding-inline: 0;
+    padding: 12px 16px;
 }
 html[data-ui-theme="workspace"] .chat-ts-chip {
     border-radius: var(--radius-sm);
@@ -1633,3 +1635,13 @@ html[data-ui-theme="workspace"] .ws-toolbar > .ws-grow + .ws-tb-group { margin-i
    bars below, and its top edge doubled the metadata strip's line. The
    hairline moves to its bottom edge. */
 html[data-ui-theme="workspace"] .flex-shrink-0.border-t:has(+ #mainContentColumns) { border-top: 0; border-bottom: 1px solid var(--border-primary); }
+
+/* Header icon set (styles.css): Search, New and the account menu share the 40x30
+   control, and the account menu takes Search's quiet outlined look. */
+html[data-ui-theme="workspace"] { --hdr-icon-w: 40px; --hdr-icon-h: var(--ctl-h); }
+html[data-ui-theme="workspace"] #app > header .btn.header-action[data-user-menu-toggle] {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+html[data-ui-theme="workspace"] #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--bg-tertiary); }

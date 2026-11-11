@@ -1256,3 +1256,12 @@ html[data-ui-theme="focus"] body main.flex-grow button[type="submit"]:focus-visi
 html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet,
 html[data-ui-theme="focus"] body .speaker-run > .speaker-tablet-group,
 html[data-ui-theme="focus"] body .transcription-box .speaker-tablet { min-width: 0; overflow-wrap: anywhere; }
+
+/* Header icon set (styles.css): 36px circles. Search is a quiet button here,
+   so the account menu stays quiet too instead of taking the accent fill. */
+html[data-ui-theme="focus"] { --hdr-icon-w: 36px; --hdr-icon-h: 36px; }
+html[data-ui-theme="focus"] body #app > header .btn.header-action[data-user-menu-toggle] {
+    background: transparent;
+    color: var(--f-text-2);
+}
+html[data-ui-theme="focus"] body #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--f-surface-2); color: var(--f-text); }
