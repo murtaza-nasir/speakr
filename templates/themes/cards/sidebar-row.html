@@ -101,7 +101,7 @@
                                  visible recording is in it and the pill would be
                                  redundant. Hidden for incognito recordings (no
                                  folder association). -->
-                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || (recording.folder && recording.folder.is_foreign) || getRecordingTags(recording).length > 0 || recording.duplicate_info || (recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito)"
+                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || (recording.folder && recording.folder.is_foreign) || getRecordingTags(recording).length > 0"
                                  class="flex flex-wrap items-center gap-1 mt-1">
                                 <!-- Foreign (shared-in) folder: the folder that granted access. Shown
                                      leftmost, marked, and NOT clickable — it isn't a folder you own,
@@ -144,20 +144,6 @@
                                       :title="t('tooltips.moreTags')">
                                     +${getRecordingTags(recording).length - 4}
                                 </span>
-                                <button v-if="recording.duplicate_info"
-                                        @click.stop="openDuplicatesModal(recording.duplicate_info)"
-                                        class="text-amber-500 hover:text-amber-400 transition-colors"
-                                        :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
-                                    <i class="fas fa-copy text-xs"></i>
-                                </button>
-                                <!-- Subtle video marker: only for recordings
-                                     that are videos AND still have their media
-                                     retained (not archived, not incognito). -->
-                                <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
-                                      class="inline-flex items-center text-[var(--text-muted)]"
-                                      :title="t('tooltips.video')">
-                                    <i class="fas fa-video text-[10px]"></i>
-                                </span>
                             </div>
 
                             <!-- Footer: participant avatar stack, date and duration -->
@@ -168,6 +154,21 @@
                                 </div>
                                 <span v-else class="rr-stack"></span>
                                 <div class="rr-when">
+                                    <!-- Copies of the same file, and the video marker: on the
+                                         date line, not on a line of their own below the tags. -->
+                                    <button v-if="recording.duplicate_info"
+                                            type="button"
+                                            @click.stop="openDuplicatesModal(recording.duplicate_info)"
+                                            class="text-amber-500 hover:text-amber-400 transition-colors"
+                                            :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')"
+                                            :aria-label="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
+                                        <i class="fas fa-copy text-xs"></i>
+                                    </button>
+                                    <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
+                                          class="inline-flex items-center"
+                                          :title="t('tooltips.video')">
+                                        <i class="fas fa-video text-[10px]"></i>
+                                    </span>
                                     <span>${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}</span>
                                     <span v-if="recording.audio_duration" class="rr-dur">${ formatDuration(recording.audio_duration) }</span>
                                 </div>

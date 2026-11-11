@@ -519,6 +519,11 @@ html[data-ui-theme="classic"] .recording-row .rounded-full.h-5:has(.fa-star) { b
 html[data-ui-theme="classic"] .recording-row .rounded-full.h-5:has(.fa-star) i { color: var(--star) !important; }
 html[data-ui-theme="classic"] .recording-row .rounded-full.h-5:has(.fa-inbox) { background: var(--primary-container) !important; }
 html[data-ui-theme="classic"] .recording-row .rounded-full.h-5:has(.fa-inbox) i { color: var(--on-primary-container) !important; }
+/* Copies of the same file: the warning tone it had as a bare amber icon below the tags */
+html[data-ui-theme="classic"] .recording-row .rounded-full.h-5.rr-dup { background: var(--warning-container) !important; cursor: pointer; }
+html[data-ui-theme="classic"] .recording-row .rounded-full.h-5.rr-dup i { color: var(--warning-fg) !important; }
+/* They sit on the names line, whose own icons are hidden; these stay */
+html[data-ui-theme="classic"] .rr-meta .rr-flags i { display: inline-block; }
 
 /* Tags in rows: 12px neutral pills with a colour dot instead of saturated fills */
 html[data-ui-theme="classic"] .chip[style*='--chip-dot'] {
@@ -969,9 +974,11 @@ html[data-ui-theme="classic"] .prose-flush > h2:first-child { font-size: 22px !i
 
 /* ---- 10. Second pass ----------------------------------------------------- */
 
-/* Rows: the title may wrap its status pill below instead of truncating to a stub */
+/* Rows: the title may wrap its status pill below instead of truncating to a stub.
+   Only a title too long to share the line wraps: a fixed 13em minimum used to
+   push the pill under every title, short ones included, which cost a line. */
 html[data-ui-theme="classic"] .rr-main > div:first-child { flex-wrap: wrap; row-gap: 2px; }
-html[data-ui-theme="classic"] .rr-main > div:first-child h4 { flex: 0 1 auto !important; min-width: min(100%, 13em); }
+html[data-ui-theme="classic"] .rr-main > div:first-child h4 { flex: 0 1 auto !important; min-width: 0; }
 html[data-ui-theme="classic"] .rr-main > div:first-child > div { margin-left: 0; }
 html[data-ui-theme="classic"] .recording-row.is-active { border-start-start-radius: 4px; border-end-start-radius: 4px; }
 @media (max-width: 1023px) {
