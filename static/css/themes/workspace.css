@@ -392,18 +392,15 @@ html[data-ui-theme="workspace"] .tabs-bar {
     gap: 8px;
 }
 html[data-ui-theme="workspace"] .tabs-bar > .tabs { border: 1px solid var(--border-primary); }
-/* The strip keeps every label whole: a tab never shrinks, the count shows only on
-   the active tab, and when the tabs and the action icons do not fit one row (the
-   narrow right pane) the actions wrap below the tabs instead of squeezing them. */
-html[data-ui-theme="workspace"] .tabs-bar { flex-wrap: wrap; padding: 6px 8px 6px 12px; gap: 4px 6px; }
+/* The strip keeps every label whole: a tab never shrinks and the count shows only on
+   the active tab. The bar stays one row (styles.css, recording view header row): when
+   the tabs and the action icons do not fit, the actions fold into a More menu. */
+html[data-ui-theme="workspace"] .tabs-bar { padding: 6px 8px 6px 12px; gap: 4px 6px; }
 html[data-ui-theme="workspace"] .tabs-bar > .tabs { flex: 0 0 auto; }
 html[data-ui-theme="workspace"] .tabs-bar .tab { flex: 0 0 auto; padding: 0 8px; gap: 4px; }
 html[data-ui-theme="workspace"] .tabs-bar .tab:not(.is-active) .tab__count { display: none; }
 html[data-ui-theme="workspace"] .tabs-bar__actions { flex: 0 0 auto; gap: 0; margin-inline-start: auto; }
 html[data-ui-theme="workspace"] .tabs-bar__actions .btn--icon { width: 24px; min-height: 24px; }
-/* In a very narrow right pane the tab group itself wraps instead of being clipped by
-   the pane (the tabs never shrink, so the last ones used to sit outside it). */
-html[data-ui-theme="workspace"] #rightMainColumn .tabs-bar > .tabs { flex-wrap: wrap; max-width: 100%; }
 
 /* Stats table: the right pane is narrower here than in the default layout (sidebar rail
    plus list), so the table uses tighter cell padding and, when it still does not fit,
