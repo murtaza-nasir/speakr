@@ -243,29 +243,29 @@ Ambrose is the default name. You can give the assistant another name under Accou
 
 ![The assistant panel of a recording, next to its notes](../assets/images/screenshots/main-view-chat-notes.png)
 
-### Effective Chat Queries
+### Effective questions
 
-The AI chat understands context and can answer various types of questions about your recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" The AI can also provide analysis, such as "What were the main concerns raised?" or "Summarize the action items for the marketing group."
+Ambrose can answer many kinds of questions about the recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" Ambrose can also analyse, for example "What were the main concerns raised?" or "Summarize the action items for the marketing group."
 
-The chat maintains context throughout your conversation, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" The AI will understand you're still talking about the budget topic.
+Ambrose keeps the earlier questions in mind, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" Ambrose takes it as a question about the budget.
 
-### Chat Best Practices
+### Good practice
 
-For best results with the chat feature, be specific in your questions rather than asking overly broad queries. Reference specific topics, people, or timeframes when possible. If the AI's response isn't quite what you're looking for, try rephrasing your question with more context.
+Answers are best when questions are specific, not overly broad. Reference specific topics, people, or timeframes when possible. If an answer misses the point, rephrase the question with more context.
 
-The chat feature works best for factual questions about what was said in the recording. It's less effective for subjective interpretations or reading between the lines, though it can identify tone and sentiment to some degree.
+Ambrose is most reliable on factual questions about what was said in the recording, and less reliable on subjective interpretation, though it can describe tone and sentiment to some degree.
 
-### Exporting Chat Conversations
+### Exporting a conversation
 
-The chat has three export options:
+A conversation has three export options:
 
 **Copy a response**: The copy button on a response copies that response to your clipboard as markdown.
 
-**Download the chat**: The download button in the chat header saves the whole conversation as a Microsoft Word (.docx) file named after the recording, such as `chat-Weekly-Sync.docx`.
+**Download the chat**: The download button in the panel header saves the whole conversation as a Microsoft Word (.docx) file named after the recording, such as `chat-Weekly-Sync.docx`.
 
 **Download one response**: Each response has a download button beside its copy button. With it, that response and the question before it are saved as a Word file, such as `chat-Weekly-Sync-response.docx`. Model reasoning is included when the response has it, as in the chat download.
 
-These export features are particularly useful when you've used the chat to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
+These exports are useful when you have used Ambrose to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
 
 ## Adding and Managing Notes
 
