@@ -777,7 +777,8 @@ export function useUI(state, utils, processedTranscription) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${selectedRecording.value.title || 'notes'}.md`;
+            // The server sends a Word document; the name used to end in .md.
+            a.download = filenameFromContentDisposition(response.headers.get('Content-Disposition'), 'notes.docx');
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
