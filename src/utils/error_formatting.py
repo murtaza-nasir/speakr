@@ -19,6 +19,19 @@ def _code(status):
 
 # Known error patterns with user-friendly messages
 ERROR_PATTERNS = [
+    # Explicit no-speech responses from transcription services
+    {
+        'patterns': [
+            r'no_speech',
+            r'no (?:recognized |recognised |usable )?speech (?:was )?detected',
+            r'asr_response_have_no_words',
+        ],
+        'title': 'No Speech Detected',
+        'message': 'No recognizable speech was found in this recording.',
+        'guidance': 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.',
+        'icon': 'fa-microphone-slash',
+        'type': 'no_speech'
+    },
     # File size errors
     {
         'patterns': [
