@@ -1876,9 +1876,9 @@ def delete_recording_audio(recording_id):
     """
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-        if recording.user_id and recording.user_id != current_user.id:
+        if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
             return jsonify(api_error('recording_delete_denied')), 403
         if not _self.USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify(api_error('recording_delete_admin_only')), 403
@@ -2418,11 +2418,11 @@ def generate_incognito_summary_endpoint():
 def delete_recording(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
 
         # Check if the recording belongs to the current user
-        if recording.user_id and recording.user_id != current_user.id:
+        if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
             return jsonify(api_error('recording_delete_denied')), 403
 
         # Check deletion permissions (admin-only if USERS_CAN_DELETE is false)
@@ -3307,12 +3307,12 @@ def bulk_delete_recordings():
         for recording_id in recording_ids:
             try:
                 recording = db.session.get(Recording, recording_id)
-                if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+                if not recording or not has_recording_access(recording, current_user):
                     errors.append(f"Recording {recording_id} not found")
                     continue
 
                 # Check ownership
-                if recording.user_id and recording.user_id != current_user.id:
+                if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
                     errors.append(f"No permission for recording {recording_id}")
                     continue
 
