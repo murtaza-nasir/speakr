@@ -3570,11 +3570,13 @@ def batch_update_recordings():
                         if tag.user_id != current_user.id:
                             continue  # not yours
                     else:
-                        is_member = GroupMembership.query.filter_by(
+                        membership = GroupMembership.query.filter_by(
                             user_id=current_user.id, group_id=tag.group_id
-                        ).first() is not None
-                        if not is_member:
+                        ).first()
+                        if membership is None:
                             continue  # not a member of the tag's group
+                        if recording.user_id != current_user.id and membership.role != 'admin':
+                            continue  # another user's recording: group admins only (#578)
                     existing = RecordingTag.query.filter_by(
                         recording_id=recording_id,
                         tag_id=tag_id

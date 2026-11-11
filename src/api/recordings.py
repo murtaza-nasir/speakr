@@ -3391,6 +3391,12 @@ def bulk_update_tags():
                 if not has_recording_access(recording, current_user, require_edit=True):
                     continue
 
+                # A group tag goes on another user's recording only from a
+                # group admin, as on the single-tag route (#578)
+                if action == 'add' and tag.group_id and recording.user_id != current_user.id \
+                        and membership.role != 'admin':
+                    continue
+
                 if action == 'add':
                     # Check if tag already exists
                     existing = RecordingTag.query.filter_by(

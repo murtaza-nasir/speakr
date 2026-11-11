@@ -342,6 +342,15 @@ def update_tag(tag_id):
                 return jsonify(api_error('tag_group_assign_admin_only')), 403
 
         regrouped = new_group_id != tag.group_id
+        if regrouped and new_group_id:
+            # The tag is already on recordings: making it a group tag puts a
+            # group tag on each, so each must allow that, checked before the
+            # change (after it, the tag itself would grant edit) (#578, #579)
+            from src.services.tag_sharing import group_tag_apply_error
+            for rt in tag.recording_associations:
+                error_key = group_tag_apply_error(rt.recording, new_group_id, current_user, has_recording_access)
+                if error_key:
+                    return jsonify(api_error(error_key)), 403
         tag.group_id = new_group_id
         if regrouped:
             # Shares the tag made for its previous group end (#570)

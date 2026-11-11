@@ -43,6 +43,26 @@ def share_targets(recording, tag, require_completed=True, sharing_enabled=None):
     return [m for m in members if m.user_id != recording.user_id and m.user_id not in already]
 
 
+def group_tag_apply_error(recording, group_id, user, has_recording_access):
+    """Why user may not put a tag of group group_id on recording, as an error key, or None.
+
+    The rule of the single-tag route: a member of the group, the recording's
+    owner or an admin of the group, with edit access to the recording. A
+    group tag shares the recording with the group and gives its admins edit
+    access, so every path that puts one on a recording asks the same,
+    including turning a tag already on it into a group tag (#578, #579).
+    """
+    from src.models import GroupMembership
+    membership = GroupMembership.query.filter_by(group_id=group_id, user_id=user.id).first()
+    if not membership:
+        return 'tag_access_denied'
+    if recording.user_id != user.id and membership.role != 'admin':
+        return 'group_tag_apply_restricted'
+    if not has_recording_access(recording, user, require_edit=True):
+        return 'group_tag_apply_denied'
+    return None
+
+
 def apply_tag_shares(recording, tag, require_completed=True, sharing_enabled=None):
     """Create the shares for one applied tag (no commit). Returns the count."""
     from src.models import InternalShare
