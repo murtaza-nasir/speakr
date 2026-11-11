@@ -1,4 +1,4 @@
-{#- The controls on the right of every page header: token budget, Inquire,
+{#- The controls on the right of every page header: token budget, Ask Ambrose,
     New Recording and the user menu. The main app renders them inside its own
     Vue app; the other pages mount static/js/global-header.js on
     page-header.html, which provides the same state and methods, so every
@@ -10,11 +10,12 @@
          + padding + font size are identical; only the colour
          intent differs (Inquire = quiet/highlighted, PWA Install
          = primary-success, New Recording = primary). -->
-    <!-- Inquire Mode Button -->
+    <!-- Ask Ambrose: the library page (/inquire), with the assistant's
+         name and monogram (includes/assistant_avatar.html) -->
     {% if inquire_mode_enabled %}
-    <a href="/inquire" class="btn btn--sm header-action" :aria-label="t('inquire.title')" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
-        <i class="fas fa-search"></i>
-        <span class="header-action__label hidden sm:inline" v-text="t('inquire.title')"></span>
+    <a href="/inquire" class="btn btn--sm header-action" :aria-label="t('inquire.title', { name: assistantName })" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
+        {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
+        <span class="header-action__label hidden sm:inline" v-text="t('inquire.title', { name: assistantName })"></span>
     </a>
     {% endif %}
 

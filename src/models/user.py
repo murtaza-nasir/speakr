@@ -129,6 +129,9 @@ class User(db.Model, UserMixin):
     # Null means the default theme; an id that is unknown or no longer
     # available is shown as the default as well.
     ui_theme = db.Column(db.String(32), nullable=True)
+    # The assistant's name in the interface (src/utils/assistant_name.py).
+    # Null means the default, Ambrose.
+    assistant_name = db.Column(db.String(40), nullable=True)
     # Release whose "What's new" notes the user has seen (src.config.version
     # release_key). NULL for accounts from before the column, so they see the
     # current notes once; new accounts start at the current release.

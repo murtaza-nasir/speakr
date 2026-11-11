@@ -91,13 +91,23 @@ def save_user_preferences():
         if value is not None and not ui_themes.is_available(value):
             return jsonify(api_error('invalid_ui_theme')), 400
         current_user.ui_theme = value
+    # The assistant's name (src/utils/assistant_name.py): a short plain
+    # name; empty or null goes back to the default.
+    if 'assistant_name' in data:
+        from src.utils.assistant_name import clean_assistant_name
+        try:
+            current_user.assistant_name = clean_assistant_name(data['assistant_name'])
+        except ValueError:
+            return jsonify(api_error('invalid_assistant_name')), 400
 
     db.session.commit()
-    
+
+    from src.utils.assistant_name import assistant_name_of
     return jsonify({
         'success': True,
         'message': translate('server.apiMessage.preferencesSaved'),
-        'ui_language': current_user.ui_language
+        'ui_language': current_user.ui_language,
+        'assistant_name': assistant_name_of(current_user),
     })
 
 

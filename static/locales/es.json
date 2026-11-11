@@ -379,7 +379,7 @@
     "userMenu": "Menú de Usuario"
   },
   "adminDashboard": {
-    "aboutInquireMode": "Acerca del Modo Consulta",
+    "aboutInquireMode": "Acerca de la búsqueda en la biblioteca",
     "actions": "ACCIONES",
     "addNewUser": "Agregar Nuevo Usuario",
     "addUser": "Agregar Usuario",
@@ -446,7 +446,7 @@
     "groupName": "Nombre del grupo",
     "groupsTab": "Grupos",
     "id": "ID",
-    "inquireModeDescription": "El Modo Inquire permite a los usuarios buscar en múltiples transcripciones usando preguntas en lenguaje natural. Funciona dividiendo las transcripciones en fragmentos y creando incrustaciones buscables usando modelos de IA.",
+    "inquireModeDescription": "Con la búsqueda en la biblioteca, los usuarios pueden hacer preguntas sobre todas sus grabaciones a la vez. Cada grabación se prepara para ello después de la transcripción, y las cifras de abajo muestran cuántas están listas.",
     "languagePreferenceNote": "Nota: Si el usuario ha establecido una preferencia de idioma de salida, se agregará \" Asegúrese de que su respuesta esté en {idioma}.\".",
     "useEnvValue": "Usar el valor de .env",
     "usersPerPage": "Usuarios por página",
@@ -488,7 +488,7 @@
     "placeholdersNote": "Los marcadores de posición se reemplazan con valores reales al procesar una grabación.",
     "processAllRecordings": "Procesar Todas las Grabaciones",
     "processNext10": "Procesar Próximas 10",
-    "processedForInquire": "Procesado para Consulta",
+    "processedForInquire": "Listas para la búsqueda en la biblioteca",
     "processing": "Procesando...",
     "processingActions": "Acciones de Procesamiento",
     "processingProgress": "Progreso de Procesamiento",
@@ -743,7 +743,7 @@
     "embeddingProvider": "Proveedor",
     "embeddingProviderLocal": "Local (sentence-transformers)",
     "embeddingConfigChanged": "La configuración de embeddings ha cambiado",
-    "embeddingConfigChangedDesc": "{{count}} fragmentos almacenados se generaron con {{stored}}, pero la configuración activa es {{active}}. El modo Inquire devolverá resultados incorrectos hasta que vuelva a generar los embeddings de todas las grabaciones.",
+    "embeddingConfigChangedDesc": "{{count}} fragmentos almacenados se incrustaron con {{stored}}, pero la configuración activa es {{active}}. Los resultados de la búsqueda en la biblioteca serán incorrectos hasta que vuelva a incrustar todas las grabaciones.",
     "reembedding": "Regenerando embeddings...",
     "reembedAllNow": "Regenerar ahora los embeddings de todas las grabaciones",
     "reembedAll": "Regenerar los embeddings de todas las grabaciones",
@@ -952,9 +952,8 @@
     "title": "Cambiar Contraseña"
   },
   "chat": {
-    "availableAfterTranscription": "El chat estará disponible una vez que se complete la transcripción",
-    "cannotChatTranscriptionFailed": "No se puede chatear: la transcripción falló. Por favor, reprocese la transcripción primero.",
-    "chatWithTranscription": "Chatear con la Transcripción",
+    "availableAfterTranscription": "{{name}} puede responder preguntas cuando la transcripción esté completa",
+    "cannotChatTranscriptionFailed": "Esta grabación no se pudo transcribir. Vuelva a procesarla y luego pregunte a {{name}}.",
     "clearChat": "Limpiar Chat",
     "cleared": "Chat borrado",
     "downloadFailed": "Error al descargar el chat",
@@ -962,13 +961,11 @@
     "error": "Error al enviar el mensaje",
     "noMessages": "No hay mensajes aún",
     "noMessagesToDownload": "No hay mensajes para descargar.",
-    "placeholder": "Haz una pregunta sobre esta grabación...",
-    "placeholderWithHint": "Haz una pregunta sobre esta grabación... (Enter para enviar, Ctrl+Enter para nueva línea)",
+    "placeholder": "Preguntar a {{name}}",
     "responseTruncated": "La respuesta se detuvo antes de tiempo porque se alcanzó el límite de tokens de salida. Pida al modelo que continúe o aumente CHAT_MAX_TOKENS.",
     "send": "Enviar",
     "suggestedQuestions": "Preguntas Sugeridas",
     "thinking": "Pensando...",
-    "title": "Chat",
     "whatAreActionItems": "¿Cuáles son los elementos de acción?",
     "whatAreKeyPoints": "¿Cuáles son los puntos clave?",
     "whatWasDiscussed": "¿Qué se discutió?",
@@ -976,8 +973,7 @@
     "playFromHere": "Reproducir desde aquí",
     "responseFailed": "Error al obtener la respuesta del chat",
     "connectionEnded": "La conexión terminó antes de completar la respuesta: {{error}}",
-    "errorWithMessage": "Error: {{error}}",
-    "emptyHint": "Escriba una pregunta abajo. Se admite Markdown."
+    "errorWithMessage": "Error: {{error}}"
   },
   "uiTheme": {
     "title": "Tema de la interfaz",
@@ -1760,7 +1756,6 @@
     "applySuggested": "Aplicar sugeridos",
     "applySuggestedMobile": "Sugerir",
     "approachingLimit": "Acercándose al límite de {{limit}}MB",
-    "askAboutTranscription": "Haz preguntas sobre esta transcripción",
     "audioDeletedDescription": "El archivo de audio de esta grabación ha sido eliminado, pero la transcripción sigue disponible.",
     "audioDeletedMessage": "El archivo de audio se eliminó. La transcripción, el resumen y las notas siguen disponibles.",
     "audioDeletedTitle": "Archivo de audio eliminado",
@@ -1919,7 +1914,7 @@
   },
   "inquire": {
     "activeFilters": "Filtros Activos:",
-    "askQuestions": "Pregunte sobre sus grabaciones",
+    "askQuestions": "Pregunte a {{name}} sobre sus grabaciones",
     "clearAll": "Limpiar Todo",
     "clearConversation": "Borrar conversación",
     "conversation": "Conversación",
@@ -1935,9 +1930,8 @@
     "filtersActive": "Filtros activos",
     "from": "Desde",
     "noSpeakerData": "No hay datos de oradores disponibles",
-    "placeholder": "Haga una pregunta…",
+    "placeholder": "Preguntar a {{name}}",
     "selectFilters": "Para buscar solo en algunas grabaciones, use los filtros de la izquierda.",
-    "sendHint": "Presione Enter para enviar • Ctrl+Enter para nueva línea",
     "sources": "Fuentes",
     "speakerRequirement": "La identificación de oradores requiere grabaciones con múltiples oradores",
     "speakers": "Oradores",
@@ -1946,19 +1940,20 @@
     "folders": "Carpetas",
     "tagsCount": "etiquetas",
     "foldersCount": "carpetas",
-    "title": "Consultar",
+    "title": "Preguntar a {{name}}",
     "to": "Hasta",
     "chatFailed": "El chat ha fallado. Inténtelo de nuevo.",
     "earlierSummarized": "Conversación anterior resumida",
     "workingOnIt": "Trabajando en ello...",
     "analyzing": "Analizando transcripciones...",
-    "stop": "Detener"
+    "stop": "Detener",
+    "contextMeter": "Contexto de la conversación: {{percent}}. Los mensajes anteriores se resumen cuando el contexto está lleno."
   },
   "inquirePrivacy": {
-    "title": "Privacidad de Inquire",
-    "description": "Elija qué puede leer la IA de Inquire al responder sus preguntas. Las transcripciones siempre están disponibles; todo lo demás depende de usted.",
+    "title": "Qué puede leer {{name}}",
+    "description": "Elija qué puede leer {{name}} al responder preguntas sobre su biblioteca. Las transcripciones siempre están disponibles; todo lo demás depende de usted.",
     "summariesLabel": "Permitir acceso a los resúmenes",
-    "summariesHelp": "Permite a Inquire leer los resúmenes de IA de sus grabaciones para revisar rápidamente grabaciones largas.",
+    "summariesHelp": "{{name}} podrá leer los resúmenes de sus grabaciones para revisar rápidamente las grabaciones largas.",
     "notesLabel": "Permitir acceso a sus notas",
     "notesHelp": "Sus notas privadas permanecen inaccesibles a menos que active esta opción. Solo se usan sus propias notas, nunca las notas de grabaciones compartidas con usted."
   },
@@ -2269,7 +2264,10 @@
     "showTimestampsSimpleViewHelp": "Muestra una marca de tiempo compacta mm:ss junto a cada etiqueta de hablante en la vista simple. La vista de burbujas no se ve afectada.",
     "transcriptDisplay": "Visualización de la transcripción",
     "transcriptEditor": "Editor de transcripción",
-    "translation": "Traducción"
+    "translation": "Traducción",
+    "assistantSection": "Asistente",
+    "assistantName": "Nombre del asistente",
+    "assistantNameHelp": "El nombre que ve en el chat de la grabación y en la página de la biblioteca. Déjelo vacío para usar Ambrose."
   },
   "preview": {
     "placeholderLegend": "Leyenda de marcadores:",
@@ -3167,7 +3165,7 @@
       "emailVerificationDisabled": "La verificación de correo electrónico no está habilitada.",
       "exportTemplateSeparators": "La plantilla de nombre de archivo no puede contener separadores de ruta (/ o \\).",
       "groupAccessDenied": "No tiene permiso para acceder a la gestión de grupos.",
-      "inquireDisabled": "El modo Inquire no está habilitado en este servidor.",
+      "inquireDisabled": "La búsqueda en la biblioteca no está habilitada en este servidor.",
       "loginFailed": "No se pudo iniciar sesión. Compruebe el correo electrónico y la contraseña.",
       "loginRequired": "Inicie sesión para acceder a esta página.",
       "newPasswordMismatch": "La nueva contraseña y la confirmación no coinciden.",
@@ -3323,9 +3321,9 @@
       "group_tags_require_internal_sharing": "Las etiquetas de grupo requieren que el uso compartido interno esté habilitado. Establezca ENABLE_INTERNAL_SHARING=true en su configuración.",
       "groups_require_internal_sharing": "Los grupos requieren que el uso compartido interno esté habilitado. Establezca ENABLE_INTERNAL_SHARING=true en su configuración.",
       "incognito_disabled": "El modo incógnito no está habilitado en este servidor",
-      "inquire_agent_off": "El agente de Inquire está desactivado en este servidor",
-      "inquire_disabled": "El modo Inquire no está habilitado",
-      "inquire_off": "Inquire está desactivado en este servidor",
+      "inquire_agent_off": "El modo agente de la búsqueda en la biblioteca está desactivado en este servidor",
+      "inquire_disabled": "La búsqueda en la biblioteca no está habilitada",
+      "inquire_off": "La búsqueda en la biblioteca está desactivada en este servidor",
       "internal_sharing_disabled": "El uso compartido interno no está habilitado",
       "invalid_boolean_flag": "{{key}} debe ser true o false",
       "invalid_boolean_value": "El valor debe ser un booleano válido (true/false, 1/0, yes/no)",
@@ -3590,7 +3588,8 @@
       "translation_no_transcription": "No hay ninguna transcripción disponible para traducir.",
       "translation_blocked_transcription_failed": "No se puede traducir: la transcripción ha fallado. Vuelva a procesar la transcripción primero.",
       "translation_llm_not_configured": "El servicio de traducción no está disponible (cliente LLM no configurado)",
-      "translation_invalid_language": "Idioma de destino desconocido."
+      "translation_invalid_language": "Idioma de destino desconocido.",
+      "invalid_assistant_name": "El nombre del asistente puede tener hasta 40 letras, dígitos, espacios, puntos, guiones o apóstrofos, y empieza por una letra o un dígito"
     },
     "apiMessage": {
       "accountUpdated": "¡Datos de la cuenta actualizados correctamente!",
@@ -3602,7 +3601,7 @@
       "embeddingsProcessedCount": "Se procesaron {{processed}} de {{total}} grabaciones.",
       "embeddingsReembeddedCount": "Se volvieron a generar los embeddings de {{processed}} de {{total}} grabaciones.",
       "existingShareLinkUsed": "Se usa el enlace compartido existente para esta grabación",
-      "inquireAllProcessed": "Todas las grabaciones ya están procesadas para el modo Inquire",
+      "inquireAllProcessed": "Todas las grabaciones ya están preparadas para la búsqueda en la biblioteca",
       "inquireProcessedRemaining": "{{processed}} grabaciones procesadas. Quedan {{remaining}}.",
       "jobDeleted": "Tarea eliminada",
       "jobQueuedForRetry": "Tarea puesta en cola para reintentar",
@@ -3802,5 +3801,12 @@
         "7": "Los botones siguen visibles en pantallas pequeñas y en paneles estrechos."
       }
     }
+  },
+  "assistant": {
+    "ask": "Preguntar a {{name}}",
+    "scopeRecording": "Esta grabación",
+    "scopeLibrary": "Todas las grabaciones",
+    "recordingIntro": "{{name}} puede responder preguntas sobre esta grabación y señalarle el momento en que se dijo algo.",
+    "sendHint": "Enviar (Enter). Para una línea nueva, pulse Ctrl+Enter."
   }
 }

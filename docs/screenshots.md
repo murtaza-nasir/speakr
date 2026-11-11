@@ -134,29 +134,29 @@ A tour of Speakr, section by section. Click any image to view it full size.
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-chat-notes.png" alt="Chat and notes" />
-    <p class="caption">Floating chat and notes over the transcript</p>
+    <img src="../assets/images/screenshots/main-view-chat-notes.png" alt="The assistant panel of a recording, next to its notes" />
+    <p class="caption">Ambrose, the assistant panel of a recording, and notes over the transcript</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/chat-docked.png" alt="Docked chat" />
-    <p class="caption">The chat panel docked into the layout</p>
+    <img src="../assets/images/screenshots/chat-docked.png" alt="The assistant panel of a recording, docked" />
+    <p class="caption">The assistant panel docked into the layout</p>
   </div>
 </div>
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/inquire-semantic-search.png" alt="Inquire Mode semantic search" />
-  <p class="caption">Inquire Mode: ask questions across all your recordings, filtered by tag, speaker, or date</p>
+  <img src="../assets/images/screenshots/inquire-semantic-search.png" alt="The Ask Ambrose page with filters and an answer" />
+  <p class="caption">Ask Ambrose (formerly Inquire): ask questions across all your recordings, filtered by tag, speaker, or date</p>
 </div>
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/inquire-agent-activity.png" alt="Agentic Inquire activity" />
-  <p class="caption">Agentic Inquire (beta): every research step is recorded and expandable, with timestamped citations and sources</p>
+  <img src="../assets/images/screenshots/inquire-agent-activity.png" alt="Ask Ambrose page, steps of an answer in agent mode" />
+  <p class="caption">Agent mode (beta): every step of an answer is recorded and expandable, with timestamped citations and sources</p>
 </div>
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/inquire-privacy-settings.png" alt="Inquire privacy settings" />
-  <p class="caption">Per-user Inquire privacy: choose whether the AI may read your summaries and notes</p>
+  <img src="../assets/images/screenshots/inquire-privacy-settings.png" alt="Account settings, What Ambrose can read" />
+  <p class="caption">What Ambrose can read: choose whether Ambrose may read your summaries and notes</p>
 </div>
 
 ## Organization

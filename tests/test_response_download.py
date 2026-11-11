@@ -108,7 +108,7 @@ def test_inquire_response_holds_the_question_and_answer_with_sources(owner):
     user_id, _ = owner
     resp = _inquire(user_id, _body([_QUESTION, _ANSWER], 'response', filters={'tags': ['Planning']}))
     assert _paragraphs(resp) == [
-        'Inquire',
+        'Ask Ambrose',
         'Export Date: 2026-03-04 15:06',
         'Tags: Planning',
         'You:', 'What is on the roadmap?',

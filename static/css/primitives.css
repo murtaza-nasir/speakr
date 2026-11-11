@@ -2206,3 +2206,52 @@ select option:hover {
     .modal-footer--between { flex-wrap: wrap; }
     .modal-footer--between > div { margin-inline-start: auto; }
 }
+
+/* The assistant's monogram (templates/includes/assistant_avatar.html) and
+   the scope chip of its chats ("This recording", "All recordings"). */
+.assistant-avatar {
+    --assistant-avatar-size: 28px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--assistant-avatar-size);
+    height: var(--assistant-avatar-size);
+    border-radius: 999px;
+    background: var(--bg-button);
+    color: var(--text-button);
+    font-size: calc(var(--assistant-avatar-size) * 0.5);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
+    user-select: none;
+}
+.assistant-avatar--sm { --assistant-avatar-size: 18px; }
+.assistant-avatar--md { --assistant-avatar-size: 28px; }
+.assistant-avatar--lg { --assistant-avatar-size: 56px; }
+
+.assistant-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 16rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+.assistant-scope > i { font-size: 0.85em; opacity: 0.85; }
+.assistant-scope > span { overflow: hidden; text-overflow: ellipsis; }
+/* In the chat button the letter takes the button's own colours. */
+.assistant-avatar--fab {
+    width: auto;
+    height: auto;
+    background: transparent;
+    color: inherit;
+    font-size: 19px;
+}
