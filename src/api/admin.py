@@ -71,6 +71,8 @@ def admin():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('admin.html',
                          title='Admin Dashboard',
+                         admin_title=translate('nav.adminDashboard', user_language),
+                         groups_title=translate('nav.groupManagement', user_language),
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          is_group_admin_only=False,
@@ -98,6 +100,7 @@ def group_management():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('group-admin.html',
                          title='Group Management',
+                         groups_title=translate('nav.groupManagement', user_language),
                          global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          user_language=user_language)
 

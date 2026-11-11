@@ -266,8 +266,8 @@ def test_login_succeeds_when_email_verified(cleanup_users):
             assert s.get('_user_id') == str(user.id)
 
 
-LOGIN_FAILED = "Login unsuccessful. Please check email and password."
-PASSWORD_LOGIN_DISABLED = "Password login is disabled. Please sign in with SSO."
+LOGIN_FAILED = "Wrong email or password."
+PASSWORD_LOGIN_DISABLED = "Sign in with SSO. Password sign-in is turned off."
 
 
 def _post_login(email, password):
@@ -525,7 +525,7 @@ def test_account_page_shows_auto_translation_only_when_admin_allows(cleanup_user
         with _client_logged_in_as(user) as client:
             hidden = client.get('/account').get_data(as_text=True)
     assert 'name="auto_translation"' not in hidden
-    assert 'Auto-translation is disabled by the administrator.' in hidden
+    assert 'Turned off by your administrator.' in hidden
 
     with _auto_translation_admin(allow=True):
         with _client_logged_in_as(user) as client:
@@ -758,7 +758,7 @@ def test_login_register_link_matches_register_route(value, enabled):
         client = app.test_client()
         page = client.get('/login')
         assert page.status_code == 200
-        link_shown = b'Register here' in page.data
+        link_shown = b'Create an account' in page.data
         assert link_shown is enabled
         assert (b'href="/register"' in page.data) is enabled
         # The link is shown exactly when the route it points to accepts.

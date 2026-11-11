@@ -95,13 +95,13 @@ does not want to wait on.
 **Soft Verification** (`ENABLE_EMAIL_VERIFICATION=true`, `REQUIRE_EMAIL_VERIFICATION=false`):
 
 - New users receive a verification email after registration
-- Users can log in immediately without verifying
+- Users can sign in immediately without verifying
 - Useful for encouraging email verification without blocking access
 
 **Strict Verification** (`ENABLE_EMAIL_VERIFICATION=true`, `REQUIRE_EMAIL_VERIFICATION=true`):
 
 - New users receive a verification email after registration
-- Users cannot log in until they verify their email
+- Users cannot sign in until they verify their email
 - Best for environments requiring confirmed email addresses
 
 ### Combining with Other Registration Settings
@@ -195,16 +195,16 @@ SMTP_PASSWORD=your-password
 4. User sees "Check your email" page with option to resend
 5. User clicks verification link in email
 6. Account is marked as verified
-7. User can now log in (if `REQUIRE_EMAIL_VERIFICATION=true`)
+7. User can now sign in (if `REQUIRE_EMAIL_VERIFICATION=true`)
 
 ### Password Reset Flow
 
-1. User clicks "Forgot password?" on login page
+1. User clicks "Forgot password?" on the sign-in page
 2. User enters their email address
 3. If account exists, reset email is sent (no indication if account doesn't exist for security)
 4. User clicks reset link in email
 5. User sets new password
-6. User is redirected to login
+6. User is redirected to the sign-in page
 
 ### Token Expiry
 

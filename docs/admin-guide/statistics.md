@@ -23,7 +23,7 @@ The line under each figure gives the change against the previous period.
 
 ## Health
 
-The Health card lists every recording state now, across all time: completed, transcribing, summarizing, pending, failed, audio removed and archived. The job queue line shows jobs waiting and running, and the jobs that failed in the last seven days. The latest failed recordings follow, with their owner, date and error message.
+The Health card lists every recording state now, across all time: completed, transcribing, summarizing, pending, failed, audio deleted and archived. The job queue line shows jobs waiting and running, and the jobs that failed in the last seven days. The latest failed recordings follow, with their owner, date and error message.
 
 A queue that keeps growing points to a stopped or overloaded background worker. A run of failures with the same error usually means an expired API key, an unreachable transcription service or a wrong model name.
 

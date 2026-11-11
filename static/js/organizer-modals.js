@@ -295,20 +295,20 @@
         document.getElementById('tagId').value = '';
         if (opts.name) document.getElementById('tagName').value = opts.name;
         const title = document.getElementById('tagModalTitle');
-        if (title) title.textContent = tr('editTagModal.createTitle', 'Create Tag');
+        if (title) title.textContent = tr('editTagModal.createTitle', 'Create tag');
         const save = document.getElementById('saveTagBtn');
         if (save) {
             save.textContent = '';
             const icon = document.createElement('i');
             icon.className = 'fas fa-plus mr-2';
             save.appendChild(icon);
-            save.appendChild(document.createTextNode(' ' + tr('editTagModal.createTitle', 'Create Tag')));
+            save.appendChild(document.createTextNode(' ' + tr('editTagModal.createTitle', 'Create tag')));
         }
         populateGroupSelect('tagGroupId', 'tagGroupSelectionSection', 'tagTabSharingBtn');
         document.getElementById('tagGroupSettingsSection')?.classList.add('hidden');
         switchOrganizerModalTab('tagModalTabs', 'tag-modal-tab', 'tag-modal-tab-content', 'tagTabTranscription');
-        loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tr('editTagModal.noNamingTemplate', 'No template (use user default or AI title)'), { selected: '' });
-        loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tr('editTagModal.noExportTemplate', 'No template (use user default)'), { selected: '', markDefault: true });
+        loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tr('editTagModal.noNamingTemplate', 'No template (your default, or a generated title)'), { selected: '' });
+        loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tr('editTagModal.noExportTemplate', 'No template (your default)'), { selected: '', markDefault: true });
 
         bindSubmit(form, async (e) => {
             e.preventDefault();
@@ -326,7 +326,7 @@
                 hideModal('tagModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert(tr('editTagModal.createFailed', 'Could not create tag: ' + error.message, { error: error.message }));
+                alert(tr('editTagModal.createFailed', 'Couldn\'t create tag: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');
@@ -343,7 +343,7 @@
         document.getElementById('folderId').value = '';
         if (opts.name) document.getElementById('folderName').value = opts.name;
         const title = document.getElementById('folderModalTitle');
-        if (title) title.textContent = tr('folderManagement.createFolderTitle', 'Create Folder');
+        if (title) title.textContent = tr('folderManagement.createFolderTitle', 'Create folder');
         const save = document.getElementById('saveFolderBtn');
         if (save) {
             save.textContent = '';
@@ -351,15 +351,15 @@
             icon.className = 'fas fa-plus mr-2';
             save.appendChild(icon);
             const label = document.createElement('span');
-            label.textContent = tr('folderManagement.createFolderTitle', 'Create Folder');
+            label.textContent = tr('folderManagement.createFolderTitle', 'Create folder');
             save.appendChild(document.createTextNode(' '));
             save.appendChild(label);
         }
         populateGroupSelect('folderGroupId', 'folderGroupSelectionSection', 'folderTabSharingBtn');
         document.getElementById('folderGroupSettingsSection')?.classList.add('hidden');
         switchOrganizerModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
-        loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tr('folderManagement.namingTemplateNone', 'No template (use user default or AI title)'), { selected: '' });
-        loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tr('folderManagement.exportTemplateNone', 'No template (use user default)'), { selected: '', markDefault: true });
+        loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tr('folderManagement.namingTemplateNone', 'No template (your default, or a generated title)'), { selected: '' });
+        loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tr('folderManagement.exportTemplateNone', 'No template (your default)'), { selected: '', markDefault: true });
 
         bindSubmit(form, async (e) => {
             e.preventDefault();
@@ -379,7 +379,7 @@
                 hideModal('folderModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert(tr('folderManagement.createFailed', 'Could not create folder: ' + error.message, { error: error.message }));
+                alert(tr('folderManagement.createFailed', 'Couldn\'t create folder: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');

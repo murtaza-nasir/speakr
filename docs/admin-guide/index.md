@@ -91,7 +91,7 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
     <span class="action-icon">🤝</span>
     <div>
       <strong>Create a Group</strong>
-      <p>Group Management → Create Group → Add members → Configure group tags</p>
+      <p>Groups → Create group → Add members → Configure group tags</p>
     </div>
   </div>
 

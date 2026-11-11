@@ -183,7 +183,7 @@ export function useUI(state, utils, processedTranscription) {
         if (hasUnsaved) {
             const tFn = utils.t || ((key) => key);
             const message = tFn('confirms.discardUnsavedRecording')
-                || 'You have an unsaved recording. Are you sure you want to leave?';
+                || 'Leave and discard the unsaved recording?';
             if (!window.confirm(message)) {
                 return;
             }
@@ -883,7 +883,7 @@ export function useUI(state, utils, processedTranscription) {
 
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+                showToast(error.error || t('events.deleteFailed') || 'Couldn\'t delete event', 'fa-exclamation-circle');
                 return;
             }
 
@@ -895,7 +895,7 @@ export function useUI(state, utils, processedTranscription) {
             showToast(t('events.deleted') || 'Event deleted', 'fa-check-circle');
         } catch (error) {
             console.error('Delete event failed:', error);
-            showToast(t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+            showToast(t('events.deleteFailed') || 'Couldn\'t delete event', 'fa-exclamation-circle');
         }
     };
 

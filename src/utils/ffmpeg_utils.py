@@ -28,7 +28,7 @@ except (TypeError, ValueError):
 # What a client is told when FFmpeg cannot decode its upload (#482). The
 # exception text stays in the log: FFmpeg's output names its build and the
 # path of the file.
-AUDIO_DECODE_FAILED_MESSAGE = ('The uploaded file could not be read as audio. '
+AUDIO_DECODE_FAILED_MESSAGE = ('The uploaded file couldn\'t be read as audio. '
                                'It may be corrupt or in an unsupported format.')
 
 

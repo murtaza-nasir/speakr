@@ -61,7 +61,7 @@ const parseTranscriptionError = (text) => {
             const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
             return {
                 title: data.t || _t('errors.fallbackTitle', 'Error'),
-                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'An error occurred'),
+                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'Something went wrong.'),
                 guidance: data.g || '',
                 icon: data.i || 'fa-exclamation-circle',
                 type: data.y || 'unknown',
@@ -100,15 +100,15 @@ const parseUnformattedError = (text) => {
     const patterns = [
         {
             patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
-            title: _t('errors.fileTooLargeTitle', 'File Too Large'),
-            message: _t('errors.fileTooLargeMessage', 'The audio file exceeds the maximum size allowed by the transcription service.'),
-            guidance: _t('errors.fileTooLargeGuidance', 'Try enabling audio chunking in your settings, or compress the audio file before uploading.'),
+            title: _t('errors.fileTooLargeTitle', 'File too large'),
+            message: _t('errors.fileTooLargeMessage', 'The file is over the transcription service\'s size limit.'),
+            guidance: _t('errors.fileTooLargeGuidance', 'Enable audio chunking in your admin settings, or compress the audio file before uploading. If chunking is already enabled the file may still exceed the per-chunk limit.'),
             icon: 'fa-file-audio',
             type: 'size_limit'
         },
         {
             patterns: ['timed out', 'timeout', 'deadline exceeded'],
-            title: _t('errors.processingTimeout', 'Processing Timeout'),
+            title: _t('errors.processingTimeout', 'Processing timeout'),
             message: _t('errors.processingTimeoutMessage', 'The transcription took too long to complete.'),
             guidance: _t('errors.processingTimeoutGuidance', 'This can happen with very long recordings. Try splitting the audio into smaller parts.'),
             icon: 'fa-clock',
@@ -116,39 +116,39 @@ const parseUnformattedError = (text) => {
         },
         {
             patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'],
-            title: _t('errors.authenticationError', 'Authentication Error'),
-            message: _t('errors.authenticationErrorMessage', 'The transcription service rejected the API credentials.'),
-            guidance: _t('errors.authenticationErrorGuidance', 'Please check that the API key is correct and has not expired.'),
+            title: _t('errors.authenticationError', 'Authentication error'),
+            message: _t('errors.authenticationErrorMessage', 'The transcription service\'s API key was rejected.'),
+            guidance: _t('errors.authenticationErrorGuidance', 'Check that the API key is correct and has not expired.'),
             icon: 'fa-key',
             type: 'auth'
         },
         {
             patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'],
-            title: _t('errors.rateLimitExceeded', 'Rate Limit Exceeded'),
+            title: _t('errors.rateLimitExceeded', 'Rate limit exceeded'),
             message: _t('errors.rateLimitExceededMessage', 'Too many requests were sent to the transcription service.'),
-            guidance: _t('errors.rateLimitExceededGuidance', 'Please wait a few minutes and try reprocessing.'),
+            guidance: _t('errors.rateLimitExceededGuidance', 'Wait a few minutes and try reprocessing.'),
             icon: 'fa-hourglass-half',
             type: 'rate_limit'
         },
         {
             patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'],
-            title: _t('errors.connectionError', 'Connection Error'),
-            message: _t('errors.connectionErrorMessage', 'Could not connect to the transcription service.'),
-            guidance: _t('errors.connectionErrorGuidance', 'Check your internet connection and ensure the service is available.'),
+            title: _t('errors.connectionError', 'Connection error'),
+            message: _t('errors.connectionErrorMessage', 'Couldn\'t connect to the transcription service.'),
+            guidance: _t('errors.connectionErrorGuidance', 'Check your connection and that the transcription service is running.'),
             icon: 'fa-wifi',
             type: 'connection'
         },
         {
             patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'],
-            title: _t('errors.serviceUnavailable', 'Service Unavailable'),
+            title: _t('errors.serviceUnavailable', 'Service unavailable'),
             message: _t('errors.serviceUnavailableMessage', 'The transcription service is temporarily unavailable.'),
-            guidance: _t('errors.serviceUnavailableGuidance', 'This is usually temporary. Please try again in a few minutes.'),
+            guidance: _t('errors.serviceUnavailableGuidance', 'Usually temporary. Try again in a few minutes.'),
             icon: 'fa-server',
             type: 'service_error'
         },
         {
             patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio', 'invalid data found when processing input'],
-            title: _t('errors.invalidAudioFormat', 'Invalid Audio Format'),
+            title: _t('errors.invalidAudioFormat', 'Invalid audio format'),
             message: _t('errors.invalidAudioFormatMessage', 'The audio file format is not supported or the file may be corrupted.'),
             guidance: _t('errors.invalidAudioFormatGuidance', 'Try converting the audio to MP3 or WAV format before uploading.'),
             icon: 'fa-file-audio',
@@ -156,8 +156,8 @@ const parseUnformattedError = (text) => {
         },
         {
             patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'],
-            title: _t('errors.audioExtractionFailed', 'Audio Extraction Failed'),
-            message: _t('errors.audioExtractionFailedMessage', 'Could not extract audio from the uploaded file.'),
+            title: _t('errors.audioExtractionFailed', 'Audio extraction failed'),
+            message: _t('errors.audioExtractionFailedMessage', 'Couldn\'t extract audio from the uploaded file.'),
             guidance: _t('errors.audioExtractionFailedGuidance', 'Try converting the file to a standard audio format (MP3, WAV) before uploading.'),
             icon: 'fa-file-video',
             type: 'extraction'
@@ -195,9 +195,9 @@ const parseUnformattedError = (text) => {
     }
 
     return {
-        title: _t('errors.processingError', 'Processing Error'),
+        title: _t('errors.processingError', 'Processing error'),
         message: cleanMessage,
-        guidance: _t('errors.processingErrorGuidance', 'If this error persists, try reprocessing the recording.'),
+        guidance: _t('errors.processingErrorGuidance', 'Try reprocessing the recording.'),
         icon: 'fa-exclamation-circle',
         type: 'unknown',
         isKnown: false,
@@ -1853,20 +1853,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const colorSchemes = {
                 light: [
-                    { id: 'blue', name: 'Ocean Blue', description: 'Classic blue theme with professional appeal', class: '' },
-                    { id: 'emerald', name: 'Forest Emerald', description: 'Fresh green theme for a natural feel', class: 'theme-light-emerald' },
-                    { id: 'purple', name: 'Royal Purple', description: 'Elegant purple theme with sophistication', class: 'theme-light-purple' },
-                    { id: 'rose', name: 'Sunset Rose', description: 'Warm pink theme with gentle energy', class: 'theme-light-rose' },
-                    { id: 'amber', name: 'Golden Amber', description: 'Warm yellow theme for brightness', class: 'theme-light-amber' },
-                    { id: 'teal', name: 'Ocean Teal', description: 'Cool teal theme for tranquility', class: 'theme-light-teal' }
+                    { id: 'blue', class: '' },
+                    { id: 'emerald', class: 'theme-light-emerald' },
+                    { id: 'purple', class: 'theme-light-purple' },
+                    { id: 'rose', class: 'theme-light-rose' },
+                    { id: 'amber', class: 'theme-light-amber' },
+                    { id: 'teal', class: 'theme-light-teal' }
                 ],
                 dark: [
-                    { id: 'blue', name: 'Midnight Blue', description: 'Deep blue theme for focused work', class: '' },
-                    { id: 'emerald', name: 'Dark Forest', description: 'Rich green theme for comfortable viewing', class: 'theme-dark-emerald' },
-                    { id: 'purple', name: 'Deep Purple', description: 'Mysterious purple theme for creativity', class: 'theme-dark-purple' },
-                    { id: 'rose', name: 'Dark Rose', description: 'Muted pink theme with subtle warmth', class: 'theme-dark-rose' },
-                    { id: 'amber', name: 'Dark Amber', description: 'Warm brown theme for cozy sessions', class: 'theme-dark-amber' },
-                    { id: 'teal', name: 'Deep Teal', description: 'Dark teal theme for calm focus', class: 'theme-dark-teal' }
+                    { id: 'blue', class: '' },
+                    { id: 'emerald', class: 'theme-dark-emerald' },
+                    { id: 'purple', class: 'theme-dark-purple' },
+                    { id: 'rose', class: 'theme-dark-rose' },
+                    { id: 'amber', class: 'theme-dark-amber' },
+                    { id: 'teal', class: 'theme-dark-teal' }
                 ]
             };
 
@@ -4102,7 +4102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const shareOk = params.get('share_target');
                     const shareErr = params.get('share_target_error');
                     if (shareOk === 'ok') {
-                        showToast(t('toasts.shareTargetReceived') || 'Shared audio received and queued for transcription', 'fa-share');
+                        showToast(t('toasts.shareTargetReceived') || 'Shared audio received. Transcription is queued.', 'fa-share');
                     } else if (shareErr) {
                         const errMsgKey = `errors.shareTarget_${shareErr}`;
                         const errMsg = (t(errMsgKey) !== errMsgKey ? t(errMsgKey) : null)
@@ -4535,7 +4535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const ServerSessions = await import('./modules/db/server-recording-sessions.js');
                     await ServerSessions.finalizeSession(rec.sessionId, {});
                     try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
-                    showToast(safeT('messages.recordingRecovered') || safeT('toasts.recordingFinalized') || 'Recording uploaded for processing', 'success');
+                    showToast(safeT('messages.recordingRecovered') || safeT('toasts.recordingFinalized') || 'Recording uploaded', 'success');
                     // Surface it live in the sidebar + processing-queue panel.
                     try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
                 } catch (e) {

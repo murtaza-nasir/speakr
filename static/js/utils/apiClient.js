@@ -66,7 +66,7 @@ export async function apiRequest(url, options = {}) {
 
         if (!response.ok) {
             throw new APIError(
-                data.error || tr('errors.requestFailed', 'Request failed', { status: response.status }),
+                data.error || tr('errors.requestFailed', 'The request failed. Try again.', { status: response.status }),
                 response.status,
                 data
             );
@@ -104,7 +104,7 @@ export async function uploadFile(url, file, onProgress = null) {
                     const data = JSON.parse(xhr.responseText);
                     resolve(data);
                 } catch (e) {
-                    reject(new Error(tr('errors.responseUnreadable', 'Invalid response format')));
+                    reject(new Error(tr('errors.responseUnreadable', 'Couldn\'t read the response. Try again.')));
                 }
             } else {
                 try {

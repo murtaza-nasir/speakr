@@ -1508,7 +1508,7 @@ def test_download_transcript_empty_transcription_400(owner):
     login(c, owner)
     resp = c.get(f"/recording/{rid}/download/transcript")
     assert resp.status_code == 400
-    assert "transcription" in resp.get_json()["error"].lower()
+    assert "transcript" in resp.get_json()["error"].lower()
 
 
 def test_download_transcript_present_returns_file_not_400(owner):
