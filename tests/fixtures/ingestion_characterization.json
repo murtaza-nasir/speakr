@@ -3602,11 +3602,13 @@
       "name": "projects",
       "naming_template_id": null,
       "naming_template_name": null,
+      "parent_id": null,
       "protect_from_deletion": false,
       "recording_count": 1,
       "retention_days": null,
       "share_with_group_lead": true,
-      "title_prompt": null
+      "title_prompt": null,
+      "total_recording_count": 1
      },
      "folder_id": "F:projects",
      "id": "R1",
@@ -4119,11 +4121,13 @@
       "name": "projects",
       "naming_template_id": null,
       "naming_template_name": null,
+      "parent_id": null,
       "protect_from_deletion": false,
       "recording_count": 1,
       "retention_days": null,
       "share_with_group_lead": true,
-      "title_prompt": null
+      "title_prompt": null,
+      "total_recording_count": 1
      },
      "folder_id": "F:projects",
      "id": "R1",
@@ -4546,11 +4550,13 @@
       "name": "calls",
       "naming_template_id": null,
       "naming_template_name": null,
+      "parent_id": null,
       "protect_from_deletion": false,
       "recording_count": 1,
       "retention_days": null,
       "share_with_group_lead": true,
-      "title_prompt": null
+      "title_prompt": null,
+      "total_recording_count": 1
      },
      "folder_id": "F:calls",
      "id": "R1",
