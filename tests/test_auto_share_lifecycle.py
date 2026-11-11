@@ -101,5 +101,108 @@ def test_sync_shares_after_revoked_share_reuses_state(team):
     finally:
         RecordingTag.query.filter_by(tag_id=tag.id).delete()
         InternalShare.query.filter_by(recording_id=r.id).delete()
-        db.session.delete(db.session.get(Tag, tag.id))
+        Tag.query.filter_by(id=tag.id).delete()
+        db.session.commit()
+
+
+# --- #570 ------------------------------------------------------------------
+
+def _into_folder(t, r, f):
+    assert _client(t["owner"]).put(f"/api/recordings/{r.id}/folder", json={"folder_id": f.id}).status_code == 200
+
+
+def test_removed_member_loses_folder_share(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    assert _can_read(t["member"], r.id)
+    resp = _client(t["owner"]).delete(f"/api/admin/groups/{t['group'].id}/members/{t['member'].id}")
+    assert resp.status_code == 200
+    assert t["member"].id not in _shares(r.id)
+    assert not _can_read(t["member"], r.id)
+    # The state row stays (personal notes), and the other admin keeps access
+    assert len(_state(r.id, t["member"].id)) == 1
+    assert t["other_admin"].id in _shares(r.id)
+    assert _can_read(t["owner"], r.id)
+
+
+def test_removed_member_keeps_manual_share(team):
+    t = team
+    r = t["recording"]()
+    db.session.add(InternalShare(recording_id=r.id, owner_id=t["owner"].id, shared_with_user_id=t["member"].id,
+                                 can_edit=False, can_reshare=False, source_type="manual"))
+    db.session.commit()
+    resp = _client(t["owner"]).delete(f"/api/admin/groups/{t['group'].id}/members/{t['member'].id}")
+    assert resp.status_code == 200
+    assert _shares(r.id)[t["member"].id].source_type == "manual"
+    assert _can_read(t["member"], r.id)
+
+
+def test_removed_member_keeps_share_another_group_still_gives(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    other = Group(name=f"g2_{uuid.uuid4().hex[:8]}")
+    db.session.add(other)
+    db.session.commit()
+    db.session.add_all([GroupMembership(user_id=t["owner"].id, group_id=other.id, role="admin"),
+                        GroupMembership(user_id=t["member"].id, group_id=other.id, role="member")])
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=other.id)
+    db.session.add(tag)
+    db.session.commit()
+    try:
+        _into_folder(t, r, f)
+        assert _client(t["owner"]).post(f"/api/recordings/{r.id}/tags", json={"tag_id": tag.id}).status_code == 200
+        resp = _client(t["owner"]).delete(f"/api/admin/groups/{t['group'].id}/members/{t['member'].id}")
+        assert resp.status_code == 200
+        share = _shares(r.id)[t["member"].id]
+        assert (share.source_type, share.source_tag_id, share.source_folder_id) == ("group_tag", tag.id, None)
+        assert _can_read(t["member"], r.id)
+    finally:
+        RecordingTag.query.filter_by(tag_id=tag.id).delete()
+        InternalShare.query.filter_by(recording_id=r.id).delete()
+        Tag.query.filter_by(id=tag.id).delete()
+        GroupMembership.query.filter_by(group_id=other.id).delete()
+        Group.query.filter_by(id=other.id).delete()
+        db.session.commit()
+
+
+def test_demoted_admin_loses_edit_on_group_shares(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    assert _shares(r.id)[t["other_admin"].id].can_edit is True
+    resp = _client(t["owner"]).put(f"/api/admin/groups/{t['group'].id}/members/{t['other_admin'].id}",
+                                   json={"role": "member"})
+    assert resp.status_code == 200
+    assert _shares(r.id)[t["other_admin"].id].can_edit is False
+
+
+def test_deleted_group_ends_its_shares(team):
+    t = team
+    r = t["recording"]()
+    group = Group(name=f"g3_{uuid.uuid4().hex[:8]}")
+    db.session.add(group)
+    db.session.commit()
+    db.session.add_all([GroupMembership(user_id=t["owner"].id, group_id=group.id, role="admin"),
+                        GroupMembership(user_id=t["member"].id, group_id=group.id, role="member")])
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=group.id)
+    db.session.add(tag)
+    db.session.commit()
+    admin = User(username=f"adm_{uuid.uuid4().hex[:8]}", email=f"adm_{uuid.uuid4().hex[:8]}@local.test",
+                 password="x", is_admin=True)
+    db.session.add(admin)
+    db.session.commit()
+    try:
+        assert _client(t["owner"]).post(f"/api/recordings/{r.id}/tags", json={"tag_id": tag.id}).status_code == 200
+        assert t["member"].id in _shares(r.id)
+        assert _client(admin).delete(f"/api/admin/groups/{group.id}").status_code == 200
+        assert t["member"].id not in _shares(r.id)
+        assert not _can_read(t["member"], r.id)
+    finally:
+        RecordingTag.query.filter_by(recording_id=r.id).delete()
+        InternalShare.query.filter_by(recording_id=r.id).delete()
+        Tag.query.filter_by(id=tag.id).delete()
+        GroupMembership.query.filter_by(group_id=group.id).delete()
+        Group.query.filter_by(id=group.id).delete()
+        User.query.filter_by(id=admin.id).delete()
         db.session.commit()
