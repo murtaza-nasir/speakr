@@ -206,3 +206,86 @@ def test_deleted_group_ends_its_shares(team):
         Group.query.filter_by(id=group.id).delete()
         User.query.filter_by(id=admin.id).delete()
         db.session.commit()
+
+
+# --- #582 ------------------------------------------------------------------
+
+def _group_folder_shares(recording_id):
+    return [s for s in InternalShare.query.filter_by(recording_id=recording_id) if s.source_type == "group_folder"]
+
+
+def test_unlinking_group_folder_ends_its_shares(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    assert _can_read(t["member"], r.id)
+    resp = _client(t["owner"]).delete(f"/api/recordings/{r.id}/folder")
+    assert resp.status_code == 200
+    assert db.session.get(Recording, r.id).folder_id is None
+    assert _group_folder_shares(r.id) == []
+    assert not _can_read(t["member"], r.id)
+    assert _can_read(t["owner"], r.id)
+
+
+@pytest.mark.parametrize("how", ["put_empty", "bulk_none", "v1_patch_none", "v1_batch_none", "personal_folder"])
+def test_every_way_out_of_a_group_folder_ends_its_shares(team, how):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    owner = _client(t["owner"])
+    if how == "put_empty":
+        resp = owner.put(f"/api/recordings/{r.id}/folder", json={"folder_id": None})
+    elif how == "bulk_none":
+        resp = owner.post("/api/recordings/bulk/folder", json={"recording_ids": [r.id], "folder_id": None})
+    elif how == "v1_patch_none":
+        resp = owner.patch(f"/api/v1/recordings/{r.id}", json={"folder_id": None})
+    elif how == "v1_batch_none":
+        resp = owner.patch("/api/v1/recordings/batch", json={"recording_ids": [r.id], "updates": {"folder_id": None}})
+    else:
+        personal = t["folder"](group_id=None)
+        resp = owner.put(f"/api/recordings/{r.id}/folder", json={"folder_id": personal.id})
+    assert resp.status_code == 200
+    assert _group_folder_shares(r.id) == []
+
+
+def test_deleting_group_folder_ends_its_shares(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    resp = _client(t["owner"]).delete(f"/api/folders/{f.id}")
+    assert resp.status_code == 200
+    assert _group_folder_shares(r.id) == []
+    assert not _can_read(t["member"], r.id)
+
+
+def test_manual_share_survives_folder_unlink(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    db.session.add(InternalShare(recording_id=r.id, owner_id=t["owner"].id, shared_with_user_id=t["member"].id,
+                                 can_edit=False, can_reshare=False, source_type="manual"))
+    db.session.commit()
+    _into_folder(t, r, f)
+    assert _client(t["owner"]).delete(f"/api/recordings/{r.id}/folder").status_code == 200
+    assert _shares(r.id)[t["member"].id].source_type == "manual"
+    assert _can_read(t["member"], r.id)
+    assert t["other_admin"].id not in _shares(r.id)
+
+
+def test_folder_moved_to_another_group_ends_old_shares(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    other = Group(name=f"g4_{uuid.uuid4().hex[:8]}")
+    db.session.add(other)
+    db.session.commit()
+    db.session.add(GroupMembership(user_id=t["owner"].id, group_id=other.id, role="admin"))
+    db.session.commit()
+    try:
+        resp = _client(t["owner"]).put(f"/api/folders/{f.id}", json={"group_id": other.id})
+        assert resp.status_code == 200
+        assert _group_folder_shares(r.id) == []
+    finally:
+        Folder.query.filter_by(id=f.id).update({"group_id": None})
+        GroupMembership.query.filter_by(group_id=other.id).delete()
+        Group.query.filter_by(id=other.id).delete()
+        db.session.commit()

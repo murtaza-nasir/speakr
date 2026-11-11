@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
-from src.services.auto_shares import ensure_recipient_state
+from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
 
 # Create blueprint
 folders_bp = Blueprint('folders', __name__)
@@ -300,7 +300,10 @@ def update_folder(folder_id):
             if not membership or membership.role != 'admin':
                 return jsonify(api_error('folder_group_assign_admin_only')), 403
 
+        regrouped = new_group_id != folder.group_id
         folder.group_id = new_group_id
+    else:
+        regrouped = False
 
     if 'color' in data:
         color, error_key = _clean_folder_color(data['color'])
@@ -364,6 +367,9 @@ def update_folder(folder_id):
     name, group_id = folder.name, folder.group_id
 
     try:
+        if regrouped:
+            # Shares the folder's previous group received end with the move (#582)
+            drop_stale_auto_shares(recording_ids=[r.id for r in folder.recordings])
         db.session.commit()
     except IntegrityError:
         # A duplicate name is a refused request, not an application error (#511).
@@ -403,7 +409,12 @@ def delete_folder(folder_id):
             return jsonify(api_error('folder_delete_denied')), 403
 
     # Recordings in this folder will have folder_id set to NULL via ondelete='SET NULL'
+    recording_ids = [rid for (rid,) in db.session.query(Recording.id).filter(Recording.folder_id == folder.id)]
+    recording_ids += [rid for (rid,) in db.session.query(InternalShare.recording_id).filter(
+        InternalShare.source_folder_id == folder.id)]
     db.session.delete(folder)
+    # The folder no longer shares what it held (#582)
+    drop_stale_auto_shares(recording_ids=recording_ids)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -580,11 +591,14 @@ def assign_recording_folder(recording_id):
         if folder.group_id and (folder.auto_share_on_apply or folder.share_with_group_lead):
             _apply_folder_auto_shares(recording, folder)
 
+        # Leaving a group folder ends the shares it made (#582)
+        drop_stale_auto_shares(recording_ids=[recording.id])
         db.session.commit()
         current_app.logger.info(f"Recording {recording_id} moved to folder {folder_id} by user {current_user.id}")
     else:
         # Remove from folder
         recording.folder_id = None
+        drop_stale_auto_shares(recording_ids=[recording.id])
         db.session.commit()
         current_app.logger.info(f"Recording {recording_id} removed from folder by user {current_user.id}")
 
@@ -617,6 +631,8 @@ def remove_recording_folder(recording_id):
             return jsonify(api_error('recording_modify_denied')), 403
 
     recording.folder_id = None
+    # Leaving a group folder ends the shares it made (#582)
+    drop_stale_auto_shares(recording_ids=[recording.id])
     db.session.commit()
     current_app.logger.info(f"Recording {recording_id} removed from folder by user {current_user.id}")
 
@@ -689,6 +705,8 @@ def bulk_assign_folder():
 
         updated_count += 1
 
+    # Leaving a group folder ends the shares it made (#582)
+    drop_stale_auto_shares(recording_ids=[r.id for r in recordings])
     db.session.commit()
     action = f"moved to folder {folder_id}" if folder_id else "removed from folder"
     current_app.logger.info(f"Bulk folder update: {updated_count} recordings {action} by user {current_user.id}")

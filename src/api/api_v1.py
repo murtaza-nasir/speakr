@@ -1978,6 +1978,8 @@ def update_recording(recording_id):
         new_folder_id = data['folder_id']
         if new_folder_id is None:
             recording.folder_id = None
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=[recording.id])
         else:
             from src.models.organization import Folder
             target = db.session.get(Folder, new_folder_id)
@@ -1989,6 +1991,8 @@ def update_recording(recording_id):
                 return jsonify(api_error(error_key)), 403
             recording.folder_id = new_folder_id
             apply_group_folder_shares(recording, target)
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=[recording.id])
 
     db.session.commit()
 
@@ -3598,6 +3602,11 @@ def batch_update_recordings():
                         recording_id=recording_id,
                         tag_id=tag_id
                     ).delete()
+
+            if 'folder_id' in updates:
+                # Leaving a group folder ends the shares it made (#582)
+                from src.services.auto_shares import drop_stale_auto_shares
+                drop_stale_auto_shares(recording_ids=[recording_id])
 
             results.append({'id': recording_id, 'success': True})
         except Exception as e:
