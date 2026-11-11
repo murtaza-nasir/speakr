@@ -143,13 +143,13 @@ Contribute to shared notes when you add valuable context, but avoid duplicating 
 
 Use personal notes liberally for your individual tracking needs. Don't worry about perfect notes since only you see them. Personal notes are your space for rough thoughts, action items, questions, and observations that might not be polished enough for shared notes.
 
-## Integration with Inquire Mode
+## Groups on the Ask Ambrose page
 
-When your instance has Inquire Mode enabled, groups enhance semantic search capabilities. Group tags appear in Inquire Mode's filter options, letting you scope searches to specific group contexts. Search for "budget discussion" and filter to just your project group, finding relevant conversations without noise from other groups.
+When your instance has library search enabled, group tags appear in the filters of the [Ask Ambrose](inquire-mode.md) page (formerly Inquire), so you can limit a question to one group. Search for "budget discussion" and filter to just your project group, finding relevant conversations without noise from other groups.
 
-Recordings shared via group tags are automatically included in your Inquire Mode searches. This means semantic search spans both your personal recordings and group content, creating a comprehensive knowledge base. The AI understands context across all accessible recordings, providing better answers by drawing on collective group knowledge.
+Recordings shared through group tags are included when you ask Ambrose about your library. This means semantic search spans both your personal recordings and group content, creating a comprehensive knowledge base. The AI understands context across all accessible recordings, providing better answers by drawing on collective group knowledge.
 
-Your personal notes on group recordings remain private even in Inquire Mode. When semantic search uses a group recording to answer questions, it draws on the transcription and shared notes, but never exposes your personal annotations. This maintains the privacy boundary while enabling powerful group-wide search.
+Your personal notes on group recordings remain private on the Ask Ambrose page as well. When semantic search uses a group recording to answer questions, it draws on the transcription and shared notes, but never exposes your personal annotations. This maintains the privacy boundary while enabling powerful group-wide search.
 
 ---
 

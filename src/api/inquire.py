@@ -46,8 +46,11 @@ def init_inquire_helpers(**kwargs):
 # --- Routes ---
 
 @inquire_bp.route('/inquire')
+@inquire_bp.route('/ask')
 @login_required
 def inquire():
+    """The library page, "Ask Ambrose" (the assistant's name,
+    src/utils/assistant_name.py). /ask is an alias of /inquire."""
     # Check if inquire mode is enabled
     if not ENABLE_INQUIRE_MODE:
         flash(translate('server.flash.inquireDisabled'), 'warning')
@@ -63,7 +66,10 @@ def inquire():
     # The interface language, as on the other pages (it was missing here, so
     # Inquire always appeared in the browser language).
     user_language = current_user.ui_language or 'en'
+    from src.utils.assistant_name import assistant_name_of
+    page_title = translate('inquire.title', user_language, name=assistant_name_of(current_user))
     return render_template('inquire.html',
+                         page_title=page_title,
                          use_asr_endpoint=USE_ASR_ENDPOINT,
                          current_user=current_user,
                          is_team_admin=is_team_admin,
@@ -1026,7 +1032,8 @@ def download_inquire_conversation():
         if filter_line:
             metadata.append(filter_line)
         doc = new_document()
-        add_document_header(doc, 'Inquire', metadata)
+        from src.utils.assistant_name import assistant_name_of
+        add_document_header(doc, translate('inquire.title', name=assistant_name_of(current_user)), metadata)
 
         base_url = link_base_url()
         for role, content, sources in turns:

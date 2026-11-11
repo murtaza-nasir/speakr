@@ -379,7 +379,7 @@
     "userMenu": "用户菜单"
   },
   "adminDashboard": {
-    "aboutInquireMode": "关于查询模式",
+    "aboutInquireMode": "关于录音库搜索",
     "actions": "操作",
     "addNewUser": "添加新用户",
     "addUser": "添加用户",
@@ -446,7 +446,7 @@
     "groupName": "组名称",
     "groupsTab": "组",
     "id": "ID",
-    "inquireModeDescription": "查询模式允许用户使用自然语言问题搜索多个转录。它通过将转录分成块并使用 AI 模型创建可搜索的嵌入来工作。",
+    "inquireModeDescription": "使用录音库搜索，用户可以一次就其所有录音提问。每条录音在转录后会为此做好准备，下方数字显示已准备好的数量。",
     "languagePreferenceNote": "注意：如果用户设置了输出语言偏好，将添加\"确保您的回复使用 {language}\"。",
     "useEnvValue": "使用 .env 中的值",
     "usersPerPage": "每页用户数",
@@ -488,7 +488,7 @@
     "placeholdersNote": "处理录音时，占位符会被实际值替换。",
     "processAllRecordings": "处理所有录音",
     "processNext10": "处理接下来的 10 个",
-    "processedForInquire": "已为查询处理",
+    "processedForInquire": "已可用于录音库搜索",
     "processing": "处理中...",
     "processingActions": "处理操作",
     "processingProgress": "处理进度",
@@ -743,7 +743,7 @@
     "embeddingProvider": "提供方",
     "embeddingProviderLocal": "本地（sentence-transformers）",
     "embeddingConfigChanged": "嵌入配置已更改",
-    "embeddingConfigChangedDesc": "{{count}} 个已存储的分块使用 {{stored}} 嵌入，但当前配置为 {{active}}。在重新嵌入所有录音之前，查询模式将返回错误结果。",
+    "embeddingConfigChangedDesc": "{{count}} 个已存储的块是使用 {{stored}} 嵌入的，但当前配置为 {{active}}。在重新嵌入所有录音之前，录音库搜索的结果将不正确。",
     "reembedding": "正在重新嵌入...",
     "reembedAllNow": "立即重新嵌入所有录音",
     "reembedAll": "重新嵌入所有录音",
@@ -952,9 +952,8 @@
     "title": "更改密码"
   },
   "chat": {
-    "availableAfterTranscription": "转录完成后聊天功能将可用",
-    "cannotChatTranscriptionFailed": "无法开始聊天：转录失败。请先重新处理转录。",
-    "chatWithTranscription": "与转录内容对话",
+    "availableAfterTranscription": "转录完成后，{{name}} 即可回答问题",
+    "cannotChatTranscriptionFailed": "此录音无法转录。请重新处理后再询问 {{name}}。",
     "clearChat": "清除聊天",
     "cleared": "聊天已清空",
     "downloadFailed": "聊天下载失败",
@@ -962,13 +961,11 @@
     "error": "发送消息失败",
     "noMessages": "暂无消息",
     "noMessagesToDownload": "没有可下载的聊天消息。",
-    "placeholder": "询问有关此录音的问题...",
-    "placeholderWithHint": "询问有关此录音的问题...（按回车发送，Ctrl+回车换行）",
+    "placeholder": "询问 {{name}}",
     "responseTruncated": "回复因达到输出 token 上限而提前中止。可让模型继续回答，或增大 CHAT_MAX_TOKENS。",
     "send": "发送",
     "suggestedQuestions": "建议问题",
     "thinking": "思考中...",
-    "title": "聊天",
     "whatAreActionItems": "有哪些行动项？",
     "whatAreKeyPoints": "关键要点是什么？",
     "whatWasDiscussed": "讨论了什么？",
@@ -976,8 +973,7 @@
     "playFromHere": "从此处播放",
     "responseFailed": "获取聊天回复失败",
     "connectionEnded": "回复完成前连接已中断：{{error}}",
-    "errorWithMessage": "错误：{{error}}",
-    "emptyHint": "在下方输入问题。支持 Markdown。"
+    "errorWithMessage": "错误：{{error}}"
   },
   "uiTheme": {
     "title": "界面主题",
@@ -1760,7 +1756,6 @@
     "applySuggested": "应用建议",
     "applySuggestedMobile": "建议",
     "approachingLimit": "接近 {{limit}}MB 限制",
-    "askAboutTranscription": "询问有关此转录的问题",
     "audioDeletedDescription": "此录音的音频文件已被删除，但转录内容仍然可用。",
     "audioDeletedMessage": "音频文件已删除。转录文本、摘要和笔记仍可查看。",
     "audioDeletedTitle": "音频文件已删除",
@@ -1919,7 +1914,7 @@
   },
   "inquire": {
     "activeFilters": "活动筛选器：",
-    "askQuestions": "询问您的录音",
+    "askQuestions": "向 {{name}} 询问您的录音",
     "clearAll": "清除全部",
     "clearConversation": "清除对话",
     "conversation": "对话",
@@ -1935,9 +1930,8 @@
     "filtersActive": "筛选器已激活",
     "from": "开始日期",
     "noSpeakerData": "无发言人数据",
-    "placeholder": "输入问题…",
+    "placeholder": "询问 {{name}}",
     "selectFilters": "如只想搜索部分录音，请使用左侧的筛选器。",
-    "sendHint": "按Enter发送 • Ctrl+Enter换行",
     "sources": "来源",
     "speakerRequirement": "发言人识别需要包含多个发言人的录音",
     "speakers": "发言人",
@@ -1946,19 +1940,20 @@
     "folders": "文件夹",
     "tagsCount": "个标签",
     "foldersCount": "个文件夹",
-    "title": "查询",
+    "title": "询问 {{name}}",
     "to": "结束日期",
     "chatFailed": "聊天失败，请重试。",
     "earlierSummarized": "较早的对话已汇总",
     "workingOnIt": "正在处理...",
     "analyzing": "正在分析转录...",
-    "stop": "停止"
+    "stop": "停止",
+    "contextMeter": "对话上下文：{{percent}}。上下文已满时，较早的消息会被汇总。"
   },
   "inquirePrivacy": {
-    "title": "Inquire 隐私",
-    "description": "选择 Inquire AI 在回答问题时可以读取的内容。转录文本始终可用；其余内容由您决定。",
+    "title": "{{name}} 可以读取的内容",
+    "description": "选择 {{name}} 在回答有关您录音库的问题时可以读取的内容。转录文本始终可用；其余内容由您决定。",
     "summariesLabel": "允许访问摘要",
-    "summariesHelp": "允许 Inquire 读取录音的 AI 摘要,以便快速浏览较长的录音。",
+    "summariesHelp": "启用后，{{name}} 可以读取录音摘要，以便快速浏览较长的录音。",
     "notesLabel": "允许访问您的笔记",
     "notesHelp": "除非您启用此选项,否则您的私人笔记不可访问。仅会使用您自己的笔记,绝不会使用他人共享给您的录音中的笔记。"
   },
@@ -2269,7 +2264,10 @@
     "showTimestampsSimpleViewHelp": "在简单视图中，每个发言人标签旁显示紧凑的 mm:ss 时间戳。气泡视图不受影响。",
     "transcriptDisplay": "转录显示",
     "transcriptEditor": "转录编辑器",
-    "translation": "翻译"
+    "translation": "翻译",
+    "assistantSection": "助手",
+    "assistantName": "助手名称",
+    "assistantNameHelp": "在录音聊天和录音库页面中显示的名称。留空则使用 Ambrose。"
   },
   "preview": {
     "placeholderLegend": "占位符图例：",
@@ -3167,7 +3165,7 @@
       "emailVerificationDisabled": "未启用邮箱验证。",
       "exportTemplateSeparators": "文件名模板不能包含路径分隔符（/ 或 \\）。",
       "groupAccessDenied": "您没有访问群组管理的权限。",
-      "inquireDisabled": "此服务器未启用 Inquire 模式。",
+      "inquireDisabled": "此服务器未启用录音库搜索。",
       "loginFailed": "登录失败。请检查邮箱和密码。",
       "loginRequired": "请登录后访问此页面。",
       "newPasswordMismatch": "新密码与确认密码不一致。",
@@ -3323,9 +3321,9 @@
       "group_tags_require_internal_sharing": "群组标签需要启用内部分享。请在配置中设置 ENABLE_INTERNAL_SHARING=true。",
       "groups_require_internal_sharing": "群组功能需要启用内部分享。请在配置中设置 ENABLE_INTERNAL_SHARING=true。",
       "incognito_disabled": "此服务器未启用无痕模式",
-      "inquire_agent_off": "此服务器已关闭 Inquire 代理",
-      "inquire_disabled": "未启用 Inquire 模式",
-      "inquire_off": "此服务器已关闭 Inquire",
+      "inquire_agent_off": "此服务器已关闭录音库搜索的代理模式",
+      "inquire_disabled": "未启用录音库搜索",
+      "inquire_off": "此服务器已关闭录音库搜索",
       "internal_sharing_disabled": "未启用内部分享",
       "invalid_boolean_flag": "{{key}} 必须为 true 或 false",
       "invalid_boolean_value": "值必须是有效的布尔值（true/false、1/0、yes/no）",
@@ -3590,7 +3588,8 @@
       "translation_no_transcription": "没有可用于翻译的转录。",
       "translation_blocked_transcription_failed": "无法翻译：转录失败。请先重新处理转录。",
       "translation_llm_not_configured": "翻译服务不可用（未配置 LLM 客户端）",
-      "translation_invalid_language": "未知的目标语言。"
+      "translation_invalid_language": "未知的目标语言。",
+      "invalid_assistant_name": "助手名称最多 40 个字符，可包含字母、数字、空格、句点、连字符或撇号，并以字母或数字开头"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新！",
@@ -3602,7 +3601,7 @@
       "embeddingsProcessedCount": "已处理 {{total}} 个录音中的 {{processed}} 个。",
       "embeddingsReembeddedCount": "已为 {{total}} 个录音中的 {{processed}} 个重新生成嵌入。",
       "existingShareLinkUsed": "正在使用此录音现有的分享链接",
-      "inquireAllProcessed": "所有录音均已为 Inquire 模式处理",
+      "inquireAllProcessed": "所有录音均已为录音库搜索做好准备",
       "inquireProcessedRemaining": "已处理 {{processed}} 条录音，剩余 {{remaining}} 条。",
       "jobDeleted": "任务已删除",
       "jobQueuedForRetry": "任务已加入重试队列",
@@ -3802,5 +3801,12 @@
         "7": "在较小屏幕和窄面板中，按钮保持可见。"
       }
     }
+  },
+  "assistant": {
+    "ask": "询问 {{name}}",
+    "scopeRecording": "此录音",
+    "scopeLibrary": "所有录音",
+    "recordingIntro": "{{name}} 可以回答有关此录音的问题，并指出某句话是在什么时刻说的。",
+    "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。"
   }
 }

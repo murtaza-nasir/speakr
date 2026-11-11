@@ -379,7 +379,7 @@
     "userMenu": "User Menu"
   },
   "adminDashboard": {
-    "aboutInquireMode": "About Inquire Mode",
+    "aboutInquireMode": "About library search",
     "actions": "ACTIONS",
     "addNewUser": "Add New User",
     "addUser": "Add User",
@@ -446,7 +446,7 @@
     "groupName": "Group Name",
     "groupsTab": "Groups",
     "id": "ID",
-    "inquireModeDescription": "Inquire Mode allows users to search across multiple transcriptions using natural language questions. It works by breaking transcriptions into chunks and creating searchable embeddings using AI models.",
+    "inquireModeDescription": "With library search, users can ask questions across all their recordings at once. Each recording is prepared for it after transcription, and the figures below show how many are ready.",
     "languagePreferenceNote": "Note: If the user has set an output language preference, \" Ensure your response is in {language}.\" will be added.",
     "useEnvValue": "Use .env value",
     "usersPerPage": "Users per page",
@@ -488,7 +488,7 @@
     "placeholdersNote": "Placeholders are replaced with actual values when processing a recording.",
     "processAllRecordings": "Process All Recordings",
     "processNext10": "Process Next 10",
-    "processedForInquire": "Processed for Inquire",
+    "processedForInquire": "Ready for library search",
     "processing": "Processing...",
     "processingActions": "Processing Actions",
     "processingProgress": "Processing Progress",
@@ -743,7 +743,7 @@
     "embeddingProvider": "Provider",
     "embeddingProviderLocal": "Local (sentence-transformers)",
     "embeddingConfigChanged": "Embedding configuration changed",
-    "embeddingConfigChangedDesc": "{{count}} stored chunks were embedded with {{stored}}, but the active configuration is {{active}}. Inquire mode will return wrong results until you re-embed all recordings.",
+    "embeddingConfigChangedDesc": "{{count}} stored chunks were embedded with {{stored}}, but the active configuration is {{active}}. Library search results will be wrong until you re-embed all recordings.",
     "reembedding": "Re-embedding...",
     "reembedAllNow": "Re-embed all recordings now",
     "reembedAll": "Re-embed all recordings",
@@ -952,9 +952,8 @@
     "title": "Change Password"
   },
   "chat": {
-    "availableAfterTranscription": "Chat will be available once transcription is complete",
-    "cannotChatTranscriptionFailed": "Cannot chat: transcription failed. Please reprocess the transcription first.",
-    "chatWithTranscription": "Chat with Transcription",
+    "availableAfterTranscription": "{{name}} can answer questions once the transcription is complete",
+    "cannotChatTranscriptionFailed": "This recording could not be transcribed. Reprocess it, then ask {{name}}.",
     "clearChat": "Clear Chat",
     "cleared": "Chat cleared",
     "downloadFailed": "Failed to download chat",
@@ -962,13 +961,11 @@
     "error": "Failed to send message",
     "noMessages": "No messages yet",
     "noMessagesToDownload": "No chat messages to download.",
-    "placeholder": "Ask a question about this recording...",
-    "placeholderWithHint": "Ask a question about this recording... (Enter to send, Ctrl+Enter for new line)",
+    "placeholder": "Ask {{name}}",
     "responseTruncated": "Response stopped early because the output token limit was reached. Ask the model to continue, or increase CHAT_MAX_TOKENS.",
     "send": "Send",
     "suggestedQuestions": "Suggested Questions",
     "thinking": "Thinking...",
-    "title": "Chat",
     "whatAreActionItems": "What are the action items?",
     "whatAreKeyPoints": "What are the key points?",
     "whatWasDiscussed": "What was discussed?",
@@ -976,8 +973,7 @@
     "playFromHere": "Play from here",
     "responseFailed": "Failed to get chat response",
     "connectionEnded": "Connection ended before the response completed: {{error}}",
-    "errorWithMessage": "Error: {{error}}",
-    "emptyHint": "Type a question below. Markdown supported."
+    "errorWithMessage": "Error: {{error}}"
   },
   "uiTheme": {
     "title": "Interface theme",
@@ -1760,7 +1756,6 @@
     "applySuggested": "Apply Suggested",
     "applySuggestedMobile": "Suggest",
     "approachingLimit": "Approaching {{limit}}MB limit",
-    "askAboutTranscription": "Ask questions about this transcription",
     "audioDeletedDescription": "The audio file for this recording has been deleted, but the transcription remains available.",
     "audioDeletedMessage": "The audio file was removed. The transcript, summary and notes remain available.",
     "audioDeletedTitle": "Audio file deleted",
@@ -1919,7 +1914,7 @@
   },
   "inquire": {
     "activeFilters": "Active Filters:",
-    "askQuestions": "Ask about your recordings",
+    "askQuestions": "Ask {{name}} about your recordings",
     "clearAll": "Clear All",
     "clearConversation": "Clear conversation",
     "conversation": "Conversation",
@@ -1935,9 +1930,8 @@
     "filtersActive": "Filters active",
     "from": "From",
     "noSpeakerData": "No speaker data available",
-    "placeholder": "Ask a question…",
+    "placeholder": "Ask {{name}}",
     "selectFilters": "To search only some recordings, use the filters on the left.",
-    "sendHint": "Press Enter to send • Ctrl+Enter for new line",
     "sources": "Sources",
     "speakerRequirement": "Speaker identification requires recordings with multiple speakers",
     "speakers": "Speakers",
@@ -1946,19 +1940,20 @@
     "folders": "Folders",
     "tagsCount": "tags",
     "foldersCount": "folders",
-    "title": "Inquire",
+    "title": "Ask {{name}}",
     "to": "To",
     "chatFailed": "Chat failed. Please try again.",
     "earlierSummarized": "Earlier conversation summarized",
     "workingOnIt": "Working on it...",
     "analyzing": "Analyzing transcriptions...",
-    "stop": "Stop"
+    "stop": "Stop",
+    "contextMeter": "Conversation context: {{percent}}. Older messages are summarized when the context is full."
   },
   "inquirePrivacy": {
-    "title": "Inquire Privacy",
-    "description": "Choose what the Inquire AI may read when answering your questions. Transcripts are always available; everything else is up to you.",
+    "title": "What {{name}} can read",
+    "description": "Choose what {{name}} may read when answering questions about your library. Transcripts are always available; everything else is up to you.",
     "summariesLabel": "Allow access to summaries",
-    "summariesHelp": "Lets Inquire read your recordings' AI summaries to survey long recordings quickly.",
+    "summariesHelp": "{{name}} can then read your recordings' summaries to survey long recordings quickly.",
     "notesLabel": "Allow access to your notes",
     "notesHelp": "Your private notes stay unavailable unless you enable this. Only your own notes are ever used, never notes on recordings shared with you."
   },
@@ -2269,7 +2264,10 @@
     "showTimestampsSimpleViewHelp": "Display a compact mm:ss timestamp next to each speaker label in the simple transcript view. The bubble view is unaffected.",
     "transcriptDisplay": "Transcript display",
     "transcriptEditor": "Transcript editor",
-    "translation": "Translation"
+    "translation": "Translation",
+    "assistantSection": "Assistant",
+    "assistantName": "Assistant's name",
+    "assistantNameHelp": "The name you see in the recording chat and on the library page. Leave it empty to use Ambrose."
   },
   "preview": {
     "placeholderLegend": "Placeholder legend:",
@@ -3167,7 +3165,7 @@
       "emailVerificationDisabled": "Email verification is not enabled.",
       "exportTemplateSeparators": "The filename template cannot contain path separators (/ or \\).",
       "groupAccessDenied": "You do not have permission to access group management.",
-      "inquireDisabled": "Inquire mode is not enabled on this server.",
+      "inquireDisabled": "Library search is not enabled on this server.",
       "loginFailed": "Login unsuccessful. Please check email and password.",
       "loginRequired": "Please log in to access this page.",
       "newPasswordMismatch": "New password and confirmation do not match.",
@@ -3323,9 +3321,9 @@
       "group_tags_require_internal_sharing": "Group tags require internal sharing to be enabled. Please set ENABLE_INTERNAL_SHARING=true in your configuration.",
       "groups_require_internal_sharing": "Groups require internal sharing to be enabled. Please set ENABLE_INTERNAL_SHARING=true in your configuration.",
       "incognito_disabled": "Incognito mode is not enabled on this server",
-      "inquire_agent_off": "The Inquire agent is turned off on this server",
-      "inquire_disabled": "Inquire mode is not enabled",
-      "inquire_off": "Inquire is turned off on this server",
+      "inquire_agent_off": "Agent mode for library search is turned off on this server",
+      "inquire_disabled": "Library search is not enabled",
+      "inquire_off": "Library search is turned off on this server",
       "internal_sharing_disabled": "Internal sharing is not enabled",
       "invalid_boolean_flag": "{{key}} must be true or false",
       "invalid_boolean_value": "Value must be a valid boolean (true/false, 1/0, yes/no)",
@@ -3590,7 +3588,8 @@
       "translation_no_transcription": "No transcription available for translation.",
       "translation_blocked_transcription_failed": "Cannot translate: transcription failed. Please reprocess the transcription first.",
       "translation_llm_not_configured": "Translation service is not available (LLM client not configured)",
-      "translation_invalid_language": "Unknown target language."
+      "translation_invalid_language": "Unknown target language.",
+      "invalid_assistant_name": "The assistant's name can have up to 40 letters, digits, spaces, dots, hyphens or apostrophes, and starts with a letter or digit"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated successfully!",
@@ -3602,7 +3601,7 @@
       "embeddingsProcessedCount": "Processed {{processed}} out of {{total}} recordings.",
       "embeddingsReembeddedCount": "Re-embedded {{processed}} out of {{total}} recordings.",
       "existingShareLinkUsed": "Using existing share link for this recording",
-      "inquireAllProcessed": "All recordings are already processed for inquire mode",
+      "inquireAllProcessed": "Every recording is already prepared for library search",
       "inquireProcessedRemaining": "Processed {{processed}} recordings. {{remaining}} remaining.",
       "jobDeleted": "Job deleted",
       "jobQueuedForRetry": "Job queued for retry",
@@ -3802,5 +3801,12 @@
         "7": "Buttons stay visible on smaller screens and in narrow panes."
       }
     }
+  },
+  "assistant": {
+    "ask": "Ask {{name}}",
+    "scopeRecording": "This recording",
+    "scopeLibrary": "All recordings",
+    "recordingIntro": "{{name}} can answer questions about this recording and point you to the moment something was said.",
+    "sendHint": "Send (Enter). For a new line, press Ctrl+Enter."
   }
 }

@@ -1,0 +1,11 @@
+{#- The assistant's monogram (src/utils/assistant_name.py): the first letter
+    of its name in a circle of the accent colour. Shown wherever the assistant
+    is: the recording chat, the Ask page and the header button.
+
+    {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
+
+    Sizes: 'sm' (18px, headers and buttons), 'md' (28px) and 'lg' (56px,
+    empty states). Decorative: the name is always written next to it or in
+    the label of its control. v-pre keeps Vue from reading the letter as
+    template syntax. -#}
+<span class="assistant-avatar assistant-avatar--{{ avatar_size|default('md') }}" aria-hidden="true" v-pre>{{ assistant_initial }}</span>

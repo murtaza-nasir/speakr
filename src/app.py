@@ -926,6 +926,19 @@ def inject_ui_themes():
 
 
 @app.context_processor
+def inject_assistant_name():
+    """The assistant's name (src/utils/assistant_name.py) for the templates,
+    and for scripts through includes/i18n_bootstrap.html
+    (window.speakrAssistantName). The default for a visitor."""
+    from flask import has_request_context
+    from flask_login import current_user
+    from src.utils.assistant_name import assistant_name_of, assistant_initial
+    user = current_user if has_request_context() and current_user.is_authenticated else None
+    name = assistant_name_of(user)
+    return {'assistant_name': name, 'assistant_initial': assistant_initial(name)}
+
+
+@app.context_processor
 def inject_inquire_mode_flag():
     """The shared header shows the Inquire button on every page."""
     return {'inquire_mode_enabled': ENABLE_INQUIRE_MODE}

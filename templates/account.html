@@ -877,7 +877,7 @@
                             </div>
                         </div>
 
-                        <!-- Inquire Privacy Section: what the Inquire AI may read.
+                        <!-- Privacy for Ask Ambrose (the library page): what the assistant may read.
                              Transcripts are always available (the minimum for
                              Inquire to work); summaries and notes are optional.
                              Enforcement is structural: a disabled type's tool is
@@ -885,11 +885,11 @@
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
                                 <i class="fas fa-user-shield mr-2"></i>
-                                <span data-i18n="inquirePrivacy.title">Inquire Privacy</span>
+                                <span data-i18n="inquirePrivacy.title" data-i18n-params='{{ {"name": assistant_name}|tojson }}'>What {{ assistant_name }} can read</span>
                             </h3>
                             <input type="hidden" name="inquire_privacy_section" value="1">
-                            <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="inquirePrivacy.description">
-                                Choose what the Inquire AI may read when answering your questions. Transcripts are always available; everything else is up to you.
+                            <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="inquirePrivacy.description" data-i18n-params='{{ {"name": assistant_name}|tojson }}'>
+                                Choose what {{ assistant_name }} may read when answering questions about your library. Transcripts are always available; everything else is up to you.
                             </p>
                             <div class="mb-3">
                                 <label class="flex items-start space-x-3">
@@ -900,8 +900,8 @@
                                         <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="inquirePrivacy.summariesLabel">
                                             Allow access to summaries
                                         </span>
-                                        <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="inquirePrivacy.summariesHelp">
-                                            Lets Inquire read your recordings' AI summaries to survey long recordings quickly.
+                                        <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="inquirePrivacy.summariesHelp" data-i18n-params='{{ {"name": assistant_name}|tojson }}'>
+                                            {{ assistant_name }} can then read your recordings' summaries to survey long recordings quickly.
                                         </span>
                                     </div>
                                 </label>
@@ -1180,6 +1180,20 @@
                                         </select>
                                         <input type="hidden" name="detected_timezone" id="detected_timezone" value="">
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.timezoneHelp">Used for dates in titles from naming templates. Dates shown on pages always follow this device.</p>
+                                    </div>
+                                </div>
+
+                                <!-- The assistant's name (src/utils/assistant_name.py),
+                                     shown in the recording chat and on the Ask
+                                     page; empty means Ambrose. -->
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.assistantSection">Assistant</h3>
+                                <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
+                                    <div>
+                                        <label for="assistant_name" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="preferences.assistantName">Assistant's name</label>
+                                        <input type="text" name="assistant_name" id="assistant_name" maxlength="40" autocomplete="off" spellcheck="false"
+                                               value="{{ current_user.assistant_name or '' }}" placeholder="Ambrose"
+                                               class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="preferences.assistantNameHelp">The name you see in the recording chat and on the library page. Leave it empty to use Ambrose.</p>
                                     </div>
                                 </div>
 

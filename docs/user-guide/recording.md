@@ -10,7 +10,7 @@ When recording system audio, you'll grant screen sharing permission and tick a *
 
 ## Accessing the Upload Modal
 
-Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from Inquire mode). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
+Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from the Ask Ambrose page). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
 
 ![Upload Modal](../assets/images/screenshots/upload-modal.png)
 

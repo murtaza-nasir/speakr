@@ -20,7 +20,7 @@
     </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Inquire Mode - Speakr</title>
+    <title>{{ page_title }} - Speakr</title>
         <!-- All dependencies bundled locally for offline support -->
         <!-- All dependencies bundled locally for offline support -->
         <!-- All dependencies bundled locally for offline support -->
@@ -233,7 +233,7 @@
                     <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
                 </a>
                 <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
-                <span class="t-meta hidden sm:inline" v-text="t('inquire.title')"></span>
+                <span class="t-meta hidden sm:inline" v-text="t('inquire.title', { name: assistantName })"></span>
             </div>
 
             <!-- Right side: the same controls as every other page
@@ -262,12 +262,13 @@
                      class="inquire-conversation-header flex items-center gap-2 px-3 sm:px-4 py-1.5 border-b flex-shrink-0"
                      style="border-bottom-color: var(--border-primary); background: var(--bg-secondary);">
                     <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <i class="fas fa-comments flex-shrink-0" style="color: var(--text-muted); font-size: 12px;"></i>
+                        {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
                         <span class="flex-shrink-0" style="font-size: var(--fs-meta); font-weight: 600; color: var(--text-primary);">${ t('inquire.conversation') }</span>
-                        <span v-if="inquireFilterSummary"
-                              class="truncate min-w-0"
-                              style="font-size: var(--fs-meta); color: var(--text-muted);"
-                              :title="inquireFilterSummary">· ${ inquireFilterSummary }</span>
+                        <!-- Scope chip, as in the recording chat: "All
+                             recordings", or the active filters. -->
+                        <span class="assistant-scope" :title="inquireScopeLabel">
+                            <i :class="['fas', inquireFilterSummary ? 'fa-filter' : 'fa-layer-group']" aria-hidden="true"></i><span v-text="inquireScopeLabel"></span>
+                        </span>
                     </div>
                     <div class="flex items-center flex-shrink-0" style="gap: 2px;">
                         <button @click="downloadInquireConversation"
@@ -294,13 +295,14 @@
                          uses the bg-tertiary surface treatment the
                          rest of the design system uses. -->
                     <div v-if="inquireChatMessages.length === 0" class="flex flex-col items-center text-center py-12 px-4">
-                        <div class="mx-auto mb-5 w-20 h-20 rounded-full flex items-center justify-center"
-                             style="background: var(--bg-tertiary);">
-                            <i class="fas fa-search text-3xl" style="color: var(--text-accent);"></i>
+                        <div class="mx-auto mb-4">
+                            {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
                         </div>
-                        <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);">
-                            ${ t('inquire.askQuestions') }
-                        </h2>
+                        <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);"
+                            v-text="t('inquire.askQuestions', { name: assistantName })"></h2>
+                        <span class="assistant-scope mb-3" :title="inquireScopeLabel">
+                            <i :class="['fas', inquireFilterSummary ? 'fa-filter' : 'fa-layer-group']" aria-hidden="true"></i><span v-text="inquireScopeLabel"></span>
+                        </span>
                         <p class="t-body max-w-lg mb-6" style="color: var(--text-muted);">
                             ${ t('inquire.selectFilters') }
                         </p>
@@ -378,7 +380,7 @@
                                             <i :class="['fas mt-0.5 w-4 text-center', step.icon]" style="color: var(--text-muted);"></i>
                                             <span class="min-w-0">
                                                 <span v-text="step.label"></span>
-                                                <span v-if="step.detail" style="color: var(--text-muted);" v-text="' — ' + step.detail"></span>
+                                                <span v-if="step.detail" style="color: var(--text-muted);" v-text="' · ' + step.detail"></span>
                                             </span>
                                         </div>
                                     </div>
@@ -439,7 +441,7 @@
                                     <i v-else :class="['fas mt-0.5 w-4 text-center', step.status === 'error' ? 'fa-circle-exclamation' : 'fa-minus']" style="color: var(--text-muted);"></i>
                                     <span class="min-w-0">
                                         <span v-text="step.label"></span>
-                                        <span v-if="step.detail" style="color: var(--text-muted);" v-text="' — ' + step.detail"></span>
+                                        <span v-if="step.detail" style="color: var(--text-muted);" v-text="' · ' + step.detail"></span>
                                     </span>
                                 </div>
                             </div>
@@ -470,26 +472,27 @@
                     <div class="flex gap-2 items-end">
                         <textarea v-model="inquireChatInput"
                                   @keydown="handleInquireChatKeydown"
-                                  :placeholder="t('inquire.placeholder')"
+                                  :placeholder="t('inquire.placeholder', { name: assistantName })"
+                                  :title="t('assistant.sendHint')"
                                   class="field flex-1"
                                   style="resize: none;"
                                   rows="2"></textarea>
                         <button @click="sendInquireChatMessage"
                                 :disabled="!inquireChatInput.trim() || isInquireChatLoading"
                                 class="btn btn--primary btn--icon btn--lg flex-shrink-0"
+                                :title="t('assistant.sendHint')"
                                 :aria-label="t('buttons.send')">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div class="t-meta mt-2 flex items-center justify-between">
-                        <span>${t('inquire.sendHint')}</span>
+                    <div v-if="contextUsage >= 50 || hasActiveFilters" class="t-meta mt-2 flex items-center justify-end">
                         <span class="flex items-center gap-3">
                             <!-- Context meter: invisible below 50% to avoid
                                  clutter; past that it shows how full the
                                  conversation context is, so compaction never
                                  feels like silent memory loss. -->
                             <span v-if="contextUsage >= 50" class="flex items-center gap-1.5"
-                                  :title="'Conversation context: ' + formatPercent(contextUsage) + ' — older messages are summarized when it fills up'">
+                                  :title="t('inquire.contextMeter', { percent: formatPercent(contextUsage) })">
                                 <span class="inline-block w-16 h-1 rounded-full overflow-hidden" style="background: var(--bg-tertiary);">
                                     <span class="block h-full rounded-full"
                                           :style="{ width: contextUsage + '%', background: 'var(--bg-accent)' }"></span>
@@ -584,6 +587,7 @@
 
         // Initialize i18n
         let t = (key) => key; // Default fallback
+        const assistantName = window.speakrAssistantName || 'Ambrose';
         
         async function initializeI18n() {
             const userLanguage = "{{ user_language }}";
@@ -720,6 +724,9 @@
                         if (inquireFilters.dateFrom || inquireFilters.dateTo) parts.push(t('inquire.dateRange'));
                         return parts.join(' · ');
                     });
+
+                    // The scope chip: the filter summary, or "All recordings".
+                    const inquireScopeLabel = computed(() => inquireFilterSummary.value || t('assistant.scopeLibrary'));
                     
                     const filteredTags = computed(() => {
                         if (!tagSearchQuery.value) return availableFilters.tags;
@@ -1359,6 +1366,8 @@
                     return {
                         // i18n - bind to i18n instance to maintain context
                         t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                        // The assistant's name for the name placeholder of its strings (includes/i18n_bootstrap.html)
+                        assistantName,
                         // components/header-controls.html formats numbers with this (#480)
                         uiLocale: () => window.i18n?.getIntlLocale?.(),
                         formatPercent: (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`),
@@ -1422,6 +1431,7 @@
                         hasActiveFilters,
                         canDownloadInquire,
                         inquireFilterSummary,
+                        inquireScopeLabel,
                         clearInquireConversation,
                         filteredTags,
                         filteredFolders,

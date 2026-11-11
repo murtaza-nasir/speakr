@@ -91,14 +91,14 @@ These defaults apply to all your recordings unless overridden by tag defaults, f
 !!! tip "When to use hotwords vs initial prompt"
     Use **hotwords** for specific terms the model tends to misspell - proper nouns, brand names, technical acronyms. Use **initial prompt** for broader context that helps the model understand the domain and make better overall word choices.
 
-### Inquire Privacy
+### What Ambrose can read
 
-The **Inquire Privacy** section controls what the Inquire AI may read when answering your questions. Transcripts are always available, since they are the minimum Inquire needs to function; everything else is your choice:
+The **What Ambrose can read** section (formerly Inquire Privacy) controls what Ambrose may read when answering questions on the [Ask Ambrose](inquire-mode.md) page. The title contains the name you gave the assistant. Transcripts are always available, since the search needs them; everything else is your choice:
 
-- **Allow access to summaries** (on by default) - lets Inquire read your recordings' AI summaries, which is a fast way for the agentic mode to survey a long recording before deciding whether to read its transcript.
+- **Allow access to summaries** (on by default) - Ambrose can then read your recordings' summaries, a fast way for the agent mode to survey a long recording before it reads the transcript.
 - **Allow access to your notes** (off by default) - your private notes stay unavailable unless you enable this. Only your own notes are ever used; notes on recordings shared with you are never exposed, regardless of this setting.
 
-These settings are enforced structurally: a disabled content type is removed from the AI's capabilities entirely rather than merely discouraged. See [Inquire Mode](inquire-mode.md#agentic-inquire-beta) for how the agentic mode uses these permissions.
+These settings are enforced structurally: a disabled content type is removed from the capabilities of Ambrose entirely, not merely discouraged. See [Ask Ambrose](inquire-mode.md#agent-mode-beta) for how the agent mode uses these permissions.
 
 ### Timestamp Availability for Summary and Chat
 
@@ -127,7 +127,11 @@ The Preferences tab is the home for display and editor behaviour settings that s
 
 ### Appearance
 
-**Interface theme.** The interface theme is the layout and style of the interface: the shape of the sidebar and its recording rows, the recording header, the transcript, the Inquire filter column, surfaces, corners and type. The **Appearance** section at the top of the Preferences tab shows one card per theme, with a preview, its name and a one-line description. Clicking a card applies the theme at once, without reloading the page. The choice is saved with your account and follows you to other devices and browsers. The same cards are shown in the **Color scheme** dialog, which opens from the user menu in the header.
+**Interface theme.** The interface theme is the layout and style of the interface: the shape of the sidebar and its recording rows, the recording header, the transcript, the filter column of the Ask Ambrose page, surfaces, corners and type. The **Appearance** section at the top of the Preferences tab shows one card per theme, with a preview, its name and a one-line description. Clicking a card applies the theme at once, without reloading the page. The choice is saved with your account and follows you to other devices and browsers. The same cards are shown in the **Color scheme** dialog, which opens from the user menu in the header.
+
+### Assistant
+
+Speakr's assistant is called **Ambrose**. Under **Assistant** in the Preferences tab you can give it another name, up to 40 letters, digits, spaces, dots, hyphens or apostrophes. The name appears in the recording's assistant panel, on the Ask page, on the header button and in the monogram, which shows its first letter. Leave the field empty to go back to Ambrose. The name is saved with your account; the API and your API tokens are not affected.
 
 The theme, the color scheme and light or dark mode are three separate settings that combine freely: every color scheme and both modes work with every theme. Neutral surfaces and shapes come from the theme, and the accent color comes from the color scheme. The **Color scheme and light or dark mode** link below the theme cards opens the color scheme dialog; light or dark mode is also switched with the sun and moon toggle in the user menu.
 
@@ -402,7 +406,7 @@ Quick access buttons connect you to essential resources. The GitHub Repository b
 
 ### Key Features
 
-Colorful cards remind you of Speakr's core capabilities. Audio Transcription highlights support for both Whisper API and custom ASR with high accuracy. AI Summarization emphasizes the OpenRouter and Ollama integrations for flexible, powerful summary generation. Speaker Diarization showcases the ability to identify and label different speakers automatically. Interactive Chat demonstrates the conversational AI capabilities for exploring transcripts. Inquire Mode highlights semantic search across all recordings. Sharing & Export emphasizes the ability to share recordings and export to various formats.
+Colorful cards remind you of Speakr's core capabilities. Audio Transcription highlights support for both Whisper API and custom ASR with high accuracy. AI Summarization emphasizes the OpenRouter and Ollama integrations for flexible, powerful summary generation. Speaker Diarization showcases the ability to identify and label different speakers automatically. Interactive Chat demonstrates the conversational AI capabilities for exploring transcripts. Library search highlights questions across all recordings. Sharing & Export emphasizes the ability to share recordings and export to various formats.
 
 ### Using This Information
 

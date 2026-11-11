@@ -865,6 +865,18 @@ def account():
                 current_user.audio_player_position = pos if pos in ('bottom', 'top') else 'bottom'
             # Default recording sort: same "only if submitted" rule as above. Anything
             # other than the two known sorts is stored as NULL, which means 'created_at'.
+            # The assistant's name: same "only if submitted" rule. A name
+            # outside the rule (src/utils/assistant_name.py) is refused.
+            if 'assistant_name' in request.form:
+                from src.utils.assistant_name import clean_assistant_name
+                try:
+                    current_user.assistant_name = clean_assistant_name(request.form.get('assistant_name'))
+                except ValueError:
+                    message = translate('server.apiError.invalid_assistant_name')
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+                        return jsonify({'success': False, 'error': message}), 400
+                    flash(message, 'error')
+                    return redirect(url_for('auth.account'))
             if 'default_recording_sort' in request.form:
                 sort = request.form.get('default_recording_sort')
                 current_user.default_recording_sort = sort if sort in ('created_at', 'meeting_date') else None

@@ -4624,6 +4624,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return {
                 // Translation
                 t, tc,
+                // The assistant's name for {{name}} in its strings
+                // (window.speakrAssistantName, includes/i18n_bootstrap.html)
+                assistantName: window.speakrAssistantName || 'Ambrose',
 
                 // State
                 ...state,
