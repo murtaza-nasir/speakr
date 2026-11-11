@@ -89,11 +89,6 @@
                                 </div>
                             </div>
 
-                            <!-- Participants (names) -->
-                            <div v-if="recording.participants" class="rr-people">
-                                <span class="truncate" dir="auto">${recording.participants}</span>
-                            </div>
-
                             <!-- Folder + Tags row. The folder pill (folder-colour bg
                                  + small folder icon) only shows when the user is in
                                  the "All Recordings" view (filterFolder is falsy);
@@ -146,13 +141,18 @@
                                 </span>
                             </div>
 
-                            <!-- Footer: participant avatar stack, date and duration -->
+                            <!-- Footer: participants (avatar stack, then the names, cut
+                                 off to fit; the full list is in the tooltip), date and
+                                 duration. The names are shown once, on this line. -->
                             <div class="rr-foot">
-                                <div class="rr-stack" v-if="recording.participants">
-                                    <span v-for="(p, pi) in recording.participants.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4)"
-                                          :key="pi" class="rr-av" :title="p">${ p.charAt(0).toUpperCase() }</span>
+                                <div class="rr-who" v-if="recording.participants" :title="recording.participants">
+                                    <span class="rr-stack" aria-hidden="true">
+                                        <span v-for="(p, pi) in recording.participants.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4)"
+                                              :key="pi" class="rr-av">${ p.charAt(0).toUpperCase() }</span>
+                                    </span>
+                                    <span class="rr-people truncate" dir="auto">${recording.participants}</span>
                                 </div>
-                                <span v-else class="rr-stack"></span>
+                                <span v-else class="rr-who"></span>
                                 <div class="rr-when">
                                     <!-- Copies of the same file, and the video marker: on the
                                          date line, not on a line of their own below the tags. -->

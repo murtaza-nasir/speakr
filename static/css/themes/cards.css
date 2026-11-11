@@ -508,7 +508,10 @@ html[data-ui-theme="cards"] .rr-name {
     letter-spacing: -0.005em;
 }
 html[data-ui-theme="cards"] .is-active .rr-name { color: var(--c-on-primary-c); }
-html[data-ui-theme="cards"] .rr-people { font-size: var(--c-fs-sm); color: var(--c-text-2); line-height: 1.35; display: flex; min-width: 0; }
+html[data-ui-theme="cards"] .rr-who { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+html[data-ui-theme="cards"] .rr-who .rr-stack { flex: none; }
+html[data-ui-theme="cards"] .rr-people { font-size: var(--c-fs-sm); color: var(--c-text-2); line-height: 1.35; min-width: 0; }
+html[data-ui-theme="cards"] .rr-foot .rr-when { flex: none; }
 html[data-ui-theme="cards"] .rr-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; min-height: 22px; }
 html[data-ui-theme="cards"] .rr-when { font-size: var(--c-fs-xs); color: var(--c-text-3); display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 html[data-ui-theme="cards"] .rr-dur { position: relative; padding-inline-start: 10px; }
