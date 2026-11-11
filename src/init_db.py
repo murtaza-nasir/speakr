@@ -1002,6 +1002,11 @@ def _run_migrations(app, engine):
             app.logger.info("Added default_transcription_model column to tag table")
         if add_column_if_not_exists(engine, 'folder', 'default_transcription_model', 'VARCHAR(120)'):
             app.logger.info("Added default_transcription_model column to folder table")
+        if add_column_if_not_exists(engine, 'folder', 'parent_id', 'INTEGER'):
+            app.logger.info("Added parent_id column to folder table")
+        if create_index_if_not_exists(engine, 'ix_folder_parent_id', 'folder', 'parent_id'):
+            app.logger.info("Created index ix_folder_parent_id on folder.parent_id")
+
         # Create index for folder_id
         try:
             if create_index_if_not_exists(engine, 'ix_recording_folder_id', 'recording', 'folder_id'):

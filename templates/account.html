@@ -5940,6 +5940,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         // Open folder modal
         function openFolderModal(folder) {
             folder = folder || null;
+            window.SpeakrOrganizer.populateFolderParentSelect(folders, folder && folder.parent_id, folder && folder.id);
             if (folder) {
                 // Edit mode
                 isEditingFolder = true;

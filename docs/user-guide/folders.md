@@ -27,6 +27,9 @@ Click **Create Folder** to add a new folder. Each folder has:
 
 - **Name** - A short, descriptive name (required)
 - **Color** - Visual identifier shown on folder pills and in the sidebar
+- **Parent Folder** - Optional parent for a nested directory. The parent must be in the same personal or group scope
+
+You can also create a child folder directly from the folder tree. When editing a folder, its own row and all descendants are excluded from the available parents, preventing cycles.
 
 ### Folder Settings
 
@@ -48,13 +51,19 @@ These settings work like tag settings - when you add a recording to a folder, th
 
 ## Using Folders
 
-### Sidebar Folder Selector
+### Sidebar Folder Tree
 
-The sidebar includes a folder dropdown at the top. Use it to:
+The sidebar shows the current folder path above the recording list. Select it to open the folder tree, then:
 
-- **Filter by folder** - Select a folder to show only recordings in that folder
-- **View all recordings** - Select "All Folders" to see everything
-- **View unfiled** - Select "No Folder" to see recordings not in any folder
+- **Expand branches** to reveal child folders
+- **Filter by folder** to show recordings assigned to that directory
+- **Include subfolders** to include all descendants; turn it off for only the current directory
+- **View all recordings** or **Unfiled** with the shortcuts above the tree
+- **Create a subfolder** with the + button on a directory row
+
+The count on a tree row includes recordings in its descendants. The folder object's `recording_count` remains the direct count.
+
+On desktop, the divider between the recording list and detail pane can be dragged. Arrow keys adjust a focused divider and double-clicking restores an even split. The ratio is remembered in the browser.
 
 ### Moving Recordings to Folders
 
@@ -102,7 +111,7 @@ Both folders and tags help organize recordings, but they serve different purpose
 |--------|---------|------|
 | **Assignment** | One folder per recording | Multiple tags per recording |
 | **Purpose** | Primary organization | Categorization and filtering |
-| **Hierarchy** | Flat list | Flat list |
+| **Hierarchy** | Nested folder tree | Flat list |
 | **Settings** | Custom prompt, ASR, retention | Custom prompt, ASR, retention |
 | **Visual** | Pill badge, sidebar filter | Colored badges |
 

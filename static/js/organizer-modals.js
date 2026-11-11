@@ -132,6 +132,7 @@
             default_transcription_model: val('folderTranscriptionModel'),
             naming_template_id: intVal('folderNamingTemplate'),
             export_template_id: intVal('folderExportTemplate'),
+            parent_id: intVal('folderParentId'),
         };
 
         const groupIdEl = document.getElementById('folderGroupId');
@@ -151,6 +152,44 @@
             folderData.retention_days = parseInt(retention.value);
         }
         return folderData;
+    }
+
+    function populateFolderParentSelect(folders, selectedId = null, editingId = null) {
+        const select = document.getElementById('folderParentId');
+        if (!select) return;
+        select.replaceChildren();
+        const root = document.createElement('option');
+        root.value = '';
+        root.textContent = tr('folderManagement.rootFolder', 'No parent (top-level folder)');
+        select.appendChild(root);
+        const byId = new Map(folders.map(folder => [folder.id, folder]));
+        const blocked = new Set(editingId ? [editingId] : []);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const folder of folders) {
+                if (blocked.has(folder.parent_id) && !blocked.has(folder.id)) {
+                    blocked.add(folder.id);
+                    changed = true;
+                }
+            }
+        }
+        for (const folder of folders) {
+            const path = [];
+            let current = folder;
+            const seen = new Set();
+            while (current && !seen.has(current.id)) {
+                path.unshift(current.name);
+                seen.add(current.id);
+                current = byId.get(current.parent_id);
+            }
+            const option = document.createElement('option');
+            option.value = String(folder.id);
+            option.textContent = path.join(' / ');
+            option.disabled = blocked.has(folder.id);
+            select.appendChild(option);
+        }
+        select.value = selectedId ? String(selectedId) : '';
     }
 
     function switchOrganizerModalTab(navId, tabClass, contentClass, targetTabId) {
@@ -342,6 +381,7 @@
         form.reset();
         document.getElementById('folderId').value = '';
         if (opts.name) document.getElementById('folderName').value = opts.name;
+        populateFolderParentSelect(opts.folders || [], opts.parentId || null);
         const title = document.getElementById('folderModalTitle');
         if (title) title.textContent = tr('folderManagement.createFolderTitle', 'Create Folder');
         const save = document.getElementById('saveFolderBtn');
@@ -523,6 +563,7 @@
         loadTemplateOptionsInto,
         buildTagPayload,
         buildFolderPayload,
+        populateFolderParentSelect,
         openTagCreate,
         openFolderCreate,
         setLanguageValue,

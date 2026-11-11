@@ -90,6 +90,7 @@ class Folder(db.Model):
     name = db.Column(db.String(50), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('group.id', ondelete='CASCADE'), nullable=True)  # Group-scoped folder
+    parent_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
     color = db.Column(db.String(7), default='#10B981')  # Hex color for UI (green to differentiate from tags)
 
     # Custom settings for this folder
@@ -146,19 +147,22 @@ class Folder(db.Model):
         """Check if this is a group-scoped folder."""
         return self.group_id is not None
 
-    def to_dict(self, recording_count=None):
+    def to_dict(self, recording_count=None, total_recording_count=None):
         """Convert model to dictionary representation.
 
-        recording_count: the folder's recording count when the caller has
-        counted it already (list pages count all their folders at once).
+        Callers may pass direct and recursive counts after batching them.
         """
         if recording_count is None:
             recording_count = len(self.recordings) if self.recordings else 0
+        if total_recording_count is None:
+            total_recording_count = recording_count
         return {
             'id': self.id,
             'name': self.name,
             'color': self.color,
             'group_id': self.group_id,
+            'parent_id': self.parent_id,
+            'total_recording_count': total_recording_count,
             'is_group_folder': self.is_group_folder,
             'group_name': self.group.name if self.group else None,
             'custom_prompt': self.custom_prompt,

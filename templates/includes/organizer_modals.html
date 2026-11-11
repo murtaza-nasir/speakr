@@ -280,6 +280,13 @@
                 </div>
 
                 <div>
+                    <label for="folderParentId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.parentFolder">Parent Folder</label>
+                    <select id="folderParentId" name="parent_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="" data-i18n="folderManagement.rootFolder">No parent (top-level folder)</option>
+                    </select>
+                </div>
+
+                <div>
                     <label for="folderColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.folderColor">Color</label>
                     <div class="flex items-center space-x-3">
                         <input type="color" id="folderColor" name="color" value="#10B981" class="w-12 h-10 rounded border border-[var(--border-secondary)]">

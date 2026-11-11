@@ -87,9 +87,12 @@ def tag_dicts(tags):
 
 
 def folder_dicts(folders):
-    """Folder.to_dict for each folder, with the recording counts read in one query."""
+    """Folder.to_dict with direct and recursive counts read in one query."""
+    from src.services.folder_tree import recursive_recording_counts
     counts = _counts(Recording.folder_id, sorted({f.id for f in folders}))
-    return [folder.to_dict(recording_count=counts.get(folder.id, 0)) for folder in folders]
+    totals = recursive_recording_counts(folders, counts)
+    return [folder.to_dict(recording_count=counts.get(folder.id, 0),
+                           total_recording_count=totals.get(folder.id, 0)) for folder in folders]
 
 
 def group_ids_of(viewer, recordings):

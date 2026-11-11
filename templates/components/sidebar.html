@@ -10,19 +10,41 @@
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
             <div class="flex items-center gap-2 mb-3">
-                <!-- Folder Selector (replaces static "Recording" title) -->
-                <div v-if="foldersEnabled && availableFolders.length > 0" class="relative flex-1 min-w-0">
-                    <select v-model="filterFolder"
-                            class="w-full h-9 pl-8 pr-7 text-base font-semibold rounded-md cursor-pointer appearance-none border-0 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-                            style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center;">
-                        <option value="">${ t('sidebar.allRecordings') }</option>
-                        <option value="none">${ t('sidebar.unfiled') }</option>
-                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                            ${ folder.name }
-                        </option>
-                    </select>
-                    <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
-                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
+                <div v-if="foldersEnabled" class="relative flex-1 min-w-0">
+                    <button @click="folderBrowserOpen = !folderBrowserOpen"
+                            class="folder-path-button"
+                            :aria-expanded="folderBrowserOpen"
+                            aria-controls="folder-browser-panel">
+                        <i class="fas fa-folder" :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
+                        <span class="truncate" v-text="activeFolderPath.length ? activeFolderPath.map(folder => folder.name).join(' / ') : activeFolderName"></span>
+                        <i class="fas fa-chevron-down ml-auto text-[10px]"></i>
+                    </button>
+                    <div v-if="folderBrowserOpen" id="folder-browser-panel" class="folder-browser-panel">
+                        <div class="flex items-center gap-2 mb-2">
+                            <strong class="text-xs" v-text="t('folderManagement.folders')"></strong>
+                            <button @click="createFolderInTree()" class="btn btn--icon w-7 h-7 ml-auto" :title="t('folderManagement.createFolder')"><i class="fas fa-plus"></i></button>
+                            <button @click="folderBrowserOpen = false" class="btn btn--sm" v-text="t('common.done')"></button>
+                        </div>
+                        <button @click="selectFolderFilter('')" class="folder-tree-all" v-text="t('sidebar.allRecordings')"></button>
+                        <button @click="selectFolderFilter('none')" class="folder-tree-all" v-text="t('sidebar.unfiled')"></button>
+                        <div v-for="item in folderTreeItems" :key="item.folder.id" class="folder-tree-row" :style="{ paddingLeft: (item.depth * 14) + 'px' }">
+                            <button v-if="item.hasChildren" @click="toggleFolderExpanded(item.folder.id)" class="folder-tree-chevron" :aria-label="t('folderManagement.toggleChildren')">
+                                <i :class="['fas', expandedFolderIds.has(item.folder.id) ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                            </button>
+                            <span v-else class="folder-tree-chevron"></span>
+                            <button @click="selectFolderFilter(item.folder.id)" class="folder-tree-name">
+                                <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: item.folder.color || '#10B981' }"></span>
+                                <span class="truncate" v-text="item.folder.name"></span>
+                                <span class="ml-auto text-[10px] text-[var(--text-muted)]" v-text="item.folder.total_recording_count || 0"></span>
+                            </button>
+                            <button @click="createFolderInTree(item.folder.id)" class="folder-tree-add" :title="t('folderManagement.createSubfolder')"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <p v-if="availableFolders.length === 0" class="text-xs text-[var(--text-muted)] py-3" v-text="t('folderManagement.noFoldersCreateInSettings')"></p>
+                        <label class="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--border-primary)] text-xs text-[var(--text-muted)]">
+                            <input type="checkbox" v-model="includeChildFolders">
+                            <span v-text="t('folderManagement.includeChildren')"></span>
+                        </label>
+                    </div>
                 </div>
                 <h2 v-else class="text-lg font-semibold flex-1" v-text="t('nav.recording')"></h2>
                 <div class="flex gap-2 flex-shrink-0">
@@ -38,6 +60,11 @@
                             class="btn btn--primary"
                             :title="t('bulkActions.exitSelection')">
                         <i class="fas fa-times mr-1"></i>${ t('common.done') }
+                    </button>
+                    <button v-if="!selectionMode" @click="recordingListCompact = !recordingListCompact"
+                            class="w-9 h-9 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-accent)]"
+                            :aria-pressed="recordingListCompact" :title="t('folderManagement.compactList')">
+                        <i class="fas fa-table-list"></i>
                     </button>
                     <!-- New button - compact when folders enabled -->
                     <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
@@ -327,6 +354,7 @@
              toolbar's bottom border above; bottom padding keeps a
              little breathing room below the final row. -->
         <div class="sidebar-list flex-1 overflow-y-auto pb-3"
+             :class="{ 'recording-list-compact': recordingListCompact }"
              @scroll="(e) => {
                 const element = e.target;
                 const threshold = 100; // Load more when 100px from bottom
@@ -512,6 +540,10 @@
                                     <i class="fas fa-calendar-alt mr-1 text-[var(--text-muted)]" style="font-size: 10px;"></i>
                                     ${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
                                 </div>
+                                <div v-if="recording.audio_duration" class="flex items-center flex-shrink-0">
+                                    <i class="fas fa-clock mr-1" style="font-size: 10px;"></i>
+                                    ${formatDuration(recording.audio_duration)}
+                                </div>
 
                                 <!-- Participants -->
                                 <div v-if="recording.participants" class="flex items-center min-w-0 flex-1">
@@ -607,11 +639,20 @@
 
     </div>
 </aside>
+<div v-if="!isSidebarCollapsed && !isMobileScreen"
+     class="sidebar-resizer" role="separator" tabindex="0"
+     :aria-label="t('folderManagement.resizePanels')" aria-orientation="vertical"
+     aria-valuemin="32" aria-valuemax="68" :aria-valuenow="Math.round(sidebarRatio * 100)"
+     :title="t('folderManagement.resizePanels')"
+     @pointerdown="startSidebarResize" @keydown="onSidebarResizeKeydown" @dblclick="sidebarRatio = .5">
+    <span></span>
+</div>
 
 <!-- Vertical Floating Bulk Action Bar - To the right of sidebar -->
 <transition name="slide-right">
     <div v-if="selectionMode && selectedCount > 0 && !isSidebarCollapsed"
-         class="fixed top-1/2 -translate-y-1/2 left-80 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg">
+         class="fixed top-1/2 -translate-y-1/2 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg"
+         :style="{ left: sidebarWidthPx + 'px' }">
         <!-- Selection count badge -->
         <div class="text-center text-xs font-medium text-[var(--text-accent)] py-1 border-b border-[var(--border-primary)] mb-1">
             ${ selectedCount }

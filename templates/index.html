@@ -109,7 +109,8 @@
          data-recording-max-hours="{{ recording_max_hours }}"
          data-recording-chunk-seconds="{{ recording_chunk_seconds }}"
          data-recording-video-kbps="{{ recording_video_kbps }}"
-         class="h-full flex flex-col opacity-0 transition-opacity duration-500">
+         class="h-full flex flex-col opacity-0 transition-opacity duration-500"
+         :style="{ '--recording-sidebar-width': sidebarWidthPx + 'px' }">
 
         <!-- Header -->
         {% include 'components/header.html' %}

@@ -74,6 +74,22 @@ def _folder_name_error(error_key):
     return jsonify(api_error(error_key)), 400
 
 
+def _parent_for_write(parent_id, user_id, group_id):
+    """Return (parent, error_key), restricting parents to the same scope."""
+    if parent_id in (None, ''):
+        return None, None
+    if isinstance(parent_id, bool) or not isinstance(parent_id, int):
+        return None, 'folder_parent_invalid'
+    parent = db.session.get(Folder, parent_id)
+    if not parent:
+        return None, 'folder_parent_invalid'
+    if group_id is None:
+        valid = parent.group_id is None and parent.user_id == user_id
+    else:
+        valid = parent.group_id == group_id
+    return (parent, None) if valid else (None, 'folder_parent_invalid')
+
+
 def _name_taken_key(name, group_id, group_key):
     """Error key for a folder write that lost on a unique index.
 
@@ -176,6 +192,10 @@ def create_folder():
         if existing_folder:
             return jsonify(api_error('folder_name_exists')), 400
 
+    parent, parent_error = _parent_for_write(data.get('parent_id'), current_user.id, group_id)
+    if parent_error:
+        return jsonify(api_error(parent_error)), 400
+
     # Handle retention_days: -1 means protected from deletion
     retention_days = data.get('retention_days')
     protect_from_deletion = False
@@ -202,6 +222,7 @@ def create_folder():
         name=name,
         user_id=current_user.id,
         group_id=group_id,
+        parent_id=parent.id if parent else None,
         color=color,
         custom_prompt=data.get('custom_prompt'),
         title_prompt=data.get('title_prompt'),
@@ -299,7 +320,21 @@ def update_folder(folder_id):
             if not membership or membership.role != 'admin':
                 return jsonify(api_error('folder_group_assign_admin_only')), 403
 
+        group_changed = new_group_id != folder.group_id
+        if group_changed and Folder.query.filter_by(parent_id=folder.id).first():
+            return jsonify(api_error('folder_group_tree_invalid')), 400
         folder.group_id = new_group_id
+
+    if 'parent_id' in data or ('group_id' in data and folder.parent_id is not None):
+        parent_value = data.get('parent_id', folder.parent_id)
+        parent, parent_error = _parent_for_write(parent_value, folder.user_id, folder.group_id)
+        if parent_error:
+            return jsonify(api_error(parent_error)), 400
+        if parent:
+            from src.services.folder_tree import descendant_folder_ids
+            if parent.id in descendant_folder_ids(folder.id):
+                return jsonify(api_error('folder_parent_cycle')), 400
+        folder.parent_id = parent.id if parent else None
 
     if 'color' in data:
         color, error_key = _clean_folder_color(data['color'])
@@ -401,6 +436,7 @@ def delete_folder(folder_id):
         if folder.user_id != current_user.id:
             return jsonify(api_error('folder_delete_denied')), 403
 
+    Folder.query.filter_by(parent_id=folder.id).update({Folder.parent_id: folder.parent_id})
     # Recordings in this folder will have folder_id set to NULL via ondelete='SET NULL'
     db.session.delete(folder)
     db.session.commit()
@@ -453,6 +489,10 @@ def create_group_folder(group_id):
     if existing_folder:
         return jsonify(api_error('group_folder_name_exists')), 400
 
+    parent, parent_error = _parent_for_write(data.get('parent_id'), current_user.id, group_id)
+    if parent_error:
+        return jsonify(api_error(parent_error)), 400
+
     # Validate naming_template_id if provided
     naming_template_id = data.get('naming_template_id')
     if naming_template_id:
@@ -472,6 +512,7 @@ def create_group_folder(group_id):
         name=name,
         user_id=current_user.id,  # Creator
         group_id=group_id,
+        parent_id=parent.id if parent else None,
         color=color,
         custom_prompt=data.get('custom_prompt'),
         title_prompt=data.get('title_prompt'),

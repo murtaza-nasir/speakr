@@ -4234,7 +4234,7 @@ textarea[ref="recordingNotesEditor"]:focus {
     top: var(--app-header-height, 56px);
     left: 0;
     bottom: 0;
-    width: 320px;
+    width: var(--recording-sidebar-width, 50vw);
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-primary);
     z-index: 50;
@@ -4250,7 +4250,7 @@ textarea[ref="recordingNotesEditor"]:focus {
 
 /* Wrapper to prevent sidebar's own content from squishing */
 .sidebar-content-wrapper {
-    width: 320px; /* Fixed width */
+    width: 100%;
     height: 100%;
     overflow-y: auto;
     display: flex;
@@ -4264,12 +4264,82 @@ textarea[ref="recordingNotesEditor"]:focus {
     flex-direction: column;
     overflow: hidden;
     transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    padding-left: 320px; /* Default space for the sidebar */
+    padding-left: var(--recording-sidebar-width, 50vw);
 }
 
 .main-content.sidebar-open {
-    padding-left: 320px;
+    padding-left: var(--recording-sidebar-width, 50vw);
 }
+
+.sidebar-resizer {
+    position: fixed;
+    top: var(--app-header-height, 56px);
+    bottom: 0;
+    left: var(--recording-sidebar-width, 50vw);
+    width: 12px;
+    transform: translateX(-6px);
+    z-index: 55;
+    cursor: col-resize;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    touch-action: none;
+    outline: none;
+}
+.sidebar-resizer:hover, .sidebar-resizer:focus-visible {
+    color: var(--text-accent);
+    background: var(--bg-accent);
+}
+.sidebar-resizer span {
+    width: 2px;
+    height: 30px;
+    border-radius: 2px;
+    background: currentColor;
+    box-shadow: 4px 0 0 currentColor, -4px 0 0 currentColor;
+}
+.folder-path-button {
+    width: 100%;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    font-weight: 650;
+    text-align: left;
+}
+.folder-browser-panel {
+    position: absolute;
+    top: 42px;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 9px;
+    background: var(--bg-secondary);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+}
+.folder-tree-all, .folder-tree-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    min-height: 30px;
+    padding: 3px 6px;
+    border-radius: 5px;
+    text-align: left;
+    color: var(--text-secondary);
+}
+.folder-tree-all:hover, .folder-tree-name:hover { background: var(--bg-tertiary); }
+.folder-tree-row { display: flex; align-items: center; min-width: 0; }
+.folder-tree-chevron { width: 18px; height: 28px; flex: none; color: var(--text-muted); }
+.folder-tree-add { width: 24px; height: 28px; flex: none; color: var(--text-muted); opacity: 0; }
+.folder-tree-row:hover .folder-tree-add, .folder-tree-add:focus-visible { opacity: 1; }
+.recording-list-compact .recording-row { padding-top: 7px; padding-bottom: 7px; }
+.recording-list-compact .recording-row .mt-1 { margin-top: 2px; }
+.recording-list-compact .recording-group-header { padding-top: 7px; padding-bottom: 4px; }
 
 /* When sidebar is collapsed, main content takes full width */
 .main-content:not(.sidebar-open) {
@@ -4287,7 +4357,9 @@ textarea[ref="recordingNotesEditor"]:focus {
     .sidebar {
         top: 0; /* Cover full height on mobile */
         z-index: 60; /* Higher z-index for mobile overlay */
+        width: 320px;
     }
+    .sidebar-resizer { display: none; }
     
     /* Make buttons smaller in mobile view */
     .mobile-action-btn,

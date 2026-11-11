@@ -16,7 +16,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         showSharedWithMe, filterAudioRemoved, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
-        filterFolder, sortBy,
+        filterFolder, includeChildFolders, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
@@ -72,6 +72,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 needs_summary: filterNeedsSummary.value ? 'true' : '',
                 needs_speakers: filterNeedsSpeakers.value ? 'true' : '',
                 folder: (filterFolder && filterFolder.value) ? filterFolder.value : '',
+                include_children: filterFolder && filterFolder.value && includeChildFolders.value ? 'true' : '',
             });
 
             const recordingsList = data.recordings;

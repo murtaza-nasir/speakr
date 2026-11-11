@@ -27,6 +27,7 @@ import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
+import { flattenFolderTree, folderPath } from './modules/utils/folder-tree.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import {
@@ -735,6 +736,67 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedFolderId = ref(null);
             const foldersEnabled = ref(false);
             const filterFolder = ref('');
+            const folderBrowserOpen = ref(true);
+            const expandedFolderIds = ref(new Set());
+            const includeChildFolders = ref(true);
+            const recordingListCompact = ref(localStorage.getItem('recordingListCompact') !== 'false');
+            const folderTreeItems = computed(() => flattenFolderTree(availableFolders.value, expandedFolderIds.value));
+            const activeFolderPath = computed(() => folderPath(filterFolder.value, availableFolders.value));
+            const activeFolderName = computed(() => {
+                if (filterFolder.value === 'none') return t('sidebar.unfiled');
+                return activeFolderPath.value.at(-1)?.name || t('sidebar.allRecordings');
+            });
+            let savedSidebarRatio = Number(localStorage.getItem('recordingsSidebarRatio'));
+            const sidebarRatio = ref(Number.isFinite(savedSidebarRatio) && savedSidebarRatio >= .32 && savedSidebarRatio <= .68 ? savedSidebarRatio : .5);
+            const sidebarWidthPx = computed(() => {
+                const maximum = Math.max(320, windowWidth.value - 360);
+                return Math.round(Math.min(maximum, Math.max(320, windowWidth.value * sidebarRatio.value)));
+            });
+            const isSidebarResizing = ref(false);
+            const toggleFolderExpanded = (folderId) => {
+                const next = new Set(expandedFolderIds.value);
+                if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
+                expandedFolderIds.value = next;
+            };
+            const selectFolderFilter = (folderId) => {
+                filterFolder.value = folderId || '';
+                folderBrowserOpen.value = false;
+            };
+            const startSidebarResize = (event) => {
+                if (isMobileScreen.value) return;
+                const handle = event.currentTarget;
+                handle.setPointerCapture(event.pointerId);
+                isSidebarResizing.value = true;
+                const move = (e) => {
+                    if (!handle.hasPointerCapture(e.pointerId)) return;
+                    sidebarRatio.value = Math.min(.68, Math.max(.32, e.clientX / windowWidth.value));
+                };
+                const stop = (e) => {
+                    if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+                    isSidebarResizing.value = false;
+                    handle.removeEventListener('pointermove', move);
+                    handle.removeEventListener('pointerup', stop);
+                    handle.removeEventListener('pointercancel', stop);
+                };
+                handle.addEventListener('pointermove', move);
+                handle.addEventListener('pointerup', stop);
+                handle.addEventListener('pointercancel', stop);
+                event.preventDefault();
+            };
+            const onSidebarResizeKeydown = (event) => {
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    sidebarRatio.value = Math.min(.68, Math.max(.32, sidebarRatio.value + (event.key === 'ArrowLeft' ? -.05 : .05)));
+                    event.preventDefault();
+                } else if (event.key === 'Home') {
+                    sidebarRatio.value = .5;
+                    event.preventDefault();
+                }
+            };
+            watch(sidebarRatio, value => localStorage.setItem('recordingsSidebarRatio', String(value)));
+            watch(sidebarWidthPx, value => {
+                document.getElementById('app')?.style.setProperty('--recording-sidebar-width', `${value}px`);
+            }, { immediate: true });
+            watch(recordingListCompact, value => localStorage.setItem('recordingListCompact', String(value)));
 
             // --- Modal State ---
             const showEditModal = ref(false);
@@ -1918,6 +1980,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, hintsPopoverStyle, toggleHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
+                folderBrowserOpen, expandedFolderIds, includeChildFolders, recordingListCompact,
+                folderTreeItems, activeFolderPath, activeFolderName, sidebarRatio, sidebarWidthPx, isSidebarResizing,
+                toggleFolderExpanded, selectFolderFilter, startSidebarResize, onSidebarResizeKeydown,
 
                 // Audio Recording
                 isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
@@ -2664,9 +2729,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const createFolderFromUpload = () => {
                 if (!window.SpeakrOrganizer) return;
                 window.SpeakrOrganizer.openFolderCreate({
+                    folders: availableFolders.value,
                     onSaved: async (folder) => {
                         await recordingsComposable.loadFolders();
                         selectedFolderId.value = folder.id;
+                    },
+                });
+            };
+            const createFolderInTree = (parentId = null) => {
+                if (!window.SpeakrOrganizer) return;
+                window.SpeakrOrganizer.openFolderCreate({
+                    parentId,
+                    folders: availableFolders.value,
+                    onSaved: async (folder) => {
+                        await recordingsComposable.loadFolders();
+                        if (parentId) expandedFolderIds.value = new Set(expandedFolderIds.value).add(parentId);
+                        filterFolder.value = folder.id;
                     },
                 });
             };
@@ -3846,6 +3924,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
+            watch(includeChildFolders, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
             // Guard against being stuck filtering by a folder the user can't
             // access — e.g. a foreign folder ID persisted from a shared recording
             // (#314). Once folders load, drop any filter that isn't a real,
@@ -3855,6 +3937,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (f && f !== 'none' && Array.isArray(folders) &&
                     !folders.some(folder => String(folder.id) === String(f))) {
                     filterFolder.value = '';
+                    return;
+                }
+                if (f && f !== 'none' && Array.isArray(folders)) {
+                    const next = new Set(expandedFolderIds.value);
+                    folderPath(f, folders).slice(0, -1).forEach(folder => next.add(folder.id));
+                    if (next.size !== expandedFolderIds.value.size) expandedFolderIds.value = next;
                 }
             });
 
@@ -4763,6 +4851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Inline tag/folder creation (upload dialog)
                 createTagFromUploadSearch,
                 createFolderFromUpload,
+                createFolderInTree,
 
                 // Translation
                 generateTranslation,
