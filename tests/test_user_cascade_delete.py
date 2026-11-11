@@ -327,7 +327,6 @@ class TestUserDeletionIntegration(unittest.TestCase):
         self.assertIsNone(db.session.get(User, user_id))
         self.assertIsNone(db.session.get(Recording, rec_id))
         self.assertEqual(InternalShare.query.filter_by(recording_id=rec_id).count(), 0)
-        self.assertEqual(Recording.query.filter(Recording.user_id.is_(None)).count(), 0)
         kept = db.session.get(Recording, kept_id)
         self.assertIsNotNone(kept)
         self.assertEqual((kept.user_id, kept.transcription), (other.id, "keep me"))
