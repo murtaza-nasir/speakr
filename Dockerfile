@@ -46,10 +46,10 @@ RUN PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
 ###############################################################################
 FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS ffmpeg-stage
 
-ARG BTBN_TAG=autobuild-2026-10-23-13-04
-ARG FFMPEG_VER=n8.1.3-24-g92611900bb
-ARG FFMPEG_SHA256_amd64=d0eb612b8994407f78413e2929cb4b073bc699c8ab79e198b31624736fdc2f93
-ARG FFMPEG_SHA256_arm64=7853da3848e22eddc9a5077c7965abf62cf9e6f7ff95191b7d29f53155b5fd90
+ARG BTBN_TAG=autobuild-2026-11-11-12-39
+ARG FFMPEG_VER=n8.1.3-35-gf1acb0a266
+ARG FFMPEG_SHA256_amd64=32430dc6642d835511470728811e1555ec7ec09d4d27638b059f0e577a98d4e7
+ARG FFMPEG_SHA256_arm64=8f65a6116ab9db9aba90c86514940491c9a129c04a44cc8882e662bcb67a47d9
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
     && rm -rf /var/lib/apt/lists/* \
