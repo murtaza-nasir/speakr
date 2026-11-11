@@ -33,7 +33,7 @@ def test_translate_returns_the_requested_language():
 
 def test_translate_interpolates_double_brace_placeholders():
     assert translate('server.flash.verificationCooldown', 'en', seconds=42) == (
-        'Please wait 42 seconds before requesting another verification email.')
+        'Wait 42 seconds before requesting another verification email.')
     assert '42' in translate('server.flash.verificationCooldown', 'zh', seconds=42)
 
 
@@ -179,7 +179,7 @@ def test_flash_follows_the_users_interface_language(make_user):
 def test_flash_for_anonymous_visitor_uses_accept_language():
     client = app.test_client()
     client.get('/account', headers={'Accept-Language': 'es-MX,es;q=0.9'})
-    assert _flashes(client) == ['Inicie sesión para acceder a esta página.']
+    assert _flashes(client) == ['Inicie sesión para ver esta página.']
 
 
 def _send(sender, uid, accept_language=None):
@@ -201,9 +201,9 @@ def _send(sender, uid, accept_language=None):
 
 
 @pytest.mark.parametrize('sender,subject,heading', [
-    (email_service.send_verification_email, 'Bestätigen Sie Ihre E-Mail-Adresse - Speakr',
+    (email_service.send_verification_email, 'E-Mail-Adresse für Speakr bestätigen',
      'Bestätigen Sie Ihre E-Mail-Adresse'),
-    (email_service.send_password_reset_email, 'Passwort zurücksetzen - Speakr', 'Passwort zurücksetzen'),
+    (email_service.send_password_reset_email, 'Speakr-Passwort zurücksetzen', 'Passwort zurücksetzen'),
 ])
 def test_account_emails_use_the_recipients_language(make_user, sender, subject, heading):
     uid = make_user('de')
@@ -212,21 +212,21 @@ def test_account_emails_use_the_recipients_language(make_user, sender, subject, 
     assert got_subject == subject
     assert heading in html_body
     assert 'Hallo i18n_' in html_body and 'Hallo i18n_' in text_body
-    assert 'KI-gestützte Audiotranskription' in html_body
-    assert 'Diese E-Mail wurde von Speakr gesendet' in text_body
+    assert 'Audio-Transkription und Notizen' in html_body
+    assert 'Gesendet von Speakr' in text_body
     assert 'Hi ' not in text_body
 
 
 @pytest.mark.parametrize('sender,subject', [
-    (email_service.send_verification_email, 'Verify your email address - Speakr'),
-    (email_service.send_password_reset_email, 'Reset your password - Speakr'),
+    (email_service.send_verification_email, 'Verify your email for Speakr'),
+    (email_service.send_password_reset_email, 'Reset your Speakr password'),
 ])
 def test_account_emails_default_to_english(make_user, sender, subject):
     uid = make_user(None)
     got_subject, html_body, text_body = _send(sender, uid, accept_language='de')
     assert got_subject == subject
     assert 'Hi i18n_' in text_body
-    assert 'AI-Powered Audio Transcription' in html_body
+    assert 'Audio transcription and notes' in html_body
 
 
 def test_translated_email_text_is_html_escaped(make_user):
@@ -270,10 +270,10 @@ def test_token_budget_messages_use_the_users_language(make_user):
     from src.services.token_tracking import token_tracker
     de, en = make_user('de'), make_user(None)
     assert _budget(token_tracker, de, 1200, 'monthly_token_budget', 1000) == (
-        False, 120.0, 'Monatliches Token-Budget überschritten (120\xa0%). '
-        'Wenden Sie sich für weitere Tokens an den Administrator.')
+        False, 120.0, 'Monatliches Token-Budget aufgebraucht (120\xa0%). '
+        'Bitten Sie Ihren Administrator um mehr.')
     assert _budget(token_tracker, en, 853, 'monthly_token_budget', 1000) == (
-        True, 85.3, 'Warning: 85.3% of monthly token budget used.')
+        True, 85.3, '85.3% of your monthly token budget used.')
     assert _budget(token_tracker, en, 100, 'monthly_token_budget', 1000) == (True, 10.0, None)
 
 
@@ -281,9 +281,9 @@ def test_transcription_budget_messages_use_the_users_language(make_user):
     from src.services.transcription_tracking import transcription_tracker
     ru, en = make_user('ru'), make_user('en')
     can, _, msg = _budget(transcription_tracker, ru, 90 * 60, 'monthly_transcription_budget', 60 * 60)
-    assert not can and msg.startswith('Месячный лимит транскрипции превышен (90/60 мин).')
+    assert not can and msg.startswith('Месячный бюджет транскрипции исчерпан (90/60 мин).')
     assert _budget(transcription_tracker, en, 54 * 60, 'monthly_transcription_budget', 60 * 60)[2] == (
-        'Warning: 90% of monthly transcription budget used.')
+        '90% of your monthly transcription budget used.')
 
 
 # ---------------------------------------------------------------------------

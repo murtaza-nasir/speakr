@@ -212,7 +212,7 @@
                 const originalText = uiLanguageSelect.parentElement.querySelector('p').textContent;
                 const loadingMsg = uiLanguageSelect.parentElement.querySelector('p');
                 if (loadingMsg) {
-                    loadingMsg.textContent = tf('account.applyingLanguageChange', 'Applying language change...');
+                    loadingMsg.textContent = tf('account.applyingLanguageChange', 'Applying language change…');
                 }
                 
                 // Get CSRF token
@@ -259,7 +259,7 @@
                 
             } catch (error) {
                 console.error('Error updating language:', error);
-                alert(tf('account.languageUpdateFailed', 'Failed to update language. Please try again.'));
+                alert(tf('account.languageUpdateFailed', 'Couldn\'t update language. Try again.'));
                 // Revert the dropdown to previous value if update failed
                 document.getElementById('ui_language').value = currentUILanguage;
                 document.getElementById('ui_language').disabled = false;
@@ -538,13 +538,13 @@
                          The Folders SUBTAB stays hidden unless the folders
                          feature is enabled (mirrors the old hidden tab). -->
                     <a href="#" id="tab-organize" class="tab">
-                        <i class="fas fa-tags"></i><span data-i18n="accountTabs.tagsAndFolders">Tags &amp; Folders</span>
+                        <i class="fas fa-tags"></i><span data-i18n="accountTabs.tagsAndFolders">Tags &amp; folders</span>
                     </a>
                     <a href="#" id="tab-templates" class="tab">
                         <i class="fas fa-file-alt"></i><span data-i18n="accountTabs.templates">Templates</span>
                     </a>
                     <a href="#" id="tab-tokens" class="tab">
-                        <i class="fas fa-key"></i><span data-i18n="accountTabs.apiTokens">API Tokens</span>
+                        <i class="fas fa-key"></i><span data-i18n="accountTabs.apiTokens">API tokens</span>
                     </a>
                     <a href="#" id="tab-webhooks" class="tab">
                         <i class="fas fa-link"></i><span data-i18n="accountTabs.webhooks">Webhooks</span>
@@ -561,7 +561,7 @@
                 <div class="tab-content-wrapper">
                     <div id="content-account" class="tab-content">
                       <div class="tab-scroll">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account Information</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account</h2>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -573,12 +573,12 @@
                 {% endwith %}
                 
                 <div class="mb-8">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.statistics">Account Statistics</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.statistics">Account statistics</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                         <span class="block text-3xl font-bold text-[var(--text-accent)]">{{ current_user.recordings|length }}</span>
-                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.totalRecordings">Total Recordings</span>
+                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.totalRecordings">Total recordings</span>
                                     </div>
                                     
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -613,18 +613,18 @@
                         <form id="accountInfoForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6">
                             <div class="mb-6">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.personalInfo">Personal Information</h3>
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.personalInfo">Personal information</h3>
                                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
                                     <div>
-                                        <label for="user_name" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.fullName">Full Name</label>
+                                        <label for="user_name" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.fullName">Full name</label>
                                         <input type="text" name="user_name" id="user_name" value="{{ current_user.name or '' }}" data-i18n-placeholder="form.yourFullName" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                     <div>
-                                        <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.jobTitle">Job Title</label>
+                                        <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.jobTitle">Job title</label>
                                         <input type="text" name="user_job_title" id="user_job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Software Engineer" data-i18n-placeholder="account.jobTitlePlaceholder" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                     <div>
-                                        <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.companyOrganization">Company / Organization</label>
+                                        <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.companyOrganization">Company / organization</label>
                                         <input type="text" name="user_company" id="user_company" value="{{ current_user.company or '' }}" placeholder="e.g., Acme Corp" data-i18n-placeholder="account.companyPlaceholder" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                 </div>
@@ -636,7 +636,7 @@
                                  to submit this form. -->
                         </form>
                         <div>
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.userDetails">User Details</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.userDetails">User details</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
                                 <div class="mb-3">
                                     <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.username">Username</span>
@@ -658,7 +658,7 @@
                              administrator set one (#413). -->
                         {% if usage_limits %}
                         <div>
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.usageAndLimits">Usage and Limits</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.usageAndLimits">Usage and limits</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4" id="account-storage">
                                 {% for row in usage_limits %}
                                 {% set pct = row.percentage %}
@@ -676,12 +676,12 @@
                                         <div class="h-2 rounded-full {% if pct >= 100 %}bg-[var(--text-danger-strong)]{% elif pct >= 80 %}bg-[var(--text-warn-strong)]{% else %}bg-[var(--text-success-strong)]{% endif %}" style="width: {{ [pct, 100]|min }}%"></div>
                                     </div>
                                     {% if row.key == 'storage' and pct >= 100 %}
-                                    <p class="text-xs text-[var(--text-danger-strong)] mt-2" data-i18n="account.storageFull">Your storage is full. Uploads and new recordings are refused until you delete recordings or remove their audio.</p>
+                                    <p class="text-xs text-[var(--text-danger-strong)] mt-2" data-i18n="account.storageFull">Storage is full. To upload or record again, delete recordings or their audio.</p>
                                     {% endif %}
                                     {% endif %}
                                 </div>
                                 {% endfor %}
-                                <p class="text-xs text-[var(--text-muted)] border-t border-[var(--border-primary)] pt-3" data-i18n="account.usageHelp">AI tokens and transcription minutes are counted from the start of each month. Storage includes the audio and video you keep, but not recordings with their audio removed.</p>
+                                <p class="text-xs text-[var(--text-muted)] border-t border-[var(--border-primary)] pt-3" data-i18n="account.usageHelp">AI tokens and transcription minutes reset at the start of each month. Storage includes the audio and video you keep, not recordings whose audio was deleted.</p>
                             </div>
                         </div>
                         {% endif %}
@@ -693,7 +693,7 @@
                              "Go to Recordings" link removed; the
                              page-header Speakr logo is the natural exit. -->
                         <div>
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.signInSecurity">Sign-in & Security</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.signInSecurity">Sign-in &amp; security</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
                                 {% if sso_enabled %}
                                 <div class="space-y-3">
@@ -722,7 +722,7 @@
                                     </form>
                                     {% elif not password_login_disabled or current_user.is_admin %}
                                     <div class="t-meta">
-                                        <i class="fas fa-info-circle mr-1"></i> <span data-i18n="account.ssoSetPasswordFirst">To unlink SSO, you must first set a password.</span>
+                                        <i class="fas fa-info-circle mr-1"></i> <span data-i18n="account.ssoSetPasswordFirst">Set a password before you unlink SSO.</span>
                                     </div>
                                     {% endif %}
                                     {% else %}
@@ -742,7 +742,7 @@
                                 <div>
                                     <span class="block text-sm font-medium text-[var(--text-muted)] mb-2" data-i18n="account.password">Password</span>
                                     <button id="changePasswordBtn" class="btn btn--ghost w-full">
-                                        <i class="fas fa-key"></i><span data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</span>
+                                        <i class="fas fa-key"></i>{% if has_password %}<span data-i18n="account.changePassword">Change password</span>{% else %}<span data-i18n="account.setPassword">Set password</span>{% endif %}
                                     </button>
                                 </div>
                                 {% endif %}
@@ -753,7 +753,7 @@
                       </div><!-- /.tab-scroll -->
                       <div class="tab-footer">
                         <button type="submit" form="accountInfoForm" class="btn btn--primary">
-                            <i class="fas fa-save"></i> <span data-i18n="account.saveAllPreferences">Save All Preferences</span>
+                            <i class="fas fa-save"></i> <span data-i18n="account.saveAllPreferences">Save preferences</span>
                         </button>
                       </div>
                 </div>
@@ -762,7 +762,7 @@
                       <div class="tab-scroll">
                     <!-- Header with Auto-summarization toggle -->
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt options</h2>
                         {% if not admin_disabled_auto_summarization %}
                         <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes" data-i18n-title="account.autoSummarizeTitle">
                             <span id="autoSummarizationToggleLabel" class="text-sm text-[var(--text-secondary)]" data-i18n="account.autoSummarize">Auto-summarize</span>
@@ -773,7 +773,7 @@
                         </div>
                         {% else %}
                         <div class="text-sm text-[var(--text-muted)] italic" title="Auto-summarization has been disabled by the administrator" data-i18n-title="account.autoSummarizeDisabledTitle">
-                            <i class="fas fa-lock mr-1"></i> <span data-i18n="account.autoSummarizationDisabled">Auto-summarization disabled by admin</span>
+                            <i class="fas fa-lock mr-1"></i> <span data-i18n="account.autoSummarizationDisabled">Turned off by your administrator</span>
                         </div>
                         {% endif %}
                     </div>
@@ -785,7 +785,7 @@
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">
                                 <i class="fas fa-clock mr-2"></i>
-                                <span data-i18n="timestamps.title">Transcript Timestamp Availability</span>
+                                <span data-i18n="timestamps.title">Transcript timestamps</span>
                             </h3>
                             <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="timestamps.description">
                                 Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.
@@ -798,7 +798,7 @@
                                             {% if current_user.summary_include_timestamps %}checked{% endif %}
                                             class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
                                         <div>
-                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.summaryLabel">Give the summarization agent timestamps</span>
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.summaryLabel">Include timestamps when summarizing</span>
                                         </div>
                                     </label>
                                     <select name="summary_timestamp_template_id" id="summary_timestamp_template_id"
@@ -815,7 +815,7 @@
                                             {% if current_user.chat_include_timestamps %}checked{% endif %}
                                             class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
                                         <div>
-                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.chatLabel">Give the chat agent timestamps</span>
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.chatLabel">Include timestamps in chat</span>
                                         </div>
                                     </label>
                                     <select name="chat_timestamp_template_id" id="chat_timestamp_template_id"
@@ -833,16 +833,16 @@
                             <input type="hidden" name="summary_notes_section" value="1">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">
                                 <i class="fas fa-sticky-note mr-2"></i>
-                                <span data-i18n="summaryNotes.title">Notes in Summaries</span>
+                                <span data-i18n="summaryNotes.title">Notes in summaries</span>
                             </h3>
                             <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="summaryNotes.description">
-                                Your notes on a recording, such as the correct spelling of names, an agenda or text pasted from an email, can be given to the summarization agent as context. The transcript remains the record of what was said.
+                                Use your notes on a recording (name spellings, an agenda, text from an email) as context for its summary. The transcript stays the record of what was said.
                             </p>
                             <label class="flex items-start space-x-3">
                                 <input type="checkbox" name="summary_include_notes" id="summary_include_notes"
                                     {% if current_user.summary_include_notes %}checked{% endif %}
                                     class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
-                                <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="summaryNotes.label">Give the summarization agent my notes</span>
+                                <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="summaryNotes.label">Use my notes in summaries</span>
                             </label>
                         </div>
 
@@ -850,7 +850,7 @@
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
                                 <i class="fas fa-calendar-alt mr-2"></i>
-                                <span data-i18n="eventExtraction.title">Event Extraction</span>
+                                <span data-i18n="eventExtraction.title">Event extraction</span>
                             </h3>
 
                             <div class="mb-4">
@@ -860,10 +860,10 @@
                                         class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
                                     <div>
                                         <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="eventExtraction.enableLabel">
-                                            Enable automatic event extraction from transcripts
+                                            Find events in transcripts
                                         </span>
                                         <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="eventExtraction.description">
-                                            When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.
+                                            Find meetings, appointments and deadlines mentioned in recordings, as calendar events you can download.
                                         </span>
                                     </div>
                                 </label>
@@ -916,7 +916,7 @@
                                             Allow access to your notes
                                         </span>
                                         <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="inquirePrivacy.notesHelp">
-                                            Your private notes stay unavailable unless you enable this. Only your own notes are ever used, never notes on recordings shared with you.
+                                            Only your own notes are used, never notes on recordings shared with you.
                                         </span>
                                     </div>
                                 </label>
@@ -925,25 +925,25 @@
 
                         <!-- Custom Prompts Section -->
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4" data-i18n="customPrompts.summaryGeneration">Summary Generation Prompt</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4" data-i18n="customPrompts.summaryGeneration">Summary prompt</h3>
                             
                             <div class="mb-4">
                                 <label for="summary_prompt_custom" class="block text-sm font-medium text-[var(--text-muted)] mb-2">
-                                    <span data-i18n="customPrompts.yourCustomPrompt">Your Custom Summary Prompt</span>
+                                    <span data-i18n="customPrompts.yourCustomPrompt">Your summary prompt</span>
                                 </label>
                                 <textarea name="summary_prompt" id="summary_prompt_custom" rows="8"
                                     placeholder="Describe how you want your summaries structured. Leave blank to use the admin's default prompt."
                                     data-i18n-placeholder="customPrompts.promptPlaceholder"
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or '' }}</textarea>
                                 <p class="text-xs text-[var(--text-light)] mt-2">
-                                    <span data-i18n="customPrompts.promptDescription">This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.</span>
+                                    <span data-i18n="customPrompts.promptDescription">Your summary prompt. It replaces the admin's default.</span>
                                 </p>
                             </div>
                             
                             <div class="mt-6 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
                                 <h4 class="text-sm font-semibold text-[var(--text-accent)] mb-2">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    <span data-i18n="customPrompts.currentDefaultPrompt">Current Default Prompt (Used if you leave the above blank)</span>
+                                    <span data-i18n="customPrompts.currentDefaultPrompt">Default prompt (used when the field above is blank)</span>
                                 </h4>
                                 <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                     <pre id="currentDefaultPromptDisplay" class="text-xs text-[var(--text-muted)] whitespace-pre-wrap font-mono">{{ default_summary_prompt_text }}</pre>
@@ -956,7 +956,7 @@
                             <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
                                 <button type="button" id="toggleFullPromptStructure"
                                         class="w-full px-4 py-3 flex justify-between items-center text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-200 rounded-lg">
-                                    <span><i class="fas fa-code mr-2"></i><span data-i18n="adminDashboard.viewFullPromptStructure">View Full LLM Prompt Structure</span></span>
+                                    <span><i class="fas fa-code mr-2"></i><span data-i18n="adminDashboard.viewFullPromptStructure">View full LLM prompt structure</span></span>
                                     <i id="fullPromptChevron" class="fas fa-chevron-down text-[var(--text-muted)]"></i>
                                 </button>
                                 <div id="fullPromptStructureBody" class="hidden border-t border-[var(--border-secondary)] p-4 space-y-4">
@@ -973,20 +973,20 @@
                                     </div>
 
                                     <div>
-                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="adminDashboard.systemPrompt">System Prompt:</h5>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="adminDashboard.systemPrompt">System prompt:</h5>
                                         <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                             <pre id="previewSystemPrompt" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="preview.userMessageHeading">User Message:</h5>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="preview.userMessageHeading">User message:</h5>
                                         <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                             <pre id="previewUserMessage" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
                                         </div>
                                         <p class="text-xs text-[var(--text-muted)] mt-2">
                                             <i class="fas fa-info-circle mr-1"></i>
-                                            <span data-i18n="preview.liveUpdateNote">The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed.</span>
+                                            <span data-i18n="preview.liveUpdateNote">The preview is updated as you edit your prompt. Placeholders are filled in for each recording.</span>
                                         </p>
                                     </div>
                                 </div>
@@ -996,15 +996,15 @@
                                 <details class="cursor-pointer">
                                     <summary class="text-sm text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]">
                                         <i class="fas fa-question-circle mr-1"></i>
-                                        <span data-i18n="customPrompts.tipsTitle">Tips for Writing Effective Prompts</span>
+                                        <span data-i18n="customPrompts.tipsTitle">Prompt tips</span>
                                     </summary>
                                     <div class="mt-3 p-3 bg-[var(--bg-info-light)] text-[var(--text-info-strong)] rounded-lg text-sm">
                                         <ul class="list-disc list-inside space-y-1">
                                             <li data-i18n="customPrompts.tip1">Be specific about the sections you want in your summary</li>
                                             <li data-i18n="customPrompts.tip2">Use clear formatting instructions (e.g., "Use bullet points", "Create numbered lists")</li>
                                             <li data-i18n="customPrompts.tip3">Specify if you want certain information prioritized</li>
-                                            <li data-i18n="customPrompts.tip4">The system will automatically provide the transcript content to the AI</li>
-                                            <li data-i18n="customPrompts.tip5">Your output language preference (if set) will be applied automatically</li>
+                                            <li data-i18n="customPrompts.tip4">The transcript is added automatically</li>
+                                            <li data-i18n="customPrompts.tip5">Your output language, if set, is added automatically</li>
                                         </ul>
                                     </div>
                                 </details>
@@ -1014,13 +1014,13 @@
                             <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
                                 <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
                                     <i class="fas fa-heading mr-2 text-[var(--text-accent)]"></i>
-                                    <span data-i18n="customPrompts.titleGeneration">Title Generation Prompt</span>
+                                    <span data-i18n="customPrompts.titleGeneration">Title prompt</span>
                                 </h3>
                                 <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="customPrompts.titleGenerationDesc">
-                                    Instructions for the titles generated for your recordings. Tag and folder title prompts take priority over this one.
+                                    Instructions for recording titles. Tag and folder title prompts take priority.
                                 </p>
                                 <label for="title_prompt_custom" class="block text-sm font-medium text-[var(--text-muted)] mb-2">
-                                    <span data-i18n="customPrompts.yourTitlePrompt">Your Title Instructions</span>
+                                    <span data-i18n="customPrompts.yourTitlePrompt">Your title prompt</span>
                                 </label>
                                 <textarea name="title_prompt" id="title_prompt_custom" rows="4"
                                     placeholder="e.g. Name the institution and the main speaker, then the topic. Leave blank to use the default."
@@ -1044,16 +1044,16 @@
                             <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
                                 <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
                                     <i class="fas fa-spell-check mr-2 text-[var(--text-accent)]"></i>
-                                    <span data-i18n="account.transcriptionHints">Transcription Hints</span>
+                                    <span data-i18n="account.transcriptionHints">Transcription hints</span>
                                 </h3>
                                 <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="account.transcriptionHintsDesc">
-                                    These defaults are used when no tag or folder overrides are set. They help improve transcription accuracy for your specific use case.
+                                    Used when a recording's tag or folder has no hints of its own. Names and terms listed here improve accuracy.
                                 </p>
 
                                 <div class="space-y-4">
                                     <div>
                                         <label for="transcription_hotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultHotwords">
-                                            Default Hotwords
+                                            Default hotwords
                                         </label>
                                         <input type="text" name="transcription_hotwords" id="transcription_hotwords"
                                                value="{{ current_user.transcription_hotwords or '' }}"
@@ -1061,13 +1061,13 @@
                                                placeholder="e.g., Speakr, CTranslate2, PyAnnote, SDRs"
                                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="help.defaultHotwordsHelp">
-                                            Comma-separated words or phrases that the transcription model should prioritize recognizing (brand names, acronyms, technical terms).
+                                            Comma-separated words or phrases to recognize more reliably, such as brand names, acronyms and technical terms.
                                         </p>
                                     </div>
 
                                     <div>
                                         <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultInitialPrompt">
-                                            Default Initial Prompt
+                                            Default initial prompt
                                         </label>
                                         <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="transcription_initial_prompt" data-target-hotwords="transcription_hotwords" style="display:none">
                                             <option value="" data-i18n="initialPromptTemplates.pickPlaceholder">Insert a saved template…</option>
@@ -1077,7 +1077,7 @@
                                                   placeholder="e.g., This is a meeting about AI transcription tools. The speakers discuss CTranslate2, PyAnnote, and SDRs."
                                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.transcription_initial_prompt or '' }}</textarea>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="help.defaultInitialPromptHelp">
-                                            Context to steer the transcription model's style and vocabulary. Describe the topic or expected content of your recordings.
+                                            A sentence about the topic of your recordings, used to guide the transcript's style and vocabulary.
                                         </p>
                                     </div>
                                 </div>
@@ -1088,7 +1088,7 @@
                       </div><!-- /.tab-scroll -->
                       <div class="tab-footer">
                         <button type="submit" form="customPromptsForm" class="btn btn--primary">
-                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
+                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save settings</span>
                         </button>
                       </div>
                 </div>
@@ -1096,7 +1096,7 @@
                     <div id="content-preferences" class="hidden tab-content">
                       <div class="tab-scroll">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.preferences">Preferences</h2>
-                        <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Display and editor behaviour preferences. These settings are saved to your account and apply across devices.</p>
+                        <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Saved to your account and used on every device.</p>
                         {% if ui_theme_choices|length > 1 %}
                         <!-- Appearance: the UI theme (includes/ui_theme_picker.html),
                              applied at once and saved with the account. The colour
@@ -1117,10 +1117,10 @@
 
                             <!-- Left column: Language Preferences -->
                             <div class="space-y-4">
-                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide" data-i18n="account.languagePreferences">Language Preferences</h3>
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide" data-i18n="account.languagePreferences">Language preferences</h3>
                                 <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
                                     <div>
-                                        <label for="ui_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.interfaceLanguage">Interface Language</label>
+                                        <label for="ui_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.interfaceLanguage">Interface language</label>
                                         <select name="ui_language" id="ui_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                             <option value="en" {% if current_user.ui_language == 'en' or not current_user.ui_language %}selected{% endif %}>English</option>
                                             <option value="zh" {% if current_user.ui_language == 'zh' %}selected{% endif %}>中文 (Chinese)</option>
@@ -1130,10 +1130,10 @@
                                             <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
                                             <option value="pt-BR" {% if current_user.ui_language == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
                                         </select>
-                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Language of menus, buttons and messages.</p>
                                     </div>
                                     <div>
-                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
+                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription language</label>
                                         <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                             <option value="" data-sort-pin="top" data-i18n="languages.autoDetect" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
                                             <option value="en" data-i18n="languages.en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
@@ -1203,7 +1203,7 @@
                                         <input type="checkbox" id="prefParseFilenameDates" name="parse_filename_dates" {% if current_user.parse_filename_dates %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
                                         <span class="flex-1">
                                             <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.parseFilenameDates">Parse meeting date from filename</span>
-                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.parseFilenameDatesHelp">When an uploaded filename contains a date (for example 20260716_meeting.mp3), use it as the meeting date instead of the file's timestamps. Files without a matching date keep the current behaviour.</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.parseFilenameDatesHelp">Use a date in the file name (for example 20260716_meeting.mp3) as the meeting date. Other files keep the file's timestamps.</span>
                                         </span>
                                     </label>
                                     <div>
@@ -1249,7 +1249,7 @@
                                     <input type="checkbox" id="prefNotifyEmailOnCompletion" name="notify_email_on_completion" {% if current_user.notify_email_on_completion %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
                                     <span class="flex-1">
                                         <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.notifyEmailOnCompletion">Email me when a transcription finishes</span>
-                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.notifyEmailOnCompletionHelp">Sends a message to your account address when a recording finishes transcribing, and when one fails. Summaries are not included. Useful for long recordings you do not want to sit and wait for; less so if you upload many files at once, since each one sends its own message.</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.notifyEmailOnCompletionHelp">One email per recording, sent to your account address when it finishes transcribing or fails. Summaries aren't included.</span>
                                     </span>
                                 </label>
                                 {% endif %}
@@ -1270,11 +1270,11 @@
                                     <input type="checkbox" id="prefAutoTranslation" name="auto_translation" {% if current_user.auto_translation %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
                                     <span class="flex-1">
                                         <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.autoTranslation">Auto-translate new recordings</span>
-                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.autoTranslationHelp">When enabled, each new recording is translated automatically into the language you selected as your Preferred Chatbot, Summarization and Translation Language once transcription finishes. When disabled (default), you generate the translation yourself with the Generate Translation button. Translations use the same AI tokens as a manual one and count toward your monthly token budget.</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.autoTranslationHelp">Translate each new recording into your output language once it is transcribed. When off (the default), use Generate translation. Translations count toward your monthly token budget.</span>
                                     </span>
                                 </label>
                                 {% else %}
-                                <p class="text-xs text-[var(--text-muted)] italic" data-i18n="preferences.autoTranslationDisabled">Auto-translation is disabled by the administrator.</p>
+                                <p class="text-xs text-[var(--text-muted)] italic" data-i18n="preferences.autoTranslationDisabled">Turned off by your administrator.</p>
                                 {% endif %}
 
                                 <!-- Audio player position (was the Display
@@ -1283,21 +1283,21 @@
                                      and the dedicated tab was hard to find
                                      for one setting). -->
                                 <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="display.audioPlayerSection">Audio player</h3>
-                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.audioPlayerPositionHelp">Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.</p>
+                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.audioPlayerPositionHelp">Where the player sits on a recording's page</p>
                                 {% set apos = current_user.audio_player_position or 'bottom' %}
                                 <div class="grid grid-cols-2 gap-2">
                                     <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
                                         <input type="radio" name="audio_player_position" value="bottom" {% if apos != 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
                                         <span class="flex-1">
                                             <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionBottom">Bottom</span>
-                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionBottomHelp">Player anchored under the transcript + summary columns. Default.</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionBottomHelp">Under the transcript and summary. Default.</span>
                                         </span>
                                     </label>
                                     <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
                                         <input type="radio" name="audio_player_position" value="top" {% if apos == 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
                                         <span class="flex-1">
                                             <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionTop">Top</span>
-                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionTopHelp">Player sits above the columns, just under the title and metadata strip.</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionTopHelp">Under the title, above the transcript and summary.</span>
                                         </span>
                                     </label>
                                 </div>
@@ -1306,7 +1306,7 @@
                                      that has not saved its own choice. The Sort menu in the
                                      list still overrides it per browser. -->
                                 <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="display.recordingsListSection">Recordings list</h3>
-                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.defaultSortHelp">Choose how the list is ordered and grouped when you open Speakr in a browser where you have not picked a sort yet. The Sort menu in the list still overrides this on that browser.</p>
+                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.defaultSortHelp">Order of the list in a browser where you haven't picked a sort. A sort picked from the list's Sort menu takes priority there.</p>
                                 {% set dsort = current_user.default_recording_sort or 'created_at' %}
                                 <div class="grid grid-cols-2 gap-2">
                                     <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
@@ -1330,7 +1330,7 @@
                       </div>
                       <div class="tab-footer">
                         <button type="submit" form="preferencesForm" class="btn btn--primary">
-                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
+                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save settings</span>
                         </button>
                       </div>
                     </div>
@@ -1342,7 +1342,7 @@
 
                     <div id="content-shares" class="hidden tab-content">
                       <div class="tab-scroll">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">Shared recordings</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
@@ -1355,8 +1355,8 @@
                     <!-- Header with Auto-label toggle -->
                     <div class="flex-shrink-0 mb-4 flex items-center justify-between">
                         <div>
-                            <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-1" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
-                            <p class="text-sm text-[var(--text-secondary)] hidden sm:block" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
+                            <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-1" data-i18n="accountTabs.speakersManagement">Speakers</h2>
+                            <p class="text-sm text-[var(--text-secondary)] hidden sm:block" data-i18n="speakersManagement.description">Speakers are saved when you name them in a recording.</p>
                         </div>
                         {% if speaker_embeddings_enabled or contextual_labelling_available %}
                         <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="{% if speaker_embeddings_enabled %}Automatically label speakers in new recordings when saved voice profiles match{% else %}Automatically label speakers in new recordings from the conversation context{% endif %}" {% if speaker_embeddings_enabled %}data-i18n-title="account.speakersTab.autoLabelVoiceTitle"{% else %}data-i18n-title="account.speakersTab.autoLabelContextTitle"{% endif %}>
@@ -1379,7 +1379,7 @@
                     {% if contextual_labelling_available and not speaker_embeddings_enabled %}
                     <div class="flex-shrink-0 -mt-2 mb-4">
                         <p class="text-xs text-[var(--text-muted)] leading-snug" data-i18n="account.contextualSpeakerLabellingHelp">
-                            Speakers are matched from the conversation context because your transcription engine does not provide voice fingerprints. This can be quite inaccurate, depending on how much the conversation reveals about who is speaking and how well your model separates speakers. For the most accurate, voice-based speaker matching, the WhisperX ASR container is recommended.
+                            This server's transcription engine has no voice fingerprints, so speakers are matched from what is said. Expect mistakes when nobody is named in the conversation. For voice-based matching, use the WhisperX ASR container.
                         </p>
                     </div>
                     {% endif %}
@@ -1389,7 +1389,7 @@
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                                 <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select All</span>
+                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select all</span>
                                 <span class="sm:hidden" data-i18n="account.speakersTab.all">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
@@ -1418,20 +1418,20 @@
                         <!-- Loading state -->
                         <div id="speakersTabLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="text-[var(--text-muted)] mt-2" data-i18n="speakersManagement.loadingSpeakers">Loading speakers...</p>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="speakersManagement.loadingSpeakers">Loading speakers…</p>
                         </div>
 
                         <!-- Error state -->
                         <div id="speakersTabError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <span id="speakersTabErrorMessage" data-i18n="speakersManagement.failedToLoad">Failed to load speakers</span>
+                            <span id="speakersTabErrorMessage" data-i18n="speakersManagement.failedToLoad">Couldn't load speakers</span>
                         </div>
 
                         <!-- Empty state -->
                         <div id="speakersTabEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
                             <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="speakersManagement.noSpeakersYet">No speakers saved yet</p>
-                            <p class="text-sm text-[var(--text-light)]" data-i18n="speakersManagement.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="speakersManagement.speakersWillAppear">Speakers you name in recordings appear here</p>
                         </div>
 
                         <!-- Speakers grid -->
@@ -1445,7 +1445,7 @@
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                                 <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select All</span>
+                                <span class="hidden sm:inline" data-i18n="common.selectAll">Select all</span>
                                 <span class="sm:hidden" data-i18n="account.speakersTab.all">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
@@ -1490,20 +1490,20 @@
 
                     <!-- Folders subpane -->
                     <div id="content-folders" class="hidden">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder Management</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder management</h2>
 
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
-                            <p class="text-[var(--text-secondary)]" data-i18n="folderManagement.description">Organize your recordings into folders. Unlike tags, a recording can only belong to one folder. Folder prompts are applied before user prompts but after tag prompts.</p>
+                            <p class="text-[var(--text-secondary)]" data-i18n="folderManagement.description">A recording can be in one folder but have many tags. Tag prompts take priority over folder prompts, and folder prompts over your own.</p>
                             <button id="createFolderBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i> <span data-i18n="folderManagement.createFolder">Create Folder</span>
+                                <i class="fas fa-plus mr-2"></i> <span data-i18n="folderManagement.createFolder">Create folder</span>
                             </button>
                         </div>
 
                         <!-- Loading state -->
                         <div id="foldersLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="text-[var(--text-muted)] mt-2" data-i18n="common.loading">Loading...</p>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="common.loading">Loading…</p>
                         </div>
 
                         <!-- Error state -->
@@ -1516,7 +1516,7 @@
                         <div id="foldersEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-folder text-4xl text-[var(--text-light)] mb-4"></i>
                             <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="folderManagement.noFolders">No folders created yet</p>
-                            <p class="text-sm text-[var(--text-light)]" data-i18n="folderManagement.noFoldersDescription">Create your first folder to organize your recordings</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="folderManagement.noFoldersDescription">Create a folder to group recordings</p>
                         </div>
 
                         <!-- Folders grid -->
@@ -1528,33 +1528,33 @@
 
                     <!-- Tags subpane -->
                     <div id="content-tags">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tags</h2>
 
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
-                            <p class="text-[var(--text-secondary)]" data-i18n="tagManagement.description">Organize your recordings with custom tags. Each tag can have its own summary prompt and default ASR settings.</p>
+                            <p class="text-[var(--text-secondary)]" data-i18n="tagManagement.description">Each tag can have its own summary prompt and ASR defaults.</p>
                             <button id="createTagBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i> <span data-i18n="tagManagement.createTag">Create Tag</span>
+                                <i class="fas fa-plus mr-2"></i> <span data-i18n="tagManagement.createTag">Create tag</span>
                             </button>
                         </div>
 
                         <!-- Loading state -->
                         <div id="tagsLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="text-[var(--text-muted)] mt-2" data-i18n="account.organizer.loadingTags">Loading tags...</p>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="account.organizer.loadingTags">Loading tags…</p>
                         </div>
 
                         <!-- Error state -->
                         <div id="tagsError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <span id="tagsErrorMessage" data-i18n="account.organizer.tagsLoadFailed">Failed to load tags</span>
+                            <span id="tagsErrorMessage" data-i18n="account.organizer.tagsLoadFailed">Couldn't load tags</span>
                         </div>
 
                         <!-- Empty state -->
                         <div id="tagsEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-tags text-4xl text-[var(--text-light)] mb-4"></i>
                             <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="help.noTagsCreated">No tags created yet</p>
-                            <p class="text-sm text-[var(--text-light)]" data-i18n="account.organizer.createFirstTag">Create your first tag to organize your recordings</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="account.organizer.createFirstTag">Create a tag to group recordings</p>
                         </div>
 
                         <!-- Tags grid -->
@@ -1577,13 +1577,13 @@
                       <div class="border-b border-[var(--border-primary)] px-6 flex-shrink-0">
                           <nav class="tabs flex-wrap" id="templates-subtabs" style="border-bottom: none;">
                               <button id="subtab-transcript" class="tab is-active" data-i18n="transcriptTemplates.tabTitle">
-                                  Transcript Formatting
+                                  Transcript formatting
                               </button>
                               <button id="subtab-initial-prompts" class="tab" data-i18n="initialPromptTemplates.tabTitle">
-                                  Transcription Hints
+                                  Transcription hints
                               </button>
                               <button id="subtab-naming" class="tab" data-i18n="namingTemplates.tabTitle">
-                                  Recording Titles
+                                  Recording titles
                               </button>
                               <button id="subtab-export" class="tab" style="display: none;" data-i18n="exportTemplates.tabTitle">
                                   Exports
@@ -1598,12 +1598,12 @@
                             <!-- Templates Header -->
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript Templates</h2>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript templates</h2>
                                     <p class="text-[var(--text-secondary)]" data-i18n="transcriptTemplates.description">Customize how transcripts are formatted for download and export.</p>
                                 </div>
                                 <button id="createTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-plus mr-2"></i>
-                                    <span data-i18n="transcriptTemplates.createNew">Create Template</span>
+                                    <span data-i18n="transcriptTemplates.createNew">Create template</span>
                                 </button>
                             </div>
 
@@ -1612,13 +1612,13 @@
                                 <!-- Templates List (Left) -->
                                 <div class="lg:col-span-1">
                                     <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="transcriptTemplates.availableTemplates">Available Templates</h3>
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="transcriptTemplates.availableTemplates">Available templates</h3>
                                         <div id="templatesList" class="space-y-2">
                                             <!-- Templates will be populated here -->
                                         </div>
                                         <button id="createDefaultTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
                                             <i class="fas fa-magic mr-2"></i>
-                                            <span data-i18n="transcriptTemplates.createDefaults">Create Default Templates</span>
+                                            <span data-i18n="transcriptTemplates.createDefaults">Create default templates</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1628,7 +1628,7 @@
                                     <div id="templateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
                                         <form id="templateForm" class="space-y-4">
                                             <div>
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.templateName">Template Name</label>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.templateName">Template name</label>
                                                 <input type="text" id="templateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
                                             </div>
 
@@ -1649,7 +1649,7 @@
 
                                                 <!-- Available Variables -->
                                                 <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
-                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="transcriptTemplates.availableVars">Available Variables:</p>
+                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="transcriptTemplates.availableVars">Available variables:</p>
                                                     <div class="flex flex-wrap gap-2">
                                                         {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{index}}</code>
                                                         <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{speaker}}</code>
@@ -1694,7 +1694,7 @@
                             <div class="mt-8 text-center">
                                 <a href="https://murtaza-nasir.github.io/speakr/user-guide/transcript-templates/" target="_blank" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
                                     <i class="fas fa-question-circle mr-1"></i>
-                                    <span data-i18n="transcriptTemplates.viewGuide">View Template Guide</span>
+                                    <span data-i18n="transcriptTemplates.viewGuide">View template guide</span>
                                 </a>
                             </div>
                         </div>
@@ -1704,12 +1704,12 @@
                             <!-- Export Templates Header -->
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.title">Export Templates</h2>
-                                    <p class="text-[var(--text-secondary)]" data-i18n="exportTemplates.description">Customize how recordings are exported to markdown files.</p>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.title">Export templates</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="exportTemplates.description">How recordings look when exported to Markdown files</p>
                                 </div>
                                 <button id="createExportTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-plus mr-2"></i>
-                                    <span data-i18n="exportTemplates.createNew">Create Template</span>
+                                    <span data-i18n="exportTemplates.createNew">Create template</span>
                                 </button>
                             </div>
 
@@ -1719,7 +1719,7 @@
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div class="min-w-0">
                                         <h3 class="text-lg font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.bulkExportTitle">Export existing recordings</h3>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="exportTemplates.bulkExportDescription">Write all of your processed recordings to the export directory. Useful for recordings created before auto-export was enabled.</p>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="exportTemplates.bulkExportDescription">Write every processed recording to the export directory, including those from before auto-export was turned on.</p>
                                         <p id="bulkExportStatus" class="text-sm mt-2 hidden"></p>
                                     </div>
                                     <button id="bulkExportBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed">
@@ -1760,13 +1760,13 @@
                                 <!-- Export Templates List (Left) -->
                                 <div class="lg:col-span-1">
                                     <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="exportTemplates.availableTemplates">Available Templates</h3>
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="exportTemplates.availableTemplates">Available templates</h3>
                                         <div id="exportTemplatesList" class="space-y-2">
                                             <!-- Export templates will be populated here -->
                                         </div>
                                         <button id="createDefaultExportTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
                                             <i class="fas fa-magic mr-2"></i>
-                                            <span data-i18n="exportTemplates.createDefaults">Create Default Template</span>
+                                            <span data-i18n="exportTemplates.createDefaults">Create default template</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1776,7 +1776,7 @@
                                     <div id="exportTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
                                         <form id="exportTemplateForm" class="space-y-4">
                                             <div>
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="exportTemplates.templateName">Template Name</label>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="exportTemplates.templateName">Template name</label>
                                                 <input type="text" id="exportTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
                                             </div>
 
@@ -1792,7 +1792,7 @@
                                                 <!-- Available Variables -->
                                                 <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3">
                                                     <div>
-                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.recordingData">Recording Data:</p>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.recordingData">Recording data:</p>
                                                         <div class="flex flex-wrap gap-2">
                                                             {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{title}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{title}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
                                                             <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{meeting_date}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{meeting_date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
@@ -1804,7 +1804,7 @@
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.contentSections">Content Sections:</p>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.contentSections">Content sections:</p>
                                                         <div class="flex flex-wrap gap-2">
                                                             {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{notes}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
                                                             <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{summary}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
@@ -1812,7 +1812,7 @@
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.availableLabels">Localized Labels (auto-translated):</p>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.availableLabels">Localized labels (auto-translated):</p>
                                                         <div class="flex flex-wrap gap-2">
                                                             {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.metadata}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.metadata}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
                                                             <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.notes}}" title="Click to copy" data-i18n-title="account.clickToCopy"><code>{{label.notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
@@ -1864,12 +1864,12 @@
                             <!-- Naming Templates Header -->
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="namingTemplates.title">Naming Templates</h2>
-                                    <p class="text-[var(--text-secondary)]" data-i18n="namingTemplates.description">Define how recording titles are generated from filenames and transcription content.</p>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="namingTemplates.title">Naming templates</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="namingTemplates.description">Build recording titles from the file name and the transcript.</p>
                                 </div>
                                 <button id="createNamingTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-plus mr-2"></i>
-                                    <span data-i18n="namingTemplates.createNew">Create Template</span>
+                                    <span data-i18n="namingTemplates.createNew">Create template</span>
                                 </button>
                             </div>
 
@@ -1878,21 +1878,21 @@
                                 <!-- Naming Templates List (Left) -->
                                 <div class="lg:col-span-1">
                                     <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.availableTemplates">Available Templates</h3>
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.availableTemplates">Available templates</h3>
                                         <div id="namingTemplatesList" class="space-y-2">
                                             <!-- Templates will be populated here -->
                                         </div>
                                         <button id="createDefaultNamingTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
                                             <i class="fas fa-magic mr-2"></i>
-                                            <span data-i18n="namingTemplates.createDefaults">Create Default Templates</span>
+                                            <span data-i18n="namingTemplates.createDefaults">Create default templates</span>
                                         </button>
                                     </div>
 
                                     <!-- User Default Selection -->
                                     <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.userDefault">Default Template</h3>
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.userDefault">Default template</h3>
                                         <select id="userDefaultNamingTemplate" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                            <option value="" data-i18n="namingTemplates.noDefault">No default (AI title only)</option>
+                                            <option value="" data-i18n="namingTemplates.noDefault">No default (generated title)</option>
                                         </select>
                                         <p class="mt-2 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.userDefaultHint">Applied when no tag has a naming template set.</p>
                                     </div>
@@ -1903,7 +1903,7 @@
                                     <div id="namingTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
                                         <form id="namingTemplateForm" class="space-y-4">
                                             <div>
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.templateName">Template Name</label>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.templateName">Template name</label>
                                                 <input type="text" id="namingTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
                                             </div>
 
@@ -1918,7 +1918,7 @@
 
                                                 <!-- Available Variables -->
                                                 <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
-                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in Variables:</p>
+                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in variables:</p>
                                                     <div class="flex flex-wrap gap-2 mb-2">
                                                         {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription" data-i18n-title="account.namingTemplatesTab.varAiTitle">{{ai_title}}</code>
                                                         <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension" data-i18n-title="account.namingTemplatesTab.varFilename">{{filename}}</code>
@@ -1926,26 +1926,26 @@
                                                         <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time" data-i18n-title="account.namingTemplatesTab.varDatetime">{{datetime}}</code>
                                                         <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)" data-i18n-title="account.namingTemplatesTab.varTime">{{time}}</code>{% endraw %}
                                                     </div>
-                                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Define regex patterns below to extract custom variables from filenames.</p>
+                                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Add regex patterns below to pull your own variables from file names.</p>
                                                 </div>
                                             </div>
 
                                             <!-- Regex Patterns -->
                                             <div>
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.regexPatterns">Regex Patterns (Optional)</label>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.regexPatterns">Regex patterns (optional)</label>
                                                 <div id="regexPatternsContainer" class="space-y-2">
                                                     <!-- Regex patterns will be added here dynamically -->
                                                 </div>
                                                 <button type="button" id="addRegexPatternBtn" class="mt-2 text-sm text-[var(--text-accent)] hover:text-[var(--text-primary)]">
                                                     <i class="fas fa-plus mr-1"></i>
-                                                    <span data-i18n="namingTemplates.addPattern">Add Pattern</span>
+                                                    <span data-i18n="namingTemplates.addPattern">Add pattern</span>
                                                 </button>
                                                 <p class="mt-1 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.regexHint">Extract data from filenames. Use capture groups () to specify the match. Example: (\d{10}) for phone numbers.</p>
                                             </div>
 
                                             <!-- Test Section -->
                                             <div class="border-t border-[var(--border-primary)] pt-4 mt-4">
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.testTemplate">Test Template</label>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.testTemplate">Test template</label>
                                                 <div class="flex gap-2">
                                                     <input type="text" id="testFilename" class="flex-1 px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" placeholder="sample-file-name.mp3">
                                                     <button type="button" id="testNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)]">
@@ -1988,7 +1988,7 @@
                         <div id="subcontent-initial-prompts" class="space-y-6 hidden">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="initialPromptTemplates.title">Saved Transcription Hints</h2>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="initialPromptTemplates.title">Saved transcription hints</h2>
                                     <p class="text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.description">Save reusable initial prompts that steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.</p>
                                 </div>
                                 <button id="ipCreateTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
@@ -2080,15 +2080,15 @@
                                 <div>
                                     <h2 class="text-2xl font-semibold text-[var(--text-primary)]">
                                         <i class="fas fa-key mr-2 text-[var(--text-accent)]"></i>
-                                        <span data-i18n="apiTokens.title">API Tokens</span>
+                                        <span data-i18n="apiTokens.title">API tokens</span>
                                     </h2>
                                     <p class="mt-2 text-sm text-[var(--text-muted)]" data-i18n="apiTokens.description">
-                                        Create and manage API tokens for programmatic access to your account.
+                                        Use a token to reach your account from scripts and other apps.
                                     </p>
                                 </div>
                                 <button id="createTokenBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-plus mr-2"></i>
-                                    <span data-i18n="apiTokens.createToken">Create Token</span>
+                                    <span data-i18n="apiTokens.createToken">Create token</span>
                                 </button>
                             </div>
 
@@ -2099,10 +2099,10 @@
                                         <i class="fas fa-exclamation-triangle text-amber-400"></i>
                                     </div>
                                     <div class="ml-3">
-                                        <h3 class="text-sm font-medium text-amber-800" data-i18n="apiTokens.securityNotice">Security Notice</h3>
+                                        <h3 class="text-sm font-medium text-amber-800" data-i18n="apiTokens.securityNotice">Security notice</h3>
                                         <div class="mt-2 text-sm text-amber-700">
                                             <p data-i18n="apiTokens.securityWarning">
-                                                Treat API tokens like passwords. They provide full access to your account. Never share tokens in publicly accessible areas such as GitHub, client-side code, or logs.
+                                                Treat tokens like passwords. Anyone who holds one can use your account. Keep them out of GitHub, client-side code and logs..
                                             </p>
                                         </div>
                                     </div>
@@ -2112,7 +2112,7 @@
                             <!-- Loading State -->
                             <div id="tokensLoading" class="text-center py-12">
                                 <i class="fas fa-spinner fa-spin text-4xl text-[var(--text-muted)] mb-4"></i>
-                                <p class="text-[var(--text-muted)]" data-i18n="account.tokensTab.loading">Loading tokens...</p>
+                                <p class="text-[var(--text-muted)]" data-i18n="account.tokensTab.loading">Loading tokens…</p>
                             </div>
 
                             <!-- Token List Container -->
@@ -2120,7 +2120,7 @@
                                 <!-- Active Tokens Section -->
                                 <div id="activeTokensSection" class="hidden">
                                     <h3 class="text-sm font-medium text-[var(--text-muted)] mb-3">
-                                        <span data-i18n="apiTokens.activeTokens">Active Tokens</span>
+                                        <span data-i18n="apiTokens.activeTokens">Active tokens</span>
                                         <span id="activeTokensCount" class="ml-1 text-xs"></span>
                                     </h3>
                                     <div id="activeTokensList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -2131,11 +2131,11 @@
                                 <!-- No Tokens Message -->
                                 <div id="noTokensMessage" class="hidden text-center py-12 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
                                     <i class="fas fa-key text-4xl text-[var(--text-muted)] mb-4"></i>
-                                    <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="apiTokens.noTokens">No API Tokens</h3>
-                                    <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="apiTokens.createFirstToken">Create your first API token to enable programmatic access.</p>
+                                    <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="apiTokens.noTokens">No API tokens</h3>
+                                    <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="apiTokens.createFirstToken">Create a token to use the API.</p>
                                     <button id="createTokenBtnEmpty" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors">
                                         <i class="fas fa-plus mr-2"></i>
-                                        <span data-i18n="apiTokens.createToken">Create Token</span>
+                                        <span data-i18n="apiTokens.createToken">Create token</span>
                                     </button>
                                 </div>
 
@@ -2143,7 +2143,7 @@
                                 <div class="mt-8">
                                     <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-3">
                                         <i class="fas fa-book mr-2"></i>
-                                        <span data-i18n="apiTokens.usageExamples">Usage Examples</span>
+                                        <span data-i18n="apiTokens.usageExamples">Usage examples</span>
                                     </h3>
                                     <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-4 space-y-4">
                                         <div>
@@ -2177,7 +2177,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <div class="flex items-center justify-between flex-wrap gap-3">
                                 <div>
                                     <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="webhooks.title">Webhooks</h2>
-                                    <p class="text-sm text-[var(--text-muted)] mt-1" data-i18n="webhooks.subtitle">Receive HTTP notifications when recordings change. Each endpoint is signed with HMAC-SHA256 so receivers can verify authenticity.</p>
+                                    <p class="text-sm text-[var(--text-muted)] mt-1" data-i18n="webhooks.subtitle">Get an HTTP request when a recording changes. Requests are signed with HMAC-SHA256 so receivers can check them.</p>
                                 </div>
                                 <button id="webhook-create-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm">
                                     <i class="fas fa-plus"></i><span data-i18n="webhooks.addNew">Add webhook</span>
@@ -2185,7 +2185,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             </div>
 
                             <div id="webhook-list" class="space-y-3">
-                                <p class="text-sm text-[var(--text-muted)]" data-i18n="webhooks.loading">Loading...</p>
+                                <p class="text-sm text-[var(--text-muted)]" data-i18n="webhooks.loading">Loading…</p>
                             </div>
 
                             <!-- Add/edit modal -->
@@ -2230,8 +2230,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <div class="flex items-start gap-3">
                                     <i class="fas fa-key text-[var(--text-success-strong)] mt-1"></i>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-[var(--text-success-strong)]" data-i18n="webhooks.secretBannerTitle">Copy this secret now — it will not be shown again</p>
-                                        <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="webhooks.secretBannerHint">Sign every receiver request: HMAC-SHA256 of the raw body using this secret. Header: Speakr-Signature: sha256=&lt;hex&gt;</p>
+                                        <p class="text-sm font-medium text-[var(--text-success-strong)]" data-i18n="webhooks.secretBannerTitle">Copy this secret now. It won't be shown again.</p>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="webhooks.secretBannerHint">Each request carries Speakr-Signature: sha256=&lt;hex&gt;, the HMAC-SHA256 of the raw body with this secret.</p>
                                         <div class="mt-2 flex items-center gap-2">
                                             <code id="webhook-secret-value" class="flex-1 px-2 py-1 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded text-xs font-mono break-all"></code>
                                             <button id="webhook-secret-copy" class="px-3 py-1 text-xs bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]" data-i18n="webhooks.copy">Copy</button>
@@ -2259,7 +2259,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="app-logo h-12 w-12 flex-shrink-0">
                                 <div class="flex-1">
                                     <h2 class="text-2xl font-semibold text-[var(--text-primary)]">Speakr</h2>
-                                    <p class="text-sm text-[var(--text-muted)]" data-i18n="aboutPage.tagline">AI-Powered Audio Transcription &amp; Note-Taking</p>
+                                    <p class="text-sm text-[var(--text-muted)]" data-i18n="aboutPage.tagline">Audio transcription and notes</p>
                                 </div>
                                 <span class="inline-flex items-center px-2.5 py-1 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md text-xs font-mono border border-[var(--border-primary)]">
                                     <i class="fas fa-tag mr-1.5 text-[var(--text-muted)]"></i>
@@ -2269,10 +2269,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                             <!-- System Configuration -->
                             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-5">
-                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.systemConfiguration">System Configuration</h3>
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.systemConfiguration">System configuration</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.largeLanguageModel">Large Language Model</h4>
+                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.largeLanguageModel">Large language model</h4>
                                         <dl class="text-xs space-y-1">
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
@@ -2285,7 +2285,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                         </dl>
                                     </div>
                                     <div>
-                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.speechRecognition">Speech Recognition</h4>
+                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.speechRecognition">Speech recognition</h4>
                                         <dl class="text-xs space-y-1">
                                             <div class="flex items-baseline gap-2">
                                                 <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
@@ -2302,12 +2302,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                             <!-- Project Links -->
                             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-5">
-                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.projectLinks">Project Links</h3>
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.projectLinks">Project links</h3>
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                     <a href="https://github.com/murtaza-nasir/speakr" target="_blank" rel="noopener noreferrer"
                                        class="flex items-center gap-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-accent)] transition-colors text-sm">
                                         <i class="fab fa-github text-base text-[var(--text-secondary)]"></i>
-                                        <span class="flex-1 text-[var(--text-primary)]" data-i18n="aboutPage.githubRepository">GitHub Repository</span>
+                                        <span class="flex-1 text-[var(--text-primary)]" data-i18n="aboutPage.githubRepository">GitHub repository</span>
                                         <i class="fas fa-external-link-alt text-xs text-[var(--text-muted)]"></i>
                                     </a>
                                     <a href="https://hub.docker.com/r/learnedmachine/speakr" target="_blank" rel="noopener noreferrer"
@@ -2346,35 +2346,35 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}" style="display: contents;">
                 <div class="modal-header">
-                    <h3 class="modal-title" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
+                    {% if has_password %}<h3 class="modal-title" data-i18n="account.changePassword">Change password</h3>{% else %}<h3 class="modal-title" data-i18n="account.setPassword">Set password</h3>{% endif %}
                     <button type="button" id="closeModalBtn" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body space-y-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     {% if has_password %}
                     <div>
-                        <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
+                        <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current password</label>
                         <input type="password" id="current_password" name="current_password" autocomplete="current-password" required class="field">
                     </div>
                     {% else %}
                     <div class="banner banner--info">
                         <i class="fas fa-info-circle"></i>
-                        <span data-i18n="account.noPasswordSet">You don't have a password set. Create one to enable local login.</span>
+                        <span data-i18n="account.noPasswordSet">No password set. Set one to sign in without SSO.</span>
                     </div>
                     {% endif %}
                     <div>
-                        <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
+                        <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New password</label>
                         <input type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8" class="field">
                         <p class="t-meta mt-1" data-i18n="changePasswordModal.passwordRequirement">Password must be at least 8 characters long</p>
                     </div>
                     <div>
-                        <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm New Password</label>
+                        <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm new password</label>
                         <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required class="field">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="cancelBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
-                    <button type="submit" class="btn btn--primary" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="{% if has_password %}account.changePassword{% else %}account.setPassword{% endif %}">{% if has_password %}Change password{% else %}Set password{% endif %}</button>
                 </div>
             </form>
         </div>
@@ -2384,29 +2384,29 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <div id="manageSpeakersModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--lg">
             <div class="modal-header">
-                <h3 class="modal-title" data-i18n="account.manageSpeakers">Manage Speakers</h3>
+                <h3 class="modal-title" data-i18n="account.manageSpeakers">Manage speakers</h3>
                 <button id="closeSpeakersModalBtn" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <p class="t-meta mb-3"><span data-i18n="manageSpeakersModal.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</span></p>
+                <p class="t-meta mb-3"><span data-i18n="manageSpeakersModal.description">Speakers are saved when you name them in a recording.</span></p>
 
                 <!-- Loading state -->
                 <div id="speakersLoading" class="empty hidden">
                     <div class="spinner spinner--lg"></div>
-                    <div class="t-meta" data-i18n="manageSpeakersModal.loadingSpeakers">Loading speakers...</div>
+                    <div class="t-meta" data-i18n="manageSpeakersModal.loadingSpeakers">Loading speakers…</div>
                 </div>
 
                 <!-- Error state -->
                 <div id="speakersError" class="banner banner--danger hidden">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span id="speakersErrorMessage" data-i18n="manageSpeakersModal.failedToLoad">Failed to load speakers</span>
+                    <span id="speakersErrorMessage" data-i18n="manageSpeakersModal.failedToLoad">Couldn't load speakers</span>
                 </div>
 
                 <!-- Empty state -->
                 <div id="speakersEmpty" class="empty hidden">
                     <div class="empty__icon"><i class="fas fa-users"></i></div>
                     <div class="empty__title" data-i18n="manageSpeakersModal.noSpeakersYet">No speakers saved yet</div>
-                    <div class="empty__body" data-i18n="manageSpeakersModal.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</div>
+                    <div class="empty__body" data-i18n="manageSpeakersModal.speakersWillAppear">Speakers you name in recordings appear here</div>
                 </div>
 
                 <!-- Speakers list -->
@@ -2418,7 +2418,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div>
                 <div class="flex gap-2">
                     <button id="deleteAllSpeakersBtn" class="btn btn--danger" disabled>
-                        <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete All</span>
+                        <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete all</span>
                     </button>
                     <button id="closeSpeakersBtn" class="btn btn--ghost"><span data-i18n="buttons.close">Close</span></button>
                 </div>
@@ -2431,15 +2431,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm modal-panel--danger">
             <div class="modal-header">
                 <i class="fas fa-exclamation-triangle text-2xl text-[var(--text-danger)]"></i>
-                <h3 class="modal-title" data-i18n="buttons.deleteAll">Delete All Speakers</h3>
+                <h3 class="modal-title" data-i18n="deleteAllSpeakersModal.title">Delete all speakers</h3>
             </div>
             <div class="modal-body">
-                <p class="t-body"><span data-i18n="deleteAllSpeakersModal.confirmMessage">Are you sure you want to delete all saved speakers? This action cannot be undone.</span></p>
+                <p class="t-body"><span data-i18n="deleteAllSpeakersModal.confirmMessage">Delete all saved speakers? This can't be undone.</span></p>
             </div>
             <div class="modal-footer">
                 <button id="cancelDeleteAllBtn" class="btn btn--ghost"><span data-i18n="buttons.cancel">Cancel</span></button>
                 <button id="confirmDeleteAllBtn" class="btn btn--danger">
-                    <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete All</span>
+                    <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete all</span>
                 </button>
             </div>
         </div>
@@ -2451,7 +2451,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-trash text-2xl text-[var(--text-danger)]"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title" data-i18n="account.speakersTab.deleteSpeakers">Delete Speakers</h3>
+                    <h3 class="modal-title" data-i18n="account.speakersTab.deleteSpeakers">Delete speakers</h3>
                     <div class="modal-subtitle" data-i18n="help.thisActionCannotBeUndone">This action cannot be undone</div>
                 </div>
             </div>
@@ -2462,13 +2462,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div id="deleteSelectedSpeakersList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)] mb-3"></div>
                 <div class="banner banner--danger" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
-                    <span data-i18n="account.speakersTab.deleteWarning">All voice profiles, recording associations, and usage data will be permanently deleted.</span>
+                    <span data-i18n="account.speakersTab.deleteWarning">Their voice profiles, links to recordings and usage history are deleted permanently.</span>
                 </div>
             </div>
             <div class="modal-footer">
                 <button id="cancelDeleteSelectedBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="confirmDeleteSelectedBtn" class="btn btn--danger">
-                    <i class="fas fa-trash"></i><span data-i18n="account.speakersTab.deleteSpeakers">Delete Speakers</span>
+                    <i class="fas fa-trash"></i><span data-i18n="account.speakersTab.deleteSpeakers">Delete speakers</span>
                 </button>
             </div>
         </div>
@@ -2480,8 +2480,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-eraser text-2xl" style="color: #f97316;"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title" data-i18n="account.speakersTab.clearVoiceProfiles">Clear Voice Profiles</h3>
-                    <div class="modal-subtitle" data-i18n="account.speakersTab.clearSubtitle">Remove voice recognition data</div>
+                    <h3 class="modal-title" data-i18n="account.speakersTab.clearVoiceProfiles">Clear voice profiles</h3>
+                    <div class="modal-subtitle" data-i18n="account.speakersTab.clearSubtitle">Delete saved voice data</div>
                 </div>
             </div>
             <div class="modal-body">
@@ -2493,18 +2493,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
                     <div>
                         <div class="t-body-strong" style="margin-bottom: var(--sp-1);" data-i18n="account.speakersTab.whatWillHappen">What will happen</div>
-                        <div class="t-meta" data-i18n="account.speakersTab.clearExplanation">All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.</div>
+                        <div class="t-meta" data-i18n="account.speakersTab.clearExplanation">Saved voice data is deleted. Names and history stay.</div>
                     </div>
                 </div>
                 <div class="banner banner--success" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-check" style="margin-top: 2px;"></i>
-                    <span class="t-meta" data-i18n="account.speakersTab.clearNote">New voice profiles will be created when you identify these speakers in future recordings.</span>
+                    <span class="t-meta" data-i18n="account.speakersTab.clearNote">A new profile is saved when you name these speakers in a later recording.</span>
                 </div>
             </div>
             <div class="modal-footer">
                 <button id="cancelClearVoiceProfilesBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="confirmClearVoiceProfilesBtn" class="btn btn--primary" style="background: #f97316; border-color: #f97316;">
-                    <i class="fas fa-eraser"></i><span data-i18n="account.speakersTab.clearProfiles">Clear Profiles</span>
+                    <i class="fas fa-eraser"></i><span data-i18n="account.speakersTab.clearProfiles">Clear profiles</span>
                 </button>
             </div>
         </div>
@@ -2516,7 +2516,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-header">
                 <i class="fas fa-object-group text-2xl text-[var(--text-accent)]"></i>
                 <div class="flex-1">
-                    <h3 class="modal-title" data-i18n="speakersManagement.mergeSpeakers">Merge Speakers</h3>
+                    <h3 class="modal-title" data-i18n="speakersManagement.mergeSpeakers">Merge speakers</h3>
                     <div class="modal-subtitle" data-i18n="account.speakersTab.mergeSubtitle">Combine speaker profiles</div>
                 </div>
                 <button id="closeMergeModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
@@ -2524,14 +2524,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="modal-body">
                 <div class="banner banner--info mb-3" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
                     <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
-                    <span data-i18n="account.speakersTab.mergeInstruction">Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.</span>
+                    <span data-i18n="account.speakersTab.mergeInstruction">Click the speaker to keep. The others' voice data, snippets and history move into it.</span>
                 </div>
                 <div id="mergeSpeakersList" class="space-y-2"></div>
             </div>
             <div class="modal-footer">
                 <button id="cancelMergeBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                 <button id="executeMergeBtn" class="btn btn--primary" disabled>
-                    <i class="fas fa-object-group"></i><span data-i18n="speakersManagement.mergeSpeakers">Merge Speakers</span>
+                    <i class="fas fa-object-group"></i><span data-i18n="speakersManagement.mergeSpeakers">Merge speakers</span>
                 </button>
             </div>
         </div>
@@ -2542,11 +2542,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-pen text-2xl text-[var(--text-accent)]"></i>
-                <h3 class="modal-title" data-i18n="account.speakersTab.editNameTitle">Edit Speaker Name</h3>
+                <h3 class="modal-title" data-i18n="account.speakersTab.editNameTitle">Edit speaker name</h3>
                 <button id="closeEditSpeakerModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="help.speakerName">Speaker Name</label>
+                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="help.speakerName">Speaker name</label>
                 <input type="text" id="editSpeakerNameInput" class="field" placeholder="Enter speaker name" data-i18n-placeholder="help.enterSpeakerName">
                 <div id="editSpeakerError" class="t-meta mt-2 hidden" style="color: var(--text-danger);"></div>
             </div>
@@ -2567,7 +2567,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-key text-[var(--text-accent)]"></i>
-                <h3 class="modal-title" data-i18n="account.tokensTab.createTitle">Create API Token</h3>
+                <h3 class="modal-title" data-i18n="account.tokensTab.createTitle">Create API token</h3>
                 <button id="closeCreateTokenModal" class="modal-close" title="Close" data-i18n-title="common.close"><i class="fas fa-times"></i></button>
             </div>
 
@@ -2576,9 +2576,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <div>
-                        <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.nameLabel">Token Name *</label>
+                        <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.nameLabel">Token name *</label>
                         <input type="text" id="tokenNameInput" name="name" required maxlength="100" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., n8n automation, CLI access" data-i18n-placeholder="account.tokensTab.namePlaceholder">
-                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.nameHelp">A descriptive name to help you identify this token</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.nameHelp">A name to recognize the token by</p>
                     </div>
 
                     <div>
@@ -2590,7 +2590,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <option value="90" data-i18n="account.tokensTab.expires90" selected>90 days</option>
                             <option value="365" data-i18n="account.tokensTab.expires365">1 year</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.tokensTab.expirationHelp">When this token should expire</p>
                     </div>
 
                     <div>
@@ -2619,7 +2618,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <div class="flex">
                             <i class="fas fa-info-circle text-amber-500 mr-2 mt-0.5"></i>
                             <p class="text-xs text-amber-700" data-i18n="account.tokensTab.shownOnce">
-                                The token will only be shown once after creation. Make sure to copy and save it securely.
+                                You'll see the token only once. Copy it somewhere safe.
                             </p>
                         </div>
                     </div>
@@ -2628,7 +2627,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div class="modal-footer">
                     <button type="button" id="cancelCreateTokenBtn" class="btn btn--ghost" data-i18n="common.cancel">Cancel</button>
                     <button type="submit" id="submitCreateTokenBtn" class="btn btn--primary">
-                        <i class="fas fa-plus mr-2"></i><span data-i18n="apiTokens.createToken">Create Token</span>
+                        <i class="fas fa-plus mr-2"></i><span data-i18n="apiTokens.createToken">Create token</span>
                     </button>
                 </div>
             </form>
@@ -2640,7 +2639,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
                 <i class="fas fa-check-circle text-green-500"></i>
-                <h3 class="modal-title" data-i18n="account.tokensTab.createdTitle">Token Created!</h3>
+                <h3 class="modal-title" data-i18n="account.tokensTab.createdTitle">Token created</h3>
             </div>
 
             <div class="modal-body">
@@ -2649,18 +2648,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <div class="flex">
                             <i class="fas fa-exclamation-triangle text-[var(--text-danger)] mr-2 mt-0.5"></i>
                             <p class="text-xs text-[var(--text-danger-strong)]">
-                                <strong data-i18n="account.tokensTab.important">Important!</strong> <span data-i18n="account.tokensTab.onlyTimeShown">This is the only time you'll see this token. Copy it now and store it securely.</span>
+                                <strong data-i18n="account.tokensTab.important">Important</strong> <span data-i18n="account.tokensTab.onlyTimeShown">This is the only time the token is shown. Copy it now.</span>
                             </p>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.yourToken">Your API Token</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="account.tokensTab.yourToken">Your API token</label>
                         <div class="relative">
                             <input type="text" id="newTokenValue" readonly class="w-full px-3 py-2 pr-12 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-mono text-sm">
                             <button type="button" id="copyTokenBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-md transition-all duration-200 flex items-center gap-1.5 border border-transparent hover:border-[var(--border-secondary)]" title="Copy to clipboard" data-i18n-title="buttons.copyToClipboard">
                                 <i id="copyTokenIcon" class="fas fa-copy text-[var(--text-muted)]"></i>
-                                <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden" data-i18n="webhooks.copied">Copied!</span>
+                                <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden" data-i18n="webhooks.copied">Copied</span>
                             </button>
                         </div>
                     </div>
@@ -2673,7 +2672,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             <div class="modal-footer">
                 <button type="button" id="closeTokenSecretModal" class="btn btn--primary">
-                    <i class="fas fa-check mr-2"></i><span data-i18n="account.tokensTab.savedConfirm">I've Saved My Token</span>
+                    <i class="fas fa-check mr-2"></i><span data-i18n="account.tokensTab.savedConfirm">I've saved the token</span>
                 </button>
             </div>
         </div>
@@ -2722,7 +2721,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         span.textContent = '{{' + name + '}}';
                     } else {
                         span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30';
-                        span.title = tf('account.promptPreview.systemPlaceholder', 'System placeholder. Replaced by the framework before the LLM call.');
+                        span.title = tf('account.promptPreview.systemPlaceholder', 'Placeholder, filled in before the prompt is sent to the model.');
                         span.textContent = '{' + name + '}';
                     }
                     return span;
@@ -2962,12 +2961,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         const data = await response.json();
 
                         if (!response.ok) {
-                            editSpeakerError.textContent = data.error || tf('account.speakersTab.updateFailed', 'Failed to update speaker');
+                            editSpeakerError.textContent = data.error || tf('account.speakersTab.updateFailed', 'Couldn\'t update speaker');
                             editSpeakerError.classList.remove('hidden');
                             return;
                         }
 
-                        showToast(tf('account.speakersTab.nameUpdated', 'Speaker name updated successfully'));
+                        showToast(tf('account.speakersTab.nameUpdated', 'Speaker name updated'));
                         closeEditSpeakerModalFn();
 
                         // Reload speakers - reset flag to force reload
@@ -2975,7 +2974,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         await loadSpeakersTab();
                     } catch (error) {
                         console.error('Error updating speaker:', error);
-                        editSpeakerError.textContent = tf('account.speakersTab.updateFailed', 'Failed to update speaker');
+                        editSpeakerError.textContent = tf('account.speakersTab.updateFailed', 'Couldn\'t update speaker');
                         editSpeakerError.classList.remove('hidden');
                     }
                 });
@@ -3407,7 +3406,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <button class="view-snippets-btn w-full px-2 py-1 text-[10px] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-colors"
                                     data-speaker-id="${speaker.id}">
                                 <i class="fas fa-volume-up mr-1"></i>
-                                <span>${escapeHtml(tf('account.speakersTab.voiceSamples', 'Voice Samples'))}</span>
+                                <span>${escapeHtml(tf('account.speakersTab.voiceSamples', 'Voice samples'))}</span>
                                 <i class="fas fa-chevron-down ml-1 transition-transform duration-200"></i>
                             </button>
 
@@ -3572,7 +3571,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     container.innerHTML = '';
                     const hint = document.createElement('p');
                     hint.className = 'text-[10px] text-[var(--text-muted)] mb-1';
-                    hint.textContent = vt('voiceProfiles.hint', 'Voice matching compares new recordings with these samples. Remove one that belongs to someone else.');
+                    hint.textContent = vt('voiceProfiles.hint', 'New recordings are compared with these samples. Remove any that belong to someone else.');
                     container.appendChild(hint);
                     if (!samples.length) {
                         const empty = document.createElement('p');
@@ -3597,7 +3596,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         const parts = [];
                         if (sample.label) parts.push(sample.label);
                         if (sample.speech_seconds != null) parts.push(formatSeconds(sample.speech_seconds));
-                        parts.push(sample.source === 'auto' ? vt('voiceProfiles.auto', 'auto-labelled')
+                        parts.push(sample.source === 'auto' ? vt('voiceProfiles.auto', 'auto-labeled')
                                  : sample.source === 'legacy' ? vt('voiceProfiles.legacyWeight', `weight ${sample.weight}`, { count: sample.weight })
                                  : vt('voiceProfiles.confirmed', 'confirmed'));
                         if (!sample.in_current_space) parts.push(vt('voiceProfiles.anotherModel', 'another model'));
@@ -3682,7 +3681,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <div class="text-xs text-[var(--text-muted)] text-center py-3 px-2">
                                 <i class="fas fa-info-circle mb-2 text-[var(--text-accent)]"></i>
                                 <p class="mb-1">${escapeHtml(tf('account.speakersTab.noVoiceSamples', 'No voice samples found'))}</p>
-                                <p class="text-[10px] leading-relaxed">${escapeHtml(tf('account.speakersTab.noVoiceSamplesHint', 'Voice samples are created when you identify speakers in recordings'))}</p>
+                                <p class="text-[10px] leading-relaxed">${escapeHtml(tf('account.speakersTab.noVoiceSamplesHint', 'Voice samples are saved when you name speakers in recordings'))}</p>
                             </div>
                         `;
                     } else {
@@ -3727,7 +3726,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     console.error('Error loading snippets:', error);
                     loadingEl.classList.add('hidden');
                     contentEl.classList.remove('hidden');
-                    contentEl.innerHTML = `<p class="text-xs text-[var(--text-danger)] text-center py-2">${escapeHtml(tf('speakersManagement.failedToLoadSnippets', 'Failed to load snippets'))}</p>`;
+                    contentEl.innerHTML = `<p class="text-xs text-[var(--text-danger)] text-center py-2">${escapeHtml(tf('speakersManagement.failedToLoadSnippets', 'Couldn\'t load snippets'))}</p>`;
                 }
             }
 
@@ -3839,7 +3838,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (btnText) {
                         btnText.textContent = count > 0
                             ? tf('account.speakersTab.clearCount', `Clear (${count})`, { count })
-                            : tf('account.speakersTab.clearProfiles', 'Clear Profiles');
+                            : tf('account.speakersTab.clearProfiles', 'Clear profiles');
                     }
                 });
 
@@ -3927,7 +3926,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             async function openMergeSpeakersModal() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length < 2) {
-                    showToast(tf('account.speakersTab.selectTwoToMerge', 'Please select at least 2 speakers to merge'), 'error');
+                    showToast(tf('account.speakersTab.selectTwoToMerge', 'Select at least 2 speakers to merge'), 'error');
                     return;
                 }
 
@@ -3982,7 +3981,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const targetId = mergeTargetSpeakerId;
 
                 if (!targetId) {
-                    showToast(tf('account.speakersTab.selectTarget', 'Please select which speaker to keep'), 'error');
+                    showToast(tf('account.speakersTab.selectTarget', 'Select which speaker to keep'), 'error');
                     return;
                 }
 
@@ -4011,9 +4010,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || tf('speakersManagement.mergeFailed', 'Failed to merge speakers'));
+                    if (!response.ok) throw new Error(data.error || tf('speakersManagement.mergeFailed', 'Couldn\'t merge speakers'));
 
-                    showToast(data.message || tf('speakersManagement.mergeSuccess', 'Speakers merged successfully'));
+                    showToast(data.message || tf('speakersManagement.mergeSuccess', 'Speakers merged'));
                     document.getElementById('mergeSpeakersModal').classList.add('hidden');
 
                     // Reload speakers - reset flag to force reload
@@ -4029,7 +4028,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             function deleteSelectedSpeakers() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length === 0) {
-                    showToast(tf('account.speakersTab.selectToDelete', 'Please select speakers to delete'), 'error');
+                    showToast(tf('account.speakersTab.selectToDelete', 'Select speakers to delete'), 'error');
                     return;
                 }
 
@@ -4104,7 +4103,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             function clearSelectedVoiceProfiles() {
                 const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
                 if (checkboxes.length === 0) {
-                    showToast(tf('account.speakersTab.selectToClear', 'Please select speakers to clear voice profiles'), 'error');
+                    showToast(tf('account.speakersTab.selectToClear', 'Select the speakers whose voice profiles you want to clear'), 'error');
                     return;
                 }
 
@@ -4206,11 +4205,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // Show the active transcription endpoint (ASR or OpenAI depending on config)
                     showEndpoint('transcription-endpoint', data.transcription_endpoint || data.whisper_endpoint);
                 } catch (error) {
-                    document.getElementById('system-version').textContent = tf('account.loadFailed', 'Failed to load');
-                    document.getElementById('llm-endpoint').textContent = tf('account.loadFailed', 'Failed to load');
-                    document.getElementById('llm-model').textContent = tf('account.loadFailed', 'Failed to load');
-                    document.getElementById('transcription-model').textContent = tf('account.loadFailed', 'Failed to load');
-                    document.getElementById('transcription-endpoint').textContent = tf('account.loadFailed', 'Failed to load');
+                    document.getElementById('system-version').textContent = tf('account.loadFailed', 'Couldn\'t load');
+                    document.getElementById('llm-endpoint').textContent = tf('account.loadFailed', 'Couldn\'t load');
+                    document.getElementById('llm-model').textContent = tf('account.loadFailed', 'Couldn\'t load');
+                    document.getElementById('transcription-model').textContent = tf('account.loadFailed', 'Couldn\'t load');
+                    document.getElementById('transcription-endpoint').textContent = tf('account.loadFailed', 'Couldn\'t load');
                 }
             }
 
@@ -4221,7 +4220,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // and recordings shared with this user (#416).
                     const response = await fetch('/api/shares/overview');
                     const overview = await response.json();
-                    if (!response.ok) throw new Error(overview.error || tf('account.loadFailed', 'Failed to load'));
+                    if (!response.ok) throw new Error(overview.error || tf('account.loadFailed', 'Couldn\'t load'));
                     const shares = overview.public_links || [];
 
                     sharesContainer.innerHTML = '';
@@ -4432,7 +4431,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             async function handleDeleteShare(event) {
                 const shareId = event.currentTarget.dataset.shareId;
-                if (!confirm(tf('dialogs.deleteShare.message', 'Are you sure you want to delete this share? This will revoke access to the public link.'))) return;
+                if (!confirm(tf('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'))) return;
                 
                 try {
                     // Get CSRF token
@@ -4874,7 +4873,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 // Reload speakers list
                 await loadSpeakers();
                 showToast(speakers.length === 0
-                    ? tf('account.speakersTab.allDeleted', 'All speakers deleted successfully')
+                    ? tf('account.speakersTab.allDeleted', 'All speakers deleted')
                     : tf('account.speakersTab.bulkDeleted', `${results.length - failures.length} speaker(s) deleted successfully`, { count: results.length - failures.length }));
             } catch (error) {
                 console.error('Error deleting all speakers:', error);
@@ -5260,7 +5259,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     ? tf('account.organizer.shareAllMembers', 'All members')
                     : (item.share_with_group_lead ? tf('account.organizer.shareAdminsOnly', 'Admins only') : tf('account.organizer.shareManual', 'Manual'));
                 const shareTooltip = item.auto_share_on_apply
-                    ? tf('account.organizer.shareAllMembersTitle', 'Auto-shares with all group members')
+                    ? tf('account.organizer.shareAllMembersTitle', 'Shared with all group members')
                     : (item.share_with_group_lead ? tf('account.organizer.shareAdminsOnlyTitle', 'Shares with group admins only') : tf('account.organizer.shareManualTitle', 'Manual sharing only'));
                 metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #9333ea; color: white;" title="${escapeHtml(shareTooltip)}">
                     <i class="fas fa-${shareIcon}"></i>
@@ -5298,7 +5297,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (item.is_auto_process) {
                 metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #ea580c; color: white;" title="${escapeHtml(item.auto_process_folder_name
                         ? tf('account.organizer.watchFolderTitleNamed', `Auto-processes files dropped in watch folder: ${item.auto_process_folder_name}`, { name: item.auto_process_folder_name })
-                        : tf('account.organizer.watchFolderTitle', 'Auto-processes files dropped in watch folder'))}">
+                        : tf('account.organizer.watchFolderTitle', 'Files dropped in the watch folder are processed automatically'))}">
                     <i class="fas fa-folder-open"></i>
                     <span>${escapeHtml(tf('account.organizer.watchBadge', 'Watch'))}</span>
                 </span>`);
@@ -5357,7 +5356,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <button class="toggle-prompt-btn w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[var(--bg-secondary)] transition-colors group" data-${cfg.kind}-id="${item.id}">
                             <span class="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <i class="fas fa-message-lines text-[10px]"></i>
-                                ${escapeHtml(tf('tagManagement.customPrompt', 'Custom Prompt'))}
+                                ${escapeHtml(tf('tagManagement.customPrompt', 'Custom prompt'))}
                             </span>
                             <i class="fas fa-chevron-down text-[10px] text-[var(--text-muted)] transition-transform group-hover:text-[var(--text-secondary)]"></i>
                         </button>
@@ -5397,7 +5396,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         function createTagCard(tag) {
             return createOrganizerCard(tag, {
                 kind: 'tag',
-                lockTitle: tf('account.organizer.groupTagLocked', 'Group tag - cannot edit'),
+                lockTitle: tf('account.organizer.groupTagLocked', 'Group tag, read-only'),
                 editTitle: tf('buttons.editTag', 'Edit tag'),
                 deleteTitle: tf('buttons.deleteTag', 'Delete tag'),
                 onEdit: (item) => editTag(item),
@@ -5433,8 +5432,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (tag) {
                 // Edit mode
                 isEditingTag = true;
-                tagModalTitle.textContent = tf('editTagModal.editTitle', 'Edit Tag');
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('editTagModal.updateTag', 'Update Tag'));
+                tagModalTitle.textContent = tf('editTagModal.editTitle', 'Edit tag');
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('editTagModal.updateTag', 'Update tag'));
 
                 // Populate form
                 document.getElementById('tagId').value = tag.id;
@@ -5562,8 +5561,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingTag = false;
-                tagModalTitle.textContent = tf('editTagModal.createTitle', 'Create Tag');
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('buttons.createTag', 'Create Tag'));
+                tagModalTitle.textContent = tf('editTagModal.createTitle', 'Create tag');
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + escapeHtml(tf('buttons.createTag', 'Create tag'));
                 tagForm.reset();
                 document.getElementById('tagColor').value = '#3B82F6';
 
@@ -5621,8 +5620,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // re-run the tab indicators once they settle to catch the
             // Summary tab's template selections.
             Promise.allSettled([
-                loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tf('editTagModal.noNamingTemplate', 'No template (use user default or AI title)')),
-                loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tf('editTagModal.noExportTemplate', 'No template (use user default)'), { markDefault: true })
+                loadTemplateOptionsInto('tagNamingTemplate', '/api/naming-templates', tf('editTagModal.noNamingTemplate', 'No template (your default, or a generated title)')),
+                loadTemplateOptionsInto('tagExportTemplate', '/api/export-templates', tf('editTagModal.noExportTemplate', 'No template (your default)'), { markDefault: true })
             ]).then(refreshTagTabIndicators);
 
             // Reset to first tab
@@ -5731,7 +5730,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     showToast(tf('editTagModal.watchFolderCreated', 'Watch folder created'));
                 }
                 if (savedTag.auto_process_folder_warning) {
-                    showToast(tf('editTagModal.watchFolderError', 'Could not create watch folder'), 'error');
+                    showToast(tf('editTagModal.watchFolderError', 'Couldn\'t create watch folder'), 'error');
                 }
 
                 displayTags();
@@ -5868,7 +5867,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     warning.className = 'text-xs text-[var(--text-danger)] mt-1';
                     select.parentNode.insertBefore(warning, select.nextSibling);
                 }
-                warning.textContent = tf('account.organizer.modelUnavailableWarning', 'The previously selected model "' + target + '" is no longer available. Choose a different model or leave blank to use the default.', { model: target });
+                warning.textContent = tf('account.organizer.modelUnavailableWarning', '"' + target + '" is no longer available. Choose another model, or leave blank for the default.', { model: target });
             } else {
                 select.classList.remove(errorBorder, ...errorClasses);
                 if (warning) warning.remove();
@@ -5918,7 +5917,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         async function loadFolders() {
             if (!foldersEnabled) {
-                setOrganizerState(folderSectionEls, 'error', tf('account.organizer.foldersDisabled', 'Folders feature is not enabled'));
+                setOrganizerState(folderSectionEls, 'error', tf('account.organizer.foldersDisabled', 'Folders are turned off'));
                 return;
             }
             try {
@@ -5938,8 +5937,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             return createOrganizerCard(folder, {
                 kind: 'folder',
                 lockTitle: tf('account.organizer.groupFolderLocked', "You don't have permission to edit this group folder"),
-                editTitle: tf('folderManagement.editFolder', 'Edit Folder'),
-                deleteTitle: tf('folderManagement.deleteFolder', 'Delete Folder'),
+                editTitle: tf('folderManagement.editFolder', 'Edit folder'),
+                deleteTitle: tf('folderManagement.deleteFolder', 'Delete folder'),
                 onEdit: (item) => openFolderModal(item),
                 onDelete: (item) => deleteFolder(item.id, item.name),
             });
@@ -5971,13 +5970,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (folder) {
                 // Edit mode
                 isEditingFolder = true;
-                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.editFolder', 'Edit Folder');
+                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.editFolder', 'Edit folder');
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');
                     saveIcon.className = 'fas fa-save mr-2';
                     saveFolderBtn.appendChild(saveIcon);
-                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('account.organizer.updateFolder', 'Update Folder')));
+                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('account.organizer.updateFolder', 'Update folder')));
                 }
 
                 // Populate form
@@ -6034,13 +6033,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingFolder = false;
-                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.createFolderTitle', 'Create Folder');
+                if (folderModalTitle) folderModalTitle.textContent = tf('folderManagement.createFolderTitle', 'Create folder');
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');
                     saveIcon.className = 'fas fa-save mr-2';
                     saveFolderBtn.appendChild(saveIcon);
-                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('buttons.saveFolder', 'Save Folder')));
+                    saveFolderBtn.appendChild(document.createTextNode(' ' + tf('buttons.saveFolder', 'Save folder')));
                 }
                 if (folderForm) folderForm.reset();
                 document.getElementById('folderColor').value = '#10B981';
@@ -6051,8 +6050,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // value), then re-run tab indicators so the Summary tab's
             // template selections are reflected once they settle.
             Promise.allSettled([
-                loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tf('folderManagement.namingTemplateNone', 'No template (use user default or AI title)'), { selected: (folder && folder.naming_template_id) || '' }),
-                loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tf('folderManagement.exportTemplateNone', 'No template (use user default)'), { selected: (folder && folder.export_template_id) || '', markDefault: true })
+                loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tf('folderManagement.namingTemplateNone', 'No template (your default, or a generated title)'), { selected: (folder && folder.naming_template_id) || '' }),
+                loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tf('folderManagement.exportTemplateNone', 'No template (your default)'), { selected: (folder && folder.export_template_id) || '', markDefault: true })
             ]).then(refreshFolderTabIndicators);
 
             // Reset to first tab
@@ -6104,7 +6103,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         // Delete folder
         async function deleteFolder(folderId, folderName) {
-            if (!confirm(tf('account.organizer.confirmDeleteFolder', 'Are you sure you want to delete the folder "' + folderName + '"?\n\nRecordings in this folder will be removed from the folder but not deleted.', { name: folderName }))) {
+            if (!confirm(tf('account.organizer.confirmDeleteFolder', 'Delete the folder "' + folderName + '"?\n\nThe recordings in it are kept.', { name: folderName }))) {
                 return;
             }
 
@@ -6125,10 +6124,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 folders = folders.filter(function(f) { return f.id !== folderId; });
                 displayFolders();
-                showToast(tf('account.organizer.folderDeleted', 'Folder "' + folderName + '" deleted successfully', { name: folderName }));
+                showToast(tf('account.organizer.folderDeleted', 'Folder "' + folderName + '" deleted', { name: folderName }));
             } catch (error) {
                 console.error('Error deleting folder:', error);
-                showToast(tf('account.organizer.folderDeleteFailed', 'Failed to delete folder: ' + error.message, { error: error.message }), 'error');
+                showToast(tf('account.organizer.folderDeleteFailed', 'Couldn\'t delete folder: ' + error.message, { error: error.message }), 'error');
             }
         }
 
@@ -6179,17 +6178,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         if (index !== -1) {
                             folders[index] = savedFolder;
                         }
-                        showToast(tf('account.organizer.folderUpdated', 'Folder "' + savedFolder.name + '" updated successfully', { name: savedFolder.name }));
+                        showToast(tf('account.organizer.folderUpdated', 'Folder "' + savedFolder.name + '" updated', { name: savedFolder.name }));
                     } else {
                         folders.push(savedFolder);
-                        showToast(tf('account.organizer.folderCreated', 'Folder "' + savedFolder.name + '" created successfully', { name: savedFolder.name }));
+                        showToast(tf('account.organizer.folderCreated', 'Folder "' + savedFolder.name + '" created', { name: savedFolder.name }));
                     }
 
                     displayFolders();
                     closeFolderModal();
                 } catch (error) {
                     console.error('Error saving folder:', error);
-                    showToast(tf('account.organizer.folderSaveFailed', 'Failed to save folder: ' + error.message, { error: error.message }), 'error');
+                    showToast(tf('account.organizer.folderSaveFailed', 'Couldn\'t save folder: ' + error.message, { error: error.message }), 'error');
                 }
             });
         }
@@ -6260,10 +6259,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                     if (response.ok) {
-                        showToast(tf('account.infoUpdated', 'Account information updated successfully'), 'success');
+                        showToast(tf('account.infoUpdated', 'Account information updated'), 'success');
                     } else {
                         var text = await response.text();
-                        showToast(tf('account.infoUpdateFailed', 'Failed to update account information'), 'error');
+                        showToast(tf('account.infoUpdateFailed', 'Couldn\'t update account information'), 'error');
                     }
                 } catch (error) {
                     showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
@@ -6286,7 +6285,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (response.ok) {
                         showToast(tf('account.preferencesSaved', 'Preferences saved'), 'success');
                     } else {
-                        showToast(tf('account.preferencesSaveFailed', 'Failed to save preferences'), 'error');
+                        showToast(tf('account.preferencesSaveFailed', 'Couldn\'t save preferences'), 'error');
                     }
                 } catch (error) {
                     showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
@@ -6309,10 +6308,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
                     
                     if (response.ok) {
-                        showToast(tf('account.customPromptSaved', 'Custom prompt saved successfully'), 'success');
+                        showToast(tf('account.customPromptSaved', 'Custom prompt saved'), 'success');
                     } else {
                         const text = await response.text();
-                        showToast(tf('account.customPromptSaveFailed', 'Failed to save custom prompt'), 'error');
+                        showToast(tf('account.customPromptSaveFailed', 'Couldn\'t save custom prompt'), 'error');
                     }
                 } catch (error) {
                     showToast(tf('account.networkErrorWithMessage', 'Network error: ' + error.message, { error: error.message }), 'error');
@@ -6645,7 +6644,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.tokensTab.copied', 'Token copied to clipboard'), 'success');
             } catch (error) {
                 console.error('Error copying token:', error);
-                showToast(tf('account.tokensTab.copyFailed', 'Failed to copy token to clipboard'), 'error');
+                showToast(tf('account.tokensTab.copyFailed', 'Couldn\'t copy token to clipboard'), 'error');
             }
         });
 
@@ -6670,7 +6669,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             if (!tokenName) {
-                showToast(tf('account.tokensTab.nameRequired', 'Please enter a token name'), 'error');
+                showToast(tf('account.tokensTab.nameRequired', 'Enter a token name'), 'error');
                 return;
             }
 
@@ -6719,10 +6718,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 closeCreateTokenModal();
                 showTokenSecretModal(data.token, data.name, data.expires_at);
 
-                showToast(tf('account.tokensTab.created', 'API token created successfully'), 'success');
+                showToast(tf('account.tokensTab.created', 'API token created'), 'success');
             } catch (error) {
                 console.error('Error creating token:', error);
-                showToast(tf('account.tokensTab.createFailed', 'Failed to create token: ' + error.message, { error: error.message }), 'error');
+                showToast(tf('account.tokensTab.createFailed', 'Couldn\'t create token: ' + error.message, { error: error.message }), 'error');
             }
         });
 
@@ -6751,10 +6750,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 tokensData = tokensData.filter(t => t.id !== tokenId);
                 renderTokensList();
 
-                showToast(tf('account.tokensTab.revoked', 'Token revoked successfully'), 'success');
+                showToast(tf('account.tokensTab.revoked', 'Token revoked'), 'success');
             } catch (error) {
                 console.error('Error revoking token:', error);
-                showToast(tf('account.tokensTab.revokeFailed', 'Failed to revoke token: ' + error.message, { error: error.message }), 'error');
+                showToast(tf('account.tokensTab.revokeFailed', 'Couldn\'t revoke token: ' + error.message, { error: error.message }), 'error');
             }
         };
 
@@ -6781,7 +6780,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 renderTemplatesList();
             } catch (error) {
                 console.error('Error loading templates:', error);
-                showToast(tf('account.templatesTab.loadFailed', 'Failed to load templates'), 'error');
+                showToast(tf('account.templatesTab.loadFailed', 'Couldn\'t load templates'), 'error');
             }
         }
 
@@ -6887,7 +6886,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || tf('account.templatesTab.saveFailed', 'Failed to save template'));
+                    throw new Error(errorData.error || tf('account.templatesTab.saveFailed', 'Couldn\'t save template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -6914,8 +6913,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 renderTemplatesList();
                 showToast(isEditingTemplate
-                    ? tf('account.templatesTab.updated', 'Template updated successfully')
-                    : tf('account.templatesTab.created', 'Template created successfully'), 'success');
+                    ? tf('account.templatesTab.updated', 'Template updated')
+                    : tf('account.templatesTab.created', 'Template created'), 'success');
 
                 // Hide editor
                 document.getElementById('templateEditor').classList.add('hidden');
@@ -6924,12 +6923,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingTemplate = false;
             } catch (error) {
                 console.error('Error saving template:', error);
-                showToast(error.message || tf('account.templatesTab.saveFailed', 'Failed to save template'), 'error');
+                showToast(error.message || tf('account.templatesTab.saveFailed', 'Couldn\'t save template'), 'error');
             }
         });
 
         document.getElementById('deleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentTemplate || !confirm(tf('account.templatesTab.confirmDelete', 'Are you sure you want to delete this template?'))) {
+            if (!currentTemplate || !confirm(tf('account.templatesTab.confirmDelete', 'Delete this template?'))) {
                 return;
             }
 
@@ -6956,10 +6955,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 currentTemplate = null;
                 isEditingTemplate = false;
 
-                showToast(tf('account.templatesTab.deleted', 'Template deleted successfully'), 'success');
+                showToast(tf('account.templatesTab.deleted', 'Template deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting template:', error);
-                showToast(tf('account.templatesTab.deleteFailed', 'Failed to delete template'), 'error');
+                showToast(tf('account.templatesTab.deleteFailed', 'Couldn\'t delete template'), 'error');
             }
         });
 
@@ -6980,10 +6979,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const result = await response.json();
                 templates = result.templates;
                 renderTemplatesList();
-                showToast(tf('account.templatesTab.defaultsCreated', 'Default templates created successfully'), 'success');
+                showToast(tf('account.templatesTab.defaultsCreated', 'Default templates created'), 'success');
             } catch (error) {
                 console.error('Error creating default templates:', error);
-                showToast(tf('account.templatesTab.defaultsFailed', 'Failed to create default templates'), 'error');
+                showToast(tf('account.templatesTab.defaultsFailed', 'Couldn\'t create default templates'), 'error');
             }
         });
 
@@ -7010,7 +7009,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 populateInitialPromptPickers();
             } catch (error) {
                 console.error('Error loading initial-prompt templates:', error);
-                showToast(tf('account.promptTemplatesTab.loadFailed', 'Failed to load transcription prompts'), 'error');
+                showToast(tf('account.promptTemplatesTab.loadFailed', 'Couldn\'t load transcription prompts'), 'error');
             }
         }
 
@@ -7143,7 +7142,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 });
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || tf('account.promptTemplatesTab.saveFailed', 'Failed to save prompt'));
+                    throw new Error(errorData.error || tf('account.promptTemplatesTab.saveFailed', 'Couldn\'t save prompt'));
                 }
                 const saved = await response.json();
                 if (ipIsEditing) {
@@ -7166,12 +7165,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 ipIsEditing = false;
             } catch (error) {
                 console.error('Error saving initial-prompt template:', error);
-                showToast(error.message || tf('account.promptTemplatesTab.saveFailed', 'Failed to save prompt'), 'error');
+                showToast(error.message || tf('account.promptTemplatesTab.saveFailed', 'Couldn\'t save prompt'), 'error');
             }
         });
 
         document.getElementById('ipDeleteTemplateBtn')?.addEventListener('click', async () => {
-            if (!ipCurrentTemplate || !confirm(tf('account.promptTemplatesTab.confirmDelete', 'Are you sure you want to delete this prompt?'))) return;
+            if (!ipCurrentTemplate || !confirm(tf('account.promptTemplatesTab.confirmDelete', 'Delete this prompt?'))) return;
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 const response = await fetch(`/api/initial-prompt-templates/${ipCurrentTemplate.id}`, {
@@ -7189,7 +7188,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.promptTemplatesTab.deleted', 'Prompt deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting initial-prompt template:', error);
-                showToast(tf('account.promptTemplatesTab.deleteFailed', 'Failed to delete prompt'), 'error');
+                showToast(tf('account.promptTemplatesTab.deleteFailed', 'Couldn\'t delete prompt'), 'error');
             }
         });
 
@@ -7210,7 +7209,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.promptTemplatesTab.startersCreated', 'Starter prompts created'), 'success');
             } catch (error) {
                 console.error('Error creating starter prompts:', error);
-                showToast(tf('account.promptTemplatesTab.startersFailed', 'Failed to create starter prompts'), 'error');
+                showToast(tf('account.promptTemplatesTab.startersFailed', 'Couldn\'t create starter prompts'), 'error');
             }
         });
 
@@ -7354,7 +7353,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 renderExportTemplatesList();
             } catch (error) {
                 console.error('Error loading export templates:', error);
-                showToast(tf('account.exportTemplatesTab.loadFailed', 'Failed to load export templates'), 'error');
+                showToast(tf('account.exportTemplatesTab.loadFailed', 'Couldn\'t load export templates'), 'error');
             }
         }
 
@@ -7482,7 +7481,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || tf('account.exportTemplatesTab.saveFailed', 'Failed to save export template'));
+                    throw new Error(errorData.error || tf('account.exportTemplatesTab.saveFailed', 'Couldn\'t save export template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -7507,8 +7506,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 renderExportTemplatesList();
                 showToast(isEditingExportTemplate
-                    ? tf('account.exportTemplatesTab.updated', 'Export template updated successfully')
-                    : tf('account.exportTemplatesTab.created', 'Export template created successfully'), 'success');
+                    ? tf('account.exportTemplatesTab.updated', 'Export template updated')
+                    : tf('account.exportTemplatesTab.created', 'Export template created'), 'success');
 
                 document.getElementById('exportTemplateEditor').classList.add('hidden');
                 document.getElementById('exportTemplateEmptyState').classList.remove('hidden');
@@ -7516,12 +7515,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingExportTemplate = false;
             } catch (error) {
                 console.error('Error saving export template:', error);
-                showToast(error.message || tf('account.exportTemplatesTab.saveFailed', 'Failed to save export template'), 'error');
+                showToast(error.message || tf('account.exportTemplatesTab.saveFailed', 'Couldn\'t save export template'), 'error');
             }
         });
 
         document.getElementById('deleteExportTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentExportTemplate || !confirm(tf('account.exportTemplatesTab.confirmDelete', 'Are you sure you want to delete this export template?'))) {
+            if (!currentExportTemplate || !confirm(tf('account.exportTemplatesTab.confirmDelete', 'Delete this export template?'))) {
                 return;
             }
 
@@ -7546,10 +7545,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 currentExportTemplate = null;
                 isEditingExportTemplate = false;
 
-                showToast(tf('account.exportTemplatesTab.deleted', 'Export template deleted successfully'), 'success');
+                showToast(tf('account.exportTemplatesTab.deleted', 'Export template deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting export template:', error);
-                showToast(tf('account.exportTemplatesTab.deleteFailed', 'Failed to delete export template'), 'error');
+                showToast(tf('account.exportTemplatesTab.deleteFailed', 'Couldn\'t delete export template'), 'error');
             }
         });
 
@@ -7571,10 +7570,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 exportTemplates = result.templates;
                 renderExportTemplatesList();
                 document.getElementById('createDefaultExportTemplatesBtn').style.display = 'none';
-                showToast(tf('account.exportTemplatesTab.defaultCreated', 'Default export template created successfully'), 'success');
+                showToast(tf('account.exportTemplatesTab.defaultCreated', 'Default export template created'), 'success');
             } catch (error) {
                 console.error('Error creating default export template:', error);
-                showToast(tf('account.exportTemplatesTab.defaultFailed', 'Failed to create default export template'), 'error');
+                showToast(tf('account.exportTemplatesTab.defaultFailed', 'Couldn\'t create default export template'), 'error');
             }
         });
 
@@ -7744,7 +7743,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 updateUserDefaultSelect();
             } catch (error) {
                 console.error('Error loading naming templates:', error);
-                showToast(tf('account.namingTemplatesTab.loadFailed', 'Failed to load naming templates'), 'error');
+                showToast(tf('account.namingTemplatesTab.loadFailed', 'Couldn\'t load naming templates'), 'error');
             }
         }
 
@@ -7803,7 +7802,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         function updateUserDefaultSelect() {
             const select = document.getElementById('userDefaultNamingTemplate');
-            select.innerHTML = '<option value="">' + escapeHtml(tf('namingTemplates.noDefault', 'No default (AI title only)')) + '</option>';
+            select.innerHTML = '<option value="">' + escapeHtml(tf('namingTemplates.noDefault', 'No default (generated title)')) + '</option>';
 
             namingTemplates.forEach(template => {
                 const option = document.createElement('option');
@@ -7839,7 +7838,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.namingTemplatesTab.defaultUpdated', 'Default naming template updated'), 'success');
             } catch (error) {
                 console.error('Error updating default template:', error);
-                showToast(tf('account.namingTemplatesTab.defaultUpdateFailed', 'Failed to update default template'), 'error');
+                showToast(tf('account.namingTemplatesTab.defaultUpdateFailed', 'Couldn\'t update default template'), 'error');
             }
         });
 
@@ -7958,7 +7957,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || tf('account.namingTemplatesTab.saveFailed', 'Failed to save naming template'));
+                    throw new Error(errorData.error || tf('account.namingTemplatesTab.saveFailed', 'Couldn\'t save naming template'));
                 }
 
                 const savedTemplate = await response.json();
@@ -7984,12 +7983,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 isEditingNamingTemplate = false;
             } catch (error) {
                 console.error('Error saving naming template:', error);
-                showToast(error.message || tf('account.namingTemplatesTab.saveFailed', 'Failed to save naming template'), 'error');
+                showToast(error.message || tf('account.namingTemplatesTab.saveFailed', 'Couldn\'t save naming template'), 'error');
             }
         });
 
         document.getElementById('deleteNamingTemplateBtn')?.addEventListener('click', async () => {
-            if (!currentNamingTemplate || !confirm(tf('account.namingTemplatesTab.confirmDelete', 'Are you sure you want to delete this naming template?'))) {
+            if (!currentNamingTemplate || !confirm(tf('account.namingTemplatesTab.confirmDelete', 'Delete this naming template?'))) {
                 return;
             }
 
@@ -8004,7 +8003,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || tf('account.namingTemplatesTab.deleteFailed', 'Failed to delete naming template'));
+                    throw new Error(errorData.error || tf('account.namingTemplatesTab.deleteFailed', 'Couldn\'t delete naming template'));
                 }
 
                 namingTemplates = namingTemplates.filter(t => t.id !== currentNamingTemplate.id);
@@ -8024,7 +8023,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.namingTemplatesTab.deleted', 'Naming template deleted'), 'success');
             } catch (error) {
                 console.error('Error deleting naming template:', error);
-                showToast(error.message || tf('account.namingTemplatesTab.deleteFailed', 'Failed to delete naming template'), 'error');
+                showToast(error.message || tf('account.namingTemplatesTab.deleteFailed', 'Couldn\'t delete naming template'), 'error');
             }
         });
 
@@ -8049,7 +8048,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(tf('account.namingTemplatesTab.defaultsCreated', 'Default naming templates created'), 'success');
             } catch (error) {
                 console.error('Error creating default naming templates:', error);
-                showToast(tf('account.namingTemplatesTab.defaultsFailed', 'Failed to create default naming templates'), 'error');
+                showToast(tf('account.namingTemplatesTab.defaultsFailed', 'Couldn\'t create default naming templates'), 'error');
             }
         });
 
@@ -8082,7 +8081,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('testResultText').textContent = result.result;
             } catch (error) {
                 console.error('Error testing template:', error);
-                showToast(tf('account.namingTemplatesTab.testFailed', 'Failed to test template'), 'error');
+                showToast(tf('account.namingTemplatesTab.testFailed', 'Couldn\'t test template'), 'error');
             }
         });
 

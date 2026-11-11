@@ -238,17 +238,17 @@ def test_folder_endpoints_refuse_when_feature_disabled():
         # an incidental CSRF/auth 403).
         resp = client.post("/api/folders", json={"name": "nope"})
         assert resp.status_code == 403
-        assert "not enabled" in resp.get_json()["error"]
+        assert "turned off" in resp.get_json()["error"]
 
         # PUT update is rejected with 403.
         resp = client.put(f"/api/folders/{folder.id}", json={"name": "x"})
         assert resp.status_code == 403
-        assert "not enabled" in resp.get_json()["error"]
+        assert "turned off" in resp.get_json()["error"]
 
         # DELETE is rejected with 403.
         resp = client.delete(f"/api/folders/{folder.id}")
         assert resp.status_code == 403
-        assert "not enabled" in resp.get_json()["error"]
+        assert "turned off" in resp.get_json()["error"]
 
         # GET list returns an empty array (feature-off sentinel, not an error).
         resp = client.get("/api/folders")

@@ -721,7 +721,7 @@ def test_upload_unexpected_error_removes_staging_copy():
                    side_effect=RuntimeError("secret internal detail")):
             resp = _do_upload(client)
         assert resp.status_code == 500
-        assert resp.get_json() == {"error": "An unexpected error occurred during upload.",
+        assert resp.get_json() == {"error": "Something went wrong while uploading.",
                                    "code": "unexpected_error_upload"}
         assert os.listdir(staging) == []
         _cleanup(user)

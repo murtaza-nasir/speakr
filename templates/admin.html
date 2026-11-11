@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>{% if is_group_admin_only %}Group Management{% else %}Admin Dashboard{% endif %} - Speakr</title>
+    <title>{% if is_group_admin_only %}{{ groups_title }}{% else %}{{ admin_title }}{% endif %} - Speakr</title>
 
     <!-- Loading overlay to prevent FOUC - MUST be first -->
     {% include 'includes/loading_overlay.html' %}

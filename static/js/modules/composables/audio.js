@@ -316,7 +316,7 @@ export function useAudio(state, utils) {
             return true;
         } catch (error) {
             console.warn('[iOS Wake Lock] Failed to start silent audio:', error);
-            showToast((utils.t && utils.t('toasts.iosWakeLockUnreliable')) || 'iOS wake lock may not work - keep screen active', 'warning');
+            showToast((utils.t && utils.t('toasts.iosWakeLockUnreliable')) || 'The screen may lock on iOS. Keep it on while you record.', 'warning');
             return false;
         }
     };
@@ -406,7 +406,7 @@ export function useAudio(state, utils) {
             console.log('[Visibility] Page visible, re-acquiring wake lock');
             const acquired = await acquireWakeLock();
             if (acquired) {
-                showToast((utils.t && utils.t('toasts.recordingResumedScreenAwake')) || 'Recording resumed - screen will stay awake', 'success');
+                showToast((utils.t && utils.t('toasts.recordingResumedScreenAwake')) || 'Recording resumed. The screen stays on.', 'success');
             }
         } else if (document.visibilityState === 'hidden' && isRecording.value) {
             console.log('[Visibility] Page hidden, wake lock may be released by browser');
@@ -429,7 +429,7 @@ export function useAudio(state, utils) {
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
             showToast(
                 (utils.t && utils.t('recording.micPermissionUnavailable'))
-                    || 'Microphone access is not available. Make sure you are using HTTPS.',
+                    || 'Microphone access works only over HTTPS.',
                 'error'
             );
             return;
@@ -444,8 +444,8 @@ export function useAudio(state, utils) {
             showToast(
                 (utils.t && utils.t(denied ? 'recording.microphonePermissionDenied' : 'recording.micPermissionFailed'))
                     || (denied
-                        ? 'Microphone permission was denied. Allow access in your browser settings and try again.'
-                        : 'Could not access the microphone. Check that it is connected and not in use.'),
+                        ? 'Microphone access was denied. Allow it in your browser settings and try again.'
+                        : 'Couldn\'t access the microphone. Check that it is connected and not in use.'),
                 'error'
             );
         } finally {
@@ -479,7 +479,7 @@ export function useAudio(state, utils) {
                         // Open the platform-aware help modal so the user
                         // gets per-OS guidance instead of a bare toast.
                         if (showSystemAudioHelp) showSystemAudioHelp.value = true;
-                        showToast((utils.t && utils.t('toasts.noAudioTrackSeeHelp')) || 'No audio track came through — see the help guide for per-OS setup.', 'fa-exclamation-triangle');
+                        showToast((utils.t && utils.t('toasts.noAudioTrackSeeHelp')) || 'No audio came through. See the help guide for setup on your system.', 'fa-exclamation-triangle');
                         return;
                     }
 
@@ -488,7 +488,7 @@ export function useAudio(state, utils) {
                 } catch (error) {
                     console.error('[Recording] Failed to get display media:', error);
                     if (error.name === 'NotAllowedError') {
-                        showToast((utils.t && utils.t('toasts.screenShareCancelled')) || 'Screen sharing was cancelled', 'error');
+                        showToast((utils.t && utils.t('toasts.screenShareCancelled')) || 'Screen sharing was canceled', 'error');
                     } else {
                         showToast((utils.t && utils.t('toasts.captureFailed', { error: error.message })) || `Failed to capture: ${error.message}`, 'error');
                     }
@@ -589,7 +589,7 @@ export function useAudio(state, utils) {
                 incognitoMode.value = false;
                 showToast(
                     (utils.t && utils.t('toasts.resumedRecordingNotIncognito'))
-                        || 'Incognito was turned off: this resumed recording was already streaming to the server.',
+                        || 'Incognito turned off. This resumed recording was already on the server.',
                     'fa-user-secret',
                     7000
                 );
@@ -715,7 +715,7 @@ export function useAudio(state, utils) {
                             refreshAudioDeviceLists();
                         }
                         if (utils.showToast) utils.showToast(
-                            (utils.t && utils.t('toasts.secondaryInputUnavailable')) || 'Secondary input unavailable — recording primary only.',
+                            (utils.t && utils.t('toasts.secondaryInputUnavailable')) || 'Second input unavailable. Recording the main input only.',
                             'fa-exclamation-triangle'
                         );
                     }
@@ -753,7 +753,7 @@ export function useAudio(state, utils) {
 
             } else if (mode === 'system') {
                 if (!canRecordSystemAudio.value) {
-                    throw new Error((utils.t && utils.t('errors.systemAudioUnavailableHttps')) || 'System audio recording is not available. Make sure you are using HTTPS.');
+                    throw new Error((utils.t && utils.t('errors.systemAudioUnavailableHttps')) || 'Recording system audio works only over HTTPS.');
                 }
                 // Use pre-obtained display stream (required for Firefox user gesture)
                 // or get it now for browsers that don't require immediate call
@@ -815,7 +815,7 @@ export function useAudio(state, utils) {
 
             } else if (mode === 'both') {
                 if (!canRecordAudio.value || !canRecordSystemAudio.value) {
-                    throw new Error((utils.t && utils.t('errors.recordingUnavailableHttps')) || 'Recording is not available. Make sure you are using HTTPS.');
+                    throw new Error((utils.t && utils.t('errors.recordingUnavailableHttps')) || 'Recording works only over HTTPS.');
                 }
                 // Honour the chosen primary input and the processing flag
                 // here too. Display capture was already acquired first in
@@ -913,7 +913,7 @@ export function useAudio(state, utils) {
                 console.warn('[Recording] No supported video container; falling back to audio-only');
                 showToast(
                     (utils.t && utils.t('toasts.videoRecordingUnsupported'))
-                        || 'This browser cannot record video — capturing audio only.',
+                        || 'This browser can\'t record video. Recording audio only.',
                     'fa-exclamation-triangle'
                 );
                 capturedVideoTrack.stop();
@@ -1307,7 +1307,7 @@ export function useAudio(state, utils) {
                     metadata.merge_intent = mergeIntent;
                 }
                 const result = await ServerSessions.finalizeSession(serverSessionId, metadata);
-                showToast?.((utils.t && utils.t('toasts.recordingFinalized')) || 'Recording uploaded for processing', 'fa-cloud-upload-alt');
+                showToast?.((utils.t && utils.t('toasts.recordingFinalized')) || 'Recording uploaded', 'fa-cloud-upload-alt');
 
                 // Tear down local state the same way the legacy path does.
                 if (audioBlobURL.value) URL.revokeObjectURL(audioBlobURL.value);
@@ -1511,7 +1511,7 @@ export function useAudio(state, utils) {
         // is defense-in-depth.
         if (serverSessionId) {
             if (serverResumePriorBytes > 0) {
-                setGlobalError((utils.t && utils.t('errors.incognitoResumedNotAllowed')) || 'This resumed recording cannot be processed in incognito because its earlier audio exists only on the server. Use the normal upload instead.');
+                setGlobalError((utils.t && utils.t('errors.incognitoResumedNotAllowed')) || 'A resumed recording can\'t be processed in incognito mode, because its earlier audio is already on the server. Use the normal upload.');
                 return;
             }
             try {
@@ -1562,7 +1562,7 @@ export function useAudio(state, utils) {
             // Request auto-summarization
             formData.append('auto_summarize', 'true');
 
-            processingMessage.value = (utils.t && utils.t('incognito.uploadingRecording')) || 'Uploading recording for incognito processing...';
+            processingMessage.value = (utils.t && utils.t('incognito.uploadingRecording')) || 'Uploading recording for incognito processing…';
             processingProgress.value = 20;
 
             console.log('[Incognito] Uploading recorded audio');
@@ -1589,13 +1589,13 @@ export function useAudio(state, utils) {
             }
 
             processingProgress.value = 80;
-            processingMessage.value = (utils.t && utils.t('incognito.processingComplete')) || 'Processing complete!';
+            processingMessage.value = (utils.t && utils.t('incognito.processingComplete')) || 'Processing complete';
 
             // Store result in sessionStorage
             const incognitoData = {
                 id: 'incognito',
                 incognito: true,
-                title: data.title || (utils.t && utils.t('incognito.recordingTitle')) || 'Incognito Recording',
+                title: data.title || (utils.t && utils.t('incognito.recordingTitle')) || 'Incognito recording',
                 transcription: data.transcription,
                 summary: data.summary,
                 summary_html: data.summary_html,
@@ -1624,7 +1624,7 @@ export function useAudio(state, utils) {
             await discardRecording();
 
             processingProgress.value = 100;
-            processingMessage.value = (utils.t && utils.t('incognito.recordingReady')) || 'Incognito recording ready!';
+            processingMessage.value = (utils.t && utils.t('incognito.recordingReady')) || 'Incognito recording ready';
 
             // Auto-select the incognito recording and switch to detail view
             selectedRecording.value = incognitoData;
@@ -1638,7 +1638,7 @@ export function useAudio(state, utils) {
             incognitoMode.value = false;
 
             // Show toast
-            showToast((utils.t && utils.t('incognito.recordingProcessed')) || 'Incognito recording processed - data will be lost when tab closes', 'fa-user-secret');
+            showToast((utils.t && utils.t('incognito.recordingProcessed')) || 'Incognito recording processed. It is gone once you close this tab.', 'fa-user-secret');
 
             console.log('[Incognito] Recording processing complete');
 
