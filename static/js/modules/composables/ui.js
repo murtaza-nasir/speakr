@@ -43,7 +43,7 @@ export function useUI(state, utils, processedTranscription) {
         viewingTranslation,
         notesMarkdownEditor, markdownEditorInstance, autoSaveTimer, csrfToken,
         summaryMarkdownEditor, recordingNotesEditor, recordingMarkdownEditorInstance,
-        recordingNotes, showDownloadMenu, transcriptDownloadFormat, currentPlayingSegmentIndex, followPlayerMode,
+        recordingNotes, showDownloadMenu, showSummaryDownloadMenu, transcriptDownloadFormat, currentPlayingSegmentIndex, followPlayerMode,
         playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition,
         videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
         regeneratingTitle,
@@ -1625,14 +1625,18 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     // --- Download Functions ---
-    const downloadSummary = async () => {
+    // format: 'docx' (Word, the default) or 'md' (Markdown, #584).
+    const downloadSummary = async (format = 'docx') => {
+        if (showSummaryDownloadMenu) showSummaryDownloadMenu.value = false;
         if (!selectedRecording.value || !selectedRecording.value.summary) {
             showToast(t('messages.noSummaryToDownload'), 'fa-exclamation-circle');
             return;
         }
+        const ext = format === 'md' ? 'md' : 'docx';
 
         try {
-            const response = await fetch(`/recording/${selectedRecording.value.id}/download/summary`);
+            const query = ext === 'md' ? '?format=md' : '';
+            const response = await fetch(`/recording/${selectedRecording.value.id}/download/summary${query}`);
             if (!response.ok) {
                 const error = await response.json();
                 showToast(error.error || t('messages.summaryDownloadFailed'), 'fa-exclamation-circle');
@@ -1646,7 +1650,7 @@ export function useUI(state, utils, processedTranscription) {
             a.href = url;
 
             const contentDisposition = response.headers.get('Content-Disposition');
-            a.download = filenameFromContentDisposition(contentDisposition, 'summary.docx');
+            a.download = filenameFromContentDisposition(contentDisposition, `summary.${ext}`);
 
             document.body.appendChild(a);
             a.click();
@@ -1980,6 +1984,13 @@ export function useUI(state, utils, processedTranscription) {
 
                 if (!downloadButton && !downloadDropdown) {
                     showDownloadMenu.value = false;
+                }
+            }
+
+            // Close the summary download menu if clicking outside
+            if (showSummaryDownloadMenu && showSummaryDownloadMenu.value) {
+                if (!target.closest('[data-summary-download-toggle]') && !target.closest('[data-summary-download-dropdown]')) {
+                    showSummaryDownloadMenu.value = false;
                 }
             }
 

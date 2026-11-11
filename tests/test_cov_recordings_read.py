@@ -1720,6 +1720,55 @@ def test_download_summary_present_returns_docx(owner):
     assert len(resp.data) > 0
 
 
+def test_download_summary_markdown(owner):
+    """?format=md returns the stored Markdown under a title heading (#584)."""
+    with _db():
+        u = db.session.get(User, owner)
+        rec = make_recording(u, summary="## Points\n\n- See [the moment](/recordings/7?t=12)\n- [Docs](https://example.com/x)")
+        rec.title = "Weekly sync"
+        db.session.commit()
+        rid = rec.id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/summary?format=md")
+    assert resp.status_code == 200
+    assert resp.headers["Content-Type"].startswith("text/markdown")
+    assert 'filename="summary-Weekly sync.md"' in resp.headers["Content-Disposition"]
+    body = resp.get_data(as_text=True)
+    assert body.startswith("# Weekly sync\n\n## Points\n")
+    assert "](http://localhost/recordings/7?t=12)" in body or "/recordings/7?t=12)" in body
+    assert "](/recordings/7" not in body
+    assert "[Docs](https://example.com/x)" in body
+
+
+def test_download_summary_markdown_non_ascii_title(owner):
+    with _db():
+        u = db.session.get(User, owner)
+        rec = make_recording(u, summary="Короткое резюме встречи.")
+        rec.title = "Встреча"
+        db.session.commit()
+        rid = rec.id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/summary?format=md")
+    assert resp.status_code == 200
+    cd = resp.headers["Content-Disposition"]
+    assert f'filename="summary-{rid}.md"' in cd
+    assert "filename*=UTF-8''summary-%D0%92" in cd
+
+
+def test_absolutize_markdown_links_leaves_other_targets():
+    from src.services.document import absolutize_markdown_links
+    text = "[a](/x?t=1) [b](//evil.example/y) [c](https://k.example/z) [d](#frag)"
+    out = absolutize_markdown_links(text, "https://speakr.example/")
+    assert "[a](https://speakr.example/x?t=1)" in out
+    assert "[b](//evil.example/y)" in out
+    assert "[c](https://k.example/z)" in out
+    assert "[d](#frag)" in out
+
+
 # --- /download/chat : messages-presence guard (line 421) ------------------ #
 
 def test_download_chat_empty_messages_400(owner):

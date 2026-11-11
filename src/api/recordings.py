@@ -41,7 +41,8 @@ from src.services.speaker import (
 
 # Incognito mode - disabled by default, enable via environment variable
 from src.services.document import (
-    add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
+    absolutize_markdown_links, add_document_header, append_conversation_turn,
+    docx_attachment_response, link_base_url, markdown_attachment_response,
     new_document, process_markdown_to_docx,
 )
 from src.services.llm import client, chat_client, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
@@ -282,7 +283,7 @@ def download_transcript_with_template(recording_id):
 @recordings_bp.route('/recording/<int:recording_id>/download/summary')
 @login_required
 def download_summary_word(recording_id):
-    """Download recording summary as a Word document."""
+    """Download recording summary as a Word document, or as Markdown with ?format=md (#584)."""
     try:
         import re
 
@@ -292,6 +293,15 @@ def download_summary_word(recording_id):
 
         if not recording.summary:
             return jsonify(api_error('no_summary')), 400
+
+        if (request.args.get('format') or '').lower() == 'md':
+            # The summary is stored as Markdown: it is sent as written, under
+            # a title heading, with in-app links made absolute.
+            title = recording.title or 'Summary'
+            body = f"# {title}\n\n{absolutize_markdown_links(recording.summary.strip(), link_base_url())}\n"
+            filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', f"summary-{recording.title or recording_id}.md")
+            filename = re.sub(r'\s+', ' ', filename).strip()
+            return markdown_attachment_response(body, filename, f'summary-{recording_id}.md')
 
         # Title and metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
