@@ -105,3 +105,24 @@ def drop_stale_auto_shares(recording_ids=None, user_ids=None):
     if removed:
         db.session.flush()
     return removed
+
+
+def remove_unfounded_auto_shares(logger=None):
+    """Delete every auto-share without a reason; commits. Returns the count.
+
+    One-shot cleanup (migration 0007) of the shares left by member removal,
+    folder unlinks, folder and tag deletion and group deletion before #570
+    and #582. Only deletes: shares that still have a reason keep their source
+    and edit access. Running it again finds nothing to delete.
+    """
+    from src.models import InternalShare, Recording
+    removed = 0
+    for share in InternalShare.query.filter(InternalShare.source_type.in_(AUTO_SOURCES)).all():
+        recording = db.session.get(Recording, share.recording_id)
+        if recording is None or not _reasons(recording, share.shared_with_user_id):
+            db.session.delete(share)
+            removed += 1
+    db.session.commit()
+    if removed and logger is not None:
+        logger.info(f"Removed {removed} group tag or folder share(s) whose group, tag or folder no longer gives them")
+    return removed

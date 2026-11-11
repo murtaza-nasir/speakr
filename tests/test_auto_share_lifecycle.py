@@ -375,3 +375,22 @@ def test_tag_removal_keeps_a_manual_share(tagged):
     assert _client(t["owner"]).delete(f"/api/recordings/{r.id}/tags/{t['tag'].id}").status_code == 200
     assert set(_shares(r.id)) == {t["member"].id}
     assert _can_read(t["member"], r.id)
+
+
+# --- one-shot cleanup of shares left by earlier versions --------------------
+
+def test_cleanup_removes_only_unfounded_auto_shares(team):
+    from src.services.auto_shares import remove_unfounded_auto_shares
+    t = team
+    f, kept, stale, manual = t["folder"](), t["recording"](), t["recording"](), t["recording"]()
+    _into_folder(t, kept, f)
+    for r, source in ((stale, "group_folder"), (manual, "manual")):
+        db.session.add(InternalShare(recording_id=r.id, owner_id=t["owner"].id, shared_with_user_id=t["member"].id,
+                                     can_edit=False, can_reshare=False, source_type=source,
+                                     source_folder_id=f.id if source == "group_folder" else None))
+    db.session.commit()  # stale: as a folder unlink before #582 left it
+    assert remove_unfounded_auto_shares() == 1
+    assert t["member"].id in _shares(kept.id)
+    assert _shares(stale.id) == {}
+    assert t["member"].id in _shares(manual.id)
+    assert remove_unfounded_auto_shares() == 0

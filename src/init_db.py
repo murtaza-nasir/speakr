@@ -1419,6 +1419,16 @@ def _run_migrations(app, engine):
             db.session.rollback()
             app.logger.warning(f"Group folder name index skipped, retried next start: {e}")
 
+        # Shares a group tag or folder made outlived the member, the folder
+        # link, the tag or the group (#570, #582).
+        try:
+            from src.services.auto_shares import remove_unfounded_auto_shares
+            run_once(engine, '0007_remove_unfounded_auto_shares',
+                     lambda eng: remove_unfounded_auto_shares(logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Stale group share cleanup skipped, retried next start: {e}")
+
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
