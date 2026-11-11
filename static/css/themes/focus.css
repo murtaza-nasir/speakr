@@ -284,7 +284,9 @@ html[data-ui-theme="focus"] body textarea::placeholder { color: var(--f-text-3);
 html[data-ui-theme="focus"] body input[type="checkbox"],
 html[data-ui-theme="focus"] body input[type="radio"] { accent-color: var(--f-accent); }
 
-/* Tabs: text + 2px underline, accent only on the active underline. */
+/* Tabs: text + underline, accent only on the active underline. The underline is
+   3px in the accent text colour, which keeps 3:1 on the dark surfaces where the
+   button accent did not (about 2.9:1). */
 html[data-ui-theme="focus"] body .tabs,
 html[data-ui-theme="focus"] body .tabs-bar { border-bottom-color: var(--f-divider); min-height: 48px; }
 html[data-ui-theme="focus"] body .tab {
@@ -292,10 +294,10 @@ html[data-ui-theme="focus"] body .tab {
     font-weight: 500;
     color: var(--f-text-3);
     padding: 12px 12px;
-    border-bottom-width: 2px;
+    border-bottom-width: 3px;
 }
 html[data-ui-theme="focus"] body .tab:hover { color: var(--f-text); }
-html[data-ui-theme="focus"] body .tab.is-active { color: var(--f-text); border-bottom-color: var(--f-accent); font-weight: 600; }
+html[data-ui-theme="focus"] body .tab.is-active { color: var(--f-text); border-bottom-color: var(--f-accent-text); font-weight: 600; }
 html[data-ui-theme="focus"] body .tab__count { font-size: var(--f-fs-micro); color: var(--f-text-3); font-variant-numeric: tabular-nums; }
 html[data-ui-theme="focus"] body .tabs-bar__actions .btn--icon { width: 32px; min-height: 32px; }
 html[data-ui-theme="focus"] body .toggle {
