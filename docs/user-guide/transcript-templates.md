@@ -7,8 +7,8 @@ Transcript Templates in Speakr allow you to customize how your transcriptions ar
 ## Accessing Transcript Templates
 
 1. Click on your username in the top-right corner
-2. Navigate to **Account Settings**
-3. Select the **Transcript Templates** tab
+2. Navigate to **Account settings**
+3. Select the **Transcript templates** tab
 
 ## Understanding Template Variables
 
@@ -44,11 +44,11 @@ The header applies to downloads, the auto-export and the API's `format=text`. It
 ## Creating Your First Template
 
 ### Step 1: Click "Create Template"
-In the Transcript Templates section, click the **Create Template** button.
+In the Transcript Templates section, click the **Create template** button.
 
 ### Step 2: Fill in Template Details
 
-**Template Name**: Give your template a descriptive name
+**Template name**: Give your template a descriptive name
 
 - Examples: "Interview Format", "Subtitles SRT", "Meeting Minutes"
 
@@ -214,7 +214,7 @@ Save the download with the `.vtt` extension to use it as a subtitle track.
 3. Confirm the deletion
 
 ### Creating Default Templates
-If you have no templates, click **Create Default Templates** to generate a comprehensive set of starter templates:
+If you have no templates, click **Create default templates** to generate a comprehensive set of starter templates:
 
 - Simple Conversation - Clean format with just speaker names
 - Timestamped - Basic format with time ranges

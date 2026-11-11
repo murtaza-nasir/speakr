@@ -32,7 +32,7 @@ Two proxy settings produce this. The proxy may strip the Referer header, either 
 
 ### Admin Login Fails
 
-If you can't log in with your [admin credentials](getting-started.md#step-4-configure-admin-account), first verify you're using the exact username and password from your environment file. For user management issues, see the [admin guide](admin-guide/user-management.md). These are case-sensitive and must match exactly. Check the Docker logs for admin user creation messages - you should see "Admin user created successfully" during first startup.
+If you can't sign in with your [admin credentials](getting-started.md#step-4-configure-admin-account), first verify you're using the exact username and password from your environment file. For user management issues, see the [admin guide](admin-guide/user-management.md). These are case-sensitive and must match exactly. Check the Docker logs for admin user creation messages - you should see "Admin user created successfully" during first startup.
 
 Sometimes the admin user creation fails silently if the password doesn't meet requirements. Ensure your admin password is at least 8 characters long. If the admin user wasn't created, you might need to remove the database file and restart the container to trigger initialization again.
 
@@ -104,7 +104,7 @@ For [Chinese language transcription](features.md#language-support), model select
 
 ### Summary Language Doesn't Match Preference
 
-If [summaries](features.md#automatic-summarization) revert to English when you click "Reprocess Summary" despite having [language preferences](user-guide/settings.md#language-preferences) set, this might be a model limitation. Configure [custom prompts](admin-guide/prompts.md) to enforce language requirements. Some models like Qwen3-30B don't always follow language instructions correctly. Try using a different model that better respects language directives, or ensure your custom prompt explicitly specifies the output language.
+If [summaries](features.md#automatic-summarization) revert to English when you click "Reprocess summary" despite having [language preferences](user-guide/settings.md#language-preferences) set, this might be a model limitation. Configure [custom prompts](admin-guide/prompts.md) to enforce language requirements. Some models like Qwen3-30B don't always follow language instructions correctly. Try using a different model that better respects language directives, or ensure your custom prompt explicitly specifies the output language.
 
 ## Performance Issues
 

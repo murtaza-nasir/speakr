@@ -46,7 +46,7 @@ The download button saves the questions and answers on screen as a Word file nam
 
 Each finished answer also has a copy button and a download button at its bottom right, below its Sources list. With the copy button you copy the answer's text as Markdown. With the download button you save that answer and the question before it as a Word file named `inquire-response.docx`. The file has the same layout as the conversation download: the export date, the filter names, the answer's links and its Sources list. The two buttons appear once the answer has finished streaming.
 
-**Clear conversation** removes the questions and answers and starts a new conversation; the filters stay as they are. An answer that is still streaming is stopped first. **Clear All** in the filter column removes the filters as well as the conversation. The conversation is not stored on the server, so download it before you leave or refresh the page.
+**Clear conversation** removes the questions and answers and starts a new conversation; the filters stay as they are. An answer that is still streaming is stopped first. **Clear all** in the filter column removes the filters as well as the conversation. The conversation is not stored on the server, so download it before you leave or refresh the page.
 
 ## Asking Effective Questions
 

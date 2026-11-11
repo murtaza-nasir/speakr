@@ -103,7 +103,7 @@ If you're a group admin rather than a regular member, you have access to group m
 
 ### Accessing Group Management
 
-Group admins see a "Group Management" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
+Group admins see a "Groups" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
 
 The group management interface lets you view group members with their roles, add new members from your organization, change member roles between admin and regular member, remove members who no longer need access, and manage group tags including retention and protection settings.
 
@@ -125,7 +125,7 @@ Protection flags prevent automatic deletion entirely. Use protection for recordi
 
 ### Syncing Group Shares
 
-If your group started using group tags before automatic sharing was fully implemented, you might have tagged recordings that didn't automatically share with current group members. The "Sync Group Shares" feature retroactively applies automatic sharing to existing group-tagged recordings.
+If your group started using group tags before automatic sharing was fully implemented, you might have tagged recordings that didn't automatically share with current group members. The "Sync group shares" feature retroactively applies automatic sharing to existing group-tagged recordings.
 
 This sync operation runs through all recordings with your group's tags and creates internal shares for current group members who don't already have access. It's a one-time operation that brings historical content into alignment with current group membership, useful after enabling new group features or fixing configuration issues.
 

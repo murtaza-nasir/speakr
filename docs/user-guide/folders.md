@@ -23,7 +23,7 @@ Once enabled, all users will see folder management options in their Account Sett
 
 Access folder management from **Account Settings → Folders** tab.
 
-Click **Create Folder** to add a new folder. Each folder has:
+Click **Create folder** to add a new folder. Each folder has:
 
 - **Name** - A short, descriptive name (required)
 - **Color** - Visual identifier shown on folder pills and in the sidebar
@@ -34,14 +34,14 @@ Each folder can have custom settings that apply to recordings placed in it:
 
 | Setting | Description |
 |---------|-------------|
-| **Custom Prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
-| **Title Prompt** | Instructions for the AI-generated titles of recordings in this folder. A tag's title prompt takes priority; see [Title Prompt](settings.md#title-prompt) |
-| **Default Language** | Transcription language for new recordings |
-| **Default Transcription Model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
+| **Custom prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
+| **Title prompt** | Instructions for the AI-generated titles of recordings in this folder. A tag's title prompt takes priority; see [Title Prompt](settings.md#title-prompt) |
+| **Default language** | Transcription language for new recordings |
+| **Default transcription model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
 | **Min/Max Speakers** | Speaker count hints for ASR diarization |
 | **Hotwords** | Comma-separated vocabulary hints for transcription accuracy |
-| **Initial Prompt** | Context description to guide transcription |
-| **Retention Days** | Override global retention for recordings in this folder |
+| **Initial prompt** | Context description to guide transcription |
+| **Retention days** | Override global retention for recordings in this folder |
 | **Protection** | Exempt folder contents from auto-deletion |
 
 These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing. Tag-level defaults take precedence over folder-level defaults; per-upload selections take precedence over both.
@@ -53,8 +53,8 @@ These settings work like tag settings - when you add a recording to a folder, th
 The sidebar includes a folder dropdown at the top. Use it to:
 
 - **Filter by folder** - Select a folder to show only recordings in that folder
-- **View all recordings** - Select "All Folders" to see everything
-- **View unfiled** - Select "No Folder" to see recordings not in any folder
+- **View all recordings** - Select "All folders" to see everything
+- **View unfiled** - Select "No folder" to see recordings not in any folder
 
 ### Moving Recordings to Folders
 
@@ -89,8 +89,8 @@ Group folders work like group tags with auto-sharing:
 
 | Setting | Description |
 |---------|-------------|
-| **Auto Share on Apply** | Automatically share recordings with group members when moved to this folder |
-| **Share with Group Lead** | Also share with group administrators |
+| **Auto-share with group members** | Automatically share recordings with group members when moved to this folder |
+| **Share with group admins** | Also share with group administrators |
 
 When you move a recording to a group folder with auto-share enabled, all group members receive access automatically.
 

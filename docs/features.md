@@ -113,7 +113,7 @@ Select multiple recordings in the sidebar to perform batch operations efficientl
 - **Delete** - Remove multiple recordings at once with confirmation
 - **Add/Remove Tags** - Apply or remove tags from all selected recordings
 - **Reprocess** - Regenerate transcriptions or summaries for multiple recordings
-- **Toggle Inbox/Highlight** - Mark recordings as inbox items or toggle highlight status
+- **Toggle Inbox/Star** - Mark recordings as inbox items, or star and unstar them
 
 The floating action bar appears when recordings are selected, showing the count and available operations. Press Escape to exit multi-select mode or click outside the selection area.
 
@@ -189,7 +189,7 @@ Any group member can apply group tags to their recordings. The moment a group ta
 
 Group tags appear with a distinctive users icon (👥) throughout the interface, making group content immediately recognizable. Apply multiple group tags to share with multiple groups simultaneously, enabling cross-functional collaboration. Custom retention policies can be attached to group tags, automatically managing content lifecycle based on group-specific requirements.
 
-Advanced auto-sharing options let group admins control sharing scope. Share with all group members for full collaboration, or restrict to group leads only for sensitive content requiring administrative oversight. Retroactive syncing can share existing group-tagged recordings with current members after group restructuring. See the [Group Management guide](admin-guide/group-management.md) for administrative details.
+Advanced auto-sharing options let group admins control sharing scope. Share with all group members for full collaboration, or restrict to group admins only for sensitive content requiring administrative oversight. Retroactive syncing can share existing group-tagged recordings with current members after group restructuring. See the [Group Management guide](admin-guide/group-management.md) for administrative details.
 
 ### Secure Share Links
 

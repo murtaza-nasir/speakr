@@ -20,7 +20,7 @@ The right side displays your recording metrics at a glance. You'll see your tota
 
 ### User Details
 
-Your username and email address appear here as read-only fields. The email serves as your login credential and cannot be changed without administrator assistance.
+Your username and email address appear here as read-only fields. The email serves as your sign-in credential and cannot be changed without administrator assistance.
 
 ### Processing Preferences
 
@@ -47,7 +47,7 @@ Auto speaker labeling works by comparing voice embeddings from the new recording
 
 ### Account Actions
 
-The account actions section provides quick access to essential functions. The prominent "Go to Recordings" button takes you directly to your recording library. The "Change Password" button opens a secure dialog for updating your credentials. The "Manage Speakers" link provides a shortcut to speaker profile management, though this functionality is also accessible via its dedicated tab.
+The account actions section provides quick access to essential functions. The prominent "Go to recordings" button takes you directly to your recording library. The "Change password" button opens a secure dialog for updating your credentials. The "Manage speakers" link provides a shortcut to speaker profile management, though this functionality is also accessible via its dedicated tab.
 
 ## Custom Prompts Tab
 
@@ -73,18 +73,18 @@ Multiple tag prompts combine intelligently when applied together. A recording ta
 
 ### Title Prompt
 
-The **Title Generation Prompt** field sets the instructions for the titles Speakr generates for your recordings. Leave it blank to use the current default, which is shown below the field. Only the instructions are yours to change: the transcript, your output language and the rule that the model replies with the title alone are added automatically.
+The **Title prompt** field sets the instructions for the titles Speakr generates for your recordings. Leave it blank to use the current default, which is shown below the field. Only the instructions are yours to change: the transcript, your output language and the rule that the model replies with the title alone are added automatically.
 
-Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title Prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
+Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
 
 The naming template comes from the first tag on the recording that has one, then from the recording's folder, then from your default template. The same template is applied when you regenerate a title from the recording header. When a recording is processed again, for example after you reprocess its transcription, a generated title is generated again with the current tags and templates; a title you typed or edited is kept. A merged recording without a typed title is titled the same way as an upload.
 
 ### Transcription Hints
 
-Below the summary prompt, you'll find the **Transcription Hints** section with two fields that help improve transcription accuracy:
+Below the summary prompt, you'll find the **Transcription hints** section with two fields that help improve transcription accuracy:
 
-- **Default Hotwords** - A comma-separated list of words or phrases the transcription engine should prioritize, such as brand names, acronyms, or specialized terminology (e.g., `Speakr, CTranslate2, PyAnnote`).
-- **Default Initial Prompt** - A brief description of the typical content of your recordings that provides context to the transcription engine (e.g., "This is a meeting about software development and AI tools.").
+- **Default hotwords** - A comma-separated list of words or phrases the transcription engine should prioritize, such as brand names, acronyms, or specialized terminology (e.g., `Speakr, CTranslate2, PyAnnote`).
+- **Default initial prompt** - A brief description of the typical content of your recordings that provides context to the transcription engine (e.g., "This is a meeting about software development and AI tools.").
 
 These defaults apply to all your recordings unless overridden by tag defaults, folder defaults, or values you set in the upload form's Advanced ASR Options. This is the lowest priority level in the precedence hierarchy, making it a good place to set general-purpose hints that apply across most of your content.
 
@@ -111,7 +111,7 @@ Each toggle has a format dropdown. **Default** uses a compact `[hh:mm:ss] Speake
 
 ### Notes in Summaries
 
-When **Give the summarization agent my notes** is on, your notes on a recording are added to the summary request as context. Notes can hold the correct spelling of names and products, an agenda, or text pasted from an email or a chat thread. The transcript remains the record of what was said. The setting is off by default, applies to summaries generated after it is turned on (regenerate a summary to use it on an existing recording), and uses only your own notes, never those of people a recording is shared with. Up to 8,000 characters of notes are sent.
+When **Use my notes in summaries** is on, your notes on a recording are added to the summary request as context. Notes can hold the correct spelling of names and products, an agenda, or text pasted from an email or a chat thread. The transcript remains the record of what was said. The setting is off by default, applies to summaries generated after it is turned on (regenerate a summary to use it on an existing recording), and uses only your own notes, never those of people a recording is shared with. Up to 8,000 characters of notes are sent.
 
 ### Writing Effective Prompts
 
@@ -159,7 +159,7 @@ The **Filename date format** dropdown offers preset patterns — `YYYYMMDD`, `YY
 
 The setting is off by default. A file whose name contains no matching date keeps the existing behaviour (file timestamps, then upload time) without failing the upload, and the parsed date remains editable afterwards from the recording's details. Dates parsed from filenames are wall-clock times: browser uploads send your timezone so the stored date displays correctly everywhere, and date-only matches are anchored so the calendar date never shifts between viewers. A time followed by `Z`, as in `recording-2026-10-25T11-43-00-000Z.webm` from the browser recorder, is read as UTC. The setting also applies to files dropped into the automated processing folder.
 
-This setting is not the same as **Naming Templates** (Account → Templates), which generate a recording's *title* from template variables and can also extract text from filenames with their own patterns. The two are independent — naming templates never change the meeting date, and this setting never changes the title — but they work together: a naming template's `{{date}}`, `{{year}}`, `{{month}}` and `{{day}}` variables render the recording's meeting date, so with filename parsing enabled, a file named `20260716_call.mp3` and the "Date Prefix" naming template produces a title dated July 16, 2026 rather than the day you uploaded it.
+This setting is not the same as **Naming templates** (Account → Templates), which generate a recording's *title* from template variables and can also extract text from filenames with their own patterns. The two are independent — naming templates never change the meeting date, and this setting never changes the title — but they work together: a naming template's `{{date}}`, `{{year}}`, `{{month}}` and `{{day}}` variables render the recording's meeting date, so with filename parsing enabled, a file named `20260716_call.mp3` and the "Date Prefix" naming template produces a title dated July 16, 2026 rather than the day you uploaded it.
 
 ### Transcript Display
 
@@ -179,7 +179,7 @@ The setting only appears when your administrator has configured email delivery a
 
 ### Translation
 
-**Auto-translate new recordings.** When enabled, each new recording is translated automatically into your preferred output language once transcription finishes, so the translation is ready without another click. When disabled (the default), you generate the translation yourself with the **Generate Translation** button on the translation tab.
+**Auto-translate new recordings.** When enabled, each new recording is translated automatically into your preferred output language once transcription finishes, so the translation is ready without another click. When disabled (the default), you generate the translation yourself with the **Generate translation** button on the translation tab.
 
 The checkbox only appears when your administrator has enabled automatic translation for the instance. It is off by default per account, and it neither changes the recording's status nor replaces the original transcript. The target is the language set as your Preferred Chatbot, Summarization and Translation Language; when that is left on Default, your interface language is used. Translations consume the same AI tokens as a manual translation and count toward your monthly token budget, so a large batch of uploads translates every recording in the batch.
 
@@ -193,7 +193,7 @@ The checkbox only appears when your administrator has enabled automatic translat
 
 ![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
 
-The Shared Transcripts tab, also opened from **Shared Transcripts** in the user menu, lists everything you have shared and everything shared with you, in three sections:
+The Shared recordings tab, also opened from **Shared recordings** in the user menu, lists everything you have shared and everything shared with you, in three sections:
 
 - **Public links**: each recording with a public link, when you created it, whether it includes the summary and notes, and the link itself.
 - **People and groups**: each recording you have shared with other users, with each person's permissions (view, edit, share). A share made through a group tag or group folder is marked as such. It lasts until the tag or folder is removed from the recording, so it has no revoke button here.
@@ -234,7 +234,7 @@ For speakers with voice recognition data, each card displays additional informat
 
 - **Voice Profile Badge**: Shows confidence level (high/medium/low) based on the number and quality of voice samples collected
 - **Sample Count**: Number of voice samples the profile is built from, and how many voice variants they form (for example the same person on a phone and in a room)
-- **Voice Profile**: Lists every sample with its recording, speaker label, speech time and whether it was confirmed or auto-labelled. Remove a sample that belongs to someone else and the profile is rebuilt without it
+- **Voice profile**: Lists every sample with its recording, speaker label, speech time and whether it was confirmed or auto-labelled. Remove a sample that belongs to someone else and the profile is rebuilt without it
 - **Voice Samples Button**: Click to hear representative audio clips of this speaker's voice for verification
 - **Profile Strength Indicator**: Visual feedback showing how well the system can recognize this speaker in future recordings
 
@@ -242,7 +242,7 @@ The voice profile data improves speaker suggestion accuracy when identifying spe
 
 ### Interface Layout
 
-The grid layout accommodates multiple speakers per row, making efficient use of screen space while maintaining readability. Each card includes action buttons - an edit icon for updating speaker details and a delete icon for removal. The red trash icon on each card provides individual deletion, while the "Delete All" button at the bottom enables bulk cleanup when needed.
+The grid layout accommodates multiple speakers per row, making efficient use of screen space while maintaining readability. Each card includes action buttons - an edit icon for updating speaker details and a delete icon for removal. The red trash icon on each card provides individual deletion, while the "Delete all" button at the bottom enables bulk cleanup when needed.
 
 ### Library Statistics
 
@@ -282,7 +282,7 @@ These visual indicators make it immediately clear which tags have special behavi
 
 ### Creating New Tags
 
-Creating a new tag happens through the prominent "Create Tag" button. The system guides you through choosing a name, selecting a color from a palette, and optionally adding a custom prompt. The ASR defaults section appears when you're using advanced transcription services, letting you preset the expected number of speakers for recordings with this tag.
+Creating a new tag happens through the prominent "Create tag" button. The system guides you through choosing a name, selecting a color from a palette, and optionally adding a custom prompt. The ASR defaults section appears when you're using advanced transcription services, letting you preset the expected number of speakers for recordings with this tag.
 
 ### Prompt Stacking
 
@@ -334,7 +334,7 @@ The API Tokens tab enables programmatic access to your Speakr instance through p
 
 ### Creating Tokens
 
-Click the **Create Token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and choose an expiration period, which is set to 90 days by default (**Never expires** can still be selected). The token value is shown only once after creation - copy it immediately and store it securely.
+Click the **Create token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and choose an expiration period, which is set to 90 days by default (**Never expires** can still be selected). The token value is shown only once after creation - copy it immediately and store it securely.
 
 !!! warning "Token Security"
     Treat API tokens like passwords. They provide full access to your account. Never share tokens publicly, commit them to version control, or expose them in client-side code.
@@ -394,7 +394,7 @@ The About tab presents a comprehensive overview of your Speakr installation, com
 
 ### Version Information
 
-At the top, the Speakr logo and tagline "AI-Powered Audio Transcription & Note-Taking" remind you of the system's core purpose. The version badge (v0.9.0 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
+At the top, the Speakr logo and tagline "Audio transcription and notes" remind you of the system's core purpose. The version badge (v0.9.0 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
 
 ### System Configuration
 
@@ -418,7 +418,7 @@ Your account settings contain sensitive information that shapes your entire Spea
 
 Always log out when using shared computers. Speakr maintains sessions for convenience, but this means anyone with access to your browser can access your account. The logout button in the user menu immediately terminates your session and requires re-authentication.
 
-Review your shared recordings regularly. Links you created months ago might still be active, providing access to outdated or sensitive information. The Shared Transcripts tab makes this review easy - scan through periodically and revoke anything no longer needed.
+Review your shared recordings regularly. Links you created months ago might still be active, providing access to outdated or sensitive information. The Shared recordings tab makes this review easy - scan through periodically and revoke anything no longer needed.
 
 Consider the implications of language settings in international contexts. If you set Chinese as your interface language on a shared computer, the next user might struggle to navigate. Similarly, output language settings affect all AI interactions, so ensure they match your actual needs.
 

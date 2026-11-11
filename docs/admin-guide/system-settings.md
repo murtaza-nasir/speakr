@@ -180,7 +180,7 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 **HELP_CENTER_URL**: Adds a Help Center link to the user menu (on both the main app and the account/admin pages), opening in a new tab. Point it at your own FAQ, tutorial, or intranet page so users find your organization's guidance instead of the technical documentation. Unset by default (no link shown).
 
-**HELP_CENTER_LABEL**: Optional custom label for the Help Center link. When unset, a localized "Help Center" label is used.
+**HELP_CENTER_LABEL**: Optional custom label for the Help center link. When unset, a localized "Help center" label is used.
 
 ### Collaboration & Sharing
 

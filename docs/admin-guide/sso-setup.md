@@ -86,7 +86,7 @@ The claims may live in the ID token or at the UserInfo endpoint; both work. When
 
 ## Auto-registration behavior
 
-- If `SSO_AUTO_REGISTER=true`, new users are created on first login when their email domain is allowed (or when allowlist is empty).
+- If `SSO_AUTO_REGISTER=true`, new users are created on first sign-in when their email domain is allowed (or when allowlist is empty).
 - If `SSO_AUTO_REGISTER=false`, only existing users with a linked SSO subject can sign in.
 - Email domain allowlist is enforced only when an email is present.
 
@@ -98,9 +98,9 @@ A **Remember me** option is shown below the SSO button on the sign-in page. When
 
 Set `SSO_DISABLE_PASSWORD_LOGIN=true` to enforce SSO-only authentication for regular users. When enabled:
 
-- The login page shows only the SSO sign-in button
-- Regular users cannot log in with email/password
-- **Administrators can still use password login** as a fallback (hidden behind "Administrator login" link)
+- The sign-in page shows only the SSO sign-in button
+- Regular users cannot sign in with email/password
+- **Administrators can still use password sign-in** as a fallback (behind the "Administrator sign-in" link)
 
 This is useful for organizations that want to enforce SSO for all users while keeping emergency admin access available.
 

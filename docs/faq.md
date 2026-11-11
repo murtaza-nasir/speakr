@@ -207,7 +207,7 @@ This is common with brand names, acronyms, technical jargon, or proper nouns tha
 
 **Hotwords** let you provide a comma-separated list of terms the transcription engine should prioritize. For example, if "PyAnnote" keeps being transcribed as "piano" or "pie annotate", adding it to your hotwords list biases the model toward the correct spelling.
 
-**Initial Prompt** gives the transcription engine broader context about your recording's content, helping it make better word choices when audio is ambiguous.
+**Initial prompt** gives the transcription engine broader context about your recording's content, helping it make better word choices when audio is ambiguous.
 
 You can set these at multiple levels, from most to least priority:
 

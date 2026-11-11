@@ -32,7 +32,7 @@ All speakers you identify are automatically saved to your speaker database. You 
 
 The Speakers Management interface displays all your saved speakers in a responsive grid layout. Each speaker card shows the speaker's name, usage statistics including how many times they've been identified, when they were last used in a recording, and when they were first added to your database. The interface includes internal scrolling to handle large numbers of speakers while keeping the header and action buttons always visible.
 
-You can delete individual speakers by clicking the trash icon on their card, or use the "Delete All" button to clear your entire speaker database. This is useful for maintaining privacy or when you need to start fresh with a new set of speakers. The speaker count at the bottom keeps track of how many speakers you have saved.
+You can delete individual speakers by clicking the trash icon on their card, or use the "Delete all" button to clear your entire speaker database. This is useful for maintaining privacy or when you need to start fresh with a new set of speakers. The speaker count at the bottom keeps track of how many speakers you have saved.
 
 The system uses these saved speakers to provide suggestions when you're identifying speakers in new recordings, making the identification process faster over time as you build up your speaker database.
 
@@ -64,7 +64,7 @@ The ASR editor presents your transcription as a table of segments, where each ro
 
 The ASR editor maintains the JSON structure of your transcription, which is essential for features like speaker-based search, audio synchronization (clicking on text to jump to that point in the audio), and proper display in bubble view. When you save changes in the ASR editor, the system preserves all timing and speaker information while applying your corrections.
 
-Your edits are saved to the database when you click "Save Changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
+Your edits are saved to the database when you click "Save changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
 
 #### Editor Productivity Features
 
@@ -183,9 +183,9 @@ The summary is fully editable using a markdown editor similar to the one in the 
 
 You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button exports the summary as a Microsoft Word (.docx) file, preserving formatting and making it easy to share with colleagues who prefer traditional documents. The downloaded file is named using the recording title and date for easy identification.
 
-### Customise Summary Prompt at Generation Time
+### Customize Summary Prompt at Generation Time
 
-For recordings without a summary yet, the **Generate Summary** button is paired with a small slider icon. Clicking the slider opens a Customise summary prompt modal that lets you supply one-off context (an agenda, a specific focus, additional constraints) before the first summary is generated. The modal supports two modes:
+For recordings without a summary yet, the **Generate summary** button is paired with a small slider icon. Clicking the slider opens a Customize summary prompt modal that lets you supply one-off context (an agenda, a specific focus, additional constraints) before the first summary is generated. The modal supports two modes:
 
 **Append**: combines your saved prompt (or the resolved tag/folder/user/admin prompt) with the text you paste. Useful when you want your usual structure plus extra per-recording context. This is the default mode because most ad-hoc context is additive.
 
@@ -199,13 +199,13 @@ Speakr provides powerful flexibility when you need to regenerate a summary with 
 
 To reprocess a summary, click the reprocess button in the summary toolbar. This opens the reprocessing modal, which offers three distinct prompt options plus an Append/Replace mode toggle:
 
-**Use Default Prompt**: This option applies the standard prompt hierarchy based on your current settings—using tag prompts if present, falling back to your personal prompt, then the admin default, and finally the system fallback. This is useful when you want to update the summary using your standard configuration, perhaps after editing the transcription.
+**Use default prompt**: This option applies the standard prompt hierarchy based on your current settings—using tag prompts if present, falling back to your personal prompt, then the admin default, and finally the system fallback. This is useful when you want to update the summary using your standard configuration, perhaps after editing the transcription.
 
-**Use Prompt from Tag**: If you have created tags with custom summarization prompts in your account settings, you can select any of them to apply that tag's prompt to this specific regeneration—even if the recording doesn't have that tag applied. This is particularly powerful for experimentation: you might have a "Technical Deep Dive" tag with prompts focused on implementation details, a "Executive Summary" tag that emphasizes high-level decisions, or a "Client Presentation" tag that formats information for external audiences. You can try each one to see which produces the most useful summary for your current needs, all without changing the recording's actual tags.
+**Use prompt from tag**: If you have created tags with custom summarization prompts in your account settings, you can select any of them to apply that tag's prompt to this specific regeneration—even if the recording doesn't have that tag applied. This is particularly powerful for experimentation: you might have a "Technical Deep Dive" tag with prompts focused on implementation details, a "Executive Summary" tag that emphasizes high-level decisions, or a "Client Presentation" tag that formats information for external audiences. You can try each one to see which produces the most useful summary for your current needs, all without changing the recording's actual tags.
 
 When you select a tag, a preview displays the first portion of that tag's custom prompt, helping you confirm you've chosen the right one. This preview is especially helpful when you've created multiple tags with similar names but different focuses.
 
-**Enter Custom Prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order."
+**Enter custom prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order."
 
 **Append vs Replace mode**: when a tag prompt or custom prompt is selected, you can choose whether it **Replaces** the resolved default (the historic behaviour) or is **Appended** as additional context after the resolved default. Append mode is useful when your standard prompt produces good structure but you want to nudge a specific run toward a particular focus without rewriting the whole prompt.
 

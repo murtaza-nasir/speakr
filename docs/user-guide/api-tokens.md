@@ -16,8 +16,8 @@ API tokens are personal access tokens that authenticate API requests on your beh
 
 ## Creating a Token
 
-1. Navigate to **Account Settings** → **API Tokens** tab
-2. Click **Create Token**
+1. Navigate to **Account settings** → **API tokens** tab
+2. Click **Create token**
 3. Enter a descriptive name (e.g., "n8n automation", "CLI access")
 4. Choose an expiration period. The form is set to **90 days** by default:
     - **7 days**, **30 days**, **90 days**, **1 year** - Token automatically expires
