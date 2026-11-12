@@ -2247,11 +2247,3 @@ select option:hover {
 }
 .assistant-scope > i { font-size: 0.85em; opacity: 0.85; }
 .assistant-scope > span { overflow: hidden; text-overflow: ellipsis; }
-/* In the chat button the letter takes the button's own colours. */
-.assistant-avatar--fab {
-    width: auto;
-    height: auto;
-    background: transparent;
-    color: inherit;
-    font-size: 19px;
-}

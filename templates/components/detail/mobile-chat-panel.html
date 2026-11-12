@@ -6,7 +6,6 @@
         <div v-if="chatMessages.length === 0" class="empty">
             {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
             <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
-            <div class="empty__body" v-text="t('assistant.recordingIntro', { name: assistantName })"></div>
         </div>
         <div v-for="(message, index) in chatMessages" :key="index"
              :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message']">

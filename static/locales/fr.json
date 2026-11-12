@@ -3806,7 +3806,6 @@
     "ask": "Demander à {{name}}",
     "scopeRecording": "Cet enregistrement",
     "scopeLibrary": "Tous les enregistrements",
-    "recordingIntro": "{{name}} peut répondre à vos questions sur cet enregistrement et vous indiquer le moment où quelque chose a été dit.",
     "sendHint": "Envoyer (Entrée). Pour une nouvelle ligne, appuyez sur Ctrl+Entrée."
   }
 }

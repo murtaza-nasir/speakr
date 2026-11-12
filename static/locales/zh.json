@@ -3806,7 +3806,6 @@
     "ask": "询问 {{name}}",
     "scopeRecording": "此录音",
     "scopeLibrary": "所有录音",
-    "recordingIntro": "{{name}} 可以回答有关此录音的问题，并指出某句话是在什么时刻说的。",
     "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。"
   }
 }
