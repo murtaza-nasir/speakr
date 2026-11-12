@@ -2,9 +2,9 @@
 
 The paginated recordings list offers three "needs" filters, and the SQL for
 them used to be built inside the recordings blueprint. The policy lives here
-so a non-HTTP caller (a pipeline, a CLI, an admin view) can ask the same
-question without importing a route module, and so it can be tested against a
-database without a Flask client.
+so that code outside the blueprint can ask the same question without importing
+a route module, and so that it can be tested against a database without a
+Flask client.
 
 Every predicate returns a SQLAlchemy expression over ``Recording``:
 

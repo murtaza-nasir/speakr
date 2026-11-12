@@ -1,4 +1,4 @@
-"""Direct tests for the recording-status predicates (architecture Candidate N).
+"""Direct tests for the recording-status predicates.
 
 The three "needs" filters used to be SQL built inside the recordings
 blueprint, reachable only through ``GET /api/recordings`` with a logged-in
