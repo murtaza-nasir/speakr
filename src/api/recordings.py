@@ -1781,6 +1781,38 @@ def translate_transcription(recording_id):
             if target_language is None:
                 return jsonify(api_error('translation_invalid_language')), 400
 
+        from src.models import ProcessingJob
+
+        # A second request while one runs would only queue behind it (or get
+        # the same job back from enqueue), so say that it is already running.
+        running = ProcessingJob.query.filter(
+            ProcessingJob.recording_id == recording.id,
+            ProcessingJob.job_type == 'translate_transcription',
+            ProcessingJob.status.in_(['queued', 'processing']),
+        ).first()
+        if running:
+            return jsonify({
+                'success': True,
+                'job_id': running.id,
+                'already_running': True,
+                'message': translate('server.apiMessage.translationAlreadyRunning'),
+            })
+
+        # The job resolves a missing language the same way, then English.
+        from src.services.transcription_translation import _resolve_target_language, _same_language
+
+        effective_target = target_language or _resolve_target_language(current_user.id, None) or 'English'
+        # Only a language chosen at transcription time counts; an
+        # auto-detected recording goes to the model (see _same_language).
+        if _same_language(recording.transcription_requested_language, effective_target):
+            return jsonify({
+                'success': True,
+                'job_id': None,
+                'same_language': True,
+                'language': effective_target,
+                'message': translate('server.apiMessage.translationSameLanguage', target=effective_target),
+            })
+
         from src.services.job_queue import job_queue
 
         job_params = {'user_id': current_user.id}
@@ -2713,6 +2745,8 @@ def get_job_queue_status():
                 'position': position,
                 'is_new_upload': job.is_new_upload,
                 'error_message': job.error_message,
+                'progress_done': job.progress_done,
+                'progress_total': job.progress_total,
                 'created_at': job.created_at.isoformat() if job.created_at else None,
                 'started_at': job.started_at.isoformat() if job.started_at else None,
                 'completed_at': job.completed_at.isoformat() if job.completed_at else None
@@ -2757,6 +2791,8 @@ def retry_failed_job(job_id):
         job.retry_count = 0
         job.started_at = None
         job.completed_at = None
+        job.progress_done = None
+        job.progress_total = None
         db.session.commit()
 
         current_app.logger.info(f"Job {job_id} queued for retry by user {current_user.id}")
