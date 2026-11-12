@@ -360,3 +360,15 @@ def test_the_ask_page_note_keeps_its_wording():
     out = ia.sanitize_history([{'role': 'assistant', 'content': 'a',
                                 'sources': [{'n': 5, 'recording_id': 7, 'title': 'Weekly'}]}])
     assert out[0]['note'].endswith('citations were displayed to the user numbered: 5 = Weekly (recording 7)')
+
+
+def test_an_ask_download_keeps_the_numbers_the_page_showed():
+    from src.api.inquire import _inquire_download_turns
+    turns = _inquire_download_turns([{
+        'role': 'assistant', 'content': 'Again [Weekly @ 1:02](/recordings/7?t=62), new [Other](/recordings/9).',
+        'sources': [{'n': 2, 'title': 'Weekly', 'url': '/recordings/7'},
+                    {'n': 5, 'title': 'Other', 'url': '/recordings/9'},
+                    {'title': 'No number', 'url': '/recordings/11'}]}])
+    role, content, sources = turns[0]
+    assert sources == [(2, 'Weekly', '/recordings/7'), (5, 'Other', '/recordings/9'), (3, 'No number', '/recordings/11')]
+    assert content == 'Again [2 @ 1:02](/recordings/7?t=62), new [5](/recordings/9).'
