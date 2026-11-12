@@ -3837,13 +3837,13 @@
     "dismiss": "Got it",
     "releases": {
       "0_10_20": {
-        "1": "Choose how Speakr looks: six layouts in Account → Appearance, each with your color scheme and dark mode.",
-        "2": "Download a whole Inquire conversation as a Word document, or clear it and start again.",
-        "3": "Copy or download a single answer in Inquire and in a recording's chat.",
-        "4": "Word downloads have working links, and Inquire answers include their sources.",
-        "5": "The transcript editor shows every sentence in full.",
-        "6": "Transcript templates can start with a header and can write WebVTT subtitle timestamps.",
-        "7": "Buttons stay visible on smaller screens and in narrow panes."
+        "1": "Choose a new look: six interface themes under Account settings → Preferences → Appearance, each with your color scheme and dark mode.",
+        "2": "The chat and Inquire are now Ambrose, an assistant you can rename. Click a citation number to play that moment.",
+        "3": "Each recording keeps its own chat until you close the tab.",
+        "4": "Folders can hold subfolders. Choose a parent folder when you create or edit a folder.",
+        "5": "In Regenerate summary, you see the prompt that will run and can edit it first.",
+        "6": "Follow a translation's progress in the processing queue and the Translation tab.",
+        "7": "Download a summary as Markdown, and single answers or whole Ask Ambrose conversations as Word documents."
       }
     }
   },

@@ -3837,13 +3837,13 @@
     "dismiss": "Compris",
     "releases": {
       "0_10_20": {
-        "1": "Choisissez l'apparence de Speakr : six mises en page dans Compte → Apparence, chacune avec votre jeu de couleurs et le mode sombre.",
-        "2": "Téléchargez toute une conversation Inquire en document Word, ou effacez-la et recommencez.",
-        "3": "Copiez ou téléchargez une seule réponse dans Inquire et dans le chat d'un enregistrement.",
-        "4": "Les téléchargements Word ont des liens qui fonctionnent, et les réponses d'Inquire incluent leurs sources.",
-        "5": "L'éditeur de transcription affiche chaque phrase en entier.",
-        "6": "Les modèles de transcription peuvent commencer par un en-tête et écrire des horodatages de sous-titres WebVTT.",
-        "7": "Les boutons restent visibles sur les petits écrans et dans les panneaux étroits."
+        "1": "Choisissez une nouvelle apparence : six thèmes de l'interface dans Paramètres du compte → Préférences → Apparence, chacun avec votre schéma de couleurs et le mode sombre.",
+        "2": "Le chat et Inquire deviennent Ambrose, un assistant que vous pouvez renommer. Cliquez sur un numéro de citation pour lire ce passage.",
+        "3": "Chaque enregistrement garde sa propre discussion jusqu'à la fermeture de l'onglet.",
+        "4": "Les dossiers peuvent contenir des sous-dossiers. Choisissez un dossier parent lorsque vous créez ou modifiez un dossier.",
+        "5": "Dans Régénérer le résumé, vous voyez le prompt qui sera exécuté et pouvez le modifier avant.",
+        "6": "Suivez la progression d'une traduction dans la file de traitement et dans l'onglet Traduction.",
+        "7": "Téléchargez un résumé en Markdown, et une réponse seule ou toute une conversation Demander à Ambrose en document Word."
       }
     }
   },

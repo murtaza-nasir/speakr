@@ -3837,13 +3837,13 @@
     "dismiss": "Entendido",
     "releases": {
       "0_10_20": {
-        "1": "Elija el aspecto de Speakr: seis diseños en Cuenta → Apariencia, cada uno con su esquema de colores y el modo oscuro.",
-        "2": "Descargue una conversación completa de Inquire como documento de Word, o bórrela y empiece de nuevo.",
-        "3": "Copie o descargue una sola respuesta en Inquire y en el chat de una grabación.",
-        "4": "Las descargas de Word tienen enlaces que funcionan, y las respuestas de Inquire incluyen sus fuentes.",
-        "5": "El editor de transcripciones muestra cada frase completa.",
-        "6": "Las plantillas de transcripción pueden empezar con un encabezado y escribir marcas de tiempo de subtítulos WebVTT.",
-        "7": "Los botones siguen visibles en pantallas pequeñas y en paneles estrechos."
+        "1": "Elija un aspecto nuevo: seis temas de la interfaz en Configuración de cuenta → Preferencias → Apariencia, cada uno con su esquema de color y el modo oscuro.",
+        "2": "El chat e Inquire son ahora Ambrose, un asistente al que puede cambiar el nombre. Haga clic en un número de cita para reproducir ese momento.",
+        "3": "Cada grabación conserva su propio chat hasta que cierre la pestaña.",
+        "4": "Las carpetas pueden contener subcarpetas. Elija una carpeta principal al crear o editar una carpeta.",
+        "5": "En Regenerar resumen, verá el prompt que se ejecutará y podrá editarlo antes.",
+        "6": "Siga el progreso de una traducción en la cola de procesamiento y en la pestaña Traducción.",
+        "7": "Descargue un resumen en Markdown, y respuestas sueltas o conversaciones completas de Preguntar a Ambrose como documentos de Word."
       }
     }
   },

@@ -3837,13 +3837,13 @@
     "dismiss": "Verstanden",
     "releases": {
       "0_10_20": {
-        "1": "Wählen Sie das Aussehen von Speakr: sechs Layouts unter Konto → Erscheinungsbild, jeweils mit Ihrem Farbschema und dem dunklen Modus.",
-        "2": "Laden Sie ein ganzes Inquire-Gespräch als Word-Dokument herunter, oder leeren Sie es und beginnen Sie neu.",
-        "3": "Kopieren Sie eine einzelne Antwort in Inquire und im Chat einer Aufnahme, oder laden Sie sie herunter.",
-        "4": "Word-Downloads enthalten funktionierende Links, und Inquire-Antworten enthalten ihre Quellen.",
-        "5": "Der Transkript-Editor zeigt jeden Satz vollständig.",
-        "6": "Transkriptvorlagen können mit einer Kopfzeile beginnen und WebVTT-Untertitelzeitstempel schreiben.",
-        "7": "Schaltflächen bleiben auf kleineren Bildschirmen und in schmalen Bereichen sichtbar."
+        "1": "Wählen Sie ein neues Aussehen: sechs Oberflächendesigns unter Kontoeinstellungen → Einstellungen → Darstellung, jeweils mit Ihrem Farbschema und dem dunklen Modus.",
+        "2": "Chat und Inquire sind jetzt Ambrose, ein Assistent, den Sie umbenennen können. Klicken Sie auf eine Quellennummer, um diese Stelle abzuspielen.",
+        "3": "Jede Aufnahme behält ihren eigenen Chat, bis Sie den Tab schließen.",
+        "4": "Ordner können Unterordner enthalten. Wählen Sie beim Erstellen oder Bearbeiten eines Ordners einen übergeordneten Ordner.",
+        "5": "Unter „Zusammenfassung neu generieren“ sehen Sie den Prompt, der ausgeführt wird, und können ihn vorher bearbeiten.",
+        "6": "Verfolgen Sie den Fortschritt einer Übersetzung in der Verarbeitungswarteschlange und im Tab Übersetzung.",
+        "7": "Laden Sie eine Zusammenfassung als Markdown herunter, einzelne Antworten oder ganze Unterhaltungen unter „Ambrose fragen“ als Word-Dokument."
       }
     }
   },
