@@ -886,6 +886,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const legendExpanded = ref(false);
             const highlightedSpeaker = ref(null);
             const showDownloadMenu = ref(false);
+            // Format menu on the summary download button (Word / Markdown, #584).
+            const showSummaryDownloadMenu = ref(false);
             // Split-button menu on the recording-view "Upload Recording & Notes"
             // action (offers "merge with an existing recording").
             const showUploadSplitMenu = ref(false);
@@ -1990,7 +1992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 summaryMarkdownEditorInstance, recordingNotesEditor, recordingMarkdownEditorInstance,
 
                 // Transcription
-                transcriptionViewMode, legendExpanded, highlightedSpeaker, showDownloadMenu,
+                transcriptionViewMode, legendExpanded, highlightedSpeaker, showDownloadMenu, showSummaryDownloadMenu,
                 transcriptDownloadFormat, showUploadSplitMenu,
                 currentPlayingSegmentIndex, followPlayerMode, processingIndicatorMinimized,
                 viewingTranslation, showTranslationModal, translationTargetLanguage,

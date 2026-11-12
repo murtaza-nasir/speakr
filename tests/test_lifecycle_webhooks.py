@@ -69,16 +69,19 @@ def test_a_summary_fires_summary_completed(rec):
     assert "recording.summary.failed" not in types
 
 
-def test_a_failed_summary_fires_summary_failed(rec):
+def test_a_failed_summary_step_raises_and_leaves_the_event_to_its_caller(rec):
+    """The step raises (#583); the job queue sends recording.summary.failed once
+    the failure is final, so a retried attempt sends nothing."""
+    from src.services.error_classification import SummaryStepFailed
     _, rid = rec
     a, b, c, d = _quiet()
     with app.app_context(), a, b, c, d, patch.object(proc, "client", MagicMock()), \
          patch.object(proc, "call_llm_completion", side_effect=RuntimeError("model unavailable")), \
          patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
-        proc.generate_summary_only_task(app.app_context(), rid)
+        with pytest.raises(SummaryStepFailed):
+            proc.generate_summary_only_task(app.app_context(), rid)
     calls = [call for call in emit.call_args_list if call.kwargs["event_type"].startswith("recording.summary")]
-    assert [c.kwargs["event_type"] for c in calls] == ["recording.summary.failed"]
-    assert calls[0].kwargs["data"]["recording_id"] == rid
+    assert calls == []
 
 
 def test_every_creation_path_emits_recording_created():

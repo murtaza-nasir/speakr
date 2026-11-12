@@ -56,3 +56,19 @@ def is_permanent_error(error_str: str) -> bool:
             return True
 
     return False
+
+
+class SummaryStepFailed(Exception):
+    """The summary step failed after storing its outcome on the recording (#583).
+
+    generate_summary_only_task has already written the
+    "[Summary generation failed: ...]" text, the FAILED status and the
+    error_message when this is raised. The job queue classifies the message
+    (permanent or transient) like any other job error, but keeps the stored
+    summary instead of replacing it. ``stored_summary`` holds that text so the
+    caller can report it.
+    """
+
+    def __init__(self, message, stored_summary=None):
+        super().__init__(message)
+        self.stored_summary = stored_summary

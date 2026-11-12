@@ -139,13 +139,19 @@ def test_summary_error_path_sets_failed():
         user = _make_user("sum_err")
         rec = _make_recording(user.id)
         rid = rec.id
+        from src.services.error_classification import SummaryStepFailed
         with _patch_llm(side_effect=RuntimeError("LLM boom")):
-            proc.generate_summary_only_task(app.app_context(), rid)
+            # The step raises so the job queue can fail or retry the job (#583).
+            with pytest.raises(SummaryStepFailed) as exc:
+                proc.generate_summary_only_task(app.app_context(), rid)
+        assert str(exc.value) == "LLM boom"
+        assert exc.value.stored_summary == "[Summary generation failed: LLM boom]"
 
         db.session.expire_all()
         out = db.session.get(Recording, rid)
         assert out.status == "FAILED"
-        assert out.summary  # error message stored as summary
+        assert out.summary == "[Summary generation failed: LLM boom]"
+        assert out.error_message == "[Summary generation failed: LLM boom]"
 
 
 def test_summary_empty_response_marks_not_generated():
@@ -548,6 +554,56 @@ def test_transcribe_with_connector_audio_success():
         # Title + summary tasks were invoked downstream.
         mock_title.assert_called_once()
         mock_summary.assert_called_once()
+
+
+def test_transcribe_with_connector_keeps_transcript_when_auto_summary_fails():
+    """A failed auto-summary leaves the transcription job to complete (#583)."""
+    import time as _time
+    from src.services.error_classification import SummaryStepFailed
+    with app.app_context():
+        user = _make_user("trans_sumfail")
+        rec = _make_recording(user.id, transcription=None, status="PENDING")
+        rid = rec.id
+        connector = _make_connector(text="A transcribed body of text here.")
+        tmp_path = os.path.join(app.config["UPLOAD_FOLDER"], f"sumfail_{rid}.mp3")
+        with open(tmp_path, "wb") as f:
+            f.write(b"\x00" * 1024)
+        conv_result = MagicMock()
+        conv_result.was_converted = False
+
+        def failing_summary(app_context, recording_id, *a, **k):
+            r = db.session.get(Recording, recording_id)
+            r.summary = "[Summary generation failed: Error code: 403 - Forbidden]"
+            r.status = "FAILED"
+            db.session.commit()
+            raise SummaryStepFailed("Error code: 403 - Forbidden",
+                                    stored_summary=r.summary)
+
+        with patch("src.services.transcription.get_connector", return_value=connector), \
+             patch.object(proc, "is_video_file", return_value=False), \
+             patch.object(proc, "convert_if_needed", return_value=conv_result), \
+             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+             patch.object(proc, "generate_title_task"), \
+             patch.object(proc, "generate_summary_only_task", side_effect=failing_summary), \
+             patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+             patch.object(proc, "chunking_service") as mock_chunk_svc:
+            mock_chunk_svc.needs_chunking.return_value = False
+            mock_chunk_svc.get_audio_duration.return_value = 120.0
+            # Must not raise: a raise here would fail the transcription job
+            # and replace the transcript with the error.
+            proc.transcribe_with_connector(
+                app.app_context(), rid, tmp_path, "cov.mp3", _time.time(),
+                mime_type="audio/mpeg",
+            )
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        assert out.transcription == "A transcribed body of text here."
+        assert out.status == "FAILED"
+        assert out.summary.startswith("[Summary generation failed:")
+        types = [c.kwargs["event_type"] for c in emit.call_args_list]
+        assert types.count("recording.summary.failed") == 1
 
 
 def test_transcribe_with_connector_persists_resolved_hints():

@@ -123,6 +123,23 @@ Every operation in the specification has an `operationId`, which is required to 
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Interactive API documentation with Swagger UI at /api/v1/docs</p>
 </div>
 
+### Open WebUI
+
+Speakr can be added to [Open WebUI](https://openwebui.com/) as an OpenAPI tool server. A model in an Open WebUI chat can then list and search your recordings and read their transcripts, summaries and notes.
+
+1. In Speakr, create a token under **Account Settings** → **API Tokens** (see [API Tokens](api-tokens.md)). A **Read only** token covers searching and reading. Add the `process` scope only if the model may also chat with a recording or start a summary.
+2. In Open WebUI, an administrator opens **Settings** → **Admin** → **Integrations** and adds a connection in the **Tools** section:
+    - **Type:** OpenAPI
+    - **URL:** `https://your-speakr-instance.com/api/v1`
+    - **Auth:** Bearer, with the token from step 1
+3. Save the connection. In a chat, turn on the Speakr tools from the **+** menu under **Tools**.
+
+The specification is read from `/api/v1/openapi.json` under that URL, and each operation in it becomes one tool. With a scoped token, only the operations that token may call are listed, so nothing can be deleted or changed with a **Read only** token. Semantic search across recordings is available through the search operation (`mode=semantic`) when it is enabled on the server.
+
+A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Such calls require CORS headers, which are not part of Speakr's responses, so they are blocked unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
+
+Speech-to-text in Open WebUI is the job of a transcription server. If you use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) with Speakr, you can use it for Open WebUI as well, as it has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`). Audio transcribed this way is not stored in Speakr.
+
 ---
 
 ## Stats

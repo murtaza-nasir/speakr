@@ -20,7 +20,7 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-from src.services.error_classification import is_permanent_error
+from src.services.error_classification import is_permanent_error, SummaryStepFailed
 
 # Configuration
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
@@ -472,6 +472,12 @@ class FairJobQueue:
                         job.status = 'queued'
                         job.started_at = None
                         logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
+                        if isinstance(e, SummaryStepFailed):
+                            # The summary step set FAILED before the queue
+                            # decided to retry; the summary is still pending.
+                            recording = db.session.get(Recording, recording_id)
+                            if recording:
+                                recording.status = 'SUMMARIZING'
                     else:
                         job.status = 'failed'
                         job.completed_at = datetime.utcnow()
@@ -489,10 +495,23 @@ class FairJobQueue:
                             # job keeps the transcript and shows the error as the
                             # summary; it used to overwrite a good transcript (#412).
                             from src.utils.error_formatting import format_error_for_storage
-                            if job_type in ('summarize', 'reprocess_summary'):
+                            if isinstance(e, SummaryStepFailed):
+                                # The summary step stored its own error text
+                                # and error_message (#583); keep them.
+                                if e.stored_summary:
+                                    recording.summary = e.stored_summary
+                            elif job_type in ('summarize', 'reprocess_summary'):
                                 recording.summary = format_error_for_storage(error_str)
                             else:
                                 recording.transcription = format_error_for_storage(error_str)
+                            if not isinstance(e, SummaryStepFailed):
+                                # The v1 API reports error_message for FAILED
+                                # recordings; this path never set it (#583).
+                                try:
+                                    from src.tasks.processing import _sanitize_error_message
+                                    recording.error_message = _sanitize_error_message(error_str)
+                                except Exception:
+                                    recording.error_message = error_str[:1000]
 
                         if is_permanent_error:
                             logger.error(f"Job {job_id} failed permanently (non-retryable error)")

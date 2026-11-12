@@ -14,7 +14,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
 from docx.text.run import Run
-from flask import current_app, request, send_file
+from flask import current_app, make_response, request, send_file
 
 DOCX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -130,6 +130,36 @@ def resolve_link_url(url, base_url):
     if parts.scheme.lower() not in ('http', 'https') or not parts.hostname:
         return None
     return quote(url, safe=_URL_SAFE)
+
+
+_ROOT_RELATIVE_MD_LINK = re.compile(r'(\]\()(/(?![/\\])[^)\s]*)(\))')
+
+
+def absolutize_markdown_links(text, base_url):
+    """Markdown text whose root-relative link targets ("](/recordings/7?t=12)") point at base_url.
+
+    A Markdown download is opened outside the app, where a path such as
+    /recordings/7 leads nowhere. Every other target is left as written.
+    """
+    if not text or not base_url:
+        return text
+    base = base_url.rstrip('/')
+    return _ROOT_RELATIVE_MD_LINK.sub(lambda m: f"{m.group(1)}{base}{m.group(2)}{m.group(3)}", text)
+
+
+def markdown_attachment_response(body, filename, fallback_filename):
+    """Return body as a Markdown download named filename (RFC 5987 form for non-ASCII names)."""
+    response = make_response(body)
+    response.headers['Content-Type'] = 'text/markdown; charset=utf-8'
+    try:
+        filename.encode('ascii')
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        response.headers['Content-Disposition'] = (
+            f'attachment; filename="{fallback_filename}"; '
+            + "filename*=UTF-8''" + quote(filename, safe='')
+        )
+    return response
 
 
 def add_hyperlink(paragraph, text, url):
