@@ -72,6 +72,32 @@ JOB_RUNNERS = {
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
 
 
+def job_progress_writer(job_id):
+    """A callback that stores ``(done, total)`` on a running job.
+
+    It writes on its own connection and commits at once, so the queue poll
+    sees the progress while the job's own session is still open. A failed
+    write is logged and ignored: progress is display only and must never
+    fail the job.
+    """
+    def write(done, total):
+        try:
+            from sqlalchemy import update
+            from src.database import db
+            from src.models import ProcessingJob
+
+            with db.engine.begin() as conn:
+                conn.execute(
+                    update(ProcessingJob)
+                    .where(ProcessingJob.id == job_id, ProcessingJob.status == 'processing')
+                    .values(progress_done=done, progress_total=total)
+                )
+        except Exception as e:
+            logger.warning(f"Could not store progress for job {job_id}: {e}")
+
+    return write
+
+
 def is_background(job_type: str) -> bool:
     """Whether ``job_type`` runs beside a recording's processing.
 
@@ -272,7 +298,9 @@ class FairJobQueue:
                                 ProcessingJob.id == candidate_job.id,
                                 ProcessingJob.status == 'queued'  # Critical: only claim if still queued
                             )
-                            .values(status='processing', started_at=claim_time)
+                            # A retried job reports its progress from 0 again.
+                            .values(status='processing', started_at=claim_time,
+                                    progress_done=None, progress_total=None)
                         )
 
                         if result.rowcount == 0:
@@ -690,6 +718,7 @@ class FairJobQueue:
             user_id=params.get('user_id', job.user_id),
             target_language=params.get('target_language'),
             params=params,
+            progress=job_progress_writer(job.id),
         )
 
     def _run_convert(self, job, recording, params, job_type=None):
