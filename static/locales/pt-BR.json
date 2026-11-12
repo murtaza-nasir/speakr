@@ -2285,8 +2285,7 @@
     "region": "Itens da fila de processamento",
     "translating": "Traduzindo",
     "translatingShort": "traduzindo",
-    "translatingMessage": "Traduzindo a transcrição",
-    "translatingParts": "{{done}} de {{total}} partes traduzidas"
+    "translatingMessage": "Traduzindo a transcrição"
   },
   "promptVariables": {
     "hintReprocess": "Estes valores são substituídos nos espaços reservados do prompt resolvido. As edições aqui são salvas na gravação. Valores vazios são substituídos por uma string vazia. Até 8.000 caracteres por valor, 32.000 no total entre todas as variáveis.",

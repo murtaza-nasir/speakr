@@ -2285,8 +2285,7 @@
     "region": "Processing queue items",
     "translating": "Translating",
     "translatingShort": "translating",
-    "translatingMessage": "Translating the transcript",
-    "translatingParts": "{{done}} of {{total}} parts translated"
+    "translatingMessage": "Translating the transcript"
   },
   "promptVariables": {
     "title": "Prompt variables",

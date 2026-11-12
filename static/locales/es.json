@@ -2285,8 +2285,7 @@
     "region": "Elementos de la cola de procesamiento",
     "translating": "Traduciendo",
     "translatingShort": "traduciendo",
-    "translatingMessage": "Traduciendo la transcripción",
-    "translatingParts": "{{done}} de {{total}} partes traducidas"
+    "translatingMessage": "Traduciendo la transcripción"
   },
   "promptVariables": {
     "title": "Variables del prompt",

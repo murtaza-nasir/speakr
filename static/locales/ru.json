@@ -2285,8 +2285,7 @@
     "region": "Элементы очереди обработки",
     "translating": "Перевод",
     "translatingShort": "перевод",
-    "translatingMessage": "Перевод расшифровки",
-    "translatingParts": "Переведено частей: {{done}} из {{total}}"
+    "translatingMessage": "Перевод расшифровки"
   },
   "promptVariables": {
     "title": "Переменные подсказки",

@@ -2285,8 +2285,7 @@
     "region": "处理队列项目",
     "translating": "翻译中",
     "translatingShort": "翻译中",
-    "translatingMessage": "正在翻译转录内容",
-    "translatingParts": "已翻译 {{done}}/{{total}} 部分"
+    "translatingMessage": "正在翻译转录内容"
   },
   "promptVariables": {
     "title": "提示变量",

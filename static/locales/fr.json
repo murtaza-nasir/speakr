@@ -2285,8 +2285,7 @@
     "region": "Éléments de la file de traitement",
     "translating": "Traduction",
     "translatingShort": "en traduction",
-    "translatingMessage": "Traduction de la transcription",
-    "translatingParts": "{{done}} parties traduites sur {{total}}"
+    "translatingMessage": "Traduction de la transcription"
   },
   "promptVariables": {
     "title": "Variables de l'invite",

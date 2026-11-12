@@ -2285,8 +2285,7 @@
     "region": "Einträge der Verarbeitungswarteschlange",
     "translating": "Übersetzen",
     "translatingShort": "werden übersetzt",
-    "translatingMessage": "Transkript wird übersetzt",
-    "translatingParts": "{{done}} von {{total}} Teilen übersetzt"
+    "translatingMessage": "Transkript wird übersetzt"
   },
   "promptVariables": {
     "title": "Prompt-Variablen",

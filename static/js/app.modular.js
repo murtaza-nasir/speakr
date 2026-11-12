@@ -3540,7 +3540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             progress: percent,
                             progressMessage: status === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              status === 'translating' ? (percent === null ? t('progressQueue.translatingMessage')
-                                                 : t('progressQueue.translatingParts', { done: job.progress_done || 0, total: job.progress_total })) :
+                                                 : t('translation.progress', { done: job.progress_done || 0, total: job.progress_total })) :
                                              status === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
                             queuePosition: job.position,
                             errorMessage: job.error_message,
