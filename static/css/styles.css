@@ -4237,7 +4237,7 @@ textarea[ref="recordingNotesEditor"]:focus {
     width: var(--recording-sidebar-width, 50vw);
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-primary);
-    z-index: 50;
+    z-index: 40;
     transform: translateX(0);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -4278,7 +4278,7 @@ textarea[ref="recordingNotesEditor"]:focus {
     left: var(--recording-sidebar-width, 50vw);
     width: 12px;
     transform: translateX(-6px);
-    z-index: 55;
+    z-index: 45;
     cursor: col-resize;
     display: grid;
     place-items: center;
