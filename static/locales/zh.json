@@ -1488,6 +1488,10 @@
     "undock": "取消停靠"
   },
   "folderManagement": {
+    "parentFolder": "父文件夹",
+    "noParentFolder": "无（顶层）",
+    "parentFolderHelp": "个人文件夹只能放在个人文件夹中，群组文件夹只能放在同一群组的文件夹中。",
+    "includeSubfolders": "包含子文件夹",
     "allFolders": "所有文件夹",
     "asrDefaults": "ASR 默认设置",
     "autoShareOnApply": "自动与群组成员共享",

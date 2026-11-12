@@ -1488,6 +1488,10 @@
     "undock": "Undock"
   },
   "folderManagement": {
+    "parentFolder": "Parent folder",
+    "noParentFolder": "None (top level)",
+    "parentFolderHelp": "Personal folders go inside personal folders, and group folders inside folders of the same group.",
+    "includeSubfolders": "Include subfolders",
     "allFolders": "All Folders",
     "asrDefaults": "ASR Defaults",
     "autoShareOnApply": "Auto-share with group members",

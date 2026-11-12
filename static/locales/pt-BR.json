@@ -1488,6 +1488,10 @@
     "undock": "Desancorar"
   },
   "folderManagement": {
+    "parentFolder": "Pasta pai",
+    "noParentFolder": "Nenhuma (nível superior)",
+    "parentFolderHelp": "Pastas pessoais ficam dentro de pastas pessoais, e pastas de grupo dentro de pastas do mesmo grupo.",
+    "includeSubfolders": "Incluir subpastas",
     "allFolders": "Todas as Pastas",
     "asrDefaults": "Padrões de ASR",
     "autoShareOnApply": "Compartilhar automaticamente com membros do grupo",

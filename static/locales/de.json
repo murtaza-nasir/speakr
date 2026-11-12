@@ -1488,6 +1488,10 @@
     "undock": "Abdocken"
   },
   "folderManagement": {
+    "parentFolder": "Übergeordneter Ordner",
+    "noParentFolder": "Keiner (oberste Ebene)",
+    "parentFolderHelp": "Persönliche Ordner gehören in persönliche Ordner, Gruppenordner in Ordner derselben Gruppe.",
+    "includeSubfolders": "Unterordner einbeziehen",
     "allFolders": "Alle Ordner",
     "asrDefaults": "ASR-Standardwerte",
     "autoShareOnApply": "Automatisch mit Gruppenmitgliedern teilen",

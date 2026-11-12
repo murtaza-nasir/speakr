@@ -11,6 +11,7 @@ const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
 export function useFolders({
     recordings,
     availableFolders,
+    filterFolder,
     selectedRecording,
     showToast,
     setGlobalError
@@ -38,6 +39,22 @@ export function useFolders({
         const folder = getFolderById(folderId);
         return folder?.name || t('form.folder');
     };
+
+    // Folder name indented by its depth, for <option> text (#585).
+    const folderOptionLabel = (folder) => (window.SpeakrFolderTree
+        ? window.SpeakrFolderTree.indentedName(folder) : (folder?.name || ''));
+
+    // Left indent for a folder row in a list; none at the top level, so a
+    // list without subfolders keeps its exact layout.
+    const folderIndentStyle = (folder) => (folder?.depth ? { marginLeft: (folder.depth * 16) + 'px' } : null);
+
+    // The "Include subfolders" option only shows when the folder filter is
+    // on a folder that has subfolders.
+    const selectedFolderHasChildren = computed(() => {
+        const id = filterFolder?.value;
+        if (!id || id === 'none' || !window.SpeakrFolderTree) return false;
+        return window.SpeakrFolderTree.hasChildren(availableFolders.value, Number(id));
+    });
 
     const getAvailableFoldersForRecording = () => {
         if (!availableFolders.value) return [];
@@ -169,6 +186,9 @@ export function useFolders({
         getFolderColor,
         getFolderName,
         getAvailableFoldersForRecording,
+        folderOptionLabel,
+        folderIndentStyle,
+        selectedFolderHasChildren,
         assignFolderToRecording,
         removeRecordingFromFolder,
         bulkAssignFolder

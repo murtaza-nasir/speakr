@@ -1488,6 +1488,10 @@
     "undock": "Desanclar"
   },
   "folderManagement": {
+    "parentFolder": "Carpeta principal",
+    "noParentFolder": "Ninguna (nivel superior)",
+    "parentFolderHelp": "Las carpetas personales van dentro de carpetas personales, y las carpetas de grupo dentro de carpetas del mismo grupo.",
+    "includeSubfolders": "Incluir subcarpetas",
     "allFolders": "Todas las carpetas",
     "asrDefaults": "Valores ASR predeterminados",
     "autoShareOnApply": "Compartir automáticamente con miembros del grupo",

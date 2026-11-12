@@ -1488,6 +1488,10 @@
     "undock": "Détacher"
   },
   "folderManagement": {
+    "parentFolder": "Dossier parent",
+    "noParentFolder": "Aucun (premier niveau)",
+    "parentFolderHelp": "Les dossiers personnels vont dans des dossiers personnels, et les dossiers de groupe dans des dossiers du même groupe.",
+    "includeSubfolders": "Inclure les sous-dossiers",
     "allFolders": "Tous les dossiers",
     "asrDefaults": "Paramètres ASR par défaut",
     "autoShareOnApply": "Partager automatiquement avec les membres du groupe",

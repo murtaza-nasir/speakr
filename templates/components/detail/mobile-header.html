@@ -220,7 +220,7 @@
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; background: transparent;">
                             <option value="" v-text="t('folderManagement.noFolder')"></option>
                             <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                                ${ folder.name }
+                                ${ folderOptionLabel(folder) }
                             </option>
                         </select>
                         <i class="fas fa-folder"

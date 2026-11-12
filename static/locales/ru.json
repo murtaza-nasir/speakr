@@ -1488,6 +1488,10 @@
     "undock": "Открепить"
   },
   "folderManagement": {
+    "parentFolder": "Родительская папка",
+    "noParentFolder": "Нет (верхний уровень)",
+    "parentFolderHelp": "Личные папки размещаются в личных папках, а папки группы в папках той же группы.",
+    "includeSubfolders": "Включать вложенные папки",
     "allFolders": "Все папки",
     "asrDefaults": "Настройки ASR по умолчанию",
     "autoShareOnApply": "Автоматически делиться с участниками группы",
