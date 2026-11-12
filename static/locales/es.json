@@ -977,7 +977,11 @@
     "connectionEnded": "La conexión terminó antes de completar la respuesta: {{error}}",
     "errorWithMessage": "Error: {{error}}",
     "sources": "Fuentes",
-    "quoteNotFound": "Cita no encontrada en la transcripción"
+    "quoteNotFound": "Cita no encontrada en la transcripción",
+    "answeredIn": "{{name}} respondió en {{title}}",
+    "answerFailedIn": "{{name}} no pudo responder en {{title}}",
+    "answeringHere": "{{name}} está respondiendo en esta grabación",
+    "keptUntilTabCloses": "Los chats se conservan hasta que cierres esta pestaña."
   },
   "uiTheme": {
     "title": "Tema de la interfaz",

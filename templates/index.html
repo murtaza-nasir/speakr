@@ -99,6 +99,7 @@
          data-enable-audio-removed-filter="{{ enable_audio_removed_filter }}"
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
+         data-current-user-id="{{ current_user.id if current_user.is_authenticated else '' }}"
          data-user-language="{{ user_language }}"
          data-default-translation-language="{{ default_translation_language }}"
          data-output-languages='{{ output_languages|tojson }}'

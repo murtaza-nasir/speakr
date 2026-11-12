@@ -112,6 +112,8 @@ export function useModals(state, utils) {
 
             // Remove from recordings list
             recordings.value = recordings.value.filter(r => r.id !== deletedId);
+            // Its Ambrose thread goes with it.
+            if (utils.onRecordingsDeleted) utils.onRecordingsDeleted([deletedId]);
             totalRecordings.value--;
 
             // Remove from upload queue if present (frontend tracking)

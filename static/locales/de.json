@@ -977,7 +977,11 @@
     "connectionEnded": "Die Verbindung wurde beendet, bevor die Antwort vollständig war: {{error}}",
     "errorWithMessage": "Fehler: {{error}}",
     "sources": "Quellen",
-    "quoteNotFound": "Zitat nicht im Transkript gefunden"
+    "quoteNotFound": "Zitat nicht im Transkript gefunden",
+    "answeredIn": "{{name}} hat in {{title}} geantwortet",
+    "answerFailedIn": "{{name}} konnte in {{title}} nicht antworten",
+    "answeringHere": "{{name}} antwortet in dieser Aufnahme",
+    "keptUntilTabCloses": "Chats bleiben erhalten, bis Sie diesen Tab schließen."
   },
   "uiTheme": {
     "title": "Oberflächendesign",

@@ -8,6 +8,12 @@
  * incognito route with the transcript in the request) and keeps the Word
  * downloads. With the library tools on, the server lets Ambrose search every
  * recording the user can access; the panel sends no filters.
+ *
+ * With `state.chatThreads` (chat-threads.js), each recording has its own
+ * thread: the shared chat shows the open recording's thread, an answer keeps
+ * arriving in the thread it started in, and a toast says when one finishes
+ * while another recording is open. chatMessages, chatInput and isChatLoading
+ * are then the open thread's values.
  */
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
@@ -21,6 +27,25 @@ export function useChat(state, utils) {
     } = state;
 
     const { showToast, onChatComplete, t, processedTranscription } = utils;
+    const threads = state.chatThreads || null;
+
+    const escapeHtml = (text) => String(text == null ? '' : text).replace(/[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // An answer finished in a recording that is no longer open: say where,
+    // and open it on a click.
+    const announce = (thread) => {
+        if (!threads || !thread || thread.dropped || thread.incognito || threads.isCurrent(thread)) return;
+        const list = thread.messages || [];
+        const last = list[list.length - 1];
+        if (!last || last.role !== 'assistant') return;
+        const listed = (state.recordings && state.recordings.value || []).find((r) => String(r.id) === String(thread.recordingId));
+        const title = (listed && listed.title) || thread.title || t('common.untitled');
+        const params = { name: escapeHtml(utils.assistantName || 'Ambrose'), title: escapeHtml(title) };
+        const open = utils.openRecordingById ? () => utils.openRecordingById(thread.recordingId) : null;
+        if (last.failed) showToast(t('chat.answerFailedIn', params), 'fa-exclamation-circle', 6000, 'info', open);
+        else showToast(t('chat.answeredIn', params), 'fa-comment-dots', 6000, 'info', open);
+    };
 
     const isIncognito = () => !!(selectedRecording.value && selectedRecording.value.incognito === true);
 
@@ -58,10 +83,18 @@ export function useChat(state, utils) {
         messages: chatMessages, input: chatInput, loading: isChatLoading,
         scroller: chatMessagesRef, inputEl: chatInputRef,
         t, request, timestamps: true, toast: showToast,
-        openRecordingId: () => (selectedRecording.value && !isIncognito() ? selectedRecording.value.id : null),
+        thread: threads ? () => threads.current() : undefined,
+        // The recording a turn is about: its thread's, else the open one.
+        openRecordingId: (thread) => {
+            if (threads && thread) return thread.recordingId;
+            return selectedRecording.value && !isIncognito() ? selectedRecording.value.id : null;
+        },
         isDisabled: () => !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED' ||
             !!(processedTranscription && processedTranscription.value && processedTranscription.value.isError),
-        onDone: () => { if (onChatComplete) onChatComplete(); },
+        onDone: (thread) => {
+            if (onChatComplete) onChatComplete();
+            if (threads) { threads.save(); announce(thread); }
+        },
     });
 
     const isChatScrolledToBottom = () => assistant.following;
@@ -82,10 +115,11 @@ export function useChat(state, utils) {
         }
     };
 
+    // Clear empties the open recording's thread only.
     const clearChat = () => {
         if (chatMessages.value.length > 0) {
-            assistant.stop();
-            chatMessages.value = [];
+            if (threads) threads.clearCurrent();
+            else { assistant.stop(); chatMessages.value = []; }
             showToast(t('chat.cleared'), 'fa-broom');
         }
     };
@@ -203,8 +237,12 @@ export function useChat(state, utils) {
         }
     };
 
+    // The answering mark on a recording's row in the list.
+    const chatAnsweringElsewhere = (id) => !!(threads && threads.isAnsweringElsewhere(id));
+
     return {
         assistant,
+        chatAnsweringElsewhere,
         isChatScrolledToBottom,
         scrollChatToBottom,
         handleChatBubbleClick,

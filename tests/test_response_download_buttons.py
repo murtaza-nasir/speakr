@@ -53,7 +53,7 @@ def test_answer_row_waits_for_the_answer_to_finish():
     start = js.index('const showActions = ')
     body = js[start:js.index(';\n', start)]
     assert "message.role === 'assistant'" in body and 'hasText(message)' in body
-    assert '!(loading.value && isLast(index))' in body
+    assert "!(current().loading && isLast(index))" in body
 
 
 @pytest.mark.parametrize('view, download', [

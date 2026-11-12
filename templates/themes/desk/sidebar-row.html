@@ -23,6 +23,7 @@
                                 <h4 dir="auto" class="desk-row__title" :class="selectedRecording?.id === recording.id && !selectionMode ? 'is-selected' : ''">
                                     ${ recording.title || t('common.untitled') }
                                 </h4>
+                                {% include 'components/assistant/answering-mark.html' %}
                             </div>
 
                             <!-- Folder + tags column: one line, clipped at the column edge -->

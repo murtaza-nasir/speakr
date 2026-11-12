@@ -4849,6 +4849,20 @@ select:disabled {
     gap: var(--sp-2);
     width: fit-content;
 }
+/* A recording's row while Ambrose answers in its chat with another
+   recording open (components/assistant/answering-mark.html). */
+.assistant-answering {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline-end: var(--sp-1, 4px);
+    color: var(--text-accent);
+    font-size: 11px;
+    line-height: 1;
+    animation: assistant-answering-pulse 1.6s ease-in-out infinite;
+}
+@keyframes assistant-answering-pulse { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .assistant-answering { animation: none; } }
 .assistant-composer__bar {
     display: flex;
     justify-content: center;

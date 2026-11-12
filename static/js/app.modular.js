@@ -15,6 +15,7 @@ import { useFindReplace } from './modules/composables/find-replace.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
+import { createChatThreads, clearThreadsOnSignOut, threadKey } from './modules/composables/chat-threads.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
@@ -964,9 +965,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Chat State ---
             const showChat = ref(false);
             const isChatMaximized = ref(false);
-            const chatMessages = ref([]);
-            const chatInput = ref('');
-            const isChatLoading = ref(false);
+            // One Ambrose thread per recording, kept in this tab
+            // (composables/chat-threads.js). These three are the open
+            // recording's thread.
+            const chatThreads = createChatThreads({
+                reactive,
+                userId: document.getElementById('app')?.dataset.currentUserId || '',
+            });
+            chatThreads.restore();
+            clearThreadsOnSignOut(() => chatThreads.clearAll());
+            window.addEventListener('pagehide', () => chatThreads.save());
+            const threadField = (name) => computed({
+                get: () => chatThreads.current()[name],
+                set: (value) => { chatThreads.current()[name] = value; },
+            });
+            const chatMessages = threadField('messages');
+            const chatInput = threadField('input');
+            const isChatLoading = threadField('loading');
             const chatMessagesRef = ref(null);
             const chatInputRef = ref(null);
 
@@ -2035,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openTranslationModal, translationLanguageLabel,
 
                 // Chat
-                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
+                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef, chatThreads,
                 chatPanelState, chatPanelX, chatPanelY, chatPanelW, chatPanelH,
                 chatDragActive, chatResizeActive, floatingChatPanelStyle, floatingChatFabStyle,
                 chatLastDock, chatDockMenuOpen,
@@ -2688,6 +2703,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // recording the same way a sidebar click does (which fetches its
             // full detail). Used by delete-neighbour selection in modals.
             utils.selectRecording = recordingsComposable.selectRecording;
+            // The recording chat's toasts open the recording that answered.
+            utils.openRecordingById = recordingsComposable.selectRecordingById;
+            utils.assistantName = window.speakrAssistantName || 'Ambrose';
+            utils.onRecordingsDeleted = (ids) => chatThreads.drop(ids);
 
             // Hydration safety net: if selectedRecording is ever set to a light
             // sidebar/list object (to_list_dict omits transcription/summary),
@@ -2866,6 +2885,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 t,
                 finalizeRecordingMerge: audioComposable.finalizeRecordingMerge,
                 fetchRecordingsPage: recordingsComposable.fetchRecordingsPage,
+                onRecordingsDeleted: (ids) => chatThreads.drop(ids),
                 searchQuery,
                 showArchivedRecordings
             });
@@ -4082,15 +4102,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // Watch for selectedRecording changes to reset chat
-            watch(selectedRecording, (newRecording, oldRecording) => {
-                // Only clear if we're actually switching to a different recording
-                if (oldRecording && newRecording && oldRecording.id !== newRecording.id) {
-                    chatComposable.assistant.stop();
-                    chatMessages.value = [];
-                    chatInput.value = '';
-                }
-            });
+            // Show the open recording's Ambrose thread. An answer still
+            // arriving elsewhere keeps writing to its own thread.
+            watch(() => threadKey(selectedRecording.value), () => {
+                chatThreads.select(selectedRecording.value);
+                nextTick(() => chatComposable.assistant.jumpToLatest());
+            }, { immediate: true, flush: 'sync' });
 
             // Measure the mobile bottom UI (persistent audio player + bottom
             // nav) and publish it as the --mobile-bottom-inset CSS variable,

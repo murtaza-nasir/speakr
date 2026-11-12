@@ -1,0 +1,8 @@
+{#- The mark on a recording's row while Ambrose is answering in that
+    recording's chat and another recording is open (composables/chat-threads.js).
+    Included inside each theme's sidebar-row, after the title. -#}
+<span v-if="chatAnsweringElsewhere(recording.id)" class="assistant-answering flex-shrink-0" role="status"
+      :title="t('chat.answeringHere', { name: assistantName })"
+      :aria-label="t('chat.answeringHere', { name: assistantName })">
+    <i class="fas fa-comment-dots" aria-hidden="true"></i>
+</span>
