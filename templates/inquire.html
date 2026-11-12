@@ -452,9 +452,8 @@
             createApp({
                 setup() {
                     // --- State ---
-                    // The library filters: the filter column (a theme slot) and
-                    // the recording panel's "Search in" popover share this state
-                    // (modules/assistant/search-in.js). The names below are the
+                    // The library filters of the filter column (a theme slot),
+                    // in modules/assistant/search-in.js. The names below are the
                     // ones the theme slots read.
                     const searchIn = useSearchIn({ t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key });
                     const inquireFilters = searchIn.filters;
@@ -875,8 +874,7 @@
                         formatInstant,
 
                         // The shared chat (components/assistant/chat.html)
-                        assistant,
-                        searchIn: null
+                        assistant
                     };
                 },
                 delimiters: ['${', '}']

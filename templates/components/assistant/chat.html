@@ -1,8 +1,7 @@
 {#- AssistantChat (Ambrose phase 2b): the timeline and the composer of the one
     chat, used by the recording's floating panel, the mobile chat tab and the
     Ask page. The setup is static/js/modules/assistant/chat.js; every value
-    comes from the app's `assistant` object (and `searchIn`, the "Search in"
-    filters, static/js/modules/assistant/search-in.js).
+    comes from the app's `assistant` object.
 
         {% from 'components/assistant/chat.html' import assistant_chat with context %}
         {% call assistant_chat(...) %}empty state{% endcall %}   or   {{ assistant_chat(...) }}
@@ -12,7 +11,7 @@
     expressions, so one app's delimiters never matter (phase 1 guard). -#}
 {% macro assistant_chat(timeline_class='floating-chat-messages', composer_class='floating-chat-input',
                         answer_class='bidi-auto', bubble_class='', rows=false, placeholder='chat.placeholder',
-                        download='downloadChatResponse', memory=false, search_in=false, footer=none) -%}
+                        download='downloadChatResponse', memory=false, footer=none) -%}
 <div :ref="assistant.setScroller" class="{{ timeline_class }} assistant-timeline"
      @scroll.passive="assistant.onScroll" @click="assistant.onTimelineClick">
     <div v-if="assistant.messages.length === 0" class="assistant-empty">
@@ -111,17 +110,16 @@
         <div class="spinner flex-shrink-0"></div>
         <span class="t-meta" v-text="assistant.runningLabel"></span>
     </div>
-
-    <button v-if="!assistant.following && assistant.messages.length > 0" type="button"
-            class="assistant-jump" @click.stop="assistant.jumpToLatest()">
-        <i class="fas fa-arrow-down" aria-hidden="true"></i><span v-text="t('assistant.jumpToLatest')"></span>
-    </button>
 </div>
 
 <div class="{{ composer_class }} assistant-composer">
-    {%- if search_in %}
-    {% include 'components/assistant/search-in.html' %}
-    {%- endif %}
+    <!-- "Jump to latest" while the user reads further up: a pill in its own
+         row above the textarea, so it never covers the answer or its Sources. -->
+    <div v-if="!assistant.following && assistant.messages.length > 0" class="assistant-composer__bar">
+        <button type="button" class="assistant-jump" @click.stop="assistant.jumpToLatest()">
+            <i class="fas fa-arrow-down" aria-hidden="true"></i><span v-text="t('assistant.jumpToLatest')"></span>
+        </button>
+    </div>
     <div class="flex gap-2 items-end">
         <textarea v-model="assistant.input"
                   :ref="assistant.setInput"

@@ -5,15 +5,14 @@
  * The chat itself is the shared AssistantChat (modules/assistant/chat.js,
  * templates/components/assistant/chat.html), also used by the Ask page.
  * This module says how a recording question is sent (POST /chat, or the
- * incognito route with the transcript in the request), offers the "Search
- * in" filters when the library tools are on (window.speakrAssistantLibrary,
- * never for incognito), and keeps the Word downloads.
+ * incognito route with the transcript in the request) and keeps the Word
+ * downloads. With the library tools on, the server lets Ambrose search every
+ * recording the user can access; the panel sends no filters.
  */
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { responseWithQuestion } from '../utils/chat-turn.js';
 import { useAssistantChat } from '../assistant/chat.js';
-import { useSearchIn } from '../assistant/search-in.js';
 
 export function useChat(state, utils) {
     const {
@@ -24,17 +23,12 @@ export function useChat(state, utils) {
     const { showToast, onChatComplete, t, processedTranscription } = utils;
 
     const isIncognito = () => !!(selectedRecording.value && selectedRecording.value.incognito === true);
-    const libraryTools = () => window.speakrAssistantLibrary === true;
-
-    // The "Search in" filters: the same state as the Ask page's filter
-    // column, here in a popover; only when the library tools are on.
-    const searchIn = libraryTools() ? useSearchIn({ t }) : null;
 
     const request = ({ message, history, signal }) => {
         const recording = selectedRecording.value;
         if (isIncognito()) {
             // An incognito recording exists only in the browser: the
-            // transcript travels with the question. No tools, no filters.
+            // transcript travels with the question. No tools.
             return fetch('/api/recordings/incognito/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,11 +46,11 @@ export function useChat(state, utils) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal,
-            body: JSON.stringify(Object.assign({
+            body: JSON.stringify({
                 recording_id: recording.id,
                 message,
                 message_history: history,
-            }, searchIn ? searchIn.fields() : {})),
+            }),
         });
     };
 
@@ -67,7 +61,6 @@ export function useChat(state, utils) {
         openRecordingId: () => (selectedRecording.value && !isIncognito() ? selectedRecording.value.id : null),
         isDisabled: () => !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED' ||
             !!(processedTranscription && processedTranscription.value && processedTranscription.value.isError),
-        showSearchIn: () => !!searchIn && !isIncognito(),
         onDone: () => { if (onChatComplete) onChatComplete(); },
     });
 
@@ -212,7 +205,6 @@ export function useChat(state, utils) {
 
     return {
         assistant,
-        searchIn,
         isChatScrolledToBottom,
         scrollChatToBottom,
         handleChatBubbleClick,

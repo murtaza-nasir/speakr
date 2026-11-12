@@ -3828,7 +3828,6 @@
     "scopeRecording": "Эта запись",
     "scopeLibrary": "Все записи",
     "sendHint": "Отправить (Enter). Для новой строки нажмите Ctrl+Enter.",
-    "searchIn": "Искать в: {{scope}}",
     "jumpToLatest": "К последним сообщениям"
   },
   "regenerateSummary": {

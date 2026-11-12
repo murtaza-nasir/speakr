@@ -3828,7 +3828,6 @@
     "scopeRecording": "Esta gravação",
     "scopeLibrary": "Todas as gravações",
     "sendHint": "Enviar (Enter). Para uma nova linha, pressione Ctrl+Enter.",
-    "searchIn": "Pesquisar em: {{scope}}",
     "jumpToLatest": "Ir para o mais recente"
   },
   "regenerateSummary": {

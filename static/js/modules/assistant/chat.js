@@ -96,7 +96,6 @@ export async function readEvents(response, onEvent) {
  *   isDisabled()              composer disabled
  *   timestamps                bare [00:07:35] timestamps become seek chips (panel)
  *   openRecordingId()         the recording open in the panel, if any
- *   showSearchIn()            the "Search in" chip is offered (panel, library tools on, not incognito)
  *   toast(message, icon)
  */
 export function useAssistantChat(opts) {
@@ -353,7 +352,6 @@ export function useAssistantChat(opts) {
     return reactive({
         messages, input, loading, following, status, runningLabel, waiting,
         disabled: computed(() => !!(opts.isDisabled && opts.isDisabled())),
-        searchInShown: computed(() => !!(opts.showSearchIn && opts.showSearchIn())),
         setScroller: (el) => { scroller.value = el; },
         setInput: (el) => { inputEl.value = el; },
         send, stop, onKeydown, onScroll, jumpToLatest, onTimelineClick,
