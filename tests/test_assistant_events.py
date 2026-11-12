@@ -152,9 +152,9 @@ def test_the_toolbox_and_prompt_offer_only_the_surface_tools():
     assert ia.build_toolbox(every, [])[0] == []
     ctx = {'name': 'A', 'title': 'x', 'company': 'y', 'assistant_name': 'Iris'}
     prompt = ia._system_prompt(ctx, '', every, '', ['search_transcripts', 'get_transcript'])
-    assert prompt.startswith('You are Iris, a research assistant')
+    assert prompt.startswith("You are Iris, the AI assistant built into Speakr")
     assert 'You have tools to search transcripts, and read transcripts.' in prompt
-    assert 'summaries' not in prompt.split('Work iteratively')[0]
+    assert "summaries" not in prompt.split("You have tools")[1].split("Work iteratively")[0]
     full = ia._system_prompt(ctx, '', {'summaries': True, 'notes': False}, '')
     assert 'read transcripts, stored summaries, and metadata' in full
 
@@ -257,8 +257,9 @@ def test_the_web_panel_sends_the_builders_prompt(world):
                                                   "What does the freeze cover?", history, with_sources=True)
     assert seen["messages"] == expected
     system = seen["messages"][0]["content"]
-    assert system.startswith("You are Iris, a professional meeting and audio transcription analyst assisting "
-                             "Jordan Avery, who is a(n) Product Manager at Fernhill Labs.")
+    assert system.startswith("You are Iris, the AI assistant built into Speakr, ")
+    assert "You are talking with Jordan Avery (Product Manager, Fernhill Labs)." in system
+    assert "analyst" not in system and "a(n)" not in system
     assert "Please provide all your responses in German." in system
     assert "[S1 12:34 Omar] So the budget freeze applies to travel only." in system
     assert "Dana, Omar" in system and "OWNER SECRET NOTE" in system

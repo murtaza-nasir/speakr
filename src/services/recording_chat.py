@@ -76,7 +76,7 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
     """(messages, segments). segments is the canonical list when with_sources
     is on and the transcript has segments, else None."""
     from src.models import SystemSetting
-    from src.utils.assistant_name import assistant_name_of
+    from src.utils.assistant_name import assistant_name_of, assistant_identity
     from src.services.transcript_segments import canonical_segments
     from src.tasks.processing import _resolve_timestamp_template_format, format_transcription_for_llm
 
@@ -100,9 +100,7 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
 
     language = f"Please provide all your responses in {user.output_language}." if user.output_language else ""
     assistant = assistant_name_of(user)
-    name = user.name or "User"
-    title = user.job_title or "a professional"
-    company = user.company or "their organization"
+    identity = assistant_identity(assistant, user.name, user.job_title, user.company)
 
     citation = ""
     if use_markers:
@@ -121,17 +119,18 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
             "transcript.\n")
 
     notes = recording.get_user_notes(user)
-    system_prompt = f"""You are {assistant}, a professional meeting and audio transcription analyst assisting {name}, who is a(n) {title} at {company}. {language} Analyze the following meeting information and respond to the specific request.
+    system_prompt = f"""{identity} {language}
+Here you answer questions about one recording: what was said, who said it, and what it means. A recording can be a meeting, a call, a lecture, a voice note or an everyday conversation; take it as what it is and do not judge it against a meeting.
 {citation}
-Following are the meeting participants and their roles:
+Participants and their roles:
 {recording.participants or "No specific participants information provided."}
 
-Following is the meeting transcript:
+Transcript:
 <<start transcript>>
 {transcript or "No transcript available."}
 <<end transcript>>
 
-Additional context and notes about the meeting:
+The user's notes on this recording:
 {notes or "none"}
 """
     messages = [{"role": "system", "content": system_prompt}]

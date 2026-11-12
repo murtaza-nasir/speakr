@@ -566,10 +566,11 @@ def _tools_sentence(availability, tool_names):
 def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block, tool_names=None):
     language_instruction = (
         f"Respond in {user_ctx['output_language']}. " if user_ctx.get('output_language') else '')
-    assistant = user_ctx.get('assistant_name') or 'Ambrose'
-    return f"""You are {assistant}, a research assistant analyzing {user_ctx['name']}'s audio recording library \
-(meetings, calls, voice notes). {user_ctx['name']} is a(n) {user_ctx['title']} at {user_ctx['company']}. \
-{language_instruction}Today's date is {_today_for(user_ctx)}.
+    from src.utils.assistant_name import assistant_identity
+    identity = assistant_identity(user_ctx.get('assistant_name') or 'Ambrose', user_ctx.get('name'),
+                                  user_ctx.get('title'), user_ctx.get('company'))
+    return f"""{identity} Here you help them research their recording library (meetings, calls, voice \
+notes). {language_instruction}Today's date is {_today_for(user_ctx)}.
 
 {_tools_sentence(availability, tool_names)}{filters_text}. Work iteratively: search or browse first, read more where needed, and only \
 answer once you have enough evidence. Prefer summaries to survey long recordings, transcripts for exact \

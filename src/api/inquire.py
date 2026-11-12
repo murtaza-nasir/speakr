@@ -201,7 +201,7 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     user_title = user.job_title if user.job_title else "professional"
     user_company = user.company if user.company else "their organization"
     user_output_language = user.output_language if user.output_language else None
-    from src.utils.assistant_name import assistant_name_of
+    from src.utils.assistant_name import assistant_name_of, assistant_identity
     from src.utils.localization import request_language
     assistant_name = assistant_name_of(user)
     ui_language = request_language()   # step labels; the stream runs without the request
@@ -263,7 +263,7 @@ Examples:
                     # Direct response without RAG lookup
                     yield create_status_response('responding', 'Generating direct response...')
 
-                    direct_prompt = f"""You are {assistant_name}, assisting {user_name}. Respond to their request directly using proper markdown formatting.
+                    direct_prompt = f"""{assistant_identity(assistant_name, user_name, user_title, user_company)} Respond to their request directly using proper markdown formatting.
 
 User request: "{user_message}"
 
@@ -609,7 +609,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 
                 available_speakers = sorted(list(available_speakers))
             
-            system_prompt = f"""You are {assistant_name}, a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction}
+            system_prompt = f"""{assistant_identity(assistant_name, user_name, user_title, user_company)} {language_instruction}
 
 You are analyzing transcriptions from multiple recordings{filter_text}. The following context has been retrieved based on semantic similarity to the user's question:
 
