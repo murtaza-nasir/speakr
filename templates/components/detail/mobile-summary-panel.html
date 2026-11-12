@@ -51,9 +51,9 @@
                         <i class="fas fa-magic"></i>
                         <span v-text="t('summary.generateSummary')"></span>
                     </button>
-                    <button v-if="!processedTranscription.isError"
+                    <button v-if="!processedTranscription.isError && !selectedRecording.incognito && selectedRecording.can_edit !== false"
                             class="btn btn--ghost btn--icon"
-                            @click="openCustomizeSummaryModal"
+                            @click="openRegenerateSummaryModal(selectedRecording)"
                             :title="t('summary.customizePrompt')">
                         <i class="fas fa-sliders-h"></i>
                     </button>

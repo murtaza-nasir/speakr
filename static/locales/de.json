@@ -1119,15 +1119,6 @@
     "yourCustomPrompt": "Ihr Benutzerdefinierter Zusammenfassungs-Prompt",
     "yourTitlePrompt": "Ihre Titelanweisungen"
   },
-  "customizeSummary": {
-    "title": "Zusammenfassungs-Prompt anpassen",
-    "body": "Einmaligen Kontext für diese Zusammenfassung hinzufügen oder den aufgelösten Prompt vollständig ersetzen.",
-    "additionalContext": "Zusätzlicher Kontext",
-    "customPrompt": "Benutzerdefinierter Prompt",
-    "appendPlaceholder": "z. B. Die heutige Tagesordnung ist: ...",
-    "replacePlaceholder": "Vollständigen Zusammenfassungs-Prompt eingeben...",
-    "generateSummary": "Zusammenfassung generieren"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Sind Sie sicher, dass Sie alle gespeicherten Sprecher löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "title": "Alle Sprecher Löschen"
@@ -2404,22 +2395,9 @@
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",
     "audioReTranscribedWithAsr": "Das Audio wird mit dem ASR-Endpoint neu transkribiert. Dies umfasst Diarisierung und wird Titel und Zusammenfassung neu generieren.",
     "manualEditsOverwritten": "Alle manuellen Bearbeitungen der Transkription, des Titels oder der Zusammenfassung werden überschrieben.",
-    "manualEditsOverwrittenSummary": "Alle manuellen Bearbeitungen der Zusammenfassung werden überschrieben.",
-    "newTitleAndSummary": "Eine neue Zusammenfassung wird basierend auf der vorhandenen Transkription generiert.",
     "createdPrefix": "Erstellt:",
     "untitledRecording": "Unbenannte Aufnahme",
     "customSummaryPrompt": "Benutzerdefinierter Zusammenfassungs-Prompt",
-    "promptSource": "Prompt-Quelle",
-    "useDefaultPrompt": "Standard-Prompt verwenden",
-    "usePromptFromTag": "Prompt aus Schlagwort verwenden",
-    "enterCustomPrompt": "Eigenen Prompt eingeben",
-    "selectTag": "Schlagwort wählen",
-    "selectTagPlaceholder": "Schlagwort auswählen...",
-    "previewLabel": "Vorschau:",
-    "customPromptLabel": "Eigener Prompt",
-    "customPromptPlaceholder": "Eigene Anweisungen für die Zusammenfassung eingeben...",
-    "noTagsWithPromptsHint": "Keine Schlagwörter mit eigenen Prompts vorhanden. Erstellen Sie Schlagwörter mit eigenen Prompts in den Kontoeinstellungen.",
-    "subtitleSummary": "Zusammenfassung neu verarbeiten",
     "subtitleTranscription": "Transkription neu verarbeiten"
   },
   "settings": {
@@ -2714,13 +2692,6 @@
     "customizePrompt": "Prompt anpassen",
     "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern",
     "needsTranscription": "Eine Zusammenfassung kann erstellt werden, sobald die Transkription erfolgreich war."
-  },
-  "summaryMode": {
-    "applyMode": "Anwendungsmodus",
-    "append": "Anhängen",
-    "appendHelp": "Standard-Prompt verwenden und dies als zusätzlichen Kontext hinzufügen.",
-    "replace": "Ersetzen",
-    "replaceHelp": "Nur diesen Text als Zusammenfassungsanweisungen verwenden."
   },
   "tagManagement": {
     "asrDefaults": "ASR-Standards",
@@ -3568,7 +3539,9 @@
       "translation_no_transcription": "Keine Transkription für die Übersetzung verfügbar.",
       "translation_blocked_transcription_failed": "Übersetzung nicht möglich: Die Transkription ist fehlgeschlagen. Bitte verarbeiten Sie die Transkription zuerst neu.",
       "translation_llm_not_configured": "Der Übersetzungsdienst ist nicht verfügbar (LLM-Client nicht konfiguriert)",
-      "translation_invalid_language": "Unbekannte Zielsprache."
+      "translation_invalid_language": "Unbekannte Zielsprache.",
+      "summary_prompt_invalid": "Der Prompt darf nicht leer oder länger als 8.000 Zeichen sein.",
+      "summary_prompt_save_denied": "Sie können den Prompt dort nicht speichern."
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten erfolgreich aktualisiert!",
@@ -3775,5 +3748,48 @@
         "7": "Schaltflächen bleiben auf kleineren Bildschirmen und in schmalen Bereichen sichtbar."
       }
     }
+  },
+  "regenerateSummary": {
+    "title": "Zusammenfassung neu generieren",
+    "titleGenerate": "Zusammenfassung generieren",
+    "untitled": "Unbenannte Aufnahme",
+    "loading": "Prompt wird geladen…",
+    "loadFailed": "Prompt konnte nicht geladen werden",
+    "loadFailedDetail": "Prompt konnte nicht geladen werden: {{error}}",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Schreiben Sie die Anweisungen für die Zusammenfassung.",
+    "sourceTag": "Aus Tag: {{name}}",
+    "sourceTags": "Aus Tags: {{name}}",
+    "sourceFolder": "Aus Ordner: {{name}}",
+    "sourceUser": "Ihr Standard",
+    "sourceAdmin": "Admin-Standard",
+    "sourceDefault": "Integrierter Standard",
+    "sourceBlank": "Leer",
+    "editedFromTag": "Bearbeitet aus Tag: {{name}}",
+    "editedFromTags": "Bearbeitet aus Tags: {{name}}",
+    "editedFromFolder": "Bearbeitet aus Ordner: {{name}}",
+    "editedFromUser": "Bearbeitet aus Ihrem Standard",
+    "editedFromAdmin": "Bearbeitet aus Admin-Standard",
+    "editedFromDefault": "Bearbeitet aus integriertem Standard",
+    "editedFromBlank": "Eigener Prompt",
+    "startFrom": "Ausgehend von",
+    "forThisRecording": "Für diese Aufnahme",
+    "otherPrompts": "Weitere Prompts",
+    "menuTag": "Tag: {{name}}",
+    "menuFolder": "Ordner: {{name}}",
+    "reset": "Zurücksetzen",
+    "saveToTag": "In Tag {{name}} speichern",
+    "saveToFolder": "In Ordner {{name}} speichern",
+    "saveToUser": "Als meinen Standard speichern",
+    "saved": "Prompt gespeichert",
+    "saveFailed": "Prompt konnte nicht gespeichert werden",
+    "saveFailedDetail": "Prompt konnte nicht gespeichert werden: {{error}}",
+    "addInstructions": "Anweisungen hinzufügen (optional)",
+    "addInstructionsPlaceholder": "Zum Beispiel: Auf der Tagesordnung standen Budget, Einstellungen und der Starttermin.",
+    "instructionsSource": "Hinzugefügte Anweisungen",
+    "variablesRow": "Prompt-Variablen · {{count}} ausgefüllt",
+    "warning": "Ersetzt die aktuelle Zusammenfassung, einschließlich Ihrer Änderungen.",
+    "regenerate": "Neu generieren",
+    "generate": "Generieren"
   }
 }

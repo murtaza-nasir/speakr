@@ -27,6 +27,10 @@ import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { labelPathForFilter, parseLabelPath } from './modules/utils/label-links.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
+import {
+    MAX_PROMPT_LENGTH as REGEN_MAX_PROMPT_LENGTH, groupStartFrom, normalizePrompt, optionLabel,
+    promptsDiffer, runVariables, saveLabel, sourceLabel,
+} from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import {
@@ -781,9 +785,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             // declared). Declared here so the rest of this state block
             // can reference them without temporal-dead-zone errors.
             const asrEditorHydratedRows = ref(new Set());
-            const showCustomizeSummaryModal = ref(false);
-            const customizeSummaryPrompt = ref('');
-            const customizeSummaryMode = ref('append');  // 'append' | 'replace'
+            // Regenerate summary dialog (#584). prompt is the textarea; base is
+            // the start-from entry it began as; resolvedPrompt is the viewer's
+            // resolved prompt, which an unchanged owner run leaves to the server.
+            const showRegenerateSummaryModal = ref(false);
+            const regenSummary = reactive({
+                recording: null, generate: false, loading: false, loadError: '', saving: false,
+                prompt: '', resolvedPrompt: '', instructions: '', isOwner: false,
+                base: null, startFrom: [], startFromOpen: false, variablesOpen: false,
+            });
             const editingRecording = ref(null);
             const editingTranscriptionContent = ref('');
             const editingSegments = ref([]);
@@ -827,10 +837,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 min_speakers: null,
                 max_speakers: null
             });
-            const summaryReprocessPromptSource = ref('default');
-            const summaryReprocessSelectedTagId = ref('');
-            const summaryReprocessCustomPrompt = ref('');
-            const summaryReprocessPromptMode = ref('append');  // 'append' | 'replace'
             const speakerMap = ref({});
             const speakerColorMap = ref({}); // Stable mapping of speaker ID → color class
             const modalSpeakers = ref([]);
@@ -1809,50 +1815,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
 
-            // Same shape as selectedPromptVariables but for a recording that
-            // already has its tags/folder assigned. Used by the reprocess
-            // summary modal to render input fields pre-populated from the
-            // recording's stored values.
+            // Variables of the Regenerate summary run: those in the prompt
+            // being run and in the added instructions (#584).
             const reprocessAvailableVariables = computed(() => {
-                if (!selectedRecording.value) return [];
-                const recording = selectedRecording.value;
-                // Surface the variables that match the prompt source the user
-                // is about to run. Otherwise the panel keeps showing the
-                // recording's *original* tag's variables even after the user
-                // picks a different tag, which is confusing when the chosen
-                // tag has no placeholders.
-                const source = summaryReprocessPromptSource.value;
-                if (source === 'tag') {
-                    const tagId = summaryReprocessSelectedTagId.value;
-                    if (!tagId) return [];
-                    const tag = (availableTags.value || []).find(t => t.id == tagId);
-                    if (!tag || !tag.custom_prompt) return [];
-                    return buildVariableList({
-                        tagsWithPrompts: [tag],
-                        folder: null,
-                        userPrompt: '',
-                        adminPrompt: '',
-                    });
-                }
-                if (source === 'custom') {
-                    const text = summaryReprocessCustomPrompt.value || '';
-                    if (!text.trim()) return [];
-                    return buildVariableList({
-                        tagsWithPrompts: [{ name: safeT('tagManagement.customPrompt'), custom_prompt: text }],
-                        folder: null,
-                        userPrompt: '',
-                        adminPrompt: '',
-                    });
-                }
-                // source === 'default' — fall through to the standard priority
-                // chain that the backend will resolve at task time.
-                return buildVariableList({
-                    tagsWithPrompts: Array.isArray(recording.tags) ? recording.tags : [],
-                    folder: recording.folder || null,
-                    userPrompt: userSummaryPrompt.value,
-                    adminPrompt: adminDefaultSummaryPrompt.value,
+                if (!regenSummary.recording) return [];
+                const base = regenSummary.base || {};
+                const typeOf = { tag: 'tag', tags: 'tag', folder: 'folder', user: 'user', admin: 'admin', default: 'admin' };
+                return runVariables({
+                    prompt: regenSummary.prompt,
+                    instructions: regenSummary.instructions,
+                    sourceType: typeOf[base.kind] || 'instructions',
+                    sourceName: base.name || regenSourceLabel.value,
+                    instructionsName: safeT('regenerateSummary.instructionsSource'),
                 });
             });
+            const regenEdited = computed(() => {
+                const base = regenSummary.base;
+                return !!base && promptsDiffer(regenSummary.prompt, base.prompt);
+            });
+            const regenSourceLabel = computed(() => (regenSummary.base
+                ? sourceLabel(safeT, regenSummary.base, regenEdited.value) : ''));
+            const regenSaveLabel = computed(() => {
+                const base = regenSummary.base;
+                if (!regenEdited.value || !base || !base.save_target) return '';
+                if (!normalizePrompt(regenSummary.prompt)) return '';
+                return saveLabel(safeT, base.save_target);
+            });
+            const regenStartFromGroups = computed(() => groupStartFrom(regenSummary.startFrom));
+            const regenOptionLabel = (option) => optionLabel(safeT, option);
+            const regenVariablesSetCount = computed(() => reprocessAvailableVariables.value
+                .filter(v => String(reprocessPromptVariables[v.name] || '').trim() !== '').length);
+            const regenCanRun = computed(() => !!regenSummary.recording && !regenSummary.loading
+                && !regenSummary.loadError && !!normalizePrompt(regenSummary.prompt)
+                && regenSummary.prompt.length <= REGEN_MAX_PROMPT_LENGTH);
             const isMobileDevice = computed(() => {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                        ('ontouchstart' in window) ||
@@ -1962,7 +1957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
                 editingSegments, findReplace, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
@@ -1971,7 +1966,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 userShares, isLoadingShares, copiedShareId,
                 shareToDelete, showShareDeleteModal, recordingToDelete, recordingToReset,
                 reprocessType, reprocessRecording, reprocessPromptVariables, isAutoIdentifying, asrReprocessOptions,
-                summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt, summaryReprocessPromptMode,
                 speakerMap, speakerColorMap, modalSpeakers, regenerateSummaryAfterSpeakerUpdate,
                 voiceSuggestions, loadingVoiceSuggestions,
 
@@ -3732,11 +3726,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return hasSpeakerNames.value || editedTranscriptData.value !== null;
             });
 
-            // Tags with custom prompts for reprocess modal
-            const tagsWithCustomPrompts = computed(() => {
-                return availableTags.value.filter(tag => tag.custom_prompt && tag.custom_prompt.trim() !== '');
-            });
-
             // Recording disclaimer parsed as markdown
             const recordingDisclaimerHtml = computed(() => {
                 if (!recordingDisclaimer.value || recordingDisclaimer.value.trim() === '') {
@@ -3773,18 +3762,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             const summaryHtml = computed(() => renderedField('summary'));
             const notesHtml = computed(() => renderedField('notes'));
-
-            // Get tag prompt preview
-            const getTagPromptPreview = (tagId) => {
-                const tag = availableTags.value.find(t => t.id == tagId);
-                if (tag && tag.custom_prompt) {
-                    // Return first 100 characters of the custom prompt
-                    return tag.custom_prompt.length > 100
-                        ? tag.custom_prompt.substring(0, 100) + '...'
-                        : tag.custom_prompt;
-                }
-                return '';
-            };
 
             // Duplicates modal
             const openDuplicatesModal = (duplicateInfo) => {
@@ -4690,13 +4667,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 duplicatesModalData,
                 openDuplicatesModal,
                 navigateToDuplicate,
-                tagsWithCustomPrompts,
+                regenEdited, regenSourceLabel, regenSaveLabel, regenStartFromGroups, regenOptionLabel,
+                regenVariablesSetCount, regenCanRun, REGEN_MAX_PROMPT_LENGTH,
                 recordingDisclaimerHtml,
                 uploadDisclaimerHtml,
                 customBannerHtml,
                 acceptUploadDisclaimer,
                 cancelUploadDisclaimer,
-                getTagPromptPreview,
 
                 // Utilities
                 formatFileSize,
