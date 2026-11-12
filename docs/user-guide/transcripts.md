@@ -231,11 +231,13 @@ Ambrose is Speakr's assistant (formerly "Chat with Transcription"). Open the ass
 
 Ambrose is the default name. You can give the assistant another name under Account → Preferences → **Assistant** (see [Settings](settings.md#assistant)). To ask about many recordings at once, use the [Ask Ambrose](inquire-mode.md) page.
 
+Each recording keeps its own chat until you close the browser tab, and answers cite the transcript with numbers you can click to play that moment. See [Ambrose](ambrose.md) for chats per recording, incognito recordings, citations and searches of your library.
+
 ![The assistant panel of a recording, next to its notes](../assets/images/screenshots/main-view-chat-notes.png)
 
 ### Effective questions
 
-Ambrose can answer many kinds of questions about the recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" Ambrose can also analyse, for example "What were the main concerns raised?" or "Summarize the action items for the marketing group."
+Ambrose can answer many kinds of questions about the recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" Ambrose can also analyze, for example "What were the main concerns raised?" or "Summarize the action items for the marketing group."
 
 Ambrose keeps the earlier questions in mind, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" Ambrose takes it as a question about the budget.
 

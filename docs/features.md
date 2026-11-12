@@ -75,7 +75,7 @@ Speakr can automatically extract calendar-worthy events from your recordings dur
 
 ### Interactive Chat
 
-Transform static transcripts into dynamic conversations with the integrated chat feature. Learn how to use AI chat effectively in the [transcripts guide](user-guide/transcripts.md). Ask questions about your recordings and receive intelligent answers based on the actual content. Request custom summaries, extract specific information, or generate derivative content like emails or reports. The AI maintains context throughout the conversation, allowing complex multi-turn interactions.
+Ambrose, the assistant, answers questions about a recording from its full transcript. Each answer cites passages of the transcript, and a click on a citation plays that moment. You can ask for custom summaries, specific information, or text such as emails or reports, and ask follow-up questions in the same chat. Each recording keeps its own chat until you close the browser tab, and with the agent on, Ambrose can also search your other recordings. See [Ambrose](user-guide/ambrose.md).
 
 ### Semantic Search (Inquire Mode)
 

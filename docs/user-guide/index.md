@@ -33,6 +33,13 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   </div>
   
   <div class="guide-card">
+    <div class="card-icon">💬</div>
+    <h3>Ambrose</h3>
+    <p>Chat about a recording, with citations, chats per recording and searches of your library.</p>
+    <a href="ambrose" class="card-link">Meet Ambrose →</a>
+  </div>
+
+  <div class="guide-card">
     <div class="card-icon">🔍</div>
     <h3>Ask Ambrose</h3>
     <p>Ask questions about all your recordings at once (formerly Inquire).</p>
