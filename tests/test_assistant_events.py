@@ -148,7 +148,7 @@ def test_the_toolbox_and_prompt_offer_only_the_surface_tools():
     schemas, executors = ia.build_toolbox(every, ['search_transcripts', 'get_transcript'])
     assert [s['function']['name'] for s in schemas] == ['search_transcripts', 'get_transcript']
     assert set(executors) == {'search_transcripts', 'get_transcript'}
-    assert len(ia.build_toolbox(every)[0]) == 6
+    assert len(ia.build_toolbox(every)[0]) == 8
     assert ia.build_toolbox(every, [])[0] == []
     ctx = {'name': 'A', 'title': 'x', 'company': 'y', 'assistant_name': 'Iris'}
     prompt = ia._system_prompt(ctx, '', every, '', ['search_transcripts', 'get_transcript'])

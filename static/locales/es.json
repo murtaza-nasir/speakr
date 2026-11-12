@@ -3672,7 +3672,11 @@
         "gathering": "Leyendo las mejores coincidencias",
         "readingFull": "Leyendo una transcripción completa",
         "writing": "Redactando la respuesta",
-        "compacting": "Resumiendo la conversación anterior"
+        "compacting": "Resumiendo la conversación anterior",
+        "searchingPhrase": "Buscando las palabras exactas «{{query}}»",
+        "searchingWords": "Buscando las palabras «{{query}}»",
+        "findingSimilar": "Buscando grabaciones parecidas a {{title}}",
+        "findingSimilarRecordings": "Buscando grabaciones parecidas"
       },
       "result": {
         "failed": "No se pudo completar este paso",
@@ -3685,7 +3689,8 @@
         "keyword": "búsqueda por palabra clave",
         "withKeyword": "con búsqueda por palabra clave",
         "listed": "{{returned}} de {{total}} grabaciones",
-        "segments": "{{returned}} de {{total}} segmentos"
+        "segments": "{{returned}} de {{total}} segmentos",
+        "noSimilar": "Sin grabaciones parecidas"
       },
       "count": {
         "stepOne": "1 paso",
@@ -3702,7 +3707,11 @@
         "notesReads": "{{count}} lecturas de notas",
         "detailsCheckOne": "1 comprobación de detalles",
         "detailsChecks": "{{count}} comprobaciones de detalles",
-        "other": "{{tool}}: {{count}}"
+        "other": "{{tool}}: {{count}}",
+        "textSearchOne": "1 búsqueda exacta",
+        "textSearches": "{{count}} búsquedas exactas",
+        "similarSearchOne": "1 búsqueda de similitud",
+        "similarSearches": "{{count}} búsquedas de similitud"
       }
     }
   },

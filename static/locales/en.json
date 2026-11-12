@@ -3672,7 +3672,11 @@
         "gathering": "Reading the best matches",
         "readingFull": "Reading a full transcript",
         "writing": "Writing the answer",
-        "compacting": "Summarizing the earlier conversation"
+        "compacting": "Summarizing the earlier conversation",
+        "searchingPhrase": "Searching for the exact words “{{query}}”",
+        "searchingWords": "Searching for the words “{{query}}”",
+        "findingSimilar": "Finding recordings like {{title}}",
+        "findingSimilarRecordings": "Finding similar recordings"
       },
       "result": {
         "failed": "Couldn't complete this step",
@@ -3685,7 +3689,8 @@
         "keyword": "keyword search",
         "withKeyword": "with keyword search",
         "listed": "{{returned}} of {{total}} recordings",
-        "segments": "{{returned}} of {{total}} segments"
+        "segments": "{{returned}} of {{total}} segments",
+        "noSimilar": "No similar recordings"
       },
       "count": {
         "stepOne": "1 step",
@@ -3702,7 +3707,11 @@
         "notesReads": "{{count}} notes reads",
         "detailsCheckOne": "1 details check",
         "detailsChecks": "{{count}} details checks",
-        "other": "{{tool}}: {{count}}"
+        "other": "{{tool}}: {{count}}",
+        "textSearchOne": "1 exact search",
+        "textSearches": "{{count}} exact searches",
+        "similarSearchOne": "1 similarity search",
+        "similarSearches": "{{count}} similarity searches"
       }
     }
   },

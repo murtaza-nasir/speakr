@@ -13,7 +13,9 @@ from src.utils.localization import translate
 
 TOOL_ICONS = {
     'search_transcripts': 'fa-magnifying-glass',
+    'search_text': 'fa-quote-left',
     'list_recordings': 'fa-list',
+    'find_similar_recordings': 'fa-clone',
     'get_transcript': 'fa-file-lines',
     'get_summary': 'fa-file-alt',
     'get_notes': 'fa-note-sticky',
@@ -44,8 +46,17 @@ def step_label(tool, args, language=None, title=None):
     args = args or {}
     if tool == 'search_transcripts':
         return translate('server.assistant.step.searching', language, query=str(args.get('query', ''))[:80])
+    if tool == 'search_text':
+        query = str(args.get('query', ''))[:80]
+        if str(args.get('match') or 'phrase').lower() == 'all_words':
+            return translate('server.assistant.step.searchingWords', language, query=query)
+        return translate('server.assistant.step.searchingPhrase', language, query=query)
     if tool == 'list_recordings':
         return translate('server.assistant.step.listing', language)
+    if tool == 'find_similar_recordings':
+        if not title:
+            return translate('server.assistant.step.findingSimilarRecordings', language)
+        return translate('server.assistant.step.findingSimilar', language, title=title)
     if tool == 'get_transcript':
         if not title:
             return translate('server.assistant.step.readingATranscript', language)
@@ -79,8 +90,13 @@ _COUNTED = {
                              else translate('server.assistant.count.steps', lang, count=n)),
     'search_transcripts': lambda n, lang: (translate('server.assistant.count.searchOne', lang) if n == 1
                                            else translate('server.assistant.count.searches', lang, count=n)),
+    'search_text': lambda n, lang: (translate('server.assistant.count.textSearchOne', lang) if n == 1
+                                    else translate('server.assistant.count.textSearches', lang, count=n)),
     'list_recordings': lambda n, lang: (translate('server.assistant.count.listingOne', lang) if n == 1
                                         else translate('server.assistant.count.listings', lang, count=n)),
+    'find_similar_recordings': lambda n, lang: (
+        translate('server.assistant.count.similarSearchOne', lang) if n == 1
+        else translate('server.assistant.count.similarSearches', lang, count=n)),
     'get_transcript': lambda n, lang: (translate('server.assistant.count.transcriptReadOne', lang) if n == 1
                                        else translate('server.assistant.count.transcriptReads', lang, count=n)),
     'get_summary': lambda n, lang: (translate('server.assistant.count.summaryReadOne', lang) if n == 1
@@ -97,7 +113,7 @@ def step_result(tool, result, language=None):
     if isinstance(result, dict) and result.get('error'):
         return 'error', translate('server.assistant.result.failed', language)
     result = result if isinstance(result, dict) else {}
-    if tool == 'search_transcripts':
+    if tool in ('search_transcripts', 'search_text'):
         n = result.get('result_count', 0)
         if not n:
             return 'empty', translate('server.assistant.result.noMatches', language)
@@ -111,6 +127,11 @@ def step_result(tool, result, language=None):
         elif search_type and search_type != 'semantic':
             detail += ' · ' + translate('server.assistant.result.withKeyword', language)
         return 'done', detail
+    if tool == 'find_similar_recordings':
+        n = result.get('result_count', 0)
+        if not n:
+            return 'empty', translate('server.assistant.result.noSimilar', language)
+        return 'done', _COUNTED['recording'](n, language)
     if tool == 'list_recordings':
         return 'done', translate('server.assistant.result.listed', language,
                                  returned=result.get('returned', 0), total=result.get('total_in_scope', 0))

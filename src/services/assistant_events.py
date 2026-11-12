@@ -31,8 +31,8 @@ import re
 
 from src.services.assistant_present import RAG_ICONS, rag_step_label
 
-LIBRARY_TOOLS = ('search_transcripts', 'list_recordings', 'get_transcript', 'get_recording_metadata',
-                 'get_summary', 'get_notes')
+LIBRARY_TOOLS = ('search_transcripts', 'search_text', 'list_recordings', 'find_similar_recordings',
+                 'get_transcript', 'get_recording_metadata', 'get_summary', 'get_notes')
 
 _SURFACE_TOOLS = {
     'incognito': (),

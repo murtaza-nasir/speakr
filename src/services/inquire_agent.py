@@ -227,6 +227,15 @@ class ToolContext:
         # Dana]): the recording open in the panel, so pages read past the
         # prompt's length limit can be cited like the prompt's own lines.
         self.marked_ids = set(marked_ids or ())
+        self._labels = None
+
+    @property
+    def labels(self):
+        """The visible tags and folders of the recordings in scope, read once."""
+        if self._labels is None:
+            from src.services.library_labels import LibraryLabels
+            self._labels = LibraryLabels(self.user_id, self.allowed_ids)
+        return self._labels
 
     def check_scope(self, recording_id):
         try:
@@ -254,6 +263,12 @@ def tool_search_transcripts(ctx, args):
     # Narrow within the UI filters: tool args can only tighten, never widen.
     filters = dict(ctx.filters)
     filters['recording_ids'] = list(ctx.allowed_ids)
+    narrowed, notes = _label_filter(ctx, args)
+    if narrowed is not None:
+        if not narrowed:
+            return {'query': query, 'search_type': 'none', 'result_count': 0, 'results': [],
+                    'note': ' '.join(notes) or 'No recording in scope matches these tags and folder.'}
+        filters['recording_ids'] = sorted(narrowed)
     if args.get('speakers'):
         filters['speaker_names'] = [str(s) for s in args['speakers']][:10]
     for key, arg in (('date_from', 'date_from'), ('date_to', 'date_to')):
@@ -302,14 +317,21 @@ def tool_search_transcripts(ctx, args):
             'chunk_index': chunk.chunk_index,
             'snippet': chunk.content,
             'similarity': round(float(similarity), 3),
+            **_label_fields(ctx, chunk.recording_id),
         })
-    return {'query': query, 'search_type': search_type, 'result_count': len(hits), 'results': hits}
+    out = {'query': query, 'search_type': search_type, 'result_count': len(hits), 'results': hits}
+    if notes:
+        out['note'] = ' '.join(notes)
+    return out
 
 
 def tool_list_recordings(ctx, args):
     q = Recording.query.filter(Recording.id.in_(ctx.allowed_ids))
     if args.get('participant'):
         q = q.filter(Recording.participants.ilike(contains_pattern(args['participant']), escape=LIKE_ESCAPE))
+    narrowed, notes = _label_filter(ctx, args)
+    if narrowed is not None:
+        q = q.filter(Recording.id.in_(sorted(narrowed)))
     from src.utils.timezones import local_date_bounds, user_timezone_by_id
     _zone = user_timezone_by_id(ctx.user_id)
     _bounds = {}
@@ -330,11 +352,14 @@ def tool_list_recordings(ctx, args):
     limit = min(max(int(args.get('limit', 25) or 25), 1), 100)
     total = q.count()
     recs = q.limit(limit).all()
-    return {
+    out = {
         'total_in_scope': total,
         'returned': len(recs),
-        'recordings': [_recording_brief(r, _zone) for r in recs],
+        'recordings': [{**_recording_brief(r, _zone), **_label_fields(ctx, r.id)} for r in recs],
     }
+    if notes:
+        out['note'] = ' '.join(notes)
+    return out
 
 
 DEFAULT_TRANSCRIPT_PAGE = 150
@@ -428,16 +453,428 @@ def tool_get_recording_metadata(ctx, args):
         return {'error': err}
     from src.utils.timezones import user_timezone_by_id
     info = _recording_brief(rec, user_timezone_by_id(ctx.user_id))
-    try:
-        info['tags'] = [t.name for t in rec.tags]
-    except Exception:
-        pass
+    # Only the tags and folder this user can see.
+    info.update(_label_fields(ctx, rec.id))
     return info
+
+
+# ---------------------------------------------------------------------------
+# Tags and folders (Ambrose search)
+# ---------------------------------------------------------------------------
+
+def _label_fields(ctx, recording_id):
+    """The tags and folder path of a recording as the user sees them; keys
+    left out when empty."""
+    out = {}
+    tags = ctx.labels.tags_of(recording_id)
+    if tags:
+        out['tags'] = tags
+    folder = ctx.labels.folder_path_of(recording_id)
+    if folder:
+        out['folder'] = folder
+    return out
+
+
+def _label_filter(ctx, args):
+    """(recording ids in scope with any of `tags` and inside `folder`, or
+    None when neither is given; notes for names that match nothing)."""
+    ids, notes = None, []
+    tags = args.get('tags')
+    if isinstance(tags, str):
+        tags = [tags]
+    if isinstance(tags, list) and any(str(t).strip() for t in tags):
+        hits, unknown = ctx.labels.match_tags([str(t) for t in tags][:20])
+        ids = hits
+        if unknown:
+            notes.append(f"No recording in scope has the tag {', '.join(unknown)}; "
+                         "use the exact tag names listed in the instructions.")
+    folder = args.get('folder')
+    if isinstance(folder, str) and folder.strip():
+        hits = ctx.labels.match_folder(folder)
+        if not hits:
+            notes.append(f"No recording in scope is in a folder \"{folder.strip()}\"; "
+                         "use a folder path listed in the instructions.")
+        ids = hits if ids is None else ids & hits
+    if ids is not None:
+        ids = ids & set(ctx.allowed_ids)
+    return ids, notes
+
+
+def _parse_dates(args):
+    """({'date_from': date, 'date_to': date}, error)."""
+    bounds = {}
+    for arg in ('date_from', 'date_to'):
+        if args.get(arg):
+            try:
+                bounds[arg] = datetime.fromisoformat(str(args[arg])).date()
+            except ValueError:
+                return None, f"{arg} must be an ISO date (YYYY-MM-DD)"
+    return bounds, None
+
+
+def _names_line(labels, tool_names, cap=60):
+    """The tag names and folder paths of the recordings in scope, for the
+    prompt, when a tool that filters by them is offered."""
+    filtering = {'search_transcripts', 'search_text', 'list_recordings'}
+    if tool_names is not None and not filtering & set(tool_names):
+        return ''
+    tags = labels.tag_names_in_use()
+    folders = labels.folder_paths_in_use()
+    if not tags and not folders:
+        return ''
+    from src.services.library_labels import capped
+    lines = []
+    if tags:
+        lines.append(f"Tags on these recordings: {capped(tags, cap)}.")
+    if folders:
+        lines.append(f"Folders: {capped(folders, cap)}.")
+    lines.append("To narrow a search or a list by tag or folder, pass these exact names in `tags` or `folder` "
+                 "(a folder includes its subfolders).")
+    return '\n'.join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Literal text search (Ambrose search)
+# ---------------------------------------------------------------------------
+
+TEXT_FIELDS = ('transcript', 'title', 'summary', 'notes')
+_SNIPPET_CHARS = 120
+
+
+def _snippet(text, terms):
+    """About 240 characters of `text` around the first term found."""
+    text = ' '.join((text or '').split())
+    lower = text.lower()
+    positions = [lower.find(t) for t in terms if lower.find(t) != -1]
+    at = min(positions) if positions else 0
+    start = max(at - _SNIPPET_CHARS, 0)
+    end = min(at + _SNIPPET_CHARS + max((len(t) for t in terms), default=0), len(text))
+    out = text[start:end]
+    return ('…' if start else '') + out + ('…' if end < len(text) else '')
+
+
+def _line_matches(line, terms):
+    lower = line.lower()
+    return all(t in lower for t in terms)
+
+
+def tool_search_text(ctx, args):
+    from sqlalchemy import and_
+    from sqlalchemy.orm import joinedload
+    from src.models import TranscriptChunk
+    from src.transcript_chunking import _segment_line, build_transcript_segments
+
+    query = ' '.join(str(args.get('query') or '').split())[:200]
+    if not query:
+        return {'error': "query is required"}
+    match = str(args.get('match') or 'phrase').lower()
+    if match not in ('phrase', 'all_words'):
+        match = 'phrase'
+    terms = [w.lower() for w in query.split()][:12] if match == 'all_words' else [query.lower()]
+
+    available = ['transcript', 'title']
+    if ctx.availability.get('summaries'):
+        available.append('summary')
+    if ctx.availability.get('notes'):
+        available.append('notes')
+    notes = []
+    asked = args.get('fields')
+    if isinstance(asked, str):
+        asked = [asked]
+    if isinstance(asked, list) and asked:
+        asked = {str(f).strip().lower() for f in asked}
+        fields = [f for f in available if f in asked]
+        skipped = sorted(asked - set(available))
+        if skipped:
+            notes.append(f"Not searched (not available): {', '.join(skipped)}")
+        if not fields:
+            return {'error': f"none of these fields can be searched; available: {', '.join(available)}"}
+    else:
+        fields = available
+    try:
+        top_k = min(max(int(args.get('top_k', 20) or 20), 1), 50)
+    except (TypeError, ValueError):
+        top_k = 20
+
+    ids = set(ctx.allowed_ids)
+    narrowed, label_notes = _label_filter(ctx, args)
+    notes += label_notes
+    if narrowed is not None:
+        ids &= narrowed
+    bounds, err = _parse_dates(args)
+    if err:
+        return {'error': err}
+    q = db.session.query(Recording.id).filter(Recording.id.in_(ids)) if ids else None
+    if q is not None and isinstance(args.get('speakers'), list) and args['speakers']:
+        q = q.filter(db.or_(*[Recording.participants.ilike(contains_pattern(str(s)), escape=LIKE_ESCAPE)
+                              for s in args['speakers'][:10]]))
+    from src.utils.timezones import local_date_bounds, to_local, user_timezone_by_id
+    zone = user_timezone_by_id(ctx.user_id)
+    start, end = local_date_bounds(bounds.get('date_from'), bounds.get('date_to'), zone)
+    if q is not None and start is not None:
+        q = q.filter(Recording.meeting_date >= start)
+    if q is not None and end is not None:
+        q = q.filter(Recording.meeting_date < end)
+    ids = {rid for (rid,) in q} if q is not None else set()
+
+    result = {'query': query, 'match': match, 'fields': fields}
+    if notes:
+        result['note'] = ' '.join(notes)
+    if not ids:
+        return {**result, 'result_count': 0, 'results': []}
+
+    def matches(column):
+        return and_(*[column.ilike(contains_pattern(t), escape=LIKE_ESCAPE) for t in terms])
+
+    def base(rec):
+        hit = {'recording_id': rec.id, 'title': rec.title or 'Untitled Recording',
+               'meeting_date': to_local(rec.meeting_date, zone).strftime('%Y-%m-%d') if rec.meeting_date else None}
+        hit.update(_label_fields(ctx, rec.id))
+        return hit
+
+    hits = []
+    for field, column, extra in (('title', Recording.title, None),
+                                 ('summary', Recording.summary, None),
+                                 # Only the user's own notes (get_notes rule).
+                                 ('notes', Recording.notes, Recording.user_id == ctx.user_id)):
+        if field not in fields:
+            continue
+        rq = Recording.query.filter(Recording.id.in_(ids), matches(column))
+        if extra is not None:
+            rq = rq.filter(extra)
+        for rec in rq.order_by(Recording.meeting_date.desc()).limit(top_k).all():
+            hits.append({**base(rec), 'field': field, 'snippet': _snippet(getattr(rec, field), terms)})
+
+    if 'transcript' in fields:
+        chunks = (TranscriptChunk.query.options(joinedload(TranscriptChunk.recording))
+                  .join(Recording, Recording.id == TranscriptChunk.recording_id)
+                  .filter(TranscriptChunk.recording_id.in_(ids), matches(TranscriptChunk.content))
+                  .order_by(Recording.meeting_date.desc(), TranscriptChunk.recording_id, TranscriptChunk.chunk_index)
+                  .limit(top_k * 4).all())
+        segments_by_rec, seen = {}, set()
+        for chunk in chunks:
+            lines = [line for line in chunk.content.split('\n') if _line_matches(line, terms)]
+            line = lines[0] if lines else chunk.content
+            speaker, start_time = chunk.speaker_name, chunk.start_time
+            if lines:
+                rid = chunk.recording_id
+                if rid not in segments_by_rec:
+                    segments_by_rec[rid] = build_transcript_segments(chunk.recording.transcription) or []
+                for seg in segments_by_rec[rid]:
+                    if _segment_line(seg) != line:
+                        continue
+                    if chunk.start_time is not None and seg['start'] is not None and not (
+                            chunk.start_time - 0.01 <= seg['start'] <= (chunk.end_time or seg['start']) + 0.01):
+                        continue
+                    speaker, start_time = seg['speaker'], seg['start']
+                    if speaker and line.startswith(f"{speaker}: "):
+                        line = line[len(speaker) + 2:]
+                    break
+            key = (chunk.recording_id, start_time, line[:80])
+            if key in seen:
+                continue  # the segment two chunks share
+            seen.add(key)
+            hits.append({**base(chunk.recording), 'field': 'transcript',
+                         'speaker': speaker, 'time': _fmt_time(start_time),
+                         'seek_seconds': int(start_time) if start_time is not None else None,
+                         'snippet': _snippet(line, terms)})
+
+        # Recordings with no indexed chunks (indexing failed or has not run):
+        # their stored transcript, read segment by segment.
+        indexed = {rid for (rid,) in db.session.query(TranscriptChunk.recording_id)
+                   .filter(TranscriptChunk.recording_id.in_(ids)).distinct()}
+        unindexed = ids - indexed
+        if unindexed:
+            rq = Recording.query.filter(Recording.id.in_(unindexed), Recording.transcription.isnot(None))
+            # The stored JSON escapes quotes, backslashes and non-ASCII text,
+            # so only plain ASCII terms narrow the query in SQL.
+            plain = [t for t in terms if t.isascii() and '"' not in t and '\\' not in t]
+            if plain:
+                rq = rq.filter(and_(*[Recording.transcription.ilike(contains_pattern(t), escape=LIKE_ESCAPE)
+                                      for t in plain]))
+            from src.services.transcript_segments import segments_of
+            for rec in rq.order_by(Recording.meeting_date.desc()).limit(top_k * 4).all():
+                segments = segments_of(rec.transcription)
+                if segments is None:
+                    segments = [{'speaker': None, 'text': rec.transcription, 'start_time': None}]
+                for seg in segments:
+                    if _line_matches(seg['text'], terms):
+                        hits.append({**base(rec), 'field': 'transcript', 'speaker': seg['speaker'],
+                                     'time': _fmt_time(seg['start_time']),
+                                     'seek_seconds': int(seg['start_time']) if seg['start_time'] is not None
+                                     else None,
+                                     'snippet': _snippet(seg['text'], terms)})
+
+    truncated = len(hits) > top_k
+    hits = hits[:top_k]
+    result.update({'result_count': len(hits), 'results': hits})
+    if truncated:
+        result['truncated'] = True
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Similar recordings (Ambrose search)
+# ---------------------------------------------------------------------------
+
+SIMILARITY_WEIGHTS = {'speakers': 0.3, 'tags': 0.2, 'folder': 0.15, 'date': 0.1, 'content': 0.25}
+_STOP_WORDS = frozenset(
+    'a an the is are was were be been being have has had do does did will would could should may might '
+    'can to of in for on with at by from up about into and but or not so it its this that these those '
+    'what which who how when where why i me my we our you your he she his her they them their um uh yeah '
+    'okay ok like just know think really right well also then there here one going get got'.split())
+
+
+def _speaker_names(participants):
+    """{lower-case name: name} of the people in a participants field, roles
+    in brackets left out ("Dana (finance)" is Dana)."""
+    from src.services.library_labels import is_generic_speaker
+    names = {}
+    for part in re.split(r'[,;\n]', participants or ''):
+        name = re.sub(r'\(.*?\)', '', part).strip()
+        if name and not is_generic_speaker(name):
+            names.setdefault(name.lower(), name)
+    return names
+
+
+def _content_scores(source_id, candidate_ids):
+    """({candidate id: similarity 0..1}, method). Embeddings: cosine of the
+    recordings' average chunk vectors. Without them: word overlap (Jaccard)
+    of the first chunks. ({}, None) when neither is possible."""
+    import numpy as np
+    from src.models import TranscriptChunk
+    from src.services.embeddings import deserialize_embedding
+    ids = list(candidate_ids) + [source_id]
+    vectors = {}
+    for rid, blob in db.session.query(TranscriptChunk.recording_id, TranscriptChunk.embedding) \
+            .filter(TranscriptChunk.recording_id.in_(ids), TranscriptChunk.embedding.isnot(None)):
+        try:
+            v = deserialize_embedding(blob)
+        except Exception:
+            v = None
+        if v is not None:
+            vectors.setdefault(rid, []).append(v)
+    if vectors.get(source_id):
+        dim = vectors[source_id][0].shape[0]
+
+        def mean(rid):
+            same = [v for v in vectors.get(rid, ()) if v.shape[0] == dim]
+            if not same:
+                return None
+            m = np.mean(np.vstack(same), axis=0)
+            n = np.linalg.norm(m)
+            return m / n if n else None
+
+        src = mean(source_id)
+        if src is not None:
+            scores = {}
+            for rid in candidate_ids:
+                m = mean(rid)
+                if m is not None:
+                    scores[rid] = max(0.0, min(1.0, float(np.dot(src, m))))
+            return scores, 'embeddings'
+
+    words = {}
+    for rid, content in db.session.query(TranscriptChunk.recording_id, TranscriptChunk.content) \
+            .filter(TranscriptChunk.recording_id.in_(ids), TranscriptChunk.chunk_index < 3):
+        tokens = {w for w in re.findall(r"[^\W\d_]{3,}", (content or '').lower()) if w not in _STOP_WORDS}
+        words.setdefault(rid, set()).update(tokens)
+    src = words.get(source_id)
+    if not src:
+        return {}, None
+    scores = {}
+    for rid in candidate_ids:
+        other = words.get(rid)
+        if other:
+            scores[rid] = len(src & other) / len(src | other)
+    return scores, 'words'
+
+
+def tool_find_similar_recordings(ctx, args):
+    from src.models import TranscriptChunk
+    from src.services.library_labels import is_generic_speaker
+    source, err = ctx.check_scope(args.get('recording_id'))
+    if err:
+        return {'error': err}
+    try:
+        limit = min(max(int(args.get('limit', 8) or 8), 1), 25)
+    except (TypeError, ValueError):
+        limit = 8
+    candidates = set(ctx.allowed_ids) - {source.id}
+    result = {'recording_id': source.id, 'title': source.title or 'Untitled Recording',
+              'weights': SIMILARITY_WEIGHTS}
+    if not candidates:
+        return {**result, 'result_count': 0, 'results': []}
+
+    recs = {r.id: r for r in Recording.query.filter(Recording.id.in_(candidates | {source.id})).all()}
+    speakers = {rid: _speaker_names(r.participants) for rid, r in recs.items()}
+    for rid, name in db.session.query(TranscriptChunk.recording_id, TranscriptChunk.speaker_name) \
+            .filter(TranscriptChunk.recording_id.in_(list(recs)), TranscriptChunk.speaker_name.isnot(None)) \
+            .distinct():
+        if name and not is_generic_speaker(name):
+            speakers.setdefault(rid, {}).setdefault(name.strip().lower(), name.strip())
+    content, method = _content_scores(source.id, candidates)
+    labels = ctx.labels
+    src_speakers = speakers.get(source.id, {})
+    src_tags = {t.lower(): t for t in labels.tags_of(source.id)}
+    from src.utils.timezones import to_local, user_timezone_by_id
+    zone = user_timezone_by_id(ctx.user_id)
+
+    ranked = []
+    for rid in candidates:
+        rec = recs.get(rid)
+        if rec is None:
+            continue
+        shared_speakers = sorted(src_speakers[k] for k in src_speakers if k in speakers.get(rid, {}))
+        shared_tags = sorted(src_tags[t] for t in src_tags if t in {x.lower() for x in labels.tags_of(rid)})
+        relation = labels.relation(source.id, rid)
+        days = (abs((rec.meeting_date - source.meeting_date).total_seconds()) / 86400
+                if rec.meeting_date and source.meeting_date else None)
+        parts = {
+            'speakers': len(shared_speakers) / len(src_speakers) if src_speakers else 0.0,
+            'tags': len(shared_tags) / len(src_tags) if src_tags else 0.0,
+            'folder': 1.0 if relation == 'same folder' else (0.5 if relation else 0.0),
+            'date': 1 / (1 + days / 30) if days is not None else 0.0,
+            'content': content.get(rid, 0.0),
+        }
+        score = sum(SIMILARITY_WEIGHTS[k] * v for k, v in parts.items())
+        if score <= 0:
+            continue
+        reasons = {}
+        if shared_speakers:
+            reasons['shared_speakers'] = shared_speakers
+        if shared_tags:
+            reasons['shared_tags'] = shared_tags
+        if relation:
+            reasons['folder'] = relation
+        if days is not None:
+            reasons['days_apart'] = int(round(days))
+        if rid in content:
+            reasons['content_similarity'] = round(content[rid], 3)
+        entry = {'recording_id': rid, 'title': rec.title or 'Untitled Recording',
+                 'meeting_date': to_local(rec.meeting_date, zone).strftime('%Y-%m-%d') if rec.meeting_date else None,
+                 'score': round(score, 3), 'reasons': reasons}
+        entry.update(_label_fields(ctx, rid))
+        ranked.append((score, rec.meeting_date or datetime.min, entry))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    results = [entry for _s, _d, entry in ranked[:limit]]
+    result.update({'content_method': method, 'result_count': len(results), 'results': results})
+    if method is None:
+        result['note'] = 'Content similarity is unavailable for this recording (no indexed transcript).'
+    return result
 
 
 _DATE_PROPS = {
     'date_from': {'type': 'string', 'description': 'ISO date YYYY-MM-DD (inclusive)'},
     'date_to': {'type': 'string', 'description': 'ISO date YYYY-MM-DD (inclusive)'},
+}
+
+_LABEL_PROPS = {
+    'tags': {'type': 'array', 'items': {'type': 'string'},
+             'description': 'Only recordings with any of these tags (exact names, any case)'},
+    'folder': {'type': 'string',
+               'description': 'Only recordings in this folder or its subfolders (a folder name or its full '
+                              'path, such as "Projects / Alpha")'},
 }
 
 
@@ -451,12 +888,11 @@ def build_toolbox(availability, tool_names=None):
     """
     tools = [
         ('search_transcripts', tool_search_transcripts,
-         'Search the transcripts of the recordings in scope. Default mode combines semantic search '
-         'with a literal keyword fallback when semantic results are thin. Returns matching snippets '
-         'with recording ids, titles, speakers and timestamps. Use short, content-bearing queries; '
-         'call multiple times with different phrasings. For exact terms, acronyms or jargon '
-         '(project names, metric names), also try mode="keyword" with just that term. Raise top_k '
-         'when surveying a topic broadly.',
+         'Search the transcripts of the recordings in scope by meaning. Default mode combines semantic '
+         'search with a keyword fallback when semantic results are thin. Returns matching snippets with '
+         'recording ids, titles, speakers and timestamps. Use short, content-bearing queries; call multiple '
+         'times with different phrasings. Use it for topics and ideas; for exact words, names, numbers or '
+         'quotes use search_text. Raise top_k when surveying a topic broadly.',
          {'type': 'object',
           'properties': {
               'query': {'type': 'string', 'description': 'Search phrase'},
@@ -466,19 +902,56 @@ def build_toolbox(availability, tool_names=None):
                                       'keyword: literal word/phrase matching only'},
               'speakers': {'type': 'array', 'items': {'type': 'string'},
                            'description': 'Restrict to recordings whose participants include these names'},
+              **_LABEL_PROPS,
+              **_DATE_PROPS,
+          },
+          'required': ['query']}),
+        ('search_text', tool_search_text,
+         'Literal text search for exact words, names, numbers or phrases, case-insensitive. Searches '
+         'transcripts, titles' + (', summaries' if availability.get('summaries') else '')
+         + (" and the user's own notes" if availability.get('notes') else '') + '. Returns each match with '
+         'its recording, field and a snippet; transcript matches also have speaker, time and seek_seconds. '
+         'An empty result means the text does not appear.',
+         {'type': 'object',
+          'properties': {
+              'query': {'type': 'string', 'description': 'The exact text to find'},
+              'match': {'type': 'string', 'enum': ['phrase', 'all_words'],
+                        'description': 'phrase (default): the exact phrase; all_words: every word, in any order, '
+                                       'within one transcript passage or one field'},
+              'fields': {'type': 'array', 'items': {'type': 'string', 'enum': [
+                  f for f in TEXT_FIELDS if (f != 'summary' or availability.get('summaries'))
+                  and (f != 'notes' or availability.get('notes'))]},
+                  'description': 'Where to look (default: all of them)'},
+              'top_k': {'type': 'integer', 'description': 'Max results, 1-50 (default 20)'},
+              'speakers': {'type': 'array', 'items': {'type': 'string'},
+                           'description': 'Restrict to recordings whose participants include these names'},
+              **_LABEL_PROPS,
               **_DATE_PROPS,
           },
           'required': ['query']}),
         ('list_recordings', tool_list_recordings,
-         'List the recordings in scope with their metadata (title, date, participants, duration, '
-         'which artifacts exist). Use this to survey what is available or find a recording by date/participant.',
+         'List the recordings in scope with their metadata (title, date, participants, duration, tags, '
+         'folder, which artifacts exist). Use this to survey what is available or find a recording by '
+         'date, participant, tag or folder.',
          {'type': 'object',
           'properties': {
               'sort': {'type': 'string', 'enum': ['newest', 'oldest']},
               'limit': {'type': 'integer', 'description': 'Max rows, 1-100 (default 25)'},
               'participant': {'type': 'string', 'description': 'Only recordings whose participants include this name'},
+              **_LABEL_PROPS,
               **_DATE_PROPS,
           }}),
+        ('find_similar_recordings', tool_find_similar_recordings,
+         'Find the recordings most like one recording. Ranks the other recordings in scope by shared '
+         'speakers, shared tags, the same folder (or a parent or subfolder), how close the dates are, and '
+         'content similarity. Returns each with its score and the reasons. Use it first for questions about '
+         'similar or related recordings, then read the ones that matter.',
+         {'type': 'object',
+          'properties': {
+              'recording_id': {'type': 'integer'},
+              'limit': {'type': 'integer', 'description': 'Max results, 1-25 (default 8)'},
+          },
+          'required': ['recording_id']}),
         ('get_transcript', tool_get_transcript,
          'Read a window of a recording\'s full transcript, in order. Paginated: the result reports '
          'total_segments and next_offset; call again with offset=next_offset to continue.',
@@ -490,7 +963,7 @@ def build_toolbox(availability, tool_names=None):
           },
           'required': ['recording_id']}),
         ('get_recording_metadata', tool_get_recording_metadata,
-         'Get one recording\'s metadata: title, date, participants, duration, tags, which artifacts exist.',
+         'Get one recording\'s metadata: title, date, participants, duration, tags, folder, which artifacts exist.',
          {'type': 'object',
           'properties': {'recording_id': {'type': 'integer'}},
           'required': ['recording_id']}),
@@ -537,7 +1010,9 @@ def _today_for(user_ctx):
 
 _TOOL_PHRASES = (
     ('search_transcripts', 'search transcripts'),
+    ('search_text', 'search for exact words'),
     ('list_recordings', 'list recordings'),
+    ('find_similar_recordings', 'find similar recordings'),
     ('get_transcript', 'read transcripts'),
     ('get_summary', 'read stored summaries'),
     ('get_notes', "read the user's own notes"),
@@ -550,8 +1025,8 @@ def _tools_sentence(availability, tool_names):
     if tool_names is None:
         notes_line = "the user's own notes, " if availability.get('notes') else ''
         summaries_line = "stored summaries, " if availability.get('summaries') else ''
-        return (f"You have tools to search transcripts, list recordings, and read transcripts, "
-                f"{summaries_line}{notes_line}and metadata")
+        return (f"You have tools to search transcripts, search for exact words, list recordings, find similar "
+                f"recordings, and read transcripts, {summaries_line}{notes_line}and metadata")
     offered = set(tool_names)
     if not availability.get('notes'):
         offered.discard('get_notes')
@@ -563,7 +1038,27 @@ def _tools_sentence(availability, tool_names):
     return "You have tools to " + ', '.join(phrases)
 
 
-def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block, tool_names=None):
+def _search_guidance(tool_names):
+    """How to choose between the search tools, for the tools offered."""
+    offered = None if tool_names is None else set(tool_names)
+
+    def has(name):
+        return offered is None or name in offered
+
+    lines = []
+    if has('search_text') and has('search_transcripts'):
+        lines.append("Use search_text for exact words, names, numbers and quotes, and search_transcripts for "
+                     "topics and meaning.")
+    elif has('search_text'):
+        lines.append("Use search_text for exact words, names, numbers and quotes.")
+    if has('find_similar_recordings'):
+        lines.append("When asked for recordings similar or related to one recording, call "
+                     "find_similar_recordings first.")
+    return ' '.join(lines)
+
+
+def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block, tool_names=None,
+                   names_line=''):
     language_instruction = (
         f"Respond in {user_ctx['output_language']}. " if user_ctx.get('output_language') else '')
     from src.utils.assistant_name import assistant_identity
@@ -575,7 +1070,9 @@ notes). {language_instruction}Today's date is {_today_for(user_ctx)}.
 {_tools_sentence(availability, tool_names)}{filters_text}. Work iteratively: search or browse first, read more where needed, and only \
 answer once you have enough evidence. Prefer summaries to survey long recordings, transcripts for exact \
 quotes and details. If a search finds nothing, try different phrasings or list_recordings before giving up. \
-Never invent content that is not in the tool results; say clearly when something cannot be found.
+Never invent content that is not in the tool results; say clearly when something cannot be found.\
+{(' ' + _search_guidance(tool_names)) if _search_guidance(tool_names) else ''}\
+{(chr(10) + chr(10) + names_line) if names_line else ''}
 
 {tool_mode_prompt_block}When you give your final answer:
 - Use clear markdown (headings per recording where it helps, bullets, **bold** speaker names).
@@ -808,19 +1305,23 @@ def _native_tools_known_unsupported(err_text):
     return any(k in err for k in ('tool', 'function', 'unsupported', 'not support'))
 
 
-def _recording_tools_block(user_ctx, availability, tool_names, filters_text, scope):
+def _recording_tools_block(user_ctx, availability, tool_names, filters_text, scope, names_line=''):
     """The tools note for the recording panel (Ambrose 2b): a second system
     message after the recording builder's prompt, which stays as it is. It
     describes only the tools offered and how to cite other recordings."""
     parts = [
         f"{_tools_sentence(availability, tool_names)} in {user_ctx['name']}'s recording library{filters_text}. "
         "Answer questions about this recording from its transcript above. Use the tools only when a question "
-        "needs other recordings, for example \"did we discuss this anywhere else?\".",
+        "needs other recordings, for example \"did we discuss this anywhere else?\"."
+        + ((' ' + _search_guidance(tool_names)) if _search_guidance(tool_names) else '')
+        + (f" This recording's id is {scope['recording_id']}." if scope.get('recording_id') else ''),
         "When you use something from another recording, cite it as a markdown link whose text is that "
         "recording's exact title: [Title @ time](/recordings/<recording_id>?t=<seek_seconds>) with the "
         "result's `time` value verbatim, or [Title](/recordings/<recording_id>) without a time. Never write a "
         "\"Sources\" section; the interface lists the sources.",
     ]
+    if names_line:
+        parts.append(names_line)
     if scope.get('markers'):
         parts.append('Keep citing this recording as [S12 "exact words"].')
     cut = scope.get('cut')
@@ -898,6 +1399,15 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                         f"({'; '.join(filter_bits)})" if filter_bits
                         else f". {len(allowed_ids)} recordings are in scope")
 
+        tool_ctx = ToolContext(user_id, filters, allowed_ids, availability,
+                               marked_ids=[recording_scope['recording_id']]
+                               if recording_scope and recording_scope.get('markers') else None)
+        try:
+            names_line = _names_line(tool_ctx.labels, tool_names) if schemas else ''
+        except Exception as e:
+            app.logger.warning(f"Inquire agent: tag and folder names unavailable: {e}")
+            names_line = ''
+
         # Tool mode resolution
         cfg = get_chat_config()
         mode_key = (cfg.get('base_url'), cfg.get('model_name'))
@@ -919,13 +1429,14 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                     for s in schemas)
                 block = _PROMPT_MODE_BLOCK.replace('%TOOLS%', tool_lines)
             if recording_scope:
-                note = _recording_tools_block(user_ctx, availability, tool_names, filters_text, recording_scope)
+                note = _recording_tools_block(user_ctx, availability, tool_names, filters_text, recording_scope,
+                                              names_line)
                 if block:
                     note += '\n\n' + block.rstrip()
                 msgs = list(recording_scope['messages'])
                 msgs.insert(1, {'role': 'system', 'content': note})
                 return msgs
-            sys_prompt = _system_prompt(user_ctx, filters_text, availability, block, tool_names)
+            sys_prompt = _system_prompt(user_ctx, filters_text, availability, block, tool_names, names_line)
             msgs = [{'role': 'system', 'content': sys_prompt}]
             if memory:
                 msgs.append({'role': 'system',
@@ -945,7 +1456,8 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         # Context accounting + compaction before the first call (the Ask
         # page; the recording panel sends its builder's messages as they are)
         budget = _context_budget_tokens()
-        est = estimate_context_tokens(_system_prompt(user_ctx, filters_text, availability, '', tool_names),
+        est = estimate_context_tokens(_system_prompt(user_ctx, filters_text, availability, '', tool_names,
+                                                     names_line),
                                       memory, history, schemas)
         usage_pct = min(int(est * 100 / budget), 100)
         if not recording_scope:
@@ -958,9 +1470,6 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
 
         messages = build_messages(mode, memory, history)
 
-        tool_ctx = ToolContext(user_id, filters, allowed_ids, availability,
-                               marked_ids=[recording_scope['recording_id']]
-                               if recording_scope and recording_scope.get('markers') else None)
         started = time_mod.monotonic()
         step_id = 0
         tool_counts = {}
@@ -1030,7 +1539,7 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                     call_cache[cache_key] = result
                     tool_counts[name] = tool_counts.get(name, 0) + 1
             status, detail = step_result(name, result, language)
-            if name == 'search_transcripts':
+            if name in ('search_transcripts', 'search_text'):
                 consecutive_empty_searches = consecutive_empty_searches + 1 if status == 'empty' else 0
             events.append(_sse({'agent_step': {'id': this_step, 'tool': name, 'name': name,
                                                'icon': tool_icon(name),
