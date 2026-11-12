@@ -738,6 +738,8 @@ html[data-ui-theme="cards"] .floating-chat-panel {
 html[data-ui-theme="cards"] .floating-chat-header { background: var(--c-surface); border-bottom: 1px solid var(--c-divider); }
 html[data-ui-theme="cards"] .floating-chat-header-title { font-weight: 700; font-size: var(--c-fs-md); }
 html[data-ui-theme="cards"] .floating-chat-messages { background: var(--c-surface-2); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+/* The answers keep their height and the list scrolls (flex items would shrink and clip). */
+html[data-ui-theme="cards"] .floating-chat-messages > * { flex-shrink: 0; }
 html[data-ui-theme="cards"] .floating-chat-input { background: var(--c-surface); border-top: 1px solid var(--c-divider); padding: 12px; }
 html[data-ui-theme="cards"] .floating-chat-input .field { border-radius: var(--c-r-lg); background: var(--c-surface-2); }
 html[data-ui-theme="cards"] .floating-chat-input .btn--primary.btn--icon { border-radius: 50%; width: 42px; min-height: 42px; flex: none; }
