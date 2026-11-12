@@ -1026,6 +1026,61 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return {};  // falls back to CSS bottom: 84px right: 24px
             });
 
+            // Bottom-of-screen geometry of the recording view, published on
+            // the root element for the processing queue (progress-popup.html,
+            // primitives.css), which must clear both the chat launcher and
+            // the bottom audio player:
+            //   data-chat-fab         present while the launcher is on screen
+            //   --chat-fab-right      px from the viewport's right edge to the launcher's right edge
+            //   --chat-fab-clearance  px from the viewport's bottom edge to the launcher's top edge
+            //   --detail-bottom-inset px between the viewport's bottom edge and the
+            //                         content columns (bottom player, theme status bars)
+            // The launcher values are removed while the button is not rendered
+            // (other views, chat panel open, chat unavailable) or hidden by CSS
+            // (narrow screens); the inset is removed outside the recording view.
+            // The launcher is read from its computed offsets and offsetHeight
+            // rather than its bounding rect, so the hover scale cannot move the queue.
+            let _bottomGeometryObserver = null;
+            let _bottomGeometryObserved = [];
+            const publishBottomGeometry = () => {
+                const root = document.documentElement;
+                const fab = document.querySelector('.floating-chat-fab');
+                const cols = document.querySelector('#mainContentColumns');
+                if (typeof ResizeObserver !== 'undefined'
+                        && (fab !== _bottomGeometryObserved[0] || cols !== _bottomGeometryObserved[1])) {
+                    // A theme switch, a breakpoint or the player growing for
+                    // video can move these without any watched state changing.
+                    if (!_bottomGeometryObserver) _bottomGeometryObserver = new ResizeObserver(() => publishBottomGeometry());
+                    _bottomGeometryObserver.disconnect();
+                    if (fab) _bottomGeometryObserver.observe(fab);
+                    if (cols) _bottomGeometryObserver.observe(cols);
+                    _bottomGeometryObserved = [fab, cols];
+                }
+                const colsRect = cols && cols.getClientRects().length > 0 ? cols.getBoundingClientRect() : null;
+                if (colsRect && colsRect.height > 0) {
+                    root.style.setProperty('--detail-bottom-inset', Math.max(0, Math.round(window.innerHeight - colsRect.bottom)) + 'px');
+                } else {
+                    root.style.removeProperty('--detail-bottom-inset');
+                }
+                const cs = fab && fab.getClientRects().length > 0 ? getComputedStyle(fab) : null;
+                const bottom = cs ? parseFloat(cs.bottom) : NaN;
+                const right = cs ? parseFloat(cs.right) : NaN;
+                if (!cs || !Number.isFinite(bottom) || !Number.isFinite(right)) {
+                    root.removeAttribute('data-chat-fab');
+                    root.style.removeProperty('--chat-fab-right');
+                    root.style.removeProperty('--chat-fab-clearance');
+                    return;
+                }
+                root.style.setProperty('--chat-fab-right', right + 'px');
+                root.style.setProperty('--chat-fab-clearance', (bottom + fab.offsetHeight) + 'px');
+                root.setAttribute('data-chat-fab', '');
+            };
+            watch(
+                () => [floatingChatFabStyle.value, chatPanelState.value, currentView.value, selectedRecording.value?.id],
+                publishBottomGeometry,
+                { flush: 'post' }
+            );
+
             // Reactive on chatLayoutTick so resize / sidebar toggle
             // trigger recompute.
             const floatingChatPanelStyle = computed(() => {

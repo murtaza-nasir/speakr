@@ -2275,6 +2275,42 @@ details.disclosure-card[open] {
     }
 }
 
+/* The queue against the recording view's bottom edge (desktop). The bottom
+   audio player and the chat launcher both live at the bottom of the content
+   columns; app.modular.js publishes where (publishBottomGeometry):
+   data-chat-fab while the launcher is on screen, --chat-fab-right and
+   --chat-fab-clearance for its right edge and top edge, --detail-bottom-inset
+   for the strip under the content columns.
+   - Sidebar open: the card stays over the list and fits inside its 320 px
+     column, so it cannot reach the player that starts at the column's edge.
+   - Sidebar collapsed (or a narrow window, where the list is a drawer): no
+     list to sit over, so the card clears the player; with the launcher shown
+     it stacks directly above it, sharing its right edge, 8 px apart. Collapsed
+     it keeps its header and summary line in view instead of sliding down.
+   The selectors are wrapped in :where() so a UI theme's own position for the
+   queue still wins. A theme that puts the queue bottom-right uses the same
+   variables: right: var(--chat-fab-right, <corner>);
+   bottom: calc(var(--chat-fab-clearance, <corner>) + 8px). */
+@media (min-width: 641px) {
+    :where(body:has(.main-content.sidebar-open)) .progress-popup {
+        width: 18rem;
+        min-width: 0;
+    }
+    :where(body:has(.main-content:not(.sidebar-open))) .progress-popup {
+        bottom: calc(var(--detail-bottom-inset, 0px) + 1rem);
+    }
+    /* Collapsed, the card normally slides down past the window's edge; lifted
+       off that edge it would slide over the player or the launcher instead. */
+    :where(body:has(.main-content:not(.sidebar-open))) .progress-popup.minimized {
+        transform: none;
+    }
+    :where(html[data-chat-fab] body:has(.main-content:not(.sidebar-open))) .progress-popup {
+        left: auto;
+        right: var(--chat-fab-right);
+        bottom: calc(var(--chat-fab-clearance) + 0.5rem);
+    }
+}
+
 @media (max-width: 640px) {
     /* On phones the queue is a compact status bar pinned just ABOVE the
        bottom audio player + nav, full width. The height of that bottom
