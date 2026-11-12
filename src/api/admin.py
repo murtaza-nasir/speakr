@@ -300,8 +300,8 @@ def admin_add_user():
         monthly_transcription_budget=data.get('monthly_transcription_budget'),
         storage_quota_mb=storage_quota,
     )
-    from src.config.ui_themes import apply_new_user_theme
-    apply_new_user_theme(new_user)
+    from src.config.ui_themes import apply_new_user_defaults
+    apply_new_user_defaults(new_user)
 
     db.session.add(new_user)
     db.session.commit()
@@ -1044,6 +1044,12 @@ def admin_update_setting():
         if not ui_themes.is_valid_color_scheme(str(value).strip().lower()):
             return jsonify(api_error('invalid_default_color_scheme',
                                      schemes=', '.join(ui_themes.COLOR_SCHEMES))), 400
+        value = str(value).strip().lower()
+    if key == 'default_audio_player_position':
+        from src.config import ui_themes
+        if not ui_themes.is_valid_audio_player_position(str(value).strip().lower()):
+            return jsonify(api_error('invalid_default_audio_player_position',
+                                     positions=', '.join(ui_themes.AUDIO_PLAYER_POSITIONS))), 400
         value = str(value).strip().lower()
 
     if key == 'deletion_mode':

@@ -1,4 +1,5 @@
-"""New accounts start with the UI theme and color scheme set for the install.
+"""New accounts start with the UI theme, color scheme and audio player
+position set for the install.
 
 The defaults are the System Settings default_ui_theme and
 default_color_scheme, which fall back to DEFAULT_UI_THEME and
@@ -7,7 +8,11 @@ place that creates an account writes them on the account. Accounts that
 already exist keep their values, and NULL still means the default theme and
 blue. Signed-out pages show the defaults in a browser with no saved choice.
 
-SHARED-DB: the test users are removed and the two settings restored afterwards.
+The audio player position is the System Setting default_audio_player_position,
+which falls back to DEFAULT_AUDIO_PLAYER_POSITION and to top. NULL on an
+existing account still means bottom.
+
+SHARED-DB: the test users are removed and the three settings restored afterwards.
 """
 
 import contextlib
@@ -37,8 +42,8 @@ app.config["WTF_CSRF_ENABLED"] = False
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PW = "Passw0rd!long-enough"
-_ENV = ("DEFAULT_UI_THEME", "DEFAULT_COLOR_SCHEME")
-_KEYS = ("default_ui_theme", "default_color_scheme")
+_ENV = ("DEFAULT_UI_THEME", "DEFAULT_COLOR_SCHEME", "DEFAULT_AUDIO_PLAYER_POSITION")
+_KEYS = ("default_ui_theme", "default_color_scheme", "default_audio_player_position")
 
 
 @pytest.fixture(autouse=True)
@@ -104,13 +109,24 @@ def _look(**by):
         return (u.ui_theme, u.theme_color_scheme, u.theme_dark_mode)
 
 
-def _user(cleanup, **fields):
+def _player(**by):
+    with app.app_context():
+        u = User.query.filter_by(**by).first()
+        assert u is not None, by
+        return u.audio_player_position
+
+
+def _user(cleanup, null_player=False, **fields):
     s = uuid.uuid4().hex[:8]
     with app.app_context():
         u = User(username=f"nt_{s}", email=f"nt_{s}@local.test", password="x", **fields)
         db.session.add(u)
         db.session.commit()
         cleanup.append(u.email)
+        if null_player:
+            # An account from before the column had a default.
+            User.query.filter_by(id=u.id).update({"audio_player_position": None})
+            db.session.commit()
         return u.id
 
 
@@ -197,6 +213,81 @@ def test_admins_can_save_a_valid_default(cleanup):
         assert ui_themes.new_user_theme() == "focus"
 
 
+# ---------------------------------------------------------------- the audio player position setting
+
+
+def test_the_install_default_player_position_is_top():
+    with app.app_context():
+        assert ui_themes.new_user_audio_player_position() == "top"
+
+
+@pytest.mark.parametrize("value,expected", [("bottom", "bottom"), (" Top ", "top")])
+def test_the_env_variable_sets_the_player_position(value, expected):
+    with env(DEFAULT_AUDIO_PLAYER_POSITION=value), app.app_context():
+        assert ui_themes.new_user_audio_player_position() == expected
+
+
+@pytest.mark.parametrize("value", ["middle", "", "<x>"])
+def test_an_invalid_player_position_falls_back_to_bottom_with_one_warning(value, caplog):
+    with env(DEFAULT_AUDIO_PLAYER_POSITION=value), app.app_context(), \
+            caplog.at_level(logging.WARNING, logger="src.config.ui_themes"):
+        for _ in range(3):
+            assert ui_themes.new_user_audio_player_position() == "bottom"
+    assert caplog.text.count("DEFAULT_AUDIO_PLAYER_POSITION") == 1
+
+
+def test_the_player_system_setting_wins_over_the_env_variable():
+    _setting("default_audio_player_position", "bottom")
+    with env(DEFAULT_AUDIO_PLAYER_POSITION="top"), app.app_context():
+        assert ui_themes.new_user_audio_player_position() == "bottom"
+
+
+def test_the_player_setting_is_env_backed_and_listed_for_admins(cleanup):
+    from src.utils.system_settings import ENV_BACKED_SETTINGS
+    assert ENV_BACKED_SETTINGS["default_audio_player_position"][:3] == \
+        ("DEFAULT_AUDIO_PLAYER_POSITION", "top", "string")
+    admin = _user(cleanup, is_admin=True)
+    rows = {r["key"]: r for r in _client(admin).get("/admin/settings").get_json()}
+    row = rows["default_audio_player_position"]
+    assert row["value"] == "top" and row["source"] == "env"
+
+
+def test_admins_cannot_save_an_invalid_player_position(cleanup):
+    admin = _user(cleanup, is_admin=True)
+    resp = _client(admin).post("/admin/settings", json={"key": "default_audio_player_position",
+                                                        "value": "middle", "setting_type": "string"})
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body["code"] == "invalid_default_audio_player_position"
+    assert "top, bottom" in json.dumps(body)
+
+
+def test_admins_can_save_a_valid_player_position(cleanup):
+    admin = _user(cleanup, is_admin=True)
+    assert _client(admin).post("/admin/settings", json={"key": "default_audio_player_position",
+                                                        "value": "Bottom",
+                                                        "setting_type": "string"}).status_code == 200
+    with app.app_context():
+        assert SystemSetting.get_setting("default_audio_player_position") == "bottom"
+        assert ui_themes.new_user_audio_player_position() == "bottom"
+
+
+def test_the_player_error_and_description_exist_in_every_locale():
+    for name in sorted(os.listdir(os.path.join(ROOT, "static", "locales"))):
+        if not name.endswith(".json"):
+            continue
+        data = json.load(open(os.path.join(ROOT, "static", "locales", name), encoding="utf-8"))
+        assert data["adminDashboard"]["settings"]["defaultAudioPlayerPositionDesc"], name
+        assert "{{positions}}" in data["server"]["apiError"]["invalid_default_audio_player_position"], name
+
+
+def test_the_old_helper_name_applies_every_default():
+    assert ui_themes.apply_new_user_theme is ui_themes.apply_new_user_defaults
+    with app.app_context():
+        u = ui_themes.apply_new_user_theme(User(username="x", email="x@local.test"))
+    assert (u.ui_theme, u.theme_color_scheme, u.audio_player_position) == ("cards", "emerald", "top")
+
+
 # ---------------------------------------------------------------- every way an account is created
 
 
@@ -215,14 +306,16 @@ def test_registration_writes_the_defaults(cleanup):
     cleanup.append(email)
     assert _register(email).status_code == 302
     assert _look(email=email) == ("cards", "emerald", None)
+    assert _player(email=email) == "top"
 
 
 def test_registration_follows_the_env_variables(cleanup):
     email = f"reg_{uuid.uuid4().hex[:8]}@example.com"
     cleanup.append(email)
-    with env(DEFAULT_UI_THEME="workspace", DEFAULT_COLOR_SCHEME="purple"):
+    with env(DEFAULT_UI_THEME="workspace", DEFAULT_COLOR_SCHEME="purple", DEFAULT_AUDIO_PLAYER_POSITION="bottom"):
         assert _register(email).status_code == 302
     assert _look(email=email) == ("workspace", "purple", None)
+    assert _player(email=email) == "bottom"
 
 
 def test_an_admin_created_user_gets_the_defaults(cleanup):
@@ -233,15 +326,18 @@ def test_an_admin_created_user_gets_the_defaults(cleanup):
                                                      "password": PW})
     assert resp.status_code in (200, 201), resp.data
     assert _look(username=name) == ("cards", "emerald", None)
+    assert _player(username=name) == "top"
 
 
 def test_an_admin_created_user_follows_the_system_setting(cleanup):
     _setting("default_color_scheme", "rose")
+    _setting("default_audio_player_position", "bottom")
     admin = _user(cleanup, is_admin=True)
     name = "nt_" + uuid.uuid4().hex[:10]
     cleanup.append(name)
     _client(admin).post("/admin/users", json={"username": name, "email": f"{name}@local.test", "password": PW})
     assert _look(username=name) == ("cards", "rose", None)
+    assert _player(username=name) == "bottom"
 
 
 def _sso_env():
@@ -256,10 +352,11 @@ def test_an_sso_first_sign_in_gets_the_defaults(cleanup):
         sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True,
                                         "preferred_username": "nt_sso"})
     assert _look(sso_subject=sub) == ("cards", "emerald", None)
+    assert _player(sso_subject=sub) == "top"
 
 
 def test_sso_linking_an_existing_account_keeps_its_look(cleanup):
-    uid = _user(cleanup)
+    uid = _user(cleanup, null_player=True)
     with app.app_context():
         email = db.session.get(User, uid).email
     sub = "sub-" + uuid.uuid4().hex
@@ -267,6 +364,7 @@ def test_sso_linking_an_existing_account_keeps_its_look(cleanup):
         sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True})
         sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": True})
     assert _look(id=uid) == (None, None, None)
+    assert _player(id=uid) is None
 
 
 def _admin_env(work, **extra):
@@ -291,15 +389,16 @@ def _admin_env(work, **extra):
 def _db_look(work, username):
     con = sqlite3.connect(f"{work}/t.db")
     try:
-        return con.execute("SELECT ui_theme, theme_color_scheme FROM user WHERE username = ?",
+        return con.execute("SELECT ui_theme, theme_color_scheme, audio_player_position FROM user WHERE username = ?",
                            (username,)).fetchone()
     finally:
         con.close()
 
 
-@pytest.mark.parametrize("extra,expected", [({}, ("cards", "emerald")),
-                                            ({"DEFAULT_UI_THEME": "desk", "DEFAULT_COLOR_SCHEME": "teal"},
-                                             ("desk", "teal"))])
+@pytest.mark.parametrize("extra,expected", [({}, ("cards", "emerald", "top")),
+                                            ({"DEFAULT_UI_THEME": "desk", "DEFAULT_COLOR_SCHEME": "teal",
+                                              "DEFAULT_AUDIO_PLAYER_POSITION": "bottom"},
+                                             ("desk", "teal", "bottom"))])
 def test_the_admin_from_the_environment_gets_the_defaults(extra, expected):
     work = tempfile.mkdtemp(prefix="speakr-newtheme-")
     try:
@@ -323,13 +422,14 @@ def test_the_interactive_admin_script_writes_the_defaults():
         done = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env_vars, input=answers,
                               capture_output=True, text=True, timeout=300)
         assert done.returncode == 0, done.stdout[-800:] + done.stderr[-800:]
-        assert _db_look(work, "localadmin") == ("cards", "emerald")
+        assert _db_look(work, "localadmin") == ("cards", "emerald", "top")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
 def test_every_user_construction_applies_the_defaults():
-    """A new place that creates accounts has to call apply_new_user_theme."""
+    """A new place that creates accounts has to call apply_new_user_defaults
+    (or its earlier name apply_new_user_theme)."""
     missing = []
     for top in ("src", "scripts"):
         for dirpath, _, files in os.walk(os.path.join(ROOT, top)):
@@ -338,7 +438,7 @@ def test_every_user_construction_applies_the_defaults():
                     continue
                 path = os.path.join(dirpath, name)
                 text = open(path, encoding="utf-8").read()
-                if re.search(r"(?<![\w.])User\(", text) and "apply_new_user_theme(" not in text:
+                if re.search(r"(?<![\w.])User\(", text) and not re.search(r"apply_new_user_(defaults|theme)\(", text):
                     missing.append(os.path.relpath(path, ROOT))
     assert missing == []
 
@@ -347,12 +447,31 @@ def test_every_user_construction_applies_the_defaults():
 
 
 def test_an_existing_account_keeps_null_values(cleanup):
-    uid = _user(cleanup)
+    uid = _user(cleanup, null_player=True)
     client = _client(uid)
     for path in ("/", "/account"):
         assert client.get(path).status_code == 200
     assert client.post("/api/user/preferences", json={"language": "en"}).status_code == 200
     assert _look(id=uid) == (None, None, None)
+    assert _player(id=uid) is None
+
+
+def test_an_existing_account_with_no_player_position_shows_it_at_the_bottom(cleanup):
+    uid = _user(cleanup, null_player=True)
+    page = _client(uid).get("/").get_data(as_text=True)
+    assert 'data-audio-player-position="bottom"' in page
+    account = _client(uid).get("/account").get_data(as_text=True)
+    assert re.search(r'name="audio_player_position" value="bottom" checked', account)
+
+
+def test_a_new_account_shows_the_player_at_the_top(cleanup):
+    admin = _user(cleanup, is_admin=True)
+    name = "nt_" + uuid.uuid4().hex[:10]
+    cleanup.append(name)
+    _client(admin).post("/admin/users", json={"username": name, "email": f"{name}@local.test", "password": PW})
+    with app.app_context():
+        uid = User.query.filter_by(username=name).first().id
+    assert 'data-audio-player-position="top"' in _client(uid).get("/").get_data(as_text=True)
 
 
 def test_an_existing_account_keeps_its_saved_values(cleanup):

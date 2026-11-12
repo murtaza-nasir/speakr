@@ -33,6 +33,14 @@ DEFAULT_COLOR_SCHEME = 'blue'
 NEW_USER_THEME = 'cards'
 NEW_USER_COLOR_SCHEME = 'emerald'
 
+# Where the audio player of a recording's page sits for new accounts
+# (User.audio_player_position). Set in System Settings
+# (default_audio_player_position) or in .env (DEFAULT_AUDIO_PLAYER_POSITION).
+# Accounts that already exist keep their saved value; NULL still means bottom.
+AUDIO_PLAYER_POSITIONS = ('top', 'bottom')
+DEFAULT_AUDIO_PLAYER_POSITION = 'bottom'
+NEW_USER_AUDIO_PLAYER_POSITION = 'top'
+
 # The named places in the markup a theme may replace. Each has a default
 # partial in templates/themes/default/<slot>.html; a theme folder
 # templates/themes/<id>/ holds only the slots it overrides.
@@ -175,10 +183,30 @@ def new_user_color_scheme():
     return DEFAULT_COLOR_SCHEME
 
 
-def apply_new_user_theme(user):
-    """Give a user who is being created the look for new accounts. Called
-    wherever an account is created (registration, admin, SSO, the admin
-    scripts); never for an account that already exists."""
+def is_valid_audio_player_position(value):
+    return value in AUDIO_PLAYER_POSITIONS
+
+
+def new_user_audio_player_position():
+    """The audio player position for new accounts: 'top' or 'bottom'."""
+    value = _setting('default_audio_player_position', 'DEFAULT_AUDIO_PLAYER_POSITION',
+                     NEW_USER_AUDIO_PLAYER_POSITION)
+    if value in AUDIO_PLAYER_POSITIONS:
+        return value
+    _warn_once('DEFAULT_AUDIO_PLAYER_POSITION', value, DEFAULT_AUDIO_PLAYER_POSITION)
+    return DEFAULT_AUDIO_PLAYER_POSITION
+
+
+def apply_new_user_defaults(user):
+    """Give a user who is being created the defaults for new accounts: the UI
+    theme, the color scheme and the audio player position. Called wherever an
+    account is created (registration, admin, SSO, the admin scripts); never for
+    an account that already exists."""
     user.ui_theme = new_user_theme()
     user.theme_color_scheme = new_user_color_scheme()
+    user.audio_player_position = new_user_audio_player_position()
     return user
+
+
+# The earlier name; it applies all the defaults for new accounts.
+apply_new_user_theme = apply_new_user_defaults

@@ -520,7 +520,8 @@
       "maxAudioOnlyVideoSizeDesc": "Taille maximale (en Mo) des envois vidéo en mode audio uniquement. Seul l’audio extrait est conservé, donc l’envoi lui-même peut dépasser la limite habituelle.",
       "disableAutoTranslationDesc": "Lorsque cette option est activée, les enregistrements sont seulement transcrits et les utilisateurs doivent lancer la traduction manuellement. Lorsqu'elle est désactivée, chaque utilisateur peut activer la traduction automatique de ses nouveaux enregistrements après la transcription.",
       "defaultUiThemeDesc": "Thème d'interface des nouveaux comptes, et des pages de connexion dans un navigateur sans thème enregistré. Valeurs possibles : default, classic, workspace, focus, desk, cards. Les comptes existants conservent leur thème.",
-      "defaultColorSchemeDesc": "Jeu de couleurs des nouveaux comptes, et des pages de connexion dans un navigateur sans jeu de couleurs enregistré. Valeurs possibles : blue, emerald, purple, rose, amber, teal. Les comptes existants conservent leur jeu de couleurs."
+      "defaultColorSchemeDesc": "Jeu de couleurs des nouveaux comptes, et des pages de connexion dans un navigateur sans jeu de couleurs enregistré. Valeurs possibles : blue, emerald, purple, rose, amber, teal. Les comptes existants conservent leur jeu de couleurs.",
+      "defaultAudioPlayerPositionDesc": "Position du lecteur audio sur la page d'un enregistrement pour les nouveaux comptes. Valeurs possibles : top, bottom. Les comptes existants conservent leur position."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",
@@ -1194,7 +1195,7 @@
     "audioPlayerPositionLabel": "Position du lecteur",
     "audioPlayerPositionHelp": "Emplacement du lecteur sur la page d'un enregistrement",
     "playerPositionBottom": "En bas",
-    "playerPositionBottomHelp": "Sous la transcription et le résumé. Par défaut.",
+    "playerPositionBottomHelp": "Sous la transcription et le résumé.",
     "playerPositionTop": "En haut",
     "playerPositionTopHelp": "Sous le titre, au-dessus de la transcription et du résumé.",
     "recordingsListSection": "Liste des enregistrements",
@@ -3567,7 +3568,8 @@
       "summary_prompt_save_denied": "Vous ne pouvez pas enregistrer le prompt à cet endroit.",
       "invalid_filter_date": "Impossible de lire le filtre de date",
       "invalid_default_ui_theme": "Thème d'interface par défaut invalide. Valeurs possibles : {{themes}}",
-      "invalid_default_color_scheme": "Jeu de couleurs par défaut invalide. Valeurs possibles : {{schemes}}"
+      "invalid_default_color_scheme": "Jeu de couleurs par défaut invalide. Valeurs possibles : {{schemes}}",
+      "invalid_default_audio_player_position": "Position par défaut du lecteur audio invalide. Valeurs possibles : {{positions}}"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

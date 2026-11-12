@@ -139,6 +139,14 @@ Existing accounts keep their theme and color scheme. Users who never picked a th
 
 On the sign-in, registration and password reset pages, and on recordings shared with a public link, the same defaults are shown in a browser with no theme or color scheme saved. In a browser where a theme or color scheme was picked before, that choice stays. After sign-in, the account's own theme and color scheme apply, and the defaults for new accounts are not used.
 
+## Audio player position for new accounts
+
+With the **default_audio_player_position** setting, you choose where the audio player sits on a recording's page for every account created afterwards. The value is `top` (under the title) or `bottom` (under the transcript and summary). Without a saved value, new accounts get `top`.
+
+A value outside the list is refused on this page. In `.env`, a value outside the list is replaced by `bottom`, and a warning is written to the log.
+
+Existing accounts keep their position. Users who never picked a position keep the player at the bottom. Users change it under **Account → Preferences → Player position**.
+
 ## What's New After Updates
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
@@ -168,6 +176,7 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | Setting | Variable in `.env` |
 |---|---|
 | `allow_registration` | `ALLOW_REGISTRATION` |
+| `default_audio_player_position` | `DEFAULT_AUDIO_PLAYER_POSITION` |
 | `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |
 | `default_ui_theme` | `DEFAULT_UI_THEME` |
 | `deletion_mode` | `DELETION_MODE` |
@@ -202,6 +211,8 @@ Beyond the UI-configurable settings above, several environment variables in your
 **DEFAULT_UI_THEME**: Interface theme for new accounts and for signed-out pages in a browser with no saved theme. One of `default`, `classic`, `workspace`, `focus`, `desk` or `cards`. Default: `cards`. See [Default look for new accounts](#default-look-for-new-accounts).
 
 **DEFAULT_COLOR_SCHEME**: Color scheme for new accounts and for signed-out pages in a browser with no saved color scheme. One of `blue`, `emerald` (Forest Emerald), `purple`, `rose`, `amber` or `teal`. Default: `emerald`.
+
+**DEFAULT_AUDIO_PLAYER_POSITION**: Audio player position on a recording's page for new accounts. One of `top` or `bottom`. Default: `top`. See [Audio player position for new accounts](#audio-player-position-for-new-accounts).
 
 ### Collaboration & Sharing
 
