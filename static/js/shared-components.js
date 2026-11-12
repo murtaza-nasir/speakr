@@ -89,8 +89,9 @@ function useColorScheme() {
                 document.documentElement.classList.add(themeClass);
             }
             
-            // Don't set CSS variables - let the theme classes handle all colors
-            localStorage.setItem('colorScheme', schemeId);
+            // Don't set CSS variables - let the theme classes handle all colors.
+            // Nothing is stored here: only a scheme the user picks is
+            // (selectColorScheme / resetColorScheme).
             currentColorScheme.value = schemeId;
         }
     };
@@ -115,8 +116,13 @@ function useColorScheme() {
         showColorSchemeModal.value = false;
     };
     
+    const storeColorScheme = (schemeId) => {
+        try { localStorage.setItem('colorScheme', schemeId); } catch (e) { /* storage blocked */ }
+    };
+
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
+        storeColorScheme(schemeId);
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         const scheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === schemeId);
         if (window.showToast && scheme) {
@@ -126,6 +132,7 @@ function useColorScheme() {
     
     const resetColorScheme = () => {
         applyColorScheme('blue');
+        storeColorScheme('blue');
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         if (window.showToast) {
             window.showToast(sharedT('messages.colorSchemeReset', 'Color scheme reset to default'), 'fa-undo');

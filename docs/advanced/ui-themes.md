@@ -19,13 +19,13 @@ A UI theme is a complete look for the interface: neutral surfaces, shapes, type 
 | Previews | `static/img/themes/<id>.webp` | Card images |
 | Guard test | `tests/test_ui_theme_slots.py` | Check that overrides keep every behaviour of the default markup |
 
-The registered ids are `default` (the standard look), `classic`, `workspace`, `focus`, `desk` and `cards`. Only `default` is available. A theme that is registered but not available has reserved locale keys and a reserved folder name, and it is neither offered in the picker nor accepted by the endpoint.
+The registered ids are `default` (the standard look), `classic`, `workspace`, `focus`, `desk` and `cards`. All six are available. A theme that is registered but not available has reserved locale keys and a reserved folder name, and it is neither offered in the picker nor accepted by the endpoint.
 
 The picker appears only while two or more themes are available, so with the default alone no page shows it.
 
 ## How a theme is applied
 
-1. In `includes/theme_account.html` (first in `<head>` on every page), `window.speakrThemeDefaults` is set to the color scheme and theme used when `localStorage` has none: the defaults for new accounts on a signed-out page, and `blue` and `default` for a signed-in account. For a signed-in account, the account's color scheme and theme are then written into `localStorage.colorScheme` and `localStorage.uiTheme`, with `blue` and `default` for an account with no saved value. The look of a signed-out page therefore never stays after sign-in. Light or dark mode is copied only once the account has a saved value.
+1. In `includes/theme_account.html` (first in `<head>` on every page), `window.speakrThemeDefaults` is set to the color scheme and theme used when `localStorage` has none: the defaults for new accounts on a signed-out page, and `blue` and `default` for a signed-in account. For a signed-in account, a saved color scheme, theme or light or dark mode is then written into `localStorage`. Without a saved value, the browser keeps its own choice, for example one made before themes were saved with the account. A browser with no choice stored shows `blue` and `default`, not the defaults for new accounts. Signed-out pages write nothing to `localStorage`, and applying a stored or default color scheme stores nothing either: only a theme or color scheme that someone picks is stored. A value in `localStorage` is therefore always a real choice, and the look of the sign-in page never stays after sign-in.
 2. `includes/ui_theme.html` is included right after the compiled `tailwind.css` link on every page with a `<head>` (the main app, Inquire, account, admin, group management, shared recordings and the sign-in pages). In its script, `localStorage.uiTheme` is read, an id that is not in the list of available themes is replaced by `default`, `data-ui-theme` is set on `<html>`, and for a theme with a stylesheet `<link id="speakr-ui-theme-css" rel="stylesheet" blocking="render">` is appended to `<head>`, after every other stylesheet. All of this happens before the body is parsed, so the first paint already has the theme.
 3. In each slot, the active theme's partial is rendered through a `v-if` chain on the reactive `uiTheme`.
 
@@ -33,7 +33,7 @@ Switching is done with `window.speakrApplyUiTheme(id)`. With that call, the attr
 
 Signed-out pages (sign-in, registration, password reset, public share pages) have no account value. On them, the theme and color scheme saved in that browser are shown, or, with nothing saved, the defaults for new accounts. Nothing is written to `localStorage` on a signed-out page until the visitor changes the theme.
 
-`apply_new_user_theme(user)` is called wherever an account is created: registration (`src/api/auth.py`), `POST /admin/users` (`src/api/admin.py`), the first SSO sign-in (`src/auth/sso.py`), and `scripts/create_admin.py` and `scripts/docker_create_admin.py`. In `tests/test_new_user_theme.py`, every file in `src/` and `scripts/` that constructs a `User` is checked for the call. Accounts are never updated afterwards, so a NULL `ui_theme` or `theme_color_scheme` still means `default` or `blue`.
+`apply_new_user_theme(user)` is called wherever an account is created: registration (`src/api/auth.py`), `POST /admin/users` (`src/api/admin.py`), the first SSO sign-in (`src/auth/sso.py`), and `scripts/create_admin.py` and `scripts/docker_create_admin.py`. In `tests/test_new_user_theme.py`, every file in `src/` and `scripts/` that constructs a `User` is checked for the call. Accounts are never updated afterwards, so a NULL `ui_theme` or `theme_color_scheme` still means the browser's own choice, or `default` and `blue` without one.
 
 ## Colors: the contract between themes and color schemes
 

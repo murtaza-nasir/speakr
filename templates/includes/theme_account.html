@@ -6,12 +6,12 @@
     signed-in account, blue and the default theme. Readers use it as
     localStorage.getItem(key) || speakrThemeDefaults[key]; nothing writes it to
     localStorage on a signed-out page, so a visitor's browser keeps no copy.
-    For a signed-in account, the account's color scheme and UI theme replace
-    the browser's copy in localStorage on every page, and an account with no
-    saved value gets blue and the default theme, so the look of the sign-in
-    page does not stay after sign-in. Light or dark mode is copied only once
-    it is saved; until then each browser keeps its own. Changes are saved with
-    window.speakrSaveTheme. -#}
+    For a signed-in account, a saved value replaces the browser's copy in
+    localStorage on every page. Without a saved value, the browser keeps its
+    own (a choice made there before D#419), and a browser with none shows blue
+    and the default theme, never the look for new accounts. Because signed-out
+    pages write nothing, a stored value is always a choice someone made.
+    Changes are saved with window.speakrSaveTheme. -#}
 <script>window.speakrThemeDefaults = {{ theme_defaults|tojson }};</script>
 {% if account_theme %}
 <script>
@@ -19,8 +19,8 @@
     var saved = {{ account_theme|tojson }};
     try {
       if (saved.dark !== null) localStorage.setItem('darkMode', saved.dark ? 'true' : 'false');
-      localStorage.setItem('colorScheme', saved.scheme || window.speakrThemeDefaults.colorScheme);
-      localStorage.setItem('uiTheme', saved.ui_theme || window.speakrThemeDefaults.uiTheme);
+      if (saved.scheme) localStorage.setItem('colorScheme', saved.scheme);
+      if (saved.ui_theme) localStorage.setItem('uiTheme', saved.ui_theme);
     } catch (e) {}
     var pending = {}, timer = null;
     window.speakrSaveTheme = function (key) {

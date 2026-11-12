@@ -887,9 +887,9 @@ def inject_account_theme():
     """The theme saved with the signed-in user's account (D#419), for
     includes/theme_account.html. None for a visitor who is not signed in.
 
-    theme_defaults is the color scheme and UI theme a page shows when the
-    browser has none saved: for a signed-in account, the meaning of NULL
-    (blue, the default theme); for a visitor, the look for new accounts
+    theme_defaults is the color scheme and UI theme a page shows when neither
+    the account nor the browser has one saved: for a signed-in account, the
+    meaning of NULL (blue, the default theme); for a visitor, the look for new accounts
     (src/config/ui_themes.py new_user_theme), so a fresh install's sign-in
     page looks like a new account."""
     from flask import has_request_context

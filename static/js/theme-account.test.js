@@ -88,21 +88,22 @@ describe('signed-out pages', () => {
 });
 
 describe('signed-in pages', () => {
-    it('apply the default theme and blue for an account with no saved values', () => {
+    it('apply the default theme and blue for an account and a browser with nothing saved', () => {
         // The browser showed the sign-in page with the new-account look, which
         // was never saved; nothing of it remains after sign-in.
         const b = browser();
         run(b, [...accountScripts(VISITOR, null), ...uiThemeScripts(THEMES)]);
         run(b, [...accountScripts(SIGNED_IN, { dark: null, scheme: null, ui_theme: null }), ...uiThemeScripts(THEMES)]);
         expect(b.attrs['data-ui-theme']).toBe('default');
-        expect(b.values).toEqual({ colorScheme: 'blue', uiTheme: 'default' });
+        expect(b.win.speakrThemeDefaults.colorScheme).toBe('blue');
+        expect(b.values).toEqual({});
     });
 
-    it('replace another account\'s look left in the browser', () => {
-        const b = browser({ uiTheme: 'cards', colorScheme: 'emerald', darkMode: 'true' });
+    it('keep the choice stored in the browser for an account with no saved values', () => {
+        const b = browser({ uiTheme: 'focus', colorScheme: 'rose', darkMode: 'true' });
         run(b, [...accountScripts(SIGNED_IN, { dark: null, scheme: null, ui_theme: null }), ...uiThemeScripts(THEMES)]);
-        expect(b.attrs['data-ui-theme']).toBe('default');
-        expect(b.values).toEqual({ colorScheme: 'blue', uiTheme: 'default', darkMode: 'true' });
+        expect(b.attrs['data-ui-theme']).toBe('focus');
+        expect(b.values).toEqual({ uiTheme: 'focus', colorScheme: 'rose', darkMode: 'true' });
     });
 
     it('apply the account\'s saved values', () => {

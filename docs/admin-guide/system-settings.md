@@ -135,9 +135,9 @@ With the **default_ui_theme** and **default_color_scheme** settings, you choose 
 
 `default` is the standard theme, and `emerald` is the color scheme shown as Forest Emerald. A value outside the list is refused on this page. In `.env`, a value outside the list is replaced by `default` or `blue`, and a warning is written to the log.
 
-Existing accounts keep their theme and color scheme. Users who never picked a theme keep the standard theme with the blue color scheme. Users change both in Account settings.
+Existing accounts keep their theme and color scheme. Users who never picked a theme keep the standard theme with the blue color scheme, or the look they picked in a browser before themes were saved with the account. Users change both in Account settings.
 
-On the sign-in, registration and password reset pages, and on recordings shared with a public link, the same defaults are shown in a browser with no theme or color scheme saved. In a browser where a theme or color scheme was picked before, that choice stays. After sign-in, the account's own theme and color scheme apply.
+On the sign-in, registration and password reset pages, and on recordings shared with a public link, the same defaults are shown in a browser with no theme or color scheme saved. In a browser where a theme or color scheme was picked before, that choice stays. After sign-in, the account's own theme and color scheme apply, and the defaults for new accounts are not used.
 
 ## What's New After Updates
 

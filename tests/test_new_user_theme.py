@@ -367,11 +367,12 @@ def test_null_still_resolves_to_the_default_theme_after_sign_in(cleanup):
     # The account's values, and what NULL means for them: the default theme and blue.
     assert re.search(r"var saved = (\{.*?\});", page).group(1) == \
         json.dumps({"dark": None, "scheme": None, "ui_theme": None})
+    # With nothing in the browser either, the page shows blue and the default
+    # theme, not the look for new accounts.
     assert _defaults(page) == {"colorScheme": "blue", "uiTheme": "default"}
-    # Written to localStorage even without a saved value, so the look of the
-    # sign-in page does not stay.
-    assert "localStorage.setItem('colorScheme', saved.scheme || window.speakrThemeDefaults.colorScheme)" in page
-    assert "localStorage.setItem('uiTheme', saved.ui_theme || window.speakrThemeDefaults.uiTheme)" in page
+    # Only a saved value is written; without one the browser keeps its own choice.
+    assert "if (saved.scheme) localStorage.setItem('colorScheme', saved.scheme);" in page
+    assert "if (saved.ui_theme) localStorage.setItem('uiTheme', saved.ui_theme);" in page
     head = page.split("</head>", 1)[0]
     assert head.index("window.speakrThemeDefaults =") < head.index("var saved =") < head.index("var themes = ")
 
