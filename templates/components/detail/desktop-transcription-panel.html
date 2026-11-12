@@ -131,7 +131,11 @@
         <div v-if="viewingTranslation && translationJobActive" class="text-center py-8">
             <div class="empty">
                 <div class="spinner spinner--lg"></div>
-                <div class="empty__title" v-text="t('translation.inProgress')" data-i18n="translation.inProgress"></div>
+                <div class="empty__title" v-text="translationProgressTitle"></div>
+                <div v-if="translationProgress !== null" class="mx-auto mt-3 w-48 max-w-full h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
+                     role="progressbar" :aria-valuenow="translationProgress" aria-valuemin="0" aria-valuemax="100">
+                    <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-300" :style="{width: translationProgress + '%'}"></div>
+                </div>
             </div>
         </div>
 

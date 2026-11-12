@@ -2295,7 +2295,10 @@
     "waiting": "Wartet",
     "waitingForProcessing": "Hochgeladen, wartet auf Verarbeitung…",
     "waitingToUpload": "Wartet auf Upload…",
-    "region": "Einträge der Verarbeitungswarteschlange"
+    "region": "Einträge der Verarbeitungswarteschlange",
+    "translating": "Übersetzen",
+    "translatingShort": "werden übersetzt",
+    "translatingMessage": "Transkript wird übersetzt"
   },
   "promptVariables": {
     "title": "Prompt-Variablen",
@@ -2687,7 +2690,8 @@
     "stuck": "Blockierte Verarbeitung zurücksetzen",
     "summarizing": "Zusammenfassung",
     "transcribing": "Transkribierung",
-    "uploading": "Upload"
+    "uploading": "Upload",
+    "queuedTranslation": "In Warteschlange (Übersetzung)"
   },
   "summary": {
     "actionItems": "Aktionspunkte",
@@ -3600,7 +3604,9 @@
       "userAlreadyHasNamingTemplates": "Der Benutzer hat bereits Benennungsvorlagen",
       "userAlreadyHasTemplates": "Der Benutzer hat bereits Vorlagen",
       "voiceProfileCleared": "Stimmprofil für {{name}} gelöscht",
-      "translationQueued": "Übersetzung in Warteschlange"
+      "translationQueued": "Übersetzung in Warteschlange",
+      "translationAlreadyRunning": "Diese Aufnahme wird bereits übersetzt.",
+      "translationSameLanguage": "Das Transkript ist bereits auf {{target}}."
     },
     "form": {
       "required": "Dieses Feld ist erforderlich.",
@@ -3801,7 +3807,9 @@
     "targetLanguage": "Zielsprache",
     "preferences": "Übersetzungseinstellungen",
     "toggle": "Übersetzung umschalten",
-    "incognitoUnavailable": "Die Übersetzung ist für Inkognito-Aufnahmen nicht verfügbar."
+    "incognitoUnavailable": "Die Übersetzung ist für Inkognito-Aufnahmen nicht verfügbar.",
+    "progress": "Wird übersetzt · {{done}} von {{total}}",
+    "alreadyInLanguage": "Das Transkript ist bereits auf {{language}}."
   },
   "workspace": {
     "library": "Bibliothek",

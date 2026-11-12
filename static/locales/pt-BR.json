@@ -2295,7 +2295,10 @@
     "waiting": "Aguardando",
     "waitingForProcessing": "Enviado, aguardando processamento…",
     "waitingToUpload": "Aguardando envio…",
-    "region": "Itens da fila de processamento"
+    "region": "Itens da fila de processamento",
+    "translating": "Traduzindo",
+    "translatingShort": "traduzindo",
+    "translatingMessage": "Traduzindo a transcrição"
   },
   "promptVariables": {
     "hintReprocess": "Valores para os espaços reservados do prompt, salvos com a gravação. Os vazios ficam em branco. Até 8.000 caracteres cada, 32.000 no total.",
@@ -2687,7 +2690,8 @@
     "stuck": "Redefinir processamento travado",
     "summarizing": "Resumindo",
     "transcribing": "Transcrevendo",
-    "uploading": "Enviando"
+    "uploading": "Enviando",
+    "queuedTranslation": "Na fila (tradução)"
   },
   "summary": {
     "actionItems": "Itens de ação",
@@ -3600,7 +3604,9 @@
       "userAlreadyHasNamingTemplates": "O usuário já tem modelos de nomenclatura",
       "userAlreadyHasTemplates": "O usuário já tem modelos",
       "voiceProfileCleared": "Perfil de voz de {{name}} apagado",
-      "translationQueued": "Tradução na fila"
+      "translationQueued": "Tradução na fila",
+      "translationAlreadyRunning": "Esta gravação já está sendo traduzida.",
+      "translationSameLanguage": "A transcrição já está em {{target}}."
     },
     "form": {
       "required": "Este campo é obrigatório.",
@@ -3801,7 +3807,9 @@
     "targetLanguage": "Idioma de destino",
     "preferences": "Preferências de tradução",
     "toggle": "Alternar tradução",
-    "incognitoUnavailable": "A tradução não está disponível para gravações incógnitas."
+    "incognitoUnavailable": "A tradução não está disponível para gravações incógnitas.",
+    "progress": "Traduzindo · {{done}} de {{total}}",
+    "alreadyInLanguage": "A transcrição já está em {{language}}."
   },
   "workspace": {
     "library": "Biblioteca",

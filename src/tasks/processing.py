@@ -2891,7 +2891,8 @@ def generate_incognito_summary(transcription_text, user=None):
     return None
 
 
-def translate_transcription_task(app_context, recording_id, user_id=None, target_language=None, params=None, **kwargs):
+def translate_transcription_task(app_context, recording_id, user_id=None, target_language=None, params=None,
+                                 progress=None, **kwargs):
     """Translate a recording's transcription (job wrapper entry point)."""
     from src.services.transcription_translation import translate_transcription
 
@@ -2922,7 +2923,7 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
         if not lang:
             lang = 'English'
 
-        translate_transcription(recording, user_id=uid, target_language=lang)
+        translate_transcription(recording, user_id=uid, target_language=lang, progress=progress)
         return recording.id
 
 
