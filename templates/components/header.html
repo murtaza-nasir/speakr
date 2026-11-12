@@ -122,7 +122,7 @@
                         class="btn btn--icon"
                         :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
                     <i class="fas fa-folder"
-                       :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+                       :style="{ color: selectedRecording.folder_id ? getFolderMarkColor(selectedRecording.folder_id) : '' }"></i>
                 </button>
                 <div v-if="showHeaderFolderMenu"
                      data-header-folder-dropdown
@@ -137,9 +137,8 @@
                     <button v-for="folder in availableFolders" :key="folder.id"
                             @click="assignFolderToRecording(selectedRecording.id, folder.id); showHeaderFolderMenu = false"
                             class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
-                            :class="selectedRecording.folder_id == folder.id ? 'font-medium' : ''"
-                            :style="folderIndentStyle(folder)">
-                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
+                            :class="selectedRecording.folder_id == folder.id ? 'font-medium' : ''">
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="[{ backgroundColor: getFolderMarkColor(folder.id) }, folderIndentStyle(folder)]"></span>
                         <span class="flex-1 truncate">${ folder.name }</span>
                         <i v-if="selectedRecording.folder_id == folder.id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>
                     </button>

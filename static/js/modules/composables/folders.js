@@ -3,6 +3,8 @@
  * Handles folder operations for recordings
  */
 
+import { folderMarkColor } from '../utils/colors.js';
+
 const { computed, ref } = Vue;
 
 // Guarded: the module can run before i18n.js has loaded.
@@ -35,6 +37,10 @@ export function useFolders({
         return folder?.color || '#10B981';
     };
 
+    // The folder colour for a dot, icon or name drawn on the page: a white
+    // folder stays visible on a light page, a black one on a dark page.
+    const getFolderMarkColor = (folderId) => folderMarkColor(getFolderColor(folderId));
+
     const getFolderName = (folderId) => {
         const folder = getFolderById(folderId);
         return folder?.name || t('form.folder');
@@ -45,8 +51,10 @@ export function useFolders({
     const folderOptionLabel = (folder) => (window.SpeakrFolderTree
         ? window.SpeakrFolderTree.pathLabel(folder) : (folder?.name || ''));
 
-    // Left indent for a folder row in a list; none at the top level, so a
-    // list without subfolders keeps its exact layout.
+    // Left indent for a subfolder in a list; none at the top level, so a
+    // list without subfolders keeps its exact layout. Put it on the row's
+    // leading icon or dot, not on the row: a full-width row with a margin
+    // overflows, which pushes its count or check mark out of line.
     const folderIndentStyle = (folder) => (folder?.depth ? { marginLeft: (folder.depth * 16) + 'px' } : null);
 
     // The "Include subfolders" option only shows when the folder filter is
@@ -185,6 +193,8 @@ export function useFolders({
         getRecordingFolder,
         getFolderById,
         getFolderColor,
+        getFolderMarkColor,
+        folderMarkColor,
         getFolderName,
         getAvailableFoldersForRecording,
         folderOptionLabel,

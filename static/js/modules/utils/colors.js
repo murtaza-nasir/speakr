@@ -50,3 +50,24 @@ export function getContrastTextColor(bgColor) {
         return 'white'; // Fallback to white
     }
 }
+
+/**
+ * A folder colour for a mark drawn straight on the page (a dot, a folder
+ * icon, a coloured name). A white or near-white colour vanishes on a light
+ * page and a near-black one on a dark page, so such a colour comes back
+ * wrapped in a CSS variable that primitives.css sets only in the mode where
+ * it would vanish: there the mark is a visible grey, and in the other mode it
+ * keeps its own colour. Any other colour comes back unchanged.
+ * @param {string} color - Folder colour, "#RRGGBB" or "#RGB"
+ * @returns {string} A CSS colour value
+ */
+export function folderMarkColor(color) {
+    if (!color || typeof color !== 'string' || !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.trim())) {
+        return color;
+    }
+    const value = color.trim();
+    const luminance = calculateLuminance(value);
+    if (luminance > 0.8) return `var(--folder-mark-pale, ${value})`;
+    if (luminance < 0.02) return `var(--folder-mark-dark, ${value})`;
+    return value;
+}

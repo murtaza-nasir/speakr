@@ -2153,3 +2153,9 @@ select option:hover {
     background-color: var(--bg-accent);
     color: var(--text-accent);
 }
+
+/* Folder marks (folderMarkColor in static/js/modules/utils/colors.js): a
+   white folder is drawn grey on a light page and a black one grey on a dark
+   page. Where a variable is unset, the folder's own colour is used. */
+:root { --folder-mark-pale: #aab0ba; }
+html.dark { --folder-mark-pale: initial; --folder-mark-dark: #8a909a; }

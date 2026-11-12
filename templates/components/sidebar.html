@@ -22,7 +22,7 @@
                         </option>
                     </select>
                     <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
-                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
+                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderMarkColor(filterFolder) : 'var(--text-muted)' }"></i>
                 </div>
                 <h2 v-else class="text-lg font-semibold flex-1" v-text="t('nav.recording')"></h2>
                 <div class="flex gap-2 flex-shrink-0">
@@ -716,8 +716,8 @@
                     :key="folder.id"
                     @click="bulkAssignFolder(folder.id)"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--bg-tertiary)] transition-colors mb-1"
-                    :style="[{ borderLeft: '3px solid ' + (folder.color || '#10B981') }, folderIndentStyle(folder)]">
-                <i class="fas fa-folder" :style="{ color: folder.color || '#10B981' }"></i>
+                    :style="{ borderLeft: '3px solid ' + folderMarkColor(folder.color || '#10B981') }">
+                <i class="fas fa-folder" :style="[{ color: folderMarkColor(folder.color || '#10B981') }, folderIndentStyle(folder)]"></i>
                 <div class="flex-1 min-w-0">
                     <span class="text-sm text-[var(--text-primary)] block truncate">${ folder.name }</span>
                     <span v-if="folder.group_name" class="text-xs text-[var(--text-muted)]">

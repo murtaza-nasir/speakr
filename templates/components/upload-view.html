@@ -527,7 +527,7 @@
                         <!-- Folder chip -->
                         <span v-if="foldersEnabled && selectedFolderId && getFolderById(selectedFolderId)"
                               class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
-                              :style="{ background: getFolderColor(selectedFolderId) + '22', color: getFolderColor(selectedFolderId) }">
+                              :style="{ background: getFolderColor(selectedFolderId) + '22', color: getFolderMarkColor(selectedFolderId) }">
                             <i class="fas fa-folder"></i>
                             <span class="truncate max-w-[120px]" v-text="getFolderById(selectedFolderId).name"></span>
                             <button @click.stop.prevent="selectedFolderId = null"
