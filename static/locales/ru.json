@@ -975,7 +975,9 @@
     "playFromHere": "Воспроизвести отсюда",
     "responseFailed": "Не удалось получить ответ",
     "connectionEnded": "Соединение прервалось до завершения ответа: {{error}}",
-    "errorWithMessage": "Ошибка: {{error}}"
+    "errorWithMessage": "Ошибка: {{error}}",
+    "sources": "Источники",
+    "quoteNotFound": "Цитата не найдена в транскрипции"
   },
   "uiTheme": {
     "title": "Оформление интерфейса",
@@ -3606,6 +3608,61 @@
       "passwordsMustMatch": "Пароли должны совпадать.",
       "usernameTaken": "Это имя пользователя уже занято.",
       "emailTaken": "Этот адрес электронной почты уже зарегистрирован."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Поиск: «{{query}}»",
+        "listing": "Просмотр списка записей",
+        "readingTranscript": "Чтение транскрипции «{{title}}»",
+        "readingTranscriptFrom": "Чтение транскрипции «{{title}}» с сегмента {{offset}}",
+        "readingSummary": "Чтение резюме «{{title}}»",
+        "readingNotes": "Чтение ваших заметок к «{{title}}»",
+        "checking": "Проверка сведений о записи «{{title}}»",
+        "readingATranscript": "Чтение транскрипции",
+        "readingASummary": "Чтение резюме",
+        "readingSomeNotes": "Чтение ваших заметок к записи",
+        "checkingARecording": "Проверка сведений о записи",
+        "running": "Запуск {{tool}}",
+        "understanding": "Чтение вопроса",
+        "refining": "Уточнение поиска",
+        "searchingLibrary": "Поиск по вашим записям",
+        "narrowing": "Сужение поиска до упомянутых говорящих",
+        "widening": "Расширение поиска",
+        "gathering": "Чтение лучших совпадений",
+        "readingFull": "Чтение полной транскрипции",
+        "writing": "Составление ответа",
+        "compacting": "Краткое изложение предыдущей беседы"
+      },
+      "result": {
+        "failed": "Не удалось выполнить этот шаг",
+        "noMatches": "Совпадений нет",
+        "matchSummary": "{{matches}} · {{recordings}}",
+        "matchOne": "1 совпадение",
+        "matches": "совпадений: {{count}}",
+        "recordingOne": "1 запись",
+        "recordings": "записей: {{count}}",
+        "keyword": "поиск по ключевым словам",
+        "withKeyword": "с поиском по ключевым словам",
+        "listed": "записей: {{returned}} из {{total}}",
+        "segments": "сегментов: {{returned}} из {{total}}"
+      },
+      "count": {
+        "stepOne": "1 шаг",
+        "steps": "шагов: {{count}}",
+        "searchOne": "1 поиск",
+        "searches": "поисков: {{count}}",
+        "listingOne": "1 просмотр списка",
+        "listings": "просмотров списка: {{count}}",
+        "transcriptReadOne": "1 чтение транскрипции",
+        "transcriptReads": "чтений транскрипций: {{count}}",
+        "summaryReadOne": "1 чтение резюме",
+        "summaryReads": "чтений резюме: {{count}}",
+        "notesReadOne": "1 чтение заметок",
+        "notesReads": "чтений заметок: {{count}}",
+        "detailsCheckOne": "1 проверка сведений",
+        "detailsChecks": "проверок сведений: {{count}}",
+        "other": "{{tool}}: {{count}}"
+      }
     }
   },
   "sharePage": {

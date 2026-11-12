@@ -1,12 +1,17 @@
-"""The prompt for chatting with one recording: one builder for the web app
-and API v1 (#412 audit C1, mailr spec G9).
+"""The prompt for chatting with one recording: one builder for the web
+panel (POST /chat), incognito chat and API v1 (#412 audit C1, mailr spec G9,
+Ambrose phase 2a).
 
 The notes in the prompt are the ones the chatting user can see: the owner's
 for the owner, a recipient's own personal notes otherwise.
 
 with_sources: the transcript is sent with segment markers ([S12 12:34 Dana])
 and the model is asked to cite [S12 "exact words"]; parse_sources turns those
-into numbered sources and checks each quote against its segment.
+into numbered sources and checks each quote against its segment. The web
+panel streams, so there assistant_events.SegmentCitations does the same work
+as the text arrives.
+
+The prompt names the assistant with the user's chosen name (decision 3).
 """
 
 import re
@@ -40,15 +45,23 @@ class IncognitoTranscript:
     def get_user_notes(self, user):
         return self._notes
 
+    def segments(self):
+        """The transcript's segments; no saved speakers to resolve."""
+        from src.services.transcript_segments import segments_of
+        return segments_of(self.transcription)
+
 
 def build_chat_messages(recording, user, message, history=None, with_sources=False):
     """(messages, segments). segments is the canonical list when with_sources
     is on and the transcript has segments, else None."""
     from src.models import SystemSetting
+    from src.utils.assistant_name import assistant_name_of
     from src.services.transcript_segments import canonical_segments
     from src.tasks.processing import _resolve_timestamp_template_format, format_transcription_for_llm
 
-    segments = canonical_segments(recording) if with_sources else None
+    segments = None
+    if with_sources:
+        segments = recording.segments() if isinstance(recording, IncognitoTranscript) else canonical_segments(recording)
     use_markers = bool(segments)
     include_timestamps = bool(getattr(user, 'chat_include_timestamps', False)) and not use_markers
     if use_markers:
@@ -65,6 +78,7 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
         transcript = transcript[:limit]
 
     language = f"Please provide all your responses in {user.output_language}." if user.output_language else ""
+    assistant = assistant_name_of(user)
     name = user.name or "User"
     title = user.job_title or "a professional"
     company = user.company or "their organization"
@@ -86,7 +100,7 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
             "transcript.\n")
 
     notes = recording.get_user_notes(user)
-    system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {name}, who is a(n) {title} at {company}. {language} Analyze the following meeting information and respond to the specific request.
+    system_prompt = f"""You are {assistant}, a professional meeting and audio transcription analyst assisting {name}, who is a(n) {title} at {company}. {language} Analyze the following meeting information and respond to the specific request.
 {citation}
 Following are the meeting participants and their roles:
 {recording.participants or "No specific participants information provided."}

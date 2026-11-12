@@ -975,7 +975,9 @@
     "playFromHere": "Reproducir desde aquí",
     "responseFailed": "No se pudo obtener una respuesta",
     "connectionEnded": "La conexión terminó antes de completar la respuesta: {{error}}",
-    "errorWithMessage": "Error: {{error}}"
+    "errorWithMessage": "Error: {{error}}",
+    "sources": "Fuentes",
+    "quoteNotFound": "Cita no encontrada en la transcripción"
   },
   "uiTheme": {
     "title": "Tema de la interfaz",
@@ -3606,6 +3608,61 @@
       "passwordsMustMatch": "Las contraseñas deben coincidir.",
       "usernameTaken": "Ese nombre de usuario ya está en uso.",
       "emailTaken": "Ese correo electrónico ya está registrado."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Buscando «{{query}}»",
+        "listing": "Revisando la lista de grabaciones",
+        "readingTranscript": "Leyendo la transcripción de {{title}}",
+        "readingTranscriptFrom": "Leyendo la transcripción de {{title}} desde el segmento {{offset}}",
+        "readingSummary": "Leyendo el resumen de {{title}}",
+        "readingNotes": "Leyendo sus notas sobre {{title}}",
+        "checking": "Comprobando los detalles de {{title}}",
+        "readingATranscript": "Leyendo una transcripción",
+        "readingASummary": "Leyendo un resumen",
+        "readingSomeNotes": "Leyendo sus notas sobre una grabación",
+        "checkingARecording": "Comprobando los detalles de una grabación",
+        "running": "Ejecutando {{tool}}",
+        "understanding": "Leyendo la pregunta",
+        "refining": "Afinando la búsqueda",
+        "searchingLibrary": "Buscando en sus grabaciones",
+        "narrowing": "Limitando la búsqueda a los hablantes mencionados",
+        "widening": "Ampliando la búsqueda",
+        "gathering": "Leyendo las mejores coincidencias",
+        "readingFull": "Leyendo una transcripción completa",
+        "writing": "Redactando la respuesta",
+        "compacting": "Resumiendo la conversación anterior"
+      },
+      "result": {
+        "failed": "No se pudo completar este paso",
+        "noMatches": "Sin coincidencias",
+        "matchSummary": "{{matches}} en {{recordings}}",
+        "matchOne": "1 coincidencia",
+        "matches": "{{count}} coincidencias",
+        "recordingOne": "1 grabación",
+        "recordings": "{{count}} grabaciones",
+        "keyword": "búsqueda por palabra clave",
+        "withKeyword": "con búsqueda por palabra clave",
+        "listed": "{{returned}} de {{total}} grabaciones",
+        "segments": "{{returned}} de {{total}} segmentos"
+      },
+      "count": {
+        "stepOne": "1 paso",
+        "steps": "{{count}} pasos",
+        "searchOne": "1 búsqueda",
+        "searches": "{{count}} búsquedas",
+        "listingOne": "1 listado",
+        "listings": "{{count}} listados",
+        "transcriptReadOne": "1 transcripción leída",
+        "transcriptReads": "{{count}} transcripciones leídas",
+        "summaryReadOne": "1 resumen leído",
+        "summaryReads": "{{count}} resúmenes leídos",
+        "notesReadOne": "1 lectura de notas",
+        "notesReads": "{{count}} lecturas de notas",
+        "detailsCheckOne": "1 comprobación de detalles",
+        "detailsChecks": "{{count}} comprobaciones de detalles",
+        "other": "{{tool}}: {{count}}"
+      }
     }
   },
   "sharePage": {

@@ -371,7 +371,7 @@
                                     <button @click="message.showSteps = !message.showSteps"
                                             class="flex items-center gap-2 text-xs" style="color: var(--text-muted);">
                                         <i class="fas fa-list-check"></i>
-                                        <span v-text="message.agentStepCount + (message.agentStepCount === 1 ? ' step · ' : ' steps · ') + message.activitySummary"></span>
+                                        <span v-text="message.activityLabel || (message.agentStepCount + (message.agentStepCount === 1 ? ' step · ' : ' steps · ') + message.activitySummary)"></span>
                                         <i :class="['fas text-[10px]', message.showSteps ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                                     </button>
                                     <div v-if="message.showSteps && message.steps && message.steps.length" class="mt-2 space-y-1">
@@ -1015,6 +1015,8 @@
                                             } else if (data.agent_summary) {
                                                 assistantMessage.activitySummary = data.agent_summary.line || '';
                                                 assistantMessage.agentStepCount = data.agent_summary.steps || 0;
+                                                // The whole line, translated on the server.
+                                                assistantMessage.activityLabel = data.agent_summary.label || '';
                                             } else if (data.thinking) {
                                                 // Surfaced reasoning: keep the latest status text
                                                 // visible but do not render into the answer.

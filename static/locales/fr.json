@@ -975,7 +975,9 @@
     "playFromHere": "Lire à partir d'ici",
     "responseFailed": "Impossible d'obtenir une réponse",
     "connectionEnded": "La connexion s'est interrompue avant la fin de la réponse : {{error}}",
-    "errorWithMessage": "Erreur : {{error}}"
+    "errorWithMessage": "Erreur : {{error}}",
+    "sources": "Sources",
+    "quoteNotFound": "Citation introuvable dans la transcription"
   },
   "uiTheme": {
     "title": "Thème de l'interface",
@@ -3606,6 +3608,61 @@
       "passwordsMustMatch": "Les mots de passe doivent correspondre.",
       "usernameTaken": "Ce nom d'utilisateur est déjà pris.",
       "emailTaken": "Cette adresse e-mail est déjà enregistrée."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Recherche de « {{query}} »",
+        "listing": "Consultation de la liste des enregistrements",
+        "readingTranscript": "Lecture de la transcription de « {{title}} »",
+        "readingTranscriptFrom": "Lecture de la transcription de « {{title}} » à partir du segment {{offset}}",
+        "readingSummary": "Lecture du résumé de « {{title}} »",
+        "readingNotes": "Lecture de vos notes sur « {{title}} »",
+        "checking": "Vérification des détails de « {{title}} »",
+        "readingATranscript": "Lecture d'une transcription",
+        "readingASummary": "Lecture d'un résumé",
+        "readingSomeNotes": "Lecture de vos notes sur un enregistrement",
+        "checkingARecording": "Vérification des détails d'un enregistrement",
+        "running": "Exécution de {{tool}}",
+        "understanding": "Lecture de la question",
+        "refining": "Affinage de la recherche",
+        "searchingLibrary": "Recherche dans vos enregistrements",
+        "narrowing": "Limitation de la recherche aux intervenants cités",
+        "widening": "Élargissement de la recherche",
+        "gathering": "Lecture des meilleurs résultats",
+        "readingFull": "Lecture d'une transcription complète",
+        "writing": "Rédaction de la réponse",
+        "compacting": "Résumé de la conversation précédente"
+      },
+      "result": {
+        "failed": "Impossible de terminer cette étape",
+        "noMatches": "Aucun résultat",
+        "matchSummary": "{{matches}} dans {{recordings}}",
+        "matchOne": "1 résultat",
+        "matches": "{{count}} résultats",
+        "recordingOne": "1 enregistrement",
+        "recordings": "{{count}} enregistrements",
+        "keyword": "recherche par mot-clé",
+        "withKeyword": "avec recherche par mot-clé",
+        "listed": "{{returned}} sur {{total}} enregistrements",
+        "segments": "{{returned}} sur {{total}} segments"
+      },
+      "count": {
+        "stepOne": "1 étape",
+        "steps": "{{count}} étapes",
+        "searchOne": "1 recherche",
+        "searches": "{{count}} recherches",
+        "listingOne": "1 liste consultée",
+        "listings": "{{count}} listes consultées",
+        "transcriptReadOne": "1 transcription lue",
+        "transcriptReads": "{{count}} transcriptions lues",
+        "summaryReadOne": "1 résumé lu",
+        "summaryReads": "{{count}} résumés lus",
+        "notesReadOne": "1 lecture de notes",
+        "notesReads": "{{count}} lectures de notes",
+        "detailsCheckOne": "1 vérification de détails",
+        "detailsChecks": "{{count}} vérifications de détails",
+        "other": "{{tool}} : {{count}}"
+      }
     }
   },
   "sharePage": {

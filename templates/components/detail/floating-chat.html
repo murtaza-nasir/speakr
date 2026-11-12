@@ -162,7 +162,7 @@
                     <div v-if="message.role === 'assistant' && message.content && !(isChatLoading && index === chatMessages.length - 1)"
                          class="flex items-center justify-end"
                          style="gap: 2px; margin-top: var(--sp-1);">
-                        <button @click="copyMessage(message.content, $event)"
+                        <button @click="copyMessage(chatMessageText(message), $event)"
                                 class="btn btn--icon btn--sm"
                                 :title="t('buttons.copyMessage')"
                                 :aria-label="t('buttons.copyMessage')">

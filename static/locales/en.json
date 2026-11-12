@@ -975,7 +975,9 @@
     "playFromHere": "Play from here",
     "responseFailed": "Couldn't get a reply",
     "connectionEnded": "Connection ended before the response completed: {{error}}",
-    "errorWithMessage": "Error: {{error}}"
+    "errorWithMessage": "Error: {{error}}",
+    "sources": "Sources",
+    "quoteNotFound": "Quote not found in the transcript"
   },
   "uiTheme": {
     "title": "Interface theme",
@@ -3606,6 +3608,61 @@
       "passwordsMustMatch": "Passwords must match.",
       "usernameTaken": "That username is taken.",
       "emailTaken": "That email is already registered."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Searching for “{{query}}”",
+        "listing": "Looking at the list of recordings",
+        "readingTranscript": "Reading the transcript of {{title}}",
+        "readingTranscriptFrom": "Reading the transcript of {{title}} from segment {{offset}}",
+        "readingSummary": "Reading the summary of {{title}}",
+        "readingNotes": "Reading your notes on {{title}}",
+        "checking": "Checking the details of {{title}}",
+        "readingATranscript": "Reading a transcript",
+        "readingASummary": "Reading a summary",
+        "readingSomeNotes": "Reading your notes on a recording",
+        "checkingARecording": "Checking a recording's details",
+        "running": "Running {{tool}}",
+        "understanding": "Reading the question",
+        "refining": "Refining the search",
+        "searchingLibrary": "Searching your recordings",
+        "narrowing": "Narrowing the search to the speakers named",
+        "widening": "Widening the search",
+        "gathering": "Reading the best matches",
+        "readingFull": "Reading a full transcript",
+        "writing": "Writing the answer",
+        "compacting": "Summarizing the earlier conversation"
+      },
+      "result": {
+        "failed": "Couldn't complete this step",
+        "noMatches": "No matches",
+        "matchSummary": "{{matches}} in {{recordings}}",
+        "matchOne": "1 match",
+        "matches": "{{count}} matches",
+        "recordingOne": "1 recording",
+        "recordings": "{{count}} recordings",
+        "keyword": "keyword search",
+        "withKeyword": "with keyword search",
+        "listed": "{{returned}} of {{total}} recordings",
+        "segments": "{{returned}} of {{total}} segments"
+      },
+      "count": {
+        "stepOne": "1 step",
+        "steps": "{{count}} steps",
+        "searchOne": "1 search",
+        "searches": "{{count}} searches",
+        "listingOne": "1 listing",
+        "listings": "{{count}} listings",
+        "transcriptReadOne": "1 transcript read",
+        "transcriptReads": "{{count}} transcript reads",
+        "summaryReadOne": "1 summary read",
+        "summaryReads": "{{count}} summary reads",
+        "notesReadOne": "1 notes read",
+        "notesReads": "{{count}} notes reads",
+        "detailsCheckOne": "1 details check",
+        "detailsChecks": "{{count}} details checks",
+        "other": "{{tool}}: {{count}}"
+      }
     }
   },
   "sharePage": {

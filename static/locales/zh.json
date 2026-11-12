@@ -975,7 +975,9 @@
     "playFromHere": "从此处播放",
     "responseFailed": "无法获取回复",
     "connectionEnded": "回复完成前连接已中断：{{error}}",
-    "errorWithMessage": "错误：{{error}}"
+    "errorWithMessage": "错误：{{error}}",
+    "sources": "来源",
+    "quoteNotFound": "在转录文本中未找到该引文"
   },
   "uiTheme": {
     "title": "界面主题",
@@ -3606,6 +3608,61 @@
       "passwordsMustMatch": "两次输入的密码必须一致。",
       "usernameTaken": "该用户名已被使用。",
       "emailTaken": "该邮箱已注册。"
+    },
+    "assistant": {
+      "step": {
+        "searching": "正在搜索“{{query}}”",
+        "listing": "正在查看录音列表",
+        "readingTranscript": "正在阅读“{{title}}”的转录文本",
+        "readingTranscriptFrom": "正在从第 {{offset}} 段起阅读“{{title}}”的转录文本",
+        "readingSummary": "正在阅读“{{title}}”的摘要",
+        "readingNotes": "正在阅读您对“{{title}}”的笔记",
+        "checking": "正在查看“{{title}}”的详情",
+        "readingATranscript": "正在阅读转录文本",
+        "readingASummary": "正在阅读摘要",
+        "readingSomeNotes": "正在阅读您对某条录音的笔记",
+        "checkingARecording": "正在查看某条录音的详情",
+        "running": "正在运行 {{tool}}",
+        "understanding": "正在理解问题",
+        "refining": "正在优化搜索",
+        "searchingLibrary": "正在搜索您的录音",
+        "narrowing": "正在将搜索限定为提到的说话人",
+        "widening": "正在扩大搜索范围",
+        "gathering": "正在阅读最佳匹配",
+        "readingFull": "正在阅读完整转录文本",
+        "writing": "正在撰写回答",
+        "compacting": "正在总结之前的对话"
+      },
+      "result": {
+        "failed": "无法完成此步骤",
+        "noMatches": "无匹配结果",
+        "matchSummary": "{{recordings}}中有 {{matches}}",
+        "matchOne": "1 处匹配",
+        "matches": "{{count}} 处匹配",
+        "recordingOne": "1 条录音",
+        "recordings": "{{count}} 条录音",
+        "keyword": "关键词搜索",
+        "withKeyword": "含关键词搜索",
+        "listed": "{{total}} 条录音中的 {{returned}} 条",
+        "segments": "{{total}} 个片段中的 {{returned}} 个"
+      },
+      "count": {
+        "stepOne": "1 个步骤",
+        "steps": "{{count}} 个步骤",
+        "searchOne": "1 次搜索",
+        "searches": "{{count}} 次搜索",
+        "listingOne": "1 次列表查看",
+        "listings": "{{count}} 次列表查看",
+        "transcriptReadOne": "阅读 1 份转录",
+        "transcriptReads": "阅读 {{count}} 份转录",
+        "summaryReadOne": "阅读 1 份摘要",
+        "summaryReads": "阅读 {{count}} 份摘要",
+        "notesReadOne": "阅读 1 次笔记",
+        "notesReads": "阅读 {{count}} 次笔记",
+        "detailsCheckOne": "1 次详情查看",
+        "detailsChecks": "{{count}} 次详情查看",
+        "other": "{{tool}}：{{count}}"
+      }
     }
   },
   "sharePage": {
