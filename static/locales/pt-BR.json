@@ -981,6 +981,7 @@
     "answeredIn": "{{name}} respondeu em {{title}}",
     "answerFailedIn": "{{name}} não conseguiu responder em {{title}}",
     "answeringHere": "{{name}} está respondendo nesta gravação",
+    "chatInThisTab": "Chat nesta aba",
     "keptUntilTabCloses": "Os chats ficam guardados até você fechar esta aba."
   },
   "uiTheme": {

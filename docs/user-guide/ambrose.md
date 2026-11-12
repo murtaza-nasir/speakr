@@ -32,7 +32,8 @@ Each recording has its own chat. When you open another recording, its own chat i
 
 - Chats are kept in the browser tab. They survive a page reload and are removed when you close the tab. The line "Chats are kept until you close this tab." under the chat box is a reminder.
 - Up to 20 recordings keep a chat. When a 21st recording gets one, the chat you used least recently is removed.
-- You can open another recording while an answer is still arriving. The answer goes on in the chat of its own recording. A chat icon on that recording's row in the sidebar marks it while Ambrose is answering.
+- A small chat icon on a recording's row in the sidebar marks a recording with a chat in this tab. Empty chats and incognito recordings have no icon.
+- You can open another recording while an answer is still arriving. The answer goes on in the chat of its own recording, and the chat icon on that recording's row pulses while Ambrose is answering.
 - When the answer is ready, a short message with the name of the recording appears, such as "Ambrose answered in Weekly sync". Click the message to open that recording. If Ambrose could not answer, the message reads "Ambrose couldn't answer in" and the name.
 
 Download a chat before you close the tab if you want to keep it.

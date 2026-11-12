@@ -981,6 +981,7 @@
     "answeredIn": "{{name}} answered in {{title}}",
     "answerFailedIn": "{{name}} couldn't answer in {{title}}",
     "answeringHere": "{{name}} is answering in this recording",
+    "chatInThisTab": "Chat in this tab",
     "keptUntilTabCloses": "Chats are kept until you close this tab."
   },
   "uiTheme": {

@@ -231,9 +231,21 @@ export function createChatThreads(opts = {}) {
         return !!(thread && thread.loading && key !== state.currentKey);
     };
 
+    /**
+     * True when recording `id` has a chat in this tab: a thread with at least
+     * one message. Incognito threads and empty ones (cleared, or only a
+     * draft) do not count.
+     */
+    const hasChat = (id) => {
+        const key = threadKey({ id });
+        if (key === null || key === INCOGNITO_KEY) return false;
+        const thread = get(key);
+        return !!(thread && Array.isArray(thread.messages) && thread.messages.length > 0);
+    };
+
     return {
         state, current, get, select, save, restore, clearCurrent, drop, clearAll,
-        isAnsweringElsewhere, storageKey,
+        isAnsweringElsewhere, hasChat, storageKey,
         isCurrent: (thread) => !!thread && thread === current(),
         count: () => Object.keys(state.threads).length,
     };

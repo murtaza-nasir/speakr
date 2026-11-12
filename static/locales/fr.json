@@ -981,6 +981,7 @@
     "answeredIn": "{{name}} a répondu dans {{title}}",
     "answerFailedIn": "{{name}} n'a pas pu répondre dans {{title}}",
     "answeringHere": "{{name}} répond dans cet enregistrement",
+    "chatInThisTab": "Discussion dans cet onglet",
     "keptUntilTabCloses": "Les discussions sont conservées jusqu'à la fermeture de cet onglet."
   },
   "uiTheme": {

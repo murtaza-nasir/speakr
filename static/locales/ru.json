@@ -981,6 +981,7 @@
     "answeredIn": "{{name}} ответил в «{{title}}»",
     "answerFailedIn": "{{name}} не смог ответить в «{{title}}»",
     "answeringHere": "{{name}} отвечает в этой записи",
+    "chatInThisTab": "Чат в этой вкладке",
     "keptUntilTabCloses": "Чаты хранятся, пока вы не закроете эту вкладку."
   },
   "uiTheme": {

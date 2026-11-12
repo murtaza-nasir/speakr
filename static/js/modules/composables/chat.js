@@ -237,12 +237,18 @@ export function useChat(state, utils) {
         }
     };
 
-    // The answering mark on a recording's row in the list.
-    const chatAnsweringElsewhere = (id) => !!(threads && threads.isAnsweringElsewhere(id));
+    // The chat mark on a recording's row in the list: 'answering' while
+    // Ambrose answers in that recording's chat with another one open,
+    // 'chat' when the recording has a chat in this tab, else null.
+    const chatRowMark = (id) => {
+        if (!threads) return null;
+        if (threads.isAnsweringElsewhere(id)) return 'answering';
+        return threads.hasChat(id) ? 'chat' : null;
+    };
 
     return {
         assistant,
-        chatAnsweringElsewhere,
+        chatRowMark,
         isChatScrolledToBottom,
         scrollChatToBottom,
         handleChatBubbleClick,

@@ -981,6 +981,7 @@
     "answeredIn": "{{name}} 已在「{{title}}」中回答",
     "answerFailedIn": "{{name}} 未能在「{{title}}」中回答",
     "answeringHere": "{{name}} 正在此录音中回答",
+    "chatInThisTab": "此标签页中的聊天",
     "keptUntilTabCloses": "聊天记录会保留到您关闭此标签页为止。"
   },
   "uiTheme": {

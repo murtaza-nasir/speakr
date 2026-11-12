@@ -4862,6 +4862,11 @@ select:disabled {
     animation: assistant-answering-pulse 1.6s ease-in-out infinite;
 }
 @keyframes assistant-answering-pulse { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+/* The same place when the recording has a chat in this tab and no answer is arriving. */
+.assistant-answering--idle {
+    color: var(--text-muted);
+    animation: none;
+}
 @media (prefers-reduced-motion: reduce) { .assistant-answering { animation: none; } }
 .assistant-composer__bar {
     display: flex;
