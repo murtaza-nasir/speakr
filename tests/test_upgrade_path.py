@@ -254,6 +254,38 @@ def test_transcript_template_header_column_is_added(tmp_path):
     assert row == ("Mine", "{{speaker}}: {{text}}", "kept", 1, None)
 
 
+def test_recording_ownerless_since_column_is_added(tmp_path):
+    """An old recording table gains the nullable ownerless_since column (#572);
+    its rows keep their values, owned or not, and none is marked."""
+    db_path = str(tmp_path / "ownerless.db")
+    with open(os.path.join(FIXTURE_DIR, "v0.10.10-alpha.sql")) as fh:
+        schema_sql = fh.read()
+    con = sqlite3.connect(db_path)
+    con.executescript(schema_sql)
+    assert "ownerless_since" not in {row[1] for row in con.execute('PRAGMA table_info("recording")')}
+    con.execute('INSERT INTO "user" (id, username, email, password) VALUES (1, ?, ?, ?)',
+                ("existing", "existing@example.test", "x"))
+    con.execute('INSERT INTO recording (id, user_id, title, transcription, summary, status, audio_path, keep_audio_only) '
+                'VALUES (1, 1, ?, ?, ?, ?, ?, 0)', ("Owned", "words", "sum", "COMPLETED", "/data/uploads/a.mp3"))
+    con.execute('INSERT INTO recording (id, user_id, title, transcription, summary, status, audio_path, keep_audio_only) '
+                'VALUES (2, NULL, ?, ?, ?, ?, ?, 0)', ("Left", "more", "sum2", "COMPLETED", "/data/uploads/b.mp3"))
+    con.commit()
+    con.close()
+
+    app = _fixture_app(db_path)
+    with app.app_context():
+        initialize_database(app)
+
+    con = sqlite3.connect(db_path)
+    columns = {row[1]: row for row in con.execute('PRAGMA table_info("recording")')}
+    rows = con.execute('SELECT id, user_id, title, transcription, summary, status, audio_path, ownerless_since '
+                       'FROM recording ORDER BY id').fetchall()
+    con.close()
+    assert "ownerless_since" in columns and columns["ownerless_since"][3] == 0  # nullable
+    assert rows == [(1, 1, "Owned", "words", "sum", "COMPLETED", "/data/uploads/a.mp3", None),
+                    (2, None, "Left", "more", "sum2", "COMPLETED", "/data/uploads/b.mp3", None)]
+
+
 def test_second_startup_is_a_no_op(upgraded):
     """Migrations run about five times per container start, and on every restart."""
     before = _live(upgraded["path"])

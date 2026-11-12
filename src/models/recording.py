@@ -96,6 +96,9 @@ class Recording(db.Model):
     # Auto-deletion and archival fields
     audio_deleted_at = db.Column(db.DateTime, nullable=True)  # When audio file was deleted (null = not deleted)
     deletion_exempt = db.Column(db.Boolean, default=False)  # Manual exemption from auto-deletion
+    # Set by the daily cleanup when it first finds the recording without an
+    # owner; cleared if an owner returns. See src/services/ownerless_cleanup.py.
+    ownerless_since = db.Column(db.DateTime, nullable=True)
 
     # Speaker embeddings from diarization (JSON dict mapping speaker IDs to 256-dimensional vectors)
     speaker_embeddings = db.Column(db.JSON, nullable=True)
