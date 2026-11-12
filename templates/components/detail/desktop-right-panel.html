@@ -63,7 +63,7 @@
                             </div>
                         </div>
                         <button class="btn btn--icon" @click="toggleEditSummary" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
-                        <button class="btn btn--icon" @click="openCustomizeSummaryModal" :title="t('summary.customizePrompt') || 'Customize prompt'"><i class="fas fa-sliders-h"></i></button>
+                        <button v-if="!selectedRecording.incognito && selectedRecording.can_edit !== false" class="btn btn--icon" @click="openRegenerateSummaryModal(selectedRecording)" :title="t('summary.customizePrompt')"><i class="fas fa-sliders-h"></i></button>
                     </template>
                     <template v-else>
                         <button class="btn btn--sm btn--ghost" @click="cancelEditSummary">${ t('buttons.cancel') }</button>

@@ -1,0 +1,151 @@
+<!-- Regenerate summary dialog (#584, design system v1).
+     The prompt is the viewer's own resolved prompt (GET /recording/<id>/summary_prompt).
+     Editing it replaces the prompt for this run; Add instructions appends to it. -->
+<div v-if="showRegenerateSummaryModal" @click.self="closeRegenerateSummaryModal" class="modal-overlay">
+    <div class="modal-panel modal-panel--lg modal-panel--phone-full regen-modal"
+         role="dialog" aria-modal="true" aria-labelledby="regen-summary-title"
+         @keydown.esc="closeRegenerateSummaryModal">
+        <div class="modal-header">
+            <i class="fas fa-magic text-2xl text-[var(--text-accent)]"></i>
+            <div class="flex-1 min-w-0">
+                <h3 id="regen-summary-title" class="modal-title"
+                    v-text="regenSummary.generate ? t('regenerateSummary.titleGenerate') : t('regenerateSummary.title')"></h3>
+                <div v-if="regenSummary.recording" class="modal-subtitle regen-subtitle"
+                     v-text="(regenSummary.recording.title || t('regenerateSummary.untitled')) + ' · ' + formatDisplayDate(regenSummary.recording.meeting_date || regenSummary.recording.created_at)"></div>
+            </div>
+            <button @click="closeRegenerateSummaryModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body regen-body" @click="regenSummary.startFromOpen = false">
+            <div v-if="regenSummary.loading" class="regen-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span v-text="t('regenerateSummary.loading')"></span>
+            </div>
+            <div v-else-if="regenSummary.loadError" class="banner banner--danger">
+                <i class="fas fa-exclamation-circle"></i>
+                <span v-text="regenSummary.loadError"></span>
+            </div>
+            <template v-else>
+                <!-- Prompt: label, source chip, Start from menu -->
+                <div class="regen-label-row">
+                    <label for="regen-summary-prompt" class="t-label" v-text="t('regenerateSummary.promptLabel')"></label>
+                    <span class="chip-meta regen-chip" :class="{ 'regen-chip--edited': regenEdited }" data-regen-source>
+                        <i :class="regenEdited ? 'fas fa-pen' : ({ tag: 'fas fa-tag', tags: 'fas fa-tags', folder: 'fas fa-folder', user: 'fas fa-user', admin: 'fas fa-cog', default: 'fas fa-file-alt' }[regenSummary.base && regenSummary.base.kind] || 'fas fa-eraser')"></i>
+                        <span class="chip-meta__label" v-text="regenSourceLabel"></span>
+                    </span>
+                    <div class="regen-start-from" @click.stop>
+                        <button type="button" class="btn btn--sm btn--ghost"
+                                @click="regenSummary.startFromOpen = !regenSummary.startFromOpen"
+                                aria-haspopup="menu" :aria-expanded="regenSummary.startFromOpen ? 'true' : 'false'"
+                                data-regen-start-from>
+                            <span v-text="t('regenerateSummary.startFrom')"></span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div v-if="regenSummary.startFromOpen" class="regen-menu surface-raised" role="menu">
+                            <template v-if="regenStartFromGroups.applies.length">
+                                <div class="regen-menu__heading" v-text="t('regenerateSummary.forThisRecording')"></div>
+                                <button v-for="option in regenStartFromGroups.applies" :key="option.key" type="button"
+                                        role="menuitem" class="regen-menu__item" @click="startRegenerateFrom(option)">
+                                    <i :class="option.kind === 'folder' ? 'fas fa-folder' : 'fas fa-tag'"></i>
+                                    <span class="regen-menu__label" v-text="regenOptionLabel(option)"></span>
+                                    <i v-if="regenSummary.base && regenSummary.base.key === option.key" class="fas fa-check regen-menu__check"></i>
+                                </button>
+                            </template>
+                            <template v-if="regenStartFromGroups.others.length">
+                                <div class="regen-menu__heading" v-text="t('regenerateSummary.otherPrompts')"></div>
+                                <button v-for="option in regenStartFromGroups.others" :key="option.key" type="button"
+                                        role="menuitem" class="regen-menu__item" @click="startRegenerateFrom(option)">
+                                    <i :class="({ tag: 'fas fa-tag', user: 'fas fa-user', admin: 'fas fa-cog', default: 'fas fa-file-alt' })[option.kind]"></i>
+                                    <span class="regen-menu__label" v-text="regenOptionLabel(option)"></span>
+                                    <i v-if="regenSummary.base && regenSummary.base.key === option.key" class="fas fa-check regen-menu__check"></i>
+                                </button>
+                            </template>
+                            <div class="regen-menu__divider"></div>
+                            <button type="button" role="menuitem" class="regen-menu__item" @click="startRegenerateFrom(null)">
+                                <i class="fas fa-eraser"></i>
+                                <span class="regen-menu__label" v-text="t('regenerateSummary.sourceBlank')"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea id="regen-summary-prompt" v-model="regenSummary.prompt"
+                          class="field font-mono regen-prompt" rows="12" spellcheck="false"
+                          :maxlength="REGEN_MAX_PROMPT_LENGTH"
+                          :placeholder="t('regenerateSummary.promptPlaceholder')"></textarea>
+                <div class="regen-prompt-meta">
+                    <div v-if="regenEdited" class="regen-links">
+                        <button type="button" class="regen-link" @click="resetRegeneratePrompt" v-text="t('regenerateSummary.reset')"></button>
+                        <button v-if="regenSaveLabel" type="button" class="regen-link" :disabled="regenSummary.saving"
+                                @click="saveRegeneratePrompt" data-regen-save>
+                            <i v-if="regenSummary.saving" class="fas fa-spinner fa-spin"></i>
+                            <span v-text="regenSaveLabel"></span>
+                        </button>
+                    </div>
+                    <span class="regen-counter">${ regenSummary.prompt.length } / ${ REGEN_MAX_PROMPT_LENGTH }</span>
+                </div>
+
+                <!-- One-off instructions, appended for this run only -->
+                <div class="regen-section">
+                    <label for="regen-summary-instructions" class="t-label" v-text="t('regenerateSummary.addInstructions')"></label>
+                    <textarea id="regen-summary-instructions" v-model="regenSummary.instructions" rows="2"
+                              class="field regen-instructions" maxlength="8000"
+                              :placeholder="t('regenerateSummary.addInstructionsPlaceholder')"></textarea>
+                </div>
+
+                <!-- Prompt variables of the prompt and instructions being run -->
+                <div v-if="reprocessAvailableVariables.length > 0" class="regen-section">
+                    <button type="button" class="regen-collapse"
+                            @click="regenSummary.variablesOpen = !regenSummary.variablesOpen"
+                            :aria-expanded="regenSummary.variablesOpen ? 'true' : 'false'">
+                        <i class="fas fa-chevron-right regen-collapse__icon" :class="{ 'regen-collapse__icon--open': regenSummary.variablesOpen }"></i>
+                        <span v-text="t('regenerateSummary.variablesRow', { count: regenVariablesSetCount })"></span>
+                    </button>
+                    <div v-if="regenSummary.variablesOpen" class="regen-variables">
+                        <p class="t-meta" v-text="t('promptVariables.hintReprocess')"></p>
+                        <div v-for="variable in reprocessAvailableVariables" :key="variable.name" class="space-y-1">
+                            <label class="block text-xs font-medium text-[var(--text-secondary)]" :for="'rpv-' + variable.name">
+                                ${ variable.label }
+                                <span class="ml-1 text-[10px] text-[var(--text-muted)] font-normal">
+                                    <span v-for="(src, i) in variable.sources" :key="i">
+                                        <span v-if="i > 0">, </span>
+                                        <i :class="{
+                                            'fas fa-folder': src.type === 'folder',
+                                            'fas fa-tag': src.type === 'tag',
+                                            'fas fa-user': src.type === 'user',
+                                            'fas fa-cog': src.type === 'admin',
+                                            'fas fa-plus': src.type === 'instructions'
+                                        }" class="mr-0.5"></i>${ src.name }
+                                    </span>
+                                </span>
+                            </label>
+                            <textarea
+                                :id="'rpv-' + variable.name"
+                                :value="reprocessPromptVariables[variable.name] || ''"
+                                @input="reprocessPromptVariables[variable.name] = $event.target.value"
+                                rows="2"
+                                maxlength="8000"
+                                :placeholder="t('promptVariables.placeholderPrefix') + ' ' + variable.label.toLowerCase() + '...'"
+                                class="field field--sm font-mono"></textarea>
+                            <div class="flex justify-end text-[10px] text-[var(--text-muted)] font-mono">
+                                ${ (reprocessPromptVariables[variable.name] || '').length } / 8000
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="modal-footer regen-footer">
+            <p v-if="!regenSummary.generate" class="regen-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span v-text="t('regenerateSummary.warning')"></span>
+            </p>
+            <button @click="closeRegenerateSummaryModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+            <button @click="executeRegenerateSummary" :disabled="!regenCanRun" class="btn btn--primary" data-regen-run>
+                <i class="fas fa-sync-alt"></i>
+                <span v-text="regenSummary.generate ? t('regenerateSummary.generate') : t('regenerateSummary.regenerate')"></span>
+            </button>
+        </div>
+    </div>
+</div>

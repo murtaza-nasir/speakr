@@ -1119,15 +1119,6 @@
     "yourCustomPrompt": "Ваш пользовательский запрос для резюме",
     "yourTitlePrompt": "Ваши инструкции для заголовков"
   },
-  "customizeSummary": {
-    "title": "Настроить подсказку резюме",
-    "body": "Добавьте разовый контекст для этого резюме или полностью замените разрешённую подсказку.",
-    "additionalContext": "Дополнительный контекст",
-    "customPrompt": "Своя подсказка",
-    "appendPlaceholder": "например, Сегодняшняя повестка: ...",
-    "replacePlaceholder": "Введите полную подсказку для резюме...",
-    "generateSummary": "Создать резюме"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Вы уверены, что хотите удалить всех сохранённых спикеров? Это действие нельзя отменить.",
     "title": "Удалить всех спикеров"
@@ -2404,22 +2395,9 @@
     "audioReTranscribedFromScratch": "Аудио будет транскрибировано заново с нуля. Это также перегенерирует заголовок и резюме на основе новой транскрипции.",
     "audioReTranscribedWithAsr": "Аудио будет транскрибировано заново с использованием ASR-эндпоинта. Это включает диаризацию и перегенерирует заголовок и резюме.",
     "manualEditsOverwritten": "Любые ручные правки транскрипции, заголовка или резюме будут перезаписаны.",
-    "manualEditsOverwrittenSummary": "Любые ручные правки резюме будут перезаписаны.",
-    "newTitleAndSummary": "Новое резюме будет сгенерировано на основе существующей транскрипции.",
     "createdPrefix": "Создано:",
     "untitledRecording": "Запись без названия",
     "customSummaryPrompt": "Пользовательская подсказка для резюме",
-    "promptSource": "Источник подсказки",
-    "useDefaultPrompt": "Использовать подсказку по умолчанию",
-    "usePromptFromTag": "Использовать подсказку из тега",
-    "enterCustomPrompt": "Ввести свою подсказку",
-    "selectTag": "Выберите тег",
-    "selectTagPlaceholder": "Выберите тег...",
-    "previewLabel": "Предпросмотр:",
-    "customPromptLabel": "Своя подсказка",
-    "customPromptPlaceholder": "Введите свои инструкции для резюмирования...",
-    "noTagsWithPromptsHint": "Нет тегов с пользовательскими подсказками. Создайте теги с подсказками в настройках аккаунта.",
-    "subtitleSummary": "Повторная обработка резюме",
     "subtitleTranscription": "Повторная обработка расшифровки"
   },
   "settings": {
@@ -2714,13 +2692,6 @@
     "customizePrompt": "Настроить подсказку",
     "editingSaveHint": "Редактирование — сохраните через панель вкладок выше",
     "needsTranscription": "Сводку можно будет создать после успешной транскрипции."
-  },
-  "summaryMode": {
-    "applyMode": "Режим применения",
-    "append": "Добавить",
-    "appendHelp": "Использовать стандартную подсказку и добавить это в качестве дополнительного контекста.",
-    "replace": "Заменить",
-    "replaceHelp": "Использовать только этот текст в качестве инструкций для резюме."
   },
   "tagManagement": {
     "asrDefaults": "Настройки ASR по умолчанию",
@@ -3568,7 +3539,9 @@
       "translation_no_transcription": "Нет транскрипции для перевода.",
       "translation_blocked_transcription_failed": "Невозможно перевести: транскрипция завершилась ошибкой. Сначала повторно обработайте транскрипцию.",
       "translation_llm_not_configured": "Сервис перевода недоступен (клиент LLM не настроен)",
-      "translation_invalid_language": "Неизвестный целевой язык."
+      "translation_invalid_language": "Неизвестный целевой язык.",
+      "summary_prompt_invalid": "Промпт не может быть пустым или длиннее 8000 символов.",
+      "summary_prompt_save_denied": "Вы не можете сохранить промпт сюда."
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены!",
@@ -3775,5 +3748,48 @@
         "7": "Кнопки остаются видимыми на небольших экранах и в узких панелях."
       }
     }
+  },
+  "regenerateSummary": {
+    "title": "Пересоздать сводку",
+    "titleGenerate": "Создать сводку",
+    "untitled": "Запись без названия",
+    "loading": "Загрузка промпта…",
+    "loadFailed": "Не удалось загрузить промпт",
+    "loadFailedDetail": "Не удалось загрузить промпт: {{error}}",
+    "promptLabel": "Промпт",
+    "promptPlaceholder": "Напишите инструкции для сводки.",
+    "sourceTag": "Из тега: {{name}}",
+    "sourceTags": "Из тегов: {{name}}",
+    "sourceFolder": "Из папки: {{name}}",
+    "sourceUser": "Ваш промпт по умолчанию",
+    "sourceAdmin": "Промпт администратора",
+    "sourceDefault": "Встроенный промпт",
+    "sourceBlank": "Пусто",
+    "editedFromTag": "Изменено из тега: {{name}}",
+    "editedFromTags": "Изменено из тегов: {{name}}",
+    "editedFromFolder": "Изменено из папки: {{name}}",
+    "editedFromUser": "Изменено из вашего промпта по умолчанию",
+    "editedFromAdmin": "Изменено из промпта администратора",
+    "editedFromDefault": "Изменено из встроенного промпта",
+    "editedFromBlank": "Свой промпт",
+    "startFrom": "Начать с",
+    "forThisRecording": "Для этой записи",
+    "otherPrompts": "Другие промпты",
+    "menuTag": "Тег: {{name}}",
+    "menuFolder": "Папка: {{name}}",
+    "reset": "Сбросить",
+    "saveToTag": "Сохранить в тег {{name}}",
+    "saveToFolder": "Сохранить в папку {{name}}",
+    "saveToUser": "Сохранить как мой промпт по умолчанию",
+    "saved": "Промпт сохранён",
+    "saveFailed": "Не удалось сохранить промпт",
+    "saveFailedDetail": "Не удалось сохранить промпт: {{error}}",
+    "addInstructions": "Добавить инструкции (необязательно)",
+    "addInstructionsPlaceholder": "Например: в повестке были бюджет, найм и дата запуска.",
+    "instructionsSource": "Добавленные инструкции",
+    "variablesRow": "Переменные промпта · заполнено: {{count}}",
+    "warning": "Заменяет текущую сводку, включая ваши правки.",
+    "regenerate": "Пересоздать",
+    "generate": "Создать"
   }
 }

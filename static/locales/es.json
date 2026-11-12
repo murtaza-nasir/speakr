@@ -1119,15 +1119,6 @@
     "yourCustomPrompt": "Tu Prompt Personalizado de Resumen",
     "yourTitlePrompt": "Sus instrucciones de título"
   },
-  "customizeSummary": {
-    "title": "Personalizar prompt de resumen",
-    "body": "Añade contexto puntual para este resumen o reemplaza por completo el prompt resuelto.",
-    "additionalContext": "Contexto adicional",
-    "customPrompt": "Prompt personalizado",
-    "appendPlaceholder": "p. ej. El orden del día es: ...",
-    "replacePlaceholder": "Introduce un prompt de resumen completo...",
-    "generateSummary": "Generar resumen"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "¿Estás seguro de que quieres eliminar todos los oradores guardados? Esta acción no se puede deshacer.",
     "title": "Eliminar Todos los Oradores"
@@ -2404,22 +2395,9 @@
     "audioReTranscribedFromScratch": "El audio será re-transcrito desde cero. Esto también regenerará el título y resumen basado en la nueva transcripción.",
     "audioReTranscribedWithAsr": "El audio será re-transcrito usando el endpoint ASR. Esto incluye diarización y regenerará el título y resumen.",
     "manualEditsOverwritten": "Cualquier edición manual de la transcripción, título o resumen será sobrescrita.",
-    "manualEditsOverwrittenSummary": "Cualquier edición manual del resumen será sobrescrita.",
-    "newTitleAndSummary": "Se generará un nuevo resumen basado en la transcripción existente.",
     "createdPrefix": "Creado:",
     "untitledRecording": "Grabación sin título",
     "customSummaryPrompt": "Instrucción de resumen personalizada",
-    "promptSource": "Origen de la instrucción",
-    "useDefaultPrompt": "Usar instrucción predeterminada",
-    "usePromptFromTag": "Usar instrucción de una etiqueta",
-    "enterCustomPrompt": "Introducir instrucción personalizada",
-    "selectTag": "Seleccionar etiqueta",
-    "selectTagPlaceholder": "Selecciona una etiqueta...",
-    "previewLabel": "Vista previa:",
-    "customPromptLabel": "Instrucción personalizada",
-    "customPromptPlaceholder": "Introduce tus instrucciones de resumen personalizadas...",
-    "noTagsWithPromptsHint": "No hay etiquetas con instrucciones personalizadas. Crea etiquetas con instrucciones personalizadas en Configuración de la cuenta.",
-    "subtitleSummary": "Reprocesamiento del resumen",
     "subtitleTranscription": "Reprocesamiento de la transcripción"
   },
   "settings": {
@@ -2714,13 +2692,6 @@
     "customizePrompt": "Personalizar instrucción",
     "editingSaveHint": "Editando — guarda desde la barra de pestañas de arriba",
     "needsTranscription": "Se podrá generar un resumen cuando la transcripción se haya completado correctamente."
-  },
-  "summaryMode": {
-    "applyMode": "Modo de aplicación",
-    "append": "Añadir",
-    "appendHelp": "Usar el prompt por defecto y añadir esto como contexto adicional.",
-    "replace": "Reemplazar",
-    "replaceHelp": "Usar únicamente este texto como instrucciones de resumen."
   },
   "tagManagement": {
     "asrDefaults": "Configuraciones ASR Predeterminadas",
@@ -3568,7 +3539,9 @@
       "translation_no_transcription": "No hay ninguna transcripción disponible para traducir.",
       "translation_blocked_transcription_failed": "No se puede traducir: la transcripción ha fallado. Vuelva a procesar la transcripción primero.",
       "translation_llm_not_configured": "El servicio de traducción no está disponible (cliente LLM no configurado)",
-      "translation_invalid_language": "Idioma de destino desconocido."
+      "translation_invalid_language": "Idioma de destino desconocido.",
+      "summary_prompt_invalid": "El prompt no puede estar vacío ni superar los 8000 caracteres.",
+      "summary_prompt_save_denied": "No puedes guardar el prompt ahí."
     },
     "apiMessage": {
       "accountUpdated": "¡Datos de la cuenta actualizados correctamente!",
@@ -3775,5 +3748,48 @@
         "7": "Los botones siguen visibles en pantallas pequeñas y en paneles estrechos."
       }
     }
+  },
+  "regenerateSummary": {
+    "title": "Regenerar resumen",
+    "titleGenerate": "Generar resumen",
+    "untitled": "Grabación sin título",
+    "loading": "Cargando el prompt…",
+    "loadFailed": "No se pudo cargar el prompt",
+    "loadFailedDetail": "No se pudo cargar el prompt: {{error}}",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Escribe las instrucciones para el resumen.",
+    "sourceTag": "De la etiqueta: {{name}}",
+    "sourceTags": "De las etiquetas: {{name}}",
+    "sourceFolder": "De la carpeta: {{name}}",
+    "sourceUser": "Tu predeterminado",
+    "sourceAdmin": "Predeterminado del administrador",
+    "sourceDefault": "Predeterminado integrado",
+    "sourceBlank": "En blanco",
+    "editedFromTag": "Editado de la etiqueta: {{name}}",
+    "editedFromTags": "Editado de las etiquetas: {{name}}",
+    "editedFromFolder": "Editado de la carpeta: {{name}}",
+    "editedFromUser": "Editado de tu predeterminado",
+    "editedFromAdmin": "Editado del predeterminado del administrador",
+    "editedFromDefault": "Editado del predeterminado integrado",
+    "editedFromBlank": "Prompt personalizado",
+    "startFrom": "Empezar desde",
+    "forThisRecording": "Para esta grabación",
+    "otherPrompts": "Otros prompts",
+    "menuTag": "Etiqueta: {{name}}",
+    "menuFolder": "Carpeta: {{name}}",
+    "reset": "Restablecer",
+    "saveToTag": "Guardar en la etiqueta {{name}}",
+    "saveToFolder": "Guardar en la carpeta {{name}}",
+    "saveToUser": "Guardar como mi predeterminado",
+    "saved": "Prompt guardado",
+    "saveFailed": "No se pudo guardar el prompt",
+    "saveFailedDetail": "No se pudo guardar el prompt: {{error}}",
+    "addInstructions": "Añadir instrucciones (opcional)",
+    "addInstructionsPlaceholder": "Por ejemplo: la agenda incluía presupuesto, contrataciones y la fecha de lanzamiento.",
+    "instructionsSource": "Instrucciones añadidas",
+    "variablesRow": "Variables del prompt · {{count}} completadas",
+    "warning": "Reemplaza el resumen actual, incluidas tus ediciones.",
+    "regenerate": "Regenerar",
+    "generate": "Generar"
   }
 }

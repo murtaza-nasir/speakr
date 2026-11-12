@@ -5,6 +5,7 @@
 
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import { readJsonResponse } from '../utils/response.js';
+import { buildRegenerateBody, normalizePrompt } from '../utils/regenerate-summary.js';
 
 export function useReprocess(state, utils) {
     const { nextTick } = Vue;
@@ -12,12 +13,10 @@ export function useReprocess(state, utils) {
     const {
         showReprocessModal, showResetModal, reprocessType,
         reprocessRecording, recordingToReset, selectedRecording,
-        recordings, asrReprocessOptions, summaryReprocessPromptSource,
-        summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
-        summaryReprocessPromptMode, reprocessPromptVariables,
-        availableTags, processingProgress, processingMessage,
+        recordings, asrReprocessOptions, reprocessPromptVariables,
+        processingProgress, processingMessage,
         currentlyProcessingFile, uploadQueue, userTranscriptionLanguage,
-        showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode
+        showRegenerateSummaryModal, regenSummary
     } = state;
 
     const { showToast, setGlobalError, onChatComplete } = utils;
@@ -31,6 +30,11 @@ export function useReprocess(state, utils) {
     // =========================================
 
     const openReprocessModal = (type, recording = null) => {
+        // Summaries have their own dialog (#584); this one is transcription only.
+        if (type === 'summary') {
+            openRegenerateSummaryModal(recording);
+            return;
+        }
         reprocessType.value = type;
         reprocessRecording.value = recording || selectedRecording.value;
         showReprocessModal.value = true;
@@ -45,21 +49,6 @@ export function useReprocess(state, utils) {
             asrReprocessOptions.hotwords = reprocessRecording.value?.resolved_hotwords || '';
             asrReprocessOptions.initial_prompt = reprocessRecording.value?.resolved_initial_prompt || '';
             asrReprocessOptions.transcription_model = '';
-        } else {
-            summaryReprocessPromptSource.value = 'default';
-            summaryReprocessSelectedTagId.value = '';
-            summaryReprocessCustomPrompt.value = '';
-
-            // Hydrate the reprocess prompt-variables form from the recording's
-            // saved values so the user starts with what they had at upload.
-            // Drop any existing keys first to keep the reactive object tidy.
-            for (const k of Object.keys(reprocessPromptVariables)) {
-                delete reprocessPromptVariables[k];
-            }
-            const stored = (reprocessRecording.value && reprocessRecording.value.prompt_variables) || {};
-            for (const [k, v] of Object.entries(stored)) {
-                reprocessPromptVariables[k] = v == null ? '' : String(v);
-            }
         }
     };
 
@@ -140,15 +129,6 @@ export function useReprocess(state, utils) {
                 asrReprocessOptions.initial_prompt,
                 asrReprocessOptions.transcription_model
             );
-        } else {
-            await reprocessSummary(
-                recordingId,
-                summaryReprocessPromptSource.value,
-                summaryReprocessSelectedTagId.value,
-                summaryReprocessCustomPrompt.value,
-                summaryReprocessPromptMode.value,
-                { ...reprocessPromptVariables }
-            );
         }
     };
 
@@ -207,7 +187,9 @@ export function useReprocess(state, utils) {
     // Summary Reprocessing
     // =========================================
 
-    const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt, promptMode, promptVariables) => {
+    // body: the prompt fields of the request (buildRegenerateBody); an empty
+    // body regenerates with the resolved prompt.
+    const reprocessSummary = async (recordingId, body = {}) => {
         if (!recordingId) {
             setGlobalError(t('errors.noRecordingToReprocess'));
             return;
@@ -215,35 +197,7 @@ export function useReprocess(state, utils) {
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const requestBody = { reprocess_summary: true };
-            const mode = promptMode === 'append' ? 'append' : 'replace';
-
-            if (promptSource === 'tag' && selectedTagId) {
-                const selectedTag = availableTags.value.find(t => t.id == selectedTagId);
-                if (selectedTag && selectedTag.custom_prompt) {
-                    requestBody.custom_prompt = selectedTag.custom_prompt;
-                    // A tag selection always fully replaces the resolved
-                    // default; Append/Replace is offered only for custom
-                    // prompts, so force replace here even if the ref still
-                    // holds an older mode value.
-                    requestBody.prompt_mode = 'replace';
-                }
-            } else if (promptSource === 'custom' && customPrompt) {
-                requestBody.custom_prompt = customPrompt;
-                requestBody.prompt_mode = mode;
-            }
-
-            // Carry the user-edited prompt-variable values so the recording's
-            // stored map gets updated before the summary task runs.
-            if (promptVariables && typeof promptVariables === 'object') {
-                const cleaned = {};
-                for (const [key, value] of Object.entries(promptVariables)) {
-                    if (value !== undefined && value !== null && String(value).trim() !== '') {
-                        cleaned[key] = String(value);
-                    }
-                }
-                requestBody.prompt_variables = cleaned;
-            }
+            const requestBody = { reprocess_summary: true, ...body };
 
             const response = await fetch(`/recording/${recordingId}/reprocess_summary`, {
                 method: 'POST',
@@ -279,35 +233,149 @@ export function useReprocess(state, utils) {
     // Generate Summary
     // =========================================
 
-    // Open the "customise summarisation prompt" modal pre-populated with the
-    // user's saved summary prompt (or the admin default if the user hasn't
-    // set one). The user can then add or replace before generating.
-    const openCustomizeSummaryModal = () => {
-        if (!selectedRecording.value) return;
-        // Default mode: append. Most users want to add agenda/context to
-        // their saved prompt rather than replace it.
-        customizeSummaryMode.value = 'append';
-        // Start with an empty textarea so the user types just the additional
-        // context. They can switch to replace mode and write a full prompt.
-        customizeSummaryPrompt.value = '';
-        showCustomizeSummaryModal.value = true;
+    // =========================================
+    // Regenerate summary dialog (#584)
+    // =========================================
+
+    // Show a prompt description from GET /recording/<id>/summary_prompt.
+    // fill: put its resolved prompt in the textarea as the starting point.
+    const applySummaryPromptInfo = (data, fill) => {
+        regenSummary.resolvedPrompt = data.prompt || '';
+        regenSummary.isOwner = !!data.is_owner;
+        regenSummary.startFrom = Array.isArray(data.start_from) ? data.start_from : [];
+        if (fill) {
+            regenSummary.prompt = data.prompt || '';
+            regenSummary.base = {
+                key: data.source_key,
+                kind: data.source_key === 'tags' ? 'tags' : data.source,
+                name: data.source_name || '',
+                prompt: data.prompt || '',
+                save_target: data.save_target || null,
+            };
+        }
     };
 
-    const closeCustomizeSummaryModal = () => {
-        showCustomizeSummaryModal.value = false;
+    const openRegenerateSummaryModal = async (recording = null) => {
+        const rec = recording || selectedRecording.value;
+        if (!rec || rec.incognito === true) return;
+        Object.assign(regenSummary, {
+            recording: rec,
+            // Without a summary the dialog generates one, as the empty-state
+            // button does; otherwise it replaces the summary.
+            generate: !rec.summary,
+            loading: true,
+            loadError: '',
+            saving: false,
+            prompt: '',
+            resolvedPrompt: '',
+            instructions: '',
+            isOwner: false,
+            base: null,
+            startFrom: [],
+            startFromOpen: false,
+            variablesOpen: false,
+        });
+        // Hydrate the prompt-variables form from the recording's saved values
+        // so the user starts with what they had at upload.
+        for (const k of Object.keys(reprocessPromptVariables)) {
+            delete reprocessPromptVariables[k];
+        }
+        for (const [k, v] of Object.entries(rec.prompt_variables || {})) {
+            reprocessPromptVariables[k] = v == null ? '' : String(v);
+        }
+        showRegenerateSummaryModal.value = true;
+        try {
+            const response = await fetch(`/recording/${rec.id}/summary_prompt`);
+            const data = await readJsonResponse(response, t, 'regenerateSummary.loadFailed');
+            if (regenSummary.recording !== rec) return;
+            applySummaryPromptInfo(data, true);
+        } catch (error) {
+            regenSummary.loadError = t('regenerateSummary.loadFailedDetail', { error: error.message });
+        } finally {
+            if (regenSummary.recording === rec) regenSummary.loading = false;
+        }
     };
 
-    const submitCustomizeSummaryModal = async () => {
-        const prompt = (customizeSummaryPrompt.value || '').trim();
-        const mode = customizeSummaryMode.value === 'replace' ? 'replace' : 'append';
-        showCustomizeSummaryModal.value = false;
-        await generateSummary({ customPrompt: prompt, promptMode: mode });
+    const closeRegenerateSummaryModal = () => {
+        showRegenerateSummaryModal.value = false;
+        regenSummary.recording = null;
+        regenSummary.startFromOpen = false;
     };
 
+    // Fill the textarea from a Start from entry; null is Blank.
+    const startRegenerateFrom = (option) => {
+        if (option) {
+            regenSummary.prompt = option.prompt || '';
+            regenSummary.base = { ...option };
+        } else {
+            regenSummary.prompt = '';
+            regenSummary.base = { key: 'blank', kind: 'blank', name: '', prompt: '', save_target: null };
+        }
+        regenSummary.startFromOpen = false;
+    };
+
+    const resetRegeneratePrompt = () => {
+        regenSummary.prompt = regenSummary.base ? (regenSummary.base.prompt || '') : regenSummary.resolvedPrompt;
+    };
+
+    // Write the edited prompt to the base's save target. Only on request.
+    const saveRegeneratePrompt = async () => {
+        const rec = regenSummary.recording;
+        const target = regenSummary.base && regenSummary.base.save_target;
+        if (!rec || !target || regenSummary.saving) return;
+        const prompt = normalizePrompt(regenSummary.prompt);
+        regenSummary.saving = true;
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch(`/recording/${rec.id}/summary_prompt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ target: target.kind, id: target.id, prompt }),
+            });
+            const data = await readJsonResponse(response, t, 'regenerateSummary.saveFailed');
+            if (regenSummary.recording !== rec) return;
+            applySummaryPromptInfo(data, false);
+            // The saved place is now the base, so the prompt reads as unedited.
+            const key = target.kind === 'user' ? 'user' : `${target.kind}:${target.id}`;
+            const saved = regenSummary.startFrom.find(o => o.key === key);
+            regenSummary.base = saved ? { ...saved } : { ...regenSummary.base, prompt };
+            if (target.kind === 'user' && state.userSummaryPrompt) state.userSummaryPrompt.value = prompt;
+            if (target.kind === 'tag' && state.availableTags && Array.isArray(state.availableTags.value)) {
+                const tag = state.availableTags.value.find(tg => tg.id === target.id);
+                if (tag) tag.custom_prompt = prompt;
+            }
+            showToast(t('regenerateSummary.saved'), 'fa-check-circle');
+        } catch (error) {
+            setGlobalError(t('regenerateSummary.saveFailedDetail', { error: error.message }));
+        } finally {
+            regenSummary.saving = false;
+        }
+    };
+
+    const executeRegenerateSummary = async () => {
+        const rec = regenSummary.recording;
+        if (!rec || regenSummary.loading || regenSummary.loadError) return;
+        if (!normalizePrompt(regenSummary.prompt)) return;
+        const body = buildRegenerateBody({
+            prompt: regenSummary.prompt,
+            resolvedPrompt: regenSummary.resolvedPrompt,
+            isOwner: regenSummary.isOwner,
+            instructions: regenSummary.instructions,
+            variables: { ...reprocessPromptVariables },
+        });
+        const generate = regenSummary.generate;
+        closeRegenerateSummaryModal();
+        if (generate) {
+            await generateSummary({ body });
+        } else {
+            await reprocessSummary(rec.id, body);
+        }
+    };
+
+    // options.body: prompt fields from the Regenerate summary dialog; without
+    // it the summary uses the resolved prompt.
     const generateSummary = async (options = {}) => {
         if (!selectedRecording.value) return;
-        const customPrompt = (options.customPrompt || '').trim();
-        const promptMode = options.promptMode === 'append' ? 'append' : 'replace';
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -342,13 +410,9 @@ export function useReprocess(state, utils) {
                 return;
             }
 
-            // Regular recording - use existing flow. Forward an optional
-            // user-supplied custom prompt + mode (issue / discussion #253).
-            const body = {};
-            if (customPrompt) {
-                body.custom_prompt = customPrompt;
-                body.prompt_mode = promptMode;
-            }
+            // Regular recording - use existing flow, with the dialog's prompt
+            // fields when it opened this (#253, #584).
+            const body = options.body || {};
             const response = await fetch(`/recording/${selectedRecording.value.id}/generate_summary`, {
                 method: 'POST',
                 headers: {
@@ -542,9 +606,12 @@ export function useReprocess(state, utils) {
         // Summary
         reprocessSummary,
         generateSummary,
-        openCustomizeSummaryModal,
-        closeCustomizeSummaryModal,
-        submitCustomizeSummaryModal,
+        openRegenerateSummaryModal,
+        closeRegenerateSummaryModal,
+        startRegenerateFrom,
+        resetRegeneratePrompt,
+        saveRegeneratePrompt,
+        executeRegenerateSummary,
 
         // Polling
         startReprocessingPoll,

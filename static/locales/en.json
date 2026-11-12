@@ -1119,15 +1119,6 @@
     "yourCustomPrompt": "Your Custom Summary Prompt",
     "yourTitlePrompt": "Your Title Instructions"
   },
-  "customizeSummary": {
-    "title": "Customise summary prompt",
-    "body": "Add one-off context for this summary, or replace the resolved prompt entirely.",
-    "additionalContext": "Additional context",
-    "customPrompt": "Custom prompt",
-    "appendPlaceholder": "e.g. Today's agenda is: ...",
-    "replacePlaceholder": "Enter a complete summarisation prompt...",
-    "generateSummary": "Generate Summary"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Are you sure you want to delete all saved speakers? This action cannot be undone.",
     "title": "Delete All Speakers"
@@ -2404,22 +2395,9 @@
     "audioReTranscribedFromScratch": "The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.",
     "audioReTranscribedWithAsr": "The audio will be re-transcribed using the ASR endpoint. This includes diarization and will regenerate the title and summary.",
     "manualEditsOverwritten": "Any manual edits to the transcription, title, or summary will be overwritten.",
-    "manualEditsOverwrittenSummary": "Any manual edits to the summary will be overwritten.",
-    "newTitleAndSummary": "A new summary will be generated based on the existing transcription.",
     "createdPrefix": "Created:",
     "untitledRecording": "Untitled Recording",
     "customSummaryPrompt": "Custom Summarization Prompt",
-    "promptSource": "Prompt Source",
-    "useDefaultPrompt": "Use default prompt",
-    "usePromptFromTag": "Use prompt from tag",
-    "enterCustomPrompt": "Enter custom prompt",
-    "selectTag": "Select Tag",
-    "selectTagPlaceholder": "Select a tag...",
-    "previewLabel": "Preview:",
-    "customPromptLabel": "Custom Prompt",
-    "customPromptPlaceholder": "Enter your custom summarization instructions...",
-    "noTagsWithPromptsHint": "No tags with custom prompts available. Create tags with custom prompts in the Account Settings.",
-    "subtitleSummary": "Summary reprocessing",
     "subtitleTranscription": "Transcription reprocessing"
   },
   "settings": {
@@ -2711,16 +2689,9 @@
     "summaryFailed": "Summary generation failed",
     "summaryInProgress": "Summary generation in progress...",
     "title": "Summary",
-    "customizePrompt": "Customise prompt",
+    "customizePrompt": "Customize prompt",
     "editingSaveHint": "Editing — save from the tab bar above",
     "needsTranscription": "A summary can be generated once the transcription has succeeded."
-  },
-  "summaryMode": {
-    "applyMode": "Apply mode",
-    "append": "Append",
-    "appendHelp": "Use the default prompt and add this as extra context.",
-    "replace": "Replace",
-    "replaceHelp": "Use only this text as the summarisation instructions."
   },
   "tagManagement": {
     "asrDefaults": "ASR Defaults",
@@ -3568,7 +3539,9 @@
       "translation_no_transcription": "No transcription available for translation.",
       "translation_blocked_transcription_failed": "Cannot translate: transcription failed. Please reprocess the transcription first.",
       "translation_llm_not_configured": "Translation service is not available (LLM client not configured)",
-      "translation_invalid_language": "Unknown target language."
+      "translation_invalid_language": "Unknown target language.",
+      "summary_prompt_invalid": "The prompt can't be empty or longer than 8,000 characters.",
+      "summary_prompt_save_denied": "You can't save the prompt there."
     },
     "apiMessage": {
       "accountUpdated": "Account details updated successfully!",
@@ -3775,5 +3748,48 @@
         "7": "Buttons stay visible on smaller screens and in narrow panes."
       }
     }
+  },
+  "regenerateSummary": {
+    "title": "Regenerate summary",
+    "titleGenerate": "Generate summary",
+    "untitled": "Untitled recording",
+    "loading": "Loading the prompt…",
+    "loadFailed": "Couldn't load the prompt",
+    "loadFailedDetail": "Couldn't load the prompt: {{error}}",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Write the instructions for the summary.",
+    "sourceTag": "From tag: {{name}}",
+    "sourceTags": "From tags: {{name}}",
+    "sourceFolder": "From folder: {{name}}",
+    "sourceUser": "Your default",
+    "sourceAdmin": "Admin default",
+    "sourceDefault": "Built-in default",
+    "sourceBlank": "Blank",
+    "editedFromTag": "Edited from tag: {{name}}",
+    "editedFromTags": "Edited from tags: {{name}}",
+    "editedFromFolder": "Edited from folder: {{name}}",
+    "editedFromUser": "Edited from your default",
+    "editedFromAdmin": "Edited from admin default",
+    "editedFromDefault": "Edited from built-in default",
+    "editedFromBlank": "Custom prompt",
+    "startFrom": "Start from",
+    "forThisRecording": "For this recording",
+    "otherPrompts": "Other prompts",
+    "menuTag": "Tag: {{name}}",
+    "menuFolder": "Folder: {{name}}",
+    "reset": "Reset",
+    "saveToTag": "Save to tag {{name}}",
+    "saveToFolder": "Save to folder {{name}}",
+    "saveToUser": "Save to my default",
+    "saved": "Prompt saved",
+    "saveFailed": "Couldn't save the prompt",
+    "saveFailedDetail": "Couldn't save the prompt: {{error}}",
+    "addInstructions": "Add instructions (optional)",
+    "addInstructionsPlaceholder": "For example: the agenda was budget, hiring and the launch date.",
+    "instructionsSource": "Added instructions",
+    "variablesRow": "Prompt variables · {{count}} set",
+    "warning": "Replaces the current summary, including your edits.",
+    "regenerate": "Regenerate",
+    "generate": "Generate"
   }
 }

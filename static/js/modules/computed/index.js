@@ -19,7 +19,6 @@
 // - isMobileScreen
 // - datePresetOptions
 // - languageOptions
-// - tagsWithCustomPrompts
 // - filteredAvailableTagsForModal
 // - isMobileDevice
 
