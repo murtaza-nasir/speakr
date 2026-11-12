@@ -2847,12 +2847,10 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
     "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
     "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

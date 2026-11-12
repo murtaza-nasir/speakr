@@ -51,6 +51,22 @@ CONVERT_JOBS = ['convert']
 QUEUES = {'transcription': TRANSCRIPTION_JOBS, 'summary': SUMMARY_JOBS, 'index': INDEX_JOBS,
           'convert': CONVERT_JOBS}
 
+# Dispatch table: job type -> name of the FairJobQueue method that runs it.
+# `_process_job` looks the runner up here instead of walking an if/elif
+# chain, so adding a job type means adding one row to this table (plus the
+# QUEUES/*_JOBS lists and worker routing, which are unrelated concerns).
+JOB_RUNNERS = {
+    'transcribe': '_run_audio_job',
+    'reprocess_transcription': '_run_audio_job',
+    'summarize': '_run_summarization',
+    'reprocess_summary': '_run_reprocess_summary',
+    'stitch': '_run_stitch',
+    'merge': '_run_merge',
+    'translate_transcription': '_run_translation',
+    'index_chunks': '_run_index_chunks',
+    'convert': '_run_convert',
+}
+
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
@@ -386,25 +402,11 @@ class FairJobQueue:
                 # sequences when the audio file is missing on disk.
                 # (Previously fired here, immediately after claim.)
 
-                # Dispatch based on job type
-                if job_type in ('transcribe', 'reprocess_transcription'):
-                    self._run_audio_job(job, recording, params, job_type)
-                elif job_type == 'summarize':
-                    self._run_summarization(job, recording, params)
-                elif job_type == 'reprocess_summary':
-                    self._run_reprocess_summary(job, recording, params)
-                elif job_type == 'stitch':
-                    self._run_stitch(job, recording, params)
-                elif job_type == 'merge':
-                    self._run_merge(job, recording, params)
-                elif job_type == 'translate_transcription':
-                    self._run_translation(job, recording, params)
-                elif job_type == 'index_chunks':
-                    self._run_index_chunks(job, recording, params)
-                elif job_type == 'convert':
-                    self._run_convert(job, recording, params)
-                else:
+                # Dispatch based on job type (registry lookup).
+                runner_name = JOB_RUNNERS.get(job_type)
+                if runner_name is None:
                     raise ValueError(f"Unknown job type: {job_type}")
+                getattr(self, runner_name)(job, recording, params, job_type=job_type)
 
                 # Mark as completed - re-fetch to ensure we have latest state
                 job = db.session.get(ProcessingJob, job_id)
@@ -558,7 +560,7 @@ class FairJobQueue:
                 transcription_model=params.get('transcription_model'),
             )
 
-    def _run_summarization(self, job, recording, params):
+    def _run_summarization(self, job, recording, params, job_type=None):
         """Run summarization-only task. Status updates handled by task function."""
         from src.tasks.processing import generate_summary_only_task
         from flask import current_app
@@ -571,7 +573,7 @@ class FairJobQueue:
             user_id=params.get('user_id')
         )
 
-    def _run_reprocess_summary(self, job, recording, params):
+    def _run_reprocess_summary(self, job, recording, params, job_type=None):
         """Run summary reprocessing task. Status updates handled by task function."""
         from src.tasks.processing import generate_summary_only_task
         from flask import current_app
@@ -584,7 +586,7 @@ class FairJobQueue:
             user_id=params.get('user_id')
         )
 
-    def _run_stitch(self, job, recording, params):
+    def _run_stitch(self, job, recording, params, job_type=None):
         """Stitch in-progress recording-session chunks into a single file (#287 c/d).
 
         On success the recording row is updated in place (audio_path,
@@ -638,7 +640,7 @@ class FairJobQueue:
             metadata=metadata,
         )
 
-    def _run_merge(self, job, recording, params):
+    def _run_merge(self, job, recording, params, job_type=None):
         """Concatenate source recordings' audio into this recording (#323).
 
         The heavy ffmpeg concat runs here, off the request path, so hours-long
@@ -657,7 +659,7 @@ class FairJobQueue:
             db.session.commit()
             raise
 
-    def _run_translation(self, job, recording, params):
+    def _run_translation(self, job, recording, params, job_type=None):
         """Translate a recording's transcription (summary worker pool)."""
         from flask import current_app
         from src.tasks.processing import translate_transcription_task
@@ -671,7 +673,7 @@ class FairJobQueue:
             params=params,
         )
 
-    def _run_convert(self, job, recording, params):
+    def _run_convert(self, job, recording, params, job_type=None):
         """Convert an upload, then queue its transcription (convert worker pool)."""
         from src.services.upload_conversion import convert_uploaded_recording
 
@@ -680,7 +682,7 @@ class FairJobQueue:
     # Builds in a row for one job while the transcript keeps changing.
     MAX_INDEX_PASSES = 10
 
-    def _run_index_chunks(self, job, recording, params):
+    def _run_index_chunks(self, job, recording, params, job_type=None):
         """Rebuild the recording's Inquire chunks (index worker pool).
 
         An edit queued while this job runs is merged into it (one active job

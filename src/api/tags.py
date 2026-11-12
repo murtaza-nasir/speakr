@@ -597,12 +597,10 @@ def get_group_tags(group_id):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
     "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
     "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

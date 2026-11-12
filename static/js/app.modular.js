@@ -97,6 +97,15 @@ const parseUnformattedError = (text) => {
     // Known error patterns
     const patterns = [
         {
+            // Same list as the no-speech entry of ERROR_PATTERNS in src/utils/error_formatting.py.
+            patterns: [/\bno_speech\b/, /no (?:recognized |recognised |usable )?speech (?:was )?detected/, 'asr_response_have_no_words'],
+            title: _t('errors.noSpeechTitle', 'No speech detected'),
+            message: _t('errors.noSpeechMessage', 'No recognizable speech was found in this recording.'),
+            guidance: _t('errors.noSpeechGuidance', 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.'),
+            icon: 'fa-microphone-slash',
+            type: 'no_speech'
+        },
+        {
             patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
             title: _t('errors.fileTooLargeTitle', 'File Too Large'),
             message: _t('errors.fileTooLargeMessage', 'The audio file exceeds the maximum size allowed by the transcription service.'),
