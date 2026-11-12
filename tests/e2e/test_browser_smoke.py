@@ -51,7 +51,7 @@ _example = read_example()
 USER = os.environ.get("SPEAKR_SMOKE_USER", _example.get("ADMIN_EMAIL", "admin@example.com"))
 PASSWORD = os.environ.get("SPEAKR_SMOKE_PASSWORD", _example.get("ADMIN_PASSWORD", "changeme"))
 
-MENU_ENTRIES = ("Notifications", "Settings", "Shared Transcripts", "Sign Out")
+MENU_ENTRIES = ("Notifications", "Settings", "Shared recordings", "Sign out")
 IGNORED_CONSOLE = (re.compile(r"chrome-extension://"), re.compile(r"Failed to load resource"))
 PLAY_CDN = re.compile(r"tailwind\.min\.js|cdn\.tailwindcss\.com")
 # A translation key: two or more dot-separated identifiers, the first one
