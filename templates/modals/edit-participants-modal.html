@@ -6,7 +6,6 @@
             <button @click="closeEditParticipantsModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body" @scroll="closeAllParticipantSuggestions">
-            <p class="t-meta mb-3" v-text="t('modal.editParticipantsHint')"></p>
             <div class="space-y-2">
                 <div v-for="(participant, index) in editingParticipantsList" :key="index" class="relative">
                     <div class="flex items-center gap-2">
@@ -42,7 +41,7 @@
         </div>
         <div class="modal-footer">
             <button @click="closeEditParticipantsModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
-            <button @click="saveParticipants" class="btn btn--primary">${ t('buttons.save') || 'Save Changes' }</button>
+            <button @click="saveParticipants" class="btn btn--primary">${ t('buttons.save') || 'Save' }</button>
         </div>
     </div>
 </div>

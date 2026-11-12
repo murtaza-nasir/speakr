@@ -727,7 +727,7 @@ export function useUpload(state, utils) {
                         }
                         reject(err);
                     } else {
-                        reject(uploadError(t('errors.unexpectedResponse'), 'Unexpected success response from server after upload.'));
+                        reject(uploadError(t('errors.unexpectedResponse'), 'The upload finished with an unexpected response.'));
                     }
                 };
 
@@ -955,7 +955,7 @@ export function useUpload(state, utils) {
                     // event or page load — in every browser, no Background Sync.
                     showToast?.(
                         (t && t('toasts.uploadFailedWillRetry'))
-                            || 'Upload failed — saved and will retry automatically when you reconnect.',
+                            || 'Couldn\'t upload. The recording is saved and is uploaded again when you reconnect.',
                         'fa-rotate'
                     );
                 } else {
@@ -975,7 +975,7 @@ export function useUpload(state, utils) {
                     } else {
                         showToast?.(
                             (t && t('toasts.uploadFailedNoRecovery'))
-                                || 'Upload failed and audio could not be saved locally. Please record again.',
+                                || 'Couldn\'t upload, and the audio couldn\'t be saved. Record again.',
                             'fa-triangle-exclamation'
                         );
                     }
@@ -1304,7 +1304,7 @@ export function useUpload(state, utils) {
         }
         showToast?.(
             (t && t('toasts.uploadRetriesExhaustedDownloaded'))
-                || 'Automatic upload retries exhausted. The audio was saved to your Downloads folder.',
+                || 'Upload still failing. The audio was saved to your Downloads folder.',
             'fa-file-download'
         );
         return true;

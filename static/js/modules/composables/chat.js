@@ -1,130 +1,108 @@
 /**
- * Chat composable
- * Handles AI chat functionality with streaming responses
+ * Chat composable: the recording's Ambrose chat in the main app (the
+ * floating panel and the mobile chat tab).
+ *
+ * The chat itself is the shared AssistantChat (modules/assistant/chat.js,
+ * templates/components/assistant/chat.html), also used by the Ask page.
+ * This module says how a recording question is sent (POST /chat, or the
+ * incognito route with the transcript in the request) and keeps the Word
+ * downloads. With the library tools on, the server lets Ambrose search every
+ * recording the user can access; the panel sends no filters.
+ *
+ * With `state.chatThreads` (chat-threads.js), each recording has its own
+ * thread: the shared chat shows the open recording's thread, an answer keeps
+ * arriving in the thread it started in, and a toast says when one finishes
+ * while another recording is open. chatMessages, chatInput and isChatLoading
+ * are then the open thread's values.
  */
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { responseWithQuestion } from '../utils/chat-turn.js';
+import { useAssistantChat } from '../assistant/chat.js';
 
 export function useChat(state, utils) {
     const {
         showChat, isChatMaximized, chatMessages, chatInput,
-        isChatLoading, chatMessagesRef, chatInputRef, selectedRecording, csrfToken
+        isChatLoading, chatMessagesRef, chatInputRef, selectedRecording
     } = state;
 
-    const { showToast, setGlobalError, onChatComplete, t } = utils;
+    const { showToast, onChatComplete, t, processedTranscription } = utils;
+    const threads = state.chatThreads || null;
 
-    // ------------------------------------------------------------------
-    // Timestamp chips: the chat prompt asks the model to cite moments as
-    // bracketed transcript timestamps ([00:07:35]); render them as
-    // clickable chips that seek the in-view recording's player. Unlike
-    // Inquire citations there is no numbering or Sources list — chat is
-    // always about the single recording in view.
-    // ------------------------------------------------------------------
+    const escapeHtml = (text) => String(text == null ? '' : text).replace(/[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    const CHAT_TS_RE = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]/g;
-
-    const formatChatSeconds = (s) => {
-        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-        return h > 0
-            ? h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0')
-            : m + ':' + String(sec).padStart(2, '0');
+    // An answer finished in a recording that is no longer open: say where,
+    // and open it on a click.
+    const announce = (thread) => {
+        if (!threads || !thread || thread.dropped || thread.incognito || threads.isCurrent(thread)) return;
+        const list = thread.messages || [];
+        const last = list[list.length - 1];
+        if (!last || last.role !== 'assistant') return;
+        const listed = (state.recordings && state.recordings.value || []).find((r) => String(r.id) === String(thread.recordingId));
+        const title = (listed && listed.title) || thread.title || t('common.untitled');
+        const params = { name: escapeHtml(utils.assistantName || 'Ambrose'), title: escapeHtml(title) };
+        const open = utils.openRecordingById ? () => utils.openRecordingById(thread.recordingId) : null;
+        if (last.failed) showToast(t('chat.answerFailedIn', params), 'fa-exclamation-circle', 6000, 'info', open);
+        else showToast(t('chat.answeredIn', params), 'fa-comment-dots', 6000, 'info', open);
     };
 
-    /** Replace [h:mm:ss] / [m:ss] in sanitized chat HTML with seek chips. */
-    const decorateChatTimestamps = (html) => {
-        if (!html || !/\[\d/.test(html)) return html;
-        try {
-            const tpl = document.createElement('template');
-            tpl.innerHTML = html;
-            const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT, {
-                acceptNode: (node) =>
-                    node.parentElement && node.parentElement.closest('code, pre, a')
-                        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
-            });
-            const targets = [];
-            let n;
-            while ((n = walker.nextNode())) {
-                if (CHAT_TS_RE.test(n.nodeValue)) targets.push(n);
-                CHAT_TS_RE.lastIndex = 0;
-            }
-            for (const node of targets) {
-                const frag = document.createDocumentFragment();
-                let last = 0;
-                const text = node.nodeValue;
-                for (const m of text.matchAll(CHAT_TS_RE)) {
-                    // [a:b] is m:ss; [a:b:c] is h:mm:ss
-                    const seconds = m[3] !== undefined
-                        ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])
-                        : (+m[1]) * 60 + (+m[2]);
-                    frag.appendChild(document.createTextNode(text.slice(last, m.index)));
-                    const chip = document.createElement('button');
-                    chip.type = 'button';
-                    chip.className = 'chat-ts-chip';
-                    chip.dataset.seek = String(seconds);
-                    chip.title = t('chat.playFromHere') || 'Play from here';
-                    chip.textContent = formatChatSeconds(seconds);
-                    frag.appendChild(chip);
-                    last = m.index + m[0].length;
-                }
-                frag.appendChild(document.createTextNode(text.slice(last)));
-                node.parentNode.replaceChild(frag, node);
-            }
-            return tpl.innerHTML;
-        } catch (_) {
-            return html;
-        }
-    };
+    const isIncognito = () => !!(selectedRecording.value && selectedRecording.value.incognito === true);
 
-    const renderChatHtml = (content) => decorateChatTimestamps(window.renderMarkdownSafe(content));
-
-    /** Delegated click handler for the chat messages containers. */
-    const handleChatBubbleClick = (event) => {
-        const chip = event.target.closest && event.target.closest('.chat-ts-chip');
-        if (!chip) return;
-        const seconds = parseInt(chip.dataset.seek, 10);
-        if (!isFinite(seconds)) return;
-        // The detail view's player streams from /audio/; incognito uses a
-        // blob URL, so fall back to any media element on the page.
-        const all = [...document.querySelectorAll('audio, video')];
-        const media = all.find((el) => ((el.currentSrc || el.src || '').includes('/audio/')))
-            || all.find((el) => (el.currentSrc || el.src));
-        if (!media) return;
-        const target = isFinite(media.duration)
-            ? Math.min(seconds, Math.max(0, media.duration - 1))
-            : seconds;
-        media.currentTime = target;
-        media.play().catch(() => {});
-    };
-
-    // Helper function to check if chat is scrolled to bottom (within bottom 5%)
-    const isChatScrolledToBottom = () => {
-        if (!chatMessagesRef.value) return true;
-        const { scrollTop, scrollHeight, clientHeight } = chatMessagesRef.value;
-        const scrollableHeight = scrollHeight - clientHeight;
-        if (scrollableHeight <= 0) return true;
-        const scrollPercentage = scrollTop / scrollableHeight;
-        return scrollPercentage >= 0.95;
-    };
-
-    // Helper function to scroll chat to bottom
-    const scrollChatToBottom = () => {
-        if (chatMessagesRef.value) {
-            requestAnimationFrame(() => {
-                if (chatMessagesRef.value) {
-                    chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
-                }
+    const request = ({ message, history, signal }) => {
+        const recording = selectedRecording.value;
+        if (isIncognito()) {
+            // An incognito recording exists only in the browser: the
+            // transcript travels with the question. No tools.
+            return fetch('/api/recordings/incognito/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal,
+                body: JSON.stringify({
+                    transcription: recording.transcription,
+                    participants: recording.participants || '',
+                    notes: recording.notes || '',
+                    message,
+                    message_history: history.map((m) => ({ role: m.role, content: m.content })),
+                }),
             });
         }
-    };
-
-    const focusChatInput = () => {
-        Vue.nextTick(() => {
-            if (chatInputRef.value) {
-                chatInputRef.value.focus();
-            }
+        return fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            body: JSON.stringify({
+                recording_id: recording.id,
+                message,
+                message_history: history,
+            }),
         });
     };
+
+    const assistant = useAssistantChat({
+        messages: chatMessages, input: chatInput, loading: isChatLoading,
+        scroller: chatMessagesRef, inputEl: chatInputRef,
+        t, request, timestamps: true, toast: showToast,
+        thread: threads ? () => threads.current() : undefined,
+        // The recording a turn is about: its thread's, else the open one.
+        openRecordingId: (thread) => {
+            if (threads && thread) return thread.recordingId;
+            return selectedRecording.value && !isIncognito() ? selectedRecording.value.id : null;
+        },
+        isDisabled: () => !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED' ||
+            !!(processedTranscription && processedTranscription.value && processedTranscription.value.isError),
+        onDone: (thread) => {
+            if (onChatComplete) onChatComplete();
+            if (threads) { threads.save(); announce(thread); }
+        },
+    });
+
+    const isChatScrolledToBottom = () => assistant.following;
+    const scrollChatToBottom = () => assistant.scrollToBottom();
+    const handleChatBubbleClick = (event) => assistant.onTimelineClick(event);
+    const chatMessageText = (message) => assistant.messageText(message);
+    const sendChatMessage = () => assistant.send();
+    const handleChatKeydown = (event) => assistant.onKeydown(event);
 
     const toggleChatMaximize = () => {
         if (isChatMaximized.value) {
@@ -137,223 +115,11 @@ export function useChat(state, utils) {
         }
     };
 
-    const sendChatMessage = async () => {
-        if (!chatInput.value.trim() || isChatLoading.value || !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED') {
-            return;
-        }
-
-        const message = chatInput.value.trim();
-
-        if (!Array.isArray(chatMessages.value)) {
-            chatMessages.value = [];
-        }
-
-        chatMessages.value.push({ role: 'user', content: message });
-        chatInput.value = '';
-        isChatLoading.value = true;
-        focusChatInput();
-
-        await Vue.nextTick();
-        scrollChatToBottom();
-
-        let assistantMessage = null;
-
-        try {
-            const messageHistory = chatMessages.value
-                .slice(0, -1)
-                .map(msg => ({ role: msg.role, content: msg.content }));
-
-            // Check if this is an incognito recording
-            const isIncognito = selectedRecording.value.incognito === true;
-            let response;
-
-            if (isIncognito) {
-                // Use incognito chat endpoint - pass transcription directly
-                response = await fetch('/api/recordings/incognito/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        transcription: selectedRecording.value.transcription,
-                        participants: selectedRecording.value.participants || '',
-                        notes: selectedRecording.value.notes || '',
-                        message: message,
-                        message_history: messageHistory
-                    })
-                });
-            } else {
-                // Use regular chat endpoint
-                response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        recording_id: selectedRecording.value.id,
-                        message: message,
-                        message_history: messageHistory
-                    })
-                });
-            }
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || t('chat.responseFailed'));
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            const processStream = async () => {
-                let isFirstChunk = true;
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
-
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const jsonStr = line.substring(6);
-                            // Handle [DONE] marker from incognito endpoint
-                            if (jsonStr === '[DONE]') {
-                                return;
-                            }
-                            if (jsonStr) {
-                                try {
-                                    const data = JSON.parse(jsonStr);
-                                    if (data.thinking) {
-                                        const shouldScroll = isChatScrolledToBottom();
-
-                                        if (isFirstChunk) {
-                                            isChatLoading.value = false;
-                                            assistantMessage = Vue.reactive({
-                                                role: 'assistant',
-                                                content: '',
-                                                html: '',
-                                                thinking: data.thinking,
-                                                thinkingExpanded: false
-                                            });
-                                            chatMessages.value.push(assistantMessage);
-                                            isFirstChunk = false;
-                                        } else if (assistantMessage) {
-                                            if (assistantMessage.thinking) {
-                                                assistantMessage.thinking += '\n\n' + data.thinking;
-                                            } else {
-                                                assistantMessage.thinking = data.thinking;
-                                            }
-                                        }
-
-                                        if (shouldScroll) {
-                                            await Vue.nextTick();
-                                            scrollChatToBottom();
-                                        }
-                                    }
-                                    // Handle both 'delta' (regular) and 'content' (incognito) formats
-                                    const textContent = data.delta || data.content;
-                                    if (textContent) {
-                                        const shouldScroll = isChatScrolledToBottom();
-
-                                        if (isFirstChunk) {
-                                            isChatLoading.value = false;
-                                            assistantMessage = Vue.reactive({
-                                                role: 'assistant',
-                                                content: '',
-                                                html: '',
-                                                thinking: '',
-                                                thinkingExpanded: false
-                                            });
-                                            chatMessages.value.push(assistantMessage);
-                                            isFirstChunk = false;
-                                        }
-
-                                        assistantMessage.content += textContent;
-                                        assistantMessage.html = renderChatHtml(assistantMessage.content);
-
-                                        if (shouldScroll) {
-                                            await Vue.nextTick();
-                                            scrollChatToBottom();
-                                        }
-                                    }
-                                    if (data.end_of_stream) {
-                                        // Provider hit its output-token limit: keep the
-                                        // partial answer but tell the user it was cut off
-                                        // instead of presenting it as complete (issue #349).
-                                        if (data.truncated && assistantMessage && assistantMessage.content) {
-                                            assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
-                                            assistantMessage.html = renderChatHtml(assistantMessage.content);
-                                        }
-                                        return;
-                                    }
-                                    if (data.error) {
-                                        if (data.budget_exceeded) {
-                                            throw new Error(t('adminDashboard.tokenBudgetExceeded'));
-                                        }
-                                        throw new Error(data.error);
-                                    }
-                                } catch (e) {
-                                    console.error('Error parsing stream data:', e);
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            await processStream();
-
-        } catch (error) {
-            console.error('Chat Error:', error);
-            // Preserve any partial assistant content that was already streamed
-            // before the connection dropped (issue #282). Reverse-proxy read
-            // timeouts on long-thinking responses used to wipe the visible
-            // response entirely; now we keep what arrived and append an error
-            // note below it so the user can still copy what they got.
-            if (assistantMessage) {
-                const partial = (assistantMessage.content || '').trim();
-                const errSuffix = `\n\n_⚠️ ${t('chat.connectionEnded', { error: error.message })}_`;
-                if (partial) {
-                    assistantMessage.content = partial + errSuffix;
-                    assistantMessage.html = renderChatHtml(assistantMessage.content);
-                } else {
-                    assistantMessage.content = t('chat.errorWithMessage', { error: error.message });
-                    assistantMessage.html = `<span class="text-red-500">${t('chat.errorWithMessage', { error: error.message })}</span>`;
-                }
-            } else {
-                chatMessages.value.push({
-                    role: 'assistant',
-                    content: t('chat.errorWithMessage', { error: error.message }),
-                    html: `<span class="text-red-500">${t('chat.errorWithMessage', { error: error.message })}</span>`
-                });
-            }
-        } finally {
-            isChatLoading.value = false;
-            await Vue.nextTick();
-            if (isChatScrolledToBottom()) {
-                scrollChatToBottom();
-            }
-            focusChatInput();
-            // Refresh token budget after chat completion
-            if (onChatComplete) {
-                onChatComplete();
-            }
-        }
-    };
-
-    const handleChatKeydown = (event) => {
-        if (event.key === 'Enter') {
-            if (event.ctrlKey || event.shiftKey) {
-                return;
-            } else {
-                event.preventDefault();
-                sendChatMessage();
-            }
-        }
-    };
-
+    // Clear empties the open recording's thread only.
     const clearChat = () => {
         if (chatMessages.value.length > 0) {
-            chatMessages.value = [];
+            if (threads) threads.clearCurrent();
+            else { assistant.stop(); chatMessages.value = []; }
             showToast(t('chat.cleared'), 'fa-broom');
         }
     };
@@ -363,7 +129,7 @@ export function useChat(state, utils) {
             showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
-        await postChatDownload(chatMessages.value);
+        await postChatDownload(chatMessages.value.map((m) => ({ ...m, content: chatMessageText(m) })));
     };
 
     // One response and the question before it, as chat-<title>-response.docx.
@@ -373,7 +139,7 @@ export function useChat(state, utils) {
             showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
-        await postChatDownload(messages, 'response');
+        await postChatDownload(messages.map((m) => ({ ...m, content: chatMessageText(m) })), 'response');
     };
 
     // scope 'response' marks a one-response download; it only changes the filename.
@@ -416,6 +182,7 @@ export function useChat(state, utils) {
         }
     };
 
+    // Copy any text with the chat's feedback (other views use this too).
     const copyMessage = (text, event) => {
         const button = event.currentTarget;
 
@@ -470,10 +237,22 @@ export function useChat(state, utils) {
         }
     };
 
+    // The chat mark on a recording's row in the list: 'answering' while
+    // Ambrose answers in that recording's chat with another one open,
+    // 'chat' when the recording has a chat in this tab, else null.
+    const chatRowMark = (id) => {
+        if (!threads) return null;
+        if (threads.isAnsweringElsewhere(id)) return 'answering';
+        return threads.hasChat(id) ? 'chat' : null;
+    };
+
     return {
+        assistant,
+        chatRowMark,
         isChatScrolledToBottom,
         scrollChatToBottom,
         handleChatBubbleClick,
+        chatMessageText,
         toggleChatMaximize,
         sendChatMessage,
         handleChatKeydown,

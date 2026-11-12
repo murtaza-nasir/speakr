@@ -31,7 +31,7 @@
 
     <!-- Reading-mode body — px-3 only for prose readability against
          the screen edge; py-3 keeps the prose off the toolbar above. -->
-    <div v-else class="flex-grow overflow-y-auto px-3 py-3">
+    <div v-else class="flex-grow overflow-y-auto px-3 py-3" tabindex="0" role="region" :aria-label="t('summary.title')">
         <div>
             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
                 <div class="spinner spinner--lg"></div>

@@ -10,7 +10,7 @@ When recording system audio, you'll grant screen sharing permission and tick a *
 
 ## Accessing the Upload Modal
 
-Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from Inquire mode). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
+Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from the Ask Ambrose page). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
 
 ![Upload Modal](../assets/images/screenshots/upload-modal.png)
 
@@ -27,7 +27,7 @@ When you upload a file, it immediately appears in the upload queue with a progre
 
 ## Recording Live Audio
 
-The upload modal includes three recording buttons under the drag-and-drop file area. **Microphone** sits as the full-width primary button (the everyday case); **System Audio** and **Mic + System** sit on a secondary tier with smaller buttons and coloured icon accents. A small amber dot appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the platform Speakr detected (more on this in the [platform matrix](#platform-support-matrix) below) — clicking the button still works for tab audio in that case, with a help-modal link explaining the workaround.
+The upload modal includes three recording buttons under the drag-and-drop file area. **Microphone** sits as the full-width primary button (the everyday case); **System audio** and **Mic + System** sit on a secondary tier with smaller buttons and coloured icon accents. A small amber dot appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the platform Speakr detected (more on this in the [platform matrix](#platform-support-matrix) below) — clicking the button still works for tab audio in that case, with a help-modal link explaining the workaround.
 
 ![Recording Options](../assets/images/screenshots/recording-single-source.png)
 
@@ -64,7 +64,7 @@ The browser's `getDisplayMedia` API gates what system-audio capture modes actual
 | Firefox | any OS | ❌ | ❌ | ❌ — no audio via getDisplayMedia |
 | Safari | any OS | ❌ | ❌ | ❌ — no audio via getDisplayMedia |
 
-If you click System Audio or Mic + System on a platform where capture won't deliver an audio track, Speakr opens a per-OS help guide automatically. The guide tabs are described below.
+If you click System audio or Mic + System on a platform where capture won't deliver an audio track, Speakr opens a per-OS help guide automatically. The guide tabs are described below.
 
 ## Per-OS Setup for System Audio
 
@@ -72,7 +72,7 @@ If you click System Audio or Mic + System on a platform where capture won't deli
 
 macOS doesn't let any browser capture system audio directly — the OS treats audio capture as a privileged operation that browsers (sandboxed apps) can't request. There are two paths:
 
-**Option A. Tab audio (no install).** Play the source content in a Chrome tab (YouTube, Zoom web, meeting URL, etc.), click **System Audio** in Speakr, pick that tab in the share dialog, tick **Share tab audio**. Works only for content playing inside a browser tab — native app audio (Slack desktop, native Zoom client, etc.) won't be captured.
+**Option A. Tab audio (no install).** Play the source content in a Chrome tab (YouTube, Zoom web, meeting URL, etc.), click **System audio** in Speakr, pick that tab in the share dialog, tick **Share tab audio**. Works only for content playing inside a browser tab — native app audio (Slack desktop, native Zoom client, etc.) won't be captured.
 
 **Option B. Virtual audio device (recommended for native app audio).** Install [BlackHole 2ch](https://existential.audio/blackhole/) (free; installer signs cleanly with no kernel-extension prompts). Open **Audio MIDI Setup**, create a **Multi-Output Device** containing your speakers + BlackHole, and set this as your system output. In Speakr, click **Microphone** and pick **BlackHole 2ch** as the input. Once set up, system audio captures continuously regardless of which tab or window is active. Alternative paid tools: [Loopback](https://rogueamoeba.com/loopback/) (Rogue Amoeba) is the most polished UX.
 
@@ -80,7 +80,7 @@ macOS doesn't let any browser capture system audio directly — the OS treats au
 
 Chrome and Edge on Windows are the easiest path — system-wide capture works out of the box:
 
-1. Click **System Audio** or **Mic + System** in Speakr
+1. Click **System audio** or **Mic + System** in Speakr
 2. Pick **Entire Screen** in the share dialog
 3. Tick **Share system audio** (bottom-left of the dialog)
 4. Click **Share**
@@ -93,7 +93,7 @@ If you hit "no audio track" errors with specific apps (Spotify desktop, DRM-prot
 
 Linux has three distinct paths. Pick the one that matches what you want to capture:
 
-**Option A. Tab audio (no setup).** Play the source content in a Chrome tab, click **System Audio**, pick the tab in the share dialog, tick **Share tab audio**. Note: this won't show up in pavucontrol. Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal — Speakr's meter is the source of truth. Only captures audio playing inside a browser tab; native apps (Slack, Spotify desktop, Discord) won't be picked up.
+**Option A. Tab audio (no setup).** Play the source content in a Chrome tab, click **System audio**, pick the tab in the share dialog, tick **Share tab audio**. Note: this won't show up in pavucontrol. Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal — Speakr's meter is the source of truth. Only captures audio playing inside a browser tab; native apps (Slack, Spotify desktop, Discord) won't be picked up.
 
 **Option B. Switch source in pavucontrol mid-recording.** Quick but limited — captures system audio at the cost of your mic input. Useful only when you want to record what's playing through your headphones / speakers without your own voice. Click **Microphone** in Speakr, open `pavucontrol` → **Recording** tab, change Speakr's capture source from your mic to **Monitor of &lt;your output&gt;**.
 
@@ -134,7 +134,7 @@ Under the recording buttons is a collapsible **Input devices** section. Expanded
 - **Primary input** — defaults to your OS's default microphone. Pick a specific input here if you want a USB headset, wireless receiver, audio interface, BlackHole, VB-Cable, or a Pulse / PipeWire monitor source as your primary capture device. Virtual / monitor entries are badged. The primary selection is used by both **Microphone** and **Mic + System** recording.
 - **Also mix in (optional)** — pick a second input device and Speakr will capture both streams in parallel and mix them via Web Audio into one MediaRecorder track. This is the canonical solution for **capturing both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively — set your real mic as Primary, set BlackHole / `speakr_loopback` / VB-Cable as the secondary, and one recording captures your voice plus the remote participants.
 
-Opening **New Recording** does not request microphone permission. Device labels are normally blank until permission is granted. You can expand the picker and click **Request microphone permission**, or simply press **Microphone** and respond to the browser's normal permission prompt.
+Opening **New recording** does not request microphone permission. Device labels are normally blank until permission is granted. You can expand the picker and click **Request microphone permission**, or simply press **Microphone** and respond to the browser's normal permission prompt.
 
 On mobile, after permission is granted, Speakr checks the labeled inputs. If a likely separate physical microphone is available and you have not already selected one, the existing **Input devices** section expands with an **Another microphone is available** notice before recording starts. Choose the input and continue, or keep the system default. When only the built-in/default microphone is present, recording starts immediately with no extra Speakr prompt. Detection is deliberately conservative: it only triggers on devices whose labels clearly indicate an external input (USB receivers, wireless and headset microphones, webcams, audio interfaces), so a device the browser exposes without a recognisable label starts no prompt — you can still select it manually from the picker. The prompt also never appears when a recording is being resumed after an interruption; a continued session always keeps its original input.
 
@@ -230,7 +230,7 @@ As shown in the interface, if you add tags that include summarization instructio
 
 ### Advanced ASR Options
 
-If your administrator has configured ASR endpoints with speaker diarization, you'll see an expandable "Advanced ASR Options" section. Here you can specify the transcription language if your content is not in English, set the minimum and maximum number of expected speakers for better diarization accuracy, and configure other ASR-specific settings based on your setup.
+If your administrator has configured ASR endpoints with speaker diarization, you'll see an expandable "Advanced ASR options" section. Here you can specify the transcription language if your content is not in English, set the minimum and maximum number of expected speakers for better diarization accuracy, and configure other ASR-specific settings based on your setup.
 
 These settings are particularly useful for meetings with known participants, as setting accurate speaker counts improves the AI's ability to separate different voices in the transcription.
 
@@ -240,11 +240,11 @@ The **Hotwords** field lets you provide a comma-separated list of words or phras
 
 #### Initial Prompt
 
-The **Initial Prompt** field provides context to the transcription engine about what the recording contains. Think of it as a brief description that steers the model's expectations. For example: "This is a meeting about AI-powered audio transcription tools." This helps the model make better word choices when the audio is ambiguous.
+The **Initial prompt** field provides context to the transcription engine about what the recording contains. Think of it as a brief description that steers the model's expectations. For example: "This is a meeting about AI-powered audio transcription tools." This helps the model make better word choices when the audio is ambiguous.
 
 Both fields follow a precedence hierarchy: values you set in the upload form override tag defaults, which override folder defaults, which override your personal defaults in [account settings](settings.md#custom-prompts-tab). If you regularly transcribe similar content, set your defaults at the tag or user level so you don't have to enter them every time.
 
-The same fields, along with the saved-template picker, are also available in the in-app recorder: after stopping a recording, expand **Upload Settings**, then **Advanced ASR Options**. Values set there travel with the recording through every upload path, including crash recovery and incognito processing.
+The same fields, along with the saved-template picker, are also available in the in-app recorder: after stopping a recording, expand **Upload settings**, then **Advanced ASR options**. Values set there travel with the recording through every upload path, including crash recovery and incognito processing.
 
 #### Transcription Model
 
@@ -329,7 +329,7 @@ When a call drops or a meeting freezes, you can end up with two separate recordi
 If the pieces are still files on your computer, join them while uploading instead (see [Joining Several Files into One Recording](#joining-several-files-into-one-recording)): the upload transcribes them once, where merging transcribes each recording first and then the merged one. There are two ways to start a merge of existing recordings:
 
 - **From the sidebar.** Use the "select multiple" button, tick two or more recordings, and choose **Merge**. A dialog opens where you can reorder the sources with the up and down arrows, add more recordings from a searchable list, set a title, and optionally delete the originals once the merged recording is created.
-- **From the recording view.** After you finish an in-app recording, the **Upload Recording & Notes** button has a small arrow on its right edge. Its menu offers **Merge with an existing recording**, which lets you append the recording you just made onto one or more existing recordings — the common case being an interrupted recording you had to restart. The new recording is added to the end by default, since it continues the earlier one.
+- **From the recording view.** After you finish an in-app recording, the **Upload recording & notes** button has a small arrow on its right edge. Its menu offers **Merge with an existing recording**, which lets you append the recording you just made onto one or more existing recordings — the common case being an interrupted recording you had to restart. The new recording is added to the end by default, since it continues the earlier one.
 
 Because notes cannot be meaningfully combined, when more than one source has notes the dialog asks which recording's notes to keep (or to keep none). That same recording's prompt-template variables carry over as well, so the merged summary uses the intended context. **Participants and tags are combined from all sources**, and folder membership follows the first recording in the order.
 

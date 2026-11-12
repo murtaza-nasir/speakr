@@ -2,7 +2,7 @@
      copy / download / edit) now lives in the chevron row of
      mobile-header.html instead of taking a whole separate row here. -->
 <div v-if="mobileTab === 'transcript'" class="h-full flex flex-col">
-    <div class="flex-grow overflow-y-auto px-3 py-3 relative">
+    <div class="flex-grow overflow-y-auto px-3 py-3 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
         <!-- Floating Processing Indicator (Mobile) -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
              :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">
@@ -93,25 +93,7 @@
                  scrolled past — the "sticky pills don't work" symptom. -->
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
                 <div v-if="processedTranscription.hasDialogue">
-                    <div v-for="(run, runIndex) in processedTranscription.simpleSegmentRuns"
-                         :key="`run-${runIndex}-${run.startTime}`"
-                         class="speaker-run">
-                        <div v-if="showTimestampsSimpleView"
-                             :class="['speaker-tablet-group', run.color]">
-                            <span class="speaker-tablet-time">${ formatTimestamp(run.startTime) }</span>
-                            <span class="speaker-tablet-name">${run.speaker}</span>
-                        </div>
-                        <div v-else :class="['speaker-tablet', run.color]">${run.speaker}</div>
-                        <div v-for="(segment, segIndex) in run.segments"
-                             :key="`seg-${segment.originalIndex}-${segment.startTime}`"
-                             :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
-                             @click="seekAudioFromEvent"
-                             @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
-                             :data-start-time="segment.startTime"
-                             :data-segment-index="segment.originalIndex">
-                            <div class="speaker-text">${segment.sentence}</div>
-                        </div>
-                    </div>
+                    {% with ui_slot = 'transcript-turn-mobile' %}{% include 'themes/slot.html' %}{% endwith %}
                 </div>
                 <div v-else>
                     <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">

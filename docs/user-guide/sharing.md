@@ -138,7 +138,7 @@ Sometimes you need to share a recording with someone who doesn't have a Speakr a
 
 ### Understanding Public Shares
 
-When you share a recording, Speakr generates a unique, secure link that provides access to that specific recording without requiring the recipient to log in or have an account. Each share link is cryptographically secure and impossible to guess, ensuring that only people you explicitly share with can access your content.
+When you share a recording, Speakr generates a unique, secure link that provides access to that specific recording without requiring the recipient to sign in or have an account. Each share link is cryptographically secure and impossible to guess, ensuring that only people you explicitly share with can access your content.
 
 The sharing system gives you granular control over what recipients can see. You decide whether to include your AI-generated summary, your personal notes, or both. The transcription itself is always included, as it forms the core content of the recording. Recipients get a clean, professional view of your recording without any of the administrative interface or your other recordings.
 
@@ -152,9 +152,9 @@ These requirements exist because share links need to be accessible to recipients
 
 Once your instance meets the requirements, sharing a recording takes just a few clicks. While viewing any recording, click the share button in the toolbar to open the sharing modal. This presents you with two simple checkboxes that control what information will be visible to recipients.
 
-The "Share Summary" option determines whether recipients can see the AI-generated summary of your recording. This is particularly useful when sharing with executives or stakeholders who need a quick overview without reading the entire transcription. The summary provides them with key points, decisions, and action items in a digestible format.
+The "Share summary" option determines whether recipients can see the AI-generated summary of your recording. This is particularly useful when sharing with executives or stakeholders who need a quick overview without reading the entire transcription. The summary provides them with key points, decisions, and action items in a digestible format.
 
-The "Share Notes" option controls whether your personal notes are visible. These are the markdown notes you've added to provide context, follow-ups, or additional thoughts about the recording. Consider carefully whether these notes are appropriate for your audience - they might contain internal observations or personal reminders that aren't meant for external viewing.
+The "Share notes" option controls whether your personal notes are visible. These are the markdown notes you've added to provide context, follow-ups, or additional thoughts about the recording. Consider carefully whether these notes are appropriate for your audience - they might contain internal observations or personal reminders that aren't meant for external viewing.
 
 Once you've selected your options, click "Create Share Link" to generate the secure URL. The link appears immediately in the modal, ready to copy to your clipboard. This link is permanent until you explicitly revoke it, so recipients can bookmark it for future reference.
 
@@ -174,13 +174,13 @@ The main content area is divided between the transcription and summary (if you'v
 
 If you've enabled summary sharing, it appears in a dedicated panel with its own copy functionality. The summary is rendered with full markdown formatting, presenting a professional overview of the key points from your recording. Your notes, if shared, would appear in a similar panel, providing additional context and insights.
 
-At the bottom of the page, recipients see a subtle footer indicating the content is "Powered by advanced AI transcription" with a link to Speakr. This gives your shares a professional appearance while maintaining the focus on your content. The entire experience is read-only - recipients cannot edit anything, cannot access your other recordings, and cannot see any of your account information or settings.
+At the bottom of the page, recipients see a small footer that reads "Built with Speakr" and links to the Speakr project. This gives your shares a professional appearance while maintaining the focus on your content. The entire experience is read-only - recipients cannot edit anything, cannot access your other recordings, and cannot see any of your account information or settings.
 
 ## Managing Your Shared Recordings
 
 ![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
 
-All your shared recordings are centrally managed through the Shared Transcripts section in your account settings. This gives you a complete overview of everything you've shared and with whom.
+All your shared recordings are centrally managed through the Shared recordings section in your account settings. This gives you a complete overview of everything you've shared and with whom.
 
 The list has three sections: your public links, the recordings you have shared with other users and groups, and the recordings shared with you. See [Shared Transcripts Tab](settings.md#shared-transcripts-tab). For public links, it shows each recording you've shared, when you created the share link, and what options you selected (summary and/or notes). Each entry includes the full share URL that you can copy again if needed - perhaps you've lost the original link or need to reshare with additional people.
 

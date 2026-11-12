@@ -1,4 +1,4 @@
-"""The conversation header on the Inquire page: label, filter summary, Download and Clear conversation."""
+"""The conversation header on the Ask page (/inquire): label, scope chip, Download and Clear conversation."""
 import json
 import os
 import re
@@ -35,7 +35,8 @@ def test_header_shown_with_the_download_condition():
 def test_header_has_label_summary_then_download_and_clear_in_order():
     header = _header()
     assert "t('inquire.conversation')" in header
-    assert 'v-if="inquireFilterSummary"' in header
+    # The scope chip: the filter summary, or "All recordings" without filters.
+    assert 'class="assistant-scope"' in header and 'v-text="inquireScopeLabel"' in header
     download = header.index('@click="downloadInquireConversation"')
     clear = header.index('@click="clearInquireConversation"')
     assert download < clear
@@ -63,6 +64,7 @@ def test_header_functions_exposed_to_the_template():
     page = _template()
     returned = page[page.rindex('return {'):]
     assert re.search(r'\binquireFilterSummary,', returned)
+    assert re.search(r'\binquireScopeLabel,', returned)
     assert re.search(r'\bclearInquireConversation,', returned)
 
 

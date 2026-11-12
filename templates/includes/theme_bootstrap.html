@@ -7,6 +7,8 @@
   (function () {
     var root = document.documentElement, mode = null, scheme = null;
     try { mode = localStorage.getItem('darkMode'); scheme = localStorage.getItem('colorScheme'); } catch (e) {}
+    var fallback = window.speakrThemeDefaults || {};
+    scheme = scheme || fallback.colorScheme || null;
     var dark = mode !== null ? mode === 'true'
       : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     root.classList.toggle('dark', dark);
@@ -14,7 +16,13 @@
     // Until the stylesheets are loaded, the page background is the browser's
     // default (white). The background last seen with this mode and scheme is
     // used for that moment, and saved again once the page has loaded.
-    var key = 'themeBg:' + (dark ? 'dark' : 'light') + ':' + (scheme || 'blue');
+    // A UI theme other than the default (includes/ui_theme.html) has its own
+    // background, so it keeps its own entry.
+    var uiTheme = null;
+    try { uiTheme = localStorage.getItem('uiTheme'); } catch (e) {}
+    uiTheme = uiTheme || fallback.uiTheme || null;
+    var key = 'themeBg:' + (dark ? 'dark' : 'light') + ':' + (scheme || 'blue')
+      + (uiTheme && uiTheme !== 'default' ? ':' + uiTheme.replace(/[^\w-]/g, '') : '');
     try {
       var bg = localStorage.getItem(key);
       if (bg) {

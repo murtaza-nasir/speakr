@@ -41,7 +41,7 @@ DELETION_MODE=full_recording  # Options: 'audio_only' or 'full_recording'
 - **Deletes**: The media file only
 - **Keeps**: Transcription, summary, notes, metadata
 - **Use case**: Long-term record keeping with storage optimization
-- **Result**: Recordings are marked "Audio removed" and stay in the list; the transcription remains searchable
+- **Result**: Recordings are marked "Audio deleted" and stay in the list; the transcription remains searchable
 
 #### Full Recording Mode (`DELETION_MODE=full_recording`)
 - **Deletes**: Complete recording including the media file, transcription, summary, notes
@@ -86,9 +86,9 @@ Individual tags can protect recordings from auto-deletion entirely.
 
 ## Protecting Recordings from Deletion
 
-1. Go to **Account Settings** → **Tags** tab
-2. Click **Create Tag** or **Edit** an existing tag
-3. Enable **"Protect from Auto-Deletion"** checkbox
+1. Go to **Account settings** → **Tags** tab
+2. Click **Create tag** or **Edit** an existing tag
+3. Check **"Never delete automatically"**
 4. Apply this tag to recordings you want to protect
 
 **When protected:**
@@ -99,7 +99,7 @@ Individual tags can protect recordings from auto-deletion entirely.
 
 ## Audio Removed Recordings
 
-When `DELETION_MODE=audio_only` removes a recording's media file, the recording stays in the list, marked "Audio removed". Users who can delete recordings can also remove the media of a single recording by hand with **Delete audio, keep transcript** (or **Delete video, keep transcript** for a video) in the recording's **⋯** menu. Both paths leave the recording in the same state. For a retained video, the video file is the recording's only stored media, so removing it removes the video and its audio together.
+When `DELETION_MODE=audio_only` removes a recording's media file, the recording stays in the list, marked "Audio deleted". Users who can delete recordings can also remove the media of a single recording by hand with **Delete audio, keep transcript** (or **Delete video, keep transcript** for a video) in the recording's **⋯** menu. Both paths leave the recording in the same state. For a retained video, the video file is the recording's only stored media, so removing it removes the video and its audio together.
 
 Earlier versions called this state "Archived". "Archived" now means something else: a recording the user has hidden from the main list without deleting anything (see [Recording list](../user-guide/first-steps.md#archiving-recordings)).
 
@@ -107,7 +107,7 @@ Earlier versions called this state "Archived". "Archived" now means something el
 
 1. Open the **Recordings** sidebar
 2. Expand the filters
-3. Turn on the **Audio removed** quick filter, next to Starred and Inbox
+3. Turn on the **Audio deleted** quick filter, next to Starred and Inbox
 
 The filter appears when audio-only retention is active or when the user is allowed to delete recordings.
 
@@ -128,8 +128,8 @@ The filter appears when audio-only retention is active or when the user is allow
 ### Indicators
 
 - **Sidebar**: grey muted-speaker badge next to the recording title
-- **Player**: "The audio file was removed. The transcript, summary and notes remain available."
-- **Filter**: **Audio removed** quick filter in the sidebar filters
+- **Player**: "The audio was deleted. The transcript, summary and notes are kept."
+- **Filter**: **Audio deleted** quick filter in the sidebar filters
 
 ## Deletion Records for API Clients
 
@@ -503,7 +503,7 @@ Get statistics about eligible recordings and current configuration.
 
 **Check:**
 
-1. Turn on the **Audio removed** quick filter in the sidebar filters
+1. Turn on the **Audio deleted** quick filter in the sidebar filters
 2. Verify `DELETION_MODE=audio_only` (`full_recording` deletes the whole recording instead)
 3. Check the `audio_deleted_at` field in the database
 

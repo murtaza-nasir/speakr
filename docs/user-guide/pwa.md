@@ -61,7 +61,7 @@ A Progressive Web App combines the best of web and mobile apps:
 The mobile recording detail view is a first-class member of the design system. When you open a recording on a phone you see:
 
 - **Single header** — the global app header carries the title + edit pen + regenerate-title; the per-recording strip below carries participants, status, folder / tag / share pills, and a chevron to expand for action toolbar + secondary metadata.
-- **Bottom navigation** — Summary, Transcript, Chat as direct tabs, plus a **More** overflow that opens a bottom-sheet for Notes / Stats / Events when those tabs are available.
+- **Bottom navigation** — Summary, Transcript and the assistant (Ambrose) as direct tabs, plus a **More** overflow that opens a bottom-sheet for Notes / Stats / Events when those tabs are available.
 - **Contextual icons in the chevron row** — Copy / download / edit for Summary and Notes, the follow-player and view-mode toggles for Transcript, calendar-export for Events. Shares the chevron's row so it doesn't take a separate row of vertical space.
 - **Edge-to-edge content** — Panels run full-width to the screen edges instead of sitting inside nested gutters.
 - **Sticky speaker pills** — In the transcript, the speaker tablet pins to the top of the scroll area for the entire speaker's run.

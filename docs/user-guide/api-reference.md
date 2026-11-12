@@ -127,7 +127,7 @@ Every operation in the specification has an `operationId`, which is required to 
 
 Speakr can be added to [Open WebUI](https://openwebui.com/) as an OpenAPI tool server. A model in an Open WebUI chat can then list and search your recordings and read their transcripts, summaries and notes.
 
-1. In Speakr, create a token under **Account Settings** → **API Tokens** (see [API Tokens](api-tokens.md)). A **Read only** token covers searching and reading. Add the `process` scope only if the model may also chat with a recording or start a summary.
+1. In Speakr, create a token under **Account settings** → **API tokens** (see [API Tokens](api-tokens.md)). A **Read only** token covers searching and reading. Add the `process` scope only if the model may also chat with a recording or start a summary.
 2. In Open WebUI, an administrator opens **Settings** → **Admin** → **Integrations** and adds a connection in the **Tools** section:
     - **Type:** OpenAPI
     - **URL:** `https://your-speakr-instance.com/api/v1`

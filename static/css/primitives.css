@@ -278,9 +278,12 @@ html.dark {
     appearance: none;
     background: transparent;
     border: none;
-    color: var(--text-muted);
+    /* Quieter than the active tab in both colour and weight: in dark mode
+       --text-muted (slate-300) sat next to gray-100 at the same weight, and
+       the two read as equal. --text-light keeps 4.5:1 or more. */
+    color: var(--text-light, var(--text-muted));
     font-size: var(--fs-body);
-    font-weight: 600;
+    font-weight: 500;
     padding: var(--sp-3) var(--sp-3);
     cursor: pointer;
     display: inline-flex;
@@ -299,6 +302,7 @@ html.dark {
 
 .tab.is-active {
     color: var(--text-primary);
+    font-weight: 600;
     border-bottom-color: var(--text-accent);
 }
 
@@ -501,7 +505,8 @@ html.dark {
 }
 
 .toggle.is-on:hover {
-    opacity: 0.92;
+    /* a filter, not opacity: opacity blends the label into the page and drops its contrast */
+    filter: brightness(0.94);
 }
 
 
@@ -1310,6 +1315,10 @@ html.dark .modal-overlay {
     margin: var(--sp-1) 0;
     background: var(--border-primary);
 }
+/* Monospace even where a theme resets textarea fonts (cards). */
+.regen-modal textarea.regen-prompt {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .regen-prompt {
     min-height: 240px;
     resize: vertical;
@@ -1621,6 +1630,18 @@ select:focus-visible,
 textarea:focus-visible {
     outline: 2px solid var(--border-focus);
     outline-offset: 2px;
+}
+
+/* Reduced motion: the view toggles change colour at once, not over a fade */
+@media (prefers-reduced-motion: reduce) {
+    .toggle, .toggle-button { transition: none; }
+}
+
+/* Scroll panes made keyboard-focusable (tabindex="0" role="region"): the ring
+   sits inside the pane so a clipping ancestor cannot cut it. */
+[role="region"][tabindex="0"]:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
 }
 
 /* But override outline for elements that already provide their own ring */
@@ -2377,6 +2398,86 @@ select option:hover {
     background-color: var(--bg-accent);
     color: var(--text-accent);
 }
+
+
+/* ==========================================================================
+   UI theme cards (templates/includes/ui_theme_picker.html). The selected
+   card is the one with aria-pressed="true".
+   ========================================================================== */
+.ui-theme-picker { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.ui-theme-picker__help { font-size: var(--fs-meta); color: var(--text-muted); margin-top: var(--sp-1); }
+.ui-theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-3); }
+.ui-theme-card {
+    position: relative; display: flex; flex-direction: column; text-align: start;
+    padding: 0; overflow: hidden; cursor: pointer;
+    background: var(--bg-secondary); color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-secondary); border-radius: var(--radius-lg);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.ui-theme-card:hover { border-color: var(--border-accent); }
+.ui-theme-card:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.ui-theme-card[aria-pressed="true"] { border-color: var(--bg-button); box-shadow: 0 0 0 1px var(--bg-button); }
+.ui-theme-card__preview { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-tertiary); }
+.ui-theme-card__text { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2) var(--sp-3) var(--sp-3); }
+.ui-theme-card__name { font-size: var(--fs-body); font-weight: 600; }
+.ui-theme-card__description { font-size: var(--fs-meta); color: var(--text-muted); line-height: var(--lh-snug); }
+.ui-theme-card__check {
+    position: absolute; top: var(--sp-2); inset-inline-end: var(--sp-2); display: none;
+    width: 22px; height: 22px; border-radius: var(--radius-pill); align-items: center; justify-content: center;
+    font-size: 11px; background: var(--bg-button); color: var(--text-button);
+}
+.ui-theme-card[aria-pressed="true"] .ui-theme-card__check { display: inline-flex; }
+
+/* Modal footers on a phone: the two ends of a --between footer wrap onto two rows
+   instead of pushing the primary button past the panel's edge (upload sheet). */
+@media (max-width: 639px) {
+    .modal-footer--between { flex-wrap: wrap; }
+    .modal-footer--between > div { margin-inline-start: auto; }
+}
+
+/* The assistant's monogram (templates/includes/assistant_avatar.html) and
+   the scope chip of its chats ("This recording", "All recordings"). */
+.assistant-avatar {
+    --assistant-avatar-size: 28px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--assistant-avatar-size);
+    height: var(--assistant-avatar-size);
+    border-radius: 999px;
+    /* The soft accent pair of the header "Ask" button and the scope chip,
+       with a faint ring so the circle still shows on an accent surface. */
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-accent) 28%, transparent);
+    font-size: calc(var(--assistant-avatar-size) * 0.5);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
+    user-select: none;
+}
+.assistant-avatar--sm { --assistant-avatar-size: 18px; }
+.assistant-avatar--md { --assistant-avatar-size: 28px; }
+.assistant-avatar--lg { --assistant-avatar-size: 56px; }
+
+.assistant-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 16rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+.assistant-scope > i { font-size: 0.85em; opacity: 0.85; }
+.assistant-scope > span { overflow: hidden; text-overflow: ellipsis; }
 
 /* Folder marks (folderMarkColor in static/js/modules/utils/colors.js): a
    white folder is drawn grey on a light page and a black one grey on a dark

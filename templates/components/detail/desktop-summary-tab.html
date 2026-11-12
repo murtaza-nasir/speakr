@@ -48,6 +48,7 @@
          is inside so the scrollbar runs the full edge. -->
     <div v-else-if="!editingSummary"
          class="flex-1 overflow-y-auto px-4 pt-4 pb-20 prose-flush"
+         tabindex="0" role="region" :aria-label="t('summary.title')"
          v-html="summaryHtml">
     </div>
 

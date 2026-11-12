@@ -33,10 +33,17 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   </div>
   
   <div class="guide-card">
+    <div class="card-icon">💬</div>
+    <h3>Ambrose</h3>
+    <p>Chat about a recording, with citations, chats per recording and searches of your library.</p>
+    <a href="ambrose" class="card-link">Meet Ambrose →</a>
+  </div>
+
+  <div class="guide-card">
     <div class="card-icon">🔍</div>
-    <h3>Inquire Mode</h3>
-    <p>Search across all recordings using natural language and semantic understanding.</p>
-    <a href="inquire-mode" class="card-link">Explore Inquire Mode →</a>
+    <h3>Ask Ambrose</h3>
+    <p>Ask questions about all your recordings at once (formerly Inquire).</p>
+    <a href="inquire-mode" class="card-link">Explore Ask Ambrose →</a>
   </div>
   
   <div class="guide-card">
@@ -100,7 +107,7 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   
   <div class="tip-card">
     <h4>🔎 Search Smartly</h4>
-    <p>Inquire Mode understands context, not just keywords. Ask natural questions to find information across all your recordings.</p>
+    <p>Ambrose searches by meaning, not only by keywords. Ask natural questions on the Ask Ambrose page to find information across all your recordings.</p>
   </div>
   
   <div class="tip-card">
@@ -117,7 +124,7 @@ The best way to learn Speakr is by doing. Start with these simple steps:
 2. **Explore the interface** - Click through the different views and panels
 3. **Try the AI chat** - Ask questions about your recording to see the AI in action
 4. **Create your first tag** - Set up organization from the beginning
-5. **Test Inquire Mode** - Search for something specific in your recordings
+5. **Try Ask Ambrose** - Ask about something specific in your recordings
 
 As you grow comfortable with basics, explore advanced features like speaker diarization, custom AI prompts, and bulk operations.
 

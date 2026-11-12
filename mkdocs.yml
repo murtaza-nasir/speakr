@@ -163,7 +163,8 @@ nav:
     - Recording Audio: user-guide/recording.md
     - Understanding Transcripts: user-guide/transcripts.md
     - Transcript Templates: user-guide/transcript-templates.md
-    - Inquire Mode: user-guide/inquire-mode.md
+    - Ambrose: user-guide/ambrose.md
+    - Ask Ambrose: user-guide/inquire-mode.md
     - Sharing Recordings: user-guide/sharing.md
     - Folders: user-guide/folders.md
     - Groups: user-guide/groups.md
@@ -181,6 +182,7 @@ nav:
     - System Settings: admin-guide/system-settings.md
     - Default Prompts: admin-guide/prompts.md
     - Model Configuration: admin-guide/model-configuration.md
+    - Ambrose Settings: admin-guide/ambrose.md
     - Vector Store: admin-guide/vector-store.md
     - Recording Sessions: admin-guide/recording-sessions.md
     - Webhooks: admin-guide/webhooks.md
@@ -195,6 +197,7 @@ nav:
     - Custom Connectors: advanced/custom-connectors.md
     - Tencent Cloud ASR: advanced/tencent-asr.md
     - Job Queue System: advanced/job-queue-system.md
+    - UI Themes: advanced/ui-themes.md
 
   - Troubleshooting: troubleshooting.md
   - FAQ: faq.md

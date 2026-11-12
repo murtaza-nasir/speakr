@@ -51,8 +51,8 @@ body.unloaded {
 
     --text-primary: #1f2937; /* gray-800 */
     --text-secondary: #374151; /* gray-700 */
-    --text-muted: #6b7280; /* gray-500 */
-    --text-light: #9ca3af; /* gray-400 */
+    --text-muted: #565e6b; /* between gray-600 and gray-500: 4.5:1 on the muted grey, blue accent and scheme surfaces */
+    --text-light: #5f6773; /* 4.5:1 or more on the muted grey and accent-free surfaces */
     --text-accent: #1d4ed8; /* blue-700 */
     --text-button: #ffffff; /* white */
     --text-danger: #b91c1c; /* red-700 */
@@ -86,10 +86,10 @@ body.unloaded {
     --bg-tertiary: #ebf4ed; /* light muted green */
     --bg-accent: #d0e8d7; /* muted pastel green */
     --bg-accent-hover: #c1e0ca; /* deeper muted green */
-    --bg-button: #059669; /* keep button visible */
-    --bg-button-hover: #047857; /* keep button visible */
+    --bg-button: #047857; /* keep button visible */
+    --bg-button-hover: #065f46; /* keep button visible */
     --bg-input: #f9fcfa; /* slightly green white */
-    --text-accent: #047857; /* keep accent text visible */
+    --text-accent: #037252; /* keep accent text visible */
     --border-primary: #d4e5d8; /* muted green border */
     --border-secondary: #c2dcc9; /* soft green border */
     --border-accent: #a8d0b3; /* medium green border */
@@ -125,7 +125,7 @@ body.unloaded {
     --bg-button: #e11d48; /* keep button visible */
     --bg-button-hover: #be185d; /* keep button visible */
     --bg-input: #fcf9fa; /* slightly rose white */
-    --text-accent: #be185d; /* keep accent text visible */
+    --text-accent: #b41658; /* keep accent text visible */
     --border-primary: #e5d6de; /* muted rose border */
     --border-secondary: #dbc8d2; /* soft rose border */
     --border-accent: #d0b0bf; /* medium rose border */
@@ -140,10 +140,10 @@ body.unloaded {
     --bg-tertiary: #f3efe9; /* light muted amber */
     --bg-accent: #e5ddd1; /* muted pastel amber */
     --bg-accent-hover: #ddd2c2; /* deeper muted amber */
-    --bg-button: #d97706; /* keep button visible */
-    --bg-button-hover: #b45309; /* keep button visible */
+    --bg-button: #b45309; /* keep button visible */
+    --bg-button-hover: #92400e; /* keep button visible */
     --bg-input: #fbfaf8; /* slightly amber white */
-    --text-accent: #b45309; /* keep accent text visible */
+    --text-accent: #994607; /* keep accent text visible */
     --border-primary: #e2dace; /* muted amber border */
     --border-secondary: #d9cdb9; /* soft amber border */
     --border-accent: #cdbca1; /* medium amber border */
@@ -158,10 +158,10 @@ body.unloaded {
     --bg-tertiary: #ecf4f3; /* light muted teal */
     --bg-accent: #d2e5e2; /* muted pastel teal */
     --bg-accent-hover: #c3ddd9; /* deeper muted teal */
-    --bg-button: #0d9488; /* keep button visible */
-    --bg-button-hover: #0f766e; /* keep button visible */
+    --bg-button: #0f766e; /* keep button visible */
+    --bg-button-hover: #115e59; /* keep button visible */
     --bg-input: #f9fcfb; /* slightly teal white */
-    --text-accent: #0f766e; /* keep accent text visible */
+    --text-accent: #0e7068; /* keep accent text visible */
     --border-primary: #c8dfdc; /* muted teal border */
     --border-secondary: #b5d3ce; /* soft teal border */
     --border-accent: #9cc5be; /* medium teal border */
@@ -178,7 +178,7 @@ body.unloaded {
     --bg-accent: #1e3a8a; /* blue-900 */
     --bg-accent-hover: #1e40af; /* blue-800 */
     --bg-button: #2563eb; /* blue-600 */
-    --bg-button-hover: #3b82f6; /* blue-500 */
+    --bg-button-hover: #1d4ed8; /* blue-700, as in light mode: white text keeps 6.7:1 (blue-500 gave 3.67:1) */
     --bg-danger: #dc2626; /* red-600 */
     --bg-danger-hover: #ef4444; /* red-500 */
     --bg-danger-light: #7f1d1d; /* red-900 */
@@ -193,8 +193,8 @@ body.unloaded {
     --text-primary: #f3f4f6; /* gray-100 */
     --text-secondary: #d1d5db; /* gray-300 */
     --text-muted: #cbd5e1; /* slate-300 - improved contrast */
-    --text-light: #94a3b8; /* slate-400 - better visibility */
-    --text-accent: #60a5fa; /* blue-400 */
+    --text-light: #a1aec2; /* 4.5:1 or more on bg-tertiary */
+    --text-accent: #7ab3fb; /* between blue-300 and blue-400: 4.5:1 on the accent and tertiary surfaces */
     --text-button: #ffffff; /* white */
     --text-danger: #f87171; /* red-400 */
     --text-danger-strong: #fca5a5; /* red-300 */
@@ -223,8 +223,8 @@ body.unloaded {
     --bg-tertiary: #2e3c30; /* lighter dark with emerald hint */
     --bg-accent: #384838; /* visible emerald accent */
     --bg-accent-hover: #425440; /* lighter emerald accent */
-    --bg-button: #059669; /* keep button visible */
-    --bg-button-hover: #10b981; /* keep button visible */
+    --bg-button: #047857; /* keep button visible */
+    --bg-button-hover: #065f46; /* keep button visible */
     --bg-input: #2e3c30; /* darker emerald input background */
     --text-accent: #7dd3ae; /* muted pastel emerald text */
     --border-primary: #3a4540; /* visible emerald border */
@@ -244,7 +244,7 @@ body.unloaded {
     --bg-accent: #423c48; /* visible purple accent */
     --bg-accent-hover: #4e4854; /* lighter purple accent */
     --bg-button: #7c3aed; /* keep button visible */
-    --bg-button-hover: #8b5cf6; /* keep button visible */
+    --bg-button-hover: #6d28d9; /* keep button visible */
     --bg-input: #36303c; /* darker purple input background */
     --text-accent: #b8a5d4; /* muted pastel purple text */
     --border-primary: #484050; /* visible purple border */
@@ -264,7 +264,7 @@ body.unloaded {
     --bg-accent: #483c40; /* visible rose accent */
     --bg-accent-hover: #54484c; /* lighter rose accent */
     --bg-button: #e11d48; /* keep button visible */
-    --bg-button-hover: #f43f5e; /* keep button visible */
+    --bg-button-hover: #be123c; /* keep button visible */
     --bg-input: #3c3030; /* darker rose input background */
     --text-accent: #d4a5b4; /* muted pastel rose text */
     --border-primary: #504048; /* visible rose border */
@@ -283,8 +283,8 @@ body.unloaded {
     --bg-tertiary: #3c342e; /* lighter dark with amber hint */
     --bg-accent: #484038; /* visible amber accent */
     --bg-accent-hover: #544c42; /* lighter amber accent */
-    --bg-button: #d97706; /* keep button visible */
-    --bg-button-hover: #f59e0b; /* keep button visible */
+    --bg-button: #b45309; /* keep button visible */
+    --bg-button-hover: #92400e; /* keep button visible */
     --bg-input: #3c342e; /* darker amber input background */
     --text-accent: #d4c5a5; /* muted pastel amber text */
     --border-primary: #504840; /* visible amber border */
@@ -303,8 +303,8 @@ body.unloaded {
     --bg-tertiary: #2e3c3c; /* lighter dark with teal hint */
     --bg-accent: #384848; /* visible teal accent */
     --bg-accent-hover: #425454; /* lighter teal accent */
-    --bg-button: #0d9488; /* keep button visible */
-    --bg-button-hover: #14b8a6; /* keep button visible */
+    --bg-button: #0f766e; /* keep button visible */
+    --bg-button-hover: #115e59; /* keep button visible */
     --bg-input: #2e3c3c; /* darker teal input background */
     --text-accent: #a5d4d0; /* muted pastel teal text */
     --border-primary: #404848; /* visible teal border */
@@ -638,7 +638,6 @@ div[v-if="!editingNotes"] {
      letter-spacing: 0.025em;
      vertical-align: middle; /* Align with text */
      margin-left: 0.5rem; /* Less space */
-     opacity: 0.85; /* Slightly more subtle */
      transition: opacity 0.2s ease;
  }
  .status-badge:hover {
@@ -1174,7 +1173,7 @@ body {
 
 .speaker-highlight.speaker-color-4 {
     background-color: #FFF3E0;
-    color: #E65100;
+    color: #B23C00;
     box-shadow: 0 0 8px rgba(255, 243, 224, 0.6), 0 0 12px rgba(230, 81, 0, 0.2);
 }
 
@@ -1192,7 +1191,7 @@ body {
 
 .speaker-highlight.speaker-color-7 {
     background-color: #FFF9C4;
-    color: #F57F17;
+    color: #8A5A00;
     box-shadow: 0 0 8px rgba(255, 249, 196, 0.6), 0 0 12px rgba(245, 127, 23, 0.2);
 }
 
@@ -1210,7 +1209,7 @@ body {
 
 .speaker-highlight.speaker-color-10 {
     background-color: #F1F8E9;
-    color: #558B2F;
+    color: #476F26;
     box-shadow: 0 0 8px rgba(241, 248, 233, 0.6), 0 0 12px rgba(85, 139, 47, 0.2);
 }
 
@@ -1228,7 +1227,7 @@ body {
 
 .speaker-highlight.speaker-color-13 {
     background-color: #FFF8E1;
-    color: #FF8F00;
+    color: #8A5200;
     box-shadow: 0 0 8px rgba(255, 248, 225, 0.6), 0 0 12px rgba(255, 143, 0, 0.2);
 }
 
@@ -1454,7 +1453,7 @@ body {
     flex-direction: row;
     flex-wrap: wrap;
     overflow: hidden;
-    max-height: 3rem; /* Allow up to 2 rows of speakers */
+    max-height: 4.5rem; /* Two full rows of speaker chips (about 27px each) plus the padding */
     padding: 0.25rem 0.75rem;
 }
 
@@ -2123,16 +2122,16 @@ body {
 .speaker-color-1  { background-color: #E3F2FD; color: #0D47A1; --speaker-fg: #0D47A1; } /* Blue */
 .speaker-color-2  { background-color: #F3E5F5; color: #6A1B9A; --speaker-fg: #6A1B9A; } /* Purple */
 .speaker-color-3  { background-color: #E8F5E9; color: #1B5E20; --speaker-fg: #1B5E20; } /* Green */
-.speaker-color-4  { background-color: #FFF3E0; color: #E65100; --speaker-fg: #E65100; } /* Orange */
+.speaker-color-4  { background-color: #FFF3E0; color: #B23C00; --speaker-fg: #B23C00; } /* Orange */
 .speaker-color-5  { background-color: #FCE4EC; color: #AD1457; --speaker-fg: #AD1457; } /* Pink */
 .speaker-color-6  { background-color: #E0F7FA; color: #006064; --speaker-fg: #006064; } /* Cyan */
-.speaker-color-7  { background-color: #FFF9C4; color: #F57F17; --speaker-fg: #F57F17; } /* Yellow */
+.speaker-color-7  { background-color: #FFF9C4; color: #8A5A00; --speaker-fg: #8A5A00; } /* Yellow */
 .speaker-color-8  { background-color: #EFEBE9; color: #5D4037; --speaker-fg: #5D4037; } /* Brown */
 .speaker-color-9  { background-color: #E8EAF6; color: #283593; --speaker-fg: #283593; } /* Indigo */
-.speaker-color-10 { background-color: #F1F8E9; color: #558B2F; --speaker-fg: #558B2F; } /* Lime */
+.speaker-color-10 { background-color: #F1F8E9; color: #476F26; --speaker-fg: #476F26; } /* Lime */
 .speaker-color-11 { background-color: #FFEBEE; color: #C62828; --speaker-fg: #C62828; } /* Red */
 .speaker-color-12 { background-color: #ECEFF1; color: #37474F; --speaker-fg: #37474F; } /* Blue Grey */
-.speaker-color-13 { background-color: #FFF8E1; color: #FF8F00; --speaker-fg: #FF8F00; } /* Amber */
+.speaker-color-13 { background-color: #FFF8E1; color: #8A5200; --speaker-fg: #8A5200; } /* Amber */
 .speaker-color-14 { background-color: #EDE7F6; color: #4527A0; --speaker-fg: #4527A0; } /* Deep Purple */
 .speaker-color-15 { background-color: #E0F2F1; color: #00695C; --speaker-fg: #00695C; } /* Teal */
 .speaker-color-16 { background-color: #FBE9E7; color: #BF360C; --speaker-fg: #BF360C; } /* Deep Orange */
@@ -4727,6 +4726,173 @@ select:disabled {
     border-color: var(--border-focus);
 }
 
+/* Segment citations in the recording chat (Ambrose phase 2a): a numbered
+   marker that seeks the player, and the sources list under the answer. A
+   quote not found in its segment gets a dashed marker and a note. */
+.chat-cite {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0.05em 0.4em;
+    margin: 0 0.1em;
+    border-radius: 9999px;
+    border: 1px solid var(--border-accent, var(--border-secondary));
+    background-color: var(--bg-accent);
+    color: var(--text-accent);
+    font-family: inherit;
+    font-size: 0.72em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    text-align: center;
+    vertical-align: 0.12em;
+    cursor: pointer;
+}
+.chat-cite:hover {
+    border-color: var(--border-focus);
+}
+.chat-cite--unverified,
+.chat-cite:disabled {
+    border-style: dashed;
+}
+.chat-cite:disabled {
+    cursor: default;
+}
+.chat-sources {
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.85em;
+}
+.chat-sources__label {
+    margin-bottom: var(--sp-1);
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.chat-sources ol {
+    margin: 0;
+    padding-inline-start: 1.4em;
+    list-style: decimal;
+}
+.chat-sources li {
+    margin: 0.25em 0;
+    color: var(--text-secondary);
+}
+.chat-sources li > * + * {
+    margin-inline-start: 0.35em;
+}
+.chat-sources .chat-ts-chip {
+    margin: 0;
+}
+.chat-sources__speaker {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.chat-sources__unverified {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+/* AssistantChat (Ambrose phase 2b, templates/components/assistant/chat.html):
+   a citation of another recording opens it at the cited time; the steps of a
+   turn, open while it runs and folded into one line after; the thinking row;
+   "Jump to latest" while the user reads further up; the "Search in" chip
+   and its popover in the recording panel. */
+.chat-cite--link {
+    width: auto;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.chat-sources__title {
+    color: var(--text-accent);
+    text-decoration: none;
+}
+.chat-sources__title:hover { text-decoration: underline; }
+.assistant-timeline { position: relative; }
+.assistant-steps {
+    margin-bottom: var(--sp-2);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--border-primary);
+    font-size: var(--fs-meta, 0.75rem);
+    color: var(--text-secondary);
+}
+.assistant-steps__line {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-align: start;
+}
+.assistant-steps__line:hover { color: var(--text-secondary); }
+.assistant-steps__line + .assistant-steps__list { margin-top: var(--sp-2); }
+.assistant-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    margin: 0.2em 0;
+}
+.assistant-step__icon {
+    width: 1rem;
+    margin-top: 0.15em;
+    text-align: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.assistant-step__icon.is-running { color: var(--text-accent); }
+.assistant-step__detail { color: var(--text-muted); }
+.assistant-waiting {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: fit-content;
+}
+/* A recording's row while Ambrose answers in its chat with another
+   recording open (components/assistant/answering-mark.html). */
+.assistant-answering {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline-end: var(--sp-1, 4px);
+    color: var(--text-accent);
+    font-size: 11px;
+    line-height: 1;
+    animation: assistant-answering-pulse 1.6s ease-in-out infinite;
+}
+@keyframes assistant-answering-pulse { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+/* The same place when the recording has a chat in this tab and no answer is arriving. */
+.assistant-answering--idle {
+    color: var(--text-muted);
+    animation: none;
+}
+@media (prefers-reduced-motion: reduce) { .assistant-answering { animation: none; } }
+.assistant-composer__bar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--sp-2);
+}
+.assistant-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.15em 0.7em;
+    border-radius: 999px;
+    border: 1px solid var(--border-secondary);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: var(--fs-label, 0.75rem);
+    line-height: 1.5;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.assistant-jump:hover { color: var(--text-primary); border-color: var(--border-focus); }
+.inquire-composer {
+    border-top-color: var(--border-primary);
+    background: var(--bg-secondary);
+}
+
 /* ------------------------------------------------------------------ */
 /* Identify Speakers modal (templates/modals/speaker-modal.html, #395) */
 /* ------------------------------------------------------------------ */
@@ -5070,4 +5236,158 @@ select:disabled {
 .find-replace-toggle[aria-pressed="true"] {
     background: var(--bg-accent);
     color: var(--text-accent);
+}
+
+/* ---- Round 3 QA fixes ------------------------------------------------------ */
+
+/* Colour-scheme dialog: the selected card has the accent fill, on which the
+   muted description fell under 4.5:1 in several themes. */
+.color-scheme-option.active .color-scheme-description { color: var(--text-secondary); }
+
+/* Recording header between 768 and 1023px: the title, its edit buttons and the
+   recording actions share one row; Inquire and New Recording drop their labels
+   (icon and accessible name stay) so the title keeps room instead of its buttons
+   running under the actions. */
+@media (max-width: 1023px) {
+    .app-header--detail .header-action__label { display: none; }
+}
+
+/* Per-speaker stats table in the narrow right pane: the lesser columns drop out
+   as the card narrows instead of making it scroll sideways. */
+.stats-speaker-card { container-type: inline-size; }
+@container (max-width: 440px) {
+    .stats-col-extra { display: none; }
+}
+@container (max-width: 300px) {
+    .stats-col-pct { display: none; }
+    .stats-speaker-card th, .stats-speaker-card td { padding-inline: 8px; }
+}
+
+/* Transcript editor on a phone: tighter header cells so the five columns fit 390px */
+@media (max-width: 639px) {
+    .asr-editor-table th { padding: 0.5rem 0.375rem; letter-spacing: 0; }
+}
+
+/* ---- Recording view: one header row across the two panes ------------------- */
+
+/* The middle pane's bar (Transcription | Translation and its toolbar) and the
+   right pane's bar (Summary | Notes | Stats and its actions) read as one header
+   row with one border, so neither may wrap onto a second line. When a bar's
+   tabs and actions do not fit, static/js/modules/utils/tabs-bar-fit.js steps it
+   down: fit-1 drops the Bubble label (icon and tooltip stay) and folds the right
+   pane's actions into its More actions menu, fit-2 drops the tab icons and some
+   tab padding, fit-3 marks a tab list that still has to scroll sideways. The id
+   selectors outrank the themes' own .tabs-bar rules, some of which wrapped. */
+#leftMainColumn > .tabs-bar[data-tabs-fit],
+#rightMainColumn .tabs-bar[data-tabs-fit] { flex-wrap: nowrap; }
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs {
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs-bar__actions,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs-bar__actions { flex: none; }
+/* The tab list scrolls sideways, which makes it clip vertically too. A tab's
+   -1px bottom margin (meant to lay the indicator over a .tabs border) pushed
+   the indicator's last pixel outside the list, where it was cut off: Default's
+   2px line showed as 1px and Focus and Classic lost a pixel as well. */
+#leftMainColumn > .tabs-bar[data-tabs-fit] > .tabs > .tab,
+#rightMainColumn .tabs-bar[data-tabs-fit] > .tabs > .tab { margin-bottom: 0; }
+#leftMainColumn > .tabs-bar--fit-1 > .tabs-bar__actions .toggle > span { display: none; }
+#leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab > i { display: none; }
+#leftMainColumn > .tabs-bar--fit-2 > .tabs > .tab,
+#rightMainColumn .tabs-bar--fit-2 > .tabs > .tab { padding-inline: var(--sp-2); }
+#leftMainColumn > .tabs-bar--fit-3 > .tabs,
+#rightMainColumn .tabs-bar--fit-3 > .tabs {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+}
+
+/* The right pane's actions: inline buttons, or one More actions menu at fit-1 */
+.tabs-bar__inline { display: contents; }
+.tabs-bar__more { display: none; position: relative; }
+.tabs-bar--fit-1 .tabs-bar__inline { display: none; }
+.tabs-bar--fit-1 .tabs-bar__more { display: block; }
+.tabs-bar__more > summary { list-style: none; cursor: pointer; }
+.tabs-bar__more > summary::-webkit-details-marker { display: none; }
+.tabs-bar__more[open] > summary { background: var(--bg-tertiary); color: var(--text-primary); }
+.tabs-bar__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    padding: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+.tabs-bar__menu > button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    text-align: start;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.tabs-bar__menu > button:hover,
+.tabs-bar__menu > button:focus-visible { background: var(--bg-tertiary); }
+.tabs-bar__menu > button > i { width: 16px; text-align: center; color: var(--text-muted); }
+
+/* ---- Page header: Search, New Recording and the account menu as one set ---- */
+
+/* The account button rests on the same fill as Search (a theme that restyles
+   Search restyles this too), so the three read as one set instead of two
+   shapes and a bare glyph. When the labels are hidden (the recording view
+   below 1024px, every view below 640px) all three take one size, which a
+   theme sets with --hdr-icon-w / --hdr-icon-h. The id selector outranks the
+   themes' own header button sizes.
+
+   Every page header gets these rules: the main app's (#app > header, also the
+   share page's), Ask Ambrose's (#inquire-app > header) and the page header of
+   the account, admin and group pages (#global-header). Theme files use the
+   same :is() list. :is() keeps the specificity of #app > header. */
+:root { --hdr-icon-w: 36px; --hdr-icon-h: 36px; }
+@media (max-width: 639px) {
+    :root { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }
+}
+:is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-color: transparent;
+}
+@media (max-width: 1023px) {
+    #app > header.app-header--detail .btn.header-action,
+    :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
+        width: var(--hdr-icon-w);
+        min-width: var(--hdr-icon-w);
+        height: var(--hdr-icon-h);
+        min-height: var(--hdr-icon-h);
+        padding: 0;
+        justify-content: center;
+    }
+}
+@media (max-width: 639px) {
+    :is(#app > header, #inquire-app > header, #global-header) .btn.header-action {
+        width: var(--hdr-icon-w);
+        min-width: var(--hdr-icon-w);
+        height: var(--hdr-icon-h);
+        min-height: var(--hdr-icon-h);
+        padding: 0;
+        justify-content: center;
+    }
 }

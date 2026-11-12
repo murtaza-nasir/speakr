@@ -1,0 +1,177 @@
+                        <div v-for="recording in group.items"
+                             :key="recording.id"
+                             @mousedown="$event.shiftKey && $event.preventDefault()"
+                             @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
+                             :class="[
+                                 'recording-row card-row relative cursor-pointer',
+                                 selectionMode && isSelected(recording.id)
+                                     ? 'is-active'
+                                     : selectedRecording?.id === recording.id && !selectionMode
+                                         ? 'is-active'
+                                         : ''
+                             ]">
+                            <!-- Selection checkbox: absolutely positioned in
+                                 the top-right corner so it doesn't reflow
+                                 the title or change card heights when the
+                                 user toggles selection mode. -->
+                            <div v-if="selectionMode"
+                                 @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)"
+                                 class="absolute top-2 right-2 z-10">
+                                <input type="checkbox"
+                                       :checked="isSelected(recording.id)"
+                                       class="selection-checkbox"
+                                       @click.stop="handleRecordingClick(recording, $event, visibleRecordingIds)">
+                            </div>
+                            <!-- Title and Status Row -->
+                            <div class="rr-title flex items-center justify-between"
+                                 :class="{ 'pr-7': selectionMode }">
+                                <h4 dir="auto" class="rr-name truncate flex-1 mr-2">
+                                    ${ recording.title || t('common.untitled') }
+                                </h4>
+                                {% include 'components/assistant/answering-mark.html' %}
+                                <div class="rr-badges flex items-center gap-1 flex-shrink-0">
+                                    <!-- Combined sharing status badge -->
+                                    <span v-if="recording.is_shared || recording.has_group_tags || recording.shared_with_count > 0 || recording.public_share_count > 0"
+                                          class="inline-flex items-center justify-center gap-1 h-5 px-2 rounded-full text-[9px] leading-none bg-violet-100 dark:bg-violet-900/50 border border-violet-300 dark:border-violet-600"
+                                          :title="[
+                                              recording.is_shared ? t('sharing.sharedBy') + ' ' + (recording.owner_username || t('sharing.unknown')) : '',
+                                              recording.has_group_tags ? t('sharing.teamRecording') : '',
+                                              !recording.is_shared && recording.shared_with_count > 0 ? t('sharing.sharedWith') + ' ' + recording.shared_with_count + ' ' + t('sharing.users') : '',
+                                              !recording.is_shared && recording.public_share_count > 0 ? recording.public_share_count + ' ' + t('sharing.publicLinksGenerated') : ''
+                                          ].filter(s => s).join(' • ')">
+                                        <i v-if="recording.is_shared" class="fas fa-arrow-down text-purple-600 dark:text-purple-400"></i>
+                                        <i v-if="recording.has_group_tags" class="fas fa-users text-blue-600 dark:text-blue-400"></i>
+                                        <i v-if="!recording.is_shared && recording.shared_with_count > 0" class="fas fa-arrow-up text-indigo-600 dark:text-indigo-400"></i>
+                                        <i v-if="!recording.is_shared && recording.public_share_count > 0" class="fas fa-globe text-teal-600 dark:text-teal-400"></i>
+                                    </span>
+
+                                    <!-- Audio removed badge -->
+                                    <span v-if="recording.audio_deleted_at"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                                          :title="t('audioRemoved.label')">
+                                        <i class="fas fa-volume-xmark text-gray-600 dark:text-gray-400"></i>
+                                    </span>
+
+                                    <!-- Archived badge, seen in search results and the archive view -->
+                                    <span v-if="recording.is_archived"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                                          :title="t('archive.archived')">
+                                        <i class="fas fa-box-archive text-gray-600 dark:text-gray-400"></i>
+                                    </span>
+
+                                    <!-- Show Failed status for failed recordings -->
+                                    <span v-if="recording.status === 'FAILED'"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                    </span>
+
+                                    <!-- Show Processing status for non-completed recordings -->
+                                    <span v-else-if="recording.status !== 'COMPLETED'"
+                                          :class="getStatusClass(recording.status)"
+                                          class="status-badge">
+                                        ${formatRecordingStatus(recording)}
+                                    </span>
+
+                                    <!-- For completed recordings, show highlight and inbox badges -->
+                                    <template v-else>
+                                        <span v-if="recording.is_highlighted"
+                                              @click.stop="toggleHighlight(recording)"
+                                              class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-amber-100 dark:bg-amber-900/50 border border-amber-400 dark:border-amber-600 cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-800/50"
+                                              :title="t('sidebar.removeFromHighlighted')">
+                                            <i class="fas fa-star text-amber-600 dark:text-amber-400"></i>
+                                        </span>
+                                        <span v-if="recording.is_inbox"
+                                              @click.stop="toggleInbox(recording)"
+                                              class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-blue-100 dark:bg-blue-900/50 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                              :title="t('sidebar.markAsRead')">
+                                            <i class="fas fa-inbox text-blue-600 dark:text-blue-400"></i>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Folder + Tags row. The folder pill (folder-colour bg
+                                 + small folder icon) only shows when the user is in
+                                 the "All Recordings" view (filterFolder is falsy);
+                                 when a specific folder is already selected, every
+                                 visible recording is in it and the pill would be
+                                 redundant. Hidden for incognito recordings (no
+                                 folder association). -->
+                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || (recording.folder && recording.folder.is_foreign) || getRecordingTags(recording).length > 0"
+                                 class="flex flex-wrap items-center gap-1 mt-1">
+                                <!-- Foreign (shared-in) folder: the folder that granted access. Shown
+                                     leftmost, marked, and NOT clickable — it isn't a folder you own,
+                                     so it must never become a sticky filter (#314). -->
+                                <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
+                                      class="chip"
+                                      :style="{ '--tag': folderMarkColor(recording.folder.color || '#6B7280') }"
+                                      :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
+                                    <i class="fas fa-share-nodes"></i>
+                                    <span class="chip__label" v-text="recording.folder.name"></span>
+                                </span>
+                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito && !(recording.folder && recording.folder.is_foreign)"
+                                        @click.stop="filterFolder = recording.folder_id"
+                                        class="chip chip--clickable"
+                                        :style="{ '--tag': getFolderMarkColor(recording.folder_id) }"
+                                        :title="t('tooltips.folderLabel', { name: getFolderName(recording.folder_id) })">
+                                    <i class="fas fa-folder"></i>
+                                    <span class="chip__label" v-text="getFolderName(recording.folder_id)"></span>
+                                </button>
+                                <template v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id">
+                                    <!-- Foreign (share-reason) tag: marked, not clickable (#314) -->
+                                    <span v-if="tag.is_foreign"
+                                          class="chip"
+                                          :style="{ '--tag': tag.color }"
+                                          :title="t('sharing.sharedBadge') + ': ' + tag.name">
+                                        <i class="fas fa-share-nodes"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </span>
+                                    <button v-else
+                                            @click.stop="filterByTag(tag)"
+                                            class="chip chip--clickable"
+                                            :style="{ '--tag': tag.color }"
+                                            :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : t('tooltips.filterByName', { name: tag.name })">
+                                        <i v-if="tag.group_id" class="fas fa-users"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </button>
+                                </template>
+                                <span v-if="getRecordingTags(recording).length > 4"
+                                      class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
+                                      :title="t('tooltips.moreTags')">
+                                    +${getRecordingTags(recording).length - 4}
+                                </span>
+                            </div>
+
+                            <!-- Footer: participants (avatar stack, then the names, cut
+                                 off to fit; the full list is in the tooltip), date and
+                                 duration. The names are shown once, on this line. -->
+                            <div class="rr-foot">
+                                <div class="rr-who" v-if="recording.participants" :title="recording.participants">
+                                    <span class="rr-stack" aria-hidden="true">
+                                        <span v-for="(p, pi) in recording.participants.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4)"
+                                              :key="pi" class="rr-av">${ p.charAt(0).toUpperCase() }</span>
+                                    </span>
+                                    <span class="rr-people truncate" dir="auto">${recording.participants}</span>
+                                </div>
+                                <span v-else class="rr-who"></span>
+                                <div class="rr-when">
+                                    <!-- Copies of the same file, and the video marker: on the
+                                         date line, not on a line of their own below the tags. -->
+                                    <button v-if="recording.duplicate_info"
+                                            type="button"
+                                            @click.stop="openDuplicatesModal(recording.duplicate_info)"
+                                            class="text-amber-500 hover:text-amber-400 transition-colors"
+                                            :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')"
+                                            :aria-label="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
+                                        <i class="fas fa-copy text-xs"></i>
+                                    </button>
+                                    <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
+                                          class="inline-flex items-center"
+                                          :title="t('tooltips.video')">
+                                        <i class="fas fa-video text-[10px]"></i>
+                                    </span>
+                                    <span>${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}</span>
+                                    <span v-if="recording.audio_duration" class="rr-dur">${ formatDuration(recording.audio_duration) }</span>
+                                </div>
+                            </div>
+                        </div>

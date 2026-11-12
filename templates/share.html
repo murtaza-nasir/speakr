@@ -5,7 +5,7 @@
     {% include 'includes/theme_account.html' %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Shared Recording - {{ recording.title }}</title>
+    <title>{{ recording.title }} · Speakr</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
@@ -35,7 +35,7 @@
             }
 
             // Apply color scheme
-            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
 
@@ -63,6 +63,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="app" class="h-full flex flex-col" data-recording='{{ recording|tojson|safe }}'>
@@ -410,8 +411,6 @@
             <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[var(--text-muted)]">
                 <div class="flex items-center gap-2">
                     <span>&copy; {{ now.year }} Speakr</span>
-                    <span class="hidden sm:inline">•</span>
-                    <span class="text-xs">${ t('sharePage.poweredBy') }</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-xs">${ t('sharePage.builtWith') }</span>
@@ -793,7 +792,7 @@
                     }
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast(tr('messages.transcriptionCopied', 'Transcription copied to clipboard!'));
+                        showToast(tr('messages.transcriptionCopied', 'Transcript copied'));
                     });
                 }
 
@@ -802,7 +801,7 @@
                     const textToCopy = recording.value.summary_raw || recording.value.summary;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast(tr('messages.summaryCopied', 'Summary copied to clipboard!'));
+                        showToast(tr('messages.summaryCopied', 'Summary copied'));
                     });
                 }
 
@@ -811,7 +810,7 @@
                     const textToCopy = recording.value.notes_raw || recording.value.notes;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
-                        showToast(tr('messages.notesCopied', 'Notes copied to clipboard!'));
+                        showToast(tr('messages.notesCopied', 'Notes copied'));
                     });
                 }
 
@@ -838,6 +837,8 @@
                     }
 
                     localStorage.setItem('darkMode', newDarkMode.toString());
+                    // The color scheme class follows the mode (theme-light-* / theme-dark-*).
+                    if (typeof applyTheme === 'function') applyTheme();
                     if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
                 }
 

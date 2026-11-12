@@ -1,12 +1,22 @@
-"""The prompt for chatting with one recording: one builder for the web app
-and API v1 (#412 audit C1, mailr spec G9).
+"""The prompt for chatting with one recording: one builder for the web
+panel (POST /chat), incognito chat and API v1 (#412 audit C1, mailr spec G9,
+Ambrose phase 2a).
 
 The notes in the prompt are the ones the chatting user can see: the owner's
 for the owner, a recipient's own personal notes otherwise.
 
 with_sources: the transcript is sent with segment markers ([S12 12:34 Dana])
 and the model is asked to cite [S12 "exact words"]; parse_sources turns those
-into numbered sources and checks each quote against its segment.
+into numbered sources and checks each quote against its segment. The web
+panel streams, so there assistant_events.SegmentCitations does the same work
+as the text arrives.
+
+The prompt names the assistant with the user's chosen name (decision 3).
+
+A short block names what the recording is: title, date in the user's
+timezone, duration, folder path and tags the user can see, and the speakers
+(metadata_lines). An incognito recording has no saved title, date, folder or
+tags, so it has no block.
 """
 
 import re
@@ -40,15 +50,98 @@ class IncognitoTranscript:
     def get_user_notes(self, user):
         return self._notes
 
+    def segments(self):
+        """The transcript's segments; no saved speakers to resolve."""
+        from src.services.transcript_segments import segments_of
+        return segments_of(self.transcription)
+
+
+def _duration(seconds):
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds} seconds"
+    hours, rest = divmod(seconds, 3600)
+    minutes = rest // 60
+    if hours:
+        return f"{hours} h {minutes} min"
+    return f"{minutes} min"
+
+
+def _speakers(segments):
+    """Speaker names in the order they first speak."""
+    names = []
+    for seg in segments or ():
+        name = (seg.get('speaker') or '').strip()
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
+def metadata_lines(recording, user, segments=None):
+    """The lines of the metadata block, empty ones left out; [] for an
+    incognito recording."""
+    if isinstance(recording, IncognitoTranscript):
+        return []
+    from src.services.library_labels import LibraryLabels
+    from src.utils.timezones import to_local, user_timezone
+    lines = []
+    if recording.title:
+        lines.append(f"Title: {recording.title}")
+    if recording.meeting_date:
+        lines.append(f"Date: {to_local(recording.meeting_date, user_timezone(user)).strftime('%Y-%m-%d %H:%M')}")
+    if recording.audio_duration_seconds:
+        lines.append(f"Duration: {_duration(recording.audio_duration_seconds)}")
+    labels = LibraryLabels(user.id, [recording.id])
+    folder = labels.folder_path_of(recording.id)
+    if folder:
+        lines.append(f"Folder: {folder}")
+    tags = labels.tags_of(recording.id)
+    if tags:
+        lines.append(f"Tags: {', '.join(tags)}")
+    if segments is None:
+        from src.services.transcript_segments import canonical_segments
+        try:
+            segments = canonical_segments(recording)
+        except Exception:
+            segments = None
+    speakers = _speakers(segments)
+    if speakers:
+        lines.append(f"Speakers: {', '.join(speakers)}")
+    return lines
+
+
+def transcript_cut(recording, segments, limit):
+    """Where the prompt's transcript stops when it is over the length limit:
+    {'unit': 'segments', 'offset': first segment left out, 'total'} for a
+    segmented transcript, {'unit': 'characters', ...} for plain text; None
+    when it fits (or the limit is off, -1). Used by the recording panel to
+    page the rest with the agent's get_transcript tool (Ambrose 2b)."""
+    if limit == -1:
+        return None
+    if segments:
+        used = 0
+        for position, seg in enumerate(segments):
+            used += len(_marked_transcript([seg])) + (1 if position else 0)
+            if used > limit:
+                return {'unit': 'segments', 'offset': position, 'total': len(segments)}
+        return None
+    text = getattr(recording, 'transcription', None) or ''
+    if len(text) > limit:
+        return {'unit': 'characters', 'offset': limit, 'total': len(text)}
+    return None
+
 
 def build_chat_messages(recording, user, message, history=None, with_sources=False):
     """(messages, segments). segments is the canonical list when with_sources
     is on and the transcript has segments, else None."""
     from src.models import SystemSetting
+    from src.utils.assistant_name import assistant_name_of, assistant_identity
     from src.services.transcript_segments import canonical_segments
     from src.tasks.processing import _resolve_timestamp_template_format, format_transcription_for_llm
 
-    segments = canonical_segments(recording) if with_sources else None
+    segments = None
+    if with_sources:
+        segments = recording.segments() if isinstance(recording, IncognitoTranscript) else canonical_segments(recording)
     use_markers = bool(segments)
     include_timestamps = bool(getattr(user, 'chat_include_timestamps', False)) and not use_markers
     if use_markers:
@@ -65,9 +158,8 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
         transcript = transcript[:limit]
 
     language = f"Please provide all your responses in {user.output_language}." if user.output_language else ""
-    name = user.name or "User"
-    title = user.job_title or "a professional"
-    company = user.company or "their organization"
+    assistant = assistant_name_of(user)
+    identity = assistant_identity(assistant, user.name, user.job_title, user.company)
 
     citation = ""
     if use_markers:
@@ -86,17 +178,20 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
             "transcript.\n")
 
     notes = recording.get_user_notes(user)
-    system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {name}, who is a(n) {title} at {company}. {language} Analyze the following meeting information and respond to the specific request.
-{citation}
-Following are the meeting participants and their roles:
+    about = metadata_lines(recording, user, segments)
+    about = ("\nAbout this recording:\n" + "\n".join(about) + "\n") if about else ""
+    system_prompt = f"""{identity} {language}
+Here you answer questions about one recording: what was said, who said it, and what it means. A recording can be a meeting, a call, a lecture, a voice note or an everyday conversation; take it as what it is and do not judge it against a meeting.
+{about}{citation}
+Participants and their roles:
 {recording.participants or "No specific participants information provided."}
 
-Following is the meeting transcript:
+Transcript:
 <<start transcript>>
 {transcript or "No transcript available."}
 <<end transcript>>
 
-Additional context and notes about the meeting:
+The user's notes on this recording:
 {notes or "none"}
 """
     messages = [{"role": "system", "content": system_prompt}]

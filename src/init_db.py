@@ -545,6 +545,14 @@ def _run_migrations(app, engine):
             app.logger.info("Added theme_dark_mode column to user table")
         if add_column_if_not_exists(engine, 'user', 'theme_color_scheme', 'VARCHAR(16)'):
             app.logger.info("Added theme_color_scheme column to user table")
+        # UI theme saved with the account (src/config/ui_themes.py); null
+        # means the default theme
+        if add_column_if_not_exists(engine, 'user', 'ui_theme', 'VARCHAR(32)'):
+            app.logger.info("Added ui_theme column to user table")
+        # The assistant's name (src/utils/assistant_name.py); null means
+        # the default, Ambrose
+        if add_column_if_not_exists(engine, 'user', 'assistant_name', 'VARCHAR(40)'):
+            app.logger.info("Added assistant_name column to user table")
 
         # Release whose "What's new" notes the user has seen; NULL (existing
         # accounts) shows the current notes once

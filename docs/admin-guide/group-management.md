@@ -41,11 +41,11 @@ Groups are created and managed exclusively through the admin dashboard. Regular 
 
 ### Creating a Group
 
-Navigate to the Admin Dashboard and select the Groups tab. Click "Create Group" to open the creation modal. Provide a group name that clearly identifies the group's purpose - "Engineering", "Sales EMEA", "Project Phoenix", etc. Descriptive names help users understand each group's scope and purpose.
+Navigate to the Admin Dashboard and select the Groups tab. Click "Create group" to open the creation modal. Provide a group name that clearly identifies the group's purpose - "Engineering", "Sales EMEA", "Project Phoenix", etc. Descriptive names help users understand each group's scope and purpose.
 
 The description field is optional but recommended. Use it to explain the group's purpose, which projects or departments it serves, or who should be members. Good descriptions help future administrators understand group organization and make membership decisions.
 
-Click "Create Group" to finalize creation. The group appears in your groups list immediately, though it starts with no members. The creating user (you) doesn't automatically join - membership must be explicitly granted even for group creators.
+Click "Create group" to finalize creation. The group appears in your groups list immediately, though it starts with no members. The creating user (you) doesn't automatically join - membership must be explicitly granted even for group creators.
 
 ### Managing Group Membership
 
@@ -56,13 +56,13 @@ To add a member, select a user from the dropdown and choose their role:
 - **Member**: Can use group tags and access group-tagged recordings. Suitable for most group participants who need to collaborate on content.
 - **Admin**: All member capabilities plus the ability to manage group membership, create and delete group tags, and access group management features. Useful for group leads or managers who need administrative control.
 
-Click "Add Member" to grant access. The user immediately gains visibility to group tags and will receive future group-tagged recordings. They don't automatically gain access to existing group-tagged recordings - only new ones tagged after they join.
+Click "Add member" to grant access. The user immediately gains visibility to group tags and will receive future group-tagged recordings. They don't automatically gain access to existing group-tagged recordings - only new ones tagged after they join.
 
 ### Changing Member Roles
 
 Group roles can change as responsibilities evolve. Click the role dropdown next to any member to toggle them between Member and Admin. Role changes take effect immediately.
 
-Promoting members to admin grants them access to group management capabilities. They'll see a "Group Management" link in their interface and can add/remove members, create tags, and manage the group independently. This distributes administrative workload and empowers group leads.
+Promoting members to admin grants them access to group management capabilities. They'll see a "Groups" link in their interface and can add/remove members, create tags, and manage the group independently. This distributes administrative workload and empowers group leads.
 
 Demoting admins to members removes their management capabilities but preserves their group membership. They retain access to group tags and recordings but can no longer manage group membership or tags. Recordings shared with them through the group become read-only for them, as they are for other members; promoting a member gives edit access to those recordings.
 
@@ -132,11 +132,11 @@ Protection can be removed by editing the tag later if preservation requirements 
 
 Group tags support two levels of automatic sharing that trigger when any group member applies the tag to a recording:
 
-**Share with All Group Members** is the default and recommended approach. When enabled, applying this tag shares the recording with every group member (excluding the owner). All members receive view and edit permissions, enabling full collaboration.
+**Share tagged recordings with all group members** is the default and recommended approach. When enabled, applying this tag shares the recording with every group member (excluding the owner). All members receive view and edit permissions, enabling full collaboration.
 
-**Share with Group Leads Only** restricts automatic sharing to group admins. When enabled, only users with the admin role in this group receive automatic access. Regular members don't get automatic access, though group admins can manually share with them if needed. This option suits sensitive content that requires administrative oversight before wider distribution.
+**Share tagged recordings with group admins** restricts automatic sharing to group admins. When enabled, only users with the admin role in this group receive automatic access. Regular members don't get automatic access, though group admins can manually share with them if needed. This option suits sensitive content that requires administrative oversight before wider distribution.
 
-Both options can be enabled simultaneously, though this is redundant - sharing with all members already includes group leads. Use one or the other based on your content sensitivity and group structure.
+Both options can be enabled simultaneously, though this is redundant - sharing with all members already includes group admins. Use one or the other based on your content sensitivity and group structure.
 
 ### Managing Group Tags
 
@@ -153,16 +153,16 @@ If a tag was widely used, consider the impact before deletion. Users may have or
 
 ### Syncing Group Shares
 
-If your instance enabled group features after recordings were already tagged, or if group membership changed significantly, you might have group-tagged recordings that weren't automatically shared with current group members. The "Sync Group Shares" feature addresses this.
+If your instance enabled group features after recordings were already tagged, or if group membership changed significantly, you might have group-tagged recordings that weren't automatically shared with current group members. The "Sync group shares" feature addresses this.
 
-Click "Sync Group Shares" in the group management modal to open the sync dialog. Review the information about what the sync will do - it applies automatic sharing retroactively to all existing recordings with this group's tags.
+Click "Sync group shares" in the group management modal to open the sync dialog. Review the information about what the sync will do - it applies automatic sharing retroactively to all existing recordings with this group's tags.
 
 The sync operation:
 
 - Identifies all recordings tagged with any of this group's tags
 - Checks each recording for existing shares with current group members
 - Creates missing shares for group members who should have access but don't
-- Respects the tag's sharing settings (all members vs. group leads only)
+- Respects the tag's sharing settings (all members vs. group admins only)
 - Skips recordings where members already have access
 
 Confirm the sync to execute. Depending on the number of tagged recordings and group size, this might take a few seconds to several minutes. A result modal shows how many shares were created and how many recordings were processed.
@@ -177,7 +177,7 @@ Group admins are group members with elevated permissions within their group's sc
 
 When adding a member to a group, select "Admin" from the role dropdown. The user immediately gains group admin capabilities for that group only. They cannot manage other groups or access system-wide administrative features.
 
-Group admins see a "Group Management" link in their user menu instead of the full admin link. Clicking this takes them to a focused admin interface showing only groups they administer. The interface is identical to the Groups tab regular admins see, but scoped to their groups.
+Group admins see a "Groups" link in their user menu instead of the full admin link. Clicking this takes them to a focused admin interface showing only groups they administer. The interface is identical to the Groups tab regular admins see, but scoped to their groups.
 
 ### Group Admin Capabilities
 
@@ -199,7 +199,7 @@ Group admins cannot:
 - Access system-wide admin features (users, settings, statistics)
 - Grant themselves admin access to other groups
 
-This scoped access lets you distribute group management responsibility to group leads without granting full administrative access. Group leads can manage their groups independently while you maintain control over instance-wide settings and group creation.
+This scoped access lets you distribute group management responsibility to group admins without granting full administrative access. Group admins can manage their groups independently while you maintain control over instance-wide settings and group creation.
 
 ### Security Boundaries
 
@@ -293,7 +293,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 
 **Solution**:
 
-1. Edit the group tag and verify "Share with all group members" or "Share with group leads" is enabled
+1. Edit the group tag and verify "Share tagged recordings with all group members" or "Share tagged recordings with group admins" is enabled
 2. Confirm `ENABLE_INTERNAL_SHARING=true` in `.env`
 3. Check application logs when applying tags for sharing errors
 4. Try manually sharing the recording to verify sharing infrastructure works
@@ -306,7 +306,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 
 1. Verify user role is "admin" not "member" in group membership
 2. Have user log out and back in to refresh session
-3. Check "Group Management" link appears in user menu (not "Admin")
+3. Check "Groups" link appears in user menu (not "Admin")
 4. Review application logs for permission errors
 
 ### Recordings Not Deleted Per Retention Policy

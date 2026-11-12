@@ -32,7 +32,6 @@ from src.config.app_config import USE_NEW_TRANSCRIPTION_ARCHITECTURE
 from src.services.transcription_defaults import (
     resolve_transcription_model as _resolve_transcription_model,
 )
-from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.dates import to_utc_naive
 from src.utils.transcript_render import BASIC_TEMPLATE_FORMAT, parse_segments, render_segments
 from src.services.speaker import (
@@ -991,6 +990,13 @@ def reset_status(recording_id):
         return jsonify({'error': str(e)}), 500
 
 # --- Authentication Routes ---
+
+
+def _assistant_library_tools():
+    """Whether the recording panel offers the library tools (Ambrose 2b):
+    Inquire and its agent both on."""
+    from src.services.inquire_agent import agent_enabled
+    return bool(ENABLE_INQUIRE_MODE and agent_enabled())
 
 
 def _text_model_configured():
@@ -2350,9 +2356,11 @@ def chat_incognito():
         # Same prompt as API v1 chat (src/services/recording_chat.py). An
         # incognito recording has no database row: the transcript, participants
         # and notes come from this request (#527).
+        from src.services.assistant_events import recording_events
         from src.services.recording_chat import IncognitoTranscript, build_chat_messages
         transcript = IncognitoTranscript(transcription, participants, notes)
-        messages, _ = build_chat_messages(transcript, current_user, user_message, message_history)
+        messages, segments = build_chat_messages(transcript, current_user, user_message, message_history,
+                                                 with_sources=True)
 
         user_id = current_user.id
 
@@ -2364,14 +2372,12 @@ def chat_incognito():
         def generate():
             """Stream the chat response."""
             try:
-                # No user_id, so nothing is tracked for incognito
+                # No user_id, so nothing is tracked for incognito. The same
+                # events as the recording panel's /chat; [DONE] stays last
+                # for a tab loaded before this change.
                 response = call_chat_completion(messages, temperature=chat_temperature, stream=True)
-
-                for chunk in response:
-                    if chunk.choices and len(chunk.choices) > 0:
-                        delta = chunk.choices[0].delta
-                        if hasattr(delta, 'content') and delta.content:
-                            yield f"data: {json.dumps({'content': delta.content})}\n\n"
+                for event in recording_events(process_streaming_with_thinking(response), segments):
+                    yield event
 
                 yield "data: [DONE]\n\n"
 
@@ -2999,66 +3005,38 @@ def chat_with_transcription():
         if chat_client is None:
             return jsonify(api_error('chat_client_not_configured')), 503
 
-        # Prepare the system prompt with the transcription
-        user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
+        # One prompt builder for every recording chat (web panel, incognito,
+        # API v1): the whole transcript with segment markers when it has
+        # segments, the participants, the notes this user can see, the
+        # output language and the assistant's name (Ambrose phase 2a). The
+        # history keeps the numbering the panel showed for earlier citations.
+        from src.services.assistant_events import (agent_user_context, panel_history, recording_events,
+                                                   tools_for_surface)
+        from src.services.inquire_agent import run_inquire_agent
+        from src.services.recording_chat import build_chat_messages, transcript_cut
+        from src.utils.localization import request_language
+        if not isinstance(message_history, list):
+            message_history = []
+        messages, segments = build_chat_messages(recording, current_user, user_message,
+                                                 panel_history(message_history), with_sources=True)
 
-        language_instruction = ""
-        if user_chat_output_language:
-            language_instruction = f"Please provide all your responses in {user_chat_output_language}."
-
-        user_name = current_user.name if current_user.is_authenticated and current_user.name else "User"
-        user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
-        user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
-
-        # Optionally include timestamps in the chat transcript per the user's setting (#304).
-        _chat_ts = bool(current_user.is_authenticated and current_user.chat_include_timestamps)
-        formatted_transcription = format_transcription_for_llm(
-            recording.transcription,
-            include_timestamps=_chat_ts,
-            template_format=_resolve_timestamp_template_format(
-                current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
-        )
-
-        # Get configurable transcript length limit for chat
-        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-        if transcript_limit == -1:
-            # No limit
-            chat_transcript = formatted_transcription
-        else:
-            chat_transcript = formatted_transcription[:transcript_limit]
-
-        # When timestamps are in the transcript, ask the model to cite them so
-        # the chat panel can render clickable seek chips (bracketed [h:mm:ss]).
-        timestamp_instruction = ""
-        if _chat_ts:
-            timestamp_instruction = (
-                "\nWhen you reference a specific moment in the recording, cite its "
-                "timestamp in square brackets exactly as it appears in the transcript "
-                "(for example [00:07:35]). The interface renders these as clickable "
-                "links that start playback at that moment, so cite them wherever they "
-                "support your answer. Never invent a timestamp that is not in the "
-                "transcript.\n"
-            )
-
-        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
-{timestamp_instruction}
-Following are the meeting participants and their roles:
-{recording.participants or "No specific participants information provided."}
-
-Following is the meeting transcript:
-<<start transcript>>
-{chat_transcript or "No transcript available."}
-<<end transcript>>
-
-Additional context and notes about the meeting:
-{recording.notes or "none"}
-"""
-
-        # Prepare messages array with system prompt and conversation history
-        messages = [{"role": "system", "content": system_prompt}]
-        if message_history:
-            messages.extend(message_history)
-        messages.append({"role": "user", "content": user_message})
+        # Library tools on an open recording (Ambrose 2b): with the agent on,
+        # the model may also search the other recordings the user can access.
+        # The panel has no filters (they live on the Ask page), so any
+        # filter_* fields in the request are ignored. With the agent off, or
+        # when the endpoint rejects tool calls, the answer is the
+        # transcript-only one.
+        recording_scope = None
+        if _assistant_library_tools():
+            filters = {}
+            limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+            recording_scope = {
+                'messages': messages,
+                'recording_id': recording.id,
+                'markers': bool(segments),
+                'cut': transcript_cut(recording, segments, limit),
+            }
+            user_ctx = agent_user_context(current_user, request_language())
 
         # Capture context before generator starts (app context may not be available inside generator)
         user_id = current_user.id
@@ -3067,25 +3045,37 @@ Additional context and notes about the meeting:
         # Resolved here, in the request context, before the response streams.
         chat_temperature = get_temperature('chat')
 
+        def transcript_only():
+            """The single-call answer from the transcript in the prompt."""
+            stream = call_chat_completion(
+                messages=messages,
+                temperature=chat_temperature,
+                max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                stream=True,
+                user_id=user_id,
+                operation_type='chat'
+            )
+            # Thinking tags split off; `source` events are added below.
+            yield from process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
+
         def generate():
             # Push app context for entire generator execution
             # This is needed because call_chat_completion checks budget which requires db access
             ctx = app.app_context()
             ctx.push()
             try:
-                # Enable streaming with user_id for budget enforcement
-                stream = call_chat_completion(
-                    messages=messages,
-                    temperature=chat_temperature,
-                    max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                    stream=True,
-                    user_id=user_id,
-                    operation_type='chat'
-                )
-
-                # Use helper function to process streaming with thinking tag support
-                for response in process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app):
-                    yield response
+                if recording_scope is None:
+                    raw = transcript_only()
+                else:
+                    raw = run_inquire_agent(
+                        app, user_id, user_ctx, user_message, [], None, filters,
+                        legacy_fallback=transcript_only, llm_call=call_chat_completion,
+                        tool_names=tools_for_surface('recording'), recording_scope=recording_scope,
+                        operation_type='chat')
+                # `source` events for the model's segment citations
+                # (src/services/assistant_events.py).
+                for event in recording_events(raw, segments):
+                    yield event
 
             except TokenBudgetExceeded as e:
                 app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")

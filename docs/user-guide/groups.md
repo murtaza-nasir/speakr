@@ -103,7 +103,7 @@ If you're a group admin rather than a regular member, you have access to group m
 
 ### Accessing Group Management
 
-Group admins see a "Group Management" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
+Group admins see a "Groups" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
 
 The group management interface lets you view group members with their roles, add new members from your organization, change member roles between admin and regular member, remove members who no longer need access, and manage group tags including retention and protection settings.
 
@@ -125,7 +125,7 @@ Protection flags prevent automatic deletion entirely. Use protection for recordi
 
 ### Syncing Group Shares
 
-If your group started using group tags before automatic sharing was fully implemented, you might have tagged recordings that didn't automatically share with current group members. The "Sync Group Shares" feature retroactively applies automatic sharing to existing group-tagged recordings.
+If your group started using group tags before automatic sharing was fully implemented, you might have tagged recordings that didn't automatically share with current group members. The "Sync group shares" feature retroactively applies automatic sharing to existing group-tagged recordings.
 
 This sync operation runs through all recordings with your group's tags and creates internal shares for current group members who don't already have access. It's a one-time operation that brings historical content into alignment with current group membership, useful after enabling new group features or fixing configuration issues.
 
@@ -143,13 +143,13 @@ Contribute to shared notes when you add valuable context, but avoid duplicating 
 
 Use personal notes liberally for your individual tracking needs. Don't worry about perfect notes since only you see them. Personal notes are your space for rough thoughts, action items, questions, and observations that might not be polished enough for shared notes.
 
-## Integration with Inquire Mode
+## Groups on the Ask Ambrose page
 
-When your instance has Inquire Mode enabled, groups enhance semantic search capabilities. Group tags appear in Inquire Mode's filter options, letting you scope searches to specific group contexts. Search for "budget discussion" and filter to just your project group, finding relevant conversations without noise from other groups.
+When your instance has library search enabled, group tags appear in the filters of the [Ask Ambrose](inquire-mode.md) page (formerly Inquire), so you can limit a question to one group. Search for "budget discussion" and filter to just your project group, finding relevant conversations without noise from other groups.
 
-Recordings shared via group tags are automatically included in your Inquire Mode searches. This means semantic search spans both your personal recordings and group content, creating a comprehensive knowledge base. The AI understands context across all accessible recordings, providing better answers by drawing on collective group knowledge.
+Recordings shared through group tags are included when you ask Ambrose about your library. This means semantic search spans both your personal recordings and group content, creating a comprehensive knowledge base. The AI understands context across all accessible recordings, providing better answers by drawing on collective group knowledge.
 
-Your personal notes on group recordings remain private even in Inquire Mode. When semantic search uses a group recording to answer questions, it draws on the transcription and shared notes, but never exposes your personal annotations. This maintains the privacy boundary while enabling powerful group-wide search.
+Your personal notes on group recordings remain private on the Ask Ambrose page as well. When semantic search uses a group recording to answer questions, it draws on the transcription and shared notes, but never exposes your personal annotations. This maintains the privacy boundary while enabling powerful group-wide search.
 
 ---
 

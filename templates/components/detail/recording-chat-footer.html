@@ -1,0 +1,15 @@
+{#- The line under the recording chat's composer (floating panel and mobile
+    tab, components/assistant/chat.html): why it cannot answer yet, else
+    how long the chat is kept. -#}
+{% macro recording_chat_footer() -%}
+<div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5">
+    <i class="fas fa-info-circle"></i>
+    <span v-text="t('chat.cannotChatTranscriptionFailed', { name: assistantName })"></span>
+</div>
+<div v-else-if="selectedRecording.status !== 'COMPLETED'" class="t-meta mt-2">
+    <span v-text="t('chat.availableAfterTranscription', { name: assistantName })"></span>
+</div>
+<!-- Threads live in sessionStorage (composables/chat-threads.js); incognito ones are never kept. -->
+<div v-else-if="chatMessages.length > 0 && !selectedRecording.incognito" class="t-meta mt-2"
+     v-text="t('chat.keptUntilTabCloses')"></div>
+{%- endmacro %}

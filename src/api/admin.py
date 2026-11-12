@@ -71,6 +71,8 @@ def admin():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('admin.html',
                          title='Admin Dashboard',
+                         admin_title=translate('nav.adminDashboard', user_language),
+                         groups_title=translate('nav.groupManagement', user_language),
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          is_group_admin_only=False,
@@ -98,6 +100,7 @@ def group_management():
     user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
     return render_template('group-admin.html',
                          title='Group Management',
+                         groups_title=translate('nav.groupManagement', user_language),
                          global_retention_days=_self.GLOBAL_RETENTION_DAYS,
                          user_language=user_language)
 
@@ -297,6 +300,8 @@ def admin_add_user():
         monthly_transcription_budget=data.get('monthly_transcription_budget'),
         storage_quota_mb=storage_quota,
     )
+    from src.config.ui_themes import apply_new_user_theme
+    apply_new_user_theme(new_user)
 
     db.session.add(new_user)
     db.session.commit()
@@ -1027,6 +1032,19 @@ def admin_update_setting():
         from src.utils.timezones import is_valid_timezone
         if not is_valid_timezone(value):
             return jsonify(api_error('invalid_timezone_value')), 400
+
+    if key == 'default_ui_theme':
+        from src.config import ui_themes
+        if not ui_themes.is_valid_new_user_theme(str(value).strip().lower()):
+            return jsonify(api_error('invalid_default_ui_theme',
+                                     themes=', '.join(t.id for t in ui_themes.available_themes()))), 400
+        value = str(value).strip().lower()
+    if key == 'default_color_scheme':
+        from src.config import ui_themes
+        if not ui_themes.is_valid_color_scheme(str(value).strip().lower()):
+            return jsonify(api_error('invalid_default_color_scheme',
+                                     schemes=', '.join(ui_themes.COLOR_SCHEMES))), 400
+        value = str(value).strip().lower()
 
     if key == 'deletion_mode':
         if value not in ('audio_only', 'full_recording'):

@@ -75,13 +75,13 @@ Speakr can automatically extract calendar-worthy events from your recordings dur
 
 ### Interactive Chat
 
-Transform static transcripts into dynamic conversations with the integrated chat feature. Learn how to use AI chat effectively in the [transcripts guide](user-guide/transcripts.md). Ask questions about your recordings and receive intelligent answers based on the actual content. Request custom summaries, extract specific information, or generate derivative content like emails or reports. The AI maintains context throughout the conversation, allowing complex multi-turn interactions.
+Ambrose, the assistant, answers questions about a recording from its full transcript. Each answer cites passages of the transcript, and a click on a citation plays that moment. You can ask for custom summaries, specific information, or text such as emails or reports, and ask follow-up questions in the same chat. Each recording keeps its own chat until you close the browser tab, and with the agent on, Ambrose can also search your other recordings. See [Ambrose](user-guide/ambrose.md).
 
 ### Semantic Search (Inquire Mode)
 
 Search across all your recordings using natural language questions instead of keywords through [Inquire Mode](user-guide/inquire-mode.md). The [vector store](admin-guide/vector-store.md) must be configured for this feature to work. The semantic search understands meaning and context, finding relevant content even when exact words don't match. Ask questions like "When did we discuss the budget increase?" and get results from any recording that covered that topic, regardless of the specific terminology used.
 
-An optional [agentic mode](user-guide/inquire-mode.md#agentic-inquire-beta) (opt-in beta, `ENABLE_INQUIRE_AGENT=true`) replaces the single retrieval pass with an AI agent that searches, lists, and reads your recordings iteratively until it can answer. The interface shows each step live with a stop button, keeps a collapsible activity record on every answer, and cites sources as numbered markers with timestamps; clicking a citation opens the recording and starts playback at the cited moment. Per-user privacy settings control what the agent may read: transcripts are always available, while summaries and private notes are individual opt-ins enforced by removing the corresponding capability from the agent entirely.
+An optional [agentic mode](user-guide/inquire-mode.md#agent-mode-beta) (opt-in beta, `ENABLE_INQUIRE_AGENT=true`) replaces the single retrieval pass with an AI agent that searches, lists, and reads your recordings iteratively until it can answer. The interface shows each step live with a stop button, keeps a collapsible activity record on every answer, and cites sources as numbered markers with timestamps; clicking a citation opens the recording and starts playback at the cited moment. Per-user privacy settings control what the agent may read: transcripts are always available, while summaries and private notes are individual opt-ins enforced by removing the corresponding capability from the agent entirely.
 
 ## Organization and Management
 
@@ -113,7 +113,7 @@ Select multiple recordings in the sidebar to perform batch operations efficientl
 - **Delete** - Remove multiple recordings at once with confirmation
 - **Add/Remove Tags** - Apply or remove tags from all selected recordings
 - **Reprocess** - Regenerate transcriptions or summaries for multiple recordings
-- **Toggle Inbox/Highlight** - Mark recordings as inbox items or toggle highlight status
+- **Toggle Inbox/Star** - Mark recordings as inbox items, or star and unstar them
 
 The floating action bar appears when recordings are selected, showing the count and available operations. Press Escape to exit multi-select mode or click outside the selection area.
 
@@ -189,7 +189,7 @@ Any group member can apply group tags to their recordings. The moment a group ta
 
 Group tags appear with a distinctive users icon (👥) throughout the interface, making group content immediately recognizable. Apply multiple group tags to share with multiple groups simultaneously, enabling cross-functional collaboration. Custom retention policies can be attached to group tags, automatically managing content lifecycle based on group-specific requirements.
 
-Advanced auto-sharing options let group admins control sharing scope. Share with all group members for full collaboration, or restrict to group leads only for sensitive content requiring administrative oversight. Retroactive syncing can share existing group-tagged recordings with current members after group restructuring. See the [Group Management guide](admin-guide/group-management.md) for administrative details.
+Advanced auto-sharing options let group admins control sharing scope. Share with all group members for full collaboration, or restrict to group admins only for sensitive content requiring administrative oversight. Retroactive syncing can share existing group-tagged recordings with current members after group restructuring. See the [Group Management guide](admin-guide/group-management.md) for administrative details.
 
 ### Secure Share Links
 

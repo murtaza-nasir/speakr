@@ -12,6 +12,7 @@
 
 import { useNotifications } from './modules/composables/notifications.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
+import { savedColorScheme } from './modules/utils/theme-defaults.js';
 
 installCloseOutside();
 
@@ -21,7 +22,7 @@ function applyTheme(dark) {
     const root = document.documentElement;
     root.classList.toggle('dark', dark);
     SCHEMES.forEach(s => root.classList.remove(`theme-light-${s}`, `theme-dark-${s}`));
-    const scheme = localStorage.getItem('colorScheme') || 'blue';
+    const scheme = savedColorScheme();
     if (scheme !== 'blue') root.classList.add(`theme-${dark ? 'dark' : 'light'}-${scheme}`);
 }
 
@@ -92,6 +93,8 @@ async function mountGlobalHeader() {
 
             return {
                 t,
+                // The assistant's name for the Ask button (includes/i18n_bootstrap.html)
+                assistantName: window.speakrAssistantName || 'Ambrose',
                 // components/header-controls.html formats numbers with this (#480)
                 uiLocale: () => window.i18n?.getIntlLocale?.(),
                 formatPercent: (pct, options) => (window.i18n?.formatPercent ? window.i18n.formatPercent(pct, options) : `${Math.round((Number(pct) || 0) * 10) / 10}%`),

@@ -77,6 +77,8 @@ Users see their storage, and the quota when there is one, under **Account → Us
 
 **Default for new accounts**: with the System Setting `default_storage_quota_mb`, every account created afterwards is given a quota (0 means no limit). This default is used for accounts created by an administrator, by registration and by SSO; the quota of an existing account does not change.
 
+**Theme for new accounts**: every new account starts with the interface theme and color scheme from the System Settings `default_ui_theme` and `default_color_scheme`, by default Cards with Forest Emerald. See [Default look for new accounts](system-settings.md#default-look-for-new-accounts). Existing accounts keep their look.
+
 ## Managing Existing Users
 
 Each user row includes action buttons that give you complete control over that account. The edit button opens a modal where you can update their username or email address. This is useful when people change names, switch email providers, or when you need to correct initial entry mistakes.

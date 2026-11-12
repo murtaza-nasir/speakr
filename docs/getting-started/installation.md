@@ -273,7 +273,7 @@ REGISTRATION_ALLOWED_DOMAINS=
 LOG_LEVEL="INFO"
 ```
 
-Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a group or family, this prevents random people from creating accounts. With registration disabled, the login page also omits its "Register here" link. Only the value `true` (in any letter case) enables registration; an unset variable defaults to `true`, and any other value disables it. If you enable registration and want to restrict it to specific email domains (e.g., for corporate use), set `REGISTRATION_ALLOWED_DOMAINS` to a comma-separated list of domains like `company.com,subsidiary.org`. Leave it empty to allow all domains. Addresses on reserved internal domains such as `.local` are refused at registration unless their domain is listed here; accounts on such domains can always sign in. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
+Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a group or family, this prevents random people from creating accounts. With registration disabled, the sign-in page also omits its "Create an account" link. Only the value `true` (in any letter case) enables registration; an unset variable defaults to `true`, and any other value disables it. If you enable registration and want to restrict it to specific email domains (e.g., for corporate use), set `REGISTRATION_ALLOWED_DOMAINS` to a comma-separated list of domains like `company.com,subsidiary.org`. Leave it empty to allow all domains. Addresses on reserved internal domains such as `.local` are refused at registration unless their domain is listed here; accounts on such domains can always sign in. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
 
 ### Step 5: Configure Advanced Features
 
@@ -510,9 +510,9 @@ Watch the logs for any error messages. You should see messages about database in
 
 ### Step 8: Verify Installation
 
-Open your web browser and navigate to `http://your-server:8899`, replacing `your-server` with your actual server address or `localhost` if you're running locally. You should see the Speakr login page with its distinctive gradient design.
+Open your web browser and navigate to `http://your-server:8899`, replacing `your-server` with your actual server address or `localhost` if you're running locally. You should see the Speakr sign-in page with its distinctive gradient design.
 
-Log in using the admin credentials you configured in the environment file. If login fails, check your Docker logs to ensure the admin user was created successfully. Sometimes typos in the environment file can cause issues.
+Sign in with the admin credentials you configured in the environment file. If sign-in fails, check your Docker logs to ensure the admin user was created successfully. Sometimes typos in the environment file can cause issues.
 
 Once logged in, test the installation by creating a test recording or uploading a sample audio file. The recording interface should show options for microphone, system audio, or both. Try uploading a small audio file first to verify that your API keys are working correctly. The transcription process should complete within a few moments for short files, and you should see the transcribed text appear along with an AI-generated summary.
 
@@ -562,7 +562,7 @@ The app sets `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
 `Permissions-Policy`, a `Content-Security-Policy`, and (over HTTPS)
 `Strict-Transport-Security` on every response, so you are protected even
 without a hardening proxy. If your proxy already sets all of these, you can
-disable the app's copies with `SECURITY_HEADERS_ENABLED=false`. To customise:
+disable the app's copies with `SECURITY_HEADERS_ENABLED=false`. To customize:
 
 ```bash
 # Replace the whole Content-Security-Policy:

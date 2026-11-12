@@ -3,7 +3,8 @@
 The theme was kept only in the browser's localStorage. It is now also saved
 with the account when the user changes it, and a saved value replaces the
 browser's copy on every page the user opens. Accounts that have not changed
-it since the upgrade have no saved value, and each browser keeps its own.
+it since the upgrade have no saved value, and each browser keeps its own; a
+browser with none shows blue and the default theme (tests/test_new_user_theme.py).
 
 SHARED-DB: the test users are removed afterwards.
 """
@@ -52,7 +53,7 @@ def _saved_theme(html):
 
 def test_nothing_is_saved_until_the_user_changes_the_theme(user):
     page = _client(user).get("/").get_data(as_text=True)
-    assert _saved_theme(page) == {"dark": None, "scheme": None}
+    assert _saved_theme(page) == {"dark": None, "scheme": None, "ui_theme": None}
     assert "window.speakrSaveTheme" in page
 
 
@@ -62,7 +63,7 @@ def test_a_saved_theme_is_written_to_every_page(user):
     assert resp.status_code == 200
     for path in ("/", "/account"):
         page = client.get(path).get_data(as_text=True)
-        assert _saved_theme(page) == {"dark": True, "scheme": "teal"}, path
+        assert _saved_theme(page) == {"dark": True, "scheme": "teal", "ui_theme": None}, path
     # The account value is applied before the page reads localStorage.
     page = client.get("/").get_data(as_text=True)
     assert page.index("var saved =") < page.index("localStorage.getItem('darkMode')")
@@ -87,4 +88,6 @@ def test_invalid_values_are_refused(user, body):
 
 def test_signed_out_pages_have_no_account_theme():
     page = app.test_client().get("/login").get_data(as_text=True)
-    assert "speakrSaveTheme" not in page
+    # includes/ui_theme.html calls speakrSaveTheme when it is defined; it is
+    # defined only for a signed-in account.
+    assert "window.speakrSaveTheme =" not in page and "var saved =" not in page

@@ -20,7 +20,7 @@ The right side displays your recording metrics at a glance. You'll see your tota
 
 ### User Details
 
-Your username and email address appear here as read-only fields. The email serves as your login credential and cannot be changed without administrator assistance.
+Your username and email address appear here as read-only fields. The email serves as your sign-in credential and cannot be changed without administrator assistance.
 
 ### Processing Preferences
 
@@ -47,7 +47,7 @@ Auto speaker labeling works by comparing voice embeddings from the new recording
 
 ### Account Actions
 
-The account actions section provides quick access to essential functions. The prominent "Go to Recordings" button takes you directly to your recording library. The "Change Password" button opens a secure dialog for updating your credentials. The "Manage Speakers" link provides a shortcut to speaker profile management, though this functionality is also accessible via its dedicated tab.
+The account actions section provides quick access to essential functions. The prominent "Go to recordings" button takes you directly to your recording library. The "Change password" button opens a secure dialog for updating your credentials. The "Manage speakers" link provides a shortcut to speaker profile management, though this functionality is also accessible via its dedicated tab.
 
 ## Custom Prompts Tab
 
@@ -73,45 +73,44 @@ Multiple tag prompts combine intelligently when applied together. A recording ta
 
 ### Title Prompt
 
-The **Title Generation Prompt** field sets the instructions for the titles Speakr generates for your recordings. Leave it blank to use the current default, which is shown below the field. Only the instructions are yours to change: the transcript, your output language and the rule that the model replies with the title alone are added automatically.
+The **Title prompt** field sets the instructions for the titles Speakr generates for your recordings. Leave it blank to use the current default, which is shown below the field. Only the instructions are yours to change: the transcript, your output language and the rule that the model replies with the title alone are added automatically.
 
-Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title Prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
+Title prompts follow the same precedence as summary prompts. A tag's title prompt applies first (several tags with title prompts combine, in the order the tags were added), then the folder's, then yours, then the administrator's default, and finally the built-in default. Tags and folders have a **Title prompt** field next to their summary prompt for this purpose. A naming template (Account → Templates → Recording Titles) still controls the final title format, and its `{{ai_title}}` placeholder is filled with the title these instructions produce.
 
 The naming template comes from the first tag on the recording that has one, then from the recording's folder, then from your default template. The same template is applied when you regenerate a title from the recording header. When a recording is processed again, for example after you reprocess its transcription, a generated title is generated again with the current tags and templates; a title you typed or edited is kept. A merged recording without a typed title is titled the same way as an upload.
 
 ### Transcription Hints
 
-Below the summary prompt, you'll find the **Transcription Hints** section with two fields that help improve transcription accuracy:
+Below the summary prompt, you'll find the **Transcription hints** section with two fields that help improve transcription accuracy:
 
-- **Default Hotwords** - A comma-separated list of words or phrases the transcription engine should prioritize, such as brand names, acronyms, or specialized terminology (e.g., `Speakr, CTranslate2, PyAnnote`).
-- **Default Initial Prompt** - A brief description of the typical content of your recordings that provides context to the transcription engine (e.g., "This is a meeting about software development and AI tools.").
+- **Default hotwords** - A comma-separated list of words or phrases the transcription engine should prioritize, such as brand names, acronyms, or specialized terminology (e.g., `Speakr, CTranslate2, PyAnnote`).
+- **Default initial prompt** - A brief description of the typical content of your recordings that provides context to the transcription engine (e.g., "This is a meeting about software development and AI tools.").
 
 These defaults apply to all your recordings unless overridden by tag defaults, folder defaults, or values you set in the upload form's Advanced ASR Options. This is the lowest priority level in the precedence hierarchy, making it a good place to set general-purpose hints that apply across most of your content.
 
 !!! tip "When to use hotwords vs initial prompt"
     Use **hotwords** for specific terms the model tends to misspell - proper nouns, brand names, technical acronyms. Use **initial prompt** for broader context that helps the model understand the domain and make better overall word choices.
 
-### Inquire Privacy
+### What Ambrose can read
 
-The **Inquire Privacy** section controls what the Inquire AI may read when answering your questions. Transcripts are always available, since they are the minimum Inquire needs to function; everything else is your choice:
+In the **What Ambrose can read** section (formerly Inquire Privacy) you choose what Ambrose may read when it searches your library: on the [Ask Ambrose](inquire-mode.md) page, and in the recording chat when the agent is on. The title contains the name you gave the assistant. Transcripts are always available, since the search needs them. The other two are your choice:
 
-- **Allow access to summaries** (on by default) - lets Inquire read your recordings' AI summaries, which is a fast way for the agentic mode to survey a long recording before deciding whether to read its transcript.
-- **Allow access to your notes** (off by default) - your private notes stay unavailable unless you enable this. Only your own notes are ever used; notes on recordings shared with you are never exposed, regardless of this setting.
+- **Allow access to summaries** (on by default): Ambrose can read the summaries of your recordings, a quick way to survey a long recording before reading its transcript.
+- **Allow access to your notes** (off by default): Ambrose can read your notes. Only your own notes are used, never notes on recordings shared with you.
 
-These settings are enforced structurally: a disabled content type is removed from the AI's capabilities entirely rather than merely discouraged. See [Inquire Mode](inquire-mode.md#agentic-inquire-beta) for how the agentic mode uses these permissions.
+When a content type is off, Ambrose has no tool for it. In the recording chat, your notes on the open recording are part of the question in either case. See [What Ambrose can search](ambrose.md#what-ambrose-can-search).
 
-### Timestamp Availability for Summary and Chat
+### Timestamps in summaries
 
-At the top of the Prompt Options you can control whether the AI receives per-line timestamps with the transcript. There are two independent toggles, one for **summarization** and one for **chat**, so you can enable the feature only where you need it:
+At the top of the Prompt Options, **Include timestamps when summarizing** gives the summarization agent the time of each line of the transcript. The summary can then refer to moments in the recording, for example "the budget was approved around 00:14:30". This helps in long meetings, where finding a decision takes time.
 
-- **Summary** - when on, the summarizer sees the time of each line and can reference moments in the recording (for example, "the budget was approved around 00:14:30"). Useful for long meetings where locating a decision matters.
-- **Chat** - when on, the chat assistant can answer time-aware questions such as "what was discussed near the start" or "around the 20-minute mark".
+The format dropdown below the toggle sets how each line is written. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout. You can also select one of your saved transcript templates. The toggle is off by default, which keeps the prompt shorter.
 
-Each toggle has a format dropdown. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout; you can also select any of your saved transcript templates to control exactly how each line is rendered. Both toggles are off by default, which keeps the prompt shorter and avoids spending tokens on timestamps when you do not need them.
+Ambrose needs no setting for times: in the recording chat, answers cite passages of the transcript with their times (see [Citations](ambrose.md#citations)).
 
 ### Notes in Summaries
 
-When **Give the summarization agent my notes** is on, your notes on a recording are added to the summary request as context. Notes can hold the correct spelling of names and products, an agenda, or text pasted from an email or a chat thread. The transcript remains the record of what was said. The setting is off by default, applies to summaries generated after it is turned on (regenerate a summary to use it on an existing recording), and uses only your own notes, never those of people a recording is shared with. Up to 8,000 characters of notes are sent.
+When **Use my notes in summaries** is on, your notes on a recording are added to the summary request as context. Notes can hold the correct spelling of names and products, an agenda, or text pasted from an email or a chat thread. The transcript remains the record of what was said. The setting is off by default, applies to summaries generated after it is turned on (regenerate a summary to use it on an existing recording), and uses only your own notes, never those of people a recording is shared with. Up to 8,000 characters of notes are sent.
 
 ### Writing Effective Prompts
 
@@ -124,6 +123,18 @@ The expandable tips section provides guidance on crafting better instructions. F
 ## Preferences Tab
 
 The Preferences tab is the home for display and editor behaviour settings that should follow you across devices.
+
+### Appearance
+
+**Interface theme.** The interface theme is the layout and style of the interface: the shape of the sidebar and its recording rows, the recording header, the transcript, the filter column of the Ask Ambrose page, surfaces, corners and type. The **Appearance** section at the top of the Preferences tab shows one card per theme, with a preview, its name and a one-line description. Clicking a card applies the theme at once, without reloading the page. The choice is saved with your account and follows you to other devices and browsers. The same cards are shown in the **Color scheme** dialog, which opens from the user menu in the header.
+
+### Assistant
+
+Speakr's assistant is called **Ambrose**. Under **Assistant** in the Preferences tab you can give it another name, up to 40 letters, digits, spaces, dots, hyphens or apostrophes. The name appears in the recording's assistant panel, on the Ask page, on the header button and in the monogram, which shows its first letter. Leave the field empty to go back to Ambrose. The name is saved with your account; the API and your API tokens are not affected.
+
+The theme, the color scheme and light or dark mode are three separate settings that combine freely: every color scheme and both modes work with every theme. Neutral surfaces and shapes come from the theme, and the accent color comes from the color scheme. The **Color scheme and light or dark mode** link below the theme cards opens the color scheme dialog; light or dark mode is also switched with the sun and moon toggle in the user menu.
+
+A new account starts with the theme and color scheme that your administrator set for new accounts. On a server with the standard configuration, that is the Cards theme with the Forest Emerald color scheme. If your account is older than this default, you see the standard theme with the blue color scheme, or the look you picked earlier in that browser, until you pick another. New themes arrive with Speakr upgrades, and the Appearance section is shown only once the server offers more than one theme. If a theme you picked is withdrawn from a server, the standard theme is shown instead.
 
 ### Language Preferences
 
@@ -147,7 +158,7 @@ The **Filename date format** dropdown offers preset patterns — `YYYYMMDD`, `YY
 
 The setting is off by default. A file whose name contains no matching date keeps the existing behaviour (file timestamps, then upload time) without failing the upload, and the parsed date remains editable afterwards from the recording's details. Dates parsed from filenames are wall-clock times: browser uploads send your timezone so the stored date displays correctly everywhere, and date-only matches are anchored so the calendar date never shifts between viewers. A time followed by `Z`, as in `recording-2026-10-25T11-43-00-000Z.webm` from the browser recorder, is read as UTC. The setting also applies to files dropped into the automated processing folder.
 
-This setting is not the same as **Naming Templates** (Account → Templates), which generate a recording's *title* from template variables and can also extract text from filenames with their own patterns. The two are independent — naming templates never change the meeting date, and this setting never changes the title — but they work together: a naming template's `{{date}}`, `{{year}}`, `{{month}}` and `{{day}}` variables render the recording's meeting date, so with filename parsing enabled, a file named `20260716_call.mp3` and the "Date Prefix" naming template produces a title dated July 16, 2026 rather than the day you uploaded it.
+This setting is not the same as **Naming templates** (Account → Templates), which generate a recording's *title* from template variables and can also extract text from filenames with their own patterns. The two are independent — naming templates never change the meeting date, and this setting never changes the title — but they work together: a naming template's `{{date}}`, `{{year}}`, `{{month}}` and `{{day}}` variables render the recording's meeting date, so with filename parsing enabled, a file named `20260716_call.mp3` and the "Date Prefix" naming template produces a title dated July 16, 2026 rather than the day you uploaded it.
 
 ### Transcript Display
 
@@ -167,7 +178,7 @@ The setting only appears when your administrator has configured email delivery a
 
 ### Translation
 
-**Auto-translate new recordings.** When enabled, each new recording is translated automatically into your preferred output language once transcription finishes, so the translation is ready without another click. When disabled (the default), you generate the translation yourself with the **Generate Translation** button on the translation tab.
+**Auto-translate new recordings.** When enabled, each new recording is translated automatically into your preferred output language once transcription finishes, so the translation is ready without another click. When disabled (the default), you generate the translation yourself with the **Generate translation** button on the translation tab.
 
 The checkbox only appears when your administrator has enabled automatic translation for the instance. It is off by default per account, and it neither changes the recording's status nor replaces the original transcript. The target is the language set as your Preferred Chatbot, Summarization and Translation Language; when that is left on Default, your interface language is used. Translations consume the same AI tokens as a manual translation and count toward your monthly token budget, so a large batch of uploads translates every recording in the batch.
 
@@ -181,7 +192,7 @@ The checkbox only appears when your administrator has enabled automatic translat
 
 ![Shared Transcripts](../assets/images/screenshots/settings-shared-transcripts.png)
 
-The Shared Transcripts tab, also opened from **Shared Transcripts** in the user menu, lists everything you have shared and everything shared with you, in three sections:
+The Shared recordings tab, also opened from **Shared recordings** in the user menu, lists everything you have shared and everything shared with you, in three sections:
 
 - **Public links**: each recording with a public link, when you created it, whether it includes the summary and notes, and the link itself.
 - **People and groups**: each recording you have shared with other users, with each person's permissions (view, edit, share). A share made through a group tag or group folder is marked as such. It lasts until the tag or folder is removed from the recording, so it has no revoke button here.
@@ -222,7 +233,7 @@ For speakers with voice recognition data, each card displays additional informat
 
 - **Voice Profile Badge**: Shows confidence level (high/medium/low) based on the number and quality of voice samples collected
 - **Sample Count**: Number of voice samples the profile is built from, and how many voice variants they form (for example the same person on a phone and in a room)
-- **Voice Profile**: Lists every sample with its recording, speaker label, speech time and whether it was confirmed or auto-labelled. Remove a sample that belongs to someone else and the profile is rebuilt without it
+- **Voice profile**: Lists every sample with its recording, speaker label, speech time and whether it was confirmed or auto-labelled. Remove a sample that belongs to someone else and the profile is rebuilt without it
 - **Voice Samples Button**: Click to hear representative audio clips of this speaker's voice for verification
 - **Profile Strength Indicator**: Visual feedback showing how well the system can recognize this speaker in future recordings
 
@@ -230,7 +241,7 @@ The voice profile data improves speaker suggestion accuracy when identifying spe
 
 ### Interface Layout
 
-The grid layout accommodates multiple speakers per row, making efficient use of screen space while maintaining readability. Each card includes action buttons - an edit icon for updating speaker details and a delete icon for removal. The red trash icon on each card provides individual deletion, while the "Delete All" button at the bottom enables bulk cleanup when needed.
+The grid layout accommodates multiple speakers per row, making efficient use of screen space while maintaining readability. Each card includes action buttons - an edit icon for updating speaker details and a delete icon for removal. The red trash icon on each card provides individual deletion, while the "Delete all" button at the bottom enables bulk cleanup when needed.
 
 ### Library Statistics
 
@@ -270,7 +281,7 @@ These visual indicators make it immediately clear which tags have special behavi
 
 ### Creating New Tags
 
-Creating a new tag happens through the prominent "Create Tag" button. The system guides you through choosing a name, selecting a color from a palette, and optionally adding a custom prompt. The ASR defaults section appears when you're using advanced transcription services, letting you preset the expected number of speakers for recordings with this tag.
+Creating a new tag happens through the prominent "Create tag" button. The system guides you through choosing a name, selecting a color from a palette, and optionally adding a custom prompt. The ASR defaults section appears when you're using advanced transcription services, letting you preset the expected number of speakers for recordings with this tag.
 
 ### Prompt Stacking
 
@@ -322,7 +333,7 @@ The API Tokens tab enables programmatic access to your Speakr instance through p
 
 ### Creating Tokens
 
-Click the **Create Token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and choose an expiration period, which is set to 90 days by default (**Never expires** can still be selected). The token value is shown only once after creation - copy it immediately and store it securely.
+Click the **Create token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and choose an expiration period, which is set to 90 days by default (**Never expires** can still be selected). The token value is shown only once after creation - copy it immediately and store it securely.
 
 !!! warning "Token Security"
     Treat API tokens like passwords. They provide full access to your account. Never share tokens publicly, commit them to version control, or expose them in client-side code.
@@ -382,7 +393,7 @@ The About tab presents a comprehensive overview of your Speakr installation, com
 
 ### Version Information
 
-At the top, the Speakr logo and tagline "AI-Powered Audio Transcription & Note-Taking" remind you of the system's core purpose. The version badge (v0.9.0 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
+At the top, the Speakr logo and tagline "Audio transcription and notes" remind you of the system's core purpose. The version badge (v0.9.0 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
 
 ### System Configuration
 
@@ -394,7 +405,7 @@ Quick access buttons connect you to essential resources. The GitHub Repository b
 
 ### Key Features
 
-Colorful cards remind you of Speakr's core capabilities. Audio Transcription highlights support for both Whisper API and custom ASR with high accuracy. AI Summarization emphasizes the OpenRouter and Ollama integrations for flexible, powerful summary generation. Speaker Diarization showcases the ability to identify and label different speakers automatically. Interactive Chat demonstrates the conversational AI capabilities for exploring transcripts. Inquire Mode highlights semantic search across all recordings. Sharing & Export emphasizes the ability to share recordings and export to various formats.
+Colorful cards remind you of Speakr's core capabilities. Audio Transcription highlights support for both Whisper API and custom ASR with high accuracy. AI Summarization emphasizes the OpenRouter and Ollama integrations for flexible, powerful summary generation. Speaker Diarization showcases the ability to identify and label different speakers automatically. Interactive Chat demonstrates the conversational AI capabilities for exploring transcripts. Library search highlights questions across all recordings. Sharing & Export emphasizes the ability to share recordings and export to various formats.
 
 ### Using This Information
 
@@ -406,7 +417,7 @@ Your account settings contain sensitive information that shapes your entire Spea
 
 Always log out when using shared computers. Speakr maintains sessions for convenience, but this means anyone with access to your browser can access your account. The logout button in the user menu immediately terminates your session and requires re-authentication.
 
-Review your shared recordings regularly. Links you created months ago might still be active, providing access to outdated or sensitive information. The Shared Transcripts tab makes this review easy - scan through periodically and revoke anything no longer needed.
+Review your shared recordings regularly. Links you created months ago might still be active, providing access to outdated or sensitive information. The Shared recordings tab makes this review easy - scan through periodically and revoke anything no longer needed.
 
 Consider the implications of language settings in international contexts. If you set Chinese as your interface language on a shared computer, the next user might struggle to navigate. Similarly, output language settings affect all AI interactions, so ensure they match your actual needs.
 

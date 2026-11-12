@@ -1,0 +1,13 @@
+{#- The chat mark on a recording's row (composables/chat-threads.js), in two
+    states: pulsing while Ambrose is answering in that recording's chat and
+    another recording is open; static and muted when the recording has a chat
+    in this tab. Included inside each theme's sidebar-row, after the title. -#}
+<span v-if="chatRowMark(recording.id) === 'answering'" class="assistant-answering flex-shrink-0" role="status"
+      :title="t('chat.answeringHere', { name: assistantName })"
+      :aria-label="t('chat.answeringHere', { name: assistantName })">
+    <i class="fas fa-comment-dots" aria-hidden="true"></i>
+</span>
+<span v-else-if="chatRowMark(recording.id) === 'chat'" class="assistant-answering assistant-answering--idle flex-shrink-0"
+      role="img" :title="t('chat.chatInThisTab')" :aria-label="t('chat.chatInThisTab')">
+    <i class="fas fa-comment" aria-hidden="true"></i>
+</span>

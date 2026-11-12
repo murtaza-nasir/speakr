@@ -922,7 +922,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    },
@@ -1802,7 +1802,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    },
@@ -2085,7 +2085,7 @@
    {
     "json": {
      "code": "unexpected_error_upload",
-     "error": "An unexpected error occurred during upload."
+     "error": "Something went wrong while uploading."
     },
     "status": 500
    }
@@ -5263,7 +5263,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -7197,7 +7197,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -7702,7 +7702,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8069,7 +8069,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8084,7 +8084,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8099,7 +8099,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8780,7 +8780,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8795,7 +8795,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -8810,7 +8810,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -9384,7 +9384,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -9618,7 +9618,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -9633,7 +9633,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -9974,7 +9974,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -10204,7 +10204,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }
@@ -10219,7 +10219,7 @@
    {
     "json": {
      "code": "audio_decode_failed",
-     "error": "The uploaded file could not be read as audio. It may be corrupt or in an unsupported format."
+     "error": "The uploaded file couldn't be read as audio. It may be corrupt or in an unsupported format."
     },
     "status": 400
    }

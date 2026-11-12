@@ -3,6 +3,7 @@
  * Handles dark mode, color schemes, sidebar, and other UI state
  */
 
+import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 
 /**
@@ -118,18 +119,20 @@ export function useUI(state, utils, processedTranscription) {
         }
 
         currentColorScheme.value = schemeId;
-        localStorage.setItem('colorScheme', schemeId);
     };
 
-    // Initialize color scheme from storage
+    // A scheme the user picks is stored in this browser (and saved with the
+    // account). Applying the stored or default scheme stores nothing, so a
+    // value in localStorage is always a choice someone made
+    // (templates/includes/theme_account.html).
+    const storeColorScheme = (schemeId) => {
+        try { localStorage.setItem('colorScheme', schemeId); } catch (e) { /* storage blocked */ }
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+    };
+
+    // Initialize color scheme from storage, else the page default
     const initializeColorScheme = () => {
-        const savedScheme = localStorage.getItem('colorScheme');
-        if (savedScheme) {
-            applyColorScheme(savedScheme);
-        } else {
-            // Apply default scheme
-            applyColorScheme('blue');
-        }
+        applyColorScheme(savedColorScheme());
     };
 
     // Open color scheme modal
@@ -146,14 +149,14 @@ export function useUI(state, utils, processedTranscription) {
     // Select a color scheme
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
-        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+        storeColorScheme(schemeId);
         showToast(t('messages.colorSchemeApplied'), 'fa-palette');
     };
 
     // Reset to default color scheme
     const resetColorScheme = () => {
         applyColorScheme('blue');
-        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+        storeColorScheme('blue');
         showToast(t('messages.colorSchemeReset'), 'fa-undo');
     };
 
@@ -183,7 +186,7 @@ export function useUI(state, utils, processedTranscription) {
         if (hasUnsaved) {
             const tFn = utils.t || ((key) => key);
             const message = tFn('confirms.discardUnsavedRecording')
-                || 'You have an unsaved recording. Are you sure you want to leave?';
+                || 'Leave and discard the unsaved recording?';
             if (!window.confirm(message)) {
                 return;
             }
@@ -575,6 +578,9 @@ export function useUI(state, utils, processedTranscription) {
                 theme: isDarkMode.value ? "dark" : "light"
             });
 
+            // CodeMirror's hidden input is the editor's only text field: name it
+            summaryMarkdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('summary.editSummary'));
+
             // Add auto-save functionality
             summaryMarkdownEditorInstance.value.codemirror.on('change', () => {
                 if (autoSaveTimer.value) {
@@ -690,6 +696,9 @@ export function useUI(state, utils, processedTranscription) {
                 previewClass: ["editor-preview", "notes-preview"],
                 theme: isDarkMode.value ? "dark" : "light"
             });
+
+            // CodeMirror's hidden input is the editor's only text field: name it
+            markdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('notes.editNotes'));
 
             // Add auto-save functionality
             markdownEditorInstance.value.codemirror.on('change', () => {
@@ -878,7 +887,7 @@ export function useUI(state, utils, processedTranscription) {
 
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+                showToast(error.error || t('events.deleteFailed') || 'Couldn\'t delete event', 'fa-exclamation-circle');
                 return;
             }
 
@@ -890,7 +899,7 @@ export function useUI(state, utils, processedTranscription) {
             showToast(t('events.deleted') || 'Event deleted', 'fa-check-circle');
         } catch (error) {
             console.error('Delete event failed:', error);
-            showToast(t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+            showToast(t('events.deleteFailed') || 'Couldn\'t delete event', 'fa-exclamation-circle');
         }
     };
 
@@ -2050,6 +2059,9 @@ export function useUI(state, utils, processedTranscription) {
                 previewClass: ["editor-preview", "notes-preview"],
                 theme: isDarkMode.value ? "dark" : "light"
             });
+
+            // CodeMirror's hidden input is the editor's only text field: name it
+            recordingMarkdownEditorInstance.value.codemirror.getInputField().setAttribute('aria-label', t('notes.editNotes'));
 
             // Sync changes back to recordingNotes
             recordingMarkdownEditorInstance.value.codemirror.on('change', () => {

@@ -54,10 +54,10 @@
                                 <div class="flex items-center gap-2 flex-1 min-w-0">
                                     <i class="fas fa-calendar text-[var(--text-muted)] text-xs"></i>
                                     <span class="text-xs text-[var(--text-muted)] truncate" v-text="t('unifiedShareModal.created', { date: formatShareDate(share.created_at) })"></span>
-                                    <span v-if="share.share_summary" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                    <span v-if="share.share_summary" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                                         <i class="fas fa-file-alt mr-1"></i>${ t('summary.title') }
                                     </span>
-                                    <span v-if="share.share_notes" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                    <span v-if="share.share_notes" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                         <i class="fas fa-sticky-note mr-1"></i>${ t('notes.title') }
                                     </span>
                                 </div>
@@ -68,7 +68,7 @@
                                 </button>
                             </div>
                             <div class="relative">
-                                <input :value="share.share_url" :id="'unified-share-link-' + share.id" readonly
+                                <input :value="share.share_url" :id="'unified-share-link-' + share.id" readonly :aria-label="t('form.shareableLink')"
                                        class="w-full px-2 py-1.5 pr-10 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
                                 <button @click="copyPublicShareLinkWithFeedback(share.share_url, share.id)"
                                         class="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-all"
@@ -83,7 +83,6 @@
                     <div v-else-if="!isLoadingPublicShares" class="text-center py-4 text-xs text-[var(--text-muted)]">
                         <i class="fas fa-link text-xl mb-1"></i>
                         <p v-text="t('unifiedShareModal.noPublicLinks')"></p>
-                        <p class="text-xs mt-0.5 opacity-75" v-text="t('unifiedShareModal.clickToCreate')"></p>
                     </div>
                 </div>
             </div>
@@ -261,10 +260,10 @@
                                             <i class="fas fa-crown mr-1 sm:mr-0.5 text-xs sm:text-[9px]"></i>${ t('unifiedShareModal.owner') }
                                         </span>
                                         <template v-else>
-                                            <span v-if="share.can_edit" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                            <span v-if="share.can_edit" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                                 <i class="fas fa-pencil-alt mr-1 sm:mr-0.5 text-xs sm:text-[8px]"></i>${ t('common.edit') }
                                             </span>
-                                            <span v-if="share.can_reshare" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                            <span v-if="share.can_reshare" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                                                 <i class="fas fa-share-alt mr-1 sm:mr-0.5 text-xs sm:text-[8px]"></i>${ t('unifiedShareModal.reshare') }
                                             </span>
                                             <span v-if="!share.can_edit && !share.can_reshare" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">

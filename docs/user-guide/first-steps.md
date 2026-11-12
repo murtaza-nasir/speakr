@@ -10,7 +10,7 @@ The main view is organized into three distinct sections that work together seaml
 
 ## Top Navigation Bar
 
-The header is a single adaptive bar — in list view it shows the Speakr logo and global controls; when you open a recording it consolidates to also show the recording title, the edit pen, regenerate-title button, status badge, and the row of action icons (folder, inbox, star, tags, reprocess transcription, regenerate summary, identify speakers, share, delete). On the right side, the **Inquire** button opens semantic search across all your recordings, the **+ New Recording** button opens the upload modal as an overlay (your current detail view stays visible behind), and your username appears with a dropdown menu containing settings, language preferences, dark mode toggle, color scheme picker, and logout.
+The header is a single adaptive bar — in list view it shows the Speakr logo and global controls; when you open a recording it consolidates to also show the recording title, the edit pen, regenerate-title button, status badge, and the row of action icons (folder, inbox, star, tags, reprocess transcription, regenerate summary, identify speakers, share, delete). On the right side, the **Ask Ambrose** button opens the library page, where you ask questions about all your recordings (formerly Inquire), the **+ New Recording** button opens the upload modal as an overlay (your current detail view stays visible behind), and your username appears with a dropdown menu containing settings, language preferences, dark mode toggle, color scheme picker, and logout.
 
 On mobile the header keeps just the title, edit pen, regenerate-title, search, +, and user menu — the per-recording action toolbar moves into the chevron-expand row of the detail view below.
 
@@ -22,7 +22,7 @@ The left sidebar is your command center for organizing and finding recordings. A
 
 ![Filter Interface](../assets/images/screenshots/sidebar-filtering.png)
 
-The filter system in Speakr is designed to be both powerful and intuitive. Click on "Active filters" to expand the filtering panel. You can filter by tags, which appear as colored pills that you can click to select or deselect. The date range filter offers convenient presets like "Today", "Yesterday", "This Week", and "Last Week", or you can set a custom date range using the date pickers. When filters are active, their count appears next to the filter label, and a clear button lets you reset all filters at once.
+The filter system in Speakr is designed to be both powerful and intuitive. Click on "Active filters" to expand the filtering panel. You can filter by tags, which appear as colored pills that you can click to select or deselect. The date range filter offers convenient presets like "Today", "Yesterday", "This week", and "Last week", or you can set a custom date range using the date pickers. When filters are active, their count appears next to the filter label, and a clear button lets you reset all filters at once.
 
 ### Archiving Recordings
 
@@ -83,9 +83,9 @@ The Summary tab displays an AI-generated overview of your recording. This summar
 
 The Notes tab is your personal workspace for adding context, thoughts, or follow-up items related to the recording. These notes are private to you and searchable, making them perfect for adding meeting outcomes, personal reminders, or additional context that wasn't captured in the recording. The notes support markdown formatting, allowing you to create lists, headers, and formatted text.
 
-### Chat Tab
+### Ambrose, the assistant
 
-The Chat tab provides an interactive AI assistant that can answer questions about your recording. Simply type a question like "What were the main decisions made?" or "What did John say about the budget?" and the AI will analyze the transcription to provide relevant answers. This is particularly useful for long recordings where you need to quickly find specific information.
+The round button at the bottom right of a recording opens Ambrose, Speakr's assistant (formerly "Chat with Transcription"). Ambrose can answer questions about this recording, such as "What were the main decisions?" or "What did John say about the budget?", and point you to the moment something was said. The scope chip in the panel header reads **This recording**. See [Working with Transcripts](transcripts.md#ask-ambrose-about-a-recording).
 
 ## Reprocessing Options
 

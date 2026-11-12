@@ -1,4 +1,4 @@
-{#- The controls on the right of every page header: token budget, Inquire,
+{#- The controls on the right of every page header: token budget, Ask Ambrose,
     New Recording and the user menu. The main app renders them inside its own
     Vue app; the other pages mount static/js/global-header.js on
     page-header.html, which provides the same state and methods, so every
@@ -10,11 +10,12 @@
          + padding + font size are identical; only the colour
          intent differs (Inquire = quiet/highlighted, PWA Install
          = primary-success, New Recording = primary). -->
-    <!-- Inquire Mode Button -->
+    <!-- Ask Ambrose: the library page (/inquire), with the assistant's
+         name and monogram (includes/assistant_avatar.html) -->
     {% if inquire_mode_enabled %}
-    <a href="/inquire" class="btn btn--sm header-action" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
-        <i class="fas fa-search"></i>
-        <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
+    <a href="/inquire" class="btn btn--sm header-action" :aria-label="t('inquire.title', { name: assistantName })" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
+        {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
+        <span class="header-action__label hidden sm:inline" v-text="t('inquire.title', { name: assistantName })"></span>
     </a>
     {% endif %}
 
@@ -29,8 +30,8 @@
     </button>
 
     <!-- New Recording Button -->
-    <button @click="switchToUploadView" class="btn btn--sm btn--primary header-action">
-        <i class="fas fa-plus"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
+    <button @click="switchToUploadView" class="btn btn--sm btn--primary header-action" :aria-label="t('nav.newRecording')">
+        <i class="fas fa-plus"></i><span class="header-action__label hidden sm:inline" v-text="t('nav.newRecording')"></span>
     </button>
 
     <!-- User menu -->
@@ -39,8 +40,12 @@
         <button @click="isUserMenuOpen = !isUserMenuOpen"
                 data-user-menu-toggle
                 class="btn btn--icon header-action relative"
-                :title="t('admin.userMenu')">
-            <i class="fas fa-user-circle text-lg"></i>
+                :title="t('admin.userMenu')"
+                :aria-label="t('admin.userMenu')">
+            <!-- A plain user glyph: the button's own fill is the circle or
+                 square (styles.css, page header set), so a user-circle glyph
+                 would draw a circle inside a circle. -->
+            <i class="fas fa-user"></i>
             <!-- Unread badge. The menu is the only always-visible anchor
                  in the header, so the count rides on it rather than on the
                  admin link, which lives inside the dropdown. -->

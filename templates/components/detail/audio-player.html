@@ -89,6 +89,7 @@
                             <input type="range" min="0" max="1" step="0.05"
                                    :value="audioIsMuted ? 0 : playerVolume"
                                    @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                   :aria-label="t('speakerModal.volume')"
                                    class="fullscreen-volume-slider w-20">
                         </div>
 
@@ -221,6 +222,7 @@
                                 <input type="range" min="0" max="1" step="0.05"
                                        :value="audioIsMuted ? 0 : playerVolume"
                                        @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                       :aria-label="t('speakerModal.volume')"
                                        class="volume-slider-vertical"
                                        style="width: 80px;">
                             </div>

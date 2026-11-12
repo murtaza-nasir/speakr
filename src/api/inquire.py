@@ -46,8 +46,11 @@ def init_inquire_helpers(**kwargs):
 # --- Routes ---
 
 @inquire_bp.route('/inquire')
+@inquire_bp.route('/ask')
 @login_required
 def inquire():
+    """The library page, "Ask Ambrose" (the assistant's name,
+    src/utils/assistant_name.py). /ask is an alias of /inquire."""
     # Check if inquire mode is enabled
     if not ENABLE_INQUIRE_MODE:
         flash(translate('server.flash.inquireDisabled'), 'warning')
@@ -63,7 +66,10 @@ def inquire():
     # The interface language, as on the other pages (it was missing here, so
     # Inquire always appeared in the browser language).
     user_language = current_user.ui_language or 'en'
+    from src.utils.assistant_name import assistant_name_of
+    page_title = translate('inquire.title', user_language, name=assistant_name_of(current_user))
     return render_template('inquire.html',
+                         page_title=page_title,
                          use_asr_endpoint=USE_ASR_ENDPOINT,
                          current_user=current_user,
                          is_team_admin=is_team_admin,
@@ -169,30 +175,21 @@ def inquire_search():
 
 
 
-def inquire_stream(user, data, mode='auto'):
+def inquire_stream(user, data, mode='auto', tool_names=None):
     """The Inquire answer as an SSE generator, for the web route and API v1.
 
     data: message, message_history, conversation_memory, filter_tags,
     filter_folders, filter_speakers, filter_recording_ids, filter_date_from, filter_date_to.
     mode: 'auto' (the agent when ENABLE_INQUIRE_AGENT is on), 'rag' or
     'agent' (the caller checks that the agent is on).
+    tool_names: the agent's tools for this surface
+    (assistant_events.tools_for_surface); None offers them all.
     """
     user_message = data.get('message')
     message_history = data.get('message_history', [])
-    # Build filters from request
-    filters = {}
-    if data.get('filter_tags'):
-        filters['tag_ids'] = data['filter_tags']
-    if data.get('filter_folders'):
-        filters['folder_ids'] = data['filter_folders']
-    if data.get('filter_speakers'):
-        filters['speaker_names'] = data['filter_speakers']
-    if data.get('filter_recording_ids'):
-        filters['recording_ids'] = data['filter_recording_ids']
-    if data.get('filter_date_from'):
-        filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
-    if data.get('filter_date_to'):
-        filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+    # Build filters from request (the Ask page's filter column)
+    from src.services.assistant_events import filters_from_request
+    filters = filters_from_request(data)
     
     # Debug logging
     current_app.logger.info(f"Inquire chat - User: {user.username}, Query: '{user_message}', Filters: {filters}")
@@ -204,6 +201,10 @@ def inquire_stream(user, data, mode='auto'):
     user_title = user.job_title if user.job_title else "professional"
     user_company = user.company if user.company else "their organization"
     user_output_language = user.output_language if user.output_language else None
+    from src.utils.assistant_name import assistant_name_of, assistant_identity
+    from src.utils.localization import request_language
+    assistant_name = assistant_name_of(user)
+    ui_language = request_language()   # step labels; the stream runs without the request
     app = current_app._get_current_object()  # Capture app for use in generator
     
     # Enhanced query processing with enrichment and debugging
@@ -262,7 +263,7 @@ Examples:
                     # Direct response without RAG lookup
                     yield create_status_response('responding', 'Generating direct response...')
 
-                    direct_prompt = f"""You are assisting {user_name}. Respond to their request directly using proper markdown formatting.
+                    direct_prompt = f"""{assistant_identity(assistant_name, user_name, user_title, user_company)} Respond to their request directly using proper markdown formatting.
 
 User request: "{user_message}"
 
@@ -608,7 +609,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 
                 available_speakers = sorted(list(available_speakers))
             
-            system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction}
+            system_prompt = f"""{assistant_identity(assistant_name, user_name, user_title, user_company)} {language_instruction}
 
 You are analyzing transcriptions from multiple recordings{filter_text}. The following context has been retrieved based on semantic similarity to the user's question:
 
@@ -822,11 +823,14 @@ Order your response with notes from the most recent meetings first. Always use p
             'company': user_company,
             'output_language': user_output_language,
             'timezone': user_zone,
+            'assistant_name': assistant_name,
+            'language': ui_language,
         }
         agent_gen = run_inquire_agent(
             app, user_id, user_ctx, user_message, message_history,
             data.get('conversation_memory'), filters,
             legacy_fallback=generate_enhanced_chat,
+            tool_names=tool_names,
         )
         return agent_gen
 
@@ -854,7 +858,18 @@ def inquire_chat():
         if client is None:
             return jsonify(api_error('chat_openrouter_not_configured')), 503
         
-        return Response(inquire_stream(current_user, data), mimetype='text/event-stream')
+        # One event stream for both engines: retrieval stages arrive as
+        # steps too, labelled in the user's language (assistant_events).
+        from src.services.assistant_events import filters_from_request, library_events, tools_for_surface
+        from src.utils.localization import request_language
+        # A filter date that does not parse is refused, never dropped
+        # (the stream would otherwise fail after it starts).
+        try:
+            filters_from_request(data)
+        except ValueError:
+            return jsonify(api_error('invalid_filter_date')), 400
+        stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
+        return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 
     except Exception as e:
         current_app.logger.error(f"Error in inquire chat endpoint: {str(e)}")
@@ -899,8 +914,9 @@ _SOURCE_URL = re.compile(r'/recordings/([0-9]+)(?:\?t=[0-9]+)?')
 def _inquire_turn_sources(raw, budget):
     """(number, title, url) for each valid source in raw, at most budget of them.
 
-    The number is the source's position in the list the page shows, so the
-    numbers stay those of the page when an entry is dropped. An entry is kept
+    The number is the one the page showed (`n`; numbers continue through a
+    chat, Ambrose 2b), else the source's position in the list, so the numbers
+    stay those of the page when an entry is dropped. An entry is kept
     only when its title is a non-empty string and its url is a relative
     /recordings/<id> path with an optional ?t=<seconds>.
     """
@@ -918,6 +934,9 @@ def _inquire_turn_sources(raw, budget):
         title = ' '.join(title.split())[:_MAX_SOURCE_TITLE]
         if not title or not _SOURCE_URL.fullmatch(url):
             continue
+        shown = item.get('n')
+        if isinstance(shown, int) and not isinstance(shown, bool) and 0 < shown <= 10000:
+            number = shown
         sources.append((number, title, url))
     return sources
 
@@ -1026,7 +1045,8 @@ def download_inquire_conversation():
         if filter_line:
             metadata.append(filter_line)
         doc = new_document()
-        add_document_header(doc, 'Inquire', metadata)
+        from src.utils.assistant_name import assistant_name_of
+        add_document_header(doc, translate('inquire.title', name=assistant_name_of(current_user)), metadata)
 
         base_url = link_base_url()
         for role, content, sources in turns:

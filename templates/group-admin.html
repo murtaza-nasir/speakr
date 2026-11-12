@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Group Management - Speakr</title>
+    <title>{{ groups_title }} - Speakr</title>
 
     <!-- Loading overlay to prevent FOUC - MUST be first -->
     {% include 'includes/loading_overlay.html' %}
@@ -94,7 +94,7 @@
             }
 
             // Apply color scheme
-            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
             
@@ -116,6 +116,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     {% set page_label = 'Group Management' %}

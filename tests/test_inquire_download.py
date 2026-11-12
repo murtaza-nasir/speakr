@@ -98,7 +98,7 @@ def test_returns_docx(user_id):
     assert resp.headers['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     assert resp.headers['Content-Disposition'] == 'attachment; filename="inquire.docx"'
     assert _paragraphs(resp) == [
-        'Inquire',
+        'Ask Ambrose',
         'Export Date: 2026-03-04 15:06',
         'You:',
         'What is on the roadmap?',
@@ -124,7 +124,7 @@ def test_filter_paragraph_lists_names_in_order(user_id):
     }})
     assert resp.status_code == 200
     assert _paragraphs(resp)[:3] == [
-        'Inquire',
+        'Ask Ambrose',
         'Export Date: 2026-03-04 15:06',
         'Tags: Planning, Budget; Folders: Client; Speakers: Ada; Recordings: Standup; Dates: 2026-01-01, 2026-01-31',
     ]

@@ -54,20 +54,20 @@ function useColorScheme() {
     
     const colorSchemes = {
         light: [
-            { id: 'blue', name: 'Ocean Blue', description: 'Classic blue theme with professional appeal', accent: '#3b82f6', hover: '#2563eb' },
-            { id: 'emerald', name: 'Forest Emerald', description: 'Fresh green theme for a natural feel', accent: '#10b981', hover: '#059669' },
-            { id: 'purple', name: 'Royal Purple', description: 'Elegant purple theme with sophistication', accent: '#8b5cf6', hover: '#7c3aed' },
-            { id: 'rose', name: 'Sunset Rose', description: 'Warm pink theme with gentle energy', accent: '#f43f5e', hover: '#e11d48' },
-            { id: 'amber', name: 'Golden Amber', description: 'Warm yellow theme for brightness', accent: '#f59e0b', hover: '#d97706' },
-            { id: 'teal', name: 'Ocean Teal', description: 'Cool teal theme for tranquility', accent: '#06b6d4', hover: '#0891b2' }
+            { id: 'blue', accent: '#3b82f6', hover: '#2563eb' },
+            { id: 'emerald', accent: '#10b981', hover: '#059669' },
+            { id: 'purple', accent: '#8b5cf6', hover: '#7c3aed' },
+            { id: 'rose', accent: '#f43f5e', hover: '#e11d48' },
+            { id: 'amber', accent: '#f59e0b', hover: '#d97706' },
+            { id: 'teal', accent: '#06b6d4', hover: '#0891b2' }
         ],
         dark: [
-            { id: 'blue', name: 'Midnight Blue', description: 'Deep blue for focused night work', accent: '#60a5fa', hover: '#3b82f6' },
-            { id: 'emerald', name: 'Emerald Night', description: 'Rich green for comfortable viewing', accent: '#34d399', hover: '#10b981' },
-            { id: 'purple', name: 'Deep Purple', description: 'Luxurious purple for creative sessions', accent: '#a78bfa', hover: '#8b5cf6' },
-            { id: 'rose', name: 'Crimson', description: 'Bold red-pink for energetic work', accent: '#fb7185', hover: '#f43f5e' },
-            { id: 'amber', name: 'Golden Hour', description: 'Warm amber for reduced eye strain', accent: '#fbbf24', hover: '#f59e0b' },
-            { id: 'teal', name: 'Electric Cyan', description: 'Vibrant cyan for modern aesthetics', accent: '#22d3ee', hover: '#06b6d4' }
+            { id: 'blue', accent: '#60a5fa', hover: '#3b82f6' },
+            { id: 'emerald', accent: '#34d399', hover: '#10b981' },
+            { id: 'purple', accent: '#a78bfa', hover: '#8b5cf6' },
+            { id: 'rose', accent: '#fb7185', hover: '#f43f5e' },
+            { id: 'amber', accent: '#fbbf24', hover: '#f59e0b' },
+            { id: 'teal', accent: '#22d3ee', hover: '#06b6d4' }
         ]
     };
     
@@ -89,15 +89,16 @@ function useColorScheme() {
                 document.documentElement.classList.add(themeClass);
             }
             
-            // Don't set CSS variables - let the theme classes handle all colors
-            localStorage.setItem('colorScheme', schemeId);
+            // Don't set CSS variables - let the theme classes handle all colors.
+            // Nothing is stored here: only a scheme the user picks is
+            // (selectColorScheme / resetColorScheme).
             currentColorScheme.value = schemeId;
         }
     };
     
     const initializeColorScheme = (darkMode) => {
         isDarkMode.value = darkMode;
-        const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+        const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
         currentColorScheme.value = savedScheme;
         applyColorScheme(savedScheme);
     };
@@ -115,21 +116,26 @@ function useColorScheme() {
         showColorSchemeModal.value = false;
     };
     
+    const storeColorScheme = (schemeId) => {
+        try { localStorage.setItem('colorScheme', schemeId); } catch (e) { /* storage blocked */ }
+    };
+
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
+        storeColorScheme(schemeId);
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         const scheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === schemeId);
         if (window.showToast && scheme) {
-            window.showToast(sharedT('messages.colorSchemeApplied', `Applied ${scheme.name} theme`), 'fa-palette');
+            window.showToast(sharedT('messages.colorSchemeApplied', 'Color scheme applied'), 'fa-palette');
         }
     };
     
     const resetColorScheme = () => {
         applyColorScheme('blue');
+        storeColorScheme('blue');
         if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
         if (window.showToast) {
-            const defaultScheme = colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === 'blue');
-            window.showToast(sharedT('messages.colorSchemeReset', `Reset to default ${defaultScheme?.name || 'Ocean Blue'} theme`), 'fa-undo');
+            window.showToast(sharedT('messages.colorSchemeReset', 'Color scheme reset to default'), 'fa-undo');
         }
     };
     
@@ -167,17 +173,17 @@ function useSharesModal() {
         try {
             await navigator.clipboard.writeText(url);
             if (window.showToast) {
-                window.showToast(sharedT('sharing.linkCopied', 'Share link copied to clipboard'), 'fa-link');
+                window.showToast(sharedT('sharing.linkCopied', 'Link copied'), 'fa-link');
             }
         } catch (err) {
             if (window.setGlobalError) {
-                window.setGlobalError(sharedT('sharing.linkCopyFailed', 'Failed to copy link to clipboard'));
+                window.setGlobalError(sharedT('sharing.linkCopyFailed', 'Couldn\'t copy link to clipboard'));
             }
         }
     };
     
     const deleteShare = async (shareId) => {
-        if (!confirm(sharedT('dialogs.deleteShare.message', 'Are you sure you want to delete this share?'))) return;
+        if (!confirm(sharedT('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'))) return;
         
         try {
             const response = await fetch(`/api/shares/${shareId}`, {
@@ -194,7 +200,7 @@ function useSharesModal() {
             
             userShares.value = userShares.value.filter(share => share.id !== shareId);
             if (window.showToast) {
-                window.showToast(sharedT('sharing.deleted', 'Share deleted successfully'), 'fa-trash');
+                window.showToast(sharedT('sharing.deleted', 'Share deleted'), 'fa-trash');
             }
         } catch (error) {
             if (window.setGlobalError) {

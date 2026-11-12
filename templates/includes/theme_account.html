@@ -1,8 +1,18 @@
 {#- The theme saved with the user's account (D#419). Include first in <head>,
     before includes/theme_bootstrap.html and any script that reads the theme.
-    A saved value replaces this browser's copy in localStorage, which every
-    page reads. Nothing is saved until the user changes the mode or scheme
-    (window.speakrSaveTheme), so until then each browser keeps its own. -#}
+    window.speakrThemeDefaults is the color scheme and UI theme to show when
+    localStorage has none: for a visitor, the look for new accounts
+    (System Settings default_ui_theme / default_color_scheme); for a
+    signed-in account, blue and the default theme. Readers use it as
+    localStorage.getItem(key) || speakrThemeDefaults[key]; nothing writes it to
+    localStorage on a signed-out page, so a visitor's browser keeps no copy.
+    For a signed-in account, a saved value replaces the browser's copy in
+    localStorage on every page. Without a saved value, the browser keeps its
+    own (a choice made there before D#419), and a browser with none shows blue
+    and the default theme, never the look for new accounts. Because signed-out
+    pages write nothing, a stored value is always a choice someone made.
+    Changes are saved with window.speakrSaveTheme. -#}
+<script>window.speakrThemeDefaults = {{ theme_defaults|tojson }};</script>
 {% if account_theme %}
 <script>
   (function () {
@@ -10,12 +20,14 @@
     try {
       if (saved.dark !== null) localStorage.setItem('darkMode', saved.dark ? 'true' : 'false');
       if (saved.scheme) localStorage.setItem('colorScheme', saved.scheme);
+      if (saved.ui_theme) localStorage.setItem('uiTheme', saved.ui_theme);
     } catch (e) {}
     var pending = {}, timer = null;
     window.speakrSaveTheme = function (key) {
       try {
         if (key === 'darkMode') pending.dark_mode = localStorage.getItem('darkMode') === 'true';
         if (key === 'colorScheme') pending.color_scheme = localStorage.getItem('colorScheme') || 'blue';
+        if (key === 'uiTheme') pending.ui_theme = localStorage.getItem('uiTheme') || 'default';
       } catch (e) { return; }
       clearTimeout(timer);
       timer = setTimeout(function () {

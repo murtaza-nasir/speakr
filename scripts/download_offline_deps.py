@@ -110,6 +110,31 @@ FONTAWESOME_FONTS = {
     ),
 }
 
+# Source Serif 4 (Adobe, SIL Open Font License 1.1), the reading face of the Focus UI theme.
+# Release 4.005R, woff2 files of the official repository
+# (https://github.com/adobe-fonts/source-serif); only the weights the theme uses.
+# static/css/themes/focus.css loads them, so they are fetched only while that theme is active.
+SOURCE_SERIF_TAG = "4.005R"
+SOURCE_SERIF_BASE = f"https://raw.githubusercontent.com/adobe-fonts/source-serif/{SOURCE_SERIF_TAG}/"
+SOURCE_SERIF_FONTS = {
+    "SourceSerif4-Regular.otf.woff2": (
+        SOURCE_SERIF_BASE + "WOFF2/OTF/SourceSerif4-Regular.otf.woff2",
+        "42aa010dbb82d90764a28f6cc7d809a9395999b7390eb3b212028c6975e97402",
+    ),
+    "SourceSerif4-It.otf.woff2": (
+        SOURCE_SERIF_BASE + "WOFF2/OTF/SourceSerif4-It.otf.woff2",
+        "e65464583be3cb56b9fee2bff0f2f7d11706aba31435144f87f393e62ed316c8",
+    ),
+    "SourceSerif4-Semibold.otf.woff2": (
+        SOURCE_SERIF_BASE + "WOFF2/OTF/SourceSerif4-Semibold.otf.woff2",
+        "7eff2d2fde32c42992e723eb24dcc6dc5b640ef0da97ce373cd38e0604202e30",
+    ),
+    "OFL.txt": (
+        SOURCE_SERIF_BASE + "LICENSE.md",
+        "75784a295293a8992f5a8d99210566e0064a012e6dab6731305e3787f15896c7",
+    ),
+}
+
 
 def download_file(url, sha256, filepath):
     """Download url to filepath; raise when it fails or the checksum differs."""
@@ -149,6 +174,11 @@ def main():
         print("\nFont Awesome Webfonts:")
         for filename, (url, sha256) in FONTAWESOME_FONTS.items():
             download_file(url, sha256, VENDOR_DIR / "fonts" / "webfonts" / filename)
+
+        # Source Serif 4 fonts and their licence
+        print("\nSource Serif 4 (Focus theme):")
+        for filename, (url, sha256) in SOURCE_SERIF_FONTS.items():
+            download_file(url, sha256, VENDOR_DIR / "fonts" / "source-serif-4" / filename)
     except Exception as e:
         print(f"  ✗ {e}", file=sys.stderr)
         sys.exit(1)

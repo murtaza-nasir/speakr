@@ -248,7 +248,7 @@ WhisperX supports both **hotwords** and **initial_prompt** parameters to improve
 - **Hotwords** - Comma-separated terms the model should prioritize (brand names, acronyms, jargon). Passed as the `hotwords` query parameter to the ASR endpoint.
 - **Initial Prompt** - Context text that guides the model's word choices. Passed as the `initial_prompt` query parameter.
 
-Set these at any level in Speakr: per-user defaults, per-tag, per-folder, or per-upload in the Advanced ASR Options. See the [Custom Vocabulary feature docs](../features.md#custom-vocabulary--transcription-hints) for details on the precedence hierarchy.
+Set these at any level in Speakr: per-user defaults, per-tag, per-folder, or per-upload in the Advanced ASR options. See the [Custom Vocabulary feature docs](../features.md#custom-vocabulary--transcription-hints) for details on the precedence hierarchy.
 
 !!! note "ASR Service Compatibility"
     The WhisperX ASR service (`learnedmachine/whisperx-asr-service`) fully supports both `hotwords` and `initial_prompt` parameters. The community `whisper-asr-webservice` by ahmetoner supports `initial_prompt` but does not currently expose a `hotwords` parameter through its API.
@@ -261,8 +261,8 @@ WhisperX provides superior speaker diarization compared to standard implementati
 
 When uploading or processing recordings:
 
-- **Min Speakers:** Minimum expected number of speakers
-- **Max Speakers:** Maximum expected number of speakers
+- **Min speakers:** Minimum expected number of speakers
+- **Max speakers:** Maximum expected number of speakers
 - Leave blank for automatic detection
 
 **Tips:**

@@ -101,7 +101,7 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=changeme
 ```
 
-Make sure to change these values to something secure, especially the password. This admin account will be created automatically when you first start Speakr, and you'll use these credentials to log in. The first user created through this method becomes the system administrator with full access to all features including user management and system settings.
+Make sure to change these values to something secure, especially the password. This admin account will be created automatically when you first start Speakr, and you'll use these credentials to sign in. The first user created through this method becomes the system administrator with full access to all features including user management and system settings.
 
 ## Step 5: Launch Speakr
 
@@ -127,11 +127,11 @@ Once the container is running, open your web browser and navigate to:
 http://localhost:8899
 ```
 
-Log in using the admin credentials you configured in Step 4. You should now see the Speakr main screen, ready for your first recording.
+Sign in with the admin credentials you configured in Step 4. You should now see the Speakr main screen, ready for your first recording.
 
 ## Your First Recording
 
-After logging in, you can immediately start using Speakr. Click the "New Recording" button in the top navigation to either upload an existing audio file or start a [live recording](user-guide/recording.md). For detailed instructions, see the [recording guide](user-guide/recording.md). For uploads, Speakr supports [common audio formats](faq.md#what-audio-formats-does-speakr-support) like MP3, M4A, WAV, and more, with files up to 500MB by default. You can adjust this limit in [system settings](admin-guide/system-settings.md). For live recording, you can capture from your microphone, system audio, or both simultaneously.
+After signing in, you can immediately start using Speakr. Click the "New recording" button in the top navigation to either upload an existing audio file or start a [live recording](user-guide/recording.md). For detailed instructions, see the [recording guide](user-guide/recording.md). For uploads, Speakr supports [common audio formats](faq.md#what-audio-formats-does-speakr-support) like MP3, M4A, WAV, and more, with files up to 500MB by default. You can adjust this limit in [system settings](admin-guide/system-settings.md). For live recording, you can capture from your microphone, system audio, or both simultaneously.
 
 ## Setting Up Collaboration (Optional)
 
@@ -142,8 +142,8 @@ If you're using Speakr with your family or team, you can leverage powerful colla
 As an admin, you can create groups to organize users who regularly collaborate:
 
 1. Navigate to **Admin → User Groups** in the admin dashboard
-2. Click "Create New Group" and enter a group name (e.g., "Engineering Team", "Family", "Sales Department")
-3. Optionally assign a group lead who can manage group settings
+2. Click "Create group" and enter a group name (e.g., "Engineering Team", "Family", "Sales Department")
+3. Optionally assign a group admin who can manage group settings
 4. Add members by searching for usernames and clicking to add them
 5. Save the group
 
@@ -153,11 +153,11 @@ Group tags automatically share recordings with all group members when applied:
 
 1. While editing or creating a group, navigate to the **Tags** section
 2. Click "Create Group Tag" and enter:
-    - **Tag Name**: What the tag will be called (e.g., "Team Meetings", "Family Events")
+    - **Tag name**: What the tag will be called (e.g., "Team Meetings", "Family Events")
     - **Color**: Choose a color for easy visual identification
-    - **Custom Prompt** (optional): AI instructions for how to summarize recordings with this tag
+    - **Custom prompt** (optional): AI instructions for how to summarize recordings with this tag
     - **Protected**: Enable to prevent automatic deletion by retention policies
-    - **Retention Days** (optional): Auto-delete recordings after this many days (leave blank to keep forever)
+    - **Retention days** (optional): Auto-delete recordings after this many days (leave blank to keep forever)
 3. Save the tag
 
 When any group member applies this tag to a recording, all group members automatically get access to it.
@@ -194,7 +194,7 @@ ENABLE_INQUIRE_MODE=true
 
 Then restart the container with `docker compose restart` for the change to take effect.
 
-Once Inquire Mode works, you can additionally try the [agentic mode beta](user-guide/inquire-mode.md#agentic-inquire-beta) (`ENABLE_INQUIRE_AGENT=true`), which answers by iteratively searching and reading your recordings, with live activity display and timestamped, click-to-play citations.
+Once Inquire Mode works, you can additionally try the [agentic mode beta](user-guide/inquire-mode.md#agent-mode-beta) (`ENABLE_INQUIRE_AGENT=true`), which answers by iteratively searching and reading your recordings, with live activity display and timestamped, click-to-play citations. The agent also gives the recording chat access to your library. See [Ambrose settings](admin-guide/ambrose.md).
 
 ### Enable User Registration
 
@@ -231,7 +231,7 @@ SMTP_FROM_ADDRESS=noreply@yourdomain.com
 SMTP_FROM_NAME=Speakr
 ```
 
-When enabled, new users receive a verification email after registration. Password reset is available from the login page via "Forgot password?" link. See the [Email Setup Guide](admin-guide/email-setup.md) for detailed configuration including provider-specific examples for Gmail, SendGrid, Mailgun, and more.
+When enabled, new users receive a verification email after registration. Password reset is available from the sign-in page via the "Forgot password?" link. See the [Email Setup Guide](admin-guide/email-setup.md) for detailed configuration including provider-specific examples for Gmail, SendGrid, Mailgun, and more.
 
 ## Stopping and Starting Speakr
 

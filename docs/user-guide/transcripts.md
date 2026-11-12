@@ -32,7 +32,7 @@ All speakers you identify are automatically saved to your speaker database. You 
 
 The Speakers Management interface displays all your saved speakers in a responsive grid layout. Each speaker card shows the speaker's name, usage statistics including how many times they've been identified, when they were last used in a recording, and when they were first added to your database. The interface includes internal scrolling to handle large numbers of speakers while keeping the header and action buttons always visible.
 
-You can delete individual speakers by clicking the trash icon on their card, or use the "Delete All" button to clear your entire speaker database. This is useful for maintaining privacy or when you need to start fresh with a new set of speakers. The speaker count at the bottom keeps track of how many speakers you have saved.
+You can delete individual speakers by clicking the trash icon on their card, or use the "Delete all" button to clear your entire speaker database. This is useful for maintaining privacy or when you need to start fresh with a new set of speakers. The speaker count at the bottom keeps track of how many speakers you have saved.
 
 The system uses these saved speakers to provide suggestions when you're identifying speakers in new recordings, making the identification process faster over time as you build up your speaker database.
 
@@ -64,7 +64,7 @@ The ASR editor presents your transcription as a table of segments, where each ro
 
 The ASR editor maintains the JSON structure of your transcription, which is essential for features like speaker-based search, audio synchronization (clicking on text to jump to that point in the audio), and proper display in bubble view. When you save changes in the ASR editor, the system preserves all timing and speaker information while applying your corrections.
 
-Your edits are saved to the database when you click "Save Changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
+Your edits are saved to the database when you click "Save changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
 
 #### Editor Productivity Features
 
@@ -185,7 +185,7 @@ You can export the summary in multiple ways. The copy button copies the entire s
 
 ### Regenerating a Summary
 
-The **Regenerate summary** dialog runs the summary again with a prompt you can see and change. Open it from **Reprocess summary** in the recording's reprocess menu, or from the slider icon in the summary toolbar. On a recording without a summary, the slider icon next to **Generate Summary** opens the same dialog, and the run generates the first summary. You need edit access to the recording.
+The **Regenerate summary** dialog runs the summary again with a prompt you can see and change. Open it from **Reprocess summary** in the recording's reprocess menu, or from the slider icon in the summary toolbar. On a recording without a summary, the slider icon next to **Generate summary** opens the same dialog, and the run generates the first summary. You need edit access to the recording.
 
 The dialog shows the prompt that applies to you for this recording, in an editable text box. A chip beside the **Prompt** label names where it comes from:
 
@@ -225,35 +225,39 @@ Each extracted event can be exported as an ICS file that's compatible with virtu
 
 Event extraction can be toggled on or off in your Account Settings under the Custom Prompts tab. When it is enabled, the AI is asked in a separate request to identify calendar-worthy items, with the summary when there is one and the transcript otherwise. This feature works with any LLM provider configured in your system and adapts to different conversation styles, from formal meetings to casual discussions. The quality of event extraction depends on the AI model being used, with more advanced models providing better detection of nuanced scheduling references.
 
-## Interactive Chat
+## Ask Ambrose about a recording
 
-The Chat tab provides an AI assistant that can answer questions about your recording. This feature is particularly powerful for long recordings where finding specific information might be time-consuming.
+Ambrose is Speakr's assistant (formerly "Chat with Transcription"). Open the assistant panel with the round button at the bottom right of a recording, or with the Ambrose tab on a phone. The panel header shows Ambrose's monogram, the name and a scope chip reading **This recording**: Ambrose answers from this recording's full transcript and can point you to the moment something was said. Type a question in the box marked "Ask Ambrose" and press Enter to send it; for a new line, press Ctrl+Enter (the hint is also on the send button).
 
-![Chat Interface](../assets/images/screenshots/main-view-chat-notes.png)
+Ambrose is the default name. You can give the assistant another name under Account → Preferences → **Assistant** (see [Settings](settings.md#assistant)). To ask about many recordings at once, use the [Ask Ambrose](inquire-mode.md) page.
 
-### Effective Chat Queries
+Each recording keeps its own chat until you close the browser tab, and answers cite the transcript with numbers you can click to play that moment. See [Ambrose](ambrose.md) for chats per recording, incognito recordings, citations and searches of your library.
 
-The AI chat understands context and can answer various types of questions about your recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" The AI can also provide analysis, such as "What were the main concerns raised?" or "Summarize the action items for the marketing group."
+![The assistant panel of a recording, next to its notes](../assets/images/screenshots/main-view-chat-notes.png)
 
-The chat maintains context throughout your conversation, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" The AI will understand you're still talking about the budget topic.
+### Effective questions
 
-### Chat Best Practices
+Ambrose can answer many kinds of questions about the recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" Ambrose can also analyze, for example "What were the main concerns raised?" or "Summarize the action items for the marketing group."
 
-For best results with the chat feature, be specific in your questions rather than asking overly broad queries. Reference specific topics, people, or timeframes when possible. If the AI's response isn't quite what you're looking for, try rephrasing your question with more context.
+Ambrose keeps the earlier questions in mind, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" Ambrose takes it as a question about the budget.
 
-The chat feature works best for factual questions about what was said in the recording. It's less effective for subjective interpretations or reading between the lines, though it can identify tone and sentiment to some degree.
+### Good practice
 
-### Exporting Chat Conversations
+Answers are best when questions are specific, not overly broad. Reference specific topics, people, or timeframes when possible. If an answer misses the point, rephrase the question with more context.
 
-The chat has three export options:
+Ambrose is most reliable on factual questions about what was said in the recording, and less reliable on subjective interpretation, though it can describe tone and sentiment to some degree.
+
+### Exporting a conversation
+
+A conversation has three export options:
 
 **Copy a response**: The copy button on a response copies that response to your clipboard as markdown.
 
-**Download the chat**: The download button in the chat header saves the whole conversation as a Microsoft Word (.docx) file named after the recording, such as `chat-Weekly-Sync.docx`.
+**Download the chat**: The download button in the panel header saves the whole conversation as a Microsoft Word (.docx) file named after the recording, such as `chat-Weekly-Sync.docx`.
 
 **Download one response**: Each response has a download button beside its copy button. With it, that response and the question before it are saved as a Word file, such as `chat-Weekly-Sync-response.docx`. Model reasoning is included when the response has it, as in the chat download.
 
-These export features are particularly useful when you've used the chat to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
+These exports are useful when you have used Ambrose to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
 
 ## Adding and Managing Notes
 
@@ -292,8 +296,8 @@ If your recording was processed with ASR and speaker diarization, the exported t
 
 ## Next Steps
 
-Now that you understand how to work with transcriptions, let's explore Speakr's powerful search capabilities with Inquire Mode, which allows you to search across all your recordings using natural language.
+Next, the Ask Ambrose page: questions across all your recordings at once.
 
 ---
 
-Next: [Inquire Mode - Semantic Search](inquire-mode.md) →
+Next: [Ask Ambrose](inquire-mode.md) →

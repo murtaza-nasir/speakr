@@ -1,3 +1,6 @@
 {# Translations for static/js/i18n.js, embedded so the first render is already
-   translated (src/utils/i18n_bootstrap.py). Include before i18n.js. #}
+   translated (src/utils/i18n_bootstrap.py). Include before i18n.js. The
+   assistant's name (src/utils/assistant_name.py) fills {{name}} in its
+   strings: window.speakrAssistantName. #}
 <script>window.__I18N_BOOTSTRAP = {{ i18n_bootstrap(user_language|default(none))|tojson }};</script>
+<script>window.speakrAssistantName = {{ (assistant_name|default('Ambrose'))|tojson }};</script>

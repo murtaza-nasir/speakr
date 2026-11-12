@@ -6,6 +6,7 @@ import { resolveInitialSort } from './modules/utils/sort-preference.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
+import { useUiTheme, currentUiTheme } from './modules/composables/ui-theme.js';
 import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
@@ -14,6 +15,7 @@ import { useFindReplace } from './modules/composables/find-replace.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
+import { createChatThreads, clearThreadsOnSignOut, threadKey } from './modules/composables/chat-threads.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
@@ -33,6 +35,7 @@ import {
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
+import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
     detectPlatform,
     getAudioCapabilities,
@@ -63,7 +66,7 @@ const parseTranscriptionError = (text) => {
             const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
             return {
                 title: data.t || _t('errors.fallbackTitle', 'Error'),
-                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'An error occurred'),
+                message: stripAnsi(data.m) || _t('errors.fallbackMessage', 'Something went wrong.'),
                 guidance: data.g || '',
                 icon: data.i || 'fa-exclamation-circle',
                 type: data.y || 'unknown',
@@ -111,15 +114,15 @@ const parseUnformattedError = (text) => {
         },
         {
             patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
-            title: _t('errors.fileTooLargeTitle', 'File Too Large'),
-            message: _t('errors.fileTooLargeMessage', 'The audio file exceeds the maximum size allowed by the transcription service.'),
-            guidance: _t('errors.fileTooLargeGuidance', 'Try enabling audio chunking in your settings, or compress the audio file before uploading.'),
+            title: _t('errors.fileTooLargeTitle', 'File too large'),
+            message: _t('errors.fileTooLargeMessage', 'The file is over the transcription service\'s size limit.'),
+            guidance: _t('errors.fileTooLargeGuidance', 'Enable audio chunking in your admin settings, or compress the audio file before uploading. If chunking is already enabled the file may still exceed the per-chunk limit.'),
             icon: 'fa-file-audio',
             type: 'size_limit'
         },
         {
             patterns: ['timed out', 'timeout', 'deadline exceeded'],
-            title: _t('errors.processingTimeout', 'Processing Timeout'),
+            title: _t('errors.processingTimeout', 'Processing timeout'),
             message: _t('errors.processingTimeoutMessage', 'The transcription took too long to complete.'),
             guidance: _t('errors.processingTimeoutGuidance', 'This can happen with very long recordings. Try splitting the audio into smaller parts.'),
             icon: 'fa-clock',
@@ -127,39 +130,39 @@ const parseUnformattedError = (text) => {
         },
         {
             patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'],
-            title: _t('errors.authenticationError', 'Authentication Error'),
-            message: _t('errors.authenticationErrorMessage', 'The transcription service rejected the API credentials.'),
-            guidance: _t('errors.authenticationErrorGuidance', 'Please check that the API key is correct and has not expired.'),
+            title: _t('errors.authenticationError', 'Authentication error'),
+            message: _t('errors.authenticationErrorMessage', 'The transcription service\'s API key was rejected.'),
+            guidance: _t('errors.authenticationErrorGuidance', 'Check that the API key is correct and has not expired.'),
             icon: 'fa-key',
             type: 'auth'
         },
         {
             patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'],
-            title: _t('errors.rateLimitExceeded', 'Rate Limit Exceeded'),
+            title: _t('errors.rateLimitExceeded', 'Rate limit exceeded'),
             message: _t('errors.rateLimitExceededMessage', 'Too many requests were sent to the transcription service.'),
-            guidance: _t('errors.rateLimitExceededGuidance', 'Please wait a few minutes and try reprocessing.'),
+            guidance: _t('errors.rateLimitExceededGuidance', 'Wait a few minutes and try reprocessing.'),
             icon: 'fa-hourglass-half',
             type: 'rate_limit'
         },
         {
             patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'],
-            title: _t('errors.connectionError', 'Connection Error'),
-            message: _t('errors.connectionErrorMessage', 'Could not connect to the transcription service.'),
-            guidance: _t('errors.connectionErrorGuidance', 'Check your internet connection and ensure the service is available.'),
+            title: _t('errors.connectionError', 'Connection error'),
+            message: _t('errors.connectionErrorMessage', 'Couldn\'t connect to the transcription service.'),
+            guidance: _t('errors.connectionErrorGuidance', 'Check your connection and that the transcription service is running.'),
             icon: 'fa-wifi',
             type: 'connection'
         },
         {
             patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'],
-            title: _t('errors.serviceUnavailable', 'Service Unavailable'),
+            title: _t('errors.serviceUnavailable', 'Service unavailable'),
             message: _t('errors.serviceUnavailableMessage', 'The transcription service is temporarily unavailable.'),
-            guidance: _t('errors.serviceUnavailableGuidance', 'This is usually temporary. Please try again in a few minutes.'),
+            guidance: _t('errors.serviceUnavailableGuidance', 'Usually temporary. Try again in a few minutes.'),
             icon: 'fa-server',
             type: 'service_error'
         },
         {
             patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio', 'invalid data found when processing input'],
-            title: _t('errors.invalidAudioFormat', 'Invalid Audio Format'),
+            title: _t('errors.invalidAudioFormat', 'Invalid audio format'),
             message: _t('errors.invalidAudioFormatMessage', 'The audio file format is not supported or the file may be corrupted.'),
             guidance: _t('errors.invalidAudioFormatGuidance', 'Try converting the audio to MP3 or WAV format before uploading.'),
             icon: 'fa-file-audio',
@@ -167,8 +170,8 @@ const parseUnformattedError = (text) => {
         },
         {
             patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'],
-            title: _t('errors.audioExtractionFailed', 'Audio Extraction Failed'),
-            message: _t('errors.audioExtractionFailedMessage', 'Could not extract audio from the uploaded file.'),
+            title: _t('errors.audioExtractionFailed', 'Audio extraction failed'),
+            message: _t('errors.audioExtractionFailedMessage', 'Couldn\'t extract audio from the uploaded file.'),
             guidance: _t('errors.audioExtractionFailedGuidance', 'Try converting the file to a standard audio format (MP3, WAV) before uploading.'),
             icon: 'fa-file-video',
             type: 'extraction'
@@ -206,9 +209,9 @@ const parseUnformattedError = (text) => {
     }
 
     return {
-        title: _t('errors.processingError', 'Processing Error'),
+        title: _t('errors.processingError', 'Processing error'),
         message: cleanMessage,
-        guidance: _t('errors.processingErrorGuidance', 'If this error persists, try reprocessing the recording.'),
+        guidance: _t('errors.processingErrorGuidance', 'Try reprocessing the recording.'),
         icon: 'fa-exclamation-circle',
         type: 'unknown',
         isKnown: false,
@@ -219,6 +222,7 @@ const parseUnformattedError = (text) => {
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', async () => {
     installCloseOutside();
+    installTabsBarFit();
     // Initialize i18n before creating Vue app (if not already initialized)
     try {
         if (window.i18n && !window.i18n.currentLocale) {
@@ -397,7 +401,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const processingMessage = ref('');
             const isProcessingActive = ref(false);
             const pollInterval = ref(null);
-            const progressPopupMinimized = ref(false);
+            // The Desk theme starts with the queue collapsed (its status bar has the queue button);
+            // every other theme starts it open, as before.
+            const progressPopupMinimized = ref(currentUiTheme(document) === 'desk');
             const progressPopupClosed = ref(false);
             const maxFileSizeMB = ref(250);
             const chunkingEnabled = ref(true);
@@ -959,9 +965,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Chat State ---
             const showChat = ref(false);
             const isChatMaximized = ref(false);
-            const chatMessages = ref([]);
-            const chatInput = ref('');
-            const isChatLoading = ref(false);
+            // One Ambrose thread per recording, kept in this tab
+            // (composables/chat-threads.js). These three are the open
+            // recording's thread.
+            const chatThreads = createChatThreads({
+                reactive,
+                userId: document.getElementById('app')?.dataset.currentUserId || '',
+            });
+            chatThreads.restore();
+            clearThreadsOnSignOut(() => chatThreads.clearAll());
+            window.addEventListener('pagehide', () => chatThreads.save());
+            const threadField = (name) => computed({
+                get: () => chatThreads.current()[name],
+                set: (value) => { chatThreads.current()[name] = value; },
+            });
+            const chatMessages = threadField('messages');
+            const chatInput = threadField('input');
+            const isChatLoading = threadField('loading');
             const chatMessagesRef = ref(null);
             const chatInputRef = ref(null);
 
@@ -1887,20 +1907,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const colorSchemes = {
                 light: [
-                    { id: 'blue', name: 'Ocean Blue', description: 'Classic blue theme with professional appeal', class: '' },
-                    { id: 'emerald', name: 'Forest Emerald', description: 'Fresh green theme for a natural feel', class: 'theme-light-emerald' },
-                    { id: 'purple', name: 'Royal Purple', description: 'Elegant purple theme with sophistication', class: 'theme-light-purple' },
-                    { id: 'rose', name: 'Sunset Rose', description: 'Warm pink theme with gentle energy', class: 'theme-light-rose' },
-                    { id: 'amber', name: 'Golden Amber', description: 'Warm yellow theme for brightness', class: 'theme-light-amber' },
-                    { id: 'teal', name: 'Ocean Teal', description: 'Cool teal theme for tranquility', class: 'theme-light-teal' }
+                    { id: 'blue', class: '' },
+                    { id: 'emerald', class: 'theme-light-emerald' },
+                    { id: 'purple', class: 'theme-light-purple' },
+                    { id: 'rose', class: 'theme-light-rose' },
+                    { id: 'amber', class: 'theme-light-amber' },
+                    { id: 'teal', class: 'theme-light-teal' }
                 ],
                 dark: [
-                    { id: 'blue', name: 'Midnight Blue', description: 'Deep blue theme for focused work', class: '' },
-                    { id: 'emerald', name: 'Dark Forest', description: 'Rich green theme for comfortable viewing', class: 'theme-dark-emerald' },
-                    { id: 'purple', name: 'Deep Purple', description: 'Mysterious purple theme for creativity', class: 'theme-dark-purple' },
-                    { id: 'rose', name: 'Dark Rose', description: 'Muted pink theme with subtle warmth', class: 'theme-dark-rose' },
-                    { id: 'amber', name: 'Dark Amber', description: 'Warm brown theme for cozy sessions', class: 'theme-dark-amber' },
-                    { id: 'teal', name: 'Deep Teal', description: 'Dark teal theme for calm focus', class: 'theme-dark-teal' }
+                    { id: 'blue', class: '' },
+                    { id: 'emerald', class: 'theme-dark-emerald' },
+                    { id: 'purple', class: 'theme-dark-purple' },
+                    { id: 'rose', class: 'theme-dark-rose' },
+                    { id: 'amber', class: 'theme-dark-amber' },
+                    { id: 'teal', class: 'theme-dark-teal' }
                 ]
             };
 
@@ -1924,6 +1944,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             // COLLECT ALL STATE INTO SINGLE OBJECT FOR COMPOSABLES
             // =========================================================================
+            // UI theme (templates/includes/ui_theme.html); the theme slots
+            // (templates/themes/slot.html) switch on it without a reload.
+            const { uiTheme, setUiTheme } = useUiTheme(ref);
+
             const state = {
                 // Core
                 currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending, dragover, recordings, selectedRecording, selectedTab, searchQuery,
@@ -2026,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openTranslationModal, translationLanguageLabel,
 
                 // Chat
-                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
+                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef, chatThreads,
                 chatPanelState, chatPanelX, chatPanelY, chatPanelW, chatPanelH,
                 chatDragActive, chatResizeActive, floatingChatPanelStyle, floatingChatFabStyle,
                 chatLastDock, chatDockMenuOpen,
@@ -2199,6 +2223,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (e) {
                     return dateString;
                 }
+            };
+
+            // Clock time of a list row ("1:13 AM"), for themes with a time column in the sidebar list.
+            const formatShortTime = (dateString) => {
+                if (!dateString) return '';
+                const date = parseServerInstant(dateString);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleTimeString(window.i18n?.getIntlLocale?.(), { hour: 'numeric', minute: '2-digit' });
             };
 
             const formatStatus = (status) => {
@@ -2671,6 +2703,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // recording the same way a sidebar click does (which fetches its
             // full detail). Used by delete-neighbour selection in modals.
             utils.selectRecording = recordingsComposable.selectRecording;
+            // The recording chat's toasts open the recording that answered.
+            utils.openRecordingById = recordingsComposable.selectRecordingById;
+            utils.assistantName = window.speakrAssistantName || 'Ambrose';
+            utils.onRecordingsDeleted = (ids) => chatThreads.drop(ids);
 
             // Hydration safety net: if selectedRecording is ever set to a light
             // sidebar/list object (to_list_dict omits transcription/summary),
@@ -2798,7 +2834,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
             const findReplaceComposable = useFindReplace(state, utils);
-            const chatComposable = useChat(state, utils);
+            // The recording chat (shared AssistantChat): it reads the
+            // transcript's error state to disable its composer.
+            const chatComposable = useChat(state, { ...utils, processedTranscription });
             const pwaComposable = usePWA(state, utils);
             const notificationsComposable = useNotifications(state, utils);
             const tagsComposable = useTags({
@@ -2847,6 +2885,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 t,
                 finalizeRecordingMerge: audioComposable.finalizeRecordingMerge,
                 fetchRecordingsPage: recordingsComposable.fetchRecordingsPage,
+                onRecordingsDeleted: (ids) => chatThreads.drop(ids),
                 searchQuery,
                 showArchivedRecordings
             });
@@ -4063,14 +4102,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // Watch for selectedRecording changes to reset chat
-            watch(selectedRecording, (newRecording, oldRecording) => {
-                // Only clear if we're actually switching to a different recording
-                if (oldRecording && newRecording && oldRecording.id !== newRecording.id) {
-                    chatMessages.value = [];
-                    chatInput.value = '';
-                }
-            });
+            // Show the open recording's Ambrose thread. An answer still
+            // arriving elsewhere keeps writing to its own thread.
+            watch(() => threadKey(selectedRecording.value), () => {
+                chatThreads.select(selectedRecording.value);
+                nextTick(() => chatComposable.assistant.jumpToLatest());
+            }, { immediate: true, flush: 'sync' });
 
             // Measure the mobile bottom UI (persistent audio player + bottom
             // nav) and publish it as the --mobile-bottom-inset CSS variable,
@@ -4158,7 +4195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const shareOk = params.get('share_target');
                     const shareErr = params.get('share_target_error');
                     if (shareOk === 'ok') {
-                        showToast(t('toasts.shareTargetReceived') || 'Shared audio received and queued for transcription', 'fa-share');
+                        showToast(t('toasts.shareTargetReceived') || 'Shared audio received. Transcription is queued.', 'fa-share');
                     } else if (shareErr) {
                         const errMsgKey = `errors.shareTarget_${shareErr}`;
                         const errMsg = (t(errMsgKey) !== errMsgKey ? t(errMsgKey) : null)
@@ -4591,7 +4628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const ServerSessions = await import('./modules/db/server-recording-sessions.js');
                     await ServerSessions.finalizeSession(rec.sessionId, {});
                     try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
-                    showToast(safeT('messages.recordingRecovered') || safeT('toasts.recordingFinalized') || 'Recording uploaded for processing', 'success');
+                    showToast(safeT('messages.recordingRecovered') || safeT('toasts.recordingFinalized') || 'Recording uploaded', 'success');
                     // Surface it live in the sidebar + processing-queue panel.
                     try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
                 } catch (e) {
@@ -4680,6 +4717,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return {
                 // Translation
                 t, tc,
+                // The assistant's name for {{name}} in its strings
+                // (window.speakrAssistantName, includes/i18n_bootstrap.html)
+                assistantName: window.speakrAssistantName || 'Ambrose',
 
                 // State
                 ...state,
@@ -4765,6 +4805,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,
+                formatShortTime,
+                uiTheme,
+                setUiTheme,
                 formatStatus,
                 formatRecordingStatus,
                 getStatusClass,

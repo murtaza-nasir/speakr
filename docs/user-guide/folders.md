@@ -23,7 +23,7 @@ Once enabled, all users will see folder management options in their Account Sett
 
 Access folder management from **Account Settings → Folders** tab.
 
-Click **Create Folder** to add a new folder. Each folder has:
+Click **Create folder** to add a new folder. Each folder has:
 
 - **Name** - A short, descriptive name (required)
 - **Color** - Visual identifier shown on folder pills and in the sidebar
@@ -34,14 +34,14 @@ Each folder can have custom settings that apply to recordings placed in it:
 
 | Setting | Description |
 |---------|-------------|
-| **Custom Prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
-| **Title Prompt** | Instructions for the AI-generated titles of recordings in this folder. A tag's title prompt takes priority; see [Title Prompt](settings.md#title-prompt) |
-| **Default Language** | Transcription language for new recordings |
-| **Default Transcription Model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
+| **Custom prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
+| **Title prompt** | Instructions for the AI-generated titles of recordings in this folder. A tag's title prompt takes priority; see [Title Prompt](settings.md#title-prompt) |
+| **Default language** | Transcription language for new recordings |
+| **Default transcription model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
 | **Min/Max Speakers** | Speaker count hints for ASR diarization |
 | **Hotwords** | Comma-separated vocabulary hints for transcription accuracy |
-| **Initial Prompt** | Context description to guide transcription |
-| **Retention Days** | Override global retention for recordings in this folder |
+| **Initial prompt** | Context description to guide transcription |
+| **Retention days** | Override global retention for recordings in this folder |
 | **Protection** | Exempt folder contents from auto-deletion |
 
 These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing. Tag-level defaults take precedence over folder-level defaults; per-upload selections take precedence over both.
@@ -50,13 +50,13 @@ These settings work like tag settings - when you add a recording to a folder, th
 
 A folder can sit inside another folder. To create a subfolder:
 
-1. Open **Account Settings → Folders** and click **Create Folder**, or click the edit button on an existing folder
+1. Open **Account Settings → Folders** and click **Create folder**, or click the edit button on an existing folder
 2. Choose the folder it belongs in under **Parent folder**; **None (top level)** keeps it at the top
 3. Save the folder
 
 The **Parent folder** field appears once there is a folder it could go into. For a group folder, choose the group on the **Sharing** tab first: the list then shows only that group's folders. When you edit a folder, the folder itself and its own subfolders are left out of the list.
 
-Subfolders appear right after their parent. In the sidebar folder selector and the other folder dropdowns, a subfolder shows its full path, such as `Projects / Alpha / 2026`; in the folder menu of a recording and in **Move to Folder** it is indented under its parent. In Account Settings each subfolder's card shows the names of the folders above it. Through the API, set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)).
+Subfolders appear right after their parent. In the sidebar folder selector and the other folder dropdowns, a subfolder shows its full path, such as `Projects / Alpha / 2026`; in the folder menu of a recording and in **Move to folder** it is indented under its parent. In Account Settings each subfolder's card shows the names of the folders above it. Through the API, set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)).
 
 - **Same scope** - A personal folder can only sit inside another of your personal folders, and a group folder only inside a folder of the same group
 - **No loops** - A folder cannot be moved inside itself or inside one of its own subfolders
@@ -74,8 +74,8 @@ Existing folders become top-level folders when you upgrade.
 The sidebar includes a folder dropdown at the top. Use it to:
 
 - **Filter by folder** - Select a folder to show only recordings in that folder
-- **View all recordings** - Select "All Folders" to see everything
-- **View unfiled** - Select "No Folder" to see recordings not in any folder
+- **View all recordings** - Select "All folders" to see everything
+- **View unfiled** - Select "No folder" to see recordings not in any folder
 - **Include subfolders** - When the selected folder has subfolders, tick **Include subfolders** below the selector to list their recordings too; it is off by default
 
 ### Moving Recordings to Folders
@@ -111,8 +111,8 @@ Group folders work like group tags with auto-sharing:
 
 | Setting | Description |
 |---------|-------------|
-| **Auto Share on Apply** | Automatically share recordings with group members when moved to this folder |
-| **Share with Group Lead** | Also share with group administrators |
+| **Auto-share with group members** | Automatically share recordings with group members when moved to this folder |
+| **Share with group admins** | Also share with group administrators |
 
 When you move a recording to a group folder with auto-share enabled, all group members receive access automatically.
 

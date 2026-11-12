@@ -7,6 +7,7 @@
     <!-- Reading mode — single flex-1 scroll surface. -->
     <div v-if="!editingNotes"
          class="flex-1 overflow-y-auto px-4 pt-4 pb-20 prose-flush"
+         tabindex="0" role="region" :aria-label="t('notes.title')"
          @click="clickToEditNotes">
         <div v-if="notesHtml"
              v-html="notesHtml">

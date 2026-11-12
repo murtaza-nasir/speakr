@@ -180,7 +180,7 @@
             allEventTypes = body.event_types || [];
             list.replaceChildren();
             if (!body.webhooks || body.webhooks.length === 0) {
-                list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.empty', 'No webhooks configured. Add one to start receiving event notifications.')) + '</p>');
+                list.insertAdjacentHTML('beforeend', '<p class="text-sm text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.empty', 'No webhooks yet.')) + '</p>');
                 return;
             }
             body.webhooks.forEach(function (wh) { list.insertAdjacentHTML('beforeend', renderWebhookCard(wh)); });
@@ -210,7 +210,7 @@
                 await fetchJson('/api/v1/webhooks/' + Number(id) + '/test', { method: 'POST' });
                 alert(tr('webhooks.testQueued', 'Test event queued. Check Deliveries in a few seconds.'));
             } else if (action === 'rotate') {
-                if (!confirm(tr('webhooks.confirmRotate', 'Rotate the HMAC secret? Any receiver that already has the current secret will start failing until you update it.'))) return;
+                if (!confirm(tr('webhooks.confirmRotate', 'Rotate the secret? Signature checks fail until each receiver has the new one.'))) return;
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/rotate-secret', { method: 'POST' });
                 if (body && body.secret) showSecretBanner(body.secret);
                 await loadWebhooks();
@@ -219,7 +219,7 @@
                 const listEl = card.querySelector('[data-deliveries-list]');
                 if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
                 listEl.replaceChildren();
-                listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.loading', 'Loading...')) + '</p>');
+                listEl.insertAdjacentHTML('beforeend', '<p class="text-xs text-[var(--text-muted)]">' + escapeHtml(tr('webhooks.loading', 'Loading…')) + '</p>');
                 panel.classList.remove('hidden');
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/deliveries?limit=25');
                 listEl.replaceChildren();
@@ -301,10 +301,10 @@
     secretCopyBtn?.addEventListener('click', async function () {
         try {
             await navigator.clipboard.writeText(secretValueEl.textContent || '');
-            secretCopyBtn.textContent = tr('webhooks.copied', 'Copied!');
+            secretCopyBtn.textContent = tr('webhooks.copied', 'Copied');
             setTimeout(function () { secretCopyBtn.textContent = tr('webhooks.copy', 'Copy'); }, 1500);
         } catch (e) {
-            alert(tr('webhooks.copyFailed', 'Could not copy to clipboard: ' + e.message, { error: e.message }));
+            alert(tr('webhooks.copyFailed', 'Couldn\'t copy: ' + e.message, { error: e.message }));
         }
     });
     secretDismissBtn?.addEventListener('click', function () {

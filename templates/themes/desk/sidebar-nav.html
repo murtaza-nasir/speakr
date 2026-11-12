@@ -1,0 +1,372 @@
+        <!-- Sidebar Header -->
+        <div class="desk-sidehead flex-shrink-0">
+            <div class="desk-toolbar">
+                <!-- Folder Selector (replaces static "Recording" title) -->
+                <div v-if="foldersEnabled && availableFolders.length > 0" class="relative flex-1 min-w-0">
+                    <select v-model="filterFolder"
+                            class="desk-folder-select w-full h-9 pl-8 pr-7 text-base font-semibold rounded-md cursor-pointer appearance-none border-0 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                            style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center;">
+                        <option value="">${ t('sidebar.allRecordings') }</option>
+                        <option value="none">${ t('sidebar.unfiled') }</option>
+                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                            ${ folderOptionLabel(folder) }
+                        </option>
+                    </select>
+                    <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
+                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderMarkColor(filterFolder) : 'var(--text-muted)' }"></i>
+                </div>
+                <h2 v-else class="desk-toolbar__title" v-text="t('nav.recording')"></h2>
+                <div class="flex gap-1 flex-shrink-0">
+                    <!-- Selection Mode Toggle -->
+                    <button v-if="!selectionMode && recordings.length > 0"
+                            @click="enterSelectionMode"
+                            class="btn btn--icon btn--ghost"
+                            :title="t('bulkActions.selectMultipleHint')">
+                        <i class="fas fa-list-check"></i>
+                    </button>
+                    <button v-if="selectionMode"
+                            @click="exitSelectionMode"
+                            class="btn btn--primary"
+                            :title="t('bulkActions.exitSelection')">
+                        <i class="fas fa-times mr-1"></i>${ t('common.done') }
+                    </button>
+                    <!-- New button - compact when folders enabled -->
+                    <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
+                            @click="switchToUploadView"
+                            class="btn btn--primary btn--icon"
+                            :title="t('nav.newRecording')">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button v-else-if="!selectionMode"
+                            @click="switchToUploadView"
+                            class="btn btn--primary">
+                        <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Include subfolders (#585): only for a folder that has subfolders -->
+            <label v-if="foldersEnabled && selectedFolderHasChildren"
+                   class="flex items-center gap-2 mb-3 text-sm text-[var(--text-secondary)] cursor-pointer">
+                <input type="checkbox" v-model="includeChildFolders"
+                       class="h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                <span v-text="t('folderManagement.includeSubfolders')"></span>
+            </label>
+
+            <!-- Search and Sort Controls -->
+            <div class="desk-stack">
+                <!-- Filter Toggle Button -->
+                <div class="flex items-center gap-1.5">
+                    <button @click="showAdvancedFilters = !showAdvancedFilters"
+                            class="flex-1 h-7 flex items-center justify-between pl-2 pr-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <span class="flex items-center">
+                            <i class="fas fa-filter mr-1.5 text-[var(--text-muted)] text-[10px]"></i>
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox && !filterAudioRemoved && !filterNeedsTranscription && !filterNeedsSummary && !filterNeedsSpeakers"
+                                  v-text="t('sidebar.searchRecordings')">
+                            </span>
+                            <span v-else class="text-[var(--text-accent)]">
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) + (filterAudioRemoved ? 1 : 0) + (filterNeedsTranscription ? 1 : 0) + (filterNeedsSummary ? 1 : 0) + (filterNeedsSpeakers ? 1 : 0) })
+                            </span>
+                        </span>
+                        <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)] text-[10px]', showAdvancedFilters ? 'rotate-180' : '']"></i>
+                    </button>
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterAudioRemoved || filterNeedsTranscription || filterNeedsSummary || filterNeedsSpeakers"
+                            @click="clearAllFilters"
+                            class="w-7 h-7 flex items-center justify-center bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                            :title="t('buttons.clearAllFilters')">
+                        <i class="fas fa-times text-[var(--text-muted)] text-[10px]"></i>
+                    </button>
+                </div>
+
+                <!-- Advanced Filters Panel -->
+                <div v-show="showAdvancedFilters" class="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg space-y-3">
+                    <!-- Text Search -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
+                        <div class="relative">
+                            <input v-model="filterTextQuery"
+                                   type="text"
+                                   :placeholder="t('sidebar.searchRecordings')"
+                                   class="w-full px-3 py-1.5 pl-8 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <i class="fas fa-search absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-xs"></i>
+                            <button v-if="filterTextQuery"
+                                    @click="filterTextQuery = ''"
+                                    class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                                    :title="t('buttons.clearSearchText')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Filters (Starred/Inbox/Audio removed). Wraps when the
+                         sidebar is too narrow for all three labels. -->
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="filterStarred = !filterStarred"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterStarred
+                                        ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-yellow-500/30 hover:text-yellow-400'
+                                ]">
+                            <i class="fas fa-star" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.starred')"></span>
+                        </button>
+                        <button @click="filterInbox = !filterInbox"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterInbox
+                                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-blue-500/30 hover:text-blue-400'
+                                ]">
+                            <i class="fas fa-inbox" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.inbox')"></span>
+                        </button>
+                        <button v-if="enableAudioRemovedFilter" @click="filterAudioRemoved = !filterAudioRemoved"
+                                :aria-pressed="filterAudioRemoved"
+                                :title="t('audioRemoved.filterHint')"
+                                :class="[
+                                    'flex-1 min-w-fit flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterAudioRemoved
+                                        ? 'bg-slate-500/20 border-slate-500/50 text-slate-300'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-slate-500/30 hover:text-slate-300'
+                                ]">
+                            <i class="fas fa-volume-xmark" style="font-size: 10px;"></i>
+                            <span class="whitespace-nowrap" v-text="t('audioRemoved.label')"></span>
+                        </button>
+                    </div>
+
+                    <!-- Needs Filters -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <button @click="filterNeedsTranscription = !filterNeedsTranscription"
+                                :aria-pressed="filterNeedsTranscription"
+                                :aria-label="t('sidebar.needsTranscription')"
+                                :class="[
+                                    'min-h-[3.75rem] min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-md text-[11px] font-medium leading-[1.15] text-center transition-all border overflow-hidden',
+                                    filterNeedsTranscription
+                                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-red-500/30 hover:text-red-400'
+                                ]">
+                            <i class="fas fa-keyboard text-[11px] leading-none"></i>
+                            <span class="block max-w-full text-[10px] leading-[1.15] whitespace-normal break-normal" v-text="t('sidebar.needsTranscription')"></span>
+                        </button>
+                        <button @click="filterNeedsSummary = !filterNeedsSummary"
+                                :aria-pressed="filterNeedsSummary"
+                                :aria-label="t('sidebar.needsSummary')"
+                                :class="[
+                                    'min-h-[3.75rem] min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-md text-[11px] font-medium leading-[1.15] text-center transition-all border overflow-hidden',
+                                    filterNeedsSummary
+                                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-emerald-500/30 hover:text-emerald-400'
+                                ]">
+                            <i class="fas fa-list-alt text-[11px] leading-none"></i>
+                            <span class="block max-w-full whitespace-normal break-normal" v-text="t('sidebar.needsSummary')"></span>
+                        </button>
+                        <button @click="filterNeedsSpeakers = !filterNeedsSpeakers"
+                                :aria-pressed="filterNeedsSpeakers"
+                                :aria-label="t('sidebar.needsSpeakers')"
+                                :class="[
+                                    'min-h-[3.75rem] min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-md text-[11px] font-medium leading-[1.15] text-center transition-all border overflow-hidden',
+                                    filterNeedsSpeakers
+                                        ? 'bg-violet-500/20 border-violet-500/50 text-violet-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-violet-500/30 hover:text-violet-400'
+                                ]">
+                            <i class="fas fa-user-edit text-[11px] leading-none"></i>
+                            <span class="block max-w-full whitespace-normal break-normal" v-text="t('sidebar.needsSpeakers')"></span>
+                        </button>
+                    </div>
+
+                    <!-- Tag Filter -->
+                    <div class="bg-[var(--bg-secondary)] rounded-lg p-2.5 border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('tags.filterByTag')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableTags.length > 5">
+                                <input v-model="filterTagSearch"
+                                       type="text"
+                                       :placeholder="t('tags.searchTags')"
+                                       class="w-full px-2 py-1 pl-7 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="tag in filteredTagsForFilter"
+                                        :key="tag.id"
+                                        @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                                        :class="[
+                                            'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                            filterTags.includes(tag.id)
+                                                ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                        ]">
+                                    <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                    ${ tag.name }
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="availableTags.length === 0" class="text-xs text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                        <p v-else-if="filteredTagsForFilter.length === 0" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('tags.noMatchingTags')"></p>
+                    </div>
+
+                    <!-- Speaker Filter -->
+                    <div v-if="availableSpeakers.length > 0" class="bg-[var(--bg-secondary)] rounded-lg p-2.5 border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('speakers.filterBySpeaker')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableSpeakers.length > 5">
+                                <input v-model="filterSpeakerSearch"
+                                       type="text"
+                                       :placeholder="t('speakers.searchSpeakers')"
+                                       class="w-full px-2 py-1 pl-7 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="speaker in filteredSpeakersForFilter"
+                                        :key="speaker.id"
+                                        @click="filterSpeakers.includes(speaker.name) ? filterSpeakers = filterSpeakers.filter(n => n !== speaker.name) : filterSpeakers.push(speaker.name)"
+                                        :class="[
+                                            'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                            filterSpeakers.includes(speaker.name)
+                                                ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                        ]">
+                                    <i class="fas fa-user mr-1" style="font-size: 9px;"></i>
+                                    ${ speaker.name }
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="filteredSpeakersForFilter.length === 0 && filterSpeakerSearch" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('speakers.noMatchingSpeakers')"></p>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.dateRange')"></label>
+                        <div class="grid grid-cols-3 gap-1.5 mb-2">
+                            <button v-for="preset in datePresetOptions"
+                                    :key="preset.value"
+                                    @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                                    :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all',
+                                        filterDatePreset === preset.value
+                                            ? 'bg-[var(--bg-accent)] text-[var(--text-accent)]'
+                                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                                    ]"
+                                    :title="preset.label">
+                                ${ preset.label }
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <input v-model="filterDateRange.start"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                       :placeholder="t('form.dateFrom')"
+                                       :aria-label="t('form.dateFrom')">
+                            </div>
+                            <div>
+                                <input v-model="filterDateRange.end"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                       :placeholder="t('form.dateTo')"
+                                       :aria-label="t('form.dateTo')">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Controls Row: one segmented toolbar -->
+                <div class="desk-seg">
+                    <!-- Sort Toggle -->
+                    <button @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+                            :class="[
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
+                        <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('common.sort')"></span>
+                        <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
+                    </button>
+
+                    <!-- Archived view (#394): the user's archive, always available -->
+                    <button @click="showArchivedRecordings = !showArchivedRecordings"
+                            :aria-pressed="showArchivedRecordings"
+                            :class="[
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                showArchivedRecordings
+                                    ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="t('archive.showArchived')">
+                        <i class="fas fa-box-archive"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('archive.archived')"></span>
+                    </button>
+                    <!-- Shared Toggle. The highlighted background shows the state;
+                         the on/off icon was dropped so the labels fit (#394). -->
+                    <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
+                            :aria-pressed="showSharedWithMe"
+                            :class="[
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                showSharedWithMe
+                                    ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="t('sidebar.sharedWithMe')">
+                        <i class="fas fa-users"></i>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.shared')"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Folder + tag tree with counts. Native <details>, so it needs no
+             extra state; every row drives the same filters as the filter panel. -->
+        <details v-if="foldersEnabled && availableFolders.length > 0 || availableTags.length > 0" class="desk-tree flex-shrink-0" open>
+            <summary class="desk-tree__sum">
+                <i class="fas fa-chevron-down desk-tree__caret"></i>
+                <span v-text="t('inquire.folders')" v-if="foldersEnabled && availableFolders.length > 0"></span>
+                <span v-if="foldersEnabled && availableFolders.length > 0 && availableTags.length > 0">&amp;</span>
+                <span v-text="t('sidebar.tags')" v-if="availableTags.length > 0"></span>
+            </summary>
+            <div class="desk-tree__body">
+                <template v-if="foldersEnabled && availableFolders.length > 0">
+                    <button type="button"
+                            @click="filterFolder = ''"
+                            :class="['desk-tree__row', !filterFolder ? 'is-active' : '']">
+                        <i class="fas fa-layer-group desk-tree__ico"></i>
+                        <span class="desk-tree__name" v-text="t('sidebar.allRecordings')"></span>
+                        <span class="desk-tree__n">${ totalRecordings }</span>
+                    </button>
+                    <button v-for="folder in availableFolders" :key="'tf-' + folder.id" type="button"
+                            @click="filterFolder = folder.id"
+                            :class="['desk-tree__row', filterFolder === folder.id ? 'is-active' : '']">
+                        <i class="fas fa-folder desk-tree__ico" :style="[{ color: folderMarkColor(folder.color) || 'var(--text-3)' }, folderIndentStyle(folder)]"></i>
+                        <span class="desk-tree__name">${ folder.name }</span>
+                        <span class="desk-tree__n">${ folder.recording_count || 0 }</span>
+                    </button>
+                </template>
+                <button v-for="tag in availableTags" :key="'tt-' + tag.id" type="button"
+                        @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                        :class="['desk-tree__row', filterTags.includes(tag.id) ? 'is-active' : '']"
+                        :aria-pressed="filterTags.includes(tag.id)">
+                    <span class="desk-tree__sw" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                    <span class="desk-tree__name">${ tag.name }</span>
+                    <span class="desk-tree__n">${ tag.recording_count || 0 }</span>
+                </button>
+            </div>
+        </details>
+
+        <!-- Column header: sticky above the list; the date cell toggles the sort -->
+        <div class="desk-colhead flex-shrink-0" role="row">
+            <div class="col-title" v-text="t('form.title')"></div>
+            <div class="col-tags" v-text="t('sidebar.tags')"></div>
+            <button type="button" class="col-date desk-colhead__sort"
+                    @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+                    :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
+                <span v-text="t('exportLabels.date')"></span><i class="fas fa-arrow-down"></i>
+            </button>
+            <div class="col-dur" :title="t('recording.duration')"><i class="fas fa-clock" aria-hidden="true"></i><span class="sr-only" v-text="t('recording.duration')"></span></div>
+            <div class="col-status" v-text="t('metadata.status')"></div>
+        </div>

@@ -48,6 +48,13 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
   </div>
 
   <div class="guide-card">
+    <div class="card-icon">💬</div>
+    <h3>Ambrose Settings</h3>
+    <p>Turn on the assistant's agent and tools, choose models and set limits.</p>
+    <a href="ambrose" class="card-link">Configure Ambrose →</a>
+  </div>
+
+  <div class="guide-card">
     <div class="card-icon">🔍</div>
     <h3>Vector Store</h3>
     <p>Manage semantic search capabilities, monitor embedding status, and control Inquire Mode.</p>
@@ -91,7 +98,7 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
     <span class="action-icon">🤝</span>
     <div>
       <strong>Create a Group</strong>
-      <p>Group Management → Create Group → Add members → Configure group tags</p>
+      <p>Groups → Create group → Add members → Configure group tags</p>
     </div>
   </div>
 

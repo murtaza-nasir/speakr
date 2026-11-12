@@ -51,7 +51,7 @@ def init_system_helpers(**kwargs):
 
 
 # Color scheme ids, as in colorSchemes in static/js/app.modular.js.
-THEME_COLOR_SCHEMES = ('blue', 'emerald', 'purple', 'rose', 'amber', 'teal')
+from src.config.ui_themes import COLOR_SCHEMES as THEME_COLOR_SCHEMES
 
 
 # --- Routes ---
@@ -82,13 +82,32 @@ def save_user_preferences():
         if data['color_scheme'] not in THEME_COLOR_SCHEMES:
             return jsonify(api_error('invalid_color_scheme')), 400
         current_user.theme_color_scheme = data['color_scheme']
+    # UI theme (src/config/ui_themes.py): an available theme id, or null to
+    # go back to the default. Ids that are unknown or not offered yet are
+    # refused.
+    if 'ui_theme' in data:
+        from src.config import ui_themes
+        value = data['ui_theme']
+        if value is not None and not ui_themes.is_available(value):
+            return jsonify(api_error('invalid_ui_theme')), 400
+        current_user.ui_theme = value
+    # The assistant's name (src/utils/assistant_name.py): a short plain
+    # name; empty or null goes back to the default.
+    if 'assistant_name' in data:
+        from src.utils.assistant_name import clean_assistant_name
+        try:
+            current_user.assistant_name = clean_assistant_name(data['assistant_name'])
+        except ValueError:
+            return jsonify(api_error('invalid_assistant_name')), 400
 
     db.session.commit()
-    
+
+    from src.utils.assistant_name import assistant_name_of
     return jsonify({
         'success': True,
         'message': translate('server.apiMessage.preferencesSaved'),
-        'ui_language': current_user.ui_language
+        'ui_language': current_user.ui_language,
+        'assistant_name': assistant_name_of(current_user),
     })
 
 

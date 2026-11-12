@@ -1,0 +1,149 @@
+{#- AssistantChat (Ambrose phase 2b): the timeline and the composer of the one
+    chat, used by the recording's floating panel, the mobile chat tab and the
+    Ask page. The setup is static/js/modules/assistant/chat.js; every value
+    comes from the app's `assistant` object.
+
+        {% from 'components/assistant/chat.html' import assistant_chat with context %}
+        {% call assistant_chat(...) %}empty state{% endcall %}   or   {{ assistant_chat(...) }}
+
+    The caller block is the empty state (default: the monogram). `footer` is
+    a macro for the lines under the composer. Bindings only, no ${ }
+    expressions, so one app's delimiters never matter (phase 1 guard). -#}
+{% macro assistant_chat(timeline_class='floating-chat-messages', composer_class='floating-chat-input',
+                        answer_class='bidi-auto', bubble_class='', rows=false, placeholder='chat.placeholder',
+                        download='downloadChatResponse', memory=false, footer=none) -%}
+<div :ref="assistant.setScroller" class="{{ timeline_class }} assistant-timeline"
+     @scroll.passive="assistant.onScroll" @click="assistant.onTimelineClick">
+    <div v-if="assistant.messages.length === 0" class="assistant-empty">
+        {%- if caller %}{{ caller() }}{% else %}
+        <div class="empty">
+            {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
+        </div>
+        {%- endif %}
+    </div>
+
+    <template v-for="(message, index) in assistant.messages" :key="index">
+        {%- if memory %}
+        <!-- Compaction divider: older turns above this point were folded into
+             a memory summary the assistant still sees. -->
+        <div v-if="index === memoryState.dividerIndex && memoryState.memory" class="my-2">
+            <button type="button" @click="memoryState.showMemory = !memoryState.showMemory"
+                    class="w-full flex items-center gap-3 text-xs" style="color: var(--text-muted);">
+                <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
+                <span class="flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    <span v-text="t('inquire.earlierSummarized')"></span>
+                    <i :class="['fas text-[10px]', memoryState.showMemory ? 'fa-chevron-up' : 'fa-chevron-down']" aria-hidden="true"></i>
+                </span>
+                <span class="flex-1 border-t" style="border-color: var(--border-primary);"></span>
+            </button>
+            <div v-if="memoryState.showMemory" class="surface-raised mt-2 text-xs whitespace-pre-wrap"
+                 style="padding: var(--sp-3); color: var(--text-secondary);" v-text="memoryState.memory"></div>
+        </div>
+        {%- endif %}
+        {%- if rows %}
+        <div :class="['flex', message.role === 'user' ? 'justify-end' : 'justify-start']">
+        {%- endif %}
+        <div :class="['message relative group{{ ' ' ~ bubble_class if bubble_class }}', message.role === 'user' ? 'user-message ml-auto' : 'ai-message']">
+            <!-- Steps: open while the turn runs, then folded into the steps line. -->
+            <div v-if="message.role === 'assistant' && message.steps && message.steps.length" class="assistant-steps">
+                <button v-if="!message.streaming && message.stepsLabel" type="button" class="assistant-steps__line"
+                        @click="message.showSteps = !message.showSteps"
+                        :aria-expanded="message.showSteps ? 'true' : 'false'">
+                    <i class="fas fa-list-check" aria-hidden="true"></i>
+                    <span v-text="message.stepsLabel"></span>
+                    <i :class="['fas text-[10px]', message.showSteps ? 'fa-chevron-up' : 'fa-chevron-down']" aria-hidden="true"></i>
+                </button>
+                <div v-if="assistant.stepsOpen(message)" class="assistant-steps__list" role="list">
+                    <div v-for="step in message.steps" :key="step.id" class="assistant-step" role="listitem">
+                        <i v-if="step.status === 'running'" class="fas fa-circle-notch fa-spin assistant-step__icon is-running" aria-hidden="true"></i>
+                        <i v-else-if="step.status === 'done'" class="fas fa-check assistant-step__icon" aria-hidden="true"></i>
+                        <i v-else :class="['fas assistant-step__icon', step.status === 'error' ? 'fa-circle-exclamation' : 'fa-minus']" aria-hidden="true"></i>
+                        <span class="min-w-0">
+                            <span v-text="step.label"></span>
+                            <span v-if="step.detail" class="assistant-step__detail" v-text="' · ' + step.detail"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <!-- Model reasoning, never part of the answer -->
+            <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
+                <button type="button" @click="message.thinkingExpanded = !message.thinkingExpanded"
+                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
+                    <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']" aria-hidden="true"></i>
+                    <span v-text="t('help.modelReasoning')"></span>
+                    <span class="text-[var(--text-muted)]" v-text="'(' + t('help.lines', { count: message.thinking.split('\n').length }) + ')'"></span>
+                </button>
+                <div v-if="message.thinkingExpanded"
+                     class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                    <pre class="whitespace-pre-wrap font-mono" v-text="message.thinking"></pre>
+                </div>
+            </div>
+            <div v-if="message.role === 'assistant' && message.html" class="{{ answer_class }}" v-html="message.html"></div>
+            <div v-else-if="message.content" class="whitespace-pre-wrap bidi-auto" v-text="message.content"></div>
+            <!-- Copy and Download for one finished answer, below its Sources.
+                 Download saves this answer and the question before it. -->
+            <div v-if="assistant.showActions(message, index)"
+                 class="assistant-answer-actions flex items-center justify-end"
+                 style="gap: 2px; margin-top: var(--sp-1);">
+                <button type="button" @click="assistant.copy(message, $event)"
+                        class="btn btn--icon btn--sm"
+                        :title="t('buttons.copyMessage')"
+                        :aria-label="t('buttons.copyMessage')">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button type="button" @click="{{ download }}(index)"
+                        class="btn btn--icon btn--sm"
+                        :title="t('buttons.downloadResponse')"
+                        :aria-label="t('buttons.downloadResponse')">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+        {%- if rows %}
+        </div>
+        {%- endif %}
+    </template>
+
+    <!-- The thinking row, last in the running turn -->
+    <div v-if="assistant.waiting" class="message ai-message assistant-waiting" role="status">
+        <div class="spinner flex-shrink-0"></div>
+        <span class="t-meta" v-text="assistant.runningLabel"></span>
+    </div>
+</div>
+
+<div class="{{ composer_class }} assistant-composer">
+    <!-- "Jump to latest" while the user reads further up: a pill in its own
+         row above the textarea, so it never covers the answer or its Sources. -->
+    <div v-if="!assistant.following && assistant.messages.length > 0" class="assistant-composer__bar">
+        <button type="button" class="assistant-jump" @click.stop="assistant.jumpToLatest()">
+            <i class="fas fa-arrow-down" aria-hidden="true"></i><span v-text="t('assistant.jumpToLatest')"></span>
+        </button>
+    </div>
+    <div class="flex gap-2 items-end">
+        <textarea v-model="assistant.input"
+                  :ref="assistant.setInput"
+                  @keydown="assistant.onKeydown"
+                  :disabled="assistant.disabled"
+                  :placeholder="t('{{ placeholder }}', { name: assistantName })"
+                  :title="t('assistant.sendHint')"
+                  class="field flex-1"
+                  style="resize: none;"
+                  rows="2"></textarea>
+        <button v-if="assistant.loading" type="button" @click="assistant.stop()"
+                class="btn btn--ghost btn--icon btn--lg flex-shrink-0"
+                :title="t('inquire.stop')"
+                :aria-label="t('inquire.stop')">
+            <i class="fas fa-stop"></i>
+        </button>
+        <button v-else type="button" @click="assistant.send()"
+                :disabled="!assistant.input.trim() || assistant.disabled"
+                class="btn btn--primary btn--icon btn--lg flex-shrink-0"
+                :title="t('assistant.sendHint')"
+                :aria-label="t('buttons.send')">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+    {%- if footer %}{{ footer() }}{% endif %}
+</div>
+{%- endmacro %}

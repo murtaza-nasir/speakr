@@ -6,8 +6,10 @@
          Matches the right-rail tab-bar pattern: 40px tab strip with the
          title on the left and contextual toggles + action icons on the
          right. View mode is a single Bubble *toggle* (Simple is the
-         default; the toggle modifies that default), not a pair of tabs. -->
-    <div class="tabs-bar px-4">
+         default; the toggle modifies that default), not a pair of tabs.
+         The row never wraps: data-tabs-fit shortens it when it does not fit
+         (static/js/modules/utils/tabs-bar-fit.js). -->
+    <div class="tabs-bar px-4" data-tabs-fit>
         <div class="tabs">
             <button type="button" class="tab" :class="{ 'is-active': !viewingTranslation }" @click="viewingTranslation = false">
                 <i class="fas fa-file-text" style="font-size: 13px; opacity: 0.7;"></i>
@@ -16,7 +18,7 @@
             <button type="button" class="tab" v-if="!(selectedRecording && selectedRecording.incognito)" :class="{ 'is-active': viewingTranslation }" @click="viewingTranslation = true">
                 <i class="fas fa-language" style="font-size: 13px; opacity: 0.7;"></i>
                 <span v-text="t('translation.title')" data-i18n="translation.title"></span>
-                <span v-if="selectedRecording && selectedRecording.transcription_translation_language" class="ml-1 text-xs opacity-80">(${ translationLanguageLabel(selectedRecording.transcription_translation_language) })</span>
+                <span v-if="selectedRecording && selectedRecording.transcription_translation_language" class="ml-1 text-xs">(${ translationLanguageLabel(selectedRecording.transcription_translation_language) })</span>
             </button>
         </div>
         <div class="tabs-bar__actions">
@@ -93,7 +95,7 @@
     </div>
 
     <!-- Transcription Content -->
-    <div class="flex-1 overflow-y-auto p-4 relative">
+    <div class="flex-1 overflow-y-auto p-4 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
         <!-- Floating Processing Indicator -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
              :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">
@@ -199,30 +201,7 @@
                      tablet at the top of each run sticks for the WHOLE
                      run, not just the first segment. -->
                 <div v-if="processedTranscription.hasDialogue">
-                    <div v-for="(run, runIndex) in processedTranscription.simpleSegmentRuns"
-                         :key="`run-${runIndex}-${run.startTime}`"
-                         class="speaker-run">
-                        <div v-if="showTimestampsSimpleView"
-                             :class="['speaker-tablet-group', run.color]">
-                            <span class="speaker-tablet-time">${ formatTimestamp(run.startTime) }</span>
-                            <span class="speaker-tablet-name">${run.speaker}</span>
-                        </div>
-                        <div v-else :class="['speaker-tablet', run.color]">
-                            ${run.speaker}
-                        </div>
-                        <div v-for="(segment, segIndex) in run.segments"
-                             :key="`seg-${segment.originalIndex}-${segment.startTime}`"
-                             :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
-                             @click="seekAudioFromEvent"
-                             @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
-                             :title="t('tooltips.doubleClickToEditSegment')"
-                             :data-start-time="segment.startTime"
-                             :data-segment-index="segment.originalIndex">
-                            <div class="speaker-text">
-                                ${segment.sentence}
-                            </div>
-                        </div>
-                    </div>
+                    {% with ui_slot = 'transcript-turn' %}{% include 'themes/slot.html' %}{% endwith %}
                 </div>
                 <div v-else>
                     <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">

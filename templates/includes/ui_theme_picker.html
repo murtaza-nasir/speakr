@@ -1,0 +1,28 @@
+{#- Theme cards for the available UI themes (docs/advanced/ui-themes.md).
+    Shown only while more than one theme is available. Inside a Vue app, set
+    ui_picker_vue = true: the cards then call the app's setUiTheme and follow
+    its reactive uiTheme. Elsewhere (the account page) the cards carry
+    data-ui-theme-choice and includes/ui_theme.html handles them. Either way
+    window.speakrApplyUiTheme does the switch. The text is translated on the
+    server (ui_theme_choices), so the cards need no i18n bindings. -#}
+{% if ui_theme_choices|length > 1 %}
+<div class="ui-theme-picker" data-ui-theme-picker>
+    <div class="ui-theme-picker__head">
+        <h3 class="t-label flex items-center gap-2"><i class="fas fa-swatchbook" aria-hidden="true"></i><span>{{ ui_theme_labels.title }}</span></h3>
+        <p class="ui-theme-picker__help">{{ ui_theme_labels.help }}</p>
+    </div>
+    <div class="ui-theme-grid" role="group" aria-label="{{ ui_theme_labels.title }}">
+        {% for theme in ui_theme_choices %}
+        <button type="button" class="ui-theme-card"
+                {% if ui_picker_vue %}@click="setUiTheme('{{ theme.id }}')" :aria-pressed="uiTheme === '{{ theme.id }}' ? 'true' : 'false'"{% else %}data-ui-theme-choice="{{ theme.id }}" aria-pressed="{{ 'true' if theme.id == account_ui_theme else 'false' }}"{% endif %}>
+            <img class="ui-theme-card__preview" src="{{ theme.preview_url }}" alt="" width="320" height="200" loading="lazy">
+            <span class="ui-theme-card__text">
+                <span class="ui-theme-card__name">{{ theme.name }}</span>
+                <span class="ui-theme-card__description">{{ theme.description }}</span>
+            </span>
+            <i class="fas fa-check ui-theme-card__check" aria-hidden="true"></i>
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

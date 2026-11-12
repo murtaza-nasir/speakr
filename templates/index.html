@@ -60,7 +60,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-version" content="{{ app_version }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-    <title>Speakr - Audio Transcription & Summarization</title>
+    <title>Speakr</title>
     <!-- All dependencies bundled locally for offline support -->
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/easymde.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
@@ -76,6 +76,7 @@
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% include 'includes/ui_theme.html' %}
     <!-- Scripts after every stylesheet, so that no page is painted while a
          script blocks the parser before the stylesheets are known. -->
     {% include 'includes/loading_overlay.html' %}
@@ -98,6 +99,7 @@
          data-enable-audio-removed-filter="{{ enable_audio_removed_filter }}"
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
+         data-current-user-id="{{ current_user.id if current_user.is_authenticated else '' }}"
          data-user-language="{{ user_language }}"
          data-default-translation-language="{{ default_translation_language }}"
          data-output-languages='{{ output_languages|tojson }}'
@@ -138,7 +140,7 @@
         {% include 'components/upload-view.html' %}
 
         <!-- Upload Progress Popup -->
-        {% include 'components/progress-popup.html' %}
+        {% with ui_slot = 'status-area' %}{% include 'themes/slot.html' %}{% endwith %}
 
         <!-- Modals -->
         {% include 'modals/edit-modal.html' %}

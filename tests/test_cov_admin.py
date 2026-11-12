@@ -851,7 +851,7 @@ def test_global_admin_who_is_also_team_admin_sees_dashboard(admin_user):
     """A GLOBAL admin who also happens to be a group admin still lands on the
     full admin dashboard (not redirected to group management). Kills the
     line-68 `and` -> `or` mutant, and the line-77 `is_group_admin_only=False`
-    mutant (the rendered <title> would flip to "Group Management").
+    mutant (the rendered <title> would flip to "Groups").
     """
     g = Group(name=f"grp_{uuid.uuid4().hex[:8]}")
     db.session.add(g)
@@ -864,8 +864,8 @@ def test_global_admin_who_is_also_team_admin_sees_dashboard(admin_user):
         _login(c, admin_user)
         resp = c.get('/admin')
         assert resp.status_code == 200
-        assert b'<title>Admin Dashboard - Speakr</title>' in resp.data
-        assert b'<title>Group Management - Speakr</title>' not in resp.data
+        assert b'<title>Admin dashboard - Speakr</title>' in resp.data
+        assert b'<title>Groups - Speakr</title>' not in resp.data
     finally:
         _delete_all(m, g)
 

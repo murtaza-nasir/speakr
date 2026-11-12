@@ -530,7 +530,7 @@ export function useReprocess(state, utils) {
                         }
 
                         if (statusData.status === 'COMPLETED') {
-                            showToast((utils.t && utils.t('toasts.processingCompleted')) || 'Processing completed!', 'fa-check-circle');
+                            showToast((utils.t && utils.t('toasts.processingCompleted')) || 'Processing finished', 'fa-check-circle');
                             // Refresh token budget after LLM operations complete
                             if (onChatComplete) onChatComplete();
                         }
