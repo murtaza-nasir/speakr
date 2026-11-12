@@ -285,3 +285,40 @@ def test_delete_audio_removes_a_retained_video(ctx):
     storage.delete.assert_called_once_with("local://recordings/meeting.mp4", missing_ok=True)
     db.session.expire_all()
     assert db.session.get(Recording, rec.id).audio_deleted_at is not None
+
+
+# ------------------------------------------------- recordings without an owner
+
+def _ownerless():
+    """A recording left with user_id NULL, as an admin user delete left them (#572)."""
+    rec = _rec(_user())
+    rec.user_id = None
+    db.session.commit()
+    return rec
+
+
+def test_null_owner_delete_audio_hides_the_transcript(ctx):
+    """#581: the owner checks skipped a NULL owner, so anyone could read it."""
+    rec, stranger = _ownerless(), _user()
+    storage = _fake_storage()
+    with patch("src.services.retention.get_storage_service", return_value=storage), \
+            patch("src.api.recordings.USERS_CAN_DELETE", True):
+        r = _client(stranger).post(f'/recording/{rec.id}/delete_audio')
+    assert r.status_code == 404
+    assert r.get_json()["code"] == "recording_not_found"
+    assert "hello" not in r.get_data(as_text=True) and "A summary" not in r.get_data(as_text=True)
+    storage.delete.assert_not_called()
+    db.session.expire_all()
+    assert db.session.get(Recording, rec.id).audio_deleted_at is None
+
+
+def test_null_owner_delete_and_bulk_leave_the_row(ctx):
+    rec, stranger = _ownerless(), _user()
+    client = _client(stranger)
+    with patch("src.api.recordings.USERS_CAN_DELETE", True):
+        assert client.delete(f'/recording/{rec.id}').status_code == 404
+        r = client.delete('/api/recordings/bulk', json={"recording_ids": [rec.id]})
+    assert r.status_code == 200
+    assert rec.id not in r.get_json()["deleted_ids"]
+    db.session.expire_all()
+    assert db.session.get(Recording, rec.id) is not None

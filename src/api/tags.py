@@ -341,7 +341,21 @@ def update_tag(tag_id):
             if not membership or membership.role != 'admin':
                 return jsonify(api_error('tag_group_assign_admin_only')), 403
 
+        regrouped = new_group_id != tag.group_id
+        if regrouped and new_group_id:
+            # The tag is already on recordings: making it a group tag puts a
+            # group tag on each, so each must allow that, checked before the
+            # change (after it, the tag itself would grant edit) (#578, #579)
+            from src.services.tag_sharing import group_tag_apply_error
+            for rt in tag.recording_associations:
+                error_key = group_tag_apply_error(rt.recording, new_group_id, current_user, has_recording_access)
+                if error_key:
+                    return jsonify(api_error(error_key)), 403
         tag.group_id = new_group_id
+        if regrouped:
+            # Shares the tag made for its previous group end (#570)
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=[rt.recording_id for rt in tag.recording_associations])
 
     if 'color' in data:
         color_ok, color_val = _validate_tag_color(data['color'])
@@ -474,7 +488,11 @@ def delete_tag(tag_id):
         if user:
             _remove_auto_process_folder(tag, user)
 
+    recording_ids = [rt.recording_id for rt in tag.recording_associations]
     db.session.delete(tag)
+    # Shares the tag made end with it (#570, #582)
+    from src.services.auto_shares import drop_stale_auto_shares
+    drop_stale_auto_shares(recording_ids=recording_ids)
     db.session.commit()
     return jsonify({'success': True})
 

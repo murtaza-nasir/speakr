@@ -295,6 +295,45 @@ class TestUserDeletionIntegration(unittest.TestCase):
         db.session.delete(admin)
         db.session.commit()
 
+    def test_admin_delete_user_removes_recording_rows(self):
+        """#572: the delete removed the media but kept each recording row,
+        with user_id NULL and the transcript, summary and notes in it."""
+        user_id = self.user.id
+        rec = Recording(user_id=user_id, title="secret", status="COMPLETED",
+                        transcription="secret transcript", transcription_translation="texto secreto",
+                        summary="secret summary", notes="secret notes")
+        other = User(username="cascade_other_user", email="cascade_other@local.test", password="fakehash")
+        admin = User.query.filter_by(username="cascade_admin").first() or User(
+            username="cascade_admin", email="cascade_admin@local.test", password="fakehash", is_admin=True)
+        db.session.add_all([rec, other, admin])
+        db.session.commit()
+        kept = Recording(user_id=other.id, title="keep", status="COMPLETED", transcription="keep me")
+        db.session.add(kept)
+        db.session.commit()
+        db.session.add(InternalShare(recording_id=rec.id, owner_id=user_id, shared_with_user_id=other.id))
+        db.session.add(SharedRecordingState(recording_id=rec.id, user_id=other.id))
+        db.session.commit()
+        rec_id, kept_id = rec.id, kept.id
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess['_user_id'] = str(admin.id)
+            resp = client.delete(f'/admin/users/{user_id}')
+        self.assertEqual(resp.status_code, 200, resp.get_json())
+        self.assertTrue(resp.get_json().get('success'))
+        self.user = None
+
+        db.session.expire_all()
+        self.assertIsNone(db.session.get(User, user_id))
+        self.assertIsNone(db.session.get(Recording, rec_id))
+        self.assertEqual(InternalShare.query.filter_by(recording_id=rec_id).count(), 0)
+        kept = db.session.get(Recording, kept_id)
+        self.assertIsNotNone(kept)
+        self.assertEqual((kept.user_id, kept.transcription), (other.id, "keep me"))
+        SharedRecordingState.query.filter_by(recording_id=rec_id).delete()
+        db.session.delete(kept)
+        db.session.commit()
+
     def tearDown(self):
         db.session.rollback()
         # Final cleanup if test failed before deletion

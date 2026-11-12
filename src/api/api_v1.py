@@ -1978,6 +1978,8 @@ def update_recording(recording_id):
         new_folder_id = data['folder_id']
         if new_folder_id is None:
             recording.folder_id = None
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=[recording.id])
         else:
             from src.models.organization import Folder
             target = db.session.get(Folder, new_folder_id)
@@ -1989,6 +1991,8 @@ def update_recording(recording_id):
                 return jsonify(api_error(error_key)), 403
             recording.folder_id = new_folder_id
             apply_group_folder_shares(recording, target)
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=[recording.id])
 
     db.session.commit()
 
@@ -2384,9 +2388,13 @@ def delete_tag(tag_id):
             return jsonify(api_error('permission_denied')), 403
 
     # Remove all recording associations
+    recording_ids = [rid for (rid,) in db.session.query(RecordingTag.recording_id).filter_by(tag_id=tag_id)]
     RecordingTag.query.filter_by(tag_id=tag_id).delete()
 
     db.session.delete(tag)
+    # Shares the tag made end with it (#570, #582)
+    from src.services.auto_shares import drop_stale_auto_shares
+    drop_stale_auto_shares(recording_ids=recording_ids)
     db.session.commit()
 
     return jsonify({'success': True, 'message': translate('server.apiMessage.tagDeleted')})
@@ -2536,6 +2544,10 @@ def replace_recording_tags(recording_id):
     for rt in kept_hidden:
         order += 1
         rt.order = order
+    if removed:
+        # Shares a removed tag made end with it (#570, #582)
+        from src.services.auto_shares import drop_stale_auto_shares
+        drop_stale_auto_shares(recording_ids=[recording_id])
     db.session.commit()
     return jsonify({
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in wanted],
@@ -2565,6 +2577,9 @@ def remove_tag_from_recording(recording_id, tag_id):
         return jsonify(api_error('tag_not_on_recording')), 404
 
     db.session.delete(recording_tag)
+    # Shares the tag made end with it (#570, #582)
+    from src.services.auto_shares import drop_stale_auto_shares
+    drop_stale_auto_shares(recording_ids=[recording_id])
     db.session.commit()
 
     return jsonify({'success': True, 'message': translate('server.apiMessage.tagRemoved')})
@@ -3555,11 +3570,13 @@ def batch_update_recordings():
                         if tag.user_id != current_user.id:
                             continue  # not yours
                     else:
-                        is_member = GroupMembership.query.filter_by(
+                        membership = GroupMembership.query.filter_by(
                             user_id=current_user.id, group_id=tag.group_id
-                        ).first() is not None
-                        if not is_member:
+                        ).first()
+                        if membership is None:
                             continue  # not a member of the tag's group
+                        if recording.user_id != current_user.id and membership.role != 'admin':
+                            continue  # another user's recording: group admins only (#578)
                     existing = RecordingTag.query.filter_by(
                         recording_id=recording_id,
                         tag_id=tag_id
@@ -3598,6 +3615,12 @@ def batch_update_recordings():
                         recording_id=recording_id,
                         tag_id=tag_id
                     ).delete()
+
+            if 'folder_id' in updates or 'remove_tag_ids' in updates:
+                # Leaving a group folder or losing a group tag ends the
+                # shares it made (#570, #582)
+                from src.services.auto_shares import drop_stale_auto_shares
+                drop_stale_auto_shares(recording_ids=[recording_id])
 
             results.append({'id': recording_id, 'success': True})
         except Exception as e:

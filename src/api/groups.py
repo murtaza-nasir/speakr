@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
+from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
 
 # Create blueprint
 groups_bp = Blueprint('groups', __name__)
@@ -118,14 +119,8 @@ def sync_team_tag_shares(group_id):
                     )
                     db.session.add(share)
 
-                    # Create SharedRecordingState with default values for the recipient
-                    state = SharedRecordingState(
-                        recording_id=recording.id,
-                        user_id=membership_to_share.user_id,
-                        is_inbox=True,  # New shares appear in inbox by default
-                        is_highlighted=False  # Not favorited by default
-                    )
-                    db.session.add(state)
+                    # The recipient's state row, reused when an earlier share left one (#571)
+                    ensure_recipient_state(recording.id, membership_to_share.user_id)
 
                     shares_created += 1
                     current_app.logger.info(f"Synced share: Recording {recording.id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag '{tag.name}'")
@@ -274,7 +269,10 @@ def delete_team(group_id):
         return jsonify(api_error('group_not_found')), 404
 
     group_name = group.name
+    member_ids = [m.user_id for m in group.memberships]
     db.session.delete(group)
+    # The group's tags and folders no longer share anything (#570)
+    drop_stale_auto_shares(user_ids=member_ids)
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} deleted group: {group_name}")
@@ -356,6 +354,8 @@ def update_team_member(group_id, user_id):
         return jsonify(api_error('invalid_group_role')), 400
 
     membership.role = role
+    # Group-made shares give edit to admins only, the rule that created them
+    drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} updated {membership.user.username} role to {role} in group {membership.group.name}")
@@ -384,6 +384,9 @@ def remove_team_member(group_id, user_id):
     username = membership.user.username
     group_name = membership.group.name
     db.session.delete(membership)
+    # Shares the group's tags and folders made for this member end with the
+    # membership; a share the owner made by hand stays (#570)
+    drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} removed {username} from group {group_name}")
