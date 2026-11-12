@@ -69,9 +69,8 @@
                     <button v-for="folder in availableFolders" :key="folder.id" type="button"
                             class="ws-nav-item"
                             :class="{ 'is-active': filterFolder == folder.id }"
-                            :style="folderIndentStyle(folder)"
                             @click="filterFolder = filterFolder == folder.id ? '' : folder.id">
-                        <span class="ws-dot" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
+                        <span class="ws-dot" :style="[{ backgroundColor: getFolderMarkColor(folder.id) }, folderIndentStyle(folder)]"></span>
                         <span class="ws-nav-item__label" v-text="folder.name"></span>
                         <span class="ws-nav-item__count" v-text="folder.recording_count || 0"></span>
                     </button>

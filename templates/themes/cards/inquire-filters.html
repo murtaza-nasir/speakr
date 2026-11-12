@@ -63,7 +63,7 @@
                                    class="inq-chip">
                                 <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
                                        class="filter-checkbox">
-                                <span class="inq-chip__label" :style="{ '--tag': folder.color }">${ folder.name }</span>
+                                <span class="inq-chip__label" :style="{ '--tag': folderMarkColor(folder.color) }">${ folder.name }</span>
                                 <span class="text-xs px-1.5 py-0.5 rounded-full"
                                       style="background: var(--bg-tertiary); color: var(--text-muted);">${ folder.recording_count }</span>
                             </label>

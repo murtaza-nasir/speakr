@@ -30,7 +30,7 @@
                             :aria-expanded="showHeaderFolderMenu" aria-haspopup="menu"
                             :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
                         <i class="fas fa-folder"
-                           :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+                           :style="{ color: selectedRecording.folder_id ? getFolderMarkColor(selectedRecording.folder_id) : '' }"></i>
                         <span class="ws-tb__label" v-text="t('form.folder')"></span>
                         <i class="fas fa-caret-down ws-tb__caret"></i>
                     </button>
@@ -47,9 +47,8 @@
                         <button v-for="folder in availableFolders" :key="folder.id"
                                 @click="assignFolderToRecording(selectedRecording.id, folder.id); showHeaderFolderMenu = false"
                                 class="ws-menu__item"
-                                :class="selectedRecording.folder_id == folder.id ? 'is-current' : ''"
-                                :style="folderIndentStyle(folder)">
-                            <span class="ws-dot" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
+                                :class="selectedRecording.folder_id == folder.id ? 'is-current' : ''">
+                            <span class="ws-dot" :style="[{ backgroundColor: getFolderMarkColor(folder.id) }, folderIndentStyle(folder)]"></span>
                             <span class="flex-1 truncate">${ folder.name }</span>
                             <i v-if="selectedRecording.folder_id == folder.id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>
                         </button>
@@ -165,7 +164,7 @@
                  class="flex flex-wrap items-center gap-1">
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
                       class="chip chip--dot"
-                      :style="{ '--chip-c': getFolderColor(selectedRecording.folder_id) }"
+                      :style="{ '--chip-c': getFolderMarkColor(selectedRecording.folder_id) }"
                       :title="t('tooltips.folderLabel', { name: getFolderName(selectedRecording.folder_id) })">
                     <i class="fas fa-folder"></i>
                     <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>

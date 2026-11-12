@@ -22,7 +22,7 @@
                  class="flex flex-wrap items-center gap-1">
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
                       class="chip"
-                      :style="{ '--tag': getFolderColor(selectedRecording.folder_id) }"
+                      :style="{ '--tag': getFolderMarkColor(selectedRecording.folder_id) }"
                       :title="t('tooltips.folderLabel', { name: getFolderName(selectedRecording.folder_id) })">
                     <i class="fas fa-folder"></i>
                     <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>

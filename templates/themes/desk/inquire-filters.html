@@ -63,7 +63,7 @@
                                    class="desk-frow">
                                 <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
                                        class="filter-checkbox">
-                                <span class="desk-frow__sw" :style="{ backgroundColor: folder.color || '#6B7280' }"></span>
+                                <span class="desk-frow__sw" :style="{ backgroundColor: folderMarkColor(folder.color || '#6B7280') }"></span>
                                 <span class="desk-frow__name">${ folder.name }</span>
                                 <span class="desk-frow__n">${ folder.recording_count }</span>
                             </label>

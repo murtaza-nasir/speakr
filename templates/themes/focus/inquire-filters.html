@@ -60,7 +60,7 @@
                                    class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
                                 <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders"
                                        class="filter-checkbox">
-                                <span class="ml-2 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: folder.color }" aria-hidden="true"></span>
+                                <span class="ml-2 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: folderMarkColor(folder.color) }" aria-hidden="true"></span>
                                 <span class="ml-2 text-sm font-medium flex-1">${ folder.name }</span>
                                 <span class="text-xs px-1.5 py-0.5 rounded-full"
                                       style="background: var(--bg-tertiary); color: var(--text-muted);">${ folder.recording_count }</span>

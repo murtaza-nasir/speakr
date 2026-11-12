@@ -61,7 +61,7 @@
                             <label v-for="folder in filteredFolders" :key="folder.id" class="ws-nav-item ws-nav-item--check"
                                    :class="{ 'is-active': inquireFilters.selectedFolders.includes(folder.id) }">
                                 <input type="checkbox" :value="folder.id" v-model="inquireFilters.selectedFolders" class="filter-checkbox">
-                                <span class="ws-dot" :style="{ backgroundColor: folder.color || '#6B7280' }"></span>
+                                <span class="ws-dot" :style="{ backgroundColor: folderMarkColor(folder.color || '#6B7280') }"></span>
                                 <span class="ws-nav-item__label">${ folder.name }</span>
                                 <span class="ws-nav-item__count">${ folder.recording_count }</span>
                             </label>

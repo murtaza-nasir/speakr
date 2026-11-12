@@ -40,7 +40,7 @@
                                 <!-- Folder dot, only in the All view and while folders are on -->
                                 <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
                                       class="ws-glyph"
-                                      :style="{ color: recording.folder.color || '' }"
+                                      :style="{ color: folderMarkColor(recording.folder.color) || '' }"
                                       :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
                                     <i class="fas fa-share-nodes"></i>
                                 </span>
@@ -48,7 +48,7 @@
                                         type="button"
                                         @click.stop="filterFolder = recording.folder_id"
                                         class="ws-glyph ws-glyph--folder"
-                                        :style="{ color: getFolderColor(recording.folder_id) }"
+                                        :style="{ color: getFolderMarkColor(recording.folder_id) }"
                                         :title="t('tooltips.folderLabel', { name: getFolderName(recording.folder_id) })">
                                     <i class="fas fa-folder"></i>
                                 </button>

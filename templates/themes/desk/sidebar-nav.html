@@ -13,7 +13,7 @@
                         </option>
                     </select>
                     <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
-                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
+                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderMarkColor(filterFolder) : 'var(--text-muted)' }"></i>
                 </div>
                 <h2 v-else class="desk-toolbar__title" v-text="t('nav.recording')"></h2>
                 <div class="flex gap-1 flex-shrink-0">
@@ -341,9 +341,8 @@
                     </button>
                     <button v-for="folder in availableFolders" :key="'tf-' + folder.id" type="button"
                             @click="filterFolder = folder.id"
-                            :class="['desk-tree__row', filterFolder === folder.id ? 'is-active' : '']"
-                            :style="folderIndentStyle(folder)">
-                        <i class="fas fa-folder desk-tree__ico" :style="{ color: folder.color || 'var(--text-3)' }"></i>
+                            :class="['desk-tree__row', filterFolder === folder.id ? 'is-active' : '']">
+                        <i class="fas fa-folder desk-tree__ico" :style="[{ color: folderMarkColor(folder.color) || 'var(--text-3)' }, folderIndentStyle(folder)]"></i>
                         <span class="desk-tree__name">${ folder.name }</span>
                         <span class="desk-tree__n">${ folder.recording_count || 0 }</span>
                     </button>
