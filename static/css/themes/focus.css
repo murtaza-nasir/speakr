@@ -903,9 +903,12 @@ html[data-ui-theme="focus"] body .message.ai-message h1,
 html[data-ui-theme="focus"] body .message.ai-message h2,
 html[data-ui-theme="focus"] body .message.ai-message h3 { font-family: var(--f-font-ui); color: var(--f-text); }
 html[data-ui-theme="focus"] body .message.ai-message code { background: var(--f-surface-2); color: var(--f-text); border-radius: 5px; font-family: var(--f-font-mono); }
-html[data-ui-theme="focus"] body .message .btn--icon.btn--sm { opacity: 0.0; transition: opacity var(--f-t-base) var(--f-ease); }
-html[data-ui-theme="focus"] body .message:hover .btn--icon.btn--sm,
-html[data-ui-theme="focus"] body .message .btn--icon.btn--sm:focus-visible { opacity: 1; }
+/* Answer actions appear on hover; touch screens have no hover, so they stay visible there. */
+@media (hover: hover) {
+    html[data-ui-theme="focus"] body .message .btn--icon.btn--sm { opacity: 0.0; transition: opacity var(--f-t-base) var(--f-ease); }
+    html[data-ui-theme="focus"] body .message:hover .btn--icon.btn--sm,
+    html[data-ui-theme="focus"] body .message .btn--icon.btn--sm:focus-visible { opacity: 1; }
+}
 html[data-ui-theme="focus"] body .chat-ts-chip { background: var(--f-surface-2); color: var(--f-text-2); border: 0; font-family: var(--f-font-mono); font-size: 0.8em; }
 html[data-ui-theme="focus"] body .floating-chat-input { border-radius: 18px; background: var(--f-surface-2); border-color: transparent; }
 

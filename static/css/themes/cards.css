@@ -995,7 +995,7 @@ html[data-ui-theme="cards"] .progress-popup__card [class~="bg-blue-500"] { backg
 html[data-ui-theme="cards"] .progress-popup__card [class*="border-l-2"],
 html[data-ui-theme="cards"] .progress-popup__card [class~="bg-[var(--bg-tertiary)]/30"] { border-radius: var(--c-r-sm); }
 
-html[data-ui-theme="cards"] #toast-container > div,
+html[data-ui-theme="cards"] #toastContainer > .toast-message,
 html[data-ui-theme="cards"] .toast { border-radius: var(--c-r-md); box-shadow: var(--c-e3); }
 
 /* ============================================================================
