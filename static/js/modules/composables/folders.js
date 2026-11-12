@@ -40,9 +40,10 @@ export function useFolders({
         return folder?.name || t('form.folder');
     };
 
-    // Folder name indented by its depth, for <option> text (#585).
+    // Full path ("Projects / Alpha / 2026") for <option> text, so a closed
+    // select still shows where a subfolder sits (#585).
     const folderOptionLabel = (folder) => (window.SpeakrFolderTree
-        ? window.SpeakrFolderTree.indentedName(folder) : (folder?.name || ''));
+        ? window.SpeakrFolderTree.pathLabel(folder) : (folder?.name || ''));
 
     // Left indent for a folder row in a list; none at the top level, so a
     // list without subfolders keeps its exact layout.

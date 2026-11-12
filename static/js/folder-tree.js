@@ -13,8 +13,6 @@
 (function (root) {
     'use strict';
 
-    const INDENT = '    ';
-
     function scopeKey(folder) {
         return folder.group_id !== null && folder.group_id !== undefined
             ? 'group:' + folder.group_id
@@ -65,12 +63,12 @@
         return ordered;
     }
 
-    /** The folder name indented by its depth, for <option> text. */
-    function indentedName(folder) {
-        return INDENT.repeat(folder && folder.depth ? folder.depth : 0) + (folder ? folder.name : '');
-    }
-
-    /** "Projects / Alpha / 2026" for a folder that orderTree has seen. */
+    /**
+     * "Projects / Alpha / 2026" for a folder that orderTree has seen. Used
+     * as <option> text: a closed native select shows only the selected
+     * option, so leading spaces would hide where a subfolder sits, and an
+     * option cannot show different text open and closed.
+     */
     function pathLabel(folder) {
         return folder && Array.isArray(folder.path) ? folder.path.join(' / ') : (folder ? folder.name : '');
     }
@@ -114,6 +112,6 @@
     }
 
     root.SpeakrFolderTree = {
-        orderTree, indentedName, pathLabel, descendantIds, hasChildren, parentCandidates, scopeKey,
+        orderTree, pathLabel, descendantIds, hasChildren, parentCandidates, scopeKey,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

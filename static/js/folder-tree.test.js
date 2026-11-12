@@ -21,7 +21,7 @@ describe('orderTree', () => {
         const ordered = T.orderTree(flat);
         expect(ordered.map((f) => f.id)).toEqual([3, 1, 2]);
         expect(ordered.map((f) => f.depth)).toEqual([0, 0, 0]);
-        expect(ordered.map((f) => T.indentedName(f))).toEqual(['Courses', 'Hiring', 'Team']);
+        expect(ordered.map((f) => T.pathLabel(f))).toEqual(['Courses', 'Hiring', 'Team']);
     });
 
     it('puts each child after its parent, depth-first, siblings in order', () => {
@@ -35,7 +35,10 @@ describe('orderTree', () => {
         expect(ordered.map((f) => f.depth)).toEqual([0, 0, 1, 2, 1]);
         const year = ordered.find((f) => f.id === 5);
         expect(T.pathLabel(year)).toBe('Projects / Alpha / 2026');
-        expect(T.indentedName(year)).toBe(' '.repeat(8) + '2026');
+        expect(T.pathLabel(ordered.find((f) => f.id === 4))).toBe('Projects');
+        // Option text is the path with no leading indent (closed selects).
+        expect(ordered.every((f) => !/^[\s\u00a0]/.test(T.pathLabel(f)))).toBe(true);
+        expect(T.indentedName).toBeUndefined();
     });
 
     it('treats a parent in another scope or missing from the list as top level', () => {

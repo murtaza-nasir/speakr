@@ -225,7 +225,7 @@
         candidates.forEach((folder) => {
             const option = document.createElement('option');
             option.value = String(folder.id);
-            option.textContent = window.SpeakrFolderTree.indentedName(folder);
+            option.textContent = window.SpeakrFolderTree.pathLabel(folder);
             select.appendChild(option);
         });
         select.value = candidates.some((folder) => folder.id === keep) ? String(keep) : '';
