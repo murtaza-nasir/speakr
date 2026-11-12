@@ -13,11 +13,12 @@ OWNERLESS_GRACE old. A recording that gains an owner loses its mark, and so
 does one with work in flight, which therefore starts its wait again.
 
 Only database rows are candidates. Media files on disk that no row refers to
-are counted for the log and never deleted: a file cannot tell which upload it
-belongs to, and a guess that is wrong destroys a user's recording.
+are counted for the log and never deleted here: a file cannot tell which
+upload it belongs to, and a guess that is wrong destroys a user's recording.
+An admin can remove them with scripts/clean_unreferenced_files.py, which has
+a minimum age and a confirmation prompt.
 """
 
-import os
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -27,7 +28,7 @@ from src.database import db
 # delete it. A little under a day, so the next 2 AM run qualifies.
 OWNERLESS_GRACE = timedelta(hours=20)
 
-# Upper bound on directory entries the unreferenced-file count visits.
+# Upper bound on files the unreferenced-file count looks at.
 UNREFERENCED_SCAN_LIMIT = 200_000
 
 ACTIVE_JOB_STATUSES = ('queued', 'processing')
@@ -168,58 +169,25 @@ def _iso(value):
 
 
 def count_unreferenced_media_files(storage=None):
-    """Count local media files that no recording or upload-join part refers to.
+    """Count local media files that no row refers to. Only for the log.
 
-    Only for the log. Looks at the recordings directory of local storage
-    (UPLOAD_FOLDER/<key prefix>, recursively) and at plain files directly in
-    UPLOAD_FOLDER, the layout of older releases. Sessions, staging and other
-    directories are not looked at. Returns None when the storage has no local
-    recordings directory to look at.
+    The scan is the one scripts/clean_unreferenced_files.py uses (see
+    src/services/unreferenced_files.py), without its minimum age. Returns None
+    when the storage has no local folder to look at.
     """
-    from src.models import Recording
-    from src.models.upload_join import UploadJoinPart
+    from src.services import unreferenced_files
 
     if storage is None:
         from src.services.storage import get_storage_service
         storage = get_storage_service()
-    settings = getattr(storage, 'settings', None)
-    root = getattr(settings, 'local_root', None)
-    if not root or not os.path.isdir(root):
+    if unreferenced_files.local_root(storage) is None:
         return None
-    prefix_dir = os.path.join(root, *(getattr(settings, 'key_prefix', '') or 'recordings').split('/'))
-
-    referenced = set()
-    for model in (Recording, UploadJoinPart):
-        for (locator,) in db.session.query(model.audio_path).filter(model.audio_path.isnot(None)):
-            try:
-                referenced.add(os.path.realpath(storage.resolve_local_filesystem_path(locator)))
-            except Exception:
-                continue  # S3 or an unreadable locator: not a local file
-
-    count = 0
-    visited = 0
-
-    def consider(path):
-        nonlocal count
-        if os.path.realpath(path) not in referenced:
-            count += 1
-
-    with os.scandir(root) as entries:
-        for entry in entries:
-            visited += 1
-            if entry.is_file(follow_symlinks=False) and not entry.name.startswith('.'):
-                consider(entry.path)
-    if os.path.isdir(prefix_dir):
-        for dirpath, dirnames, filenames in os.walk(prefix_dir):
-            for name in filenames:
-                visited += 1
-                if visited > UNREFERENCED_SCAN_LIMIT:
-                    current_app.logger.info(
-                        f"Ownerless cleanup: stopped counting unreferenced files after {UNREFERENCED_SCAN_LIMIT} entries")
-                    return count
-                if not name.startswith('.'):
-                    consider(os.path.join(dirpath, name))
-    return count
+    result = unreferenced_files.scan(storage, min_age=None, limit=UNREFERENCED_SCAN_LIMIT,
+                                     include_s3=False)
+    if result.truncated:
+        current_app.logger.info(
+            f"Ownerless cleanup: stopped counting unreferenced files after {UNREFERENCED_SCAN_LIMIT} entries")
+    return len(result.candidates) + len(result.kept_name_matches)
 
 
 def run_ownerless_cleanup():
