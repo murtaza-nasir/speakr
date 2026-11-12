@@ -175,13 +175,15 @@ def inquire_search():
 
 
 
-def inquire_stream(user, data, mode='auto'):
+def inquire_stream(user, data, mode='auto', tool_names=None):
     """The Inquire answer as an SSE generator, for the web route and API v1.
 
     data: message, message_history, conversation_memory, filter_tags,
     filter_folders, filter_speakers, filter_recording_ids, filter_date_from, filter_date_to.
     mode: 'auto' (the agent when ENABLE_INQUIRE_AGENT is on), 'rag' or
     'agent' (the caller checks that the agent is on).
+    tool_names: the agent's tools for this surface
+    (assistant_events.tools_for_surface); None offers them all.
     """
     user_message = data.get('message')
     message_history = data.get('message_history', [])
@@ -210,6 +212,10 @@ def inquire_stream(user, data, mode='auto'):
     user_title = user.job_title if user.job_title else "professional"
     user_company = user.company if user.company else "their organization"
     user_output_language = user.output_language if user.output_language else None
+    from src.utils.assistant_name import assistant_name_of
+    from src.utils.localization import request_language
+    assistant_name = assistant_name_of(user)
+    ui_language = request_language()   # step labels; the stream runs without the request
     app = current_app._get_current_object()  # Capture app for use in generator
     
     # Enhanced query processing with enrichment and debugging
@@ -268,7 +274,7 @@ Examples:
                     # Direct response without RAG lookup
                     yield create_status_response('responding', 'Generating direct response...')
 
-                    direct_prompt = f"""You are assisting {user_name}. Respond to their request directly using proper markdown formatting.
+                    direct_prompt = f"""You are {assistant_name}, assisting {user_name}. Respond to their request directly using proper markdown formatting.
 
 User request: "{user_message}"
 
@@ -614,7 +620,7 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 
                 available_speakers = sorted(list(available_speakers))
             
-            system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction}
+            system_prompt = f"""You are {assistant_name}, a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction}
 
 You are analyzing transcriptions from multiple recordings{filter_text}. The following context has been retrieved based on semantic similarity to the user's question:
 
@@ -828,11 +834,14 @@ Order your response with notes from the most recent meetings first. Always use p
             'company': user_company,
             'output_language': user_output_language,
             'timezone': user_zone,
+            'assistant_name': assistant_name,
+            'language': ui_language,
         }
         agent_gen = run_inquire_agent(
             app, user_id, user_ctx, user_message, message_history,
             data.get('conversation_memory'), filters,
             legacy_fallback=generate_enhanced_chat,
+            tool_names=tool_names,
         )
         return agent_gen
 
@@ -860,7 +869,12 @@ def inquire_chat():
         if client is None:
             return jsonify(api_error('chat_openrouter_not_configured')), 503
         
-        return Response(inquire_stream(current_user, data), mimetype='text/event-stream')
+        # One event stream for both engines: retrieval stages arrive as
+        # steps too, labelled in the user's language (assistant_events).
+        from src.services.assistant_events import library_events, tools_for_surface
+        from src.utils.localization import request_language
+        stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
+        return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 
     except Exception as e:
         current_app.logger.error(f"Error in inquire chat endpoint: {str(e)}")

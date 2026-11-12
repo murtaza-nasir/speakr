@@ -35,6 +35,8 @@ from src.services.embeddings import (
 )
 from src.services.llm import call_chat_completion, TokenBudgetExceeded, get_chat_config
 from src.utils.localization import translate
+from src.services.assistant_present import (step_label, step_result, summary_label, summary_line,
+                                              tool_icon)
 
 # ---------------------------------------------------------------------------
 # Configuration (read live so tests and admins can tweak without restart)
@@ -419,11 +421,13 @@ _DATE_PROPS = {
 }
 
 
-def build_toolbox(availability):
+def build_toolbox(availability, tool_names=None):
     """(schemas, executors) for the enabled tools only.
 
     Disabled content types are omitted from the schema entirely — the model
-    never sees a tool it is not allowed to use.
+    never sees a tool it is not allowed to use. tool_names, when given, is
+    the surface's tool list (assistant_events.tools_for_surface): tools not
+    in it are left out as well.
     """
     tools = [
         ('search_transcripts', tool_search_transcripts,
@@ -487,6 +491,9 @@ def build_toolbox(availability):
              'properties': {'recording_id': {'type': 'integer'}},
              'required': ['recording_id']}))
 
+    if tool_names is not None:
+        offered = set(tool_names)
+        tools = [tool for tool in tools if tool[0] in offered]
     schemas = [{'type': 'function',
                 'function': {'name': name, 'description': desc, 'parameters': params}}
                for name, _fn, desc, params in tools]
@@ -494,74 +501,7 @@ def build_toolbox(availability):
     return schemas, executors
 
 
-# Human-readable activity lines for the UI. (label, detail) builders.
-_TOOL_ICONS = {
-    'search_transcripts': 'fa-magnifying-glass',
-    'list_recordings': 'fa-list',
-    'get_transcript': 'fa-file-lines',
-    'get_summary': 'fa-file-alt',
-    'get_notes': 'fa-note-sticky',
-    'get_recording_metadata': 'fa-circle-info',
-}
-
-
-def _activity_label(tool, args):
-    if tool == 'search_transcripts':
-        return f"Searching: “{str(args.get('query', ''))[:80]}”"
-    if tool == 'list_recordings':
-        return "Scanning recordings"
-    if tool == 'get_transcript':
-        off = args.get('offset') or 0
-        return f"Reading transcript of recording {args.get('recording_id')}" + (f" (from segment {off})" if off else "")
-    if tool == 'get_summary':
-        return f"Reading summary of recording {args.get('recording_id')}"
-    if tool == 'get_notes':
-        return f"Reading notes on recording {args.get('recording_id')}"
-    if tool == 'get_recording_metadata':
-        return f"Checking recording {args.get('recording_id')}"
-    return f"Running {tool}"
-
-
-def _activity_result(tool, result):
-    """(status, detail) once a tool has run."""
-    if isinstance(result, dict) and result.get('error'):
-        return 'error', str(result['error'])[:160]
-    if tool == 'search_transcripts':
-        n = result.get('result_count', 0)
-        if not n:
-            return 'empty', 'no matches'
-        recs = {r['recording_id'] for r in result.get('results', [])}
-        detail = f"{n} match{'es' if n != 1 else ''} in {len(recs)} recording{'s' if len(recs) != 1 else ''}"
-        stype = result.get('search_type')
-        if stype and stype != 'semantic':
-            detail += f" ({stype.replace('semantic+keyword', 'incl. keyword')})"
-        return 'done', detail
-    if tool == 'list_recordings':
-        return 'done', f"{result.get('returned', 0)} of {result.get('total_in_scope', 0)} recordings"
-    if tool == 'get_transcript':
-        if 'total_segments' in result:
-            got = result.get('returned_segments', 0)
-            return 'done', f"{got} segments (of {result.get('total_segments', '?')}) — {result.get('title', '')}"
-        return 'done', str(result.get('title', ''))
-    if tool in ('get_summary', 'get_notes', 'get_recording_metadata'):
-        return 'done', str(result.get('title', ''))[:120]
-    return 'done', ''
-
-
-def _summary_line(tool_counts):
-    names = {
-        'search_transcripts': ('search', 'searches'),
-        'list_recordings': ('listing', 'listings'),
-        'get_transcript': ('transcript read', 'transcript reads'),
-        'get_summary': ('summary read', 'summary reads'),
-        'get_notes': ('notes read', 'notes reads'),
-        'get_recording_metadata': ('metadata check', 'metadata checks'),
-    }
-    parts = []
-    for tool, count in tool_counts.items():
-        singular, plural = names.get(tool, (tool, tool))
-        parts.append(f"{count} {singular if count == 1 else plural}")
-    return ' · '.join(parts)
+# Step labels, results and the steps line: src/services/assistant_present.py.
 
 
 # ---------------------------------------------------------------------------
@@ -575,17 +515,43 @@ def _today_for(user_ctx):
     return now_local(zone if is_valid_timezone(zone) else 'UTC').strftime('%Y-%m-%d')
 
 
-def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block):
+_TOOL_PHRASES = (
+    ('search_transcripts', 'search transcripts'),
+    ('list_recordings', 'list recordings'),
+    ('get_transcript', 'read transcripts'),
+    ('get_summary', 'read stored summaries'),
+    ('get_notes', "read the user's own notes"),
+    ('get_recording_metadata', 'read metadata'),
+)
+
+
+def _tools_sentence(availability, tool_names):
+    """The prompt describes only the tools that are offered (decision 2)."""
+    if tool_names is None:
+        notes_line = "the user's own notes, " if availability.get('notes') else ''
+        summaries_line = "stored summaries, " if availability.get('summaries') else ''
+        return (f"You have tools to search transcripts, list recordings, and read transcripts, "
+                f"{summaries_line}{notes_line}and metadata")
+    offered = set(tool_names)
+    if not availability.get('notes'):
+        offered.discard('get_notes')
+    if not availability.get('summaries'):
+        offered.discard('get_summary')
+    phrases = [phrase for name, phrase in _TOOL_PHRASES if name in offered]
+    if len(phrases) > 1:
+        phrases = phrases[:-1] + ['and ' + phrases[-1]]
+    return "You have tools to " + ', '.join(phrases)
+
+
+def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block, tool_names=None):
     language_instruction = (
         f"Respond in {user_ctx['output_language']}. " if user_ctx.get('output_language') else '')
-    notes_line = "the user's own notes, " if availability.get('notes') else ''
-    summaries_line = "stored summaries, " if availability.get('summaries') else ''
-    return f"""You are a research assistant analyzing {user_ctx['name']}'s audio recording library \
+    assistant = user_ctx.get('assistant_name') or 'Ambrose'
+    return f"""You are {assistant}, a research assistant analyzing {user_ctx['name']}'s audio recording library \
 (meetings, calls, voice notes). {user_ctx['name']} is a(n) {user_ctx['title']} at {user_ctx['company']}. \
 {language_instruction}Today's date is {_today_for(user_ctx)}.
 
-You have tools to search transcripts, list recordings, and read transcripts, {summaries_line}{notes_line}\
-and metadata{filters_text}. Work iteratively: search or browse first, read more where needed, and only \
+{_tools_sentence(availability, tool_names)}{filters_text}. Work iteratively: search or browse first, read more where needed, and only \
 answer once you have enough evidence. Prefer summaries to survey long recordings, transcripts for exact \
 quotes and details. If a search finds nothing, try different phrasings or list_recordings before giving up. \
 Never invent content that is not in the tool results; say clearly when something cannot be found.
@@ -798,8 +764,11 @@ def _native_tools_known_unsupported(err_text):
 
 def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                       conversation_memory, filters, legacy_fallback=None,
-                      llm_call=call_chat_completion):
+                      llm_call=call_chat_completion, tool_names=None):
     """SSE generator implementing the agent loop.
+
+    `tool_names`: the surface's tool list (assistant_events.tools_for_surface);
+    None offers every tool.
 
     `legacy_fallback`: zero-arg generator function; invoked (yield from) if the
     agent fails before producing any answer content.
@@ -813,7 +782,7 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
             user = db.session.get(User, user_id)
             availability = get_availability(user)
             allowed_ids = resolve_allowed_recording_ids(user_id, filters)
-            schemas, executors = build_toolbox(availability)
+            schemas, executors = build_toolbox(availability, tool_names)
         except Exception as e:
             app.logger.error(f"Inquire agent setup failed: {e}", exc_info=True)
             if legacy_fallback is not None:
@@ -857,7 +826,7 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                     f"Arguments schema: {json.dumps(s['function']['parameters'])}"
                     for s in schemas)
                 block = _PROMPT_MODE_BLOCK.replace('%TOOLS%', tool_lines)
-            sys_prompt = _system_prompt(user_ctx, filters_text, availability, block)
+            sys_prompt = _system_prompt(user_ctx, filters_text, availability, block, tool_names)
             msgs = [{'role': 'system', 'content': sys_prompt}]
             if memory:
                 msgs.append({'role': 'system',
@@ -876,7 +845,7 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
 
         # Context accounting + compaction before the first call
         budget = _context_budget_tokens()
-        est = estimate_context_tokens(_system_prompt(user_ctx, filters_text, availability, ''),
+        est = estimate_context_tokens(_system_prompt(user_ctx, filters_text, availability, '', tool_names),
                                       memory, history, schemas)
         usage_pct = min(int(est * 100 / budget), 100)
         yield _sse({'context_usage': usage_pct})
@@ -896,12 +865,30 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         consecutive_empty_searches = 0
         answer_filter = _ThinkingFilter()
 
+        language = user_ctx.get('language')
+        titles = {}
+
+        def title_of(args):
+            """The title of the recording a tool reads, only when it is in scope."""
+            try:
+                rid = int((args or {}).get('recording_id'))
+            except (TypeError, ValueError):
+                return None
+            if rid not in allowed_ids:
+                return None
+            if rid not in titles:
+                rec = db.session.get(Recording, rid)
+                titles[rid] = rec.title if rec and rec.title else None
+            return titles[rid]
+
         def finish(summary_needed=True):
             events = []
             if summary_needed and tool_counts:
+                steps = sum(tool_counts.values())
                 events.append(_sse({'agent_summary': {
-                    'steps': sum(tool_counts.values()),
-                    'line': _summary_line(tool_counts)}}))
+                    'steps': steps,
+                    'line': summary_line(tool_counts, language),
+                    'label': summary_label(steps, tool_counts, language)}}))
             if memory:
                 events.append(_sse({'conversation_memory': memory}))
             events.append(_sse({'end_of_stream': True}))
@@ -917,9 +904,9 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                     args = {}
             except (ValueError, TypeError):
                 args = None
-            label = _activity_label(name, args or {})
-            events = [_sse({'agent_step': {'id': this_step, 'tool': name,
-                                           'icon': _TOOL_ICONS.get(name, 'fa-gear'),
+            label = step_label(name, args or {}, language, title_of(args))
+            events = [_sse({'agent_step': {'id': this_step, 'tool': name, 'name': name,
+                                           'icon': tool_icon(name),
                                            'label': label, 'status': 'running'}})]
             if args is None:
                 result = {'error': 'arguments were not valid JSON'}
@@ -939,11 +926,11 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                         result = {'error': f"tool failed: {e}"}
                     call_cache[cache_key] = result
                     tool_counts[name] = tool_counts.get(name, 0) + 1
-            status, detail = _activity_result(name, result)
+            status, detail = step_result(name, result, language)
             if name == 'search_transcripts':
                 consecutive_empty_searches = consecutive_empty_searches + 1 if status == 'empty' else 0
-            events.append(_sse({'agent_step': {'id': this_step, 'tool': name,
-                                               'icon': _TOOL_ICONS.get(name, 'fa-gear'),
+            events.append(_sse({'agent_step': {'id': this_step, 'tool': name, 'name': name,
+                                               'icon': tool_icon(name),
                                                'label': label, 'status': status,
                                                'detail': detail}}))
             hint = ''

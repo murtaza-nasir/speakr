@@ -973,7 +973,9 @@
     "playFromHere": "Reproduzir a partir daqui",
     "responseFailed": "Falha ao obter a resposta do chat",
     "connectionEnded": "A conexão foi encerrada antes de a resposta ser concluída: {{error}}",
-    "errorWithMessage": "Erro: {{error}}"
+    "errorWithMessage": "Erro: {{error}}",
+    "sources": "Fontes",
+    "quoteNotFound": "Citação não encontrada na transcrição"
   },
   "uiTheme": {
     "title": "Tema da interface",
@@ -3642,6 +3644,61 @@
       "passwordsMustMatch": "As senhas devem coincidir.",
       "usernameTaken": "Esse nome de usuário já está em uso. Escolha outro.",
       "emailTaken": "Esse e-mail já está cadastrado. Use outro."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Buscando “{{query}}”",
+        "listing": "Consultando a lista de gravações",
+        "readingTranscript": "Lendo a transcrição de {{title}}",
+        "readingTranscriptFrom": "Lendo a transcrição de {{title}} a partir do segmento {{offset}}",
+        "readingSummary": "Lendo o resumo de {{title}}",
+        "readingNotes": "Lendo suas notas sobre {{title}}",
+        "checking": "Verificando os detalhes de {{title}}",
+        "readingATranscript": "Lendo uma transcrição",
+        "readingASummary": "Lendo um resumo",
+        "readingSomeNotes": "Lendo suas notas sobre uma gravação",
+        "checkingARecording": "Verificando os detalhes de uma gravação",
+        "running": "Executando {{tool}}",
+        "understanding": "Lendo a pergunta",
+        "refining": "Refinando a busca",
+        "searchingLibrary": "Buscando nas suas gravações",
+        "narrowing": "Limitando a busca aos falantes citados",
+        "widening": "Ampliando a busca",
+        "gathering": "Lendo os melhores resultados",
+        "readingFull": "Lendo uma transcrição completa",
+        "writing": "Escrevendo a resposta",
+        "compacting": "Resumindo a conversa anterior"
+      },
+      "result": {
+        "failed": "Não foi possível concluir esta etapa",
+        "noMatches": "Nenhum resultado",
+        "matchSummary": "{{matches}} em {{recordings}}",
+        "matchOne": "1 resultado",
+        "matches": "{{count}} resultados",
+        "recordingOne": "1 gravação",
+        "recordings": "{{count}} gravações",
+        "keyword": "busca por palavra-chave",
+        "withKeyword": "com busca por palavra-chave",
+        "listed": "{{returned}} de {{total}} gravações",
+        "segments": "{{returned}} de {{total}} segmentos"
+      },
+      "count": {
+        "stepOne": "1 etapa",
+        "steps": "{{count}} etapas",
+        "searchOne": "1 busca",
+        "searches": "{{count}} buscas",
+        "listingOne": "1 listagem",
+        "listings": "{{count}} listagens",
+        "transcriptReadOne": "1 transcrição lida",
+        "transcriptReads": "{{count}} transcrições lidas",
+        "summaryReadOne": "1 resumo lido",
+        "summaryReads": "{{count}} resumos lidos",
+        "notesReadOne": "1 leitura de notas",
+        "notesReads": "{{count}} leituras de notas",
+        "detailsCheckOne": "1 verificação de detalhes",
+        "detailsChecks": "{{count}} verificações de detalhes",
+        "other": "{{tool}}: {{count}}"
+      }
     }
   },
   "sharePage": {

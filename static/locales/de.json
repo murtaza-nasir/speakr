@@ -973,7 +973,9 @@
     "playFromHere": "Ab hier abspielen",
     "responseFailed": "Chat-Antwort konnte nicht abgerufen werden",
     "connectionEnded": "Die Verbindung wurde beendet, bevor die Antwort vollständig war: {{error}}",
-    "errorWithMessage": "Fehler: {{error}}"
+    "errorWithMessage": "Fehler: {{error}}",
+    "sources": "Quellen",
+    "quoteNotFound": "Zitat nicht im Transkript gefunden"
   },
   "uiTheme": {
     "title": "Oberflächendesign",
@@ -3642,6 +3644,61 @@
       "passwordsMustMatch": "Die Passwörter müssen übereinstimmen.",
       "usernameTaken": "Dieser Benutzername ist bereits vergeben. Bitte wählen Sie einen anderen.",
       "emailTaken": "Diese E-Mail-Adresse ist bereits registriert. Bitte verwenden Sie eine andere."
+    },
+    "assistant": {
+      "step": {
+        "searching": "Suche nach „{{query}}“",
+        "listing": "Liste der Aufnahmen wird durchgesehen",
+        "readingTranscript": "Transkript von {{title}} wird gelesen",
+        "readingTranscriptFrom": "Transkript von {{title}} wird ab Segment {{offset}} gelesen",
+        "readingSummary": "Zusammenfassung von {{title}} wird gelesen",
+        "readingNotes": "Ihre Notizen zu {{title}} werden gelesen",
+        "checking": "Details von {{title}} werden geprüft",
+        "readingATranscript": "Ein Transkript wird gelesen",
+        "readingASummary": "Eine Zusammenfassung wird gelesen",
+        "readingSomeNotes": "Ihre Notizen zu einer Aufnahme werden gelesen",
+        "checkingARecording": "Details einer Aufnahme werden geprüft",
+        "running": "{{tool}} wird ausgeführt",
+        "understanding": "Frage wird gelesen",
+        "refining": "Suche wird verfeinert",
+        "searchingLibrary": "Ihre Aufnahmen werden durchsucht",
+        "narrowing": "Suche wird auf die genannten Sprecher eingegrenzt",
+        "widening": "Suche wird erweitert",
+        "gathering": "Beste Treffer werden gelesen",
+        "readingFull": "Ein vollständiges Transkript wird gelesen",
+        "writing": "Antwort wird geschrieben",
+        "compacting": "Früherer Gesprächsverlauf wird zusammengefasst"
+      },
+      "result": {
+        "failed": "Dieser Schritt konnte nicht abgeschlossen werden",
+        "noMatches": "Keine Treffer",
+        "matchSummary": "{{matches}} in {{recordings}}",
+        "matchOne": "1 Treffer",
+        "matches": "{{count}} Treffer",
+        "recordingOne": "1 Aufnahme",
+        "recordings": "{{count}} Aufnahmen",
+        "keyword": "Stichwortsuche",
+        "withKeyword": "mit Stichwortsuche",
+        "listed": "{{returned}} von {{total}} Aufnahmen",
+        "segments": "{{returned}} von {{total}} Segmenten"
+      },
+      "count": {
+        "stepOne": "1 Schritt",
+        "steps": "{{count}} Schritte",
+        "searchOne": "1 Suche",
+        "searches": "{{count}} Suchen",
+        "listingOne": "1 Auflistung",
+        "listings": "{{count}} Auflistungen",
+        "transcriptReadOne": "1 Transkript gelesen",
+        "transcriptReads": "{{count}} Transkripte gelesen",
+        "summaryReadOne": "1 Zusammenfassung gelesen",
+        "summaryReads": "{{count}} Zusammenfassungen gelesen",
+        "notesReadOne": "1 Mal Notizen gelesen",
+        "notesReads": "{{count}} Mal Notizen gelesen",
+        "detailsCheckOne": "1 Detailprüfung",
+        "detailsChecks": "{{count}} Detailprüfungen",
+        "other": "{{tool}}: {{count}}"
+      }
     }
   },
   "sharePage": {
