@@ -135,7 +135,7 @@ Speakr's assistant is called **Ambrose**. Under **Assistant** in the Preferences
 
 The theme, the color scheme and light or dark mode are three separate settings that combine freely: every color scheme and both modes work with every theme. Neutral surfaces and shapes come from the theme, and the accent color comes from the color scheme. The **Color scheme and light or dark mode** link below the theme cards opens the color scheme dialog; light or dark mode is also switched with the sun and moon toggle in the user menu.
 
-Until you pick a theme, the standard theme is used. New themes arrive with Speakr upgrades, and the Appearance section is shown only once the server offers more than one theme. If a theme you picked is withdrawn from a server, the standard theme is shown instead.
+A new account starts with the theme and color scheme that your administrator set for new accounts. On a server with the standard configuration, that is the Cards theme with the Forest Emerald color scheme. If your account is older than this default, you see the standard theme with the blue color scheme until you pick another. New themes arrive with Speakr upgrades, and the Appearance section is shown only once the server offers more than one theme. If a theme you picked is withdrawn from a server, the standard theme is shown instead.
 
 ### Language Preferences
 

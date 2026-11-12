@@ -3,7 +3,8 @@
 The theme was kept only in the browser's localStorage. It is now also saved
 with the account when the user changes it, and a saved value replaces the
 browser's copy on every page the user opens. Accounts that have not changed
-it since the upgrade have no saved value, and each browser keeps its own.
+it since the upgrade have no saved value: each browser keeps its own light or
+dark mode, and the color scheme is blue (tests/test_new_user_theme.py).
 
 SHARED-DB: the test users are removed afterwards.
 """

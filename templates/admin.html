@@ -96,7 +96,7 @@
             }
 
             // Apply color scheme
-            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
             
@@ -2961,7 +2961,9 @@ Summarization Instructions:
                         'recording_disclaimer': 'adminDashboard.settings.recordingDisclaimerDesc',
                         'upload_disclaimer': 'adminDashboard.settings.uploadDisclaimerDesc',
                         'custom_banner': 'adminDashboard.settings.customBannerDesc',
-                        'disable_auto_translation': 'adminDashboard.settings.disableAutoTranslationDesc'
+                        'disable_auto_translation': 'adminDashboard.settings.disableAutoTranslationDesc',
+                        'default_ui_theme': 'adminDashboard.settings.defaultUiThemeDesc',
+                        'default_color_scheme': 'adminDashboard.settings.defaultColorSchemeDesc'
                     };
                     
                     const key = descriptionKeys[setting.key];

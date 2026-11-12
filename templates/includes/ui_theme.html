@@ -3,7 +3,8 @@
     first paint it sets data-ui-theme on <html> and, for a theme with its own
     stylesheet, adds that stylesheet as the last one in <head>. The theme is
     read from localStorage, where includes/theme_account.html has put the
-    account's saved theme; an unknown or unavailable id means the default.
+    account's saved theme, else from window.speakrThemeDefaults; an unknown
+    or unavailable id means the default.
     window.speakrApplyUiTheme(id) switches the theme on the open page without
     a reload: it updates the attribute, the stylesheet and the theme cards,
     saves the choice, and tells the page's Vue apps (event speakr:ui-theme). -#}
@@ -39,7 +40,8 @@
     }
     var stored = null;
     try { stored = localStorage.getItem('uiTheme'); } catch (e) {}
-    apply(stored);
+    // With nothing stored, the default from includes/theme_account.html.
+    apply(stored || (window.speakrThemeDefaults || {}).uiTheme);
     window.speakrApplyUiTheme = function (id, options) {
       id = apply(id);
       try { localStorage.setItem('uiTheme', id); } catch (e) {}

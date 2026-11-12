@@ -518,7 +518,9 @@
       "customBannerDesc": "Bannière personnalisée affichée en haut de la page. Prend en charge Markdown. Laisser vide pour désactiver.",
       "transcriptLengthLimitDesc": "Nombre maximal de caractères à envoyer de la transcription au LLM pour le résumé et le chat. Utilisez -1 pour aucune limite.",
       "maxAudioOnlyVideoSizeDesc": "Taille maximale (en Mo) des envois vidéo en mode audio uniquement. Seul l’audio extrait est conservé, donc l’envoi lui-même peut dépasser la limite habituelle.",
-      "disableAutoTranslationDesc": "Lorsque cette option est activée, les enregistrements sont seulement transcrits et les utilisateurs doivent lancer la traduction manuellement. Lorsqu'elle est désactivée, chaque utilisateur peut activer la traduction automatique de ses nouveaux enregistrements après la transcription."
+      "disableAutoTranslationDesc": "Lorsque cette option est activée, les enregistrements sont seulement transcrits et les utilisateurs doivent lancer la traduction manuellement. Lorsqu'elle est désactivée, chaque utilisateur peut activer la traduction automatique de ses nouveaux enregistrements après la transcription.",
+      "defaultUiThemeDesc": "Thème d'interface des nouveaux comptes, et des pages de connexion dans un navigateur sans thème enregistré. Valeurs possibles : default, classic, workspace, focus, desk, cards. Les comptes existants conservent leur thème.",
+      "defaultColorSchemeDesc": "Jeu de couleurs des nouveaux comptes, et des pages de connexion dans un navigateur sans jeu de couleurs enregistré. Valeurs possibles : blue, emerald, purple, rose, amber, teal. Les comptes existants conservent leur jeu de couleurs."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",
@@ -3564,7 +3566,9 @@
       "invalid_assistant_name": "Le nom de l'assistant peut comporter jusqu'à 40 lettres, chiffres, espaces, points, tirets ou apostrophes, et commence par une lettre ou un chiffre",
       "summary_prompt_invalid": "Le prompt ne peut pas être vide ni dépasser 8 000 caractères.",
       "summary_prompt_save_denied": "Vous ne pouvez pas enregistrer le prompt à cet endroit.",
-      "invalid_filter_date": "Impossible de lire le filtre de date"
+      "invalid_filter_date": "Impossible de lire le filtre de date",
+      "invalid_default_ui_theme": "Thème d'interface par défaut invalide. Valeurs possibles : {{themes}}",
+      "invalid_default_color_scheme": "Jeu de couleurs par défaut invalide. Valeurs possibles : {{schemes}}"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

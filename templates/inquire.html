@@ -735,7 +735,7 @@
 
                         document.documentElement.classList.toggle('dark', isDark);
 
-                        const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+                        const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
                         const currentMode = isDark ? 'dark' : 'light';
                         const themeClass = savedScheme === 'blue' ? '' : `theme-${currentMode}-${savedScheme}`;
 

@@ -885,14 +885,25 @@ def inject_i18n_bootstrap():
 @app.context_processor
 def inject_account_theme():
     """The theme saved with the signed-in user's account (D#419), for
-    includes/theme_account.html. None for a visitor who is not signed in."""
+    includes/theme_account.html. None for a visitor who is not signed in.
+
+    theme_defaults is the color scheme and UI theme a page shows when the
+    browser has none saved: for a signed-in account, the meaning of NULL
+    (blue, the default theme); for a visitor, the look for new accounts
+    (src/config/ui_themes.py new_user_theme), so a fresh install's sign-in
+    page looks like a new account."""
     from flask import has_request_context
     from flask_login import current_user
+    from src.config import ui_themes
     if not has_request_context() or not current_user.is_authenticated:
-        return {'account_theme': None}
+        return {'account_theme': None,
+                'theme_defaults': {'colorScheme': ui_themes.new_user_color_scheme(),
+                                   'uiTheme': ui_themes.new_user_theme()}}
     return {'account_theme': {'dark': current_user.theme_dark_mode,
                               'scheme': current_user.theme_color_scheme,
-                              'ui_theme': current_user.ui_theme}}
+                              'ui_theme': current_user.ui_theme},
+            'theme_defaults': {'colorScheme': ui_themes.DEFAULT_COLOR_SCHEME,
+                               'uiTheme': ui_themes.DEFAULT_THEME}}
 
 
 @app.context_processor

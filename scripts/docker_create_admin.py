@@ -87,6 +87,8 @@ def create_admin_user_from_env():
         # Create new admin user
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
         new_user = User(username=username, email=email, password=hashed_password, is_admin=True, email_verified=True)
+        from src.config.ui_themes import apply_new_user_theme
+        apply_new_user_theme(new_user)
         db.session.add(new_user)
         db.session.commit()
         

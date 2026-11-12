@@ -35,7 +35,7 @@
             }
 
             // Apply color scheme
-            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
 
@@ -837,6 +837,8 @@
                     }
 
                     localStorage.setItem('darkMode', newDarkMode.toString());
+                    // The color scheme class follows the mode (theme-light-* / theme-dark-*).
+                    if (typeof applyTheme === 'function') applyTheme();
                     if (window.speakrSaveTheme) window.speakrSaveTheme('darkMode');
                 }
 

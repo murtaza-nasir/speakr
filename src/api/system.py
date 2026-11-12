@@ -51,7 +51,7 @@ def init_system_helpers(**kwargs):
 
 
 # Color scheme ids, as in colorSchemes in static/js/app.modular.js.
-THEME_COLOR_SCHEMES = ('blue', 'emerald', 'purple', 'rose', 'amber', 'teal')
+from src.config.ui_themes import COLOR_SCHEMES as THEME_COLOR_SCHEMES
 
 
 # --- Routes ---

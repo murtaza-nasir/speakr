@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ page_language }}">
 <head>
+    {% include 'includes/theme_account.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
@@ -21,7 +22,7 @@
             } else {
                 document.documentElement.classList.remove('dark');
             }
-            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
             const themeClasses = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];

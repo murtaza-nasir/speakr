@@ -305,6 +305,8 @@ def register():
         )
         from src.services.storage_quota import default_quota_mb
         user.storage_quota_mb = default_quota_mb()
+        from src.config.ui_themes import apply_new_user_theme
+        apply_new_user_theme(user)
         db.session.add(user)
         db.session.commit()
 

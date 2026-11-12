@@ -97,7 +97,7 @@ function useColorScheme() {
     
     const initializeColorScheme = (darkMode) => {
         isDarkMode.value = darkMode;
-        const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+        const savedScheme = localStorage.getItem('colorScheme') || (window.speakrThemeDefaults || {}).colorScheme || 'blue';
         currentColorScheme.value = savedScheme;
         applyColorScheme(savedScheme);
     };

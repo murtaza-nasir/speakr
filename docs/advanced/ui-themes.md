@@ -9,7 +9,8 @@ A UI theme is a complete look for the interface: neutral surfaces, shapes, type 
 | Registry | `src/config/ui_themes.py` | Theme ids, availability, slot names, locale keys, preview and stylesheet paths |
 | Setting | `User.ui_theme` (`VARCHAR(32)`, null = default) | The account's theme; the column is added at startup in `src/init_db.py` |
 | Save endpoint | `POST /api/user/preferences` with `ui_theme` | An available theme id or `null` is saved; anything else is answered with 400 `invalid_ui_theme` |
-| Account copy | `templates/includes/theme_account.html` | Copy of the saved theme in `localStorage.uiTheme`, made before the theme is read; changes are saved with `window.speakrSaveTheme('uiTheme')` |
+| Account copy | `templates/includes/theme_account.html` | `window.speakrThemeDefaults` for a browser with nothing saved, and a copy of the account's theme in `localStorage.uiTheme`, made before the theme is read; changes are saved with `window.speakrSaveTheme('uiTheme')` |
+| New accounts | `new_user_theme()`, `new_user_color_scheme()`, `apply_new_user_theme(user)` in `src/config/ui_themes.py` | The look written on every account when it is created, from the System Settings `default_ui_theme` and `default_color_scheme` (`.env`: `DEFAULT_UI_THEME`, `DEFAULT_COLOR_SCHEME`; defaults `cards` and `emerald`) |
 | Pre-paint script | `templates/includes/ui_theme.html` | `<html data-ui-theme="<id>">` and the theme stylesheet, set before the first paint; `window.speakrApplyUiTheme(id)` for switching |
 | Theme stylesheet | `static/css/themes/<id>.css` | The theme's CSS, scoped under `html[data-ui-theme="<id>"]`; none for the default |
 | Slots | `templates/themes/slot.html`, `templates/themes/<id>/<slot>.html` | Markup a theme replaces |
@@ -24,13 +25,15 @@ The picker appears only while two or more themes are available, so with the defa
 
 ## How a theme is applied
 
-1. `includes/theme_account.html` (first in `<head>`) copies the account's saved theme into `localStorage.uiTheme` when one is saved.
+1. In `includes/theme_account.html` (first in `<head>` on every page), `window.speakrThemeDefaults` is set to the color scheme and theme used when `localStorage` has none: the defaults for new accounts on a signed-out page, and `blue` and `default` for a signed-in account. For a signed-in account, the account's color scheme and theme are then written into `localStorage.colorScheme` and `localStorage.uiTheme`, with `blue` and `default` for an account with no saved value. The look of a signed-out page therefore never stays after sign-in. Light or dark mode is copied only once the account has a saved value.
 2. `includes/ui_theme.html` is included right after the compiled `tailwind.css` link on every page with a `<head>` (the main app, Inquire, account, admin, group management, shared recordings and the sign-in pages). In its script, `localStorage.uiTheme` is read, an id that is not in the list of available themes is replaced by `default`, `data-ui-theme` is set on `<html>`, and for a theme with a stylesheet `<link id="speakr-ui-theme-css" rel="stylesheet" blocking="render">` is appended to `<head>`, after every other stylesheet. All of this happens before the body is parsed, so the first paint already has the theme.
 3. In each slot, the active theme's partial is rendered through a `v-if` chain on the reactive `uiTheme`.
 
 Switching is done with `window.speakrApplyUiTheme(id)`. With that call, the attribute is updated, the stylesheet link is replaced or removed, the `aria-pressed` state of the theme cards outside Vue is updated, `localStorage.uiTheme` is written, the choice is saved to the account, and the window event `speakr:ui-theme` is dispatched with `detail.id`. On that event `uiTheme` is updated in the Vue apps, so the slot branches switch without a reload. Other tabs of the same browser are switched through the `storage` event, without saving again.
 
-Signed-out pages (sign-in, registration, password reset) have no account value; on them the theme last applied in that browser is shown.
+Signed-out pages (sign-in, registration, password reset, public share pages) have no account value. On them, the theme and color scheme saved in that browser are shown, or, with nothing saved, the defaults for new accounts. Nothing is written to `localStorage` on a signed-out page until the visitor changes the theme.
+
+`apply_new_user_theme(user)` is called wherever an account is created: registration (`src/api/auth.py`), `POST /admin/users` (`src/api/admin.py`), the first SSO sign-in (`src/auth/sso.py`), and `scripts/create_admin.py` and `scripts/docker_create_admin.py`. In `tests/test_new_user_theme.py`, every file in `src/` and `scripts/` that constructs a `User` is checked for the call. Accounts are never updated afterwards, so a NULL `ui_theme` or `theme_color_scheme` still means `default` or `blue`.
 
 ## Colors: the contract between themes and color schemes
 
