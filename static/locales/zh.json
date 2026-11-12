@@ -2767,12 +2767,10 @@
   },
   "timestamps": {
     "title": "转录文本时间戳",
-    "description": "选择摘要代理和聊天代理是否在转录中收到时间戳，以便它们能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
+    "description": "选择摘要代理是否在转录中收到时间戳，以便它能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
     "summaryLabel": "生成摘要时包含时间戳",
-    "chatLabel": "在聊天中包含时间戳",
     "defaultFormat": "默认时间戳格式",
-    "summaryTemplateLabel": "摘要的时间戳格式",
-    "chatTemplateLabel": "聊天中的时间戳格式"
+    "summaryTemplateLabel": "摘要的时间戳格式"
   },
   "summaryNotes": {
     "title": "摘要中的笔记",

@@ -2767,12 +2767,10 @@
   },
   "timestamps": {
     "title": "Horodatages de la transcription",
-    "description": "Choisissez si les agents de résumé et de chat reçoivent les horodatages dans la transcription, afin qu'ils puissent indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
+    "description": "Choisissez si l'agent de résumé reçoit les horodatages dans la transcription, afin qu'il puisse indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
     "summaryLabel": "Inclure les horodatages lors du résumé",
-    "chatLabel": "Inclure les horodatages dans le chat",
     "defaultFormat": "Format d'horodatage par défaut",
-    "summaryTemplateLabel": "Format d'horodatage pour les résumés",
-    "chatTemplateLabel": "Format d'horodatage dans le chat"
+    "summaryTemplateLabel": "Format d'horodatage pour les résumés"
   },
   "summaryNotes": {
     "title": "Notes dans les résumés",

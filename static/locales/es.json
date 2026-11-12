@@ -2767,12 +2767,10 @@
   },
   "timestamps": {
     "title": "Marcas de tiempo de la transcripción",
-    "description": "Elige si los agentes de resumen y de chat reciben marcas de tiempo en la transcripción, para que puedan indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
+    "description": "Elige si el agente de resumen recibe marcas de tiempo en la transcripción, para que pueda indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
     "summaryLabel": "Incluir marcas de tiempo al resumir",
-    "chatLabel": "Incluir marcas de tiempo en el chat",
     "defaultFormat": "Formato de marca de tiempo predeterminado",
-    "summaryTemplateLabel": "Formato de marcas de tiempo para los resúmenes",
-    "chatTemplateLabel": "Formato de marcas de tiempo en el chat"
+    "summaryTemplateLabel": "Formato de marcas de tiempo para los resúmenes"
   },
   "summaryNotes": {
     "title": "Notas en los resúmenes",

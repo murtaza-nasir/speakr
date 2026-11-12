@@ -2767,12 +2767,10 @@
   },
   "timestamps": {
     "title": "Transcript timestamps",
-    "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
+    "description": "Choose whether the summarization agent receives timestamps in the transcript, so it can reference when something was said. Pick the default format, or one of your transcript templates.",
     "summaryLabel": "Include timestamps when summarizing",
-    "chatLabel": "Include timestamps in chat",
     "defaultFormat": "Default timestamp format",
-    "summaryTemplateLabel": "Timestamp format for summaries",
-    "chatTemplateLabel": "Timestamp format in chat"
+    "summaryTemplateLabel": "Timestamp format for summaries"
   },
   "summaryNotes": {
     "title": "Notes in summaries",
