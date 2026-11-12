@@ -5,6 +5,9 @@
 
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 import { responseWithQuestion } from '../utils/chat-turn.js';
+import {
+    CITE_PLACEHOLDER_RE, formatClock, markCitations, numberedSources, plainCitations, upsertSource
+} from '../utils/chat-citations.js';
 
 export function useChat(state, utils) {
     const {
@@ -76,11 +79,130 @@ export function useChat(state, utils) {
         }
     };
 
-    const renderChatHtml = (content) => decorateChatTimestamps(window.renderMarkdownSafe(content));
+    // ------------------------------------------------------------------
+    // Segment citations: the model cites [S12 "exact words"]; the server
+    // sends each one as a `source` event (utils/chat-citations.js). Each
+    // marker shows as its number, which seeks the player, and the sources
+    // are listed under the answer. A quote the server could not find in
+    // its segment is marked as such. Answers without segment citations
+    // keep the timestamp chips above (the fallback).
+    // ------------------------------------------------------------------
+
+    const seekButton = (className, seconds) => {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = className;
+        if (seconds !== null && seconds !== undefined && isFinite(seconds)) {
+            el.dataset.seek = String(Math.max(0, Math.floor(seconds)));
+            el.title = t('chat.playFromHere') || 'Play from here';
+        } else {
+            el.disabled = true;
+        }
+        return el;
+    };
+
+    /** Replace citation placeholders in sanitized HTML with numbered buttons
+     * and append the sources list. Text is set with textContent only. */
+    const decorateChatCitations = (html, sources) => {
+        if (!sources.length) return html;
+        try {
+            const byN = new Map(sources.map((s) => [String(s.n), s]));
+            const tpl = document.createElement('template');
+            tpl.innerHTML = html;
+            const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT, {
+                acceptNode: (node) =>
+                    node.parentElement && node.parentElement.closest('code, pre, a')
+                        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+            });
+            const targets = [];
+            let n;
+            while ((n = walker.nextNode())) {
+                if (n.nodeValue.includes('\u2063')) targets.push(n);
+            }
+            for (const node of targets) {
+                const frag = document.createDocumentFragment();
+                const text = node.nodeValue;
+                let last = 0;
+                for (const m of text.matchAll(CITE_PLACEHOLDER_RE)) {
+                    const source = byN.get(m[1]);
+                    frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                    if (source) {
+                        const cite = seekButton('chat-cite' + (source.verified ? '' : ' chat-cite--unverified'),
+                            source.start_time);
+                        cite.textContent = String(source.n);
+                        if (cite.dataset.seek) cite.setAttribute('aria-label', t('chat.playFromHere') + ': ' + formatClock(source.start_time));
+                        frag.appendChild(cite);
+                    } else {
+                        frag.appendChild(document.createTextNode('[' + m[1] + ']'));
+                    }
+                    last = m.index + m[0].length;
+                }
+                frag.appendChild(document.createTextNode(text.slice(last)));
+                node.parentNode.replaceChild(frag, node);
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'chat-sources';
+            const label = document.createElement('div');
+            label.className = 'chat-sources__label';
+            label.textContent = t('chat.sources');
+            wrap.appendChild(label);
+            const ol = document.createElement('ol');
+            for (const source of sources) {
+                const li = document.createElement('li');
+                li.value = source.n;
+                if (source.start_time !== null && source.start_time !== undefined) {
+                    const time = seekButton('chat-ts-chip', source.start_time);
+                    time.textContent = formatClock(source.start_time);
+                    li.appendChild(time);
+                }
+                if (source.speaker) {
+                    const who = document.createElement('span');
+                    who.className = 'chat-sources__speaker';
+                    who.textContent = source.speaker;
+                    li.appendChild(who);
+                }
+                if (source.quote) {
+                    const quote = document.createElement('span');
+                    quote.className = 'chat-sources__quote';
+                    quote.setAttribute('dir', 'auto');
+                    quote.textContent = '“' + source.quote + '”';
+                    li.appendChild(quote);
+                }
+                if (!source.verified) {
+                    const note = document.createElement('span');
+                    note.className = 'chat-sources__unverified';
+                    note.textContent = t('chat.quoteNotFound');
+                    li.appendChild(note);
+                }
+                ol.appendChild(li);
+            }
+            wrap.appendChild(ol);
+            tpl.content.appendChild(wrap);
+            return tpl.innerHTML;
+        } catch (_) {
+            return html;
+        }
+    };
+
+    const renderChatHtml = (content, sources) => {
+        const list = numberedSources(sources);
+        if (!list.length) return decorateChatTimestamps(window.renderMarkdownSafe(content));
+        const html = window.renderMarkdownSafe(markCitations(content, sources));
+        return decorateChatTimestamps(decorateChatCitations(html, list));
+    };
+
+    /** A message as plain text for copy and download: markers as [n] and the
+     * sources listed under it. */
+    const chatMessageText = (message) => {
+        if (!message) return '';
+        if (!Array.isArray(message.sources) || !message.sources.length) return message.content || '';
+        return plainCitations(message.content, message.sources, t('chat.sources'));
+    };
 
     /** Delegated click handler for the chat messages containers. */
     const handleChatBubbleClick = (event) => {
-        const chip = event.target.closest && event.target.closest('.chat-ts-chip');
+        const chip = event.target.closest && event.target.closest('[data-seek]');
         if (!chip) return;
         const seconds = parseInt(chip.dataset.seek, 10);
         if (!isFinite(seconds)) return;
@@ -202,6 +324,19 @@ export function useChat(state, utils) {
             const decoder = new TextDecoder();
             let buffer = '';
 
+            const startAssistantMessage = () => {
+                isChatLoading.value = false;
+                assistantMessage = Vue.reactive({
+                    role: 'assistant',
+                    content: '',
+                    html: '',
+                    thinking: '',
+                    thinkingExpanded: false,
+                    sources: []
+                });
+                chatMessages.value.push(assistantMessage);
+            };
+
             const processStream = async () => {
                 let isFirstChunk = true;
                 while (true) {
@@ -226,15 +361,8 @@ export function useChat(state, utils) {
                                         const shouldScroll = isChatScrolledToBottom();
 
                                         if (isFirstChunk) {
-                                            isChatLoading.value = false;
-                                            assistantMessage = Vue.reactive({
-                                                role: 'assistant',
-                                                content: '',
-                                                html: '',
-                                                thinking: data.thinking,
-                                                thinkingExpanded: false
-                                            });
-                                            chatMessages.value.push(assistantMessage);
+                                            startAssistantMessage();
+                                            assistantMessage.thinking = data.thinking;
                                             isFirstChunk = false;
                                         } else if (assistantMessage) {
                                             if (assistantMessage.thinking) {
@@ -249,26 +377,26 @@ export function useChat(state, utils) {
                                             scrollChatToBottom();
                                         }
                                     }
-                                    // Handle both 'delta' (regular) and 'content' (incognito) formats
+                                    // A segment citation arrives before the text that carries it.
+                                    if (data.source) {
+                                        if (isFirstChunk) {
+                                            startAssistantMessage();
+                                            isFirstChunk = false;
+                                        }
+                                        upsertSource(assistantMessage.sources, data.source);
+                                    }
+                                    // Handle both 'delta' and 'content' (incognito before 2a) formats
                                     const textContent = data.delta || data.content;
                                     if (textContent) {
                                         const shouldScroll = isChatScrolledToBottom();
 
                                         if (isFirstChunk) {
-                                            isChatLoading.value = false;
-                                            assistantMessage = Vue.reactive({
-                                                role: 'assistant',
-                                                content: '',
-                                                html: '',
-                                                thinking: '',
-                                                thinkingExpanded: false
-                                            });
-                                            chatMessages.value.push(assistantMessage);
+                                            startAssistantMessage();
                                             isFirstChunk = false;
                                         }
 
                                         assistantMessage.content += textContent;
-                                        assistantMessage.html = renderChatHtml(assistantMessage.content);
+                                        assistantMessage.html = renderChatHtml(assistantMessage.content, assistantMessage.sources);
 
                                         if (shouldScroll) {
                                             await Vue.nextTick();
@@ -281,7 +409,7 @@ export function useChat(state, utils) {
                                         // instead of presenting it as complete (issue #349).
                                         if (data.truncated && assistantMessage && assistantMessage.content) {
                                             assistantMessage.content += `\n\n_⚠️ ${t('chat.responseTruncated')}_`;
-                                            assistantMessage.html = renderChatHtml(assistantMessage.content);
+                                            assistantMessage.html = renderChatHtml(assistantMessage.content, assistantMessage.sources);
                                         }
                                         return;
                                     }
@@ -314,7 +442,7 @@ export function useChat(state, utils) {
                 const errSuffix = `\n\n_⚠️ ${t('chat.connectionEnded', { error: error.message })}_`;
                 if (partial) {
                     assistantMessage.content = partial + errSuffix;
-                    assistantMessage.html = renderChatHtml(assistantMessage.content);
+                    assistantMessage.html = renderChatHtml(assistantMessage.content, assistantMessage.sources);
                 } else {
                     assistantMessage.content = t('chat.errorWithMessage', { error: error.message });
                     assistantMessage.html = `<span class="text-red-500">${t('chat.errorWithMessage', { error: error.message })}</span>`;
@@ -363,7 +491,7 @@ export function useChat(state, utils) {
             showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
-        await postChatDownload(chatMessages.value);
+        await postChatDownload(chatMessages.value.map((m) => ({ ...m, content: chatMessageText(m) })));
     };
 
     // One response and the question before it, as chat-<title>-response.docx.
@@ -373,7 +501,7 @@ export function useChat(state, utils) {
             showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
-        await postChatDownload(messages, 'response');
+        await postChatDownload(messages.map((m) => ({ ...m, content: chatMessageText(m) })), 'response');
     };
 
     // scope 'response' marks a one-response download; it only changes the filename.
@@ -474,6 +602,7 @@ export function useChat(state, utils) {
         isChatScrolledToBottom,
         scrollChatToBottom,
         handleChatBubbleClick,
+        chatMessageText,
         toggleChatMaximize,
         sendChatMessage,
         handleChatKeydown,

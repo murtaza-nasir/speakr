@@ -4726,6 +4726,72 @@ select:disabled {
     border-color: var(--border-focus);
 }
 
+/* Segment citations in the recording chat (Ambrose phase 2a): a numbered
+   marker that seeks the player, and the sources list under the answer. A
+   quote not found in its segment gets a dashed marker and a note. */
+.chat-cite {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0.05em 0.4em;
+    margin: 0 0.1em;
+    border-radius: 9999px;
+    border: 1px solid var(--border-accent, var(--border-secondary));
+    background-color: var(--bg-accent);
+    color: var(--text-accent);
+    font-family: inherit;
+    font-size: 0.72em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    text-align: center;
+    vertical-align: 0.12em;
+    cursor: pointer;
+}
+.chat-cite:hover {
+    border-color: var(--border-focus);
+}
+.chat-cite--unverified,
+.chat-cite:disabled {
+    border-style: dashed;
+}
+.chat-cite:disabled {
+    cursor: default;
+}
+.chat-sources {
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.85em;
+}
+.chat-sources__label {
+    margin-bottom: var(--sp-1);
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.chat-sources ol {
+    margin: 0;
+    padding-inline-start: 1.4em;
+    list-style: decimal;
+}
+.chat-sources li {
+    margin: 0.25em 0;
+    color: var(--text-secondary);
+}
+.chat-sources li > * + * {
+    margin-inline-start: 0.35em;
+}
+.chat-sources .chat-ts-chip {
+    margin: 0;
+}
+.chat-sources__speaker {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.chat-sources__unverified {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
 /* ------------------------------------------------------------------ */
 /* Identify Speakers modal (templates/modals/speaker-modal.html, #395) */
 /* ------------------------------------------------------------------ */
