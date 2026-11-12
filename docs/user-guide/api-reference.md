@@ -138,7 +138,7 @@ The specification is read from `/api/v1/openapi.json` under that URL, and each o
 
 A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Such calls require CORS headers, which are not part of Speakr's responses, so they are blocked unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
 
-Speech-to-text in Open WebUI is the job of a transcription server. [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service), which Speakr can also use, has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`) that can be set as the speech-to-text engine in Open WebUI. Audio transcribed this way is not stored in Speakr.
+Speech-to-text in Open WebUI is the job of a transcription server. If you use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) with Speakr, you can use it for Open WebUI as well, as it has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`). Audio transcribed this way is not stored in Speakr.
 
 ---
 
