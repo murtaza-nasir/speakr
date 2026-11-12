@@ -134,11 +134,11 @@ Speakr can be added to [Open WebUI](https://openwebui.com/) as an OpenAPI tool s
     - **Auth:** Bearer, with the token from step 1
 3. Save the connection. In a chat, turn on the Speakr tools from the **+** menu under **Tools**.
 
-The specification is read from `/api/v1/openapi.json` under that URL, and each operation in it becomes one tool. With a scoped token, only the operations that token may call are listed, so a **Read only** token cannot delete or change anything.
+The specification is read from `/api/v1/openapi.json` under that URL, and each operation in it becomes one tool. With a scoped token, only the operations that token may call are listed, so nothing can be deleted or changed with a **Read only** token. Semantic search across recordings is available through the search operation (`mode=semantic`) when it is enabled on the server.
 
-A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Speakr does not send CORS headers, so the browser blocks those calls unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
+A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Such calls require CORS headers, which are not part of Speakr's responses, so they are blocked unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
 
-Speakr does not offer an OpenAI-compatible transcription endpoint (`/v1/audio/transcriptions`), so it cannot be selected as the speech-to-text engine in Open WebUI. Recordings reach Speakr through the web interface, the upload API or the other integrations described here.
+Speech-to-text in Open WebUI is the job of a transcription server. [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service), which Speakr can also use, has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`) that can be set as the speech-to-text engine in Open WebUI. Audio transcribed this way is not stored in Speakr.
 
 ---
 
