@@ -287,6 +287,21 @@ def test_every_available_theme_has_a_preview_image():
         assert head[:4] == b'RIFF' and head[8:12] == b'WEBP', theme.preview
 
 
+def _selector_list(sel):
+    """The selectors of a rule: its top-level commas, not those inside :is() or :has()."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(sel):
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            parts.append(sel[start:i])
+            start = i + 1
+    parts.append(sel[start:])
+    return parts
+
+
 def test_theme_stylesheets_are_scoped_to_their_theme():
     """Every rule of static/css/themes/<id>.css applies only under
     html[data-ui-theme="<id>"], so a theme never changes another one."""
@@ -306,11 +321,11 @@ def test_theme_stylesheets_are_scoped_to_their_theme():
             if ch == '{':
                 sel = selector.strip()
                 if depth == 0 and not sel.startswith('@'):
-                    for part in sel.split(','):
+                    for part in _selector_list(sel):
                         assert part.strip().startswith(scope), f'{name}: {part.strip()!r} is not under {scope}'
                 elif depth == 1 and sel and not sel.startswith('@') and not re.match(r'^(from|to|\d+%)', sel):
                     # rules inside @media / @supports
-                    for part in sel.split(','):
+                    for part in _selector_list(sel):
                         assert part.strip().startswith(scope), f'{name}: {part.strip()!r} is not under {scope}'
                 depth += 1
                 selector = ''

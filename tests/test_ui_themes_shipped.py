@@ -65,8 +65,50 @@ def test_every_rule_of_a_theme_is_scoped_to_that_theme(theme_id):
         selector = selector.strip()
         if not selector or selector.startswith("@") or re.fullmatch(r"(from|to|[\d.]+%)(\s*,\s*[\d.]+%)*", selector):
             continue
-        for part in selector.split(","):
+        for part in _top_level_parts(selector):
             assert part.strip().startswith(scope), f"{theme_id}.css: unscoped selector {part.strip()!r}"
+
+
+def _top_level_parts(selector):
+    """Split a selector list on its commas, but not the commas inside :is() or :has()."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(selector):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(selector[start:i])
+            start = i + 1
+    parts.append(selector[start:])
+    return parts
+
+
+# Every page header: the main app's (and the share page's), Ask Ambrose's, and
+# the account, admin and group pages' page-header.html.
+EVERY_PAGE_HEADER = ":is(#app > header, #inquire-app > header, #global-header)"
+
+
+@pytest.mark.parametrize("theme_id", SHIPPED)
+def test_the_header_controls_are_styled_on_every_page_header(theme_id):
+    """A rule for the shared header controls (components/header-controls.html)
+    scoped to #app > header alone styles them on the recordings page only, and
+    Ask Ambrose and the account pages fall back to the unstyled buttons."""
+    name = "styles.css" if theme_id == "default" else f"themes/{theme_id}.css"
+    css = open(os.path.join(STATIC_DIR, "css", name), encoding="utf-8").read()
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    for selector in re.findall(r"([^{}]+)\{", css):
+        for part in _top_level_parts(selector):
+            part = part.strip()
+            if "header-action" not in part and "data-user-menu-toggle" not in part:
+                continue
+            if "#app" not in part or EVERY_PAGE_HEADER in part:
+                continue
+            # The recordings page's own controls: the detail view's header and
+            # the New button that classic moves into the rail.
+            if "app-header--detail" in part or "btn--primary.header-action" in part:
+                continue
+            raise AssertionError(f"{name}: header controls styled on the recordings page only: {part!r}")
 
 
 def test_the_picker_offers_all_six(user):

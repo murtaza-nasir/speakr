@@ -324,14 +324,14 @@ html[data-ui-theme="cards"] .dropdown-menu {
  *    main card with a generous radius.
  * ========================================================================= */
 html[data-ui-theme="cards"] #app { background: var(--c-bg); }
-html[data-ui-theme="cards"] #app > header {
+html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) {
     background: var(--c-bg);
     border-bottom: 0;
     min-height: 64px !important; /* the header's min-height is an inline style */
 }
-html[data-ui-theme="cards"] #app > header h1 { font-weight: 700; letter-spacing: -0.01em; color: var(--c-text); }
-html[data-ui-theme="cards"] #app > header .btn--icon { border-radius: var(--c-r-pill); }
-html[data-ui-theme="cards"] #app > header .btn--icon:hover { background: var(--c-hover); }
+html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) h1 { font-weight: 700; letter-spacing: -0.01em; color: var(--c-text); }
+html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) .btn--icon { border-radius: var(--c-r-pill); }
+html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) .btn--icon:hover { background: var(--c-hover); }
 
 html[data-ui-theme="cards"] .sidebar {
     background: transparent;
@@ -807,10 +807,6 @@ html[data-ui-theme="cards"] .modal-panel--danger .modal-header { border-bottom-c
  * 8. Inquire: filter column of tonal chip groups, conversation card.
  * ========================================================================= */
 html[data-ui-theme="cards"] #inquire-app { background: var(--c-bg); }
-html[data-ui-theme="cards"] #inquire-app > header {
-    background: var(--c-bg); border-bottom: 0;
-    min-height: 64px !important; /* inline style on the header */
-}
 html[data-ui-theme="cards"] .inq-side {
     background: transparent;
     border-right: 0;
@@ -1066,7 +1062,7 @@ html[data-ui-theme="cards"] .speaker-run > .speaker-tablet-group { padding: 0; }
 
 /* header controls: the install button and the dark-mode switch carry their
    colours in shared markup (an inline style, and text-white on the accent tint) */
-html[data-ui-theme="cards"] #app header .btn[style*="#16a34a"] {
+html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) .btn[style*="#16a34a"] {
     /* !important: the colours are an inline style attribute */
     background: var(--c-ok-c) !important;
     color: var(--c-on-ok-c) !important;
@@ -1083,7 +1079,7 @@ html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { o
    design's heights (icon buttons 38px tall, header buttons 40px) instead of the 30px of btn--sm. */
 @media (max-width: 767px) {
     html[data-ui-theme="cards"] .mh-tools .btn--icon.btn--sm { min-height: 38px; }
-    html[data-ui-theme="cards"] #app > header .btn.header-action.btn--sm { min-height: 40px; }
+    html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action.btn--sm { min-height: 40px; }
 }
 
 /* ---- Round 3 QA fixes ------------------------------------------------------ */

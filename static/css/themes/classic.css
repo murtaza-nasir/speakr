@@ -243,21 +243,19 @@ html[data-ui-theme="classic"] a { color: var(--accent); }
 
 /* ---- 4. Shell: header, rail, main card ----------------------------------- */
 
-html[data-ui-theme="classic"] header#global-header,
-html[data-ui-theme="classic"] #app > header,
+html[data-ui-theme="classic"] :is(#app > header, #inquire-app > header, #global-header),
 html[data-ui-theme="classic"] body > header {
     background: var(--bg) !important;
     border-bottom: 0 !important;
     min-height: 64px !important;
     padding-inline: 16px !important;
 }
-html[data-ui-theme="classic"] #app > header h1,
-html[data-ui-theme="classic"] #global-header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-html[data-ui-theme="classic"] #global-header .t-meta { font-size: 15px; font-weight: 500; color: var(--text-2); }
+html[data-ui-theme="classic"] :is(#app > header, #inquire-app > header, #global-header) h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+html[data-ui-theme="classic"] :is(#inquire-app > header, #global-header) .t-meta { font-size: 15px; font-weight: 500; color: var(--text-2); }
 
 /* Round icon buttons: 40px in the header, 36 elsewhere (see .btn--icon) */
 html[data-ui-theme="classic"] .header-action.btn--icon,
-html[data-ui-theme="classic"] #app > header .btn--icon {
+html[data-ui-theme="classic"] :is(#app > header, #inquire-app > header, #global-header) .btn--icon {
     width: 40px; height: 40px; min-height: 40px; padding: 0;
 }
 
@@ -291,7 +289,7 @@ html[data-ui-theme="classic"] .main-content > div { border-radius: inherit; }
     html[data-ui-theme="classic"] .sidebar { top: 0; z-index: 60; background: var(--surface); width: min(300px, 85vw); }
     html[data-ui-theme="classic"] .sidebar-content-wrapper { width: 100%; }
     html[data-ui-theme="classic"] .sidebar .sb-head { padding-top: 16px; }
-    html[data-ui-theme="classic"] #app > header { background: var(--surface) !important; border-bottom: 1px solid var(--divider) !important; }
+    html[data-ui-theme="classic"] :is(#app > header, #inquire-app > header, #global-header) { background: var(--surface) !important; border-bottom: 1px solid var(--divider) !important; }
 }
 
 /* ---- 5. Sidebar: navigation rail + list ---------------------------------- */
@@ -1013,11 +1011,6 @@ html[data-ui-theme="classic"] main form label.block { font-size: 13px; font-weig
 html[data-ui-theme="classic"] footer.border-t { border-top: 0 !important; }
 
 /* Inquire: same shell as the recordings view */
-html[data-ui-theme="classic"] #inquire-app > header {
-    background: var(--bg) !important;
-    border-bottom: 0 !important;
-    min-height: 64px !important;
-}
 html[data-ui-theme="classic"] #inquire-app .w-80.flex-shrink-0 {
     background: transparent;
     border: 0;
@@ -1048,7 +1041,6 @@ html[data-ui-theme="classic"] .filter-checkbox:checked::after { color: var(--on-
 }
 @media (max-width: 1023px) {
     html[data-ui-theme="classic"] #inquire-app .w-80.flex-shrink-0 { background: var(--surface); width: min(300px, 85vw); }
-    html[data-ui-theme="classic"] #inquire-app > header { background: var(--surface) !important; border-bottom: 1px solid var(--divider) !important; }
 }
 html[data-ui-theme="classic"] #inquire-app .inquire-conversation-header { background: transparent !important; border-bottom: 1px solid var(--divider) !important; }
 html[data-ui-theme="classic"] #inquire-app textarea.field { border-radius: 24px; padding: 12px 20px; min-height: 48px; }
@@ -1070,8 +1062,10 @@ html[data-ui-theme="classic"] .mhdr-tools > * { flex: none; }
 html[data-ui-theme="classic"] .mhdr-meta { width: 100%; }
 html[data-ui-theme="classic"] .mhdr-meta .chip { max-width: 100%; }
 @media (max-width: 639px) {
+    /* Only the recordings page drops the header's New: its phone list shows the rail's New.
+       Ask Ambrose and the account pages keep it, as they have no other one. */
     html[data-ui-theme="classic"] #app > header .btn--primary.header-action { display: none; }
-    html[data-ui-theme="classic"] #app > header { padding-inline: 8px !important; }
+    html[data-ui-theme="classic"] :is(#app > header, #inquire-app > header, #global-header) { padding-inline: 8px !important; }
 }
 html[data-ui-theme="classic"] .chat-message .prose .citation-refs a[href^="/recordings/"] { background: none !important; color: var(--accent) !important; }
 html[data-ui-theme="classic"] .chip.bg-purple-500,

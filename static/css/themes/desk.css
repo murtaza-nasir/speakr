@@ -979,9 +979,9 @@ html[data-ui-theme="desk"] { --hdr-icon-w: var(--ctl-h); --hdr-icon-h: var(--ctl
 @media (max-width: 639px) {
     html[data-ui-theme="desk"] { --hdr-icon-w: 32px; --hdr-icon-h: 32px; }
 }
-html[data-ui-theme="desk"] #app > header .btn.header-action[data-user-menu-toggle] {
+html[data-ui-theme="desk"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
     background: transparent;
     color: var(--text-2);
     border: 1px solid var(--line);
 }
-html[data-ui-theme="desk"] #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--row-hover); color: var(--text-primary); }
+html[data-ui-theme="desk"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--row-hover); color: var(--text-primary); }

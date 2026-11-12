@@ -1639,9 +1639,9 @@ html[data-ui-theme="workspace"] .flex-shrink-0.border-t:has(+ #mainContentColumn
 /* Header icon set (styles.css): Search, New and the account menu share the 40x30
    control, and the account menu takes Search's quiet outlined look. */
 html[data-ui-theme="workspace"] { --hdr-icon-w: 40px; --hdr-icon-h: var(--ctl-h); }
-html[data-ui-theme="workspace"] #app > header .btn.header-action[data-user-menu-toggle] {
+html[data-ui-theme="workspace"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
     background: var(--bg-secondary);
     color: var(--text-primary);
     border-color: var(--border-secondary);
 }
-html[data-ui-theme="workspace"] #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--bg-tertiary); }
+html[data-ui-theme="workspace"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--bg-tertiary); }

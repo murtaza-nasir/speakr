@@ -1083,7 +1083,7 @@ html[data-ui-theme="focus"] body footer { border-top: 0 !important; color: var(-
  * Share page: the same reading surface as the app, minus the chrome.
  * ========================================================================= */
 html[data-ui-theme="focus"] body #app > header.px-4.py-3 { background: var(--f-bg); border-bottom: 0; padding: 18px var(--f-gutter) 10px; }
-html[data-ui-theme="focus"] body #app > header h1 { font-family: var(--f-font-read); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+html[data-ui-theme="focus"] body :is(#app > header, #inquire-app > header, #global-header) h1 { font-family: var(--f-font-read); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
 html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-secondary\)\].p-4.border-b { background: transparent; border-bottom: 0; padding: 6px var(--f-gutter) 14px; }
 html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b { background: transparent; border-bottom: 1px solid var(--f-divider); }
 html[data-ui-theme="focus"] body #app > main > .bg-\[var\(--bg-tertiary\)\].border-b button { font-size: var(--f-fs-ui); font-weight: 500; border-radius: 0; background: transparent !important; }
@@ -1260,8 +1260,8 @@ html[data-ui-theme="focus"] body .transcription-box .speaker-tablet { min-width:
 /* Header icon set (styles.css): 36px circles. Search is a quiet button here,
    so the account menu stays quiet too instead of taking the accent fill. */
 html[data-ui-theme="focus"] { --hdr-icon-w: 36px; --hdr-icon-h: 36px; }
-html[data-ui-theme="focus"] body #app > header .btn.header-action[data-user-menu-toggle] {
+html[data-ui-theme="focus"] body :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
     background: transparent;
     color: var(--f-text-2);
 }
-html[data-ui-theme="focus"] body #app > header .btn.header-action[data-user-menu-toggle]:hover { background: var(--f-surface-2); color: var(--f-text); }
+html[data-ui-theme="focus"] body :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--f-surface-2); color: var(--f-text); }
