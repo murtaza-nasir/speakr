@@ -1559,20 +1559,22 @@ html[data-ui-theme="workspace"] [data-mobile-bottom-nav] {
 
 /* ---- Round 2 fixes -------------------------------------------------------- */
 
-/* Processing queue: bottom-right corner, never over the recording list. While the chat
-   launcher is shown the queue stacks 8px above it on the same right edge; without it, it
-   sits above the bottom player in the recording view and 64px up elsewhere (variables:
-   primitives.css, "The queue against the recording view's bottom edge"). Collapsed it
-   keeps its header in view instead of sliding down over the launcher. */
+/* Processing queue: bottom-left corner, away from the chat launcher and panel on the
+   right. With the sidebar collapsed (or the list in a drawer) it sits above the bottom
+   player (--detail-bottom-inset, primitives.css) and, collapsed, keeps its header in view
+   instead of sliding down over the player. */
 @media (min-width: 641px) {
     html[data-ui-theme="workspace"] .progress-popup {
-        left: auto;
-        right: var(--chat-fab-right, 16px);
-        bottom: calc(var(--chat-fab-clearance, var(--detail-bottom-inset, 56px)) + 8px);
+        left: 16px;
+        right: auto;
+        bottom: 16px;
         width: 340px;
         max-height: 60vh;
     }
-    html[data-ui-theme="workspace"] .progress-popup.minimized { transform: none; }
+    html[data-ui-theme="workspace"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+        bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
+    }
+    html[data-ui-theme="workspace"] body:has(.main-content:not(.sidebar-open)) .progress-popup.minimized { transform: none; }
 }
 html[data-ui-theme="workspace"] .progress-popup { border-radius: var(--radius-lg); }
 

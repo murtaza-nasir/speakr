@@ -339,19 +339,22 @@ html[data-ui-theme="desk"] .desk-statusbar__dot { width: 7px; height: 7px; borde
 html[data-ui-theme="desk"] .desk-statusbar__queue.is-busy .desk-statusbar__dot { background: #d9890b; animation: pulseDot 1.4s ease-in-out infinite; }
 
 /* The queue opens as a flat panel above the status bar (collapsed: hidden,
-   the status bar's button opens it) */
+   the status bar's button opens it). It sits bottom-left, over the list column,
+   away from the chat launcher and panel on the right. With the sidebar collapsed
+   (or the list in a drawer) it sits above the bottom player instead
+   (--detail-bottom-inset, primitives.css). */
 @media (min-width: 641px) {
-    /* Stacked 8px above the chat launcher on its right edge while it is shown;
-       otherwise above the bottom player (recording view) or the status bar. */
     html[data-ui-theme="desk"] .progress-popup {
-        left: auto;
-        right: var(--chat-fab-right, var(--sp-3));
-        bottom: calc(var(--chat-fab-clearance, var(--detail-bottom-inset, calc(var(--status-h) - 2px))) + 8px);
+        left: var(--sp-3);
+        right: auto;
+        bottom: calc(var(--status-h) + 6px);
         width: 340px;
         min-width: 0;
         border-radius: var(--r-3);
     }
-    html[data-ui-theme="desk"] .progress-popup.minimized { display: none; }
+    html[data-ui-theme="desk"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+        bottom: calc(var(--detail-bottom-inset, calc(var(--status-h) - 2px)) + 8px);
+    }
     html[data-ui-theme="desk"] .progress-popup__card {
         border-radius: var(--r-3);
         border: 1px solid var(--line);
@@ -364,6 +367,11 @@ html[data-ui-theme="desk"] .desk-statusbar__queue.is-busy .desk-statusbar__dot {
         border-bottom: 1px solid var(--divider);
         padding: 4px var(--sp-3);
     }
+}
+/* Collapsed, the queue hides behind the status bar button. The status bar is shown from
+   1024px only, so below that the collapsed header strip stays on screen to reopen it. */
+@media (min-width: 1024px) {
+    html[data-ui-theme="desk"] .progress-popup.minimized { display: none; }
 }
 html[data-ui-theme="desk"] .progress-popup__header * { color: var(--text-2); }
 html[data-ui-theme="desk"] .progress-popup,

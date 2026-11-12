@@ -927,16 +927,16 @@ html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover
 @media (min-width: 641px) {
     html[data-ui-theme="cards"] .progress-popup { left: 16px; bottom: 16px; width: 324px; }
 }
-/* With the sidebar collapsed there is no sidebar column to sit in, and the
-   bottom-left corner would cover the left edge of the main card. The popup then
-   moves to the bottom-right: 8px above the chat button on its right edge while
-   the button is shown, otherwise above the player bar (recording view) or in the
-   corner. Collapsed it keeps its header in view instead of sliding down. */
+/* With the sidebar collapsed there is no sidebar column to sit in. The popup
+   stays bottom-left, away from the chat button and panel on the right, inset
+   past the main card's rounded edge and above the player bar (recording view,
+   --detail-bottom-inset from primitives.css). Collapsed it keeps its header in
+   view instead of sliding down over the player. */
 @media (min-width: 641px) {
     html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
-        left: auto;
-        right: var(--chat-fab-right, 16px);
-        bottom: calc(var(--chat-fab-clearance, var(--detail-bottom-inset, 8px)) + 8px);
+        left: 32px;
+        right: auto;
+        bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
         width: 300px;
     }
     html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup.minimized { transform: none; }
