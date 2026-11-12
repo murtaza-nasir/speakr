@@ -2446,8 +2446,11 @@ select option:hover {
     width: var(--assistant-avatar-size);
     height: var(--assistant-avatar-size);
     border-radius: 999px;
-    background: var(--bg-button);
-    color: var(--text-button);
+    /* The soft accent pair of the header "Ask" button and the scope chip,
+       with a faint ring so the circle still shows on an accent surface. */
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-accent) 28%, transparent);
     font-size: calc(var(--assistant-avatar-size) * 0.5);
     font-weight: 600;
     line-height: 1;
