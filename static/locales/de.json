@@ -3796,7 +3796,6 @@
     "ask": "{{name}} fragen",
     "scopeRecording": "Diese Aufnahme",
     "scopeLibrary": "Alle Aufnahmen",
-    "recordingIntro": "{{name}} beantwortet Fragen zu dieser Aufnahme und zeigt Ihnen die Stelle, an der etwas gesagt wurde.",
     "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter."
   }
 }

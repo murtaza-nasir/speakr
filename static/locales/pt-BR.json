@@ -3796,7 +3796,6 @@
     "ask": "Perguntar a {{name}}",
     "scopeRecording": "Esta gravação",
     "scopeLibrary": "Todas as gravações",
-    "recordingIntro": "{{name}} pode responder perguntas sobre esta gravação e mostrar o momento em que algo foi dito.",
     "sendHint": "Enviar (Enter). Para uma nova linha, pressione Ctrl+Enter."
   }
 }

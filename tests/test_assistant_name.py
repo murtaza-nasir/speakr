@@ -180,9 +180,19 @@ def test_recording_chat_shows_the_assistant(template):
     assert 'fa-robot' not in html
     assert "includes/assistant_avatar.html" in html
     assert "t('assistant.scopeRecording')" in html
-    assert "t('assistant.recordingIntro', { name: assistantName })" in html
+    assert "assistant.recordingIntro" not in html
     assert "t('chat.placeholder', { name: assistantName })" in html
     assert ":title=\"t('assistant.sendHint')\"" in html
+
+
+def test_chat_button_keeps_the_chat_icon():
+    # The launcher shows the chat symbol; the name is in its label and tooltip.
+    html = _read('components', 'detail', 'floating-chat.html')
+    start = html.index('class="floating-chat-fab"')
+    fab = html[start:html.index('</button>', start)]
+    assert 'fa-comments' in fab
+    assert 'assistant_avatar' not in fab
+    assert ":aria-label=\"t('assistant.ask', { name: assistantName })\"" in fab
 
 
 def test_ask_page_shows_the_assistant():
@@ -211,7 +221,7 @@ def _flat(d, prefix=''):
             yield f'{prefix}{k}', v
 
 
-NAMED_KEYS = ('assistant.ask', 'assistant.recordingIntro', 'chat.placeholder',
+NAMED_KEYS = ('assistant.ask', 'chat.placeholder',
               'chat.availableAfterTranscription', 'chat.cannotChatTranscriptionFailed',
               'inquire.title', 'inquire.askQuestions', 'inquire.placeholder',
               'inquirePrivacy.title', 'inquirePrivacy.description', 'inquirePrivacy.summariesHelp')

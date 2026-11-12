@@ -3796,7 +3796,6 @@
     "ask": "Ask {{name}}",
     "scopeRecording": "This recording",
     "scopeLibrary": "All recordings",
-    "recordingIntro": "{{name}} can answer questions about this recording and point you to the moment something was said.",
     "sendHint": "Send (Enter). For a new line, press Ctrl+Enter."
   }
 }
