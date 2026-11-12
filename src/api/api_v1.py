@@ -417,7 +417,7 @@ OPENAPI_SPEC = {
             "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}, "hotwords": {"type": "string", "description": "Connectors that accept hotword biasing route this to their native parameter (WhisperX hotwords, Mistral context_bias, OpenAI prompt, etc.). Connectors that ignore it drop it silently."}, "initial_prompt": {"type": "string", "description": "Free-text context hint. Same per-connector behaviour as hotwords."}, "transcription_model": {"type": "string", "description": "Per-request model override. Validated against the admin-curated visible-models list. Falls back to the configured default if absent or invalid."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/summarize": {
-            "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Job queued"}}}
+            "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}, "prompt_mode": {"type": "string", "enum": ["replace", "append"], "description": "replace (default): custom_prompt replaces the resolved prompt. append: it is added after the resolved prompt."}, "additional_instructions": {"type": "string", "description": "Added for this run after the prompt that runs."}, "prompt_variables": {"type": "object", "description": "Values for the {{variable}} placeholders; replaces the stored values."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/chat": {
             "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string"}, "conversation_history": {"type": "array"}}}}}}, "responses": {"200": {"description": "Chat response"}}}
@@ -3228,7 +3228,8 @@ def start_summarization(recording_id):
         job_id = queue_summary_reprocess(recording, current_user,
                                          custom_prompt=data.get('custom_prompt'),
                                          prompt_mode=data.get('prompt_mode'),
-                                         prompt_variables=data.get('prompt_variables'))
+                                         prompt_variables=data.get('prompt_variables'),
+                                         additional_instructions=data.get('additional_instructions'))
     except ReprocessError as e:
         return jsonify(api_error(e.code)), e.status
 

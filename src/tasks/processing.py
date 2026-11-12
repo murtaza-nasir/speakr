@@ -385,36 +385,53 @@ def _user_title_instructions(user):
     return DEFAULT_TITLE_PROMPT, 'default'
 
 
-def resolve_summary_instructions(recording):
+def resolve_summary_instructions(recording, viewer=None):
     """Instructions for a recording's summary, and which level supplied them.
 
     tag > folder > user > admin default > shipped default (#412 audit S5).
-    Every tag the owner can see that carries a prompt contributes, in the order
-    the tags were added. The owner's view is used for every processing step,
-    so a summary does not depend on which editor asked for it (S3, S4).
+    Every tag the viewer can see that carries a prompt contributes, in the order
+    the tags were added. The viewer defaults to the owner, whose view is used
+    for every processing step, so an automatic summary does not depend on which
+    editor asked for it (S3, S4).
+
+    Another viewer gets their own prompt (#584): the tags they can see, then
+    their own default. The folder prompt is the owner's, so it applies only
+    when the viewer is the owner.
 
     Returns (instructions, source); source is 'tag', 'folder', 'user', 'admin'
     or 'default'.
     """
+    instructions, source, _supplier = resolve_summary_prompt_detail(recording, viewer)
+    return instructions, source
+
+
+def resolve_summary_prompt_detail(recording, viewer=None):
+    """resolve_summary_instructions with what supplied the prompt (#584).
+
+    Returns (instructions, source, supplier): the list of tags whose prompts
+    were joined for 'tag', the folder for 'folder', the user for 'user', and
+    None for 'admin' and 'default'.
+    """
     owner = recording.owner
-    if owner:
-        tag_prompts = [
-            tag.custom_prompt.strip()
-            for tag in (recording.get_visible_tags(owner) or [])
+    viewer = viewer or owner
+    owner_view = viewer is None or (owner is not None and viewer.id == owner.id)
+    if viewer:
+        tags = [
+            tag for tag in (recording.get_visible_tags(viewer) or [])
             if tag.custom_prompt and tag.custom_prompt.strip()
         ]
-        if tag_prompts:
-            return "\n\n".join(tag_prompts), 'tag'
+        if tags:
+            return "\n\n".join(tag.custom_prompt.strip() for tag in tags), 'tag', tags
     folder = recording.folder
-    if folder and folder.custom_prompt and folder.custom_prompt.strip():
-        return folder.custom_prompt.strip(), 'folder'
-    if owner and owner.summary_prompt and owner.summary_prompt.strip():
-        return owner.summary_prompt, 'user'
+    if owner_view and folder and folder.custom_prompt and folder.custom_prompt.strip():
+        return folder.custom_prompt.strip(), 'folder', folder
+    if viewer and viewer.summary_prompt and viewer.summary_prompt.strip():
+        return viewer.summary_prompt, 'user', viewer
     admin_default = SystemSetting.get_setting('admin_default_summary_prompt', None)
     if admin_default:
-        return admin_default, 'admin'
+        return admin_default, 'admin', None
     from src.config.prompts import DEFAULT_SUMMARY_PROMPT
-    return DEFAULT_SUMMARY_PROMPT, 'default'
+    return DEFAULT_SUMMARY_PROMPT, 'default', None
 
 
 def resolve_title_instructions(recording, viewer=None):
