@@ -3865,7 +3865,6 @@
     "scopeRecording": "Diese Aufnahme",
     "scopeLibrary": "Alle Aufnahmen",
     "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter.",
-    "searchIn": "Suchen in: {{scope}}",
     "jumpToLatest": "Zur neuesten Nachricht"
   }
 }

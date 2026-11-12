@@ -3865,7 +3865,6 @@
     "scopeRecording": "此录音",
     "scopeLibrary": "所有录音",
     "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。",
-    "searchIn": "搜索范围：{{scope}}",
     "jumpToLatest": "跳到最新"
   }
 }

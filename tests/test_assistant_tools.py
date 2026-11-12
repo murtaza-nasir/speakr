@@ -2,7 +2,9 @@
 
 With Inquire and its agent on, the recording panel keeps the whole
 transcript in the prompt (the 2a builder, unchanged) and also offers the
-library tools; the "Search in" filters are a ceiling the tools never widen.
+library tools over every recording the user can access. The panel has no
+filters (they belong to the Ask page): filter fields in its request are
+ignored, and access is the only limit.
 Tools per surface: incognito none, the open recording the library tools, the
 Ask page all. With the agent off, or when the endpoint rejects tool calls,
 the answer is the transcript-only one (a rejected call is retried once
@@ -178,7 +180,7 @@ def test_with_the_agent_off_the_panel_has_no_tools(world, monkeypatch):
     monkeypatch.delenv("ENABLE_INQUIRE_AGENT", raising=False)
     monkeypatch.setattr("src.api.recordings.ENABLE_INQUIRE_MODE", True)
     fake = FakeLLM(_text('Plain answer.'))
-    _, events = _panel(world, fake, filter_tags=[world["tag"]])
+    _, events = _panel(world, fake)
     assert fake.calls[0]['tools'] is None and 'tools' not in {k for k, v in fake.calls[0].items() if v}
     assert fake.calls[0]['messages'] == _builder_messages(world)
     assert _answer(events) == 'Plain answer.'
@@ -207,18 +209,17 @@ def test_the_ask_page_offers_every_tool(world, agent_on):
 
 
 # ---------------------------------------------------------------------------
-# Filters are a ceiling
+# No filters on the panel: access is the only limit
 # ---------------------------------------------------------------------------
 
 def _tool_result(call):
     return json.loads(next(m for m in call['messages'] if m.get('role') == 'tool')['content'])
 
 
-@pytest.mark.parametrize('target', ['untagged', 'foreign'])
-def test_a_tool_outside_the_filter_or_access_gets_nothing(world, agent_on, target):
-    fake = FakeLLM(_call('get_summary', {'recording_id': world[target]}),
-                   _text('Nothing found elsewhere, as far as I can see in the tagged recordings.' * 3))
-    _, events = _panel(world, fake, filter_tags=[world["tag"]])
+def test_a_tool_outside_access_gets_nothing(world, agent_on):
+    fake = FakeLLM(_call('get_summary', {'recording_id': world['foreign']}),
+                   _text('Nothing found elsewhere, as far as I can see in your recordings.' * 3))
+    _, events = _panel(world, fake)
     result = _tool_result(fake.calls[1])
     assert 'not available' in result['error']
     assert 'SECRET SUMMARY' not in json.dumps(fake.calls[1]['messages'])
@@ -226,28 +227,29 @@ def test_a_tool_outside_the_filter_or_access_gets_nothing(world, agent_on, targe
     assert step['status'] == 'error'
 
 
-def test_a_tool_inside_the_filter_reads_it(world, agent_on):
-    fake = FakeLLM(_call('get_summary', {'recording_id': world['tagged']}),
-                   _text('Yes, in [Budget review](/recordings/%d) as well. ' % world['tagged'] * 4))
-    _, events = _panel(world, fake, filter_tags=[world["tag"]])
-    assert _tool_result(fake.calls[1])['summary'] == 'The freeze, again.'
+@pytest.mark.parametrize('target, summary', [('tagged', 'The freeze, again.'), ('untagged', 'Hiring.')])
+def test_a_tool_reads_any_recording_the_user_can_access(world, agent_on, target, summary):
+    title = {'tagged': 'Budget review', 'untagged': 'Hiring plan'}[target]
+    fake = FakeLLM(_call('get_summary', {'recording_id': world[target]}),
+                   _text('Yes, in [%s](/recordings/%d) as well. ' % (title, world[target]) * 4))
+    _, events = _panel(world, fake)
+    assert _tool_result(fake.calls[1])['summary'] == summary
     steps = [e['agent_step'] for e in events if 'agent_step' in e]
-    assert steps[0]['label'] == 'Reading the summary of Budget review' and steps[-1]['status'] == 'done'
+    assert steps[0]['label'] == 'Reading the summary of %s' % title and steps[-1]['status'] == 'done'
     assert any('agent_summary' in e for e in events)
-    assert '](/recordings/%d)' % world['tagged'] in _answer(events)
+    assert '](/recordings/%d)' % world[target] in _answer(events)
 
 
-def test_the_open_recording_is_outside_the_tools_when_its_transcript_fits(world, agent_on):
-    """With the whole transcript in the prompt, a filter that leaves the open
-    recording out keeps it out of the tools too."""
-    fake = FakeLLM(_call('get_transcript', {'recording_id': world['rec']}), _text('Done here. ' * 30))
-    _panel(world, fake, filter_tags=[world["tag"]])
-    assert 'not available' in _tool_result(fake.calls[1])['error']
-
-
-def test_a_bad_filter_date_is_refused_not_dropped(world, agent_on):
-    resp, _ = _panel(world, FakeLLM(), filter_date_from='not a date')
-    assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_filter_date'
+def test_filter_fields_sent_to_the_panel_are_ignored(world, agent_on):
+    """A request that still carries the Ask page's filter keys (a tag that
+    leaves "Hiring plan" out, a date that does not parse) is answered over
+    the whole accessible library."""
+    fake = FakeLLM(_call('get_summary', {'recording_id': world['untagged']}),
+                   _text('Yes, in [Hiring plan](/recordings/%d) too. ' % world['untagged'] * 4))
+    resp, events = _panel(world, fake, filter_tags=[world["tag"]], filter_date_from='not a date')
+    assert resp.status_code == 200
+    assert _tool_result(fake.calls[1])['summary'] == 'Hiring.'
+    assert events[-1].get('end_of_stream') is True
 
 
 # ---------------------------------------------------------------------------

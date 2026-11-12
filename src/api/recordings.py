@@ -995,8 +995,8 @@ def reset_status(recording_id):
 
 
 def _assistant_library_tools():
-    """Whether the recording panel offers the library tools and its "Search
-    in" filter (Ambrose 2b): Inquire and its agent both on."""
+    """Whether the recording panel offers the library tools (Ambrose 2b):
+    Inquire and its agent both on."""
     from src.services.inquire_agent import agent_enabled
     return bool(ENABLE_INQUIRE_MODE and agent_enabled())
 
@@ -1109,7 +1109,6 @@ def index(recording_id=None, label_name=None):
                          connector_supports_hotwords=connector_supports_hotwords,
                          connector_supports_initial_prompt=connector_supports_initial_prompt,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
-                         assistant_library_tools=_assistant_library_tools(),
                          enable_audio_removed_filter=enable_audio_removed_filter,
                          enable_internal_sharing=_self.ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
@@ -2971,8 +2970,8 @@ def chat_with_transcription():
         # segments, the participants, the notes this user can see, the
         # output language and the assistant's name (Ambrose phase 2a). The
         # history keeps the numbering the panel showed for earlier citations.
-        from src.services.assistant_events import (agent_user_context, filters_from_request, panel_history,
-                                                   recording_events, tools_for_surface)
+        from src.services.assistant_events import (agent_user_context, panel_history, recording_events,
+                                                   tools_for_surface)
         from src.services.inquire_agent import run_inquire_agent
         from src.services.recording_chat import build_chat_messages, transcript_cut
         from src.utils.localization import request_language
@@ -2982,15 +2981,14 @@ def chat_with_transcription():
                                                  panel_history(message_history), with_sources=True)
 
         # Library tools on an open recording (Ambrose 2b): with the agent on,
-        # the model may also search the other recordings, within the "Search
-        # in" filters and the user's access. With it off, or when the
-        # endpoint rejects tool calls, the answer is the transcript-only one.
+        # the model may also search the other recordings the user can access.
+        # The panel has no filters (they live on the Ask page), so any
+        # filter_* fields in the request are ignored. With the agent off, or
+        # when the endpoint rejects tool calls, the answer is the
+        # transcript-only one.
         recording_scope = None
         if _assistant_library_tools():
-            try:
-                filters = filters_from_request(data)
-            except ValueError:
-                return jsonify(api_error('invalid_filter_date')), 400
+            filters = {}
             limit = SystemSetting.get_setting('transcript_length_limit', 30000)
             recording_scope = {
                 'messages': messages,

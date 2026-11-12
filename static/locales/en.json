@@ -3865,7 +3865,6 @@
     "scopeRecording": "This recording",
     "scopeLibrary": "All recordings",
     "sendHint": "Send (Enter). For a new line, press Ctrl+Enter.",
-    "searchIn": "Search in: {{scope}}",
     "jumpToLatest": "Jump to latest"
   }
 }

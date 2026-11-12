@@ -1,9 +1,9 @@
 /**
- * The library filters Ambrose may read (phase 2b): the Ask page's filter
- * column and the recording panel's "Search in" popover are two views of this
- * one state. The filters are a ceiling: the server intersects them with the
- * user's access, and the tools narrow within them, never beyond
- * (resolve_allowed_recording_ids). Default: all recordings.
+ * The library filters Ambrose may read on the Ask page (phase 2b): the state
+ * of its filter column. The filters are a ceiling: the server intersects them
+ * with the user's access, and the tools narrow within them, never beyond
+ * (resolve_allowed_recording_ids). Default: all recordings. The recording
+ * panel has no filters.
  */
 
 /** "2 tags · Date Range", in the wording of the Ask page's active-filter pills; '' with none. */
@@ -16,7 +16,7 @@ export function filterSummary(filters, t) {
     return parts.join(' · ');
 }
 
-/** The request fields both chat routes read (assistant_events.filters_from_request). */
+/** The request fields the Ask page's chat route reads (assistant_events.filters_from_request). */
 export function filterFields(filters) {
     return {
         filter_tags: [...filters.selectedTags],
@@ -38,8 +38,6 @@ export function useSearchIn({ t }) {
     const tagQuery = ref('');
     const folderQuery = ref('');
     const speakerQuery = ref('');
-    const open = ref(false);
-    let loaded = false;
 
     const load = async () => {
         try {
@@ -50,7 +48,6 @@ export function useSearchIn({ t }) {
             available.folders = data.folders || [];
             available.speakers = data.speakers || [];
             available.recordings = data.recordings || [];
-            loaded = true;
         } catch (error) {
             console.error('Error loading available filters:', error);
         }
@@ -75,32 +72,12 @@ export function useSearchIn({ t }) {
         filters.dateTo = null;
     };
 
-    // A click outside the chip and its popover, or Escape, closes it.
-    const onOutside = (event) => {
-        if (event.type === 'keydown' && event.key !== 'Escape') return;
-        if (event.type === 'click' && event.target.closest && event.target.closest('.assistant-search-in')) return;
-        close();
-    };
-    const close = () => {
-        open.value = false;
-        document.removeEventListener('click', onOutside, true);
-        document.removeEventListener('keydown', onOutside, true);
-    };
-    const toggle = () => {
-        if (open.value) { close(); return; }
-        open.value = true;
-        if (!loaded) load();
-        document.addEventListener('click', onOutside, true);
-        document.addEventListener('keydown', onOutside, true);
-    };
-
     return reactive({
-        filters, available, tagQuery, folderQuery, speakerQuery, open,
+        filters, available, tagQuery, folderQuery, speakerQuery,
         filteredTags: matching(() => available.tags, tagQuery, (tag) => tag.name || ''),
         filteredFolders: matching(() => available.folders, folderQuery, (folder) => folder.name || ''),
         filteredSpeakers: matching(() => available.speakers, speakerQuery, (speaker) => String(speaker)),
-        active, summary, label, load, clear, toggle,
-        close,
+        active, summary, label, load, clear,
         fields: () => filterFields(filters),
     });
 }

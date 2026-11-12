@@ -50,11 +50,11 @@ def tools_for_surface(surface):
 
 
 def filters_from_request(data):
-    """The library filters of a chat request, in the agent's form: the Ask
-    page's filter column and the recording panel's "Search in" popover send
-    the same keys (filter_tags, filter_folders, filter_speakers,
-    filter_recording_ids, filter_date_from, filter_date_to). The filters are a
-    ceiling: resolve_allowed_recording_ids intersects them with access."""
+    """The library filters of an Ask page chat request, in the agent's form:
+    the keys of its filter column (filter_tags, filter_folders,
+    filter_speakers, filter_recording_ids, filter_date_from, filter_date_to).
+    The filters are a ceiling: resolve_allowed_recording_ids intersects them
+    with access. The recording panel has no filters."""
     from datetime import datetime
     data = data or {}
     filters = {}

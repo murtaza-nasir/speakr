@@ -61,7 +61,7 @@ describe('turn helpers', () => {
     });
 });
 
-describe('Search in filters', () => {
+describe('Ask page filters', () => {
     const t = (key) => ({ 'inquire.tagsCount': 'tags', 'inquire.dateRange': 'Date Range' }[key] || key);
     const filters = { selectedTags: [1, 2], selectedFolders: [], selectedSpeakers: [], selectedRecordings: [],
         dateFrom: '2026-01-01', dateTo: null };
@@ -71,7 +71,7 @@ describe('Search in filters', () => {
         expect(filterSummary({ ...filters, selectedTags: [], dateFrom: null }, t)).toBe('');
     });
 
-    it('sends the keys both chat routes read', () => {
+    it('sends the keys the Ask chat route reads', () => {
         expect(filterFields(filters)).toEqual({
             filter_tags: [1, 2], filter_folders: [], filter_speakers: [], filter_recording_ids: [],
             filter_date_from: '2026-01-01', filter_date_to: null,

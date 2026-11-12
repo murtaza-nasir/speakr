@@ -210,7 +210,7 @@ def test_ask_page_shows_the_assistant():
     assert "t('inquire.askQuestions', { name: assistantName })" in html
     assert "placeholder='inquire.placeholder'" in html
     assert html.count('v-text="inquireScopeLabel"') == 2
-    # "All recordings" without filters: the shared filter state (modules/assistant/search-in.js)
+    # "All recordings" without filters: the filter state (modules/assistant/search-in.js)
     assert "inquireScopeLabel = computed(() => searchIn.label)" in html
     assert "t('assistant.scopeLibrary')" in _read_static('js', 'modules', 'assistant', 'search-in.js')
     assert 'inquire.sendHint' not in html
@@ -221,7 +221,6 @@ def test_ask_page_shows_the_assistant():
 @pytest.mark.parametrize('template', [
     ('inquire.html',),
     ('components', 'assistant', 'chat.html'),
-    ('components', 'assistant', 'search-in.html'),
     ('components', 'detail', 'floating-chat.html'),
     ('components', 'detail', 'mobile-chat-panel.html'),
     ('components', 'detail', 'recording-chat-footer.html'),
@@ -229,6 +228,17 @@ def test_ask_page_shows_the_assistant():
 def test_no_object_literal_inside_delimiters(template):
     # The phase 1 guard, on every template of the shared chat (Ambrose 2b).
     assert not re.search(r'\$\{[^}]*\{', _read(*template))
+
+
+def test_recording_panel_has_no_filters():
+    # Filters live on the Ask page only (owner decision, Ambrose 2b): the
+    # panel's chat offers no "Search in" and sends no filter fields.
+    for template in (('components', 'assistant', 'chat.html'), ('components', 'detail', 'floating-chat.html'),
+                     ('components', 'detail', 'mobile-chat-panel.html')):
+        html = _read(*template)
+        assert 'search-in' not in html and 'searchIn' not in html and 'search_in' not in html
+    composable = _read_static('js', 'modules', 'composables', 'chat.js')
+    assert 'search-in.js' not in composable and 'filter_' not in composable and 'fields()' not in composable
 
 
 def test_header_button_uses_the_name():

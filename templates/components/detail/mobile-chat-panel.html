@@ -5,7 +5,7 @@
 <div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden">
     {% call assistant_chat(timeline_class='flex-1 overflow-y-auto px-3 py-3 space-y-4',
                            composer_class='border-t border-[var(--border-primary)] px-3 py-3',
-                           search_in=true, footer=recording_chat_footer) %}
+                           footer=recording_chat_footer) %}
         <div class="empty">
             {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
             <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
