@@ -6,7 +6,7 @@ The Vector Store tab controls the intelligence behind Inquire Mode, Speakr's sem
 
 ## Understanding Inquire Mode
 
-Before diving into management, it's worth understanding what you're managing. Inquire Mode breaks each transcript into overlapping chunks of text, converts these chunks into mathematical representations called embeddings, and stores them in a searchable format. When users ask questions, their query gets converted to the same mathematical format and compared against all stored chunks to find the most relevant information.
+Inquire Mode is the search behind the [Ask Ambrose](../user-guide/inquire-mode.md) page (see also [Ambrose settings](ambrose.md)). It breaks each transcript into overlapping chunks of text, converts these chunks into mathematical representations called embeddings, and stores them in a searchable format. When users ask questions, their query gets converted to the same mathematical format and compared against all stored chunks to find the most relevant information.
 
 This approach goes beyond simple keyword matching. The system understands that "budget concerns" relates to "financial constraints" and "cost overruns" even though the exact words differ. This semantic understanding makes Inquire Mode powerful for discovering information that users might not remember precisely.
 

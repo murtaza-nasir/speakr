@@ -93,21 +93,20 @@ These defaults apply to all your recordings unless overridden by tag defaults, f
 
 ### What Ambrose can read
 
-The **What Ambrose can read** section (formerly Inquire Privacy) controls what Ambrose may read when answering questions on the [Ask Ambrose](inquire-mode.md) page. The title contains the name you gave the assistant. Transcripts are always available, since the search needs them; everything else is your choice:
+In the **What Ambrose can read** section (formerly Inquire Privacy) you choose what Ambrose may read when it searches your library: on the [Ask Ambrose](inquire-mode.md) page, and in the recording chat when the agent is on. The title contains the name you gave the assistant. Transcripts are always available, since the search needs them. The other two are your choice:
 
-- **Allow access to summaries** (on by default) - Ambrose can then read your recordings' summaries, a fast way for the agent mode to survey a long recording before it reads the transcript.
-- **Allow access to your notes** (off by default) - your private notes stay unavailable unless you enable this. Only your own notes are ever used; notes on recordings shared with you are never exposed, regardless of this setting.
+- **Allow access to summaries** (on by default): Ambrose can read the summaries of your recordings, a quick way to survey a long recording before reading its transcript.
+- **Allow access to your notes** (off by default): Ambrose can read your notes. Only your own notes are used, never notes on recordings shared with you.
 
-These settings are enforced structurally: a disabled content type is removed from the capabilities of Ambrose entirely, not merely discouraged. See [Ask Ambrose](inquire-mode.md#agent-mode-beta) for how the agent mode uses these permissions.
+When a content type is off, Ambrose has no tool for it. In the recording chat, your notes on the open recording are part of the question in either case. See [What Ambrose can search](ambrose.md#what-ambrose-can-search).
 
-### Timestamp Availability for Summary and Chat
+### Timestamps in summaries
 
-At the top of the Prompt Options you can control whether the AI receives per-line timestamps with the transcript. There are two independent toggles, one for **summarization** and one for **chat**, so you can enable the feature only where you need it:
+At the top of the Prompt Options, **Include timestamps when summarizing** gives the summarization agent the time of each line of the transcript. The summary can then refer to moments in the recording, for example "the budget was approved around 00:14:30". This helps in long meetings, where finding a decision takes time.
 
-- **Summary** - when on, the summarizer sees the time of each line and can reference moments in the recording (for example, "the budget was approved around 00:14:30"). Useful for long meetings where locating a decision matters.
-- **Chat** - when on, the chat assistant can answer time-aware questions such as "what was discussed near the start" or "around the 20-minute mark".
+The format dropdown below the toggle sets how each line is written. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout. You can also select one of your saved transcript templates. The toggle is off by default, which keeps the prompt shorter.
 
-Each toggle has a format dropdown. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout; you can also select any of your saved transcript templates to control exactly how each line is rendered. Both toggles are off by default, which keeps the prompt shorter and avoids spending tokens on timestamps when you do not need them.
+Ambrose needs no setting for times: in the recording chat, answers cite passages of the transcript with their times (see [Citations](ambrose.md#citations)).
 
 ### Notes in Summaries
 

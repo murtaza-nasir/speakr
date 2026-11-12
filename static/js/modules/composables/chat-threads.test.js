@@ -162,6 +162,58 @@ describe('switching recordings mid-answer', () => {
     });
 });
 
+describe('hasChat: the chat mark on a recording row', () => {
+    it('is true once a thread has a message, and false when it is cleared', () => {
+        const threads = createChatThreads({ storage: () => memoryStorage(), userId: 5 });
+        expect(threads.hasChat(recA.id)).toBe(false);
+        const a = threads.select(recA);
+        expect(threads.hasChat(recA.id)).toBe(false);
+        a.input = 'Only a draft';
+        expect(threads.hasChat(recA.id)).toBe(false);
+        a.messages.push({ role: 'user', content: 'What was decided?' });
+        expect(threads.hasChat(recA.id)).toBe(true);
+        expect(threads.hasChat(String(recA.id))).toBe(true);
+        threads.select(recB);
+        expect(threads.hasChat(recA.id)).toBe(true);
+        expect(threads.hasChat(recB.id)).toBe(false);
+        threads.select(recA);
+        threads.clearCurrent();
+        expect(threads.hasChat(recA.id)).toBe(false);
+    });
+
+    it('is false for incognito threads and for unknown ids', () => {
+        const threads = createChatThreads({ storage: () => memoryStorage(), userId: 5 });
+        const secret = threads.select({ id: 'incognito', incognito: true, title: 'Secret' });
+        secret.messages.push({ role: 'user', content: 'Hi' });
+        expect(threads.hasChat('incognito')).toBe(false);
+        expect(threads.hasChat(null)).toBe(false);
+        expect(threads.hasChat(999)).toBe(false);
+    });
+
+    it('follows restore, eviction, deletion and sign-out', () => {
+        const storage = memoryStorage();
+        const first = createChatThreads({ storage: () => storage, userId: 5 });
+        first.select(recA).messages.push({ role: 'user', content: 'Q' }, { role: 'assistant', content: 'A' });
+        first.select(recB);
+        const threads = createChatThreads({ storage: () => storage, userId: 5, max: 2 });
+        expect(threads.hasChat(recA.id)).toBe(false);
+        threads.restore();
+        expect(threads.hasChat(recA.id)).toBe(true);
+        threads.drop(recA.id);
+        expect(threads.hasChat(recA.id)).toBe(false);
+
+        threads.select(recA).messages.push({ role: 'user', content: 'Q' });
+        threads.select(recB);
+        threads.select({ id: 3, title: 'C' });
+        threads.select({ id: 4, title: 'D' });
+        expect(threads.hasChat(recA.id)).toBe(false);
+
+        threads.select(recB).messages.push({ role: 'user', content: 'Q' });
+        threads.clearAll();
+        expect(threads.hasChat(recB.id)).toBe(false);
+    });
+});
+
 describe('least recently used threads', () => {
     it('keeps at most max threads and never drops one that is answering', () => {
         const threads = createChatThreads({ storage: () => null, userId: 5, max: 3 });

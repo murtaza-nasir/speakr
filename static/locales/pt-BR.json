@@ -983,6 +983,7 @@
     "answeredIn": "{{name}} respondeu em {{title}}",
     "answerFailedIn": "{{name}} não conseguiu responder em {{title}}",
     "answeringHere": "{{name}} está respondendo nesta gravação",
+    "chatInThisTab": "Chat nesta aba",
     "keptUntilTabCloses": "Os chats ficam guardados até você fechar esta aba."
   },
   "uiTheme": {
@@ -2769,12 +2770,10 @@
   },
   "timestamps": {
     "title": "Marcações de tempo da transcrição",
-    "description": "Escolha se os agentes de resumo e de chat recebem marcações de tempo na transcrição, para que possam indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
+    "description": "Escolha se o agente de resumo recebe marcações de tempo na transcrição, para que possa indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
     "summaryLabel": "Incluir marcações de tempo ao resumir",
-    "chatLabel": "Incluir marcações de tempo no chat",
     "defaultFormat": "Formato de marcação de tempo padrão",
-    "summaryTemplateLabel": "Formato das marcações de tempo nos resumos",
-    "chatTemplateLabel": "Formato das marcações de tempo no chat"
+    "summaryTemplateLabel": "Formato das marcações de tempo nos resumos"
   },
   "summaryNotes": {
     "title": "Notas nos resumos",

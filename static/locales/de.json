@@ -983,6 +983,7 @@
     "answeredIn": "{{name}} hat in {{title}} geantwortet",
     "answerFailedIn": "{{name}} konnte in {{title}} nicht antworten",
     "answeringHere": "{{name}} antwortet in dieser Aufnahme",
+    "chatInThisTab": "Chat in diesem Tab",
     "keptUntilTabCloses": "Chats bleiben erhalten, bis Sie diesen Tab schließen."
   },
   "uiTheme": {
@@ -2769,12 +2770,10 @@
   },
   "timestamps": {
     "title": "Transkript-Zeitstempel",
-    "description": "Legen Sie fest, ob der Zusammenfassungs- und der Chat-Agent Zeitstempel im Transkript erhalten, damit sie sich darauf beziehen können, wann etwas gesagt wurde. Wählen Sie das Standardformat oder eine Ihrer Transkriptvorlagen.",
+    "description": "Legen Sie fest, ob der Zusammenfassungs-Agent Zeitstempel im Transkript erhält, damit er sich darauf beziehen kann, wann etwas gesagt wurde. Wählen Sie das Standardformat oder eine Ihrer Transkriptvorlagen.",
     "summaryLabel": "Beim Zusammenfassen Zeitstempel einbeziehen",
-    "chatLabel": "Zeitstempel im Chat einbeziehen",
     "defaultFormat": "Standard-Zeitstempelformat",
-    "summaryTemplateLabel": "Zeitstempelformat für Zusammenfassungen",
-    "chatTemplateLabel": "Zeitstempelformat im Chat"
+    "summaryTemplateLabel": "Zeitstempelformat für Zusammenfassungen"
   },
   "summaryNotes": {
     "title": "Notizen in Zusammenfassungen",

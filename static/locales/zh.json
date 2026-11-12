@@ -983,6 +983,7 @@
     "answeredIn": "{{name}} 已在「{{title}}」中回答",
     "answerFailedIn": "{{name}} 未能在「{{title}}」中回答",
     "answeringHere": "{{name}} 正在此录音中回答",
+    "chatInThisTab": "此标签页中的聊天",
     "keptUntilTabCloses": "聊天记录会保留到您关闭此标签页为止。"
   },
   "uiTheme": {
@@ -2769,12 +2770,10 @@
   },
   "timestamps": {
     "title": "转录文本时间戳",
-    "description": "选择摘要代理和聊天代理是否在转录中收到时间戳，以便它们能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
+    "description": "选择摘要代理是否在转录中收到时间戳，以便它能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
     "summaryLabel": "生成摘要时包含时间戳",
-    "chatLabel": "在聊天中包含时间戳",
     "defaultFormat": "默认时间戳格式",
-    "summaryTemplateLabel": "摘要的时间戳格式",
-    "chatTemplateLabel": "聊天中的时间戳格式"
+    "summaryTemplateLabel": "摘要的时间戳格式"
   },
   "summaryNotes": {
     "title": "摘要中的笔记",

@@ -969,8 +969,6 @@ def account():
             if 'summary_notes_section' in request.form:
                 current_user.summary_include_notes = 'summary_include_notes' in request.form
             current_user.summary_timestamp_template_id = _ts_template_id('summary_timestamp_template_id')
-            current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
-            current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
 
         # Check if this is the export filename template form (#348)
         elif 'export_filename_template' in request.form:
