@@ -56,7 +56,7 @@ A folder can sit inside another folder. To create a subfolder:
 
 The **Parent folder** field appears once there is a folder it could go into. For a group folder, choose the group on the **Sharing** tab first: the list then shows only that group's folders. When you edit a folder, the folder itself and its own subfolders are left out of the list.
 
-Subfolders appear under their parent, indented, in the sidebar folder selector, in the folder menu of a recording and in **Move to Folder**. In Account Settings each subfolder's card shows the names of the folders above it. Through the API, set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)).
+Subfolders appear right after their parent. In the sidebar folder selector and the other folder dropdowns, a subfolder shows its full path, such as `Projects / Alpha / 2026`; in the folder menu of a recording and in **Move to Folder** it is indented under its parent. In Account Settings each subfolder's card shows the names of the folders above it. Through the API, set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)).
 
 - **Same scope** - A personal folder can only sit inside another of your personal folders, and a group folder only inside a folder of the same group
 - **No loops** - A folder cannot be moved inside itself or inside one of its own subfolders
