@@ -744,6 +744,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedFolderId = ref(null);
             const foldersEnabled = ref(false);
             const filterFolder = ref('');
+            // Folder filter also lists recordings in subfolders (#585); off by default.
+            const includeChildFolders = ref(false);
 
             // --- Modal State ---
             const showEditModal = ref(false);
@@ -1928,7 +1930,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customBanner, showBanner,
                 showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, hintsPopoverStyle, toggleHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
-                availableFolders, selectedFolderId, foldersEnabled, filterFolder,
+                availableFolders, selectedFolderId, foldersEnabled, filterFolder, includeChildFolders,
 
                 // Audio Recording
                 isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
@@ -2675,6 +2677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const createFolderFromUpload = () => {
                 if (!window.SpeakrOrganizer) return;
                 window.SpeakrOrganizer.openFolderCreate({
+                    folders: availableFolders.value,
                     onSaved: async (folder) => {
                         await recordingsComposable.loadFolders();
                         selectedFolderId.value = folder.id;
@@ -2769,6 +2772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const foldersComposable = useFolders({
                 recordings,
                 availableFolders,
+                filterFolder,
                 selectedRecording,
                 showToast,
                 setGlobalError
@@ -3855,6 +3859,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.removeItem('selectedFolder');
                 }
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(includeChildFolders, () => {
+                if (filterFolder.value && filterFolder.value !== 'none') {
+                    recordingsComposable.loadRecordings(1, false, searchQuery.value);
+                }
             });
 
             // Guard against being stuck filtering by a folder the user can't

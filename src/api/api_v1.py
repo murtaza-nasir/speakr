@@ -195,6 +195,7 @@ OPENAPI_SPEC = {
                     "name": {"type": "string"},
                     "color": {"type": "string"},
                     "group_id": {"type": "integer", "nullable": True},
+                    "parent_id": {"type": "integer", "nullable": True, "description": "Parent folder id; null for a top-level folder"},
                     "is_group_folder": {"type": "boolean"},
                     "custom_prompt": {"type": "string"},
                     "title_prompt": {"type": "string"},
@@ -206,7 +207,8 @@ OPENAPI_SPEC = {
                     "default_transcription_model": {"type": "string"},
                     "protect_from_deletion": {"type": "boolean"},
                     "retention_days": {"type": "integer", "nullable": True},
-                    "recording_count": {"type": "integer"}
+                    "recording_count": {"type": "integer", "description": "Recordings assigned directly to this folder"},
+                    "total_recording_count": {"type": "integer", "description": "Direct recordings plus recordings in all descendant folders"}
                 }
             },
             "Speaker": {
@@ -353,6 +355,7 @@ OPENAPI_SPEC = {
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
                     {"name": "archived", "in": "query", "schema": {"type": "boolean"}, "description": "true: only archived recordings; false: only unarchived. Omitted: both, as before."},
                     {"name": "folder_id", "in": "query", "schema": {"type": "string"}, "description": "Filter by folder. Pass an integer folder id to list recordings in that folder, or the literal 'none' to list recordings not in any folder. Omit for no filter."},
+                    {"name": "include_children", "in": "query", "schema": {"type": "boolean"}, "description": "With folder_id, also include recordings in all descendant folders"},
                     {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Search query"}
                 ],
                 "responses": {"200": {"description": "Paginated list of recordings"}}
@@ -549,11 +552,11 @@ OPENAPI_SPEC = {
         },
         "/folders": {
             "get": {"tags": ["Folders"], "summary": "List folders", "responses": {"200": {"description": "Array of folders the user can access", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Folder"}}}}}}},
-            "post": {"tags": ["Folders"], "summary": "Create folder", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "group_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Folder created"}}}
+            "post": {"tags": ["Folders"], "summary": "Create folder", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "group_id": {"type": "integer", "nullable": True}, "parent_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Folder created"}}}
         },
         "/folders/{id}": {
             "get": {"tags": ["Folders"], "summary": "Get folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Folder"}}}}}},
-            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
+            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "parent_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
             "delete": {"tags": ["Folders"], "summary": "Delete folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder deleted"}}}
         },
         "/transcription": {
@@ -1292,7 +1295,13 @@ def list_recordings():
         if folder_filter.lower() == 'none':
             query = query.filter(Recording.folder_id.is_(None))
         elif folder_filter.isdecimal():
-            query = query.filter(Recording.folder_id == int(folder_filter))
+            folder_id = int(folder_filter)
+            # include_children=true adds the folder's descendants (#585).
+            if request.args.get('include_children', '').lower() == 'true':
+                from src.services.folder_tree import folder_filter_ids
+                query = query.filter(Recording.folder_id.in_(folder_filter_ids(folder_id)))
+            else:
+                query = query.filter(Recording.folder_id == folder_id)
         else:
             return jsonify({'error': translate('server.apiError.invalid_folder_id'),
                             'code': 'invalid_parameter'}), 400
@@ -2642,7 +2651,8 @@ def get_folder(folder_id):
         if not membership:
             return jsonify(api_error('permission_denied')), 403
 
-    folder_dict = folder.to_dict()
+    from src.services.folder_tree import subtree_recording_count
+    folder_dict = folder.to_dict(total_recording_count=subtree_recording_count(folder))
     if folder.group_id is None:
         folder_dict['can_edit'] = True
     else:

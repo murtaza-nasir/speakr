@@ -1008,6 +1008,18 @@ def _run_migrations(app, engine):
             app.logger.info("Added default_transcription_model column to tag table")
         if add_column_if_not_exists(engine, 'folder', 'default_transcription_model', 'VARCHAR(120)'):
             app.logger.info("Added default_transcription_model column to folder table")
+
+        # Nested folders (#585). Existing folders stay top level (NULL). The
+        # REFERENCES clause gives an upgraded database the same foreign key
+        # as a fresh one: SQLite and PostgreSQL both accept it in ADD COLUMN
+        # for a column without a default. SQLite does not enforce it here,
+        # so the Folder before_delete hook promotes children on every
+        # backend.
+        if add_column_if_not_exists(engine, 'folder', 'parent_id',
+                                    'INTEGER REFERENCES "folder" (id) ON DELETE SET NULL'):
+            app.logger.info("Added parent_id column to folder table")
+        if create_index_if_not_exists(engine, 'ix_folder_parent_id', 'folder', 'parent_id'):
+            app.logger.info("Created index ix_folder_parent_id on folder.parent_id")
         # Create index for folder_id
         try:
             if create_index_if_not_exists(engine, 'ix_recording_folder_id', 'recording', 'folder_id'):

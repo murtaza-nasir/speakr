@@ -1224,7 +1224,13 @@ def get_recordings_paginated():
                 # Filter recordings with no folder
                 stmt = stmt.where(Recording.folder_id.is_(None))
             elif folder_filter.isdecimal():
-                stmt = stmt.where(Recording.folder_id == int(folder_filter))
+                folder_id = int(folder_filter)
+                # include_children=true adds the folder's descendants (#585).
+                if request.args.get('include_children', '').lower() == 'true':
+                    from src.services.folder_tree import folder_filter_ids
+                    stmt = stmt.where(Recording.folder_id.in_(folder_filter_ids(folder_id)))
+                else:
+                    stmt = stmt.where(Recording.folder_id == folder_id)
             else:
                 # A bad value is refused, not ignored (#514).
                 return jsonify({'error': translate('server.apiError.invalid_folder_id'),

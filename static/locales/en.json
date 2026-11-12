@@ -1493,6 +1493,10 @@
     "undock": "Undock"
   },
   "folderManagement": {
+    "parentFolder": "Parent folder",
+    "noParentFolder": "None (top level)",
+    "parentFolderHelp": "Personal folders go inside personal folders, and group folders inside folders of the same group.",
+    "includeSubfolders": "Include subfolders",
     "allFolders": "All Folders",
     "asrDefaults": "ASR Defaults",
     "autoShareOnApply": "Auto-share with group members",
@@ -3259,6 +3263,7 @@
       "folder_delete_denied": "You do not have permission to delete this folder",
       "folder_edit_denied": "You do not have permission to edit this folder",
       "folder_group_assign_admin_only": "Only group admins can assign folders to groups",
+      "folder_group_tree_invalid": "Move child folders separately before changing this folder's group",
       "folder_assign_restricted": "Only the recording's owner, or an admin of the folder's group, can put it in this folder",
       "folder_color_invalid": "Folder color must be a hex color such as #10B981",
       "folder_id_not_found": "Folder {{folderId}} not found",
@@ -3267,6 +3272,8 @@
       "folder_name_invalid": "Folder names cannot contain line breaks or control characters",
       "folder_name_required": "Folder name is required",
       "folder_name_too_long": "Folder names can be at most {{max}} characters long",
+      "folder_parent_cycle": "A folder cannot be moved beneath itself or one of its descendants",
+      "folder_parent_invalid": "The parent folder must belong to the same user or group",
       "folder_not_found": "Folder not found",
       "folder_rename_conflict": "Another folder with this name already exists",
       "folders_disabled": "Folders feature is not enabled",

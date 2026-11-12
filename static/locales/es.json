@@ -1493,6 +1493,10 @@
     "undock": "Desanclar"
   },
   "folderManagement": {
+    "parentFolder": "Carpeta principal",
+    "noParentFolder": "Ninguna (nivel superior)",
+    "parentFolderHelp": "Las carpetas personales van dentro de carpetas personales, y las carpetas de grupo dentro de carpetas del mismo grupo.",
+    "includeSubfolders": "Incluir subcarpetas",
     "allFolders": "Todas las carpetas",
     "asrDefaults": "Valores ASR predeterminados",
     "autoShareOnApply": "Compartir automáticamente con miembros del grupo",
@@ -3259,6 +3263,7 @@
       "folder_delete_denied": "No tiene permiso para eliminar esta carpeta",
       "folder_edit_denied": "No tiene permiso para editar esta carpeta",
       "folder_group_assign_admin_only": "Solo los administradores del grupo pueden asignar carpetas a grupos",
+      "folder_group_tree_invalid": "Mueve las subcarpetas por separado antes de cambiar el grupo de esta carpeta",
       "folder_assign_restricted": "Solo el propietario de la grabación, o un administrador del grupo de la carpeta, puede ponerla en esta carpeta",
       "folder_color_invalid": "El color de la carpeta debe ser un color hexadecimal como #10B981",
       "folder_id_not_found": "Carpeta {{folderId}} no encontrada",
@@ -3267,6 +3272,8 @@
       "folder_name_invalid": "Los nombres de carpeta no pueden contener saltos de línea ni caracteres de control",
       "folder_name_required": "El nombre de la carpeta es obligatorio",
       "folder_name_too_long": "Los nombres de carpeta pueden tener como máximo {{max}} caracteres",
+      "folder_parent_cycle": "Una carpeta no puede moverse dentro de sí misma ni de una subcarpeta",
+      "folder_parent_invalid": "La carpeta principal debe pertenecer al mismo usuario o grupo",
       "folder_not_found": "Carpeta no encontrada",
       "folder_rename_conflict": "Ya existe otra carpeta con este nombre",
       "folders_disabled": "La función de carpetas no está habilitada",

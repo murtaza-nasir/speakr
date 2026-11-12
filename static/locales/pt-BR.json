@@ -1493,6 +1493,10 @@
     "undock": "Desancorar"
   },
   "folderManagement": {
+    "parentFolder": "Pasta pai",
+    "noParentFolder": "Nenhuma (nível superior)",
+    "parentFolderHelp": "Pastas pessoais ficam dentro de pastas pessoais, e pastas de grupo dentro de pastas do mesmo grupo.",
+    "includeSubfolders": "Incluir subpastas",
     "allFolders": "Todas as Pastas",
     "asrDefaults": "Padrões de ASR",
     "autoShareOnApply": "Compartilhar automaticamente com membros do grupo",
@@ -3259,6 +3263,7 @@
       "folder_delete_denied": "Você não tem permissão para excluir esta pasta",
       "folder_edit_denied": "Você não tem permissão para editar esta pasta",
       "folder_group_assign_admin_only": "Somente administradores do grupo podem atribuir pastas a grupos",
+      "folder_group_tree_invalid": "Mova as subpastas separadamente antes de alterar o grupo desta pasta",
       "folder_assign_restricted": "Somente o proprietário da gravação, ou um administrador do grupo da pasta, pode colocá-la nesta pasta",
       "folder_color_invalid": "A cor da pasta deve ser uma cor hexadecimal como #10B981",
       "folder_id_not_found": "Pasta {{folderId}} não encontrada",
@@ -3267,6 +3272,8 @@
       "folder_name_invalid": "Os nomes de pasta não podem conter quebras de linha nem caracteres de controle",
       "folder_name_required": "O nome da pasta é obrigatório",
       "folder_name_too_long": "Os nomes de pasta podem ter no máximo {{max}} caracteres",
+      "folder_parent_cycle": "Uma pasta não pode ser movida para dentro de si mesma ou de uma subpasta",
+      "folder_parent_invalid": "A pasta pai deve pertencer ao mesmo usuário ou grupo",
       "folder_not_found": "Pasta não encontrada",
       "folder_rename_conflict": "Já existe outra pasta com este nome",
       "folders_disabled": "O recurso de pastas não está ativado",

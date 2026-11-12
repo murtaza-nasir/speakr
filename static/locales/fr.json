@@ -1493,6 +1493,10 @@
     "undock": "Détacher"
   },
   "folderManagement": {
+    "parentFolder": "Dossier parent",
+    "noParentFolder": "Aucun (premier niveau)",
+    "parentFolderHelp": "Les dossiers personnels vont dans des dossiers personnels, et les dossiers de groupe dans des dossiers du même groupe.",
+    "includeSubfolders": "Inclure les sous-dossiers",
     "allFolders": "Tous les dossiers",
     "asrDefaults": "Paramètres ASR par défaut",
     "autoShareOnApply": "Partager automatiquement avec les membres du groupe",
@@ -3259,6 +3263,7 @@
       "folder_delete_denied": "Vous n'avez pas l'autorisation de supprimer ce dossier",
       "folder_edit_denied": "Vous n'avez pas l'autorisation de modifier ce dossier",
       "folder_group_assign_admin_only": "Seuls les administrateurs du groupe peuvent attribuer des dossiers à des groupes",
+      "folder_group_tree_invalid": "Déplacez d'abord les sous-dossiers séparément avant de changer le groupe de ce dossier",
       "folder_assign_restricted": "Seul le propriétaire de l'enregistrement, ou un administrateur du groupe du dossier, peut le placer dans ce dossier",
       "folder_color_invalid": "La couleur du dossier doit être une couleur hexadécimale comme #10B981",
       "folder_id_not_found": "Dossier {{folderId}} introuvable",
@@ -3267,6 +3272,8 @@
       "folder_name_invalid": "Les noms de dossier ne peuvent pas contenir de sauts de ligne ni de caractères de contrôle",
       "folder_name_required": "Le nom du dossier est requis",
       "folder_name_too_long": "Les noms de dossier ne peuvent pas dépasser {{max}} caractères",
+      "folder_parent_cycle": "Un dossier ne peut pas être déplacé sous lui-même ou un de ses descendants",
+      "folder_parent_invalid": "Le dossier parent doit appartenir au même utilisateur ou groupe",
       "folder_not_found": "Dossier introuvable",
       "folder_rename_conflict": "Un autre dossier portant ce nom existe déjà",
       "folders_disabled": "La fonctionnalité Dossiers n'est pas activée",

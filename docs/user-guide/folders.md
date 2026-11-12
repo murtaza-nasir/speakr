@@ -46,6 +46,27 @@ Each folder can have custom settings that apply to recordings placed in it:
 
 These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing. Tag-level defaults take precedence over folder-level defaults; per-upload selections take precedence over both.
 
+### Nested Folders
+
+A folder can sit inside another folder. To create a subfolder:
+
+1. Open **Account Settings → Folders** and click **Create Folder**, or click the edit button on an existing folder
+2. Choose the folder it belongs in under **Parent folder**; **None (top level)** keeps it at the top
+3. Save the folder
+
+The **Parent folder** field appears once there is a folder it could go into. For a group folder, choose the group on the **Sharing** tab first: the list then shows only that group's folders. When you edit a folder, the folder itself and its own subfolders are left out of the list.
+
+Subfolders appear under their parent, indented, in the sidebar folder selector, in the folder menu of a recording and in **Move to Folder**. In Account Settings each subfolder's card shows the names of the folders above it. Through the API, set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)).
+
+- **Same scope** - A personal folder can only sit inside another of your personal folders, and a group folder only inside a folder of the same group
+- **No loops** - A folder cannot be moved inside itself or inside one of its own subfolders
+- **Deleting a parent** - Its subfolders move up one level, to the deleted folder's parent; their own subfolders stay where they are
+- **Changing a group** - A folder that has subfolders keeps its group; move the subfolders out first
+- **Names** - The existing name rules apply across all levels, so two parents cannot each hold a subfolder with the same name
+- **Counts** - `recording_count` counts only the recordings directly in a folder; the folder endpoints also return `total_recording_count`, which adds the recordings in all subfolders
+
+Existing folders become top-level folders when you upgrade.
+
 ## Using Folders
 
 ### Sidebar Folder Selector
@@ -55,6 +76,7 @@ The sidebar includes a folder dropdown at the top. Use it to:
 - **Filter by folder** - Select a folder to show only recordings in that folder
 - **View all recordings** - Select "All Folders" to see everything
 - **View unfiled** - Select "No Folder" to see recordings not in any folder
+- **Include subfolders** - When the selected folder has subfolders, tick **Include subfolders** below the selector to list their recordings too; it is off by default
 
 ### Moving Recordings to Folders
 
@@ -104,7 +126,7 @@ Both folders and tags help organize recordings, but they serve different purpose
 |--------|---------|------|
 | **Assignment** | One folder per recording | Multiple tags per recording |
 | **Purpose** | Primary organization | Categorization and filtering |
-| **Hierarchy** | Flat list | Flat list |
+| **Hierarchy** | Folders can contain subfolders | Flat list |
 | **Settings** | Custom prompt, ASR, retention | Custom prompt, ASR, retention |
 | **Visual** | Pill badge, sidebar filter | Colored badges |
 

@@ -1493,6 +1493,10 @@
     "undock": "Abdocken"
   },
   "folderManagement": {
+    "parentFolder": "Übergeordneter Ordner",
+    "noParentFolder": "Keiner (oberste Ebene)",
+    "parentFolderHelp": "Persönliche Ordner gehören in persönliche Ordner, Gruppenordner in Ordner derselben Gruppe.",
+    "includeSubfolders": "Unterordner einbeziehen",
     "allFolders": "Alle Ordner",
     "asrDefaults": "ASR-Standardwerte",
     "autoShareOnApply": "Automatisch mit Gruppenmitgliedern teilen",
@@ -3259,6 +3263,7 @@
       "folder_delete_denied": "Sie haben keine Berechtigung, diesen Ordner zu löschen",
       "folder_edit_denied": "Sie haben keine Berechtigung, diesen Ordner zu bearbeiten",
       "folder_group_assign_admin_only": "Nur Gruppenadministratoren können Ordner Gruppen zuweisen",
+      "folder_group_tree_invalid": "Verschieben Sie Unterordner zuerst einzeln, bevor Sie die Gruppe dieses Ordners ändern",
       "folder_assign_restricted": "Nur der Eigentümer der Aufnahme oder ein Administrator der Gruppe des Ordners kann sie in diesen Ordner verschieben",
       "folder_color_invalid": "Die Ordnerfarbe muss eine Hex-Farbe wie #10B981 sein",
       "folder_id_not_found": "Ordner {{folderId}} nicht gefunden",
@@ -3267,6 +3272,8 @@
       "folder_name_invalid": "Ordnernamen dürfen keine Zeilenumbrüche oder Steuerzeichen enthalten",
       "folder_name_required": "Der Ordnername ist erforderlich",
       "folder_name_too_long": "Ordnernamen dürfen höchstens {{max}} Zeichen lang sein",
+      "folder_parent_cycle": "Ein Ordner kann nicht unter sich selbst oder einen Unterordner verschoben werden",
+      "folder_parent_invalid": "Der übergeordnete Ordner muss demselben Benutzer oder derselben Gruppe gehören",
       "folder_not_found": "Ordner nicht gefunden",
       "folder_rename_conflict": "Ein anderer Ordner mit diesem Namen existiert bereits",
       "folders_disabled": "Die Ordnerfunktion ist nicht aktiviert",

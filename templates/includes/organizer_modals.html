@@ -287,6 +287,15 @@
                     </div>
                 </div>
 
+                <!-- Parent folder (#585); hidden while no folder can be a parent -->
+                <div id="folderParentSection" class="hidden">
+                    <label for="folderParentId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.parentFolder">Parent folder</label>
+                    <select id="folderParentId" name="parent_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="" data-i18n="folderManagement.noParentFolder">None (top level)</option>
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.parentFolderHelp">Personal folders go inside personal folders, and group folders inside folders of the same group.</p>
+                </div>
+
                 <!-- Tab Navigation -->
                 <div class="border-b border-[var(--border-primary)]">
                     <nav class="flex -mb-px space-x-1" id="folderModalTabs">
