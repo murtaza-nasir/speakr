@@ -3642,7 +3642,11 @@
         "gathering": "Чтение лучших совпадений",
         "readingFull": "Чтение полной транскрипции",
         "writing": "Составление ответа",
-        "compacting": "Краткое изложение предыдущей беседы"
+        "compacting": "Краткое изложение предыдущей беседы",
+        "searchingPhrase": "Поиск точной фразы: «{{query}}»",
+        "searchingWords": "Поиск слов: «{{query}}»",
+        "findingSimilar": "Поиск записей, похожих на «{{title}}»",
+        "findingSimilarRecordings": "Поиск похожих записей"
       },
       "result": {
         "failed": "Не удалось выполнить этот шаг",
@@ -3655,7 +3659,8 @@
         "keyword": "поиск по ключевым словам",
         "withKeyword": "с поиском по ключевым словам",
         "listed": "записей: {{returned}} из {{total}}",
-        "segments": "сегментов: {{returned}} из {{total}}"
+        "segments": "сегментов: {{returned}} из {{total}}",
+        "noSimilar": "Похожих записей нет"
       },
       "count": {
         "stepOne": "1 шаг",
@@ -3672,7 +3677,11 @@
         "notesReads": "чтений заметок: {{count}}",
         "detailsCheckOne": "1 проверка сведений",
         "detailsChecks": "проверок сведений: {{count}}",
-        "other": "{{tool}}: {{count}}"
+        "other": "{{tool}}: {{count}}",
+        "textSearchOne": "1 точный поиск",
+        "textSearches": "точных поисков: {{count}}",
+        "similarSearchOne": "1 поиск похожих",
+        "similarSearches": "поисков похожих: {{count}}"
       }
     }
   },

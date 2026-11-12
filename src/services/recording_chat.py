@@ -12,6 +12,11 @@ panel streams, so there assistant_events.SegmentCitations does the same work
 as the text arrives.
 
 The prompt names the assistant with the user's chosen name (decision 3).
+
+A short block names what the recording is: title, date in the user's
+timezone, duration, folder path and tags the user can see, and the speakers
+(metadata_lines). An incognito recording has no saved title, date, folder or
+tags, so it has no block.
 """
 
 import re
@@ -49,6 +54,60 @@ class IncognitoTranscript:
         """The transcript's segments; no saved speakers to resolve."""
         from src.services.transcript_segments import segments_of
         return segments_of(self.transcription)
+
+
+def _duration(seconds):
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds} seconds"
+    hours, rest = divmod(seconds, 3600)
+    minutes = rest // 60
+    if hours:
+        return f"{hours} h {minutes} min"
+    return f"{minutes} min"
+
+
+def _speakers(segments):
+    """Speaker names in the order they first speak."""
+    names = []
+    for seg in segments or ():
+        name = (seg.get('speaker') or '').strip()
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
+def metadata_lines(recording, user, segments=None):
+    """The lines of the metadata block, empty ones left out; [] for an
+    incognito recording."""
+    if isinstance(recording, IncognitoTranscript):
+        return []
+    from src.services.library_labels import LibraryLabels
+    from src.utils.timezones import to_local, user_timezone
+    lines = []
+    if recording.title:
+        lines.append(f"Title: {recording.title}")
+    if recording.meeting_date:
+        lines.append(f"Date: {to_local(recording.meeting_date, user_timezone(user)).strftime('%Y-%m-%d %H:%M')}")
+    if recording.audio_duration_seconds:
+        lines.append(f"Duration: {_duration(recording.audio_duration_seconds)}")
+    labels = LibraryLabels(user.id, [recording.id])
+    folder = labels.folder_path_of(recording.id)
+    if folder:
+        lines.append(f"Folder: {folder}")
+    tags = labels.tags_of(recording.id)
+    if tags:
+        lines.append(f"Tags: {', '.join(tags)}")
+    if segments is None:
+        from src.services.transcript_segments import canonical_segments
+        try:
+            segments = canonical_segments(recording)
+        except Exception:
+            segments = None
+    speakers = _speakers(segments)
+    if speakers:
+        lines.append(f"Speakers: {', '.join(speakers)}")
+    return lines
 
 
 def transcript_cut(recording, segments, limit):
@@ -119,9 +178,11 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
             "transcript.\n")
 
     notes = recording.get_user_notes(user)
+    about = metadata_lines(recording, user, segments)
+    about = ("\nAbout this recording:\n" + "\n".join(about) + "\n") if about else ""
     system_prompt = f"""{identity} {language}
 Here you answer questions about one recording: what was said, who said it, and what it means. A recording can be a meeting, a call, a lecture, a voice note or an everyday conversation; take it as what it is and do not judge it against a meeting.
-{citation}
+{about}{citation}
 Participants and their roles:
 {recording.participants or "No specific participants information provided."}
 

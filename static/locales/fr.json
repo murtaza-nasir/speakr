@@ -3642,7 +3642,11 @@
         "gathering": "Lecture des meilleurs résultats",
         "readingFull": "Lecture d'une transcription complète",
         "writing": "Rédaction de la réponse",
-        "compacting": "Résumé de la conversation précédente"
+        "compacting": "Résumé de la conversation précédente",
+        "searchingPhrase": "Recherche des mots exacts « {{query}} »",
+        "searchingWords": "Recherche des mots « {{query}} »",
+        "findingSimilar": "Recherche d’enregistrements proches de « {{title}} »",
+        "findingSimilarRecordings": "Recherche d’enregistrements proches"
       },
       "result": {
         "failed": "Impossible de terminer cette étape",
@@ -3655,7 +3659,8 @@
         "keyword": "recherche par mot-clé",
         "withKeyword": "avec recherche par mot-clé",
         "listed": "{{returned}} sur {{total}} enregistrements",
-        "segments": "{{returned}} sur {{total}} segments"
+        "segments": "{{returned}} sur {{total}} segments",
+        "noSimilar": "Aucun enregistrement proche"
       },
       "count": {
         "stepOne": "1 étape",
@@ -3672,7 +3677,11 @@
         "notesReads": "{{count}} lectures de notes",
         "detailsCheckOne": "1 vérification de détails",
         "detailsChecks": "{{count}} vérifications de détails",
-        "other": "{{tool}} : {{count}}"
+        "other": "{{tool}} : {{count}}",
+        "textSearchOne": "1 recherche exacte",
+        "textSearches": "{{count}} recherches exactes",
+        "similarSearchOne": "1 recherche de similarité",
+        "similarSearches": "{{count}} recherches de similarité"
       }
     }
   },

@@ -3642,7 +3642,11 @@
         "gathering": "正在阅读最佳匹配",
         "readingFull": "正在阅读完整转录文本",
         "writing": "正在撰写回答",
-        "compacting": "正在总结之前的对话"
+        "compacting": "正在总结之前的对话",
+        "searchingPhrase": "正在搜索原文“{{query}}”",
+        "searchingWords": "正在搜索词语“{{query}}”",
+        "findingSimilar": "正在查找与“{{title}}”相似的录音",
+        "findingSimilarRecordings": "正在查找相似的录音"
       },
       "result": {
         "failed": "无法完成此步骤",
@@ -3655,7 +3659,8 @@
         "keyword": "关键词搜索",
         "withKeyword": "含关键词搜索",
         "listed": "{{total}} 条录音中的 {{returned}} 条",
-        "segments": "{{total}} 个片段中的 {{returned}} 个"
+        "segments": "{{total}} 个片段中的 {{returned}} 个",
+        "noSimilar": "没有相似的录音"
       },
       "count": {
         "stepOne": "1 个步骤",
@@ -3672,7 +3677,11 @@
         "notesReads": "阅读 {{count}} 次笔记",
         "detailsCheckOne": "1 次详情查看",
         "detailsChecks": "{{count}} 次详情查看",
-        "other": "{{tool}}：{{count}}"
+        "other": "{{tool}}：{{count}}",
+        "textSearchOne": "1 次原文搜索",
+        "textSearches": "{{count}} 次原文搜索",
+        "similarSearchOne": "1 次相似搜索",
+        "similarSearches": "{{count}} 次相似搜索"
       }
     }
   },
