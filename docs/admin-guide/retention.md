@@ -148,9 +148,46 @@ Before the fix for #572, only the media of a deleted user's recordings was remov
 
 - **Two runs**: a recording without an owner is only marked on the first run. It is deleted on a later run, together with its media, shares and embeddings, once the mark is at least 20 hours old.
 - **Exclusions**: recordings with an owner are never candidates. A recording with a queued or running job, an active recording session or an unmerged upload part is skipped, and its wait starts again on the next run. A recording that regains an owner loses its mark.
-- **Files on disk**: media files without a recording are counted in the log and never deleted.
+- **Files on disk**: media files without a recording are only counted in the log and never deleted by this step. To remove them, use the command in [Files Without a Recording](#files-without-a-recording).
 
 Each run is logged as one line beginning with `Ownerless recording cleanup:`, with the counts of marked, deleted and skipped recordings.
+
+## Files Without a Recording
+
+In older releases, a recording's media file could remain in the uploads folder after the recording itself was deleted. Such files take up space and belong to no user. You can list them, and remove them on request, with an admin command run inside the container:
+
+```bash
+# Dry run: count, total size and the first 20 files; nothing is changed
+docker compose exec app python scripts/clean_unreferenced_files.py
+
+# Every file, and every recording whose file is missing
+docker compose exec app python scripts/clean_unreferenced_files.py --list
+
+# Delete the files, after a confirmation prompt
+docker compose exec app python scripts/clean_unreferenced_files.py --delete
+
+# Move the files to a quarantine folder instead, keeping their relative paths
+docker compose exec app python scripts/clean_unreferenced_files.py --move-to /data/quarantine
+```
+
+| Option | Effect |
+|---|---|
+| (none) | Dry run: the count, total size and first 20 files are printed and nothing is changed. |
+| `--list` | Every unreferenced file and every row whose file is missing are printed. |
+| `--delete` | The unreferenced files are deleted after a confirmation prompt. |
+| `--move-to DIR` | The unreferenced files are moved below `DIR` after a confirmation prompt. Local storage only; `DIR` must lie outside the scanned folders. |
+| `--yes` | No confirmation prompt is shown, for use in scripts. |
+| `--min-age-hours N` | Files changed within the last `N` hours are left alone (default 48). |
+
+**References.** A file is in use when a recording (`audio_path`), an upload part awaiting a join (`audio_path`) or a recording session (`upload_filename`) points to it. Paths are resolved by the storage layer, so `local://` locators, older absolute paths such as `/data/uploads/...` and older relative paths all count. A file with the same name as a recording whose file is missing is also kept, since it may be that recording's file after the uploads folder moved.
+
+**Scope.** Only plain files directly in `UPLOAD_FOLDER` (the layout of older releases) and the files below `UPLOAD_FOLDER/recordings` (or the configured `FILE_STORAGE_KEY_PREFIX`) are examined. The in-progress folders `_sessions` and `_staging`, all other top-level folders, folders whose name starts with `_` or `.`, hidden files and symbolic links are skipped. A path that resolves outside the uploads folder is never touched. Before each file is removed, its references and age are checked again.
+
+**S3 storage.** With `FILE_STORAGE_BACKEND=s3`, the objects under the key prefix in the configured bucket are examined in the same way and can be deleted with `--delete`. `--move-to` is not available for S3 objects.
+
+**Rows without a file.** Recordings and upload parts whose file is missing are reported and left unchanged. Recordings whose audio was deleted on purpose, for example by an audio-only retention policy, are not reported.
+
+No job workers or schedulers are started by the command, so you can run it while the server is running. A backup of the uploads folder, or a first pass with `--move-to`, is advisable before the first `--delete`.
 
 ## Admin Controls
 

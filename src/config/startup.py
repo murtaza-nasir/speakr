@@ -74,6 +74,18 @@ def start_single_instance(app, lock_name, start, description):
         return False
 
 
+def background_tasks_skipped():
+    """True when this process must start no background work at all.
+
+    Set SPEAKR_SKIP_BACKGROUND_TASKS=true before importing src.app in a
+    one-off command (such as scripts/clean_unreferenced_files.py) that runs
+    next to a live server. Such a process would otherwise take part in the
+    elections below and, on winning one, recover the server's running jobs or
+    start a second scheduler.
+    """
+    return os.environ.get('SPEAKR_SKIP_BACKGROUND_TASKS', '').strip().lower() in ('1', 'true', 'yes')
+
+
 def initialize_file_monitor(app):
     """Initialize file monitor after app is fully loaded to avoid circular imports."""
     try:
@@ -359,6 +371,10 @@ def run_startup_tasks(app):
         # Bind the queue in EVERY process, so any of them can accept an
         # upload and enqueue it. Only the owner elected below runs workers.
         bind_job_queue(app)
+
+        if background_tasks_skipped():
+            app.logger.debug("SPEAKR_SKIP_BACKGROUND_TASKS is set: no background work started here")
+            return
 
         # Everything below that runs in the background goes through
         # start_single_instance(). Adding one here without an election means
