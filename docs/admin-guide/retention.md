@@ -142,6 +142,16 @@ The records are removed after `RECORDING_TOMBSTONE_DAYS` days (default 90), chec
 RECORDING_TOMBSTONE_DAYS=90
 ```
 
+## Recordings Without an Owner
+
+Before the fix for #572, only the media of a deleted user's recordings was removed. The rows, with their transcripts, summaries, notes and embeddings, were kept without an owner. These leftovers are removed by a daily step at 2:00 AM. The step runs whether or not auto-deletion is enabled, since it is a matter of data integrity and not of retention.
+
+- **Two runs**: a recording without an owner is only marked on the first run. It is deleted on a later run, together with its media, shares and embeddings, once the mark is at least 20 hours old.
+- **Exclusions**: recordings with an owner are never candidates. A recording with a queued or running job, an active recording session or an unmerged upload part is skipped, and its wait starts again on the next run. A recording that regains an owner loses its mark.
+- **Files on disk**: media files without a recording are counted in the log and never deleted.
+
+Each run is logged as one line beginning with `Ownerless recording cleanup:`, with the counts of marked, deleted and skipped recordings.
+
 ## Admin Controls
 
 ### Running Auto-Deletion

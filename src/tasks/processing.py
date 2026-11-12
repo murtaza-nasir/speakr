@@ -1122,6 +1122,44 @@ You must respond with valid JSON format only."""
         db.session.rollback()
 
 
+def make_retained_video_seekable(recording, filepath):
+    """Remux a retained fragmented MP4 into a regular one, in place (#539).
+
+    A fragmented MP4 (as OBS writes it) makes a browser seek through many
+    small range requests. The stored file is rewritten once, with a stream
+    copy, at the start of the first transcription job, so the upload request
+    does not wait for it; after that the file is no longer fragmented and
+    later runs leave it alone. Only a file in local storage is rewritten,
+    and only when filepath is that stored file: a downloaded copy of an S3
+    object would be rewritten for nothing. Any failure keeps the original.
+
+    Returns True when the stored file was rewritten.
+    """
+    try:
+        from src.services.storage import get_storage_service
+        from src.utils.ffmpeg_utils import remux_fragmented_mp4_in_place
+
+        if not recording.audio_path or not filepath:
+            return False
+        try:
+            stored_path = get_storage_service().resolve_local_filesystem_path(recording.audio_path)
+        except ValueError:
+            return False  # not in local storage
+        if os.path.realpath(stored_path) != os.path.realpath(filepath):
+            return False
+        if not remux_fragmented_mp4_in_place(filepath):
+            return False
+        recording.file_size = os.path.getsize(filepath)
+        db.session.commit()
+        current_app.logger.info(
+            f"Remuxed the fragmented video of recording {recording.id} into a regular MP4 for seeking")
+        return True
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.warning(f"Could not check the retained video of recording {recording.id} for fragments: {e}")
+        return False
+
+
 def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True, allow_debug_copy=True):
     """Extract audio from video containers using FFmpeg.
 
@@ -1755,6 +1793,11 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     actual_content_type.startswith('video/') or
                     actual_content_type in video_mime_types
                 )
+
+            if is_video and effective_video_retention:
+                # The retained video is what the browser plays: a fragmented
+                # MP4 becomes a regular one before anything reads it (#539).
+                make_retained_video_seekable(recording, filepath)
 
             if is_video:
                 if _self.VIDEO_PASSTHROUGH_ASR:

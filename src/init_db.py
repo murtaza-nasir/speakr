@@ -286,6 +286,12 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'is_highlighted', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added is_highlighted column to recording table")
 
+        # When the daily ownerless-recording cleanup first found the row
+        # with no owner (#572). NULL for every owned recording; a later
+        # run deletes the row only once this is old enough.
+        if add_column_if_not_exists(engine, 'recording', 'ownerless_since', 'DATETIME'):
+            app.logger.info("Added ownerless_since column to recording table")
+
         # Add language preference columns to User table
         if add_column_if_not_exists(engine, 'user', 'transcription_language', 'VARCHAR(10)'):
             app.logger.info("Added transcription_language column to user table")

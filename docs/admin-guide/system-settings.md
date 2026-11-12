@@ -254,7 +254,7 @@ When a password is changed, reset by email, or set by an administrator, the acco
 
 ### Video Retention
 
-**VIDEO_RETENTION**: When enabled, uploaded video files keep their video stream for in-browser playback instead of extracting audio and discarding the video. The audio is extracted to a temporary file for transcription only, then cleaned up after processing. The video renders with a native `<video>` player alongside the transcript, with full seeking support via HTTP Range requests. All player controls (play/pause, seek, speed, volume) work identically. Ideal for presentations, lectures, and screen recordings. Default: `false`.
+**VIDEO_RETENTION**: When enabled, uploaded video files keep their video stream for in-browser playback instead of extracting audio and discarding the video. The audio is extracted to a temporary file for transcription only, then cleaned up after processing. The video renders with a native `<video>` player alongside the transcript, with full seeking support via HTTP Range requests. All player controls (play/pause, seek, speed, volume) work identically. Ideal for presentations, lectures, and screen recordings. A retained video in fragmented MP4 format, as recorded by OBS, is remuxed into a regular MP4 without re-encoding at the start of its first transcription, so that seeking in the browser is fast; this applies to local storage only, and a file that does not parse as MP4 or fails the check after the remux is kept as uploaded. Default: `false`.
 
 ### Video Passthrough to ASR
 

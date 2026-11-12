@@ -112,9 +112,34 @@ def scheduled_deletion_due():
     return bool(_self.ENABLE_AUTO_DELETION) and _self.GLOBAL_RETENTION_DAYS > 0
 
 
-def initialize_auto_deletion_scheduler(app):
-    """Initialize the daily auto-deletion scheduler if enabled."""
+def run_daily_maintenance(app):
+    """The work of one daily run: retention auto-deletion, then the ownerless cleanup.
+
+    Auto-deletion deletes only when it is enabled. The cleanup of recordings
+    without an owner (#572) is integrity, not retention, and runs every
+    time, also when auto-deletion failed. Both run in the scheduler thread,
+    so the single-instance election that guards the sweep guards both.
+    """
     from src.services.retention import process_auto_deletion
+
+    try:
+        with app.app_context():
+            if scheduled_deletion_due():
+                app.logger.info("Running scheduled auto-deletion...")
+                stats = process_auto_deletion()
+                app.logger.info(f"Scheduled auto-deletion completed: {stats}")
+            else:
+                app.logger.info("Scheduled auto-deletion skipped (disabled or no global retention)")
+    except Exception as e:
+        app.logger.error(f"Error in scheduled auto-deletion: {e}", exc_info=True)
+
+    with app.app_context():
+        from src.services.ownerless_cleanup import run_ownerless_cleanup
+        run_ownerless_cleanup()
+
+
+def initialize_auto_deletion_scheduler(app):
+    """Start the daily 2 AM thread that calls run_daily_maintenance()."""
 
     # The thread always starts. Whether a run deletes anything is decided at
     # run time, so enable_auto_deletion and global_retention_days can be
@@ -144,13 +169,7 @@ def initialize_auto_deletion_scheduler(app):
                 # Sleep until next run time
                 time.sleep(sleep_seconds)
 
-                with app.app_context():
-                    if scheduled_deletion_due():
-                        app.logger.info("Running scheduled auto-deletion...")
-                        stats = process_auto_deletion()
-                        app.logger.info(f"Scheduled auto-deletion completed: {stats}")
-                    else:
-                        app.logger.info("Scheduled auto-deletion skipped (disabled or no global retention)")
+                run_daily_maintenance(app)
 
             except Exception as e:
                 app.logger.error(f"Error in auto-deletion scheduler: {e}", exc_info=True)
