@@ -67,16 +67,6 @@ JOB_RUNNERS = {
     'convert': '_run_convert',
 }
 
-# Aliases for spelling drift in callers/tests.
-JOB_DISPATCH = JOB_RUNNERS
-JOB_REGISTRY = JOB_RUNNERS
-JOB_HANDLERS = JOB_RUNNERS
-_JOB_RUNNERS = JOB_RUNNERS
-# Private-prefixed aliases for the other spellings.
-_JOB_DISPATCH = JOB_RUNNERS
-_JOB_REGISTRY = JOB_RUNNERS
-_JOB_HANDLERS = JOB_RUNNERS
-
 # Jobs that run beside a recording's processing: they leave recording.status
 # alone and send no webhooks or emails.
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
@@ -116,18 +106,6 @@ class FairJobQueue:
     Uses separate queues for transcription and summary jobs to prevent
     slow transcription jobs from blocking fast summary jobs.
     """
-
-    # Expose the dispatch table on the class (and therefore on every
-    # instance) as the same object as the module-level registry, so callers
-    # and tests can reach it through either path.
-    JOB_RUNNERS = JOB_RUNNERS
-    JOB_DISPATCH = JOB_RUNNERS
-    JOB_REGISTRY = JOB_RUNNERS
-    JOB_HANDLERS = JOB_RUNNERS
-    _JOB_RUNNERS = JOB_RUNNERS
-    _JOB_DISPATCH = JOB_RUNNERS
-    _JOB_REGISTRY = JOB_RUNNERS
-    _JOB_HANDLERS = JOB_RUNNERS
 
     _instance = None
     _lock = threading.Lock()

@@ -897,7 +897,7 @@ def test_the_queue_method_delegates():
 
 
 # --------------------------------------------------------------------------
-# Candidate J: job dispatch registry
+# Job dispatch table
 # --------------------------------------------------------------------------
 
 def test_job_runners_covers_every_queued_job_type():
@@ -905,21 +905,6 @@ def test_job_runners_covers_every_queued_job_type():
     assert set(JOB_RUNNERS.keys()) == queued
     assert not (set(JOB_RUNNERS.keys()) - queued)
     assert not (queued - set(JOB_RUNNERS.keys()))
-
-
-def test_job_runners_aliases_share_one_object():
-    import src.services.job_queue as jq
-    for name in ("JOB_RUNNERS", "JOB_DISPATCH", "JOB_REGISTRY", "JOB_HANDLERS",
-                 "_JOB_RUNNERS", "_JOB_DISPATCH", "_JOB_REGISTRY", "_JOB_HANDLERS"):
-        assert getattr(jq, name) is jq.JOB_RUNNERS
-
-
-def test_job_runners_exposed_on_queue_instance():
-    assert job_queue.JOB_RUNNERS is JOB_RUNNERS
-    assert job_queue.JOB_DISPATCH is JOB_RUNNERS
-    assert job_queue.JOB_REGISTRY is JOB_RUNNERS
-    assert job_queue.JOB_HANDLERS is JOB_RUNNERS
-    assert job_queue._JOB_RUNNERS is JOB_RUNNERS
 
 
 def test_job_runners_names_are_callable_methods():
