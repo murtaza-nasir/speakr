@@ -21,7 +21,8 @@ export function useBulkOperations({
     finalizeRecordingMerge,
     fetchRecordingsPage,
     searchQuery,
-    showArchivedRecordings
+    showArchivedRecordings,
+    onRecordingsDeleted
 }) {
     const _t = (k, fallback) => (typeof t === 'function' ? t(k) : (fallback || k));
     // Modal state
@@ -183,6 +184,8 @@ export function useBulkOperations({
             // Remove deleted recordings from local state
             const deletedIds = new Set(data.deleted_ids || ids);
             recordings.value = recordings.value.filter(r => !deletedIds.has(r.id));
+            // Their Ambrose threads go with them.
+            if (onRecordingsDeleted) onRecordingsDeleted([...deletedIds]);
 
             // Clear selected recording if it was deleted
             if (selectedRecording.value && deletedIds.has(selectedRecording.value.id)) {

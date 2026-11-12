@@ -2,7 +2,11 @@
  * Toast notification utility
  */
 
-export const showToast = (message, iconClass = 'fa-info-circle', duration = 3000, type = 'info') => {
+/**
+ * `message` is HTML: escape any user text in it. With `onClick`, a click on
+ * the toast calls it before the toast goes.
+ */
+export const showToast = (message, iconClass = 'fa-info-circle', duration = 3000, type = 'info', onClick = null) => {
     const container = document.getElementById('toastContainer');
     if (!container) {
         console.warn('Toast container not found');
@@ -83,8 +87,19 @@ export const showToast = (message, iconClass = 'fa-info-circle', duration = 3000
     // Add click handler to dismiss toast
     toast.addEventListener('click', () => {
         clearTimeout(timeoutId);
+        if (typeof onClick === 'function') {
+            try { onClick(); } catch (err) { console.error('Toast action failed:', err); }
+        }
         dismissToast();
     });
+
+    if (typeof onClick === 'function') {
+        toast.setAttribute('role', 'button');
+        toast.tabIndex = 0;
+        toast.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toast.click(); }
+        });
+    }
 
     // Auto-dismiss after duration
     const timeoutId = setTimeout(dismissToast, duration);

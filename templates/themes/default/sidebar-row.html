@@ -28,6 +28,7 @@
                                 <h4 dir="auto" class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id && !selectionMode ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
                                     ${ recording.title || t('common.untitled') }
                                 </h4>
+                                {% include 'components/assistant/answering-mark.html' %}
                                 <div class="flex items-center gap-0.5 flex-shrink-0">
                                     <!-- Combined sharing status badge -->
                                     <span v-if="recording.is_shared || recording.has_group_tags || recording.shared_with_count > 0 || recording.public_share_count > 0"

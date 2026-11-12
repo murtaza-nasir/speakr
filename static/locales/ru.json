@@ -975,7 +975,11 @@
     "connectionEnded": "Соединение прервалось до завершения ответа: {{error}}",
     "errorWithMessage": "Ошибка: {{error}}",
     "sources": "Источники",
-    "quoteNotFound": "Цитата не найдена в транскрипции"
+    "quoteNotFound": "Цитата не найдена в транскрипции",
+    "answeredIn": "{{name}} ответил в «{{title}}»",
+    "answerFailedIn": "{{name}} не смог ответить в «{{title}}»",
+    "answeringHere": "{{name}} отвечает в этой записи",
+    "keptUntilTabCloses": "Чаты хранятся, пока вы не закроете эту вкладку."
   },
   "uiTheme": {
     "title": "Оформление интерфейса",

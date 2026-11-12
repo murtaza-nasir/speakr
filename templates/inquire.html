@@ -444,6 +444,9 @@
             // The shared Ambrose chat and its library filters (Ambrose 2b)
             const { useAssistantChat } = await import('/static/js/modules/assistant/chat.js');
             const { useSearchIn } = await import('/static/js/modules/assistant/search-in.js');
+            // Signing out here also clears the recording chats this tab kept.
+            const { clearThreadsOnSignOut, removeStoredThreads } = await import('/static/js/modules/composables/chat-threads.js');
+            clearThreadsOnSignOut(() => removeStoredThreads());
             
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
             const i18nInstance = window.i18n;

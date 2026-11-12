@@ -975,7 +975,11 @@
     "connectionEnded": "Connection ended before the response completed: {{error}}",
     "errorWithMessage": "Error: {{error}}",
     "sources": "Sources",
-    "quoteNotFound": "Quote not found in the transcript"
+    "quoteNotFound": "Quote not found in the transcript",
+    "answeredIn": "{{name}} answered in {{title}}",
+    "answerFailedIn": "{{name}} couldn't answer in {{title}}",
+    "answeringHere": "{{name}} is answering in this recording",
+    "keptUntilTabCloses": "Chats are kept until you close this tab."
   },
   "uiTheme": {
     "title": "Interface theme",

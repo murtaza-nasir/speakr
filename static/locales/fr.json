@@ -975,7 +975,11 @@
     "connectionEnded": "La connexion s'est interrompue avant la fin de la réponse : {{error}}",
     "errorWithMessage": "Erreur : {{error}}",
     "sources": "Sources",
-    "quoteNotFound": "Citation introuvable dans la transcription"
+    "quoteNotFound": "Citation introuvable dans la transcription",
+    "answeredIn": "{{name}} a répondu dans {{title}}",
+    "answerFailedIn": "{{name}} n'a pas pu répondre dans {{title}}",
+    "answeringHere": "{{name}} répond dans cet enregistrement",
+    "keptUntilTabCloses": "Les discussions sont conservées jusqu'à la fermeture de cet onglet."
   },
   "uiTheme": {
     "title": "Thème de l'interface",

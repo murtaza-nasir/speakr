@@ -975,7 +975,11 @@
     "connectionEnded": "回复完成前连接已中断：{{error}}",
     "errorWithMessage": "错误：{{error}}",
     "sources": "来源",
-    "quoteNotFound": "在转录文本中未找到该引文"
+    "quoteNotFound": "在转录文本中未找到该引文",
+    "answeredIn": "{{name}} 已在「{{title}}」中回答",
+    "answerFailedIn": "{{name}} 未能在「{{title}}」中回答",
+    "answeringHere": "{{name}} 正在此录音中回答",
+    "keptUntilTabCloses": "聊天记录会保留到您关闭此标签页为止。"
   },
   "uiTheme": {
     "title": "界面主题",

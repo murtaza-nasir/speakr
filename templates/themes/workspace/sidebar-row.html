@@ -28,6 +28,7 @@
                             <h4 dir="auto" class="ws-row__title">
                                 ${ recording.title || t('common.untitled') }
                             </h4>
+                            {% include 'components/assistant/answering-mark.html' %}
 
                             <!-- State text for work in progress or failed -->
                             <span v-if="recording.status !== 'COMPLETED'"
