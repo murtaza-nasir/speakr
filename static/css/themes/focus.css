@@ -612,6 +612,8 @@ html[data-ui-theme="focus"] body .sidebar .flex-1.overflow-y-auto { padding: 0 8
 @media (min-width: 641px) {
     html[data-ui-theme="focus"] body:has(.progress-popup:not(.minimized)) .sidebar .flex-1.overflow-y-auto { padding-bottom: calc(min(16rem, 25vh) + 7rem); }
     html[data-ui-theme="focus"] body:has(.progress-popup.minimized) .sidebar .flex-1.overflow-y-auto { padding-bottom: 5rem; }
+    /* The queue card fits inside the narrower sidebar column, off the main card's edge. */
+    html[data-ui-theme="focus"] body:has(.main-content.sidebar-open) .progress-popup { width: calc(var(--f-sidebar-w) - 32px); }
 }
 html[data-ui-theme="focus"] body .recording-group-header {
     position: sticky;

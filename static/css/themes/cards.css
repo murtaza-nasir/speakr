@@ -929,11 +929,17 @@ html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover
 }
 /* With the sidebar collapsed there is no sidebar column to sit in, and the
    bottom-left corner would cover the left edge of the main card. The popup then
-   moves to the bottom-right, above the player bar and left of the chat button. */
+   moves to the bottom-right: 8px above the chat button on its right edge while
+   the button is shown, otherwise above the player bar (recording view) or in the
+   corner. Collapsed it keeps its header in view instead of sliding down. */
 @media (min-width: 641px) {
     html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
-        left: auto; right: 88px; bottom: 92px; width: 300px;
+        left: auto;
+        right: var(--chat-fab-right, 16px);
+        bottom: calc(var(--chat-fab-clearance, var(--detail-bottom-inset, 8px)) + 8px);
+        width: 300px;
     }
+    html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup.minimized { transform: none; }
 }
 html[data-ui-theme="cards"] .progress-popup__card {
     background: var(--c-surface);

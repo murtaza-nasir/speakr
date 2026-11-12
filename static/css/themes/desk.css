@@ -341,10 +341,12 @@ html[data-ui-theme="desk"] .desk-statusbar__queue.is-busy .desk-statusbar__dot {
 /* The queue opens as a flat panel above the status bar (collapsed: hidden,
    the status bar's button opens it) */
 @media (min-width: 641px) {
+    /* Stacked 8px above the chat launcher on its right edge while it is shown;
+       otherwise above the bottom player (recording view) or the status bar. */
     html[data-ui-theme="desk"] .progress-popup {
         left: auto;
-        right: var(--sp-3);
-        bottom: calc(var(--status-h) + 6px);
+        right: var(--chat-fab-right, var(--sp-3));
+        bottom: calc(var(--chat-fab-clearance, var(--detail-bottom-inset, calc(var(--status-h) - 2px))) + 8px);
         width: 340px;
         min-width: 0;
         border-radius: var(--r-3);
