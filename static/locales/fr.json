@@ -3591,7 +3591,8 @@
       "translation_blocked_transcription_failed": "Traduction impossible : la transcription a échoué. Veuillez d'abord retraiter la transcription.",
       "translation_llm_not_configured": "Le service de traduction n'est pas disponible (client LLM non configuré)",
       "translation_invalid_language": "Langue cible inconnue.",
-      "invalid_assistant_name": "Le nom de l'assistant peut comporter jusqu'à 40 lettres, chiffres, espaces, points, tirets ou apostrophes, et commence par une lettre ou un chiffre"
+      "invalid_assistant_name": "Le nom de l'assistant peut comporter jusqu'à 40 lettres, chiffres, espaces, points, tirets ou apostrophes, et commence par une lettre ou un chiffre",
+      "invalid_filter_date": "Impossible de lire le filtre de date"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour !",
@@ -3863,6 +3864,8 @@
     "ask": "Demander à {{name}}",
     "scopeRecording": "Cet enregistrement",
     "scopeLibrary": "Tous les enregistrements",
-    "sendHint": "Envoyer (Entrée). Pour une nouvelle ligne, appuyez sur Ctrl+Entrée."
+    "sendHint": "Envoyer (Entrée). Pour une nouvelle ligne, appuyez sur Ctrl+Entrée.",
+    "searchIn": "Rechercher dans : {{scope}}",
+    "jumpToLatest": "Aller au plus récent"
   }
 }

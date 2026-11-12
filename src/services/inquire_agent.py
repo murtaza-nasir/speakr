@@ -218,11 +218,15 @@ def _fmt_time(seconds):
 class ToolContext:
     """Everything a tool needs, resolved once per request."""
 
-    def __init__(self, user_id, filters, allowed_ids, availability):
+    def __init__(self, user_id, filters, allowed_ids, availability, marked_ids=None):
         self.user_id = user_id
         self.filters = filters or {}
         self.allowed_ids = allowed_ids
         self.availability = availability
+        # Recordings whose transcript pages carry segment markers ([S12 12:34
+        # Dana]): the recording open in the panel, so pages read past the
+        # prompt's length limit can be cited like the prompt's own lines.
+        self.marked_ids = set(marked_ids or ())
 
     def check_scope(self, recording_id):
         try:
@@ -345,6 +349,22 @@ def tool_get_transcript(ctx, args):
 
     offset = max(int(args.get('offset', 0) or 0), 0)
     limit = min(max(int(args.get('limit', DEFAULT_TRANSCRIPT_PAGE) or DEFAULT_TRANSCRIPT_PAGE), 1), 400)
+
+    if rec.id in ctx.marked_ids:
+        from src.services.transcript_segments import canonical_segments
+        from src.services.recording_chat import _marked_transcript
+        marked = canonical_segments(rec)
+        if marked:
+            window = marked[offset:offset + limit]
+            return {
+                'recording_id': rec.id,
+                'title': rec.title,
+                'total_segments': len(marked),
+                'offset': offset,
+                'returned_segments': len(window),
+                'next_offset': offset + limit if offset + limit < len(marked) else None,
+                'transcript': _marked_transcript(window),
+            }
 
     segments, is_json = _parse_transcript_segments(rec.transcription)
     if is_json:
@@ -596,6 +616,43 @@ TOOLS:
 KEEP_VERBATIM_MESSAGES = 8  # last 4 turns
 
 
+def citation_lines(sources):
+    """The numbering the interface displayed for an answer's citations, one
+    line per source: a library source names its recording, a segment source
+    (the recording panel) its segment, time and speaker."""
+    if not isinstance(sources, list):
+        return []
+    lines = []
+    for s in sources[:30]:
+        if not isinstance(s, dict):
+            continue
+        try:
+            n = int(s.get('n'))
+        except (TypeError, ValueError):
+            continue
+        if s.get('recording_id') is not None:
+            try:
+                rid = int(s.get('recording_id'))
+            except (TypeError, ValueError):
+                continue
+            title = str(s.get('title') or '')[:120]
+            lines.append(f"{n} = {title} (recording {rid})")
+        elif s.get('segment_index') is not None:
+            try:
+                index = int(s.get('segment_index'))
+            except (TypeError, ValueError):
+                continue
+            bits = [f"segment S{index} of this recording"]
+            if isinstance(s.get('start_time'), (int, float)):
+                bits.append(f"at {_fmt_time(s['start_time'])}")
+            if s.get('speaker'):
+                bits.append(f"({str(s['speaker'])[:60]})")
+            if s.get('quote'):
+                bits.append(f"\"{str(s['quote'])[:120]}\"")
+            lines.append(f"{n} = {' '.join(bits)}")
+    return lines
+
+
 def sanitize_history(message_history):
     """Client history -> [{role, content, note?}].
 
@@ -620,21 +677,9 @@ def sanitize_history(message_history):
             note_bits = []
             if msg.get('activity'):
                 note_bits.append(f"research performed: {str(msg['activity'])[:300]}")
-            sources = msg.get('sources')
-            if isinstance(sources, list) and sources:
-                lines = []
-                for s in sources[:20]:
-                    if not isinstance(s, dict):
-                        continue
-                    try:
-                        n = int(s.get('n'))
-                        rid = int(s.get('recording_id'))
-                    except (TypeError, ValueError):
-                        continue
-                    title = str(s.get('title') or '')[:120]
-                    lines.append(f"{n} = {title} (recording {rid})")
-                if lines:
-                    note_bits.append(f"citations were displayed to the user numbered: {'; '.join(lines)}")
+            lines = citation_lines(msg.get('sources'))
+            if lines:
+                note_bits.append(f"citations were displayed to the user numbered: {'; '.join(lines)}")
             if note_bits:
                 entry['note'] = ("Note about the assistant's previous answer (system record, "
                                  "never reproduce in answers): " + " | ".join(note_bits))
@@ -762,13 +807,53 @@ def _native_tools_known_unsupported(err_text):
     return any(k in err for k in ('tool', 'function', 'unsupported', 'not support'))
 
 
+def _recording_tools_block(user_ctx, availability, tool_names, filters_text, scope):
+    """The tools note for the recording panel (Ambrose 2b): a second system
+    message after the recording builder's prompt, which stays as it is. It
+    describes only the tools offered and how to cite other recordings."""
+    parts = [
+        f"{_tools_sentence(availability, tool_names)} in {user_ctx['name']}'s recording library{filters_text}. "
+        "Answer questions about this recording from its transcript above. Use the tools only when a question "
+        "needs other recordings, for example \"did we discuss this anywhere else?\".",
+        "When you use something from another recording, cite it as a markdown link whose text is that "
+        "recording's exact title: [Title @ time](/recordings/<recording_id>?t=<seek_seconds>) with the "
+        "result's `time` value verbatim, or [Title](/recordings/<recording_id>) without a time. Never write a "
+        "\"Sources\" section; the interface lists the sources.",
+    ]
+    if scope.get('markers'):
+        parts.append('Keep citing this recording as [S12 "exact words"].')
+    cut = scope.get('cut')
+    if cut:
+        if cut.get('unit') == 'segments':
+            parts.append(
+                f"The transcript above is long and stops before segment {cut['offset']} of {cut['total']}. "
+                f"When a question needs the rest, read it with get_transcript (recording_id {scope['recording_id']}, "
+                f"offset {cut['offset']}); its lines carry the same segment markers.")
+        else:
+            parts.append(
+                f"The transcript above is long and stops after {cut['offset']} of {cut['total']} characters. "
+                f"When a question needs the rest, read it with get_transcript (recording_id {scope['recording_id']}, "
+                f"offset {cut['offset']}).")
+    return '\n\n'.join(parts)
+
+
 def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                       conversation_memory, filters, legacy_fallback=None,
-                      llm_call=call_chat_completion, tool_names=None):
+                      llm_call=call_chat_completion, tool_names=None, recording_scope=None,
+                      operation_type='inquire_agent'):
     """SSE generator implementing the agent loop.
 
     `tool_names`: the surface's tool list (assistant_events.tools_for_surface);
     None offers every tool.
+
+    `recording_scope` (the recording panel, Ambrose 2b): {'messages',
+    'recording_id', 'markers', 'cut'}. The recording builder's messages are
+    sent as they are (system prompt with the whole transcript, history,
+    question) with one system message added after the prompt that describes
+    the tools; message_history and conversation_memory are not used. The open
+    recording is added to the tools' scope only when its transcript is cut
+    (`cut`), so the rest can be paged. If the endpoint rejects tool calls,
+    `legacy_fallback` (the transcript-only answer) runs once instead.
 
     `legacy_fallback`: zero-arg generator function; invoked (yield from) if the
     agent fails before producing any answer content.
@@ -782,6 +867,8 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
             user = db.session.get(User, user_id)
             availability = get_availability(user)
             allowed_ids = resolve_allowed_recording_ids(user_id, filters)
+            if recording_scope and recording_scope.get('cut'):
+                allowed_ids = set(allowed_ids) | {recording_scope['recording_id']}
             schemas, executors = build_toolbox(availability, tool_names)
         except Exception as e:
             app.logger.error(f"Inquire agent setup failed: {e}", exc_info=True)
@@ -817,6 +904,10 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         if mode == 'auto':
             known = _NATIVE_TOOLS_SUPPORTED.get(mode_key)
             mode = 'prompt' if known is False else 'native'
+            if known is False and recording_scope and legacy_fallback is not None:
+                # This endpoint rejects tool calls: the transcript-only answer.
+                yield from legacy_fallback()
+                return
 
         def build_messages(current_mode, memory, history):
             block = ''
@@ -826,6 +917,13 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                     f"Arguments schema: {json.dumps(s['function']['parameters'])}"
                     for s in schemas)
                 block = _PROMPT_MODE_BLOCK.replace('%TOOLS%', tool_lines)
+            if recording_scope:
+                note = _recording_tools_block(user_ctx, availability, tool_names, filters_text, recording_scope)
+                if block:
+                    note += '\n\n' + block.rstrip()
+                msgs = list(recording_scope['messages'])
+                msgs.insert(1, {'role': 'system', 'content': note})
+                return msgs
             sys_prompt = _system_prompt(user_ctx, filters_text, availability, block, tool_names)
             msgs = [{'role': 'system', 'content': sys_prompt}]
             if memory:
@@ -843,13 +941,15 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
         history = sanitize_history(message_history)
         memory = (conversation_memory or '').strip() or None
 
-        # Context accounting + compaction before the first call
+        # Context accounting + compaction before the first call (the Ask
+        # page; the recording panel sends its builder's messages as they are)
         budget = _context_budget_tokens()
         est = estimate_context_tokens(_system_prompt(user_ctx, filters_text, availability, '', tool_names),
                                       memory, history, schemas)
         usage_pct = min(int(est * 100 / budget), 100)
-        yield _sse({'context_usage': usage_pct})
-        if est > budget * 0.6 and len(history) > KEEP_VERBATIM_MESSAGES:
+        if not recording_scope:
+            yield _sse({'context_usage': usage_pct})
+        if not recording_scope and est > budget * 0.6 and len(history) > KEEP_VERBATIM_MESSAGES:
             yield _sse({'status': 'compacting', 'message': translate('server.apiMessage.summarizingConversation')})
             memory, history, folded = compact_history(user_id, memory, history)
             if folded:
@@ -857,7 +957,9 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
 
         messages = build_messages(mode, memory, history)
 
-        tool_ctx = ToolContext(user_id, filters, allowed_ids, availability)
+        tool_ctx = ToolContext(user_id, filters, allowed_ids, availability,
+                               marked_ids=[recording_scope['recording_id']]
+                               if recording_scope and recording_scope.get('markers') else None)
         started = time_mod.monotonic()
         step_id = 0
         tool_counts = {}
@@ -962,14 +1064,23 @@ def run_inquire_agent(app, user_id, user_ctx, user_message, message_history,
                                       tools=schemas if use_tools else None,
                                       temperature=0.4, stream=True,
                                       max_tokens=int(os.environ.get('CHAT_MAX_TOKENS', '2000')),
-                                      user_id=user_id, operation_type='inquire_agent')
+                                      user_id=user_id, operation_type=operation_type)
                 else:
                     response = llm_call(messages=messages, temperature=0.4,
                                         max_tokens=int(os.environ.get('CHAT_MAX_TOKENS', '2000')),
-                                        user_id=user_id, operation_type='inquire_agent')
+                                        user_id=user_id, operation_type=operation_type)
             except TokenBudgetExceeded:
                 raise
             except Exception as e:
+                if mode == 'native' and use_tools and recording_scope and legacy_fallback is not None \
+                        and not produced_answer:
+                    # Tool calls rejected in the recording panel: retried
+                    # once without tools, as the transcript-only answer.
+                    app.logger.info(f"Tool call rejected in the recording chat; answering without tools: {e}")
+                    if _tool_mode() == 'auto' and _native_tools_known_unsupported(str(e)):
+                        _NATIVE_TOOLS_SUPPORTED[mode_key] = False
+                    yield from legacy_fallback()
+                    return
                 if mode == 'native' and _tool_mode() == 'auto' and _native_tools_known_unsupported(str(e)):
                     app.logger.info(f"Native tool calling unsupported by endpoint; switching to prompt mode: {e}")
                     _NATIVE_TOOLS_SUPPORTED[mode_key] = False

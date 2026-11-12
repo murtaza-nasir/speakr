@@ -3591,7 +3591,8 @@
       "translation_blocked_transcription_failed": "Übersetzung nicht möglich: Die Transkription ist fehlgeschlagen. Bitte verarbeiten Sie die Transkription zuerst neu.",
       "translation_llm_not_configured": "Der Übersetzungsdienst ist nicht verfügbar (LLM-Client nicht konfiguriert)",
       "translation_invalid_language": "Unbekannte Zielsprache.",
-      "invalid_assistant_name": "Der Name des Assistenten darf bis zu 40 Buchstaben, Ziffern, Leerzeichen, Punkte, Bindestriche oder Apostrophe enthalten und beginnt mit einem Buchstaben oder einer Ziffer"
+      "invalid_assistant_name": "Der Name des Assistenten darf bis zu 40 Buchstaben, Ziffern, Leerzeichen, Punkte, Bindestriche oder Apostrophe enthalten und beginnt mit einem Buchstaben oder einer Ziffer",
+      "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten erfolgreich aktualisiert!",
@@ -3863,6 +3864,8 @@
     "ask": "{{name}} fragen",
     "scopeRecording": "Diese Aufnahme",
     "scopeLibrary": "Alle Aufnahmen",
-    "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter."
+    "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter.",
+    "searchIn": "Suchen in: {{scope}}",
+    "jumpToLatest": "Zur neuesten Nachricht"
   }
 }

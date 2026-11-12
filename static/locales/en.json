@@ -3591,7 +3591,8 @@
       "translation_blocked_transcription_failed": "Cannot translate: transcription failed. Please reprocess the transcription first.",
       "translation_llm_not_configured": "Translation service is not available (LLM client not configured)",
       "translation_invalid_language": "Unknown target language.",
-      "invalid_assistant_name": "The assistant's name can have up to 40 letters, digits, spaces, dots, hyphens or apostrophes, and starts with a letter or digit"
+      "invalid_assistant_name": "The assistant's name can have up to 40 letters, digits, spaces, dots, hyphens or apostrophes, and starts with a letter or digit",
+      "invalid_filter_date": "Couldn't read the date filter"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated successfully!",
@@ -3863,6 +3864,8 @@
     "ask": "Ask {{name}}",
     "scopeRecording": "This recording",
     "scopeLibrary": "All recordings",
-    "sendHint": "Send (Enter). For a new line, press Ctrl+Enter."
+    "sendHint": "Send (Enter). For a new line, press Ctrl+Enter.",
+    "searchIn": "Search in: {{scope}}",
+    "jumpToLatest": "Jump to latest"
   }
 }

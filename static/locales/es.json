@@ -3591,7 +3591,8 @@
       "translation_blocked_transcription_failed": "No se puede traducir: la transcripción ha fallado. Vuelva a procesar la transcripción primero.",
       "translation_llm_not_configured": "El servicio de traducción no está disponible (cliente LLM no configurado)",
       "translation_invalid_language": "Idioma de destino desconocido.",
-      "invalid_assistant_name": "El nombre del asistente puede tener hasta 40 letras, dígitos, espacios, puntos, guiones o apóstrofos, y empieza por una letra o un dígito"
+      "invalid_assistant_name": "El nombre del asistente puede tener hasta 40 letras, dígitos, espacios, puntos, guiones o apóstrofos, y empieza por una letra o un dígito",
+      "invalid_filter_date": "No se pudo leer el filtro de fecha"
     },
     "apiMessage": {
       "accountUpdated": "¡Datos de la cuenta actualizados correctamente!",
@@ -3863,6 +3864,8 @@
     "ask": "Preguntar a {{name}}",
     "scopeRecording": "Esta grabación",
     "scopeLibrary": "Todas las grabaciones",
-    "sendHint": "Enviar (Enter). Para una línea nueva, pulse Ctrl+Enter."
+    "sendHint": "Enviar (Enter). Para una línea nueva, pulse Ctrl+Enter.",
+    "searchIn": "Buscar en: {{scope}}",
+    "jumpToLatest": "Ir a lo más reciente"
   }
 }
