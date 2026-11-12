@@ -19,7 +19,11 @@ The tools of the agent are listed in [What Ambrose can search](../user-guide/amb
 | Recording chat | the library tools: search by text and by meaning, list recordings, similar recordings, read transcripts, recording details, summaries and notes |
 | Incognito recording | none |
 
-Summaries and notes are offered only to users who allow them under **What Ambrose can read** in their account. The defaults for new users:
+Summaries and notes are offered only to users who allow them under **What Ambrose can read** in their account.
+
+![Account settings, Prompt options, What Ambrose can read: the toggles for summaries and notes](../assets/images/screenshots/inquire-privacy-settings.png)
+
+The defaults for new users:
 
 ```bash
 # Defaults for the "What Ambrose can read" toggles (transcripts are always available)
