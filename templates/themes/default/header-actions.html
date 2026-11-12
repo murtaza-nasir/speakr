@@ -78,7 +78,7 @@
                         <span v-text="useAsrEndpoint ? t('tooltips.reprocessWithAsr') : t('tooltips.reprocessTranscription')"></span>
                     </button>
                     <button v-if="selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                            role="menuitem" @click="showHeaderReprocessMenu = false; confirmReprocess('summary', selectedRecording)"
+                            role="menuitem" @click="showHeaderReprocessMenu = false; openRegenerateSummaryModal(selectedRecording)"
                             class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors whitespace-nowrap">
                         <i class="fas fa-sync-alt w-4 text-center text-[var(--text-muted)]"></i>
                         <span v-text="t('buttons.reprocessSummary')" data-i18n="buttons.reprocessSummary"></span>

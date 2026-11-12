@@ -1315,6 +1315,10 @@ html.dark .modal-overlay {
     margin: var(--sp-1) 0;
     background: var(--border-primary);
 }
+/* Monospace even where a theme resets textarea fonts (cards). */
+.regen-modal textarea.regen-prompt {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .regen-prompt {
     min-height: 240px;
     resize: vertical;
