@@ -22,6 +22,8 @@ Ambrose is the default name. To use another name, go to Account → Preferences 
 
 The header of the chat shows the monogram, the name and a scope chip reading **This recording**. Type a question in the box marked "Ask Ambrose" and press Enter to send it. For a new line, press Ctrl+Enter.
 
+![The recording chat: a question about offline mode, an answer with numbered citations, the Sources list with times and speakers, and the line "Chats are kept until you close this tab." under the chat box](../assets/images/screenshots/ambrose-recording-chat.png)
+
 Ambrose answers from the full transcript of the recording, its participants and your notes on it. Earlier questions in the chat are kept in mind, so you can ask follow-up questions such as "What solutions were proposed?" after a question about the budget.
 
 For tips on questions and for the export buttons, see [Ask Ambrose about a recording](transcripts.md#ask-ambrose-about-a-recording).
@@ -35,6 +37,8 @@ Each recording has its own chat. When you open another recording, its own chat i
 - A small chat icon on a recording's row in the sidebar marks a recording with a chat in this tab. Empty chats and incognito recordings have no icon.
 - You can open another recording while an answer is still arriving. The answer goes on in the chat of its own recording, and the chat icon on that recording's row pulses while Ambrose is answering.
 - When the answer is ready, a short message with the name of the recording appears, such as "Ambrose answered in Weekly sync". Click the message to open that recording. If Ambrose could not answer, the message reads "Ambrose couldn't answer in" and the name.
+
+![The recording list in the sidebar, with the chat icon on the rows of two recordings that have a chat in this tab](../assets/images/screenshots/ambrose-chat-mark.png)
 
 Download a chat before you close the tab if you want to keep it.
 
@@ -56,7 +60,11 @@ The numbers stay the same for the whole chat, so a follow-up such as "tell me mo
 
 ## What Ambrose can search
 
-On the Ask page, and in the recording chat when your administrator has turned on the agent, Ambrose can look through your library before it answers. Each step is shown while Ambrose works, for example "Searching for “budget”". Ambrose can:
+On the Ask page, and in the recording chat when your administrator has turned on the agent, Ambrose can look through your library before it answers. Each step is shown while Ambrose works, for example "Searching for “budget”".
+
+![The Ask Ambrose page with the steps of an answer expanded: one search and two transcripts read, then the answer with numbered citations and its sources](../assets/images/screenshots/inquire-agent-activity.png)
+
+Ambrose can:
 
 | Search | What it does |
 |--------|--------------|

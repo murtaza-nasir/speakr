@@ -53,7 +53,7 @@ You can guide diarization with a speaker count. The upload, recording, and repro
 Speakr provides seamless bidirectional synchronization between audio playback and transcript text for recordings with speaker diarization. Click any part of the transcript to jump directly to that moment in the audio, making it easy to review specific sections. As the audio plays, the system automatically highlights the currently spoken text in real-time with smooth visual feedback. Enable auto-scroll follow mode to keep the active segment centered in view, allowing you to follow along effortlessly during playback.
 
 <div style="max-width: 800px; margin: 2em auto;">
-  <img src="assets/images/screenshots/transcript-auto-follow.png" alt="Audio synchronization with auto-follow" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <img src="../assets/images/screenshots/transcript-auto-follow.png" alt="Audio synchronization with auto-follow" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">The transcript auto-scrolls to follow playback; click any line to jump to that moment</p>
 </div>
 
@@ -284,7 +284,7 @@ When enabled (`VIDEO_RETENTION=true`), uploaded video files preserve their video
 Video retention also unlocks in-app **tab/window/screen video capture**: the System Audio and Mic + System recording modes gain an "Also record video" option that keeps the shared surface as a video recording — a live preview shows while recording, and the result plays back in the same docked video player. Transcription still uses only the audio track. See the [Recording guide](user-guide/recording.md#recording-the-video-too-optional) for details.
 
 <div style="max-width: 800px; margin: 2em auto;">
-  <img src="assets/images/screenshots/main-view-video.png" alt="Video playback alongside transcript" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <img src="../assets/images/screenshots/main-view-video.png" alt="Video playback alongside transcript" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">In-browser video playback alongside speaker-labeled transcript and summary</p>
 </div>
 
