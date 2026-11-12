@@ -1131,15 +1131,6 @@
     "yourCustomPrompt": "Votre invite de résumé",
     "yourTitlePrompt": "Votre invite de titre"
   },
-  "customizeSummary": {
-    "title": "Personnaliser l'invite de résumé",
-    "body": "Ajoutez un contexte pour ce résumé uniquement, ou remplacez l'invite.",
-    "additionalContext": "Contexte supplémentaire",
-    "customPrompt": "Invite personnalisée",
-    "appendPlaceholder": "ex. L'ordre du jour est : …",
-    "replacePlaceholder": "Invite de résumé complète…",
-    "generateSummary": "Générer le résumé"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "Supprimer tous les intervenants sauvegardés ? Cette action est irréversible.",
     "title": "Supprimer tous les intervenants"
@@ -2415,22 +2406,9 @@
     "audioReTranscribedFromScratch": "L'audio est transcrit de nouveau, avec un nouveau titre et un nouveau résumé.",
     "audioReTranscribedWithAsr": "L'audio est transcrit de nouveau avec l'ASR et la séparation des orateurs. Le titre et le résumé sont générés de nouveau.",
     "manualEditsOverwritten": "Vos modifications de la transcription, du titre et du résumé sont remplacées.",
-    "manualEditsOverwrittenSummary": "Vos modifications du résumé sont remplacées.",
-    "newTitleAndSummary": "Un nouveau résumé est généré à partir de la transcription actuelle.",
     "createdPrefix": "Créé le :",
     "untitledRecording": "Enregistrement sans titre",
     "customSummaryPrompt": "Prompt de résumé personnalisé",
-    "promptSource": "Source du prompt",
-    "useDefaultPrompt": "Utiliser le prompt par défaut",
-    "usePromptFromTag": "Utiliser le prompt d'une étiquette",
-    "enterCustomPrompt": "Saisir un prompt personnalisé",
-    "selectTag": "Sélectionner une étiquette",
-    "selectTagPlaceholder": "Sélectionnez une étiquette…",
-    "previewLabel": "Aperçu :",
-    "customPromptLabel": "Prompt personnalisé",
-    "customPromptPlaceholder": "Instructions de résumé…",
-    "noTagsWithPromptsHint": "Aucune étiquette n'a sa propre invite. Ajoutez-en une à une étiquette dans les Paramètres.",
-    "subtitleSummary": "Retraitement du résumé",
     "subtitleTranscription": "Retraitement de la transcription"
   },
   "settings": {
@@ -2726,13 +2704,6 @@
     "customizePrompt": "Personnaliser l'invite",
     "editingSaveHint": "Modification en cours. Enregistrez depuis la barre d'onglets ci-dessus.",
     "needsTranscription": "Un résumé est disponible une fois la transcription terminée."
-  },
-  "summaryMode": {
-    "applyMode": "Mode d'application",
-    "append": "Ajouter",
-    "appendHelp": "Utiliser l'invite par défaut et ajouter ceci comme contexte supplémentaire.",
-    "replace": "Remplacer",
-    "replaceHelp": "Utiliser uniquement ce texte comme instructions de résumé."
   },
   "tagManagement": {
     "asrDefaults": "Paramètres ASR par défaut",
@@ -3580,7 +3551,9 @@
       "translation_blocked_transcription_failed": "La transcription a échoué ; il n'y a donc rien à traduire. Retraitez d'abord l'enregistrement.",
       "translation_llm_not_configured": "Le service de traduction n'est pas disponible (client LLM non configuré)",
       "translation_invalid_language": "Langue cible inconnue.",
-      "invalid_assistant_name": "Le nom de l'assistant peut comporter jusqu'à 40 lettres, chiffres, espaces, points, tirets ou apostrophes, et commence par une lettre ou un chiffre"
+      "invalid_assistant_name": "Le nom de l'assistant peut comporter jusqu'à 40 lettres, chiffres, espaces, points, tirets ou apostrophes, et commence par une lettre ou un chiffre",
+      "summary_prompt_invalid": "Le prompt ne peut pas être vide ni dépasser 8 000 caractères.",
+      "summary_prompt_save_denied": "Vous ne pouvez pas enregistrer le prompt à cet endroit."
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",
@@ -3797,5 +3770,48 @@
     "scopeRecording": "Cet enregistrement",
     "scopeLibrary": "Tous les enregistrements",
     "sendHint": "Envoyer (Entrée). Pour une nouvelle ligne, appuyez sur Ctrl+Entrée."
+  },
+  "regenerateSummary": {
+    "title": "Régénérer le résumé",
+    "titleGenerate": "Générer le résumé",
+    "untitled": "Enregistrement sans titre",
+    "loading": "Chargement du prompt…",
+    "loadFailed": "Impossible de charger le prompt",
+    "loadFailedDetail": "Impossible de charger le prompt : {{error}}",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Rédigez les instructions pour le résumé.",
+    "sourceTag": "De l'étiquette : {{name}}",
+    "sourceTags": "Des étiquettes : {{name}}",
+    "sourceFolder": "Du dossier : {{name}}",
+    "sourceUser": "Votre prompt par défaut",
+    "sourceAdmin": "Prompt par défaut de l'administrateur",
+    "sourceDefault": "Prompt intégré par défaut",
+    "sourceBlank": "Vide",
+    "editedFromTag": "Modifié depuis l'étiquette : {{name}}",
+    "editedFromTags": "Modifié depuis les étiquettes : {{name}}",
+    "editedFromFolder": "Modifié depuis le dossier : {{name}}",
+    "editedFromUser": "Modifié depuis votre prompt par défaut",
+    "editedFromAdmin": "Modifié depuis le prompt de l'administrateur",
+    "editedFromDefault": "Modifié depuis le prompt intégré",
+    "editedFromBlank": "Prompt personnalisé",
+    "startFrom": "Partir de",
+    "forThisRecording": "Pour cet enregistrement",
+    "otherPrompts": "Autres prompts",
+    "menuTag": "Étiquette : {{name}}",
+    "menuFolder": "Dossier : {{name}}",
+    "reset": "Réinitialiser",
+    "saveToTag": "Enregistrer dans l'étiquette {{name}}",
+    "saveToFolder": "Enregistrer dans le dossier {{name}}",
+    "saveToUser": "Enregistrer comme mon prompt par défaut",
+    "saved": "Prompt enregistré",
+    "saveFailed": "Impossible d'enregistrer le prompt",
+    "saveFailedDetail": "Impossible d'enregistrer le prompt : {{error}}",
+    "addInstructions": "Ajouter des instructions (facultatif)",
+    "addInstructionsPlaceholder": "Par exemple : l'ordre du jour portait sur le budget, les recrutements et la date de lancement.",
+    "instructionsSource": "Instructions ajoutées",
+    "variablesRow": "Variables du prompt · {{count}} renseignées",
+    "warning": "Remplace le résumé actuel, y compris vos modifications.",
+    "regenerate": "Régénérer",
+    "generate": "Générer"
   }
 }

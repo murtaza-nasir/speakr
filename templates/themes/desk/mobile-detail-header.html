@@ -250,7 +250,7 @@
                             v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED') && !selectedRecording.audio_deleted_at"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('tooltips.reprocessTranscription')"><i class="fas fa-redo-alt"></i></button>
-                    <button @click.stop="confirmReprocess('summary', selectedRecording)"
+                    <button @click.stop="openRegenerateSummaryModal(selectedRecording)"
                             v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                             class="btn btn--icon btn--sm flex-shrink-0"
                             :title="t('summary.regenerateSummary')"><i class="fas fa-sync-alt"></i></button>

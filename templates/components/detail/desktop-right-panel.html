@@ -66,7 +66,7 @@
                                 </div>
                             </div>
                             <button class="btn btn--icon" @click="toggleEditSummary" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
-                            <button class="btn btn--icon" @click="openCustomizeSummaryModal" :title="t('summary.customizePrompt') || 'Customize prompt'"><i class="fas fa-sliders-h"></i></button>
+                            <button v-if="!selectedRecording.incognito && selectedRecording.can_edit !== false" class="btn btn--icon" @click="openRegenerateSummaryModal(selectedRecording)" :title="t('summary.customizePrompt')"><i class="fas fa-sliders-h"></i></button>
                         </span>
                         <details class="tabs-bar__more" data-close-outside
                                  @click="$event.target.closest('.tabs-bar__menu button') && $event.currentTarget.removeAttribute('open')"
@@ -77,7 +77,7 @@
                                 <button type="button" @click="downloadSummary('docx')" :title="t('buttons.downloadSummary')"><i class="fas fa-file-word"></i><span v-text="t('buttons.formatWord')"></span></button>
                                 <button type="button" @click="downloadSummary('md')" :title="t('buttons.downloadSummary')"><i class="fab fa-markdown"></i><span v-text="t('buttons.formatMarkdown')"></span></button>
                                 <button type="button" @click="toggleEditSummary"><i class="fas fa-pen"></i><span v-text="t('buttons.editSummary')"></span></button>
-                                <button type="button" @click="openCustomizeSummaryModal"><i class="fas fa-sliders-h"></i><span v-text="t('summary.customizePrompt') || 'Customize prompt'"></span></button>
+                                <button v-if="!selectedRecording.incognito && selectedRecording.can_edit !== false" type="button" @click="openRegenerateSummaryModal(selectedRecording)"><i class="fas fa-sliders-h"></i><span v-text="t('summary.customizePrompt')"></span></button>
                             </div>
                         </details>
                     </template>

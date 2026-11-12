@@ -519,6 +519,9 @@ def generate_summary_endpoint(recording_id):
       - prompt_mode ('replace' | 'append', default 'replace'): in 'replace'
         mode the custom prompt overrides the resolved default; in 'append'
         mode it is appended after the resolved default as additional context.
+      - additional_instructions (string): added for this run after the prompt
+        that runs (#584).
+      - prompt_variables (object): replaces the recording's template variables.
     """
     try:
         recording = db.session.get(Recording, recording_id)
@@ -546,16 +549,18 @@ def generate_summary_endpoint(recording_id):
 
         # Optional custom prompt + mode (issue / discussion #253)
         data = request.get_json(silent=True) or {}
-        raw_prompt = data.get('custom_prompt')
-        custom_prompt = raw_prompt.strip() if isinstance(raw_prompt, str) and raw_prompt.strip() else None
-        prompt_mode = (data.get('prompt_mode') or 'replace').strip().lower()
-        if prompt_mode not in ('replace', 'append'):
-            prompt_mode = 'replace'
-        custom_prompt_append = bool(custom_prompt) and prompt_mode == 'append'
+        from src.services.reprocessing import summary_prompt_params
+        custom_prompt, custom_prompt_append = summary_prompt_params(
+            data.get('custom_prompt'), data.get('prompt_mode'), data.get('additional_instructions'))
+        if isinstance(data.get('prompt_variables'), dict):
+            from src.utils.prompt_variables import sanitize_variable_values
+            recording.prompt_variables = sanitize_variable_values(data['prompt_variables'])
+            db.session.commit()
 
         current_app.logger.info(
             f"Queueing summary generation for recording {recording_id}"
-            + (f" with custom prompt (mode={prompt_mode}, length={len(custom_prompt)})" if custom_prompt else "")
+            + (f" with custom prompt (append={custom_prompt_append}, length={len(custom_prompt)})"
+               if custom_prompt else "")
         )
 
         # Queue summary generation job
@@ -819,7 +824,8 @@ def reprocess_summary(recording_id):
             queue_summary_reprocess(recording, current_user,
                                     custom_prompt=data.get('custom_prompt'),
                                     prompt_mode=data.get('prompt_mode'),
-                                    prompt_variables=data.get('prompt_variables'))
+                                    prompt_variables=data.get('prompt_variables'),
+                                    additional_instructions=data.get('additional_instructions'))
         except ReprocessError as e:
             return jsonify(api_error(e.code)), e.status
         current_app.logger.info(f"Queued summary reprocessing for recording {recording_id}")
@@ -840,6 +846,55 @@ def reprocess_summary(recording_id):
         db.session.rollback()
         current_app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+def _summary_prompt_recording(recording_id):
+    """The recording and an error response for the summary prompt routes.
+
+    Only editors can regenerate a summary, so both routes need edit access.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording or not has_recording_access(recording, current_user):
+        return None, (jsonify(api_error('recording_not_found')), 404)
+    if not has_recording_access(recording, current_user, require_edit=True):
+        return None, (jsonify(api_error('recording_reprocess_denied')), 403)
+    return recording, None
+
+
+@recordings_bp.route('/recording/<int:recording_id>/summary_prompt', methods=['GET'])
+@login_required
+def get_summary_prompt(recording_id):
+    """The summary prompt the current user would regenerate with (#584).
+
+    Returns {prompt, source, source_name, source_key, is_owner, save_target,
+    start_from}. Only the current user's own prompts are included.
+    """
+    recording, error = _summary_prompt_recording(recording_id)
+    if error:
+        return error
+    from src.services.summary_prompt import describe_summary_prompt
+    return jsonify(describe_summary_prompt(recording, current_user))
+
+
+@recordings_bp.route('/recording/<int:recording_id>/summary_prompt', methods=['POST'])
+@login_required
+def save_summary_prompt_route(recording_id):
+    """Save an edited summary prompt to a tag, the folder or the user's default (#584).
+
+    JSON body: {target: 'tag' | 'folder' | 'user', id, prompt}. Returns the
+    prompt description as the GET route does.
+    """
+    recording, error = _summary_prompt_recording(recording_id)
+    if error:
+        return error
+    from src.services.summary_prompt import SummaryPromptError, describe_summary_prompt, save_summary_prompt
+    data = request.get_json(silent=True) or {}
+    try:
+        save_summary_prompt(recording, current_user, data.get('target'), data.get('id'), data.get('prompt'))
+    except SummaryPromptError as e:
+        db.session.rollback()
+        return jsonify(api_error(e.code)), e.status
+    return jsonify(describe_summary_prompt(recording, current_user))
 
 
 

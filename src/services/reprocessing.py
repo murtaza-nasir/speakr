@@ -77,12 +77,38 @@ def queue_transcription_reprocess(recording, user, overrides=None):
         raise ReprocessError('reprocess_queue_failed', 503) from e
 
 
-def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
-                            prompt_variables=None, job_type='reprocess_summary'):
-    """Clear the summary and events and queue a new summary. Returns the job id.
+def summary_prompt_params(custom_prompt=None, prompt_mode='replace', additional_instructions=None):
+    """The custom_prompt and custom_prompt_append job parameters of a request.
 
     custom_prompt replaces the resolved prompt, or is appended to it when
-    prompt_mode is 'append'. prompt_variables, when given, replace the
+    prompt_mode is 'append'. additional_instructions (#584) are added for
+    this run after the prompt that runs, in the words the append mode uses,
+    so a replaced prompt can carry them too. Neither given: (None, False),
+    and the summary task resolves the prompt as for an automatic summary.
+    """
+    custom_prompt = custom_prompt.strip() if isinstance(custom_prompt, str) and custom_prompt.strip() else None
+    extra = (additional_instructions.strip()
+             if isinstance(additional_instructions, str) and additional_instructions.strip() else None)
+    mode = (prompt_mode or 'replace').strip().lower() if isinstance(prompt_mode, str) else 'replace'
+    if mode not in ('replace', 'append'):
+        mode = 'replace'
+    if extra:
+        if not custom_prompt:
+            return extra, True
+        if mode == 'append':
+            return f"{custom_prompt}\n\n{extra}", True
+        # The same wording generate_summary_only_task uses for an appended prompt.
+        return f"{custom_prompt}\n\nAdditional context for this recording:\n{extra}", False
+    return custom_prompt, bool(custom_prompt) and mode == 'append'
+
+
+def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
+                            prompt_variables=None, job_type='reprocess_summary',
+                            additional_instructions=None):
+    """Clear the summary and events and queue a new summary. Returns the job id.
+
+    custom_prompt, prompt_mode and additional_instructions are read by
+    summary_prompt_params. prompt_variables, when given, replace the
     recording's template variables (sanitised as at upload).
     """
     from src.services import llm
@@ -99,10 +125,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     if llm.client is None:
         raise ReprocessError('summary_llm_not_configured', 503)
 
-    custom_prompt = (custom_prompt or '').strip() or None
-    mode = (prompt_mode or 'replace').strip().lower()
-    if mode not in ('replace', 'append'):
-        mode = 'replace'
+    custom_prompt, append = summary_prompt_params(custom_prompt, prompt_mode, additional_instructions)
     if prompt_variables is not None:
         recording.prompt_variables = sanitize_variable_values(prompt_variables)
 
@@ -112,7 +135,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
 
     params = {
         'custom_prompt': custom_prompt,
-        'custom_prompt_append': bool(custom_prompt) and mode == 'append',
+        'custom_prompt_append': append,
         'user_id': user.id,
     }
     return job_queue.enqueue(user_id=user.id, recording_id=recording.id, job_type=job_type, params=params)

@@ -1131,15 +1131,6 @@
     "yourCustomPrompt": "您的摘要提示",
     "yourTitlePrompt": "您的标题提示"
   },
-  "customizeSummary": {
-    "title": "自定义摘要提示",
-    "body": "仅为此摘要添加上下文，或替换提示。",
-    "additionalContext": "附加上下文",
-    "customPrompt": "自定义提示",
-    "appendPlaceholder": "例如：今天的议程是：…",
-    "replacePlaceholder": "完整的摘要提示…",
-    "generateSummary": "生成摘要"
-  },
   "deleteAllSpeakersModal": {
     "confirmMessage": "删除所有已保存的发言人？此操作无法撤销。",
     "title": "删除所有发言人"
@@ -2415,22 +2406,9 @@
     "audioReTranscribedFromScratch": "音频将重新转录，并生成新的标题和摘要。",
     "audioReTranscribedWithAsr": "音频将使用 ASR 和发言人分离重新转录。标题和摘要将重新生成。",
     "manualEditsOverwritten": "您对转录文本、标题和摘要的编辑将被替换。",
-    "manualEditsOverwrittenSummary": "您对摘要的编辑将被替换。",
-    "newTitleAndSummary": "将根据当前转录文本生成新的摘要。",
     "createdPrefix": "创建时间:",
     "untitledRecording": "未命名录音",
     "customSummaryPrompt": "自定义摘要提示词",
-    "promptSource": "提示词来源",
-    "useDefaultPrompt": "使用默认提示词",
-    "usePromptFromTag": "使用标签的提示词",
-    "enterCustomPrompt": "输入自定义提示词",
-    "selectTag": "选择标签",
-    "selectTagPlaceholder": "请选择一个标签…",
-    "previewLabel": "预览:",
-    "customPromptLabel": "自定义提示词",
-    "customPromptPlaceholder": "摘要指令…",
-    "noTagsWithPromptsHint": "没有标签带有自己的提示。请在设置中为标签添加提示。",
-    "subtitleSummary": "重新生成摘要",
     "subtitleTranscription": "重新转录"
   },
   "settings": {
@@ -2726,13 +2704,6 @@
     "customizePrompt": "自定义提示",
     "editingSaveHint": "正在编辑。请通过上方的标签栏保存。",
     "needsTranscription": "转录文本完成后即可生成摘要。"
-  },
-  "summaryMode": {
-    "applyMode": "应用模式",
-    "append": "追加",
-    "appendHelp": "使用默认提示，并将此内容作为额外上下文。",
-    "replace": "替换",
-    "replaceHelp": "仅使用此文本作为摘要指令。"
   },
   "tagManagement": {
     "asrDefaults": "ASR 默认值",
@@ -3580,7 +3551,9 @@
       "translation_blocked_transcription_failed": "转录失败，没有可翻译的内容。请先重新处理该录音。",
       "translation_llm_not_configured": "翻译服务不可用（未配置 LLM 客户端）",
       "translation_invalid_language": "未知的目标语言。",
-      "invalid_assistant_name": "助手名称最多 40 个字符，可包含字母、数字、空格、句点、连字符或撇号，并以字母或数字开头"
+      "invalid_assistant_name": "助手名称最多 40 个字符，可包含字母、数字、空格、句点、连字符或撇号，并以字母或数字开头",
+      "summary_prompt_invalid": "提示词不能为空，也不能超过 8000 个字符。",
+      "summary_prompt_save_denied": "你不能将提示词保存到这里。"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",
@@ -3797,5 +3770,48 @@
     "scopeRecording": "此录音",
     "scopeLibrary": "所有录音",
     "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。"
+  },
+  "regenerateSummary": {
+    "title": "重新生成摘要",
+    "titleGenerate": "生成摘要",
+    "untitled": "未命名录音",
+    "loading": "正在加载提示词…",
+    "loadFailed": "无法加载提示词",
+    "loadFailedDetail": "无法加载提示词：{{error}}",
+    "promptLabel": "提示词",
+    "promptPlaceholder": "写下摘要的说明。",
+    "sourceTag": "来自标签：{{name}}",
+    "sourceTags": "来自标签：{{name}}",
+    "sourceFolder": "来自文件夹：{{name}}",
+    "sourceUser": "你的默认提示词",
+    "sourceAdmin": "管理员默认提示词",
+    "sourceDefault": "内置默认提示词",
+    "sourceBlank": "空白",
+    "editedFromTag": "基于标签修改：{{name}}",
+    "editedFromTags": "基于标签修改：{{name}}",
+    "editedFromFolder": "基于文件夹修改：{{name}}",
+    "editedFromUser": "基于你的默认提示词修改",
+    "editedFromAdmin": "基于管理员默认提示词修改",
+    "editedFromDefault": "基于内置默认提示词修改",
+    "editedFromBlank": "自定义提示词",
+    "startFrom": "起始内容",
+    "forThisRecording": "适用于此录音",
+    "otherPrompts": "其他提示词",
+    "menuTag": "标签：{{name}}",
+    "menuFolder": "文件夹：{{name}}",
+    "reset": "重置",
+    "saveToTag": "保存到标签 {{name}}",
+    "saveToFolder": "保存到文件夹 {{name}}",
+    "saveToUser": "保存为我的默认提示词",
+    "saved": "提示词已保存",
+    "saveFailed": "无法保存提示词",
+    "saveFailedDetail": "无法保存提示词：{{error}}",
+    "addInstructions": "添加说明（可选）",
+    "addInstructionsPlaceholder": "例如：议程包括预算、招聘和发布日期。",
+    "instructionsSource": "添加的说明",
+    "variablesRow": "提示变量 · 已填写 {{count}} 个",
+    "warning": "替换当前摘要，包括你的编辑。",
+    "regenerate": "重新生成",
+    "generate": "生成"
   }
 }
