@@ -80,16 +80,19 @@
                     ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.stage === 'joining').length > 0">
-                    ${ activeProgressItems.filter(i => i.stage === 'joining').length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && i.stage !== 'joining').length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.stage === 'joining').length } ${ t('progressQueue.joiningShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'translating', 'queued'].includes(i.status) && i.stage !== 'joining').length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.stage === 'converting').length > 0">
-                    ${ activeProgressItems.filter(i => i.stage === 'converting').length } ${ t('progressQueue.convertingShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'queued'].includes(i.status) && !i.stage).length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.stage === 'converting').length } ${ t('progressQueue.convertingShort') }<span v-if="activeProgressItems.filter(i => ['transcribing', 'summarizing', 'translating', 'queued'].includes(i.status) && !i.stage).length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length > 0">
-                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.status === 'transcribing' && !i.stage).length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'translating', 'queued'].includes(i.status)).length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
-                    ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => ['translating', 'queued'].includes(i.status)).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'translating').length > 0">
+                    ${ activeProgressItems.filter(i => i.status === 'translating').length } ${ t('progressQueue.translatingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'queued').length } ${ t('progressQueue.queuedShort') }
@@ -106,7 +109,7 @@
                     'px-2 py-1.5 rounded-md transition-all',
                     item.status === 'uploading' ? 'bg-blue-500/10 border-l-2 border-blue-500' :
                     item.status === 'transcribing' ? 'bg-purple-500/10 border-l-2 border-purple-500' :
-                    item.status === 'summarizing' ? 'bg-green-500/10 border-l-2 border-green-500' :
+                    ['summarizing', 'translating'].includes(item.status) ? 'bg-green-500/10 border-l-2 border-green-500' :
                     'bg-[var(--bg-tertiary)]/50 border-l-2 border-yellow-500'
                 ]">
                     <!-- Title row with status icon -->
@@ -116,7 +119,7 @@
                             getStatusDisplay(item.status).icon,
                             item.status === 'uploading' ? 'text-blue-500' :
                             item.status === 'transcribing' ? 'text-purple-500' :
-                            item.status === 'summarizing' ? 'text-green-500' :
+                            ['summarizing', 'translating'].includes(item.status) ? 'text-green-500' :
                             'text-yellow-500',
                             getStatusDisplay(item.status).animate ? 'animate-pulse' : ''
                         ]"></i>
@@ -127,7 +130,7 @@
                             'text-xs font-medium px-1.5 py-0.5 rounded',
                             item.status === 'uploading' ? 'bg-blue-500/20 text-blue-500' :
                             item.status === 'transcribing' ? 'bg-purple-500/20 text-purple-500' :
-                            item.status === 'summarizing' ? 'bg-green-500/20 text-green-500' :
+                            ['summarizing', 'translating'].includes(item.status) ? 'bg-green-500/20 text-green-500' :
                             'bg-yellow-500/20 text-yellow-500'
                         ]">${item.statusLabel || getStatusDisplay(item.status).label}</span>
                     </div>
@@ -135,6 +138,13 @@
                     <div v-if="item.status === 'uploading' && item.progress !== null"
                          class="mt-1 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                         <div class="h-full bg-blue-500 rounded-full transition-all duration-300"
+                             :style="{width: item.progress + '%'}"></div>
+                    </div>
+                    <!-- Chunk progress for translations -->
+                    <div v-if="item.status === 'translating' && item.progress !== null"
+                         class="mt-1 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
+                         role="progressbar" :aria-valuenow="item.progress" aria-valuemin="0" aria-valuemax="100">
+                        <div class="h-full bg-green-500 rounded-full transition-all duration-300"
                              :style="{width: item.progress + '%'}"></div>
                     </div>
                     <!-- Compact message -->
