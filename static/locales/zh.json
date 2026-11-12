@@ -2282,7 +2282,10 @@
     "waiting": "等待中",
     "waitingForProcessing": "已上传，等待处理...",
     "waitingToUpload": "等待上传...",
-    "region": "处理队列项目"
+    "region": "处理队列项目",
+    "translating": "翻译中",
+    "translatingShort": "翻译中",
+    "translatingMessage": "正在翻译转录内容"
   },
   "promptVariables": {
     "title": "提示变量",
@@ -2673,7 +2676,8 @@
     "stuck": "重置卡住的处理",
     "summarizing": "生成摘要中",
     "transcribing": "转录中",
-    "uploading": "上传中"
+    "uploading": "上传中",
+    "queuedTranslation": "排队中（翻译）"
   },
   "summary": {
     "actionItems": "行动事项",
@@ -3585,7 +3589,9 @@
       "userAlreadyHasNamingTemplates": "该用户已有命名模板",
       "userAlreadyHasTemplates": "该用户已有模板",
       "voiceProfileCleared": "已清除 {{name}} 的声纹档案",
-      "translationQueued": "翻译已加入队列"
+      "translationQueued": "翻译已加入队列",
+      "translationAlreadyRunning": "这条录音已在翻译中。",
+      "translationSameLanguage": "转录内容已经是{{target}}。"
     },
     "form": {
       "required": "此字段为必填项。",
@@ -3732,7 +3738,9 @@
     "targetLanguage": "目标语言",
     "preferences": "翻译偏好设置",
     "toggle": "切换翻译",
-    "incognitoUnavailable": "翻译不适用于无痕录音。"
+    "incognitoUnavailable": "翻译不适用于无痕录音。",
+    "progress": "正在翻译 · {{done}}/{{total}}",
+    "alreadyInLanguage": "转录内容已经是{{language}}。"
   },
   "whatsNew": {
     "title": "Speakr {{version}} 新功能",

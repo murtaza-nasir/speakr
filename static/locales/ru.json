@@ -2282,7 +2282,10 @@
     "waiting": "Ожидание",
     "waitingForProcessing": "Загружено, ожидание обработки...",
     "waitingToUpload": "Ожидание загрузки...",
-    "region": "Элементы очереди обработки"
+    "region": "Элементы очереди обработки",
+    "translating": "Перевод",
+    "translatingShort": "перевод",
+    "translatingMessage": "Перевод расшифровки"
   },
   "promptVariables": {
     "title": "Переменные подсказки",
@@ -2673,7 +2676,8 @@
     "stuck": "Сбросить зависшую обработку",
     "summarizing": "Резюмирование",
     "transcribing": "Транскрибирование",
-    "uploading": "Загрузка"
+    "uploading": "Загрузка",
+    "queuedTranslation": "В очереди (перевод)"
   },
   "summary": {
     "actionItems": "Задачи к выполнению",
@@ -3585,7 +3589,9 @@
       "userAlreadyHasNamingTemplates": "У пользователя уже есть шаблоны именования",
       "userAlreadyHasTemplates": "У пользователя уже есть шаблоны",
       "voiceProfileCleared": "Голосовой профиль {{name}} очищен",
-      "translationQueued": "Перевод в очереди"
+      "translationQueued": "Перевод в очереди",
+      "translationAlreadyRunning": "Эта запись уже переводится.",
+      "translationSameLanguage": "Расшифровка уже на языке: {{target}}."
     },
     "form": {
       "required": "Это поле обязательно.",
@@ -3732,7 +3738,9 @@
     "targetLanguage": "Целевой язык",
     "preferences": "Настройки перевода",
     "toggle": "Показать или скрыть перевод",
-    "incognitoUnavailable": "Перевод недоступен для инкогнито-записей."
+    "incognitoUnavailable": "Перевод недоступен для инкогнито-записей.",
+    "progress": "Перевод · {{done}} из {{total}}",
+    "alreadyInLanguage": "Расшифровка уже на языке: {{language}}."
   },
   "whatsNew": {
     "title": "Что нового в Speakr {{version}}",

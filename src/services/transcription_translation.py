@@ -25,6 +25,20 @@ def _chunk_limit():
     return TRANSLATION_CHUNK_CHARS
 
 
+def _report(progress, done, total):
+    """Pass chunk progress to the caller's callback, if there is one.
+
+    Called once before the first chunk and once after each chunk, so a
+    chunk split by _translate_payload_split still counts as one part.
+    """
+    if progress is None:
+        return
+    try:
+        progress(done, total)
+    except Exception:
+        pass
+
+
 def _resolve_target_language(user_id, target_language):
     if target_language:
         return target_language
@@ -164,17 +178,17 @@ def _translate_payload_split(payload, user_id, target_language, prefix_opt):
     return result
 
 
-def translate_json_segments(text, user_id, target_language):
+def translate_json_segments(text, user_id, target_language, progress=None):
     """Translate a JSON list of transcript segments, preserving structure."""
     data = json.loads(text)
     if not isinstance(data, list):
-        return translate_plain_text(text, user_id, target_language)
+        return translate_plain_text(text, user_id, target_language, progress=progress)
 
     # Detect whether this is actually a segment list.
     is_segments = all(isinstance(item, dict) and ('sentence' in item or 'text' in item) for item in data)
     if not is_segments:
         # Could be a JSON array of strings; treat as plain text.
-        return translate_plain_text(text, user_id, target_language)
+        return translate_plain_text(text, user_id, target_language, progress=progress)
 
     sentences = [item.get('sentence', item.get('text', '')) for item in data]
 
@@ -196,7 +210,8 @@ def translate_json_segments(text, user_id, target_language):
 
     prefix_opt = _prefix_cache_parts()
     translated_all = []
-    for chunk in chunks:
+    _report(progress, 0, len(chunks))
+    for chunk_number, chunk in enumerate(chunks, 1):
         non_empty = [i for i, s in enumerate(chunk) if (s or '').strip()]
         payload = {str(i + 1): (chunk[i] if chunk[i] is not None else '') for i in non_empty}
         parsed = _translate_payload_split(payload, user_id, target_language, prefix_opt) if payload else {}
@@ -208,6 +223,7 @@ def translate_json_segments(text, user_id, target_language):
                 translated_all.append(value)
             else:
                 translated_all.append(chunk[i] if chunk[i] is not None else '')
+        _report(progress, chunk_number, len(chunks))
 
     new_data = []
     for idx, item in enumerate(data):
@@ -224,7 +240,7 @@ def translate_json_segments(text, user_id, target_language):
     return json.dumps(new_data, ensure_ascii=False)
 
 
-def translate_plain_text(text, user_id, target_language):
+def translate_plain_text(text, user_id, target_language, progress=None):
     """Translate plain text, splitting at paragraph boundaries."""
     limit = _chunk_limit()
     # Split while preserving separators.
@@ -258,10 +274,12 @@ def translate_plain_text(text, user_id, target_language):
 
     prefix_opt = _prefix_cache_parts()
     translated_chunks = []
-    for chunk in chunks:
+    _report(progress, 0, len(chunks))
+    for chunk_number, chunk in enumerate(chunks, 1):
         chunk_text = ''.join(para + sep for para, sep in chunk)
         if not chunk_text.strip():
             translated_chunks.append(chunk_text)
+            _report(progress, chunk_number, len(chunks))
             continue
         # Translate each paragraph independently so the paragraph separators
         # are preserved verbatim instead of depending on the model keeping them.
@@ -283,6 +301,7 @@ def translate_plain_text(text, user_id, target_language):
                 translated_paras.append(paras[i] if paras[i] is not None else '')
         translated_chunk = ''.join(translated_paras[i] + seps[i] for i in range(len(paras)))
         translated_chunks.append(translated_chunk)
+        _report(progress, chunk_number, len(chunks))
 
     return ''.join(translated_chunks)
 
@@ -317,7 +336,8 @@ def _same_language(source_language, target_language):
     return _language_key(source_language) == _language_key(target_language)
 
 
-def translate_transcription_text(text, user_id=None, target_language=None, source_language=None):
+def translate_transcription_text(text, user_id=None, target_language=None, source_language=None,
+                                 progress=None):
     """Pure function: translate stored transcript text, return translated text.
 
     When the transcription was created with an explicitly requested language
@@ -345,8 +365,8 @@ def translate_transcription_text(text, user_id=None, target_language=None, sourc
             # Do not catch a malformed-model ValueError here: translating the
             # raw JSON string as plain text would persist a mangled result
             # instead of letting the job retry the chunk.
-            return translate_json_segments(text, user_id, target_language)
-    return translate_plain_text(text, user_id, target_language)
+            return translate_json_segments(text, user_id, target_language, progress=progress)
+    return translate_plain_text(text, user_id, target_language, progress=progress)
 
 
 def translate_transcription(*args, **kwargs):
@@ -361,6 +381,8 @@ def translate_transcription(*args, **kwargs):
     source_language = kwargs.get('source_language', kwargs.get('sourceLanguage'))
     recording = None
     params = kwargs.get('params')
+    # Optional callable(done, total), called once per translated chunk.
+    progress = kwargs.get('progress')
 
     if args:
         if isinstance(args[0], str):
@@ -402,7 +424,7 @@ def translate_transcription(*args, **kwargs):
         translation_start_time = time.time()
         copied_verbatim = _same_language(source_language, target_language or 'English')
         translated = translate_transcription_text(
-            text, user_id, target_language, source_language=source_language)
+            text, user_id, target_language, source_language=source_language, progress=progress)
 
         recording.transcription_translation = translated
         recording.transcription_translation_language = target_language
@@ -425,7 +447,7 @@ def translate_transcription(*args, **kwargs):
         target_language = _resolve_target_language(user_id, None)
 
     return translate_transcription_text(
-        text, user_id, target_language, source_language=source_language)
+        text, user_id, target_language, source_language=source_language, progress=progress)
 
 
 def _segment_list(text):

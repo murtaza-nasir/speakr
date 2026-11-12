@@ -479,6 +479,10 @@ def _run_migrations(app, engine):
             app.logger.info("Added is_new_upload column to processing_job table")
         if add_column_if_not_exists(engine, 'processing_job', 'provider_task', 'TEXT'):
             app.logger.info("Added provider_task column to processing_job table")
+        if add_column_if_not_exists(engine, 'processing_job', 'progress_done', 'INTEGER'):
+            app.logger.info("Added progress_done column to processing_job table")
+        if add_column_if_not_exists(engine, 'processing_job', 'progress_total', 'INTEGER'):
+            app.logger.info("Added progress_total column to processing_job table")
 
         if add_column_if_not_exists(engine, 'tag', 'group_id', 'INTEGER'):
             app.logger.info("Added group_id column to tag table")

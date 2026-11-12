@@ -2356,15 +2356,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return selectedRecording.value.transcription || '';
             });
 
-            const translationJobActive = computed(() => {
+            const translationJob = computed(() => {
                 const rec = selectedRecording.value;
-                if (!rec) return false;
-                return (allJobs.value || []).some(j =>
+                if (!rec) return null;
+                return (allJobs.value || []).find(j =>
                     j.recording_id === rec.id &&
                     j.job_type === 'translate_transcription' &&
                     (j.job_status === 'queued' || j.job_status === 'processing')
-                );
+                ) || null;
             });
+            const translationJobActive = computed(() => !!translationJob.value);
+            // "Translating · 12 of 18" once the running job has reported its
+            // chunk count; the plain in-progress title before that.
+            const translationProgressPercent = (job) => {
+                if (!job || job.job_status !== 'processing' || !(job.progress_total > 0)) return null;
+                return Math.min(100, Math.round(100 * (job.progress_done || 0) / job.progress_total));
+            };
+            const translationProgressTitle = computed(() => {
+                const job = translationJob.value;
+                if (translationProgressPercent(job) === null) return t('translation.inProgress');
+                return t('translation.progress', { done: job.progress_done || 0, total: job.progress_total });
+            });
+            const translationProgress = computed(() => translationProgressPercent(translationJob.value));
 
             const processedTranscription = computed(() => {
                 if (!displayTranscription.value) {
@@ -2746,10 +2759,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     let data = {};
                     try { data = await res.json(); } catch (e) { data = {}; }
-                    if (res.ok) {
+                    if (res.ok && data.same_language) {
+                        // Nothing to translate: no job was queued.
+                        showTranslationModal.value = false;
+                        showToast(t('translation.alreadyInLanguage', { language: translationLanguageLabel(data.language) }));
+                    } else if (res.ok) {
                         showTranslationModal.value = false;
                         viewingTranslation.value = true;
-                        showToast(data.message || t('server.apiMessage.translationQueued'));
+                        showToast(data.already_running
+                            ? (data.message || t('messages.translationInProgress'))
+                            : (data.message || t('server.apiMessage.translationQueued')));
                         // The translation job leaves recording.status alone, so
                         // translationJobActive (backed by the job-queue poll) is
                         // the only signal the UI has. Fetch it right away so the
@@ -3501,13 +3520,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 1. First, add all backend jobs (these have the most accurate status)
                 for (const job of allJobs.value) {
-                    // A translation job is reported as queue_type 'summary' (it
-                    // shares that worker) and leaves recording.status alone, so
-                    // it would show up here labelled "Summarizing". The
-                    // translation tab renders its own spinner from
-                    // translationJobActive, so keep these jobs out of the
-                    // processing queue rather than mislabel them.
-                    if (job.job_type === 'translate_transcription') continue;
+                    // A translation job shares the summary workers and runs
+                    // beside the recording's other jobs, so it gets its own
+                    // item, labelled with its chunk progress.
+                    if (job.job_type === 'translate_transcription') {
+                        const key = `tr_${job.recording_id}`;
+                        const status = job.job_status === 'processing' ? 'translating' : job.job_status;
+                        if (items.has(key) && !['queued', 'translating'].includes(status)) continue;
+                        const percent = translationProgressPercent(job);
+                        items.set(key, {
+                            id: key,
+                            recordingId: job.recording_id,
+                            jobId: job.id,
+                            clientId: null,
+                            title: job.recording_title || t('common.untitled'),
+                            status,
+                            stage: null,
+                            statusLabel: status === 'queued' ? t('status.queuedTranslation') : null,
+                            progress: percent,
+                            progressMessage: status === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
+                                             status === 'translating' ? (percent === null ? t('progressQueue.translatingMessage')
+                                                 : t('translation.progress', { done: job.progress_done || 0, total: job.progress_total })) :
+                                             status === 'completed' ? t('progressQueue.done') : t('progressQueue.failed'),
+                            queuePosition: job.position,
+                            errorMessage: job.error_message,
+                            friendlyError: job.error_message ? parseUnformattedError(job.error_message) : null,
+                            completedAt: job.completed_at,
+                            source: 'job'
+                        });
+                        continue;
+                    }
                     const key = `rec_${job.recording_id}`;
                     const existing = items.get(key);
 
@@ -3645,6 +3687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     'uploading': 1,
                     'transcribing': 2,
                     'summarizing': 3,
+                    'translating': 3,
                     'queued': 4,
                     'ready': 5,
                     'completed': 6,
@@ -3660,7 +3703,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Filtered views of unified items
             const activeProgressItems = computed(() =>
                 unifiedProgressItems.value.filter(item =>
-                    ['uploading', 'transcribing', 'summarizing', 'queued', 'ready'].includes(item.status)
+                    ['uploading', 'transcribing', 'summarizing', 'translating', 'queued', 'ready'].includes(item.status)
                 )
             );
 
@@ -3682,6 +3725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     'queued': { label: t('status.queued'), color: 'yellow', icon: 'fa-clock' },
                     'transcribing': { label: t('status.transcribing'), color: 'purple', icon: 'fa-microphone-alt', animate: true },
                     'summarizing': { label: t('status.summarizing'), color: 'green', icon: 'fa-file-alt', animate: true },
+                    'translating': { label: t('progressQueue.translating'), color: 'green', icon: 'fa-language', animate: true },
                     'completed': { label: t('progressQueue.done'), color: 'green', icon: 'fa-check-circle' },
                     'failed': { label: t('progressQueue.failed'), color: 'red', icon: 'fa-exclamation-circle' },
                     'upload_failed': { label: t('progressQueue.uploadFailed'), color: 'red', icon: 'fa-exclamation-circle' }
@@ -4648,6 +4692,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 processedTranscription,
                 displayTranscription,
                 translationJobActive,
+                translationProgress,
+                translationProgressTitle,
                 groupedRecordings,
                 visibleRecordingIds,
                 filteredAvailableTags,

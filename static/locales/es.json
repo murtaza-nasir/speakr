@@ -2282,7 +2282,10 @@
     "waiting": "En espera",
     "waitingForProcessing": "Subido, esperando el procesamiento...",
     "waitingToUpload": "Esperando para subir...",
-    "region": "Elementos de la cola de procesamiento"
+    "region": "Elementos de la cola de procesamiento",
+    "translating": "Traduciendo",
+    "translatingShort": "traduciendo",
+    "translatingMessage": "Traduciendo la transcripción"
   },
   "promptVariables": {
     "title": "Variables del prompt",
@@ -2673,7 +2676,8 @@
     "stuck": "Restablecer procesamiento bloqueado",
     "summarizing": "Resumiendo",
     "transcribing": "Transcribiendo",
-    "uploading": "Subiendo"
+    "uploading": "Subiendo",
+    "queuedTranslation": "En cola (traducción)"
   },
   "summary": {
     "actionItems": "Elementos de Acción",
@@ -3585,7 +3589,9 @@
       "userAlreadyHasNamingTemplates": "El usuario ya tiene plantillas de nombrado",
       "userAlreadyHasTemplates": "El usuario ya tiene plantillas",
       "voiceProfileCleared": "Perfil de voz borrado para {{name}}",
-      "translationQueued": "Traducción en cola"
+      "translationQueued": "Traducción en cola",
+      "translationAlreadyRunning": "Esta grabación ya se está traduciendo.",
+      "translationSameLanguage": "La transcripción ya está en {{target}}."
     },
     "form": {
       "required": "Este campo es obligatorio.",
@@ -3732,7 +3738,9 @@
     "targetLanguage": "Idioma de destino",
     "preferences": "Preferencias de traducción",
     "toggle": "Mostrar u ocultar la traducción",
-    "incognitoUnavailable": "La traducción no está disponible para grabaciones de incógnito."
+    "incognitoUnavailable": "La traducción no está disponible para grabaciones de incógnito.",
+    "progress": "Traduciendo · {{done}} de {{total}}",
+    "alreadyInLanguage": "La transcripción ya está en {{language}}."
   },
   "whatsNew": {
     "title": "Novedades de Speakr {{version}}",
