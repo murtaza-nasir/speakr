@@ -101,7 +101,7 @@ Full reprocessing completely re-transcribes your audio file using the ASR endpoi
 
 ![Summary Reprocessing Modal](../assets/images/screenshots/summary-reprocess.png)
 
-Summary reprocessing generates a new title and summary based on the existing transcription. This is faster than full reprocessing and preserves any edits you've made to the transcription text. Use this when you want to regenerate the summary with different AI settings or after making significant edits to the transcription. Access this option from the same refresh menu by selecting "Summary Reprocessing".
+Summary reprocessing generates a new summary from the existing transcription. This is faster than full reprocessing and preserves any edits you've made to the transcription text. Use it when you want to regenerate the summary with a different prompt or after making significant edits to the transcription. Access it from the same refresh menu by selecting "Reprocess summary", which opens the Regenerate summary dialog described in [Regenerating a summary](transcripts.md#regenerating-a-summary).
 
 ## Working with Multiple Recordings
 

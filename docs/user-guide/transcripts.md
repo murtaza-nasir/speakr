@@ -183,39 +183,29 @@ The summary is fully editable using a markdown editor similar to the one in the 
 
 You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button offers two formats. **Word document (.docx)** keeps the formatting and suits colleagues who work in Word. **Markdown (.md)** saves the summary text as written, under a heading with the recording title, and links to recordings in it point to your Speakr address. Both files are named after the recording title, such as `summary-Weekly-Sync.docx` or `summary-Weekly Sync.md`.
 
-### Customise Summary Prompt at Generation Time
+### Regenerating a Summary
 
-For recordings without a summary yet, the **Generate Summary** button is paired with a small slider icon. Clicking the slider opens a Customise summary prompt modal that lets you supply one-off context (an agenda, a specific focus, additional constraints) before the first summary is generated. The modal supports two modes:
+The **Regenerate summary** dialog runs the summary again with a prompt you can see and change. Open it from **Reprocess summary** in the recording's reprocess menu, or from the slider icon in the summary toolbar. On a recording without a summary, the slider icon next to **Generate Summary** opens the same dialog, and the run generates the first summary. You need edit access to the recording.
 
-**Append**: combines your saved prompt (or the resolved tag/folder/user/admin prompt) with the text you paste. Useful when you want your usual structure plus extra per-recording context. This is the default mode because most ad-hoc context is additive.
+The dialog shows the prompt that applies to you for this recording, in an editable text box. A chip beside the **Prompt** label names where it comes from:
 
-**Replace**: uses only the text you paste, ignoring all higher-priority prompts for this single generation.
+- **From tag: X**: a tag on the recording that carries a summary prompt. When several of your tags carry prompts, their prompts are joined in the order the tags were added.
+- **From folder: X**: the recording's folder. Folder prompts apply only when you own the recording.
+- **Your default**: the summary prompt in your account settings.
+- **Admin default**: the default your administrator set.
+- **Built-in default**: the prompt Speakr ships with.
 
-The modal is the recommended way to add a meeting agenda or one-off instructions when you don't want to create a tag for it. If you turn off auto-summarisation in account preferences, the workflow becomes: upload, wait for transcription, click the slider next to Generate Summary, paste your context, and submit.
+Everyone sees only their own prompt. When you edit a recording someone shared with you, the dialog shows your tags and your default prompt, never the owner's, and the prompt you see is the one that runs. Summaries made automatically after upload or transcription still use the owner's prompt.
 
-### Reprocessing Summaries with Custom Prompts
+**Start from** fills the text box from another prompt. It lists the prompts that apply to this recording first, then your other prompts: your default, the admin default and your tags with summary prompts. **Blank** empties the box so you can write a prompt from scratch.
 
-Speakr provides powerful flexibility when you need to regenerate a summary with different instructions. The summary reprocessing feature allows you to experiment with various prompts without permanently changing your recording's configuration.
+Once you change the prompt, the chip reads **Edited from …** and two links appear. **Reset** puts the original prompt back. **Save to …** writes your edited prompt back to where it came from: your own tag, a folder you own, or your default. Nothing is saved unless you click it, and the dialog never offers to save to the admin default or to a tag or folder you can't edit. An edited prompt runs in place of the original for this regeneration only.
 
-To reprocess a summary, click the reprocess button in the summary toolbar. This opens the reprocessing modal, which offers three distinct prompt options plus an Append/Replace mode toggle:
+**Add instructions (optional)** takes one-off context, such as a meeting agenda or a focus for this run. The instructions are added after the prompt for this run only and are not saved.
 
-**Use Default Prompt**: This option applies the standard prompt hierarchy based on your current settings—using tag prompts if present, falling back to your personal prompt, then the admin default, and finally the system fallback. This is useful when you want to update the summary using your standard configuration, perhaps after editing the transcription.
+If the prompt uses `{{name}}` placeholders, a **Prompt variables** row shows how many have values. Expand it to edit them. The values you supplied at upload are filled in, and your changes are stored on the recording, so later regenerations and exports use them. See the [Prompt Variables guide](settings.md#prompt-variables) for the full feature.
 
-**Use Prompt from Tag**: If you have created tags with custom summarization prompts in your account settings, you can select any of them to apply that tag's prompt to this specific regeneration—even if the recording doesn't have that tag applied. This is particularly powerful for experimentation: you might have a "Technical Deep Dive" tag with prompts focused on implementation details, a "Executive Summary" tag that emphasizes high-level decisions, or a "Client Presentation" tag that formats information for external audiences. You can try each one to see which produces the most useful summary for your current needs, all without changing the recording's actual tags.
-
-When you select a tag, a preview displays the first portion of that tag's custom prompt, helping you confirm you've chosen the right one. This preview is especially helpful when you've created multiple tags with similar names but different focuses.
-
-**Enter Custom Prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order."
-
-**Append vs Replace mode**: when a tag prompt or custom prompt is selected, you can choose whether it **Replaces** the resolved default (the historic behaviour) or is **Appended** as additional context after the resolved default. Append mode is useful when your standard prompt produces good structure but you want to nudge a specific run toward a particular focus without rewriting the whole prompt.
-
-The custom prompt option is temporary and won't affect future regenerations or other recordings. If you find yourself using the same custom prompt repeatedly, consider creating a new tag with that prompt in your account settings so you can easily reuse it.
-
-After selecting your prompt source and any additional options, the system processes only the summary—your transcription remains untouched. This means you can experiment freely with different summary approaches without any risk to your original content. The reprocessing respects your current transcription, including any manual edits you've made, and generates a fresh summary based solely on the prompt you've chosen.
-
-#### Editing Stored Prompt Variables on Reprocess
-
-If the recording was uploaded with a tag, folder, or user-default prompt that uses `{{name}}` placeholders, the values you supplied at upload time are stored on the recording and pre-filled into the reprocess modal. You can edit them before regenerating. Updated values are persisted on the recording so subsequent reprocesses (and exports referencing the variables) see the new values. See the [Prompt Variables guide](settings.md#prompt-variables) for the full feature.
+Regenerating replaces the current summary, including any edits you made to it. Your transcription is not changed, so you can try different prompts without any risk to the transcript. If you use the same one-off prompt often, save it to a tag so it is one click away in **Start from**.
 
 ## Event Extraction
 
