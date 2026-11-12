@@ -3555,7 +3555,8 @@
       "translation_invalid_language": "未知的目标语言。",
       "invalid_assistant_name": "助手名称最多 40 个字符，可包含字母、数字、空格、句点、连字符或撇号，并以字母或数字开头",
       "summary_prompt_invalid": "提示词不能为空，也不能超过 8000 个字符。",
-      "summary_prompt_save_denied": "你不能将提示词保存到这里。"
+      "summary_prompt_save_denied": "你不能将提示词保存到这里。",
+      "invalid_filter_date": "无法读取日期筛选条件"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",
@@ -3826,7 +3827,9 @@
     "ask": "询问 {{name}}",
     "scopeRecording": "此录音",
     "scopeLibrary": "所有录音",
-    "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。"
+    "sendHint": "发送（Enter）。换行请按 Ctrl+Enter。",
+    "searchIn": "搜索范围：{{scope}}",
+    "jumpToLatest": "跳到最新"
   },
   "regenerateSummary": {
     "title": "重新生成摘要",

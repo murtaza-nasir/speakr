@@ -171,6 +171,11 @@ def _read(*parts):
         return f.read()
 
 
+def _read_static(*parts):
+    with open(os.path.join(ROOT, 'static', *parts), encoding='utf-8') as f:
+        return f.read()
+
+
 @pytest.mark.parametrize('template', [
     ('components', 'detail', 'floating-chat.html'),
     ('components', 'detail', 'mobile-chat-panel.html'),
@@ -181,8 +186,12 @@ def test_recording_chat_shows_the_assistant(template):
     assert "includes/assistant_avatar.html" in html
     assert "t('assistant.scopeRecording')" in html
     assert "assistant.recordingIntro" not in html
-    assert "t('chat.placeholder', { name: assistantName })" in html
-    assert ":title=\"t('assistant.sendHint')\"" in html
+    # The composer is the shared chat's (components/assistant/chat.html).
+    assert 'assistant_chat(' in html and 'placeholder=' not in html
+    shared = _read('components', 'assistant', 'chat.html')
+    assert "placeholder='chat.placeholder'" in shared
+    assert ":placeholder=\"t('{{ placeholder }}', { name: assistantName })\"" in shared
+    assert ":title=\"t('assistant.sendHint')\"" in shared
 
 
 def test_chat_button_keeps_the_chat_icon():
@@ -199,12 +208,27 @@ def test_ask_page_shows_the_assistant():
     html = _read('inquire.html')
     assert "t('inquire.title', { name: assistantName })" in html
     assert "t('inquire.askQuestions', { name: assistantName })" in html
-    assert "t('inquire.placeholder', { name: assistantName })" in html
+    assert "placeholder='inquire.placeholder'" in html
     assert html.count('v-text="inquireScopeLabel"') == 2
-    assert "t('assistant.scopeLibrary')" in html
+    # "All recordings" without filters: the shared filter state (modules/assistant/search-in.js)
+    assert "inquireScopeLabel = computed(() => searchIn.label)" in html
+    assert "t('assistant.scopeLibrary')" in _read_static('js', 'modules', 'assistant', 'search-in.js')
     assert 'inquire.sendHint' not in html
     # Vue's ${ } delimiters end at the first }, so an object literal cannot go inside them.
     assert not re.search(r'\$\{[^}]*\{', html)
+
+
+@pytest.mark.parametrize('template', [
+    ('inquire.html',),
+    ('components', 'assistant', 'chat.html'),
+    ('components', 'assistant', 'search-in.html'),
+    ('components', 'detail', 'floating-chat.html'),
+    ('components', 'detail', 'mobile-chat-panel.html'),
+    ('components', 'detail', 'recording-chat-footer.html'),
+])
+def test_no_object_literal_inside_delimiters(template):
+    # The phase 1 guard, on every template of the shared chat (Ambrose 2b).
+    assert not re.search(r'\$\{[^}]*\{', _read(*template))
 
 
 def test_header_button_uses_the_name():

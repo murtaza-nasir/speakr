@@ -4792,6 +4792,179 @@ select:disabled {
     color: var(--text-muted);
 }
 
+/* AssistantChat (Ambrose phase 2b, templates/components/assistant/chat.html):
+   a citation of another recording opens it at the cited time; the steps of a
+   turn, open while it runs and folded into one line after; the thinking row;
+   "Jump to latest" while the user reads further up; the "Search in" chip
+   and its popover in the recording panel. */
+.chat-cite--link {
+    width: auto;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.chat-sources__title {
+    color: var(--text-accent);
+    text-decoration: none;
+}
+.chat-sources__title:hover { text-decoration: underline; }
+.assistant-timeline { position: relative; }
+.assistant-steps {
+    margin-bottom: var(--sp-2);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--border-primary);
+    font-size: var(--fs-meta, 0.75rem);
+    color: var(--text-secondary);
+}
+.assistant-steps__line {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-align: start;
+}
+.assistant-steps__line:hover { color: var(--text-secondary); }
+.assistant-steps__line + .assistant-steps__list { margin-top: var(--sp-2); }
+.assistant-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    margin: 0.2em 0;
+}
+.assistant-step__icon {
+    width: 1rem;
+    margin-top: 0.15em;
+    text-align: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.assistant-step__icon.is-running { color: var(--text-accent); }
+.assistant-step__detail { color: var(--text-muted); }
+.assistant-waiting {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: fit-content;
+}
+.assistant-jump {
+    position: sticky;
+    bottom: var(--sp-2);
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    margin: var(--sp-2) auto 0;
+    padding: 0.3em 0.8em;
+    border-radius: 999px;
+    border: 1px solid var(--border-secondary);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: var(--fs-meta, 0.75rem);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    z-index: 2;
+}
+.assistant-jump:hover { color: var(--text-primary); border-color: var(--border-focus); }
+.assistant-search-in {
+    position: relative;
+    margin-bottom: var(--sp-2);
+}
+.assistant-search-in__chip {
+    border: 1px solid transparent;
+    cursor: pointer;
+    max-width: 100%;
+}
+.assistant-search-in__chip:hover,
+.assistant-search-in__chip[aria-expanded="true"] { border-color: var(--border-accent, var(--border-focus)); }
+.assistant-search-in__popover {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    width: min(20rem, calc(100vw - 2rem));
+    max-height: min(26rem, 60vh);
+    overflow-y: auto;
+    padding: var(--sp-3);
+    text-align: start;
+}
+.assistant-search-in__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+}
+.assistant-search-in__group + .assistant-search-in__group {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--border-primary);
+}
+.assistant-search-in__group h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0 0 var(--sp-1);
+}
+.assistant-search-in__group h3 > i { color: var(--text-accent); }
+.assistant-search-in__group .field { font-size: var(--fs-meta, 0.75rem); }
+.assistant-search-in__options {
+    max-height: 9rem;
+    overflow-y: auto;
+    margin-top: var(--sp-1);
+}
+.assistant-search-in__option {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 0.3em 0.35em;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+.assistant-search-in__option:hover { background: var(--bg-tertiary); }
+.assistant-search-in__dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.assistant-search-in__dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+}
+.assistant-search-in__dates label { display: flex; flex-direction: column; gap: 2px; }
+.assistant-search-in .filter-checkbox {
+    appearance: none;
+    flex-shrink: 0;
+    background-color: var(--bg-input);
+    border: 2px solid var(--border-secondary);
+    border-radius: 4px;
+    width: 16px;
+    height: 16px;
+    position: relative;
+}
+.assistant-search-in .filter-checkbox:checked {
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+}
+.assistant-search-in .filter-checkbox:checked::after {
+    content: '\2713';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+}
+.inquire-composer {
+    border-top-color: var(--border-primary);
+    background: var(--bg-secondary);
+}
+
 /* ------------------------------------------------------------------ */
 /* Identify Speakers modal (templates/modals/speaker-modal.html, #395) */
 /* ------------------------------------------------------------------ */

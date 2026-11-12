@@ -2796,7 +2796,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
             const findReplaceComposable = useFindReplace(state, utils);
-            const chatComposable = useChat(state, utils);
+            // The recording chat (shared AssistantChat): it reads the
+            // transcript's error state to disable its composer.
+            const chatComposable = useChat(state, { ...utils, processedTranscription });
             const pwaComposable = usePWA(state, utils);
             const notificationsComposable = useNotifications(state, utils);
             const tagsComposable = useTags({
@@ -4040,6 +4042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             watch(selectedRecording, (newRecording, oldRecording) => {
                 // Only clear if we're actually switching to a different recording
                 if (oldRecording && newRecording && oldRecording.id !== newRecording.id) {
+                    chatComposable.assistant.stop();
                     chatMessages.value = [];
                     chatInput.value = '';
                 }

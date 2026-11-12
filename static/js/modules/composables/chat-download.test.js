@@ -22,7 +22,12 @@ const setup = (messages, disposition = null) => {
         createElement: () => anchor,
         body: { appendChild: vi.fn(), removeChild: vi.fn() },
     });
-    vi.stubGlobal('window', { URL: { createObjectURL: () => 'blob:x', revokeObjectURL: vi.fn() } });
+    // A minimal Vue for the shared AssistantChat the composable sets up.
+    const Vue = {
+        ref: (value) => ({ value }), reactive: (object) => object,
+        computed: (get) => ({ get value() { return get(); } }), nextTick: (fn) => Promise.resolve().then(fn),
+    };
+    vi.stubGlobal('window', { Vue, URL: { createObjectURL: () => 'blob:x', revokeObjectURL: vi.fn() } });
     vi.stubGlobal('fetch', vi.fn(async () => ({
         ok: true,
         blob: async () => ({}),

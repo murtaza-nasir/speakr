@@ -3555,7 +3555,8 @@
       "translation_invalid_language": "Неизвестный целевой язык.",
       "invalid_assistant_name": "Имя ассистента может содержать до 40 букв, цифр, пробелов, точек, дефисов или апострофов и начинается с буквы или цифры",
       "summary_prompt_invalid": "Промпт не может быть пустым или длиннее 8000 символов.",
-      "summary_prompt_save_denied": "Вы не можете сохранить промпт сюда."
+      "summary_prompt_save_denied": "Вы не можете сохранить промпт сюда.",
+      "invalid_filter_date": "Не удалось прочитать фильтр по дате"
     },
     "apiMessage": {
       "accountUpdated": "Данные учётной записи обновлены",
@@ -3826,7 +3827,9 @@
     "ask": "Спросить {{name}}",
     "scopeRecording": "Эта запись",
     "scopeLibrary": "Все записи",
-    "sendHint": "Отправить (Enter). Для новой строки нажмите Ctrl+Enter."
+    "sendHint": "Отправить (Enter). Для новой строки нажмите Ctrl+Enter.",
+    "searchIn": "Искать в: {{scope}}",
+    "jumpToLatest": "К последним сообщениям"
   },
   "regenerateSummary": {
     "title": "Пересоздать сводку",

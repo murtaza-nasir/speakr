@@ -3555,7 +3555,8 @@
       "translation_invalid_language": "Idioma de destino desconhecido.",
       "invalid_assistant_name": "O nome do assistente pode ter até 40 letras, dígitos, espaços, pontos, hifens ou apóstrofos, e começa com uma letra ou um dígito",
       "summary_prompt_invalid": "O prompt não pode estar vazio nem ter mais de 8.000 caracteres.",
-      "summary_prompt_save_denied": "Você não pode salvar o prompt aí."
+      "summary_prompt_save_denied": "Você não pode salvar o prompt aí.",
+      "invalid_filter_date": "Não foi possível ler o filtro de data"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",
@@ -3826,7 +3827,9 @@
     "ask": "Perguntar a {{name}}",
     "scopeRecording": "Esta gravação",
     "scopeLibrary": "Todas as gravações",
-    "sendHint": "Enviar (Enter). Para uma nova linha, pressione Ctrl+Enter."
+    "sendHint": "Enviar (Enter). Para uma nova linha, pressione Ctrl+Enter.",
+    "searchIn": "Pesquisar em: {{scope}}",
+    "jumpToLatest": "Ir para o mais recente"
   },
   "regenerateSummary": {
     "title": "Regenerar resumo",

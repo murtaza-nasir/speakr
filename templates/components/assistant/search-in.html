@@ -1,0 +1,82 @@
+{#- "Search in" (Ambrose phase 2b): the recordings Ambrose may read beyond the
+    open one, in a popover with the filters of the Ask page's filter column
+    (tags, folders, speakers, date range). One shared partial, not a theme
+    slot, so the six themes need no copy of it. The filters are a ceiling:
+    the server intersects them with the user's access. State:
+    static/js/modules/assistant/search-in.js (`searchIn`). -#}
+<div v-if="searchIn && assistant.searchInShown" class="assistant-search-in">
+    <button type="button" class="assistant-scope assistant-search-in__chip"
+            :class="{ 'is-active': searchIn.active }"
+            @click.stop="searchIn.toggle()"
+            :aria-expanded="searchIn.open ? 'true' : 'false'"
+            aria-haspopup="dialog">
+        <i :class="['fas', searchIn.active ? 'fa-filter' : 'fa-layer-group']" aria-hidden="true"></i>
+        <span v-text="t('assistant.searchIn', { scope: searchIn.label })"></span>
+        <i class="fas fa-caret-down" aria-hidden="true"></i>
+    </button>
+    <div v-if="searchIn.open" class="assistant-search-in__popover surface-raised" role="dialog"
+         :aria-label="t('inquire.filters')" @click.stop @keydown.esc="searchIn.close()">
+        <div class="assistant-search-in__head">
+            <span class="t-body-strong" v-text="t('inquire.filters')"></span>
+            <span class="flex items-center" style="gap: 2px;">
+                <button v-if="searchIn.active" type="button" class="btn btn--sm btn--ghost" @click="searchIn.clear()">
+                    <i class="fas fa-eraser" aria-hidden="true"></i><span v-text="t('inquire.clearAll')"></span>
+                </button>
+                <button type="button" class="btn btn--icon btn--sm" @click="searchIn.close()"
+                        :title="t('buttons.close')" :aria-label="t('buttons.close')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </span>
+        </div>
+
+        <section class="assistant-search-in__group">
+            <h3 class="t-label"><i class="fas fa-tags" aria-hidden="true"></i><span v-text="t('inquire.tags')"></span></h3>
+            <input type="text" v-model="searchIn.tagQuery" :placeholder="t('form.searchTags')"
+                   :aria-label="t('form.searchTags')" class="field">
+            <div class="assistant-search-in__options">
+                <label v-for="tag in searchIn.filteredTags" :key="tag.id" class="assistant-search-in__option">
+                    <input type="checkbox" :value="tag.id" v-model="searchIn.filters.selectedTags" class="filter-checkbox">
+                    <span class="assistant-search-in__dot" :style="{ background: tag.color }" aria-hidden="true"></span>
+                    <span class="flex-1 min-w-0 truncate" v-text="tag.name"></span>
+                    <span class="t-meta" v-text="tag.recording_count"></span>
+                </label>
+            </div>
+        </section>
+
+        <section v-if="searchIn.available.folders.length > 0" class="assistant-search-in__group">
+            <h3 class="t-label"><i class="fas fa-folder" aria-hidden="true"></i><span v-text="t('inquire.folders')"></span></h3>
+            <input type="text" v-model="searchIn.folderQuery" :placeholder="t('form.searchFolders')"
+                   :aria-label="t('form.searchFolders')" class="field">
+            <div class="assistant-search-in__options">
+                <label v-for="folder in searchIn.filteredFolders" :key="folder.id" class="assistant-search-in__option">
+                    <input type="checkbox" :value="folder.id" v-model="searchIn.filters.selectedFolders" class="filter-checkbox">
+                    <span class="assistant-search-in__dot" :style="{ background: folder.color }" aria-hidden="true"></span>
+                    <span class="flex-1 min-w-0 truncate" v-text="folder.name"></span>
+                    <span class="t-meta" v-text="folder.recording_count"></span>
+                </label>
+            </div>
+        </section>
+
+        <section v-if="searchIn.available.speakers.length > 0" class="assistant-search-in__group">
+            <h3 class="t-label"><i class="fas fa-users" aria-hidden="true"></i><span v-text="t('inquire.speakers')"></span></h3>
+            <input type="text" v-model="searchIn.speakerQuery" :placeholder="t('form.searchSpeakers')"
+                   :aria-label="t('form.searchSpeakers')" class="field">
+            <div class="assistant-search-in__options">
+                <label v-for="speaker in searchIn.filteredSpeakers" :key="speaker" class="assistant-search-in__option">
+                    <input type="checkbox" :value="speaker" v-model="searchIn.filters.selectedSpeakers" class="filter-checkbox">
+                    <span class="flex-1 min-w-0 truncate" v-text="speaker"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="assistant-search-in__group">
+            <h3 class="t-label"><i class="fas fa-calendar" aria-hidden="true"></i><span v-text="t('inquire.dateRange')"></span></h3>
+            <div class="assistant-search-in__dates">
+                <label class="t-meta"><span v-text="t('inquire.from')"></span>
+                    <input type="date" v-model="searchIn.filters.dateFrom" class="field"></label>
+                <label class="t-meta"><span v-text="t('inquire.to')"></span>
+                    <input type="date" v-model="searchIn.filters.dateTo" class="field"></label>
+            </div>
+        </section>
+    </div>
+</div>

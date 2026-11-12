@@ -992,6 +992,13 @@ def reset_status(recording_id):
 # --- Authentication Routes ---
 
 
+def _assistant_library_tools():
+    """Whether the recording panel offers the library tools and its "Search
+    in" filter (Ambrose 2b): Inquire and its agent both on."""
+    from src.services.inquire_agent import agent_enabled
+    return bool(ENABLE_INQUIRE_MODE and agent_enabled())
+
+
 def _text_model_configured():
     from src.services.llm import TEXT_MODEL_CONFIGURED
     return TEXT_MODEL_CONFIGURED
@@ -1100,6 +1107,7 @@ def index(recording_id=None, label_name=None):
                          connector_supports_hotwords=connector_supports_hotwords,
                          connector_supports_initial_prompt=connector_supports_initial_prompt,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
+                         assistant_library_tools=_assistant_library_tools(),
                          enable_audio_removed_filter=enable_audio_removed_filter,
                          enable_internal_sharing=_self.ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
@@ -2965,13 +2973,36 @@ def chat_with_transcription():
         # One prompt builder for every recording chat (web panel, incognito,
         # API v1): the whole transcript with segment markers when it has
         # segments, the participants, the notes this user can see, the
-        # output language and the assistant's name (Ambrose phase 2a).
-        from src.services.assistant_events import recording_events
-        from src.services.recording_chat import build_chat_messages
+        # output language and the assistant's name (Ambrose phase 2a). The
+        # history keeps the numbering the panel showed for earlier citations.
+        from src.services.assistant_events import (agent_user_context, filters_from_request, panel_history,
+                                                   recording_events, tools_for_surface)
+        from src.services.inquire_agent import run_inquire_agent
+        from src.services.recording_chat import build_chat_messages, transcript_cut
+        from src.utils.localization import request_language
         if not isinstance(message_history, list):
             message_history = []
-        messages, segments = build_chat_messages(recording, current_user, user_message, message_history,
-                                                 with_sources=True)
+        messages, segments = build_chat_messages(recording, current_user, user_message,
+                                                 panel_history(message_history), with_sources=True)
+
+        # Library tools on an open recording (Ambrose 2b): with the agent on,
+        # the model may also search the other recordings, within the "Search
+        # in" filters and the user's access. With it off, or when the
+        # endpoint rejects tool calls, the answer is the transcript-only one.
+        recording_scope = None
+        if _assistant_library_tools():
+            try:
+                filters = filters_from_request(data)
+            except ValueError:
+                return jsonify(api_error('invalid_filter_date')), 400
+            limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+            recording_scope = {
+                'messages': messages,
+                'recording_id': recording.id,
+                'markers': bool(segments),
+                'cut': transcript_cut(recording, segments, limit),
+            }
+            user_ctx = agent_user_context(current_user, request_language())
 
         # Capture context before generator starts (app context may not be available inside generator)
         user_id = current_user.id
@@ -2980,25 +3011,35 @@ def chat_with_transcription():
         # Resolved here, in the request context, before the response streams.
         chat_temperature = get_temperature('chat')
 
+        def transcript_only():
+            """The single-call answer from the transcript in the prompt."""
+            stream = call_chat_completion(
+                messages=messages,
+                temperature=chat_temperature,
+                max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                stream=True,
+                user_id=user_id,
+                operation_type='chat'
+            )
+            # Thinking tags split off; `source` events are added below.
+            yield from process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
+
         def generate():
             # Push app context for entire generator execution
             # This is needed because call_chat_completion checks budget which requires db access
             ctx = app.app_context()
             ctx.push()
             try:
-                # Enable streaming with user_id for budget enforcement
-                stream = call_chat_completion(
-                    messages=messages,
-                    temperature=chat_temperature,
-                    max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                    stream=True,
-                    user_id=user_id,
-                    operation_type='chat'
-                )
-
-                # Thinking tags split off, then `source` events added for the
-                # model's segment citations (src/services/assistant_events.py).
-                raw = process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
+                if recording_scope is None:
+                    raw = transcript_only()
+                else:
+                    raw = run_inquire_agent(
+                        app, user_id, user_ctx, user_message, [], None, filters,
+                        legacy_fallback=transcript_only, llm_call=call_chat_completion,
+                        tool_names=tools_for_surface('recording'), recording_scope=recording_scope,
+                        operation_type='chat')
+                # `source` events for the model's segment citations
+                # (src/services/assistant_events.py).
                 for event in recording_events(raw, segments):
                     yield event
 

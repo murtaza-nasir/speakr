@@ -185,6 +185,8 @@
 
     <!-- i18n System -->
     {% include 'includes/i18n_bootstrap.html' %}
+    {#- The recording panel's library tools and "Search in" filter (Ambrose 2b) -#}
+    <script>window.speakrAssistantLibrary = {{ 'true' if assistant_library_tools else 'false' }};</script>
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 
     <!-- Initialize i18n immediately with fallback -->

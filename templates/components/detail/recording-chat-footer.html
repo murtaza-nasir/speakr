@@ -1,0 +1,11 @@
+{#- The line under the recording chat's composer when it cannot answer yet
+    (floating panel and mobile tab, components/assistant/chat.html). -#}
+{% macro recording_chat_footer() -%}
+<div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5">
+    <i class="fas fa-info-circle"></i>
+    <span v-text="t('chat.cannotChatTranscriptionFailed', { name: assistantName })"></span>
+</div>
+<div v-else-if="selectedRecording.status !== 'COMPLETED'" class="t-meta mt-2">
+    <span v-text="t('chat.availableAfterTranscription', { name: assistantName })"></span>
+</div>
+{%- endmacro %}

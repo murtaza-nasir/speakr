@@ -3555,7 +3555,8 @@
       "translation_invalid_language": "Unknown target language.",
       "invalid_assistant_name": "The assistant's name can have up to 40 letters, digits, spaces, dots, hyphens or apostrophes, and starts with a letter or digit",
       "summary_prompt_invalid": "The prompt can't be empty or longer than 8,000 characters.",
-      "summary_prompt_save_denied": "You can't save the prompt there."
+      "summary_prompt_save_denied": "You can't save the prompt there.",
+      "invalid_filter_date": "Couldn't read the date filter"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",
@@ -3826,7 +3827,9 @@
     "ask": "Ask {{name}}",
     "scopeRecording": "This recording",
     "scopeLibrary": "All recordings",
-    "sendHint": "Send (Enter). For a new line, press Ctrl+Enter."
+    "sendHint": "Send (Enter). For a new line, press Ctrl+Enter.",
+    "searchIn": "Search in: {{scope}}",
+    "jumpToLatest": "Jump to latest"
   },
   "regenerateSummary": {
     "title": "Regenerate summary",

@@ -1,75 +1,14 @@
-<!-- Mobile Chat Panel. Clear button moved into the mobile-header's
-     contextual toolbar so this panel no longer overlays its own
-     floating × button on top of message content. -->
+<!-- Mobile Chat Panel: the shared AssistantChat (components/assistant/chat.html).
+     Clear sits in the mobile header's contextual toolbar. -->
+{% from 'components/assistant/chat.html' import assistant_chat with context %}
+{% from 'components/detail/recording-chat-footer.html' import recording_chat_footer %}
 <div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden">
-    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-4" @click="handleChatBubbleClick">
-        <div v-if="chatMessages.length === 0" class="empty">
+    {% call assistant_chat(timeline_class='flex-1 overflow-y-auto px-3 py-3 space-y-4',
+                           composer_class='border-t border-[var(--border-primary)] px-3 py-3',
+                           search_in=true, footer=recording_chat_footer) %}
+        <div class="empty">
             {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
             <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
         </div>
-        <div v-for="(message, index) in chatMessages" :key="index"
-             :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message']">
-            <!-- Thinking content -->
-            <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
-                <button @click="message.thinkingExpanded = !message.thinkingExpanded"
-                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
-                    <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                    <span v-text="t('help.modelReasoning')"></span>
-                    <span class="text-[var(--text-muted)]" v-text="'(' + t('help.lines', { count: message.thinking.split('\n').length }) + ')'"></span>
-                </button>
-                <div v-if="message.thinkingExpanded"
-                     class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
-                    <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
-                </div>
-            </div>
-            <!-- Main message content -->
-            <div v-if="message.html" class="bidi-auto" v-html="message.html"></div>
-            <div v-else class="whitespace-pre-wrap bidi-auto">${message.content}</div>
-            <!-- Copy and Download for one finished response, below its text.
-                 Download saves this response and the question before it. -->
-            <div v-if="message.role === 'assistant' && message.content && !(isChatLoading && index === chatMessages.length - 1)"
-                 class="flex items-center justify-end"
-                 style="gap: 2px; margin-top: var(--sp-1);">
-                <button @click="copyMessage(chatMessageText(message), $event)"
-                        class="btn btn--icon btn--sm"
-                        :title="t('buttons.copyMessage')"
-                        :aria-label="t('buttons.copyMessage')">
-                    <i class="fas fa-copy"></i>
-                </button>
-                <button @click="downloadChatResponse(index)"
-                        class="btn btn--icon btn--sm"
-                        :title="t('buttons.downloadResponse')"
-                        :aria-label="t('buttons.downloadResponse')">
-                    <i class="fas fa-download"></i>
-                </button>
-            </div>
-        </div>
-        <div v-if="isChatLoading" class="ai-message flex items-center gap-2">
-            <div class="spinner"></div>
-            <span v-text="t('chat.thinking')"></span>
-        </div>
-    </div>
-    <div class="border-t border-[var(--border-primary)] px-3 py-3">
-        <div class="flex gap-2 items-end">
-            <textarea v-model="chatInput"
-                      ref="chatInputRef"
-                      @keydown="handleChatKeydown"
-                      :disabled="selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
-                      :placeholder="t('chat.placeholder', { name: assistantName })"
-                      class="field"
-                      style="resize: none;"
-                      rows="2"></textarea>
-            <button @click="sendChatMessage"
-                    :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
-                    class="btn btn--primary btn--icon btn--lg"
-                    :title="t('assistant.sendHint')"
-                    :aria-label="t('buttons.send')">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
-        <div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5">
-            <i class="fas fa-info-circle"></i>
-            <span v-text="t('chat.cannotChatTranscriptionFailed', { name: assistantName })"></span>
-        </div>
-    </div>
+    {% endcall %}
 </div>

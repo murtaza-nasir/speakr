@@ -3555,7 +3555,8 @@
       "translation_invalid_language": "Unbekannte Zielsprache.",
       "invalid_assistant_name": "Der Name des Assistenten darf bis zu 40 Buchstaben, Ziffern, Leerzeichen, Punkte, Bindestriche oder Apostrophe enthalten und beginnt mit einem Buchstaben oder einer Ziffer",
       "summary_prompt_invalid": "Der Prompt darf nicht leer oder länger als 8.000 Zeichen sein.",
-      "summary_prompt_save_denied": "Sie können den Prompt dort nicht speichern."
+      "summary_prompt_save_denied": "Sie können den Prompt dort nicht speichern.",
+      "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",
@@ -3826,7 +3827,9 @@
     "ask": "{{name}} fragen",
     "scopeRecording": "Diese Aufnahme",
     "scopeLibrary": "Alle Aufnahmen",
-    "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter."
+    "sendHint": "Senden (Enter). Für eine neue Zeile drücken Sie Strg+Enter.",
+    "searchIn": "Suchen in: {{scope}}",
+    "jumpToLatest": "Zur neuesten Nachricht"
   },
   "regenerateSummary": {
     "title": "Zusammenfassung neu generieren",

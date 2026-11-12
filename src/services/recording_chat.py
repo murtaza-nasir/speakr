@@ -51,6 +51,27 @@ class IncognitoTranscript:
         return segments_of(self.transcription)
 
 
+def transcript_cut(recording, segments, limit):
+    """Where the prompt's transcript stops when it is over the length limit:
+    {'unit': 'segments', 'offset': first segment left out, 'total'} for a
+    segmented transcript, {'unit': 'characters', ...} for plain text; None
+    when it fits (or the limit is off, -1). Used by the recording panel to
+    page the rest with the agent's get_transcript tool (Ambrose 2b)."""
+    if limit == -1:
+        return None
+    if segments:
+        used = 0
+        for position, seg in enumerate(segments):
+            used += len(_marked_transcript([seg])) + (1 if position else 0)
+            if used > limit:
+                return {'unit': 'segments', 'offset': position, 'total': len(segments)}
+        return None
+    text = getattr(recording, 'transcription', None) or ''
+    if len(text) > limit:
+        return {'unit': 'characters', 'offset': limit, 'total': len(text)}
+    return None
+
+
 def build_chat_messages(recording, user, message, history=None, with_sources=False):
     """(messages, segments). segments is the canonical list when with_sources
     is on and the transcript has segments, else None."""

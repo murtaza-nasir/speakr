@@ -187,20 +187,10 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     """
     user_message = data.get('message')
     message_history = data.get('message_history', [])
-    # Build filters from request
-    filters = {}
-    if data.get('filter_tags'):
-        filters['tag_ids'] = data['filter_tags']
-    if data.get('filter_folders'):
-        filters['folder_ids'] = data['filter_folders']
-    if data.get('filter_speakers'):
-        filters['speaker_names'] = data['filter_speakers']
-    if data.get('filter_recording_ids'):
-        filters['recording_ids'] = data['filter_recording_ids']
-    if data.get('filter_date_from'):
-        filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
-    if data.get('filter_date_to'):
-        filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+    # Build filters from request (the same keys as the recording panel's
+    # "Search in" filters)
+    from src.services.assistant_events import filters_from_request
+    filters = filters_from_request(data)
     
     # Debug logging
     current_app.logger.info(f"Inquire chat - User: {user.username}, Query: '{user_message}', Filters: {filters}")
@@ -919,8 +909,9 @@ _SOURCE_URL = re.compile(r'/recordings/([0-9]+)(?:\?t=[0-9]+)?')
 def _inquire_turn_sources(raw, budget):
     """(number, title, url) for each valid source in raw, at most budget of them.
 
-    The number is the source's position in the list the page shows, so the
-    numbers stay those of the page when an entry is dropped. An entry is kept
+    The number is the one the page showed (`n`; numbers continue through a
+    chat, Ambrose 2b), else the source's position in the list, so the numbers
+    stay those of the page when an entry is dropped. An entry is kept
     only when its title is a non-empty string and its url is a relative
     /recordings/<id> path with an optional ?t=<seconds>.
     """
@@ -938,6 +929,9 @@ def _inquire_turn_sources(raw, budget):
         title = ' '.join(title.split())[:_MAX_SOURCE_TITLE]
         if not title or not _SOURCE_URL.fullmatch(url):
             continue
+        shown = item.get('n')
+        if isinstance(shown, int) and not isinstance(shown, bool) and 0 < shown <= 10000:
+            number = shown
         sources.append((number, title, url))
     return sources
 

@@ -49,6 +49,66 @@ def tools_for_surface(surface):
     return None if tools is None else list(tools)
 
 
+def filters_from_request(data):
+    """The library filters of a chat request, in the agent's form: the Ask
+    page's filter column and the recording panel's "Search in" popover send
+    the same keys (filter_tags, filter_folders, filter_speakers,
+    filter_recording_ids, filter_date_from, filter_date_to). The filters are a
+    ceiling: resolve_allowed_recording_ids intersects them with access."""
+    from datetime import datetime
+    data = data or {}
+    filters = {}
+    for key, name in (('filter_tags', 'tag_ids'), ('filter_folders', 'folder_ids'),
+                      ('filter_speakers', 'speaker_names'), ('filter_recording_ids', 'recording_ids')):
+        if data.get(key):
+            filters[name] = data[key]
+    if data.get('filter_date_from'):
+        filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
+    if data.get('filter_date_to'):
+        filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+    return filters
+
+
+def agent_user_context(user, language=None):
+    """What the agent's prompts and step labels need about the user, read in
+    the request (the stream runs without it)."""
+    from src.utils.assistant_name import assistant_name_of
+    from src.utils.timezones import user_timezone
+    return {
+        'name': user.name if user.name else "the user",
+        'title': user.job_title if user.job_title else "professional",
+        'company': user.company if user.company else "their organization",
+        'output_language': user.output_language if user.output_language else None,
+        'timezone': user_timezone(user),
+        'assistant_name': assistant_name_of(user),
+        'language': language,
+    }
+
+
+def panel_history(message_history):
+    """The recording panel's history for the model: role and content only,
+    and after an answer whose citations were shown numbered, a system note
+    with that numbering, so "tell me more about 3" means what the user saw
+    (numbering continues through a chat). The note is a separate message,
+    never part of the answer the model would imitate."""
+    from src.services.inquire_agent import citation_lines
+    out = []
+    for msg in message_history or []:
+        if not isinstance(msg, dict):
+            continue
+        role, content = msg.get('role'), msg.get('content')
+        if role not in ('user', 'assistant') or not isinstance(content, str):
+            continue
+        out.append({'role': role, 'content': content})
+        lines = citation_lines(msg.get('sources')) if role == 'assistant' else []
+        if lines:
+            out.append({'role': 'system', 'content': (
+                "Note about the assistant's previous answer (system record, never reproduce in answers): "
+                f"citations were displayed to the user numbered: {'; '.join(lines)}. When the user refers "
+                "to a bare number, they mean this numbering.")})
+    return out
+
+
 def sse(payload):
     return f"data: {json.dumps(payload)}\n\n"
 
