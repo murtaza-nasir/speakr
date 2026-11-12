@@ -607,6 +607,7 @@
             const { useNotifications } = await import('/static/js/modules/composables/notifications.js');
             const { showToast } = await import('/static/js/modules/utils/toast.js');
             const { responseWithQuestion } = await import('/static/js/modules/utils/chat-turn.js');
+            const { folderMarkColor } = await import('/static/js/modules/utils/colors.js');
             
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
             const i18nInstance = window.i18n;
@@ -1435,6 +1436,7 @@
                         clearInquireConversation,
                         filteredTags,
                         filteredFolders,
+                        folderMarkColor,
                         filteredSpeakers,
                         
                         // Functions

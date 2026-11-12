@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getContrastTextColor } from './colors.js';
+import { getContrastTextColor, folderMarkColor } from './colors.js';
 
 describe('getContrastTextColor', () => {
     it('defaults to white for falsy input', () => {
@@ -51,5 +51,30 @@ describe('getContrastTextColor', () => {
     it('falls back to white when the input throws inside the calculation', () => {
         // A non-string truthy value has no .replace and throws, exercising the catch branch.
         expect(getContrastTextColor(123)).toBe('white');
+    });
+});
+
+describe('folderMarkColor', () => {
+    it('keeps an ordinary colour', () => {
+        expect(folderMarkColor('#1a5fb4')).toBe('#1a5fb4');
+        expect(folderMarkColor('#ffbe6f')).toBe('#ffbe6f');
+        expect(folderMarkColor('#5e5c64')).toBe('#5e5c64');
+    });
+
+    it('wraps a white or near-white colour for light pages', () => {
+        expect(folderMarkColor('#ffffff')).toBe('var(--folder-mark-pale, #ffffff)');
+        expect(folderMarkColor('#FFF')).toBe('var(--folder-mark-pale, #FFF)');
+        expect(folderMarkColor('#f5f5f5')).toBe('var(--folder-mark-pale, #f5f5f5)');
+    });
+
+    it('wraps a black or near-black colour for dark pages', () => {
+        expect(folderMarkColor('#000000')).toBe('var(--folder-mark-dark, #000000)');
+        expect(folderMarkColor('#111111')).toBe('var(--folder-mark-dark, #111111)');
+    });
+
+    it('passes anything else through', () => {
+        expect(folderMarkColor(undefined)).toBe(undefined);
+        expect(folderMarkColor('')).toBe('');
+        expect(folderMarkColor('var(--text-3)')).toBe('var(--text-3)');
     });
 });

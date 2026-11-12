@@ -2247,3 +2247,9 @@ select option:hover {
 }
 .assistant-scope > i { font-size: 0.85em; opacity: 0.85; }
 .assistant-scope > span { overflow: hidden; text-overflow: ellipsis; }
+
+/* Folder marks (folderMarkColor in static/js/modules/utils/colors.js): a
+   white folder is drawn grey on a light page and a black one grey on a dark
+   page. Where a variable is unset, the folder's own colour is used. */
+:root { --folder-mark-pale: #aab0ba; }
+html.dark { --folder-mark-pale: initial; --folder-mark-dark: #8a909a; }

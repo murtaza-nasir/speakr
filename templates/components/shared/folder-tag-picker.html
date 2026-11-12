@@ -11,7 +11,7 @@
     <div class="flex items-center justify-between mb-2">
         <label class="block text-sm font-medium text-[var(--text-secondary)]">
             <i class="fas fa-folder mr-1"
-               :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+               :style="{ color: selectedFolderId ? getFolderMarkColor(selectedFolderId) : 'var(--text-muted)' }"></i>
             ${ t('form.folder') }
         </label>
         <button @click="createFolderFromUpload"
@@ -29,7 +29,7 @@
             </option>
         </select>
         <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
-           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+           :style="{ color: selectedFolderId ? getFolderMarkColor(selectedFolderId) : 'var(--text-muted)' }"></i>
         <i class="fas fa-chevron-down absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
     </div>
     <p v-if="selectedFolderId && getFolderById(selectedFolderId)?.custom_prompt" class="text-xs text-[var(--text-muted)] mt-1">
