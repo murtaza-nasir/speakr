@@ -24,7 +24,7 @@ def _inquire_row():
 
 def _chat_actions(view):
     page = _read('templates', 'components', 'detail', view)
-    start = page.index('@click="copyMessage(message.content, $event)"')
+    start = page.index('@click="copyMessage(chatMessageText(message), $event)"')
     begin = page.rindex('<div', 0, start)
     return page, page[begin:page.index('</div>', start)]
 
@@ -107,7 +107,7 @@ def test_chat_views_have_copy_then_download(view):
 def test_chat_view_buttons_sit_below_the_response(view):
     page, _ = _chat_actions(view)
     # Below the text, so the buttons never cover it; no room is reserved.
-    assert page.index('${message.content}</div>') < page.index('@click="copyMessage(message.content, $event)"')
+    assert page.index('${message.content}</div>') < page.index('@click="copyMessage(chatMessageText(message), $event)"')
     assert 'pr-20' not in page and 'pr-10' not in page
 
 
