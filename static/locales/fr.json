@@ -2282,7 +2282,11 @@
     "waiting": "En attente",
     "waitingForProcessing": "Envoyé, en attente de traitement...",
     "waitingToUpload": "En attente d’envoi...",
-    "region": "Éléments de la file de traitement"
+    "region": "Éléments de la file de traitement",
+    "translating": "Traduction",
+    "translatingShort": "en traduction",
+    "translatingMessage": "Traduction de la transcription",
+    "translatingParts": "{{done}} parties traduites sur {{total}}"
   },
   "promptVariables": {
     "title": "Variables de l'invite",
@@ -2673,7 +2677,8 @@
     "stuck": "Réinitialiser le traitement bloqué",
     "summarizing": "Résumé",
     "transcribing": "Transcription",
-    "uploading": "Téléchargement"
+    "uploading": "Téléchargement",
+    "queuedTranslation": "En file d’attente (traduction)"
   },
   "summary": {
     "actionItems": "Actions à Mener",
@@ -3585,7 +3590,9 @@
       "userAlreadyHasNamingTemplates": "L'utilisateur possède déjà des modèles de nommage",
       "userAlreadyHasTemplates": "L'utilisateur possède déjà des modèles",
       "voiceProfileCleared": "Profil vocal effacé pour {{name}}",
-      "translationQueued": "Traduction en file d'attente"
+      "translationQueued": "Traduction en file d'attente",
+      "translationAlreadyRunning": "Cet enregistrement est déjà en cours de traduction.",
+      "translationSameLanguage": "La transcription est déjà en {{target}}."
     },
     "form": {
       "required": "Ce champ est obligatoire.",
@@ -3732,7 +3739,9 @@
     "targetLanguage": "Langue cible",
     "preferences": "Préférences de traduction",
     "toggle": "Afficher ou masquer la traduction",
-    "incognitoUnavailable": "La traduction n'est pas disponible pour les enregistrements incognito."
+    "incognitoUnavailable": "La traduction n'est pas disponible pour les enregistrements incognito.",
+    "progress": "Traduction · {{done}} sur {{total}}",
+    "alreadyInLanguage": "La transcription est déjà en {{language}}."
   },
   "whatsNew": {
     "title": "Nouveautés de Speakr {{version}}",

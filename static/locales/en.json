@@ -2282,7 +2282,11 @@
     "waiting": "Waiting",
     "waitingForProcessing": "Uploaded, waiting for processing...",
     "waitingToUpload": "Waiting to upload...",
-    "region": "Processing queue items"
+    "region": "Processing queue items",
+    "translating": "Translating",
+    "translatingShort": "translating",
+    "translatingMessage": "Translating the transcript",
+    "translatingParts": "{{done}} of {{total}} parts translated"
   },
   "promptVariables": {
     "title": "Prompt variables",
@@ -2673,7 +2677,8 @@
     "stuck": "Reset stuck processing",
     "summarizing": "Summarizing",
     "transcribing": "Transcribing",
-    "uploading": "Uploading"
+    "uploading": "Uploading",
+    "queuedTranslation": "Queued (translation)"
   },
   "summary": {
     "actionItems": "Action Items",
@@ -3585,7 +3590,9 @@
       "userAlreadyHasNamingTemplates": "User already has naming templates",
       "userAlreadyHasTemplates": "User already has templates",
       "voiceProfileCleared": "Voice profile cleared for {{name}}",
-      "translationQueued": "Translation queued"
+      "translationQueued": "Translation queued",
+      "translationAlreadyRunning": "This recording is already being translated.",
+      "translationSameLanguage": "The transcript is already in {{target}}."
     },
     "form": {
       "required": "This field is required.",
@@ -3732,7 +3739,9 @@
     "targetLanguage": "Target language",
     "preferences": "Translation preferences",
     "toggle": "Toggle translation",
-    "incognitoUnavailable": "Translation is unavailable for incognito recordings."
+    "incognitoUnavailable": "Translation is unavailable for incognito recordings.",
+    "progress": "Translating · {{done}} of {{total}}",
+    "alreadyInLanguage": "The transcript is already in {{language}}."
   },
   "whatsNew": {
     "title": "What's new in Speakr {{version}}",
