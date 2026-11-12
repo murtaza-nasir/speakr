@@ -221,7 +221,7 @@ A tour of Speakr, section by section. Click any image to view it full size.
 
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/main-view-token-usage.png" alt="Token usage" />
-    <p class="caption">LLM token usage shown per recording</p>
+    <p class="caption">Monthly AI token usage, shown in the header</p>
   </div>
 </div>
 
