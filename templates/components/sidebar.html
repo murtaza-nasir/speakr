@@ -4,8 +4,45 @@
      class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
 </div>
 
+<aside v-if="foldersEnabled && !isMobileScreen" class="global-navigation" aria-label="Recording views">
+    <section class="global-nav-section">
+        <h2 class="global-nav-heading" v-text="t('nav.recording')"></h2>
+        <button @click="openGlobalView('all')" class="global-nav-item" :class="{ active: !filterFolder && !filterStatus && !filterNeedsSummary && !filterNeedsSpeakers && filterTags.length === 0 }">
+            <i class="fas fa-table-cells"></i><span v-text="t('sidebar.allRecordings')"></span>
+        </button>
+        <button @click="openGlobalView('unfiled')" class="global-nav-item" :class="{ active: filterFolder === 'none' }">
+            <i class="far fa-file"></i><span v-text="t('sidebar.unfiled')"></span>
+        </button>
+        <button @click="openGlobalView('recent')" class="global-nav-item" :class="{ active: filterDatePreset === 'thisweek' }">
+            <i class="far fa-clock"></i><span v-text="t('sidebar.thisWeek')"></span>
+        </button>
+    </section>
+    <section class="global-nav-section">
+        <h2 class="global-nav-heading" v-text="t('sidebar.filters')"></h2>
+        <button @click="openGlobalView('failed')" class="global-nav-item global-nav-alert" :class="{ active: filterStatus === 'FAILED' }">
+            <i class="fas fa-triangle-exclamation"></i><span v-text="t('status.failed')"></span>
+        </button>
+        <button @click="openGlobalView('summary')" class="global-nav-item" :class="{ active: filterNeedsSummary }">
+            <i class="far fa-file-lines"></i><span v-text="t('sidebar.needsSummary')"></span>
+        </button>
+        <button @click="openGlobalView('speakers')" class="global-nav-item" :class="{ active: filterNeedsSpeakers }">
+            <i class="fas fa-user-pen"></i><span v-text="t('sidebar.needsSpeakers')"></span>
+        </button>
+    </section>
+    <section v-if="availableTags.length" class="global-nav-section">
+        <h2 class="global-nav-heading" v-text="t('sidebar.tags')"></h2>
+        <div class="global-nav-tags">
+            <button v-for="tag in availableTags.slice(0, 8)" :key="tag.id" @click="openGlobalView('tag', tag.id)"
+                    class="global-nav-tag" :class="{ active: filterTags.length === 1 && filterTags[0] === tag.id }">
+                <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                <span class="truncate" v-text="tag.name"></span>
+            </button>
+        </div>
+    </section>
+</aside>
+
 <!-- Sidebar -->
-<aside :class="['sidebar', isSidebarCollapsed ? 'collapsed' : '']">
+<aside :class="['sidebar', isSidebarCollapsed ? 'collapsed' : '', foldersEnabled ? 'recording-workspace' : '']">
     <div class="sidebar-content-wrapper">
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
@@ -79,6 +116,16 @@
                         <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
                     </button>
                 </div>
+            </div>
+
+            <div v-if="foldersEnabled" class="workspace-list-title">
+                <div class="flex items-center gap-2 min-w-0">
+                    <h2 class="truncate" v-text="activeFolderName"></h2>
+                    <span class="workspace-count" v-text="totalRecordings"></span>
+                </div>
+                <button @click="includeChildFolders = !includeChildFolders" class="workspace-filter-chip" :class="{ active: includeChildFolders }" :aria-pressed="includeChildFolders">
+                    <i class="fas fa-code-branch"></i><span v-text="t('folderManagement.includeChildren')"></span>
+                </button>
             </div>
 
             <!-- Search and Sort Controls -->
@@ -347,13 +394,80 @@
             </div>
         </div>
 
+        <div v-if="foldersEnabled && recordingListCompact" class="sidebar-list recording-table-wrap" @scroll="(e) => {
+            const element = e.target;
+            if (element.scrollHeight - element.scrollTop - element.clientHeight < 100) loadMoreRecordings();
+        }">
+            <div v-if="selectionMode && selectedCount > 0" class="table-selection-bar">
+                <strong v-text="t('bulkActions.selectedCount', {count: selectedCount})"></strong>
+                <span class="flex-1"></span>
+                <button @click="showBulkFolderModal = true" v-text="t('folderManagement.moveToFolder')"></button>
+                <button @click="openBulkTagModal('add')" v-text="t('bulkActions.addOrRemoveTags')"></button>
+                <button @click="exitSelectionMode" v-text="t('common.done')"></button>
+            </div>
+            <table class="recording-table">
+                <thead><tr>
+                    <th class="recording-table-check">
+                        <input v-if="selectionMode" type="checkbox" :checked="allVisibleSelected" @change="allVisibleSelected ? clearSelection() : selectAll()" :aria-label="t('common.selectAll')">
+                    </th>
+                    <th v-text="t('form.title')"></th>
+                    <th v-text="t('folderManagement.folders')"></th>
+                    <th v-text="t('sidebar.tags')"></th>
+                    <th v-text="t('metadata.duration')"></th>
+                    <th v-text="t('events.date')"></th>
+                    <th v-text="t('metadata.status')"></th>
+                </tr></thead>
+                <tbody>
+                    <tr v-for="recording in recordings" :key="recording.id"
+                        @mousedown="$event.shiftKey && $event.preventDefault()"
+                        @click="handleRecordingClick(recording, $event, visibleRecordingIds) || selectRecording(recording)"
+                        :class="{ active: selectedRecording?.id === recording.id || (selectionMode && isSelected(recording.id)) }">
+                        <td class="recording-table-check" @click.stop>
+                            <input v-if="selectionMode" type="checkbox" :checked="isSelected(recording.id)" class="selection-checkbox"
+                                   @click="handleRecordingClick(recording, $event, visibleRecordingIds)" :aria-label="recording.title">
+                        </td>
+                        <td class="recording-table-title">
+                            <div dir="auto" class="truncate" v-text="recording.title || t('common.untitled')"></div>
+                            <div v-if="recording.participants" class="recording-table-sub truncate" v-text="recording.participants"></div>
+                        </td>
+                        <td>
+                            <button v-if="recording.folder_id" @click.stop="selectFolderFilter(recording.folder_id)" class="table-folder-chip">
+                                <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: getFolderColor(recording.folder_id) }"></span>
+                                <span class="truncate" v-text="getFolderName(recording.folder_id)"></span>
+                            </button>
+                            <span v-else class="text-[var(--text-muted)]" v-text="t('sidebar.unfiled')"></span>
+                        </td>
+                        <td><div class="recording-table-tags">
+                            <button v-for="tag in getRecordingTags(recording).slice(0, 2)" :key="tag.id" @click.stop="filterByTag(tag)"
+                                    class="chip chip--clickable" :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }">
+                                <span class="chip__label" v-text="tag.name"></span>
+                            </button>
+                            <span v-if="getRecordingTags(recording).length > 2">+${ getRecordingTags(recording).length - 2 }</span>
+                        </div></td>
+                        <td class="whitespace-nowrap" v-text="recording.audio_duration ? formatDuration(recording.audio_duration) : '—'"></td>
+                        <td class="whitespace-nowrap" v-text="formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)"></td>
+                        <td><span :class="recording.status === 'COMPLETED' ? 'table-status-complete' : getStatusClass(recording.status)" class="status-badge" v-text="formatRecordingStatus(recording)"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div v-if="isLoadingRecordings && recordings.length === 0" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+            </div>
+            <div v-else-if="recordings.length === 0" class="text-center py-8 text-[var(--text-muted)]" v-text="t('sidebar.noRecordings')"></div>
+            <div v-if="isLoadingMore" class="text-center py-4"><i class="fas fa-spinner fa-spin text-[var(--text-muted)]"></i></div>
+            <div class="recording-table-footer">
+                <span v-text="t('sidebar.totalRecordings', {count: totalRecordings})"></span>
+                <button v-if="hasNextPage" @click="loadMoreRecordings" class="ml-3 text-[var(--text-accent)]" v-text="t('help.loadingMore')"></button>
+            </div>
+        </div>
+
         <!-- Recordings List — full-bleed: no outer horizontal padding so
              every row, section header, and active-row band runs
              edge-to-edge across the sidebar. Top padding is zero so the
              first section header (TODAY) sits flush against the search
              toolbar's bottom border above; bottom padding keeps a
              little breathing room below the final row. -->
-        <div class="sidebar-list flex-1 overflow-y-auto pb-3"
+        <div v-else class="sidebar-list flex-1 overflow-y-auto pb-3"
              :class="{ 'recording-list-compact': recordingListCompact }"
              @scroll="(e) => {
                 const element = e.target;

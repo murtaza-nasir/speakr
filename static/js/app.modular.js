@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterNeedsTranscription = ref(false);
             const filterNeedsSummary = ref(false);
             const filterNeedsSpeakers = ref(false);
+            const filterStatus = ref('');
             const filterAudioRemoved = ref(false);  // recordings whose media file was removed
             const showArchivedRecordings = ref(false);  // the user's archive view (#394)
             const showSharedWithMe = ref(false);
@@ -748,9 +749,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             let savedSidebarRatio = Number(localStorage.getItem('recordingsSidebarRatio'));
             const sidebarRatio = ref(Number.isFinite(savedSidebarRatio) && savedSidebarRatio >= .32 && savedSidebarRatio <= .68 ? savedSidebarRatio : .5);
+            const globalNavigationWidth = computed(() => foldersEnabled.value && windowWidth.value >= 1024 ? 202 : 0);
             const sidebarWidthPx = computed(() => {
-                const maximum = Math.max(320, windowWidth.value - 360);
-                return Math.round(Math.min(maximum, Math.max(320, windowWidth.value * sidebarRatio.value)));
+                const navigation = globalNavigationWidth.value;
+                const available = Math.max(640, windowWidth.value - navigation - 12);
+                const listWidth = Math.round(Math.min(available - 320, Math.max(320, available * sidebarRatio.value)));
+                return navigation + listWidth;
             });
             const isSidebarResizing = ref(false);
             const toggleFolderExpanded = (folderId) => {
@@ -760,7 +764,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             const selectFolderFilter = (folderId) => {
                 filterFolder.value = folderId || '';
-                folderBrowserOpen.value = false;
+                filterStatus.value = '';
+            };
+            const openGlobalView = (view, tagId = null) => {
+                recordingsComposable.clearAllFilters();
+                filterStatus.value = '';
+                filterFolder.value = '';
+                showArchivedRecordings.value = false;
+                showSharedWithMe.value = false;
+                if (view === 'unfiled') filterFolder.value = 'none';
+                if (view === 'recent') filterDatePreset.value = 'thisweek';
+                if (view === 'failed') filterStatus.value = 'FAILED';
+                if (view === 'summary') filterNeedsSummary.value = true;
+                if (view === 'speakers') filterNeedsSpeakers.value = true;
+                if (view === 'tag' && tagId !== null) filterTags.value = [tagId];
             };
             const startSidebarResize = (event) => {
                 if (isMobileScreen.value) return;
@@ -769,7 +786,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isSidebarResizing.value = true;
                 const move = (e) => {
                     if (!handle.hasPointerCapture(e.pointerId)) return;
-                    sidebarRatio.value = Math.min(.68, Math.max(.32, e.clientX / windowWidth.value));
+                    const navigation = globalNavigationWidth.value;
+                    const available = Math.max(1, windowWidth.value - navigation - 12);
+                    sidebarRatio.value = Math.min(.68, Math.max(.32, (e.clientX - navigation) / available));
                 };
                 const stop = (e) => {
                     if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
@@ -1955,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Filters
                 showAdvancedFilters, filterTags, filterSpeakers, filterTagSearch, filterSpeakerSearch,
                 filterDateRange, filterDatePreset, filterTextQuery, filterStarred, filterInbox,
-                filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
+                filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers, filterStatus,
                 filterAudioRemoved, showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
 
                 // Pagination
@@ -1981,8 +2000,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
                 folderBrowserOpen, expandedFolderIds, includeChildFolders, recordingListCompact,
-                folderTreeItems, activeFolderPath, activeFolderName, sidebarRatio, sidebarWidthPx, isSidebarResizing,
-                toggleFolderExpanded, selectFolderFilter, startSidebarResize, onSidebarResizeKeydown,
+                folderTreeItems, activeFolderPath, activeFolderName, sidebarRatio, sidebarWidthPx, globalNavigationWidth, isSidebarResizing,
+                toggleFolderExpanded, selectFolderFilter, openGlobalView, startSidebarResize, onSidebarResizeKeydown,
 
                 // Audio Recording
                 isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
@@ -3911,6 +3930,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             watch(filterNeedsSpeakers, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(filterStatus, () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 

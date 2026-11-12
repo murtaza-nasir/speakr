@@ -110,7 +110,7 @@
          data-recording-chunk-seconds="{{ recording_chunk_seconds }}"
          data-recording-video-kbps="{{ recording_video_kbps }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500"
-         :style="{ '--recording-sidebar-width': sidebarWidthPx + 'px' }">
+         :style="{ '--recording-sidebar-width': sidebarWidthPx + 'px', '--global-navigation-width': globalNavigationWidth + 'px' }">
 
         <!-- Header -->
         {% include 'components/header.html' %}

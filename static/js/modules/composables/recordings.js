@@ -15,7 +15,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
         showSharedWithMe, filterAudioRemoved, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
-        filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
+        filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers, filterStatus,
         filterFolder, includeChildFolders, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending,
@@ -71,6 +71,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 needs_transcription: filterNeedsTranscription.value ? 'true' : '',
                 needs_summary: filterNeedsSummary.value ? 'true' : '',
                 needs_speakers: filterNeedsSpeakers.value ? 'true' : '',
+                status: filterStatus?.value || '',
                 folder: (filterFolder && filterFolder.value) ? filterFolder.value : '',
                 include_children: filterFolder && filterFolder.value && includeChildFolders.value ? 'true' : '',
             });
@@ -508,6 +509,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterNeedsTranscription.value = false;
         filterNeedsSummary.value = false;
         filterNeedsSpeakers.value = false;
+        if (filterStatus) filterStatus.value = '';
         // Note: filterFolder is NOT cleared here - it's a navigation element, not a filter
         searchQuery.value = '';
     };
