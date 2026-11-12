@@ -46,6 +46,19 @@ Each folder can have custom settings that apply to recordings placed in it:
 
 These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing. Tag-level defaults take precedence over folder-level defaults; per-upload selections take precedence over both.
 
+### Nested Folders
+
+A folder can sit inside another folder. Nesting is available through the API only for now: set `parent_id` when you create or update a folder (see [Folders in the API reference](api-reference.md#create-folder)). The web interface still shows every folder as a flat list.
+
+- **Same scope** - A personal folder can only sit inside another of your personal folders, and a group folder only inside a folder of the same group
+- **No loops** - A folder cannot be moved inside itself or inside one of its own subfolders
+- **Deleting a parent** - Its subfolders move up one level, to the deleted folder's parent; their own subfolders stay where they are
+- **Changing a group** - A folder that has subfolders keeps its group; move the subfolders out first
+- **Names** - The existing name rules apply across all levels, so two parents cannot each hold a subfolder with the same name
+- **Counts** - `recording_count` counts only the recordings directly in a folder; the folder endpoints also return `total_recording_count`, which adds the recordings in all subfolders
+
+Existing folders become top-level folders when you upgrade.
+
 ## Using Folders
 
 ### Sidebar Folder Selector
@@ -102,7 +115,7 @@ Both folders and tags help organize recordings, but they serve different purpose
 |--------|---------|------|
 | **Assignment** | One folder per recording | Multiple tags per recording |
 | **Purpose** | Primary organization | Categorization and filtering |
-| **Hierarchy** | Flat list | Flat list |
+| **Hierarchy** | Optional parent folder (API only) | Flat list |
 | **Settings** | Custom prompt, ASR, retention | Custom prompt, ASR, retention |
 | **Visual** | Pill badge, sidebar filter | Colored badges |
 

@@ -274,6 +274,14 @@ def delete_team(group_id):
         return jsonify(api_error('group_not_found')), 404
 
     group_name = group.name
+    # The group's folders become personal folders of their creators. A
+    # parent created by someone else would then be in another user's
+    # scope, so that child becomes top level (#585).
+    group_folders = {folder.id: folder for folder in group.folders}
+    for folder in group_folders.values():
+        parent = group_folders.get(folder.parent_id)
+        if folder.parent_id is not None and (parent is None or parent.user_id != folder.user_id):
+            folder.parent_id = None
     db.session.delete(group)
     db.session.commit()
 
