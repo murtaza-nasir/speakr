@@ -99,6 +99,15 @@ const parseUnformattedError = (text) => {
     // Known error patterns
     const patterns = [
         {
+            // Same list as the no-speech entry of ERROR_PATTERNS in src/utils/error_formatting.py.
+            patterns: [/\bno_speech\b/, /no (?:recognized |recognised |usable )?speech (?:was )?detected/, 'asr_response_have_no_words'],
+            title: _t('errors.noSpeechTitle', 'No speech detected'),
+            message: _t('errors.noSpeechMessage', 'No recognizable speech was found in this recording.'),
+            guidance: _t('errors.noSpeechGuidance', 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.'),
+            icon: 'fa-microphone-slash',
+            type: 'no_speech'
+        },
+        {
             patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
             title: _t('errors.fileTooLargeTitle', 'File too large'),
             message: _t('errors.fileTooLargeMessage', 'The file is over the transcription service\'s size limit.'),
@@ -740,6 +749,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedFolderId = ref(null);
             const foldersEnabled = ref(false);
             const filterFolder = ref('');
+            // Folder filter also lists recordings in subfolders (#585); off by default.
+            const includeChildFolders = ref(false);
 
             // --- Modal State ---
             const showEditModal = ref(false);
@@ -882,6 +893,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const legendExpanded = ref(false);
             const highlightedSpeaker = ref(null);
             const showDownloadMenu = ref(false);
+            // Format menu on the summary download button (Word / Markdown, #584).
+            const showSummaryDownloadMenu = ref(false);
             // Split-button menu on the recording-view "Upload Recording & Notes"
             // action (offers "merge with an existing recording").
             const showUploadSplitMenu = ref(false);
@@ -1926,7 +1939,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customBanner, showBanner,
                 showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, hintsPopoverStyle, toggleHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
-                availableFolders, selectedFolderId, foldersEnabled, filterFolder,
+                availableFolders, selectedFolderId, foldersEnabled, filterFolder, includeChildFolders,
 
                 // Audio Recording
                 isRecording, isPaused, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
@@ -1990,7 +2003,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 summaryMarkdownEditorInstance, recordingNotesEditor, recordingMarkdownEditorInstance,
 
                 // Transcription
-                transcriptionViewMode, legendExpanded, highlightedSpeaker, showDownloadMenu,
+                transcriptionViewMode, legendExpanded, highlightedSpeaker, showDownloadMenu, showSummaryDownloadMenu,
                 transcriptDownloadFormat, showUploadSplitMenu,
                 currentPlayingSegmentIndex, followPlayerMode, processingIndicatorMinimized,
                 viewingTranslation, showTranslationModal, translationTargetLanguage,
@@ -2681,6 +2694,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const createFolderFromUpload = () => {
                 if (!window.SpeakrOrganizer) return;
                 window.SpeakrOrganizer.openFolderCreate({
+                    folders: availableFolders.value,
                     onSaved: async (folder) => {
                         await recordingsComposable.loadFolders();
                         selectedFolderId.value = folder.id;
@@ -2775,6 +2789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const foldersComposable = useFolders({
                 recordings,
                 availableFolders,
+                filterFolder,
                 selectedRecording,
                 showToast,
                 setGlobalError
@@ -3861,6 +3876,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.removeItem('selectedFolder');
                 }
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(includeChildFolders, () => {
+                if (filterFolder.value && filterFolder.value !== 'none') {
+                    recordingsComposable.loadRecordings(1, false, searchQuery.value);
+                }
             });
 
             // Guard against being stuck filtering by a folder the user can't

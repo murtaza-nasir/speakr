@@ -343,18 +343,36 @@ class AudioChunkingService:
             
         Returns:
             Duration in seconds, or None if unable to determine
+
+        A container without a duration (a browser MediaRecorder WebM reports
+        ``N/A``) falls back to the last audio packet timestamp. A path that no
+        longer exists returns None without running ffprobe (#580).
         """
+        if not file_path or not os.path.exists(file_path):
+            logger.debug(f"No file to measure the duration of at {file_path}")
+            return None
         try:
             result = subprocess.run([
                 'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
                 '-of', 'default=noprint_wrappers=1:nokey=1', file_path
             ], capture_output=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
-
-            duration = float(decode_ffmpeg_output(result.stdout).strip())
-            return duration
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError, FileNotFoundError) as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
             logger.error(f"Error getting audio duration for {file_path}: {e}")
             return None
+
+        raw = decode_ffmpeg_output(result.stdout).strip()
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+        from src.utils.ffprobe import _get_duration_from_packets
+        duration = _get_duration_from_packets(file_path, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
+        if duration and duration > 0:
+            logger.info(f"No container duration for {file_path} ({raw or 'empty'}); "
+                        f"measured {duration:.2f}s from packet timestamps")
+            return duration
+        logger.info(f"No duration available for {file_path} (container reports {raw or 'nothing'})")
+        return None
     
     def convert_to_mp3_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
         """

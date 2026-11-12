@@ -463,14 +463,17 @@ def admin_delete_user(user_id):
         total_chunks = TranscriptChunk.query.filter_by(user_id=user_id).count()
         if total_chunks > 0:
             current_app.logger.info(f"Deleting {total_chunks} transcript chunks with embeddings for user {user_id}")
+    # The whole recording goes, as when its owner deletes it: the media, the
+    # transcript, summary, notes and embeddings, its shares, tags and jobs.
+    # Deleting only the media left the rows with user_id NULL (#572).
     from src.services.storage import get_storage_service
+    from src.services.recording_deletion import delete_recording_completely, cleanup_orphaned_speakers_quietly
     storage = get_storage_service()
-    for recording in user.recordings:
-        try:
-            if recording.audio_path:
-                storage.delete(recording.audio_path, missing_ok=True)
-        except Exception as e:
-            current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
+    recordings = list(user.recordings)  # the helper commits after each one
+    for recording in recordings:
+        delete_recording_completely(recording, storage=storage)
+    if recordings:
+        current_app.logger.info(f"Deleted {len(recordings)} recordings of user {user_id}")
 
     # Explicitly delete related records that might not cascade properly
     ProcessingJob.query.filter_by(user_id=user_id).delete()
@@ -481,6 +484,8 @@ def admin_delete_user(user_id):
     # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
+    if recordings:
+        cleanup_orphaned_speakers_quietly()
     
     if ENABLE_INQUIRE_MODE and total_chunks > 0:
         current_app.logger.info(f"Successfully deleted {total_chunks} embeddings and chunks for user {user_id}")
@@ -1880,9 +1885,7 @@ def admin_voice_embedding_rebaseline():
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
     "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
@@ -1890,4 +1893,4 @@ _SYSTEM_SETTING_MAP = {
     "GLOBAL_RETENTION_DAYS": ('global_retention_days', 'GLOBAL_RETENTION_DAYS', 0),
     "DELETION_MODE": ('deletion_mode', 'DELETION_MODE', 'full_recording'),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

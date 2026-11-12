@@ -5,6 +5,9 @@ This module defines models for organizing users into groups and tagging recordin
 """
 
 from datetime import datetime
+
+from sqlalchemy import event, select
+
 from src.database import db
 
 
@@ -90,6 +93,9 @@ class Folder(db.Model):
     name = db.Column(db.String(50), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('group.id', ondelete='CASCADE'), nullable=True)  # Group-scoped folder
+    # Parent folder (#585). NULL is a top-level folder. A parent is always in
+    # the same scope: the same user's personal folders, or the same group.
+    parent_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
     color = db.Column(db.String(7), default='#10B981')  # Hex color for UI (green to differentiate from tags)
 
     # Custom settings for this folder
@@ -146,19 +152,24 @@ class Folder(db.Model):
         """Check if this is a group-scoped folder."""
         return self.group_id is not None
 
-    def to_dict(self, recording_count=None):
+    def to_dict(self, recording_count=None, total_recording_count=None):
         """Convert model to dictionary representation.
 
         recording_count: the folder's recording count when the caller has
         counted it already (list pages count all their folders at once).
+        total_recording_count: recordings in this folder and all its
+        descendants (#585). It is part of the dict only when the caller
+        passes it; the folder endpoints do, the folder embedded in a
+        recording does not.
         """
         if recording_count is None:
             recording_count = len(self.recordings) if self.recordings else 0
-        return {
+        result = {
             'id': self.id,
             'name': self.name,
             'color': self.color,
             'group_id': self.group_id,
+            'parent_id': self.parent_id,
             'is_group_folder': self.is_group_folder,
             'group_name': self.group.name if self.group else None,
             'custom_prompt': self.custom_prompt,
@@ -180,6 +191,27 @@ class Folder(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'recording_count': recording_count
         }
+        if total_recording_count is not None:
+            result['total_recording_count'] = total_recording_count
+        return result
+
+
+@event.listens_for(Folder, 'before_delete')
+def _promote_child_folders(mapper, connection, target):
+    """Move a deleted folder's children up to its own parent (#585).
+
+    This runs for every ORM delete of a folder, including the cascade when
+    a user is removed. It does not rely on the parent_id foreign key, which
+    SQLite does not enforce here. The parent is read from the row, not from
+    the object, so a chain of folders deleted in one flush stays consistent.
+    """
+    table = Folder.__table__
+    # An alias, so the subquery is not correlated with the updated rows.
+    deleted = table.alias('deleted_folder')
+    own_parent = (select(deleted.c.parent_id).where(deleted.c.id == target.id)
+                  .scalar_subquery())
+    connection.execute(table.update().where(table.c.parent_id == target.id)
+                       .values(parent_id=own_parent))
 
 
 class Tag(db.Model):

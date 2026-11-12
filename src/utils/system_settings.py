@@ -1,6 +1,8 @@
 """Helpers for hot-applied System Settings backed by environment fallback."""
 
 import os
+import sys
+from types import ModuleType
 from typing import Any, Callable, Dict, Tuple
 
 
@@ -60,6 +62,21 @@ def make_module_getattr(mapping: Dict[str, Tuple[str, str, Any]]) -> Callable[[s
         return fallback
 
     return __getattr__
+
+
+def apply_hot_settings(module_name: str, mapping: Dict[str, Tuple[str, str, Any]]
+                       ) -> Tuple[ModuleType, Callable[[str], Any]]:
+    """Return ``(module, __getattr__)`` for a module with hot-applied settings.
+
+    A module registers its settings with one line after its map::
+
+        _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
+
+    Python calls a module-level ``__getattr__`` for any name the module does not
+    define (PEP 562), so every ``_self.NAME`` read looks the setting up again,
+    from System Settings inside an app context and from ``.env`` otherwise.
+    """
+    return sys.modules[module_name], make_module_getattr(mapping)
 
 
 # Settings that can be changed in System Settings and that fall back to an

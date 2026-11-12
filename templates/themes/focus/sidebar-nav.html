@@ -9,7 +9,7 @@
                         <option value="">${ t('sidebar.allRecordings') }</option>
                         <option value="none">${ t('sidebar.unfiled') }</option>
                         <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                            ${ folder.name }
+                            ${ folderOptionLabel(folder) }
                         </option>
                     </select>
                     <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
@@ -44,6 +44,14 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Include subfolders (#585): only for a folder that has subfolders -->
+            <label v-if="foldersEnabled && selectedFolderHasChildren"
+                   class="flex items-center gap-2 mb-3 text-sm text-[var(--text-secondary)] cursor-pointer">
+                <input type="checkbox" v-model="includeChildFolders"
+                       class="h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                <span v-text="t('folderManagement.includeSubfolders')"></span>
+            </label>
 
             <!-- Search and Sort Controls -->
             <div class="focus-side-tools space-y-3">

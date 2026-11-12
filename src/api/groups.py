@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
+from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
 
 # Create blueprint
 groups_bp = Blueprint('groups', __name__)
@@ -118,14 +119,8 @@ def sync_team_tag_shares(group_id):
                     )
                     db.session.add(share)
 
-                    # Create SharedRecordingState with default values for the recipient
-                    state = SharedRecordingState(
-                        recording_id=recording.id,
-                        user_id=membership_to_share.user_id,
-                        is_inbox=True,  # New shares appear in inbox by default
-                        is_highlighted=False  # Not favorited by default
-                    )
-                    db.session.add(state)
+                    # The recipient's state row, reused when an earlier share left one (#571)
+                    ensure_recipient_state(recording.id, membership_to_share.user_id)
 
                     shares_created += 1
                     current_app.logger.info(f"Synced share: Recording {recording.id} with user {membership_to_share.user_id} (role={membership_to_share.role}) via group tag '{tag.name}'")
@@ -274,7 +269,18 @@ def delete_team(group_id):
         return jsonify(api_error('group_not_found')), 404
 
     group_name = group.name
+    member_ids = [m.user_id for m in group.memberships]
+    # The group's folders become personal folders of their creators. A
+    # parent created by someone else would then be in another user's
+    # scope, so that child becomes top level (#585).
+    group_folders = {folder.id: folder for folder in group.folders}
+    for folder in group_folders.values():
+        parent = group_folders.get(folder.parent_id)
+        if folder.parent_id is not None and (parent is None or parent.user_id != folder.user_id):
+            folder.parent_id = None
     db.session.delete(group)
+    # The group's tags and folders no longer share anything (#570)
+    drop_stale_auto_shares(user_ids=member_ids)
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} deleted group: {group_name}")
@@ -356,6 +362,8 @@ def update_team_member(group_id, user_id):
         return jsonify(api_error('invalid_group_role')), 400
 
     membership.role = role
+    # Group-made shares give edit to admins only, the rule that created them
+    drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} updated {membership.user.username} role to {role} in group {membership.group.name}")
@@ -384,6 +392,9 @@ def remove_team_member(group_id, user_id):
     username = membership.user.username
     group_name = membership.group.name
     db.session.delete(membership)
+    # Shares the group's tags and folders made for this member end with the
+    # membership; a share the owner made by hand stays (#570)
+    drop_stale_auto_shares(user_ids=[user_id])
     db.session.commit()
 
     current_app.logger.info(f"Admin {current_user.username} removed {username} from group {group_name}")
@@ -391,12 +402,10 @@ def remove_team_member(group_id, user_id):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "USERS_CAN_DELETE": ('users_can_delete', 'USERS_CAN_DELETE', True),
     "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
     "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

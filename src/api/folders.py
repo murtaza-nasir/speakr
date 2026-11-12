@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
+from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
 
 # Create blueprint
 folders_bp = Blueprint('folders', __name__)
@@ -72,6 +73,35 @@ def _folder_name_error(error_key):
     if error_key == 'folder_name_too_long':
         return jsonify(api_error(error_key, max=FOLDER_NAME_MAX_LENGTH)), 400
     return jsonify(api_error(error_key)), 400
+
+
+def _parent_for_write(parent_id, user_id, group_id):
+    """Return (parent, None) for a valid parent_id, else (None, error key).
+
+    parent_id None or '' means top level. A parent must be in the scope the
+    folder is written to (#585): for a personal folder, a personal folder of
+    the same user; for a group folder, a folder of the same group.
+    """
+    if parent_id in (None, ''):
+        return None, None
+    if isinstance(parent_id, bool) or not isinstance(parent_id, int):
+        return None, 'folder_parent_invalid'
+    parent = db.session.get(Folder, parent_id)
+    if not parent:
+        return None, 'folder_parent_invalid'
+    if isinstance(group_id, str) and group_id.isdecimal():
+        group_id = int(group_id)
+    if not group_id:
+        valid = parent.group_id is None and parent.user_id == user_id
+    else:
+        valid = parent.group_id == group_id
+    return (parent, None) if valid else (None, 'folder_parent_invalid')
+
+
+def _folder_response(folder):
+    """Folder.to_dict with the recursive count, for the folder endpoints."""
+    from src.services.folder_tree import subtree_recording_count
+    return folder.to_dict(total_recording_count=subtree_recording_count(folder))
 
 
 def _name_taken_key(name, group_id, group_key):
@@ -176,6 +206,10 @@ def create_folder():
         if existing_folder:
             return jsonify(api_error('folder_name_exists')), 400
 
+    parent, parent_error = _parent_for_write(data.get('parent_id'), current_user.id, group_id)
+    if parent_error:
+        return jsonify(api_error(parent_error)), 400
+
     # Handle retention_days: -1 means protected from deletion
     retention_days = data.get('retention_days')
     protect_from_deletion = False
@@ -202,6 +236,7 @@ def create_folder():
         name=name,
         user_id=current_user.id,
         group_id=group_id,
+        parent_id=parent.id if parent else None,
         color=color,
         custom_prompt=data.get('custom_prompt'),
         title_prompt=data.get('title_prompt'),
@@ -229,7 +264,7 @@ def create_folder():
         current_app.logger.info("Folder create refused: the name is already in use")
         return jsonify(api_error(_name_taken_key(name, group_id, 'folder_name_exists_for_group'))), 400
 
-    return jsonify(folder.to_dict()), 201
+    return jsonify(_folder_response(folder)), 201
 
 
 @folders_bp.route('/api/folders/<int:folder_id>', methods=['PUT'])
@@ -299,7 +334,33 @@ def update_folder(folder_id):
             if not membership or membership.role != 'admin':
                 return jsonify(api_error('folder_group_assign_admin_only')), 403
 
+        # Children stay in the old scope, so a folder with children keeps
+        # its group (#585). str() lets a group id sent as "3" match 3.
+        group_changed = str(new_group_id or '') != str(folder.group_id or '')
+        if group_changed and Folder.query.filter_by(parent_id=folder.id).first():
+            return jsonify(api_error('folder_group_tree_invalid')), 400
+        regrouped = group_changed
+    else:
+        regrouped = False
+
+    # The parent is checked against the folder's new scope when either one
+    # changes, before anything is written.
+    check_parent = 'parent_id' in data or ('group_id' in data and folder.parent_id is not None)
+    if check_parent:
+        target_group_id = new_group_id if 'group_id' in data else folder.group_id
+        parent, parent_error = _parent_for_write(data.get('parent_id', folder.parent_id),
+                                                 folder.user_id, target_group_id)
+        if parent_error:
+            return jsonify(api_error(parent_error)), 400
+        if parent:
+            from src.services.folder_tree import descendant_folder_ids
+            if parent.id in descendant_folder_ids(folder):
+                return jsonify(api_error('folder_parent_cycle')), 400
+
+    if 'group_id' in data:
         folder.group_id = new_group_id
+    if check_parent:
+        folder.parent_id = parent.id if parent else None
 
     if 'color' in data:
         color, error_key = _clean_folder_color(data['color'])
@@ -363,6 +424,9 @@ def update_folder(folder_id):
     name, group_id = folder.name, folder.group_id
 
     try:
+        if regrouped:
+            # Shares the folder's previous group received end with the move (#582)
+            drop_stale_auto_shares(recording_ids=[r.id for r in folder.recordings])
         db.session.commit()
     except IntegrityError:
         # A duplicate name is a refused request, not an application error (#511).
@@ -370,7 +434,7 @@ def update_folder(folder_id):
         current_app.logger.info("Folder update refused: the name is already in use")
         return jsonify(api_error(_name_taken_key(name, group_id, 'folder_rename_conflict'))), 400
 
-    return jsonify(folder.to_dict())
+    return jsonify(_folder_response(folder))
 
 
 @folders_bp.route('/api/folders/<int:folder_id>', methods=['DELETE'])
@@ -401,8 +465,14 @@ def delete_folder(folder_id):
         if folder.user_id != current_user.id:
             return jsonify(api_error('folder_delete_denied')), 403
 
-    # Recordings in this folder will have folder_id set to NULL via ondelete='SET NULL'
+    # Recordings in this folder will have folder_id set to NULL via ondelete='SET NULL'.
+    # Child folders move up to this folder's parent (Folder before_delete, #585).
+    recording_ids = [rid for (rid,) in db.session.query(Recording.id).filter(Recording.folder_id == folder.id)]
+    recording_ids += [rid for (rid,) in db.session.query(InternalShare.recording_id).filter(
+        InternalShare.source_folder_id == folder.id)]
     db.session.delete(folder)
+    # The folder no longer shares what it held (#582)
+    drop_stale_auto_shares(recording_ids=recording_ids)
     db.session.commit()
     return jsonify({'success': True})
 
@@ -453,6 +523,10 @@ def create_group_folder(group_id):
     if existing_folder:
         return jsonify(api_error('group_folder_name_exists')), 400
 
+    parent, parent_error = _parent_for_write(data.get('parent_id'), current_user.id, group_id)
+    if parent_error:
+        return jsonify(api_error(parent_error)), 400
+
     # Validate naming_template_id if provided
     naming_template_id = data.get('naming_template_id')
     if naming_template_id:
@@ -472,6 +546,7 @@ def create_group_folder(group_id):
         name=name,
         user_id=current_user.id,  # Creator
         group_id=group_id,
+        parent_id=parent.id if parent else None,
         color=color,
         custom_prompt=data.get('custom_prompt'),
         title_prompt=data.get('title_prompt'),
@@ -499,7 +574,7 @@ def create_group_folder(group_id):
         current_app.logger.info("Group folder create refused: the name is already in use")
         return jsonify(api_error(_name_taken_key(name, group_id, 'group_folder_name_exists'))), 400
 
-    return jsonify(folder.to_dict()), 201
+    return jsonify(_folder_response(folder)), 201
 
 
 @folders_bp.route('/api/groups/<int:group_id>/folders', methods=['GET'])
@@ -579,11 +654,14 @@ def assign_recording_folder(recording_id):
         if folder.group_id and (folder.auto_share_on_apply or folder.share_with_group_lead):
             _apply_folder_auto_shares(recording, folder)
 
+        # Leaving a group folder ends the shares it made (#582)
+        drop_stale_auto_shares(recording_ids=[recording.id])
         db.session.commit()
         current_app.logger.info(f"Recording {recording_id} moved to folder {folder_id} by user {current_user.id}")
     else:
         # Remove from folder
         recording.folder_id = None
+        drop_stale_auto_shares(recording_ids=[recording.id])
         db.session.commit()
         current_app.logger.info(f"Recording {recording_id} removed from folder by user {current_user.id}")
 
@@ -616,6 +694,8 @@ def remove_recording_folder(recording_id):
             return jsonify(api_error('recording_modify_denied')), 403
 
     recording.folder_id = None
+    # Leaving a group folder ends the shares it made (#582)
+    drop_stale_auto_shares(recording_ids=[recording.id])
     db.session.commit()
     current_app.logger.info(f"Recording {recording_id} removed from folder by user {current_user.id}")
 
@@ -688,6 +768,8 @@ def bulk_assign_folder():
 
         updated_count += 1
 
+    # Leaving a group folder ends the shares it made (#582)
+    drop_stale_auto_shares(recording_ids=[r.id for r in recordings])
     db.session.commit()
     action = f"moved to folder {folder_id}" if folder_id else "removed from folder"
     current_app.logger.info(f"Bulk folder update: {updated_count} recordings {action} by user {current_user.id}")
@@ -780,14 +862,8 @@ def _apply_folder_auto_shares(recording, folder):
             )
             db.session.add(share)
 
-            # Create SharedRecordingState with default values for the recipient
-            state = SharedRecordingState(
-                recording_id=recording.id,
-                user_id=membership.user_id,
-                is_inbox=True,
-                is_highlighted=False
-            )
-            db.session.add(state)
+            # The recipient's state row, reused when an earlier share left one (#571)
+            ensure_recipient_state(recording.id, membership.user_id)
 
             shares_created += 1
             current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} via group folder '{folder.name}'")
@@ -797,11 +873,9 @@ def _apply_folder_auto_shares(recording, folder):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ('enable_internal_sharing', 'ENABLE_INTERNAL_SHARING', False),
     "ENABLE_AUTO_DELETION": ('enable_auto_deletion', 'ENABLE_AUTO_DELETION', False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

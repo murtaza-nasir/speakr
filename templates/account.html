@@ -16,6 +16,7 @@
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script src="{{ url_for('static', filename='js/asr-languages.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/folder-tree.js') }}"></script>
     <script src="{{ url_for('static', filename='js/organizer-modals.js') }}"></script>
 
     <!-- Loading overlay to prevent FOUC -->
@@ -5325,7 +5326,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             : `<div class="w-3 h-3 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${escapeHtml(item.color)}"></div>`
                         }
                         <h3 class="font-semibold text-sm text-[var(--text-primary)] truncate" title="${escapeHtml(item.name)}">
-                            ${isGroupItem ? `<span class="text-xs font-normal text-[var(--text-secondary)]">${escapeHtml(item.group_name || tf('sharing.teamBadge', 'Group'))}:</span> ` : ''}${escapeHtml(item.name)}
+                            ${isGroupItem ? `<span class="text-xs font-normal text-[var(--text-secondary)]">${escapeHtml(item.group_name || tf('sharing.teamBadge', 'Group'))}:</span> ` : ''}${cfg.pathPrefix ? `<span class="text-xs font-normal text-[var(--text-secondary)]">${escapeHtml(cfg.pathPrefix)} /</span> ` : ''}${escapeHtml(item.name)}
                         </h3>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
@@ -5922,6 +5923,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
             try {
                 folders = await loadOrganizerItems(folderSectionEls, '/api/folders');
+                folders = window.SpeakrFolderTree ? window.SpeakrFolderTree.orderTree(folders) : folders;
                 displayFolders();
             } catch (error) {
                 console.error('Error loading folders:', error);
@@ -5941,6 +5943,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 deleteTitle: tf('folderManagement.deleteFolder', 'Delete folder'),
                 onEdit: (item) => openFolderModal(item),
                 onDelete: (item) => deleteFolder(item.id, item.name),
+                // A subfolder's card names its parents (#585).
+                pathPrefix: folder.depth && Array.isArray(folder.path) ? folder.path.slice(0, -1).join(' / ') : '',
             });
         }
 
@@ -6054,6 +6058,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tf('folderManagement.exportTemplateNone', 'No template (your default)'), { selected: (folder && folder.export_template_id) || '', markDefault: true })
             ]).then(refreshFolderTabIndicators);
 
+            // Parent folder choices for the folder's current group (#585).
+            window.SpeakrOrganizer.setFolderParentOptions(folders, {
+                editingId: folder ? folder.id : null,
+                selectedId: folder ? folder.parent_id : null,
+            });
+
             // Reset to first tab
             switchModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
 
@@ -6122,8 +6132,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     throw new Error(data.error || tf('errors.serverErrorStatus', 'HTTP ' + response.status, { status: response.status }));
                 }
 
-                folders = folders.filter(function(f) { return f.id !== folderId; });
-                displayFolders();
+                // Subfolders move up a level on the server, so reload the list.
+                await loadFolders();
                 showToast(tf('account.organizer.folderDeleted', 'Folder "' + folderName + '" deleted', { name: folderName }));
             } catch (error) {
                 console.error('Error deleting folder:', error);
@@ -6174,17 +6184,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const savedFolder = await response.json();
 
                     if (isEditingFolder) {
-                        const index = folders.findIndex(function(f) { return f.id === parseInt(folderId); });
-                        if (index !== -1) {
-                            folders[index] = savedFolder;
-                        }
                         showToast(tf('account.organizer.folderUpdated', 'Folder "' + savedFolder.name + '" updated', { name: savedFolder.name }));
                     } else {
-                        folders.push(savedFolder);
                         showToast(tf('account.organizer.folderCreated', 'Folder "' + savedFolder.name + '" created', { name: savedFolder.name }));
                     }
 
-                    displayFolders();
+                    // A move changes the tree and its counts, so reload the list.
+                    await loadFolders();
                     closeFolderModal();
                 } catch (error) {
                     console.error('Error saving folder:', error);

@@ -85,6 +85,8 @@ The admin toggle is perhaps the most powerful single click in the interface. Pro
 
 The delete button requires careful consideration. Removing a user is permanent and cannot be undone through the interface. All their recordings, notes, and settings will be deleted along with their account. The system asks for confirmation, but once confirmed, the removal is immediate and complete.
 
+On instances that ran an earlier release, the recordings of a deleted user could remain in the database without an owner. These recordings are removed by a daily cleanup; see [Recordings Without an Owner](retention.md#recordings-without-an-owner).
+
 ## Monitoring Usage Patterns
 
 The recording count and storage columns reveal how users interact with your Speakr instance. High recording counts might indicate power users who rely heavily on the system, while low counts could suggest users who need training or might not need accounts at all.

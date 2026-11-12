@@ -47,7 +47,8 @@
                         <button v-for="folder in availableFolders" :key="folder.id"
                                 @click="assignFolderToRecording(selectedRecording.id, folder.id); showHeaderFolderMenu = false"
                                 class="ws-menu__item"
-                                :class="selectedRecording.folder_id == folder.id ? 'is-current' : ''">
+                                :class="selectedRecording.folder_id == folder.id ? 'is-current' : ''"
+                                :style="folderIndentStyle(folder)">
                             <span class="ws-dot" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
                             <span class="flex-1 truncate">${ folder.name }</span>
                             <i v-if="selectedRecording.folder_id == folder.id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>

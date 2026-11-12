@@ -143,6 +143,11 @@
             folderData.share_with_group_lead = shareLeadEl ? shareLeadEl.checked : true;
         }
 
+        // Parent folder (#585). "None" is sent as null, which makes the
+        // folder top level.
+        const parentEl = document.getElementById('folderParentId');
+        if (parentEl) folderData.parent_id = parentEl.value ? parseInt(parentEl.value) : null;
+
         const protect = document.getElementById('folderProtectFromDeletion');
         const retention = document.getElementById('folderRetentionDays');
         if (protect && protect.checked) {
@@ -194,6 +199,53 @@
         }
         return fallback;
     }
+
+    // ------------------------------------------------------------------
+    // Parent folder select in the folder modal (#585). Only folders in the
+    // scope chosen in the group field are offered (the personal folders, or
+    // that group's folders), never the folder itself or its descendants.
+    // The field stays hidden while there is no folder to offer.
+    // ------------------------------------------------------------------
+
+    let parentFolders = [];
+    let parentEditingId = null;
+
+    function refreshFolderParentSelect(selectedId) {
+        const select = document.getElementById('folderParentId');
+        const section = document.getElementById('folderParentSection');
+        if (!select || !window.SpeakrFolderTree) return;
+        const keep = selectedId !== undefined ? selectedId : (select.value ? parseInt(select.value) : null);
+        const groupId = document.getElementById('folderGroupId')?.value || '';
+        const candidates = window.SpeakrFolderTree.parentCandidates(parentFolders, groupId, parentEditingId);
+        select.replaceChildren();
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = tr('folderManagement.noParentFolder', 'None (top level)');
+        select.appendChild(none);
+        candidates.forEach((folder) => {
+            const option = document.createElement('option');
+            option.value = String(folder.id);
+            option.textContent = window.SpeakrFolderTree.pathLabel(folder);
+            select.appendChild(option);
+        });
+        select.value = candidates.some((folder) => folder.id === keep) ? String(keep) : '';
+        if (section) section.classList.toggle('hidden', candidates.length === 0);
+    }
+
+    /**
+     * Fill the parent select for a folder being created (editingId null) or
+     * edited. Call it after the group field holds the folder's group.
+     */
+    function setFolderParentOptions(folders, opts = {}) {
+        parentFolders = Array.isArray(folders) ? folders : [];
+        parentEditingId = opts.editingId || null;
+        refreshFolderParentSelect(opts.selectedId || null);
+    }
+
+    // A different group means a different set of possible parents.
+    document.addEventListener('change', (event) => {
+        if (event.target && event.target.id === 'folderGroupId') refreshFolderParentSelect();
+    });
 
     function armStandalone() {
         if (standaloneArmed || isAccountPage()) return;
@@ -357,6 +409,7 @@
         }
         populateGroupSelect('folderGroupId', 'folderGroupSelectionSection', 'folderTabSharingBtn');
         document.getElementById('folderGroupSettingsSection')?.classList.add('hidden');
+        setFolderParentOptions(opts.folders || [], { selectedId: opts.parentId || null });
         switchOrganizerModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
         loadTemplateOptionsInto('folderNamingTemplate', '/api/naming-templates', tr('folderManagement.namingTemplateNone', 'No template (your default, or a generated title)'), { selected: '' });
         loadTemplateOptionsInto('folderExportTemplate', '/api/export-templates', tr('folderManagement.exportTemplateNone', 'No template (your default)'), { selected: '', markDefault: true });
@@ -523,6 +576,7 @@
         loadTemplateOptionsInto,
         buildTagPayload,
         buildFolderPayload,
+        setFolderParentOptions,
         openTagCreate,
         openFolderCreate,
         setLanguageValue,

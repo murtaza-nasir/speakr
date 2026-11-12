@@ -225,7 +225,7 @@
                     :key="folder.id"
                     @click="bulkAssignFolder(folder.id)"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--bg-tertiary)] transition-colors mb-1"
-                    :style="{ borderLeft: '3px solid ' + (folder.color || '#10B981') }">
+                    :style="[{ borderLeft: '3px solid ' + (folder.color || '#10B981') }, folderIndentStyle(folder)]">
                 <i class="fas fa-folder" :style="{ color: folder.color || '#10B981' }"></i>
                 <div class="flex-1 min-w-0">
                     <span class="text-sm text-[var(--text-primary)] block truncate">${ folder.name }</span>

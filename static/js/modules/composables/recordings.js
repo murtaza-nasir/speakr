@@ -16,7 +16,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         showSharedWithMe, filterAudioRemoved, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
-        filterFolder, sortBy,
+        filterFolder, includeChildFolders, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending, labelDeepLinkPending,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
@@ -72,6 +72,8 @@ export function useRecordings(state, utils, reprocessComposable) {
                 needs_summary: filterNeedsSummary.value ? 'true' : '',
                 needs_speakers: filterNeedsSpeakers.value ? 'true' : '',
                 folder: (filterFolder && filterFolder.value) ? filterFolder.value : '',
+                include_children: (includeChildFolders && includeChildFolders.value
+                    && filterFolder && filterFolder.value && filterFolder.value !== 'none') ? 'true' : '',
             });
 
             const recordingsList = data.recordings;
@@ -186,7 +188,10 @@ export function useRecordings(state, utils, reprocessComposable) {
         try {
             const response = await fetch('/api/folders');
             if (response.ok) {
-                availableFolders.value = await response.json();
+                // Children right after their parent, with depth for indenting (#585).
+                const folders = await response.json();
+                availableFolders.value = window.SpeakrFolderTree
+                    ? window.SpeakrFolderTree.orderTree(folders) : folders;
             } else {
                 availableFolders.value = [];
             }

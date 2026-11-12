@@ -66,7 +66,20 @@
         <div class="flex items-center gap-0.5 flex-shrink-0">
             <template v-if="mobileTab === 'summary' && !editingSummary">
                 <button v-if="selectedRecording.summary" @click.stop="copySummary" class="btn btn--icon btn--sm" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-                <button v-if="selectedRecording.summary" @click.stop="downloadSummary" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+                <div v-if="selectedRecording.summary" class="relative inline-flex">
+                            <button class="btn btn--icon btn--sm" data-summary-download-toggle @click.stop="showSummaryDownloadMenu = !showSummaryDownloadMenu" :title="t('buttons.downloadSummary')"><i class="fas fa-download"></i></button>
+                            <div v-if="showSummaryDownloadMenu" data-summary-download-dropdown
+                                 class="absolute right-0 top-full mt-1 surface-raised z-50 overflow-hidden whitespace-nowrap" style="min-width: 200px;">
+                                <button @click.stop="downloadSummary('docx')" class="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2">
+                                    <i class="fas fa-file-word text-[var(--text-muted)] text-xs"></i>
+                                    <span v-text="t('buttons.formatWord')"></span>
+                                </button>
+                                <button @click.stop="downloadSummary('md')" class="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2 border-t border-[var(--border-primary)]">
+                                    <i class="fab fa-markdown text-[var(--text-muted)] text-xs"></i>
+                                    <span v-text="t('buttons.formatMarkdown')"></span>
+                                </button>
+                            </div>
+                        </div>
                 <button @click.stop="toggleEditSummary" class="btn btn--icon btn--sm" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
             </template>
             <template v-else-if="mobileTab === 'notes' && !editingNotes">
@@ -220,7 +233,7 @@
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; background: transparent;">
                             <option value="" v-text="t('folderManagement.noFolder')"></option>
                             <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                                ${ folder.name }
+                                ${ folderOptionLabel(folder) }
                             </option>
                         </select>
                         <i class="fas fa-folder"

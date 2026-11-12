@@ -780,9 +780,15 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             recording.summary = error_msg
             recording.status = 'FAILED'
+            recording.error_message = _sanitize_error_message(error_msg)
             db.session.commit()
-            from src.services.webhook_dispatch import emit_summary_result
-            emit_summary_result(recording, ok=False, error=error_msg)
+            # The caller owns the outcome (#583). The job queue marks the job
+            # failed (or re-queues a transient error) and sends
+            # recording.summary.failed once the failure is final; the
+            # auto-summary inside transcription catches this and keeps the
+            # transcription job completed.
+            from src.services.error_classification import SummaryStepFailed
+            raise SummaryStepFailed(str(e), stored_summary=error_msg) from e
 
 
 def extract_events_from_transcript(recording_id, transcript_text, summary_text):
@@ -1114,6 +1120,44 @@ You must respond with valid JSON format only."""
     except Exception as e:
         current_app.logger.error(f"Error extracting events for recording {recording_id}: {str(e)}")
         db.session.rollback()
+
+
+def make_retained_video_seekable(recording, filepath):
+    """Remux a retained fragmented MP4 into a regular one, in place (#539).
+
+    A fragmented MP4 (as OBS writes it) makes a browser seek through many
+    small range requests. The stored file is rewritten once, with a stream
+    copy, at the start of the first transcription job, so the upload request
+    does not wait for it; after that the file is no longer fragmented and
+    later runs leave it alone. Only a file in local storage is rewritten,
+    and only when filepath is that stored file: a downloaded copy of an S3
+    object would be rewritten for nothing. Any failure keeps the original.
+
+    Returns True when the stored file was rewritten.
+    """
+    try:
+        from src.services.storage import get_storage_service
+        from src.utils.ffmpeg_utils import remux_fragmented_mp4_in_place
+
+        if not recording.audio_path or not filepath:
+            return False
+        try:
+            stored_path = get_storage_service().resolve_local_filesystem_path(recording.audio_path)
+        except ValueError:
+            return False  # not in local storage
+        if os.path.realpath(stored_path) != os.path.realpath(filepath):
+            return False
+        if not remux_fragmented_mp4_in_place(filepath):
+            return False
+        recording.file_size = os.path.getsize(filepath)
+        db.session.commit()
+        current_app.logger.info(
+            f"Remuxed the fragmented video of recording {recording.id} into a regular MP4 for seeking")
+        return True
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.warning(f"Could not check the retained video of recording {recording.id} for fragments: {e}")
+        return False
 
 
 def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True, allow_debug_copy=True):
@@ -1750,6 +1794,11 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     actual_content_type in video_mime_types
                 )
 
+            if is_video and effective_video_retention:
+                # The retained video is what the browser plays: a fragmented
+                # MP4 becomes a regular one before anything reads it (#539).
+                make_retained_video_seekable(recording, filepath)
+
             if is_video:
                 if _self.VIDEO_PASSTHROUGH_ASR:
                     # Video passthrough: send original video directly to ASR without audio extraction
@@ -2111,6 +2160,35 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     # Not a format error or already retried - propagate the error
                     raise
 
+            # Persist/correct audio duration cache when we have local access during processing.
+            # Prefer the original job input path for billing consistency, but fall back to the
+            # actual processed file (e.g., extracted audio from video) when needed. This runs
+            # before the temp files below are removed: it used to probe the extracted audio
+            # after deleting it (#580).
+            try:
+                cached_audio_duration = None
+                if chunking_service:
+                    # Legacy cache-repair fallback: new uploads should already populate
+                    # recording.audio_duration_seconds, and extracted-video paths above also try to do
+                    # that. This probe exists to repair historical rows and edge cases during
+                    # processing/reprocessing while we still have local access to media.
+                    # TODO(storage-cleanup): after running backfill/migrations for missing
+                    # audio_duration_seconds (and cleaning legacy video-backed objects), remove this
+                    # multi-path probing block and rely on DB-stored duration.
+                    duration_probe_candidates = []
+                    if filepath and os.path.exists(filepath):
+                        duration_probe_candidates.append(filepath)
+                    if (actual_filepath and actual_filepath not in duration_probe_candidates
+                            and os.path.exists(actual_filepath)):
+                        duration_probe_candidates.append(actual_filepath)
+                    for candidate_path in duration_probe_candidates:
+                        cached_audio_duration = chunking_service.get_audio_duration(candidate_path)
+                        if cached_audio_duration and cached_audio_duration > 0:
+                            recording.audio_duration_seconds = float(cached_audio_duration)
+                            break
+            except Exception as duration_err:
+                current_app.logger.warning(f"Failed to update cached audio duration for recording {recording_id}: {duration_err}")
+
             # Clean up converted file if we created one and transcription succeeded
             if converted_filepath and os.path.exists(converted_filepath):
                 try:
@@ -2151,32 +2229,6 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             transcription_end_time = time.time()
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
 
-            # Persist/correct audio duration cache when we have local access during processing.
-            # Prefer the original job input path for billing consistency, but fall back to the
-            # actual processed file (e.g., extracted audio from video) when needed.
-            try:
-                cached_audio_duration = None
-                if chunking_service:
-                    # Legacy cache-repair fallback: new uploads should already populate
-                    # recording.audio_duration_seconds, and extracted-video paths above also try to do
-                    # that. This probe exists to repair historical rows and edge cases during
-                    # processing/reprocessing while we still have local access to media.
-                    # TODO(storage-cleanup): after running backfill/migrations for missing
-                    # audio_duration_seconds (and cleaning legacy video-backed objects), remove this
-                    # multi-path probing block and rely on DB-stored duration.
-                    duration_probe_candidates = []
-                    if filepath:
-                        duration_probe_candidates.append(filepath)
-                    if actual_filepath and actual_filepath not in duration_probe_candidates:
-                        duration_probe_candidates.append(actual_filepath)
-                    for candidate_path in duration_probe_candidates:
-                        cached_audio_duration = chunking_service.get_audio_duration(candidate_path)
-                        if cached_audio_duration and cached_audio_duration > 0:
-                            recording.audio_duration_seconds = float(cached_audio_duration)
-                            break
-            except Exception as duration_err:
-                current_app.logger.warning(f"Failed to update cached audio duration for recording {recording_id}: {duration_err}")
-
             db.session.commit()
             current_app.logger.info(f"Transcription completed in {recording.transcription_duration_seconds}s")
 
@@ -2186,9 +2238,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 audio_duration = recording.audio_duration_seconds
                 if (audio_duration is None or audio_duration <= 0) and chunking_service:
                     duration_probe_candidates = []
-                    if actual_filepath:
+                    if actual_filepath and os.path.exists(actual_filepath):
                         duration_probe_candidates.append(actual_filepath)
-                    if filepath and filepath not in duration_probe_candidates:
+                    if filepath and filepath not in duration_probe_candidates and os.path.exists(filepath):
                         duration_probe_candidates.append(filepath)
                     for candidate_path in duration_probe_candidates:
                         audio_duration = chunking_service.get_audio_duration(candidate_path)
@@ -2281,7 +2333,18 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             else:
                 # Auto-generate summary for all recordings
                 current_app.logger.info(f"Auto-generating summary for recording {recording_id}")
-                generate_summary_only_task(app_context, recording_id)
+                from src.services.error_classification import SummaryStepFailed
+                try:
+                    generate_summary_only_task(app_context, recording_id)
+                except SummaryStepFailed as summary_err:
+                    # The transcript is saved, so the transcription job still
+                    # completes; the recording stays FAILED with the summary
+                    # error, and a summary reprocess recovers it (#583).
+                    current_app.logger.error(
+                        f"Auto-summary failed for recording {recording_id}; transcript kept: {summary_err}")
+                    from src.services.webhook_dispatch import emit_summary_result
+                    emit_summary_result(db.session.get(Recording, recording_id), ok=False,
+                                        error=summary_err.stored_summary)
 
             # Auto-translation: admin setting prevails over the user preference.
             # Both must allow it; the recording status stays untouched.
@@ -2847,12 +2910,10 @@ def translate_transcription_task(app_context, recording_id, user_id=None, target
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
     "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
     "VIDEO_PASSTHROUGH_ASR": ("video_passthrough_asr", "VIDEO_PASSTHROUGH_ASR", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

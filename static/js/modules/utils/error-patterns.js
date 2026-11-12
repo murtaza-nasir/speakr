@@ -9,7 +9,12 @@
  */
 const STATUS_CODE = /^\d{3}$/;
 
+// A pattern may also be a RegExp, for an entry that mirrors a backend regex in
+// src/utils/error_formatting.py and needs anchoring, such as /\bno_speech\b/.
 export function errorTextMatches(lowerText, pattern) {
+    if (pattern instanceof RegExp) {
+        return pattern.test(lowerText);
+    }
     if (STATUS_CODE.test(pattern)) {
         return new RegExp(`(?<![\\w.-])${pattern}(?![\\w-]|\\.\\w)`).test(lowerText);
     }

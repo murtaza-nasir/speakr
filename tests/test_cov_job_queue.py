@@ -29,6 +29,8 @@ from src.services.job_queue import (
     SUMMARY_JOBS,
     MAX_RETRIES,
     jobs_for_queue,
+    JOB_RUNNERS,
+    QUEUES,
 )
 
 
@@ -871,6 +873,122 @@ def test_a_failed_summary_job_keeps_the_transcript(track):
 
 
 # --------------------------------------------------------------------------
+# A summary step that fails inside its job (#583)
+# --------------------------------------------------------------------------
+
+_KEPT_TRANSCRIPT = "Speaker 1: the real transcript we must keep, long enough."
+
+
+def _summary_job_with_real_task(track, job_type):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    rec = db.session.get(Recording, rid)
+    rec.transcription = _KEPT_TRANSCRIPT
+    db.session.commit()
+    jid = job_queue.enqueue(uid, rid, job_type, params={"user_id": uid})
+    track.job_ids.append(jid)
+    return rid, jid, _claim(rid, SUMMARY_JOBS, "summary")
+
+
+@contextmanager
+def _real_summary_step(llm):
+    import src.tasks.processing as proc
+    with patch.object(proc, "client", MagicMock()), \
+         patch.object(proc, "call_llm_completion", llm), \
+         patch.object(proc, "apply_team_tag_auto_shares"), \
+         patch.object(proc, "export_recording"), \
+         patch.object(proc, "queue_inquire_chunks"), \
+         patch.object(proc, "extract_events_from_transcript"), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch.object(job_queue, "_emit_failure_email"):
+        yield emit
+
+
+@pytest.mark.parametrize("job_type", ["summarize", "reprocess_summary"])
+def test_summary_job_llm_403_marks_job_failed(track, job_type):
+    rid, jid, job = _summary_job_with_real_task(track, job_type)
+    llm = MagicMock(side_effect=RuntimeError("Error code: 403 - Forbidden"))
+    with _real_summary_step(llm) as emit:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "failed"
+    assert "Error code: 403" in refreshed.error_message
+    assert refreshed.retry_count == 1          # permanent: not retried
+    rec = db.session.get(Recording, rid)
+    assert rec.status == "FAILED"
+    assert rec.summary == "[Summary generation failed: Error code: 403 - Forbidden]"
+    assert rec.error_message == "[Summary generation failed: Error code: 403 - Forbidden]"
+    assert rec.transcription == _KEPT_TRANSCRIPT
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert types.count("recording.summary.failed") == 1
+
+
+def test_failed_summary_job_can_be_retried(track):
+    rid, jid, job = _summary_job_with_real_task(track, "reprocess_summary")
+    llm = MagicMock(side_effect=RuntimeError("Error code: 403 - Forbidden"))
+    with _real_summary_step(llm):
+        job_queue._process_job(job)
+    owner_id = db.session.get(ProcessingJob, jid).user_id
+    with patch.dict(app.config, {"WTF_CSRF_ENABLED": False}), app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(owner_id)
+            sess["_fresh"] = True
+        from flask import g
+        g.pop("_login_user", None)
+        resp = client.post(f"/api/recordings/jobs/{jid}/retry")
+    assert resp.status_code == 200, resp.get_json()
+    db.session.expire_all()
+    assert db.session.get(ProcessingJob, jid).status == "queued"
+
+
+def test_transient_summary_error_requeues_job(track):
+    rid, jid, job = _summary_job_with_real_task(track, "reprocess_summary")
+    llm = MagicMock(side_effect=RuntimeError("temporary network blip"))
+    with _real_summary_step(llm) as emit:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "queued"
+    assert refreshed.retry_count == 1
+    rec = db.session.get(Recording, rid)
+    assert rec.summary.startswith("[Summary generation failed:")
+    assert rec.status == "SUMMARIZING"          # still pending, not FAILED
+    assert rec.transcription == _KEPT_TRANSCRIPT
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert "recording.summary.failed" not in types   # not final yet
+
+
+def test_reprocess_summary_success_stays_completed(track):
+    rid, jid, job = _summary_job_with_real_task(track, "reprocess_summary")
+    completion = MagicMock(choices=[MagicMock(message=MagicMock(
+        content="Minutes of the meeting are here.", reasoning=None))])
+    with _real_summary_step(MagicMock(return_value=completion)):
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    rec = db.session.get(Recording, rid)
+    assert rec.status == "COMPLETED"
+    assert rec.summary == "Minutes of the meeting are here."
+
+
+def test_permanent_job_failure_sets_recording_error_message(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "summarize"); track.job_ids.append(jid)
+    job = _claim(rid, SUMMARY_JOBS, "summary")
+    boom = MagicMock(side_effect=RuntimeError("Error code: 401 - invalid api key"))
+    with patch("src.tasks.processing.generate_summary_only_task", boom), \
+         patch.object(job_queue, "_emit_failure_webhook"):
+        job_queue._process_job(job)
+    db.session.expire_all()
+    assert db.session.get(Recording, rid).error_message == "Error code: 401 - invalid api key"
+
+
+# --------------------------------------------------------------------------
 # Queue membership accessor
 # --------------------------------------------------------------------------
 
@@ -892,3 +1010,40 @@ def test_jobs_for_queue_returns_a_copy():
 
 def test_the_queue_method_delegates():
     assert job_queue.jobs_for_queue('index') == ['index_chunks']
+
+
+# --------------------------------------------------------------------------
+# Job dispatch table
+# --------------------------------------------------------------------------
+
+def test_job_runners_covers_every_queued_job_type():
+    queued = {jt for jts in QUEUES.values() for jt in jts}
+    assert set(JOB_RUNNERS.keys()) == queued
+    assert not (set(JOB_RUNNERS.keys()) - queued)
+    assert not (queued - set(JOB_RUNNERS.keys()))
+
+
+def test_job_runners_names_are_callable_methods():
+    for name in JOB_RUNNERS.values():
+        assert hasattr(FairJobQueue, name)
+        assert callable(getattr(FairJobQueue, name))
+
+
+@pytest.mark.parametrize("job_type", list(JOB_RUNNERS.keys()))
+def test_process_job_dispatches_each_registered_type(track, job_type):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, job_type)
+    track.job_ids.append(jid)
+
+    job = db.session.get(ProcessingJob, jid)
+    runner_name = JOB_RUNNERS[job_type]
+
+    with patch.object(job_queue, runner_name) as runner:
+        job_queue._process_job(job)
+
+    runner.assert_called_once()
+    assert runner.call_args.kwargs.get("job_type") == job_type
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "completed"

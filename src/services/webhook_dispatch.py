@@ -260,10 +260,16 @@ def _http_post(url, **kwargs):
     connected peer IP and aborts on a private/loopback address (closing the
     DNS-rebinding TOCTOU window). Explicitly allowlisted intranet hosts use the
     plain client by operator choice. Tests patch this function.
+
+    Every call is bounded: a caller that passes no timeout (or None) gets the
+    delivery timeout, so a slow destination cannot hold a worker (#568).
     """
+    timeout = kwargs.pop('timeout', None)
+    if timeout is None:
+        timeout = _delivery_timeout()
     if _host_is_allowlisted(url):
-        return requests.post(url, **kwargs)
-    return ssrf_guarded_session().post(url, **kwargs)
+        return requests.post(url, timeout=timeout, **kwargs)
+    return ssrf_guarded_session().post(url, timeout=timeout, **kwargs)
 
 
 def is_url_safe_for_webhook(url: str, allow_http: bool = False, language=None) -> tuple:
@@ -819,6 +825,9 @@ def emit_summary_result(recording, ok, error=None):
     The job queue used to infer these from the job type: the first summary of
     an upload (run inside the transcription job) never fired, a summary that
     failed inside its job fired "completed", and "failed" never fired.
+    A failed summary step raises SummaryStepFailed and does not call this
+    (#583): the job queue sends "failed" once the failure is final, and the
+    auto-summary inside transcription calls this itself.
     Best-effort: never raises.
     """
     try:

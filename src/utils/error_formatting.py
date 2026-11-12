@@ -9,6 +9,20 @@ import re
 import json
 from typing import Dict, Optional, Tuple
 
+# Prefixes of stored transcription text that is a failure, not content. Shared
+# by the SQL "needs transcription" predicate and is_transcription_error, so the
+# database path and the in-process path cannot disagree about what an error
+# transcript is. ERROR_JSON: is the structured form written by
+# format_error_for_storage; the rest are the legacy plain-text forms.
+TRANSCRIPTION_ERROR_PREFIXES = (
+    'ERROR_JSON:',
+    'Transcription failed:',
+    'Processing failed:',
+    'ASR processing failed:',
+    'Audio extraction failed:',
+    'Upload/Processing failed:',
+)
+
 
 def _code(status):
     """A status code as a separate token ("status 401", "(429)"), never inside
@@ -19,6 +33,21 @@ def _code(status):
 
 # Known error patterns with user-friendly messages
 ERROR_PATTERNS = [
+    # Explicit no-speech responses from transcription services. The code is
+    # anchored so that Whisper's no_speech_prob field does not match. Keep this
+    # list in step with parseUnformattedError in static/js/app.modular.js.
+    {
+        'patterns': [
+            r'\bno_speech\b',
+            r'no (?:recognized |recognised |usable )?speech (?:was )?detected',
+            r'asr_response_have_no_words',
+        ],
+        'title': 'No speech detected',
+        'message': 'No recognizable speech was found in this recording.',
+        'guidance': 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.',
+        'icon': 'fa-microphone-slash',
+        'type': 'no_speech'
+    },
     # File size errors
     {
         'patterns': [
@@ -405,22 +434,4 @@ def is_transcription_error(transcription_text: str) -> bool:
     """
     if not transcription_text:
         return False
-
-    # Check for JSON-formatted error
-    if transcription_text.startswith('ERROR_JSON:'):
-        return True
-
-    # Check for legacy error prefixes
-    error_prefixes = [
-        'Transcription failed:',
-        'Processing failed:',
-        'ASR processing failed:',
-        'Audio extraction failed:',
-        'Upload/Processing failed:',
-    ]
-
-    for prefix in error_prefixes:
-        if transcription_text.startswith(prefix):
-            return True
-
-    return False
+    return transcription_text.startswith(TRANSCRIPTION_ERROR_PREFIXES)

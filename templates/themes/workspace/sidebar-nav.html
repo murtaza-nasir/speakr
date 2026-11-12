@@ -69,11 +69,19 @@
                     <button v-for="folder in availableFolders" :key="folder.id" type="button"
                             class="ws-nav-item"
                             :class="{ 'is-active': filterFolder == folder.id }"
+                            :style="folderIndentStyle(folder)"
                             @click="filterFolder = filterFolder == folder.id ? '' : folder.id">
                         <span class="ws-dot" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
                         <span class="ws-nav-item__label" v-text="folder.name"></span>
                         <span class="ws-nav-item__count" v-text="folder.recording_count || 0"></span>
                     </button>
+                    <!-- Include subfolders (#585): only for a folder that has subfolders -->
+                    <label v-if="selectedFolderHasChildren"
+                           class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--text-secondary)] cursor-pointer">
+                        <input type="checkbox" v-model="includeChildFolders"
+                               class="h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                        <span v-text="t('folderManagement.includeSubfolders')"></span>
+                    </label>
                 </div>
 
                 <!-- Tags: replaces the tag chips of the filter panel; same state. -->

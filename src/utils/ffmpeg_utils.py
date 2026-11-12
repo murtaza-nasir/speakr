@@ -2,6 +2,7 @@
 
 import locale
 import os
+import shutil
 import subprocess
 import tempfile
 from contextlib import contextmanager
@@ -468,6 +469,88 @@ def remux_mp3_in_place(filepath: str) -> None:
         os.replace(temp_path, filepath)
     finally:
         # Only present if the remux failed before os.replace() consumed it
+        if os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
+# Largest difference between the durations of a fragmented video and its
+# remux that still counts as the same content: one second, or 1% of a long
+# recording, whichever is larger.
+REMUX_DURATION_TOLERANCE_SECONDS = 1.0
+REMUX_DURATION_TOLERANCE_RATIO = 0.01
+
+
+def remux_fragmented_mp4_in_place(filepath: str) -> bool:
+    """Rewrite a fragmented MP4 or QuickTime file as a regular one (#539).
+
+    Stream copy only (``-c copy -movflags +faststart``): the video and audio
+    are not re-encoded, and the index moves to the front of the file, so a
+    browser can seek in it without walking the fragments. The file keeps its
+    path, name and container. The result replaces the original only when it
+    is non-empty, no longer fragmented, has the same kinds of streams and a
+    duration within the tolerance; otherwise the original is kept.
+
+    Returns True when the file was rewritten, False when it was left as it
+    was (not fragmented, not parsable as MP4, or a failed or rejected remux,
+    which is logged as a warning). Never raises.
+    """
+    from src.utils.ffprobe import get_codec_info, get_duration
+    from src.utils.mp4_boxes import is_fragmented_mp4
+
+    if is_fragmented_mp4(filepath) is not True:
+        return False
+
+    name = os.path.basename(filepath)
+    muxer = 'mov' if os.path.splitext(filepath)[1].lower() in ('.mov', '.qt') else 'mp4'
+    # Beside the original, so os.replace() stays on one filesystem; the
+    # muxer is named because the temp suffix says nothing about the format.
+    fd, temp_path = tempfile.mkstemp(prefix=f'.{name}.', suffix='.remux',
+                                     dir=os.path.dirname(filepath) or None)
+    os.close(fd)
+    try:
+        cmd = [
+            'ffmpeg', '-y', '-v', 'error',
+            '-i', filepath,
+            '-map', '0:v?', '-map', '0:a?', '-map', '0:s?',
+            '-c', 'copy',
+            '-map_metadata', '0',
+            '-movflags', '+faststart',
+            '-f', muxer,
+            temp_path,
+        ]
+        _run_ffmpeg_command(cmd, f"Fragmented MP4 remux of {name}")
+
+        if os.path.getsize(temp_path) == 0:
+            raise FFmpegError("remux produced an empty file")
+        if is_fragmented_mp4(temp_path) is not False:
+            raise FFmpegError("remux output is not a regular MP4")
+        before = get_codec_info(filepath, timeout=60)
+        after = get_codec_info(temp_path, timeout=60)
+        for kind in ('has_video', 'has_audio'):
+            if bool(before.get(kind)) != bool(after.get(kind)):
+                raise FFmpegError(f"remux output differs in {kind}")
+        source_duration = get_duration(filepath, timeout=60, codec_info=before)
+        output_duration = get_duration(temp_path, timeout=60, codec_info=after)
+        if not source_duration or not output_duration:
+            raise FFmpegError("could not compare durations")
+        tolerance = max(REMUX_DURATION_TOLERANCE_SECONDS, source_duration * REMUX_DURATION_TOLERANCE_RATIO)
+        if abs(source_duration - output_duration) > tolerance:
+            raise FFmpegError(
+                f"remux duration {output_duration:.2f}s differs from {source_duration:.2f}s")
+
+        try:
+            shutil.copymode(filepath, temp_path)  # mkstemp creates the file 0600
+        except OSError:
+            pass
+        os.replace(temp_path, filepath)
+        return True
+    except Exception as e:
+        current_app.logger.warning(f"Kept fragmented video {name} as it was; remux failed: {e}")
+        return False
+    finally:
         if os.path.exists(temp_path):
             try:
                 os.unlink(temp_path)

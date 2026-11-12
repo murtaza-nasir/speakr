@@ -286,6 +286,12 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'is_highlighted', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added is_highlighted column to recording table")
 
+        # When the daily ownerless-recording cleanup first found the row
+        # with no owner (#572). NULL for every owned recording; a later
+        # run deletes the row only once this is old enough.
+        if add_column_if_not_exists(engine, 'recording', 'ownerless_since', 'DATETIME'):
+            app.logger.info("Added ownerless_since column to recording table")
+
         # Add language preference columns to User table
         if add_column_if_not_exists(engine, 'user', 'transcription_language', 'VARCHAR(10)'):
             app.logger.info("Added transcription_language column to user table")
@@ -1010,6 +1016,18 @@ def _run_migrations(app, engine):
             app.logger.info("Added default_transcription_model column to tag table")
         if add_column_if_not_exists(engine, 'folder', 'default_transcription_model', 'VARCHAR(120)'):
             app.logger.info("Added default_transcription_model column to folder table")
+
+        # Nested folders (#585). Existing folders stay top level (NULL). The
+        # REFERENCES clause gives an upgraded database the same foreign key
+        # as a fresh one: SQLite and PostgreSQL both accept it in ADD COLUMN
+        # for a column without a default. SQLite does not enforce it here,
+        # so the Folder before_delete hook promotes children on every
+        # backend.
+        if add_column_if_not_exists(engine, 'folder', 'parent_id',
+                                    'INTEGER REFERENCES "folder" (id) ON DELETE SET NULL'):
+            app.logger.info("Added parent_id column to folder table")
+        if create_index_if_not_exists(engine, 'ix_folder_parent_id', 'folder', 'parent_id'):
+            app.logger.info("Created index ix_folder_parent_id on folder.parent_id")
         # Create index for folder_id
         try:
             if create_index_if_not_exists(engine, 'ix_recording_folder_id', 'recording', 'folder_id'):
@@ -1426,6 +1444,16 @@ def _run_migrations(app, engine):
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"Group folder name index skipped, retried next start: {e}")
+
+        # Shares a group tag or folder made outlived the member, the folder
+        # link, the tag or the group (#570, #582).
+        try:
+            from src.services.auto_shares import remove_unfounded_auto_shares
+            run_once(engine, '0007_remove_unfounded_auto_shares',
+                     lambda eng: remove_unfounded_auto_shares(logger=app.logger), logger=app.logger)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Stale group share cleanup skipped, retried next start: {e}")
 
     with _migration_section(app, failures, "inquire mode chunk backfill"):
         # Process existing recordings for inquire mode (chunk and embed them)

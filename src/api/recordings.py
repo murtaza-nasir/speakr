@@ -41,98 +41,32 @@ from src.services.speaker import (
 
 # Incognito mode - disabled by default, enable via environment variable
 from src.services.document import (
-    add_document_header, append_conversation_turn, docx_attachment_response, link_base_url,
+    absolutize_markdown_links, add_document_header, append_conversation_turn,
+    docx_attachment_response, link_base_url, markdown_attachment_response,
     new_document, process_markdown_to_docx,
 )
 from src.services.llm import client, chat_client, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.search import LIKE_ESCAPE, contains_pattern, escape_like
+from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.services.storage import get_storage_service
 from src.services.recording_ingestion import ingest
+from src.services.recording_filters import (
+    needs_transcription_condition,
+    needs_summary_condition,
+    needs_speakers_condition,
+)
 from src.utils.localization import api_error, format_number, translate
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
-
-ACTIVE_RECORDING_STATUSES = ['QUEUED', 'PENDING', 'PROCESSING', 'SUMMARIZING']
-TRANSCRIPTION_ERROR_PREFIXES = [
-    'ERROR_JSON:',
-    'Transcription failed:',
-    'Processing failed:',
-    'ASR processing failed:',
-    'Audio extraction failed:',
-    'Upload/Processing failed:',
-]
-SUMMARY_NEEDS_PREFIXES = [
-    '[Summary generation failed:',
-    '[Summary skipped:',
-    '[Summary not generated]',
-]
 
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
-
-def _idle_recording_condition():
-    """Recordings that are not currently queued or running work."""
-    return db.or_(
-        Recording.status.is_(None),
-        ~Recording.status.in_(ACTIVE_RECORDING_STATUSES),
-    )
-
-
-def _blank_column_condition(column):
-    return db.or_(column.is_(None), db.func.trim(column) == '')
-
-
-def _prefixed_column_condition(column, prefixes):
-    # Escape LIKE metacharacters in the literal prefixes so a '_' or '%' in a
-    # prefix (e.g. 'ERROR_JSON:') matches literally instead of as a wildcard.
-    return db.or_(*[column.like(f'{escape_like(prefix)}%', escape=LIKE_ESCAPE) for prefix in prefixes])
-
-
-def _transcription_error_condition():
-    return _prefixed_column_condition(Recording.transcription, TRANSCRIPTION_ERROR_PREFIXES)
-
-
-def _valid_transcription_condition():
-    return db.and_(
-        ~_blank_column_condition(Recording.transcription),
-        ~_transcription_error_condition(),
-    )
-
-
-def _needs_transcription_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        db.or_(
-            _blank_column_condition(Recording.transcription),
-            _transcription_error_condition(),
-        ),
-    )
-
-
-def _needs_summary_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        _valid_transcription_condition(),
-        db.or_(
-            _blank_column_condition(Recording.summary),
-            _prefixed_column_condition(Recording.summary, SUMMARY_NEEDS_PREFIXES),
-        ),
-    )
-
-
-def _needs_speakers_condition():
-    return db.and_(
-        _idle_recording_condition(),
-        _valid_transcription_condition(),
-        Recording.transcription.like('%SPEAKER\\_%', escape='\\'),
-    )
 
 def reindex_recording_chunks_async(recording_id):
     """Queue a rebuild of a recording's semantic-search (Inquire) chunks.
@@ -282,7 +216,7 @@ def download_transcript_with_template(recording_id):
 @recordings_bp.route('/recording/<int:recording_id>/download/summary')
 @login_required
 def download_summary_word(recording_id):
-    """Download recording summary as a Word document."""
+    """Download recording summary as a Word document, or as Markdown with ?format=md (#584)."""
     try:
         import re
 
@@ -292,6 +226,15 @@ def download_summary_word(recording_id):
 
         if not recording.summary:
             return jsonify(api_error('no_summary')), 400
+
+        if (request.args.get('format') or '').lower() == 'md':
+            # The summary is stored as Markdown: it is sent as written, under
+            # a title heading, with in-app links made absolute.
+            title = recording.title or 'Summary'
+            body = f"# {title}\n\n{absolutize_markdown_links(recording.summary.strip(), link_base_url())}\n"
+            filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', f"summary-{recording.title or recording_id}.md")
+            filename = re.sub(r'\s+', ' ', filename).strip()
+            return markdown_attachment_response(body, filename, f'summary-{recording_id}.md')
 
         # Title and metadata
         from src.utils.timezones import to_user_local  # owner's local time (#412)
@@ -1281,20 +1224,26 @@ def get_recordings_paginated():
                 # Filter recordings with no folder
                 stmt = stmt.where(Recording.folder_id.is_(None))
             elif folder_filter.isdecimal():
-                stmt = stmt.where(Recording.folder_id == int(folder_filter))
+                folder_id = int(folder_filter)
+                # include_children=true adds the folder's descendants (#585).
+                if request.args.get('include_children', '').lower() == 'true':
+                    from src.services.folder_tree import folder_filter_ids
+                    stmt = stmt.where(Recording.folder_id.in_(folder_filter_ids(folder_id)))
+                else:
+                    stmt = stmt.where(Recording.folder_id == folder_id)
             else:
                 # A bad value is refused, not ignored (#514).
                 return jsonify({'error': translate('server.apiError.invalid_folder_id'),
                                 'code': 'invalid_parameter'}), 400
 
         if needs_transcription:
-            stmt = stmt.where(_needs_transcription_condition())
+            stmt = stmt.where(needs_transcription_condition())
 
         if needs_summary:
-            stmt = stmt.where(_needs_summary_condition())
+            stmt = stmt.where(needs_summary_condition())
 
         if needs_speakers:
-            stmt = stmt.where(_needs_speakers_condition())
+            stmt = stmt.where(needs_speakers_condition())
 
         # Apply search filters if provided
         if search_query:
@@ -1876,9 +1825,9 @@ def delete_recording_audio(recording_id):
     """
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
-        if recording.user_id and recording.user_id != current_user.id:
+        if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
             return jsonify(api_error('recording_delete_denied')), 403
         if not _self.USERS_CAN_DELETE and not current_user.is_admin:
             return jsonify(api_error('recording_delete_admin_only')), 403
@@ -2418,11 +2367,11 @@ def generate_incognito_summary_endpoint():
 def delete_recording(recording_id):
     try:
         recording = db.session.get(Recording, recording_id)
-        if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+        if not recording or not has_recording_access(recording, current_user):
             return jsonify(api_error('recording_not_found')), 404
 
         # Check if the recording belongs to the current user
-        if recording.user_id and recording.user_id != current_user.id:
+        if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
             return jsonify(api_error('recording_delete_denied')), 403
 
         # Check deletion permissions (admin-only if USERS_CAN_DELETE is false)
@@ -3209,36 +3158,12 @@ def remove_tag_from_recording(recording_id, tag_id):
         # Remove the association
         db.session.delete(recording_tag)
 
-        # Clean up shares created by this group tag
-        if tag and tag.group_id and _self.ENABLE_INTERNAL_SHARING:
-            shares_to_check = InternalShare.query.filter_by(
-                recording_id=recording_id,
-                source_tag_id=tag_id
-            ).all()
-
-            shares_removed = 0
-            for share in shares_to_check:
-                # Check if user still has access via another group tag on this recording
-                other_team_tag_access = db.session.query(Tag).join(
-                    RecordingTag, RecordingTag.tag_id == Tag.id
-                ).join(
-                    GroupMembership, GroupMembership.group_id == Tag.group_id
-                ).filter(
-                    RecordingTag.recording_id == recording_id,
-                    GroupMembership.user_id == share.shared_with_user_id,
-                    Tag.id != tag_id,  # Exclude the tag being removed
-                    Tag.group_id.isnot(None),
-                    db.or_(Tag.auto_share_on_apply == True, Tag.share_with_group_lead == True)
-                ).first()
-
-                # Only remove share if user has no other group tag access
-                if not other_team_tag_access:
-                    db.session.delete(share)
-                    shares_removed += 1
-                    current_app.logger.info(f"Removed auto-share for user {share.shared_with_user_id} from recording {recording_id} (group tag '{tag.name}' removed)")
-
-            if shares_removed > 0:
-                current_app.logger.info(f"Cleaned up {shares_removed} auto-shares for recording {recording_id} after removing group tag '{tag.name}'")
+        # Shares this group tag made end, unless another group tag or the
+        # recording's group folder still gives them (#570, #582)
+        from src.services.auto_shares import drop_stale_auto_shares
+        shares_removed = drop_stale_auto_shares(recording_ids=[recording_id])
+        if shares_removed > 0:
+            current_app.logger.info(f"Removed {shares_removed} auto-shares for recording {recording_id} after removing tag {tag_id}")
 
         db.session.commit()
 
@@ -3331,12 +3256,12 @@ def bulk_delete_recordings():
         for recording_id in recording_ids:
             try:
                 recording = db.session.get(Recording, recording_id)
-                if not recording or (recording.user_id and not has_recording_access(recording, current_user)):
+                if not recording or not has_recording_access(recording, current_user):
                     errors.append(f"Recording {recording_id} not found")
                     continue
 
                 # Check ownership
-                if recording.user_id and recording.user_id != current_user.id:
+                if recording.user_id != current_user.id:  # a recording without an owner is nobody's (#581)
                     errors.append(f"No permission for recording {recording_id}")
                     continue
 
@@ -3415,6 +3340,12 @@ def bulk_update_tags():
                 if not has_recording_access(recording, current_user, require_edit=True):
                     continue
 
+                # A group tag goes on another user's recording only from a
+                # group admin, as on the single-tag route (#578)
+                if action == 'add' and tag.group_id and recording.user_id != current_user.id \
+                        and membership.role != 'admin':
+                    continue
+
                 if action == 'add':
                     # Check if tag already exists
                     existing = RecordingTag.query.filter_by(
@@ -3449,6 +3380,10 @@ def bulk_update_tags():
             except Exception as e:
                 current_app.logger.error(f"Error updating tag for recording {recording_id}: {e}")
 
+        if action == 'remove' and affected_ids:
+            # Shares the tag made end with it (#570, #582)
+            from src.services.auto_shares import drop_stale_auto_shares
+            drop_stale_auto_shares(recording_ids=affected_ids)
         db.session.commit()
 
         return jsonify({
@@ -3653,9 +3588,7 @@ def process_recording_chunks_endpoint(recording_id):
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_AUTO_DELETION": ("enable_auto_deletion", "ENABLE_AUTO_DELETION", False),
     "DELETION_MODE": ("deletion_mode", "DELETION_MODE", "full_recording"),
@@ -3663,4 +3596,4 @@ _SYSTEM_SETTING_MAP = {
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
     "ENABLE_INCOGNITO_MODE": ("enable_incognito_mode", "ENABLE_INCOGNITO_MODE", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)

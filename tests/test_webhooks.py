@@ -1262,3 +1262,32 @@ def test_language_is_omitted_rather_than_null_when_it_is_unknown():
 
     assert 'language' not in data
     assert data['audio_duration_seconds'] == 12.0
+
+
+# --- _http_post always applies a timeout (#568) ---
+
+def test_http_post_applies_default_timeout():
+    from src.services import webhook_dispatch as wd
+    with patch.object(wd, '_host_is_allowlisted', return_value=True), \
+         patch.object(wd.requests, 'post') as post:
+        wd._http_post('https://example.com/hook', data=b'{}')
+    assert post.call_args.kwargs['timeout'] == wd._delivery_timeout()
+    assert post.call_args.kwargs['data'] == b'{}'
+
+
+def test_http_post_preserves_explicit_timeout():
+    from src.services import webhook_dispatch as wd
+    with patch.object(wd, '_host_is_allowlisted', return_value=True), \
+         patch.object(wd.requests, 'post') as post:
+        wd._http_post('https://example.com/hook', data=b'{}', timeout=3)
+    assert post.call_args.kwargs['timeout'] == 3
+
+
+def test_http_post_ssrf_branch_applies_default_timeout():
+    from src.services import webhook_dispatch as wd
+    session = MagicMock()
+    with patch.object(wd, '_host_is_allowlisted', return_value=False), \
+         patch.object(wd, 'ssrf_guarded_session', return_value=session):
+        wd._http_post('https://example.com/hook', data=b'{}', timeout=None)
+    assert session.post.call_args.kwargs['timeout'] == wd._delivery_timeout()
+

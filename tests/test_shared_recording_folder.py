@@ -79,6 +79,14 @@ def shared(monkeypatch):
         db.session.commit()
 
 
+def _keep_share(t):
+    """The owner also shared the recording by hand, so the share outlives the
+    move out of the group folder (a group-folder share ends with it, #582)."""
+    InternalShare.query.filter_by(recording_id=t["rec"].id, shared_with_user_id=t["member"].id).update(
+        {"source_type": "manual", "source_folder_id": None})
+    db.session.commit()
+
+
 def _move(t, folder):
     resp = _client(t["owner"]).put(f"/api/recordings/{t['rec'].id}/folder", json={"folder_id": folder.id})
     assert resp.status_code == 200
@@ -98,6 +106,7 @@ def test_detail_shows_the_folder_that_shared_it(shared):
 
 def test_detail_hides_a_personal_folder_from_the_recipient(shared):
     t = shared
+    _keep_share(t)
     _move(t, t["personal"])
     body = _client(t["member"]).get(f"/api/v1/recordings/{t['rec'].id}").get_json()
     assert body["folder_id"] is None and body["folder"] is None
@@ -109,6 +118,7 @@ def test_detail_hides_a_personal_folder_from_the_recipient(shared):
 
 def test_list_hides_a_personal_folder_from_the_recipient(shared):
     t = shared
+    _keep_share(t)
     _move(t, t["personal"])
     member = _client(t["member"])
     row = _list_row(member, t["rec"].id)

@@ -123,6 +123,23 @@ Every operation in the specification has an `operationId`, which is required to 
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Interactive API documentation with Swagger UI at /api/v1/docs</p>
 </div>
 
+### Open WebUI
+
+Speakr can be added to [Open WebUI](https://openwebui.com/) as an OpenAPI tool server. A model in an Open WebUI chat can then list and search your recordings and read their transcripts, summaries and notes.
+
+1. In Speakr, create a token under **Account settings** → **API tokens** (see [API Tokens](api-tokens.md)). A **Read only** token covers searching and reading. Add the `process` scope only if the model may also chat with a recording or start a summary.
+2. In Open WebUI, an administrator opens **Settings** → **Admin** → **Integrations** and adds a connection in the **Tools** section:
+    - **Type:** OpenAPI
+    - **URL:** `https://your-speakr-instance.com/api/v1`
+    - **Auth:** Bearer, with the token from step 1
+3. Save the connection. In a chat, turn on the Speakr tools from the **+** menu under **Tools**.
+
+The specification is read from `/api/v1/openapi.json` under that URL, and each operation in it becomes one tool. With a scoped token, only the operations that token may call are listed, so nothing can be deleted or changed with a **Read only** token. Semantic search across recordings is available through the search operation (`mode=semantic`) when it is enabled on the server.
+
+A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Such calls require CORS headers, which are not part of Speakr's responses, so they are blocked unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
+
+Speech-to-text in Open WebUI is the job of a transcription server. If you use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) with Speakr, you can use it for Open WebUI as well, as it has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`). Audio transcribed this way is not stored in Speakr.
+
 ---
 
 ## Stats
@@ -464,6 +481,7 @@ GET /api/v1/recordings
 | `starred` | boolean | - | Filter by starred status |
 | `archived` | boolean | - | Filter by archive status. Omitted returns archived and unarchived recordings, as before. |
 | `folder_id` | string | - | Filter by folder. Pass an integer folder ID to list recordings in that folder, or the literal `none` to list recordings not in any folder. Requires folders to be enabled. |
+| `include_children` | boolean | `false` | With `folder_id`, include recordings assigned to all descendant folders. |
 
 **Response:**
 
@@ -1655,6 +1673,7 @@ Returns personal folders plus any group folders you have access to.
     "name": "Client Calls",
     "color": "#10B981",
     "group_id": null,
+    "parent_id": null,
     "is_group_folder": false,
     "group_name": null,
     "custom_prompt": "Focus on action items...",
@@ -1674,6 +1693,7 @@ Returns personal folders plus any group folders you have access to.
     "export_template_name": null,
     "created_at": "2024-01-10T08:00:00Z",
     "recording_count": 12,
+    "total_recording_count": 18,
     "can_edit": true,
     "user_role": null
   }
@@ -1705,6 +1725,7 @@ POST /api/v1/folders
   "name": "Client Calls",
   "color": "#10B981",
   "group_id": null,
+  "parent_id": null,
   "custom_prompt": "Focus on action items...",
   "default_language": "en",
   "default_min_speakers": 2,
@@ -1716,7 +1737,7 @@ POST /api/v1/folders
 }
 ```
 
-Only `name` is required. Set `group_id` to create a group folder (you must be an admin of that group). Use `retention_days: -1` to mark the folder as protected from auto-deletion (only effective when auto-deletion is enabled at the server). Returns the created folder with `201`.
+Only `name` is required. Set `group_id` to create a group folder (you must be an admin of that group). Set `parent_id` to create a child folder; the parent must belong to the same user or group. Use `retention_days: -1` to mark the folder as protected from auto-deletion (only effective when auto-deletion is enabled at the server). Returns the created folder with `201`.
 
 ### Update Folder
 
@@ -1727,7 +1748,7 @@ PUT   /api/v1/folders/{id}
 **Scope:** `write`
 ```
 
-Accepts the same fields as create; all are optional. Only the folder owner (personal) or a group admin (group folder) may update. Returns the updated folder.
+Accepts the same fields as create; all are optional. A folder cannot be moved beneath itself or a descendant, and a folder with child folders cannot change its group. Only the folder owner (personal) or a group admin (group folder) may update. Returns the updated folder.
 
 ### Delete Folder
 
@@ -1737,7 +1758,7 @@ DELETE /api/v1/folders/{id}
 
 **Scope:** `delete`
 
-Recordings in the deleted folder are unassigned (their `folder_id` becomes `null`); they are not deleted. Only the folder owner (personal) or a group admin (group folder) may delete.
+Recordings in the deleted folder are unassigned (their `folder_id` becomes `null`); they are not deleted. Child folders are promoted to the deleted folder's parent, and their own descendants remain in place. Only the folder owner (personal) or a group admin (group folder) may delete.
 
 **Response:**
 
@@ -1746,7 +1767,7 @@ Recordings in the deleted folder are unassigned (their `folder_id` becomes `null
 ```
 
 !!! tip "Assigning recordings to folders"
-    To move a recording into or out of a folder, set `folder_id` on [`PATCH /api/v1/recordings/{id}`](#update-recording) or in the `updates` object of [batch update](#batch-update-recordings). To list a folder's recordings, use `GET /api/v1/recordings?folder_id={id}` (or `folder_id=none` for unfiled recordings).
+    To move a recording into or out of a folder, set `folder_id` on [`PATCH /api/v1/recordings/{id}`](#update-recording) or in the `updates` object of [batch update](#batch-update-recordings). To list a folder's recordings, use `GET /api/v1/recordings?folder_id={id}` (or `folder_id=none` for unfiled recordings). Add `include_children=true` to include all descendant folders.
 
 ---
 

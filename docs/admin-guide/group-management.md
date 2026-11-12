@@ -64,7 +64,7 @@ Group roles can change as responsibilities evolve. Click the role dropdown next 
 
 Promoting members to admin grants them access to group management capabilities. They'll see a "Groups" link in their interface and can add/remove members, create tags, and manage the group independently. This distributes administrative workload and empowers group leads.
 
-Demoting admins to members removes their management capabilities but preserves their group membership. They retain access to group tags and recordings but can no longer manage group membership or tags.
+Demoting admins to members removes their management capabilities but preserves their group membership. They retain access to group tags and recordings but can no longer manage group membership or tags. Recordings shared with them through the group become read-only for them, as they are for other members; promoting a member gives edit access to those recordings.
 
 ### Removing Group Members
 
@@ -72,10 +72,10 @@ Click the red user-times icon next to any member to remove them from the group. 
 
 - The user loses access to group tags
 - They won't receive new group-tagged recordings
-- Their access to previously-shared group recordings persists
+- They lose access to the recordings shared with them through the group's tags and folders
 - Their personal notes on group recordings are preserved
 
-If you need to fully revoke access to existing group recordings, you must manually revoke those internal shares through the recording's share management interface. Group removal only prevents future automatic sharing.
+A recording the owner shared with them by hand stays shared, as does one they still have through a tag or folder of another group.
 
 ### Deleting Groups
 
@@ -84,9 +84,9 @@ Click the red trash icon next to a group to delete it entirely. A confirmation d
 - Removes all group memberships
 - Deletes all group tags (via database cascade)
 - Preserves all recordings (including previously group-tagged ones)
-- Preserves all internal shares created by group tags
+- Removes the internal shares made through the group's tags and folders
 
-Group deletion is irreversible. Once deleted, the group structure is gone, though recordings and access permissions created by the group persist. If you need to temporarily disable a group, consider removing all members instead of deleting the group itself.
+Group deletion is irreversible. Once deleted, the group structure is gone and members lose the access they had through the group. Recordings and shares made by hand stay.
 
 ## Group Tags
 

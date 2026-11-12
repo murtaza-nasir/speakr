@@ -181,7 +181,7 @@ The quality of your generated summaries depends on two key factors:
 
 The summary is fully editable using a markdown editor similar to the one in the Notes section. Click the edit button (pencil icon) in the summary toolbar to enter edit mode. The markdown editor provides a rich editing experience with formatting tools for bold, italic, headings, lists, links, and more. You can restructure the summary, add additional insights, or refine the AI-generated content to better suit your needs. Changes are auto-saved as you type, ensuring you don't lose your edits.
 
-You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button exports the summary as a Microsoft Word (.docx) file, preserving formatting and making it easy to share with colleagues who prefer traditional documents. The downloaded file is named using the recording title and date for easy identification.
+You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button offers two formats. **Word document (.docx)** keeps the formatting and suits colleagues who work in Word. **Markdown (.md)** saves the summary text as written, under a heading with the recording title, and links to recordings in it point to your Speakr address. Both files are named after the recording title, such as `summary-Weekly-Sync.docx` or `summary-Weekly Sync.md`.
 
 ### Customize Summary Prompt at Generation Time
 

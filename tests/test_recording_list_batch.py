@@ -631,6 +631,13 @@ def _legacy_tags(viewer_id):
         return json.loads(json.dumps(result))
 
 
+def _legacy_folder_dict(folder):
+    """Folder.to_dict on the per-row path, with the recursive count the
+    folder endpoints add (#585), counted for this folder alone."""
+    from src.services.folder_tree import subtree_recording_count
+    return folder.to_dict(total_recording_count=subtree_recording_count(folder))
+
+
 def _legacy_folders(viewer_id):
     """GET /api/folders before the batching, verbatim (folders enabled)."""
     with app.app_context():
@@ -644,12 +651,12 @@ def _legacy_folders(viewer_id):
             team_folders = Folder.query.filter(Folder.group_id.in_(team_ids)).order_by(Folder.name).all()
         result = []
         for folder in user_folders:
-            folder_dict = folder.to_dict()
+            folder_dict = _legacy_folder_dict(folder)
             folder_dict['can_edit'] = True
             folder_dict['user_role'] = None
             result.append(folder_dict)
         for folder in team_folders:
-            folder_dict = folder.to_dict()
+            folder_dict = _legacy_folder_dict(folder)
             user_role = team_roles.get(folder.group_id, 'member')
             folder_dict['can_edit'] = (user_role == 'admin')
             folder_dict['user_role'] = user_role
@@ -769,7 +776,7 @@ def test_tag_and_folder_lists_match_the_per_row_path(world):
         with app.app_context():
             group_id = db.session.get(Folder, w["f_group"]).group_id
             legacy_folders = json.loads(json.dumps(
-                [f.to_dict() for f in sorted(Folder.query.filter_by(group_id=group_id).all(), key=lambda f: f.id)]))
+                [_legacy_folder_dict(f) for f in sorted(Folder.query.filter_by(group_id=group_id).all(), key=lambda f: f.id)]))
             legacy_tags = json.loads(json.dumps(
                 [t.to_dict() for t in sorted(Tag.query.filter_by(group_id=group_id).all(), key=lambda t: t.id)]))
         assert _get(w["viewer"], f"/api/groups/{group_id}/folders")["folders"] == legacy_folders

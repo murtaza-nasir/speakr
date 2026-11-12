@@ -339,33 +339,60 @@ def test_needs_chunking_with_config(monkeypatch):
 # get_audio_duration (instance) + module helper
 # ---------------------------------------------------------------------------
 
-def test_get_audio_duration_success():
+@pytest.fixture
+def media(tmp_path):
+    f = tmp_path / "a.mp3"
+    f.write_bytes(b"\x00" * 16)
+    return str(f)
+
+
+def test_get_audio_duration_success(media):
     svc = AudioChunkingService()
     with mock.patch("subprocess.run", return_value=completed(stdout="123.45\n")) as m:
-        assert svc.get_audio_duration("/a.mp3") == pytest.approx(123.45)
+        assert svc.get_audio_duration(media) == pytest.approx(123.45)
     # ffprobe with the right query was invoked.
     args = m.call_args[0][0]
     assert args[0] == "ffprobe"
     assert "format=duration" in args
 
 
-def test_get_audio_duration_bad_value():
+def test_get_audio_duration_bad_value(media):
     svc = AudioChunkingService()
-    with mock.patch("subprocess.run", return_value=completed(stdout="notanumber")):
-        assert svc.get_audio_duration("/a.mp3") is None
+    with mock.patch("subprocess.run", return_value=completed(stdout="notanumber")), \
+         mock.patch("src.utils.ffprobe._get_duration_from_packets", return_value=None):
+        assert svc.get_audio_duration(media) is None
 
 
-def test_get_audio_duration_called_process_error():
+def test_get_audio_duration_na_falls_back_to_packets(media, caplog):
+    """A WebM without a container duration reports N/A (#580)."""
+    svc = AudioChunkingService()
+    with mock.patch("subprocess.run", return_value=completed(stdout="N/A\n")), \
+         mock.patch("src.utils.ffprobe._get_duration_from_packets", return_value=1.994) as packets:
+        assert svc.get_audio_duration(media) == pytest.approx(1.994)
+    packets.assert_called_once()
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_get_audio_duration_missing_file_skips_ffprobe(tmp_path, caplog):
+    """The extracted audio is already deleted: no ffprobe, no error (#580)."""
+    svc = AudioChunkingService()
+    with mock.patch("subprocess.run") as run:
+        assert svc.get_audio_duration(str(tmp_path / "gone_audio.mp3")) is None
+    run.assert_not_called()
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_get_audio_duration_called_process_error(media):
     svc = AudioChunkingService()
     err = subprocess.CalledProcessError(1, ["ffprobe"])
     with mock.patch("subprocess.run", side_effect=err):
-        assert svc.get_audio_duration("/a.mp3") is None
+        assert svc.get_audio_duration(media) is None
 
 
-def test_get_audio_duration_missing_binary():
+def test_get_audio_duration_missing_binary(media):
     svc = AudioChunkingService()
     with mock.patch("subprocess.run", side_effect=FileNotFoundError):
-        assert svc.get_audio_duration("/a.mp3") is None
+        assert svc.get_audio_duration(media) is None
 
 
 def test_module_get_audio_duration_ffprobe_success():
