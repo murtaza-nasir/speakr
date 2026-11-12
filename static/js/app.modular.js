@@ -97,8 +97,9 @@ const parseUnformattedError = (text) => {
     // Known error patterns
     const patterns = [
         {
-            patterns: ['no_speech', 'no speech detected', 'no recognizable speech detected', 'no recognisable speech detected', 'asr_response_have_no_words'],
-            title: _t('errors.noSpeechTitle', 'No Speech Detected'),
+            // Same list as the no-speech entry of ERROR_PATTERNS in src/utils/error_formatting.py.
+            patterns: [/\bno_speech\b/, /no (?:recognized |recognised |usable )?speech (?:was )?detected/, 'asr_response_have_no_words'],
+            title: _t('errors.noSpeechTitle', 'No speech detected'),
             message: _t('errors.noSpeechMessage', 'No recognizable speech was found in this recording.'),
             guidance: _t('errors.noSpeechGuidance', 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.'),
             icon: 'fa-microphone-slash',

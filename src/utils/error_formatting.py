@@ -19,14 +19,16 @@ def _code(status):
 
 # Known error patterns with user-friendly messages
 ERROR_PATTERNS = [
-    # Explicit no-speech responses from transcription services
+    # Explicit no-speech responses from transcription services. The code is
+    # anchored so that Whisper's no_speech_prob field does not match. Keep this
+    # list in step with parseUnformattedError in static/js/app.modular.js.
     {
         'patterns': [
-            r'no_speech',
+            r'\bno_speech\b',
             r'no (?:recognized |recognised |usable )?speech (?:was )?detected',
             r'asr_response_have_no_words',
         ],
-        'title': 'No Speech Detected',
+        'title': 'No speech detected',
         'message': 'No recognizable speech was found in this recording.',
         'guidance': 'Check that the microphone is not muted, the correct input device was selected, and the audio volume is adequate, then record or upload the audio again.',
         'icon': 'fa-microphone-slash',
