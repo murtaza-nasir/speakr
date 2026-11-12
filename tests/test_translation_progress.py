@@ -292,13 +292,14 @@ def test_auto_detected_recording_still_translates(ctx):
     assert [j.id for j in _translate_jobs(rec.id)] == [data['job_id']]
 
 
-def test_request_while_running_returns_the_running_job(ctx):
+@pytest.mark.parametrize("status", ["queued", "processing"])
+def test_request_while_running_returns_the_running_job(ctx, status):
     user = _mk_user(ctx)
     rec = Recording(user_id=user.id, transcription="Hello world, this is a test transcript.", status='COMPLETED')
     db.session.add(rec)
     db.session.commit()
     running = ProcessingJob(user_id=user.id, recording_id=rec.id, job_type='translate_transcription',
-                            status='processing', params=json.dumps({'target_language': 'Italian'}),
+                            status=status, params=json.dumps({'target_language': 'Italian'}),
                             progress_done=4, progress_total=18)
     db.session.add(running)
     db.session.commit()
@@ -314,4 +315,4 @@ def test_request_while_running_returns_the_running_job(ctx):
     assert data['message'] == 'This recording is already being translated.'
     jobs = _translate_jobs(rec.id)
     assert [j.id for j in jobs] == [running.id]
-    assert jobs[0].status == 'processing'
+    assert jobs[0].status == status
