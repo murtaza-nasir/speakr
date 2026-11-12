@@ -12,10 +12,26 @@ registered so their ids, locale keys and folders are reserved, but nobody can
 select them until they are ported.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_THEME = 'default'
+
+# Color scheme ids, as in colorSchemes in static/js/app.modular.js. Blue has
+# no class of its own and is the scheme of an account with no saved value.
+COLOR_SCHEMES = ('blue', 'emerald', 'purple', 'rose', 'amber', 'teal')
+DEFAULT_COLOR_SCHEME = 'blue'
+
+# The look that new accounts are created with, and that signed-out pages show
+# in a browser with no saved choice. Set in System Settings
+# (default_ui_theme, default_color_scheme) or in .env (DEFAULT_UI_THEME,
+# DEFAULT_COLOR_SCHEME). Accounts that already exist keep their saved values;
+# NULL still means DEFAULT_THEME and DEFAULT_COLOR_SCHEME.
+NEW_USER_THEME = 'cards'
+NEW_USER_COLOR_SCHEME = 'emerald'
 
 # The named places in the markup a theme may replace. Each has a default
 # partial in templates/themes/default/<slot>.html; a theme folder
@@ -106,3 +122,63 @@ def slot_overrides(slot):
     return [theme.id for theme in available_themes()
             if theme.id != DEFAULT_THEME
             and os.path.isfile(os.path.join(TEMPLATES_DIR, 'themes', theme.id, f'{slot}.html'))]
+
+
+_warned = set()
+
+
+def _warn_once(name, value, fallback):
+    if (name, value) not in _warned:
+        _warned.add((name, value))
+        logger.warning(f"{name}={value!r} is not a valid value; {fallback!r} is used instead")
+
+
+def _setting(key, env_var, default):
+    """The System Settings value of ``key``, else ``env_var``, else ``default``."""
+    from src.utils.system_settings import env_fallback
+    value = env_fallback(env_var, default)
+    try:
+        from flask import has_app_context
+        if has_app_context():
+            from src.models import SystemSetting
+            saved = SystemSetting.get_setting(key, None)
+            if isinstance(saved, str) and saved.strip():
+                value = saved
+    except Exception:
+        pass
+    return value.strip().lower() if isinstance(value, str) else value
+
+
+def is_valid_new_user_theme(value):
+    return is_available(value)
+
+
+def is_valid_color_scheme(value):
+    return value in COLOR_SCHEMES
+
+
+def new_user_theme():
+    """The UI theme for new accounts: an available theme id."""
+    value = _setting('default_ui_theme', 'DEFAULT_UI_THEME', NEW_USER_THEME)
+    if is_available(value):
+        return value
+    _warn_once('DEFAULT_UI_THEME', value, DEFAULT_THEME)
+    return DEFAULT_THEME
+
+
+def new_user_color_scheme():
+    """The color scheme for new accounts: one of COLOR_SCHEMES."""
+    value = _setting('default_color_scheme', 'DEFAULT_COLOR_SCHEME', NEW_USER_COLOR_SCHEME)
+    if value in COLOR_SCHEMES:
+        return value
+    _warn_once('DEFAULT_COLOR_SCHEME', value, DEFAULT_COLOR_SCHEME)
+    return DEFAULT_COLOR_SCHEME
+
+
+def apply_new_user_theme(user):
+    """Give a user who is being created the look for new accounts. Called
+    wherever an account is created (registration, admin, SSO, the admin
+    scripts); never for an account that already exists."""
+    user.ui_theme = new_user_theme()
+    user.theme_color_scheme = new_user_color_scheme()
+    return user

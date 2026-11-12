@@ -518,7 +518,9 @@
       "customBannerDesc": "Banner personalizado mostrado en la parte superior de la página. Admite Markdown. Dejar vacío para desactivar.",
       "transcriptLengthLimitDesc": "Número máximo de caracteres a enviar desde la transcripción al LLM para resumen y chat. Use -1 para sin límite.",
       "maxAudioOnlyVideoSizeDesc": "Tamaño máximo (en MB) para subidas de vídeo en modo solo audio. Solo se almacena el audio extraído, por lo que la subida en sí puede ser mayor que el límite habitual.",
-      "disableAutoTranslationDesc": "Cuando está activado, las grabaciones solo se transcriben y los usuarios deben iniciar la traducción manualmente. Cuando está desactivado, cada usuario puede activar la traducción automática de sus grabaciones nuevas tras la transcripción."
+      "disableAutoTranslationDesc": "Cuando está activado, las grabaciones solo se transcriben y los usuarios deben iniciar la traducción manualmente. Cuando está desactivado, cada usuario puede activar la traducción automática de sus grabaciones nuevas tras la transcripción.",
+      "defaultUiThemeDesc": "Tema de la interfaz para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin tema guardado. Uno de: default, classic, workspace, focus, desk, cards. Las cuentas existentes conservan su tema.",
+      "defaultColorSchemeDesc": "Esquema de colores para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin esquema guardado. Uno de: blue, emerald, purple, rose, amber, teal. Las cuentas existentes conservan su esquema de colores."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -3564,7 +3566,9 @@
       "invalid_assistant_name": "El nombre del asistente puede tener hasta 40 letras, dígitos, espacios, puntos, guiones o apóstrofos, y empieza por una letra o un dígito",
       "summary_prompt_invalid": "El prompt no puede estar vacío ni superar los 8000 caracteres.",
       "summary_prompt_save_denied": "No puedes guardar el prompt ahí.",
-      "invalid_filter_date": "No se pudo leer el filtro de fecha"
+      "invalid_filter_date": "No se pudo leer el filtro de fecha",
+      "invalid_default_ui_theme": "Tema de interfaz predeterminado no válido. Debe ser uno de: {{themes}}",
+      "invalid_default_color_scheme": "Esquema de colores predeterminado no válido. Debe ser uno de: {{schemes}}"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

@@ -518,7 +518,9 @@
       "customBannerDesc": "Benutzerdefiniertes Banner oben auf der Seite. Unterstützt Markdown. Leer lassen zum Deaktivieren.",
       "transcriptLengthLimitDesc": "Maximale Anzahl von Zeichen, die vom Transkript an das LLM für Zusammenfassung und Chat gesendet werden. Verwenden Sie -1 für kein Limit.",
       "maxAudioOnlyVideoSizeDesc": "Maximale Dateigröße (in MB) für Video-Uploads im Nur-Audio-Modus. Nur das extrahierte Audio wird gespeichert, daher kann der Upload selbst größer als das normale Limit sein.",
-      "disableAutoTranslationDesc": "Wenn aktiviert, werden Aufnahmen nur transkribiert und Benutzer müssen die Übersetzung manuell auslösen. Wenn deaktiviert, kann jeder Benutzer neue Aufnahmen nach der Transkription automatisch übersetzen lassen."
+      "disableAutoTranslationDesc": "Wenn aktiviert, werden Aufnahmen nur transkribiert und Benutzer müssen die Übersetzung manuell auslösen. Wenn deaktiviert, kann jeder Benutzer neue Aufnahmen nach der Transkription automatisch übersetzen lassen.",
+      "defaultUiThemeDesc": "UI-Design für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Design. Einer der Werte: default, classic, workspace, focus, desk, cards. Bestehende Konten behalten ihr Design.",
+      "defaultColorSchemeDesc": "Farbschema für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Farbschema. Einer der Werte: blue, emerald, purple, rose, amber, teal. Bestehende Konten behalten ihr Farbschema."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -3564,7 +3566,9 @@
       "invalid_assistant_name": "Der Name des Assistenten darf bis zu 40 Buchstaben, Ziffern, Leerzeichen, Punkte, Bindestriche oder Apostrophe enthalten und beginnt mit einem Buchstaben oder einer Ziffer",
       "summary_prompt_invalid": "Der Prompt darf nicht leer oder länger als 8.000 Zeichen sein.",
       "summary_prompt_save_denied": "Sie können den Prompt dort nicht speichern.",
-      "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden"
+      "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden",
+      "invalid_default_ui_theme": "Ungültiges Standard-UI-Design. Zulässig ist einer der folgenden: {{themes}}",
+      "invalid_default_color_scheme": "Ungültiges Standard-Farbschema. Zulässig ist einer der folgenden: {{schemes}}"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

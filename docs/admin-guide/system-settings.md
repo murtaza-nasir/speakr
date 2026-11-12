@@ -124,6 +124,21 @@ Like the disclaimers, the banner supports full markdown formatting, so you can i
 
 Leave this field empty to hide the banner completely.
 
+## Default look for new accounts
+
+With the **default_ui_theme** and **default_color_scheme** settings, you choose the interface theme and the color scheme of every account created afterwards: by registration, by an administrator, by a first SSO sign-in and by the admin account from `.env`. Without a saved value, new accounts start with the **Cards** theme and the **Forest Emerald** color scheme.
+
+| Setting | Values | Default |
+|---|---|---|
+| `default_ui_theme` | `default`, `classic`, `workspace`, `focus`, `desk`, `cards` | `cards` |
+| `default_color_scheme` | `blue`, `emerald`, `purple`, `rose`, `amber`, `teal` | `emerald` |
+
+`default` is the standard theme, and `emerald` is the color scheme shown as Forest Emerald. A value outside the list is refused on this page. In `.env`, a value outside the list is replaced by `default` or `blue`, and a warning is written to the log.
+
+Existing accounts keep their theme and color scheme. Users who never picked a theme keep the standard theme with the blue color scheme, or the look they picked in a browser before themes were saved with the account. Users change both in Account settings.
+
+On the sign-in, registration and password reset pages, and on recordings shared with a public link, the same defaults are shown in a browser with no theme or color scheme saved. In a browser where a theme or color scheme was picked before, that choice stays. After sign-in, the account's own theme and color scheme apply, and the defaults for new accounts are not used.
+
 ## What's New After Updates
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
@@ -153,6 +168,8 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | Setting | Variable in `.env` |
 |---|---|
 | `allow_registration` | `ALLOW_REGISTRATION` |
+| `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |
+| `default_ui_theme` | `DEFAULT_UI_THEME` |
 | `deletion_mode` | `DELETION_MODE` |
 | `enable_auto_deletion` | `ENABLE_AUTO_DELETION` |
 | `enable_email_verification` | `ENABLE_EMAIL_VERIFICATION` |
@@ -181,6 +198,10 @@ Beyond the UI-configurable settings above, several environment variables in your
 **HELP_CENTER_URL**: Adds a Help Center link to the user menu (on both the main app and the account/admin pages), opening in a new tab. Point it at your own FAQ, tutorial, or intranet page so users find your organization's guidance instead of the technical documentation. Unset by default (no link shown).
 
 **HELP_CENTER_LABEL**: Optional custom label for the Help center link. When unset, a localized "Help center" label is used.
+
+**DEFAULT_UI_THEME**: Interface theme for new accounts and for signed-out pages in a browser with no saved theme. One of `default`, `classic`, `workspace`, `focus`, `desk` or `cards`. Default: `cards`. See [Default look for new accounts](#default-look-for-new-accounts).
+
+**DEFAULT_COLOR_SCHEME**: Color scheme for new accounts and for signed-out pages in a browser with no saved color scheme. One of `blue`, `emerald` (Forest Emerald), `purple`, `rose`, `amber` or `teal`. Default: `emerald`.
 
 ### Collaboration & Sharing
 

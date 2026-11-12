@@ -12,6 +12,7 @@
 
 import { useNotifications } from './modules/composables/notifications.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
+import { savedColorScheme } from './modules/utils/theme-defaults.js';
 
 installCloseOutside();
 
@@ -21,7 +22,7 @@ function applyTheme(dark) {
     const root = document.documentElement;
     root.classList.toggle('dark', dark);
     SCHEMES.forEach(s => root.classList.remove(`theme-light-${s}`, `theme-dark-${s}`));
-    const scheme = localStorage.getItem('colorScheme') || 'blue';
+    const scheme = savedColorScheme();
     if (scheme !== 'blue') root.classList.add(`theme-${dark ? 'dark' : 'light'}-${scheme}`);
 }
 

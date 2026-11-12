@@ -518,7 +518,9 @@
       "customBannerDesc": "Banner personalizado mostrado no topo da página. Suporta Markdown. Deixe em branco para desabilitar.",
       "transcriptLengthLimitDesc": "Número máximo de caracteres para enviar da transcrição ao LLM para resumo e chat. Use -1 para nenhum limite.",
       "maxAudioOnlyVideoSizeDesc": "Tamanho máximo (em MB) para envios de vídeo em modo apenas-áudio. Apenas o áudio extraído é armazenado, portanto o envio em si pode ser maior que o limite habitual.",
-      "disableAutoTranslationDesc": "Quando habilitado, as gravações são apenas transcritas e os usuários precisam iniciar a tradução manualmente. Quando desabilitado, cada usuário pode ativar a tradução automática de novas gravações após a transcrição."
+      "disableAutoTranslationDesc": "Quando habilitado, as gravações são apenas transcritas e os usuários precisam iniciar a tradução manualmente. Quando desabilitado, cada usuário pode ativar a tradução automática de novas gravações após a transcrição.",
+      "defaultUiThemeDesc": "Tema da interface para novas contas e para as páginas de login em um navegador sem tema salvo. Um destes: default, classic, workspace, focus, desk, cards. As contas existentes mantêm o tema.",
+      "defaultColorSchemeDesc": "Esquema de cores para novas contas e para as páginas de login em um navegador sem esquema salvo. Um destes: blue, emerald, purple, rose, amber, teal. As contas existentes mantêm o esquema de cores."
     },
     "storageUsed": "Armazenamento usado",
     "summarizationInstructions": "Instruções de resumo",
@@ -3564,7 +3566,9 @@
       "invalid_assistant_name": "O nome do assistente pode ter até 40 letras, dígitos, espaços, pontos, hifens ou apóstrofos, e começa com uma letra ou um dígito",
       "summary_prompt_invalid": "O prompt não pode estar vazio nem ter mais de 8.000 caracteres.",
       "summary_prompt_save_denied": "Você não pode salvar o prompt aí.",
-      "invalid_filter_date": "Não foi possível ler o filtro de data"
+      "invalid_filter_date": "Não foi possível ler o filtro de data",
+      "invalid_default_ui_theme": "Tema de interface padrão inválido. Deve ser um destes: {{themes}}",
+      "invalid_default_color_scheme": "Esquema de cores padrão inválido. Deve ser um destes: {{schemes}}"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

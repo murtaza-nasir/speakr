@@ -3,6 +3,7 @@
  * Handles dark mode, color schemes, sidebar, and other UI state
  */
 
+import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
 
 /**
@@ -118,18 +119,20 @@ export function useUI(state, utils, processedTranscription) {
         }
 
         currentColorScheme.value = schemeId;
-        localStorage.setItem('colorScheme', schemeId);
     };
 
-    // Initialize color scheme from storage
+    // A scheme the user picks is stored in this browser (and saved with the
+    // account). Applying the stored or default scheme stores nothing, so a
+    // value in localStorage is always a choice someone made
+    // (templates/includes/theme_account.html).
+    const storeColorScheme = (schemeId) => {
+        try { localStorage.setItem('colorScheme', schemeId); } catch (e) { /* storage blocked */ }
+        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+    };
+
+    // Initialize color scheme from storage, else the page default
     const initializeColorScheme = () => {
-        const savedScheme = localStorage.getItem('colorScheme');
-        if (savedScheme) {
-            applyColorScheme(savedScheme);
-        } else {
-            // Apply default scheme
-            applyColorScheme('blue');
-        }
+        applyColorScheme(savedColorScheme());
     };
 
     // Open color scheme modal
@@ -146,14 +149,14 @@ export function useUI(state, utils, processedTranscription) {
     // Select a color scheme
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
-        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+        storeColorScheme(schemeId);
         showToast(t('messages.colorSchemeApplied'), 'fa-palette');
     };
 
     // Reset to default color scheme
     const resetColorScheme = () => {
         applyColorScheme('blue');
-        if (window.speakrSaveTheme) window.speakrSaveTheme('colorScheme');
+        storeColorScheme('blue');
         showToast(t('messages.colorSchemeReset'), 'fa-undo');
     };
 

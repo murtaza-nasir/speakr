@@ -518,7 +518,9 @@
       "customBannerDesc": "页面顶部显示的自定义横幅。支持 Markdown。留空以禁用。",
       "transcriptLengthLimitDesc": "从转录发送到 LLM 进行摘要和聊天的最大字符数。使用 -1 表示无限制。",
       "maxAudioOnlyVideoSizeDesc": "仅音频模式下视频上传的最大文件大小（MB）。仅保留提取出的音频，因此上传文件本身可以大于常规限制。",
-      "disableAutoTranslationDesc": "启用后，录音只会进行转录，用户必须手动触发翻译。禁用后，每位用户可以选择在转录完成后自动翻译新录音。"
+      "disableAutoTranslationDesc": "启用后，录音只会进行转录，用户必须手动触发翻译。禁用后，每位用户可以选择在转录完成后自动翻译新录音。",
+      "defaultUiThemeDesc": "新账户以及未保存主题的浏览器中登录页面使用的界面主题。可选值：default、classic、workspace、focus、desk、cards。现有账户保留各自的主题。",
+      "defaultColorSchemeDesc": "新账户以及未保存配色方案的浏览器中登录页面使用的配色方案。可选值：blue、emerald、purple、rose、amber、teal。现有账户保留各自的配色方案。"
     },
     "storageUsed": "已用存储",
     "summarizationInstructions": "摘要说明",
@@ -3564,7 +3566,9 @@
       "invalid_assistant_name": "助手名称最多 40 个字符，可包含字母、数字、空格、句点、连字符或撇号，并以字母或数字开头",
       "summary_prompt_invalid": "提示词不能为空，也不能超过 8000 个字符。",
       "summary_prompt_save_denied": "你不能将提示词保存到这里。",
-      "invalid_filter_date": "无法读取日期筛选条件"
+      "invalid_filter_date": "无法读取日期筛选条件",
+      "invalid_default_ui_theme": "无效的默认界面主题。必须是以下之一：{{themes}}",
+      "invalid_default_color_scheme": "无效的默认配色方案。必须是以下之一：{{schemes}}"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",
