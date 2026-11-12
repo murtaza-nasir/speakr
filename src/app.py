@@ -62,9 +62,7 @@ except ImportError as e:
 load_dotenv()
 
 # Hot-applied System Settings (high priority) with environment fallback.
-import sys
-_self = sys.modules[__name__]
-from src.utils.system_settings import make_module_getattr as _make_getattr
+from src.utils.system_settings import apply_hot_settings
 _SYSTEM_SETTING_MAP = {
     "ENABLE_AUTO_DELETION": ("enable_auto_deletion", "ENABLE_AUTO_DELETION", False),
     "GLOBAL_RETENTION_DAYS": ("global_retention_days", "GLOBAL_RETENTION_DAYS", 0),
@@ -75,7 +73,7 @@ _SYSTEM_SETTING_MAP = {
     "ENABLE_PUBLIC_SHARING": ("enable_public_sharing", "ENABLE_PUBLIC_SHARING", True),
     "VIDEO_RETENTION": ("video_retention", "VIDEO_RETENTION", False),
 }
-__getattr__ = _make_getattr(_SYSTEM_SETTING_MAP)
+_self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
 
 # Early check for Inquire Mode configuration (needed for startup message)
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
