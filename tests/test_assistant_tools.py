@@ -252,6 +252,15 @@ def test_filter_fields_sent_to_the_panel_are_ignored(world, agent_on):
     assert events[-1].get('end_of_stream') is True
 
 
+def test_the_ask_page_refuses_a_bad_filter_date(world, agent_on):
+    with patch("src.api.inquire.ENABLE_INQUIRE_MODE", True), patch("src.api.inquire.client", MagicMock()):
+        c = app.test_client()
+        with c.session_transaction() as sess:
+            sess["_user_id"] = str(world["owner"])
+        resp = c.post('/api/inquire/chat', json={'message': QUESTION, 'filter_date_from': 'not a date'})
+    assert resp.status_code == 400 and resp.get_json()['code'] == 'invalid_filter_date'
+
+
 # ---------------------------------------------------------------------------
 # Fallback: a rejected tool call is retried once without tools
 # ---------------------------------------------------------------------------

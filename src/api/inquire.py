@@ -187,8 +187,7 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     """
     user_message = data.get('message')
     message_history = data.get('message_history', [])
-    # Build filters from request (the same keys as the recording panel's
-    # "Search in" filters)
+    # Build filters from request (the Ask page's filter column)
     from src.services.assistant_events import filters_from_request
     filters = filters_from_request(data)
     
@@ -861,8 +860,14 @@ def inquire_chat():
         
         # One event stream for both engines: retrieval stages arrive as
         # steps too, labelled in the user's language (assistant_events).
-        from src.services.assistant_events import library_events, tools_for_surface
+        from src.services.assistant_events import filters_from_request, library_events, tools_for_surface
         from src.utils.localization import request_language
+        # A filter date that does not parse is refused, never dropped
+        # (the stream would otherwise fail after it starts).
+        try:
+            filters_from_request(data)
+        except ValueError:
+            return jsonify(api_error('invalid_filter_date')), 400
         stream = inquire_stream(current_user, data, tool_names=tools_for_surface('ask'))
         return Response(library_events(stream, request_language()), mimetype='text/event-stream')
 
