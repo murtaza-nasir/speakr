@@ -38,18 +38,19 @@ RUN PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
 #
 # Supply-chain hardening: we pin a dated release (not BtbN's rolling `latest`
 # tag) and verify each arch tarball's SHA-256, so a swapped or tampered binary
-# fails the build. NOTE: BtbN deletes autobuild assets after roughly two weeks,
-# so any rebuild after that window fails with a wget 404 until the pin is
-# refreshed. To refresh, bump BTBN_TAG, FFMPEG_VER and BOTH checksums together
+# fails the build. NOTE: BtbN deletes daily autobuilds after roughly two weeks
+# but keeps the last build of each month, so pin a month-end tag
+# (autobuild-YYYY-MM-<last day>-*); a daily tag fails with a wget 404 once it is
+# removed. To refresh, bump BTBN_TAG, FFMPEG_VER and BOTH checksums together
 # (read the new values from the release's checksums.sha256). BtbN binaries nest
 # under bin/, hence the adjusted move paths.
 ###############################################################################
 FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS ffmpeg-stage
 
-ARG BTBN_TAG=autobuild-2026-10-23-13-04
-ARG FFMPEG_VER=n8.1.3-24-g92611900bb
-ARG FFMPEG_SHA256_amd64=d0eb612b8994407f78413e2929cb4b073bc699c8ab79e198b31624736fdc2f93
-ARG FFMPEG_SHA256_arm64=7853da3848e22eddc9a5077c7965abf62cf9e6f7ff95191b7d29f53155b5fd90
+ARG BTBN_TAG=autobuild-2026-10-31-12-59
+ARG FFMPEG_VER=n8.1.3-27-g8dca1586f4
+ARG FFMPEG_SHA256_amd64=41e9c565594c390622cf968d82fa4135d9e9a11d06c1515644288cbc844e3380
+ARG FFMPEG_SHA256_arm64=a08c0ee6e1c4e02139344b303002dcc7c37cf125d639f1fbd15dabee40fcb525
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils \
     && rm -rf /var/lib/apt/lists/* \
