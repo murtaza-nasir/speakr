@@ -35,6 +35,8 @@ This automatic sharing grants group members both view and edit access. They can 
 
 The automatic sharing is intelligent. If a group member already has access through a previous share, Speakr doesn't create duplicates. If someone is added to the group later, they don't automatically gain access to old recordings - only recordings tagged after they join. This prevents retroactive access leakage while maintaining security.
 
+A group admin can also change the group of a tag that is already on recordings: turn a personal tag into a group tag, move a group tag to another group, or turn it back into a personal tag. The members of the previous group lose the access they had through the tag, and the completed recordings that carry the tag are shared with the new group's members as the tag's sharing settings say. A share made by hand stays, and so does access a member still has through another group tag or a group folder.
+
 ### Using Group Tags Effectively
 
 Apply group tags immediately after important meetings or discussions to ensure group-wide visibility while context is fresh. This creates a shared understanding quickly, letting everyone review content and add notes while details are clear. Prompt tagging turns recordings from individual resources into group knowledge.

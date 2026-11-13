@@ -120,8 +120,9 @@ def test_owner_reclassify_still_syncs_group_members(world):
     owner = _client(w["owner"])
     tag_id = _personal_tag_on(owner, w["rec"].id)
     assert owner.put(f"/api/tags/{tag_id}", json={"group_id": w["group"].id}).status_code == 200
+    # The change of group shares the recording itself (#586 for tags); a sync finds nothing left
     resp = owner.post(f"/api/groups/{w['group'].id}/sync-shares")
-    assert resp.status_code == 200 and resp.get_json()["shares_created"] >= 1
+    assert resp.status_code == 200 and resp.get_json()["shares_created"] == 0
     share = InternalShare.query.filter_by(recording_id=w["rec"].id, shared_with_user_id=w["member"].id).one()
     assert (share.source_type, share.can_edit) == ("group_tag", False)
     assert _client(w["member"]).get(f"/api/recordings/{w['rec'].id}").status_code == 200
