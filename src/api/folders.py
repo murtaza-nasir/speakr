@@ -425,8 +425,13 @@ def update_folder(folder_id):
 
     try:
         if regrouped:
-            # Shares the folder's previous group received end with the move (#582)
-            drop_stale_auto_shares(recording_ids=[r.id for r in folder.recordings])
+            # Shares the folder's previous group received end with the move (#582),
+            # and the recordings in it are shared with the new group as a
+            # move into the folder shares them (#586)
+            recordings = list(folder.recordings)
+            drop_stale_auto_shares(recording_ids=[r.id for r in recordings])
+            for recording in recordings:
+                apply_group_folder_shares(recording, folder)
         db.session.commit()
     except IntegrityError:
         # A duplicate name is a refused request, not an application error (#511).
