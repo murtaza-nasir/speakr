@@ -290,9 +290,15 @@ def _completion_outcome(completion):
     return (finish_reason if isinstance(finish_reason, str) else None), ", ".join(parts)
 
 
-def _empty_summary_reply(finish_reason, outcome, language):
+def _empty_summary_reply(finish_reason, outcome, language, truncated=False):
     from src.utils.localization import translate
-    if finish_reason == 'length':
+    if truncated:
+        # Text came back, but it stops at max_tokens: an incomplete summary
+        # is not stored as a finished one.
+        message = (f"The summary was cut off at the language model's output limit ({outcome}). "
+                   f"Raise SUMMARY_MAX_TOKENS or limit reasoning with TEXT_MODEL_EXTRA_BODY.")
+        user_text = translate('server.summaryError.truncatedReply', language)
+    elif finish_reason == 'length':
         message = (f"The language model used its whole output budget without writing a summary ({outcome}). "
                    f"Raise SUMMARY_MAX_TOKENS or limit reasoning with TEXT_MODEL_EXTRA_BODY.")
         user_text = translate('server.summaryError.emptyReplyLength', language)
@@ -851,11 +857,13 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 
             summary = clean_llm_response(raw_response) if raw_response else ""
             current_app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
-            if not summary:
+            if not summary or finish_reason == 'length':
                 # An empty reply is a failed summary, not a finished one:
                 # stored as "[Summary not generated]" it left the recording
-                # COMPLETED with nothing to read.
-                raise _empty_summary_reply(finish_reason, outcome, owner_language)
+                # COMPLETED with nothing to read. A reply cut off at
+                # max_tokens is incomplete and fails the same way.
+                raise _empty_summary_reply(finish_reason, outcome, owner_language,
+                                           truncated=bool(summary))
 
             recording.summary = summary
             db.session.commit()
