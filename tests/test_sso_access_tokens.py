@@ -38,7 +38,9 @@ ISSUER = "https://id.example.test"
 DISCOVERY = f"{ISSUER}/.well-known/openid-configuration"
 JWKS_URI = f"{ISSUER}/.well-known/jwks.json"
 CLIENT = "openwebui-client"
-SETTING_KEYS = ("sso_api_tokens_enabled", "sso_api_allowed_clients", "sso_api_scopes")
+MAILR = "mailr-client"
+SETTING_KEYS = ("sso_api_tokens_enabled", "sso_api_allowed_clients", "sso_api_scopes",
+                "sso_api_exchange_clients")
 
 
 class _Client(FlaskClient):
@@ -98,6 +100,7 @@ def settings(monkeypatch):
     monkeypatch.setenv("SSO_API_TOKENS_ENABLED", "true")
     monkeypatch.setenv("SSO_API_ALLOWED_CLIENTS", f"{CLIENT}, mailr-client")
     monkeypatch.setenv("SSO_API_SCOPES", "read")
+    monkeypatch.setenv("SSO_API_EXCHANGE_CLIENTS", MAILR)
     with app.app_context():
         saved = {r.key: (r.value, r.setting_type) for r in
                  SystemSetting.query.filter(SystemSetting.key.in_(SETTING_KEYS)).all()}
@@ -417,6 +420,12 @@ def test_provider_unreachable_is_401_not_500(world, monkeypatch):
 
 # --- Exchange ----------------------------------------------------------------
 
+def _mailr(world, sub, **claims):
+    """An access token issued to the app that may exchange."""
+    claims.setdefault("aud", MAILR)
+    return world["provider"].token(sub, **claims)
+
+
 def _exchange(world, token, **body):
     return world["client"].post("/api/v1/tokens/exchange", json=body, headers=_bearer(token))
 
@@ -424,7 +433,7 @@ def _exchange(world, token, **body):
 def test_exchange_creates_a_usable_scoped_api_token(world):
     uid, sub, username = _alice(world)
     world["settings"].setenv("SSO_API_SCOPES", "read,write")
-    resp = _exchange(world, world["provider"].token(sub, aud="x", azp="mailr-client"),
+    resp = _exchange(world, _mailr(world, sub),
                      name="mailr sync", scopes=["read"], expires_in_days=30)
     assert resp.status_code == 201
     body = resp.get_json()
@@ -444,13 +453,13 @@ def test_exchange_creates_a_usable_scoped_api_token(world):
 
 def test_exchanged_token_is_listed_and_revocable_in_account_settings(world):
     uid, sub, _ = _alice(world)
-    plain = _exchange(world, world["provider"].token(sub), name="Open WebUI").get_json()["token"]
+    plain = _exchange(world, _mailr(world, sub), name="Open WebUI").get_json()["token"]
     c = world["client"]
     with c.session_transaction() as s:
         s["_user_id"] = str(uid)
         s["_fresh"] = True
     listed = [t for t in c.get("/api/tokens").get_json()["tokens"] if t["name"] == "Open WebUI"]
-    assert len(listed) == 1 and listed[0]["sso_client_id"] == CLIENT
+    assert len(listed) == 1 and listed[0]["sso_client_id"] == MAILR
     assert c.delete(f"/api/tokens/{listed[0]['id']}").status_code == 200
     with c.session_transaction() as s:
         s.clear()
@@ -460,14 +469,14 @@ def test_exchanged_token_is_listed_and_revocable_in_account_settings(world):
 def test_exchange_defaults_to_every_allowed_scope(world):
     _, sub, _ = _alice(world)
     world["settings"].setenv("SSO_API_SCOPES", "write, read upload")
-    body = _exchange(world, world["provider"].token(sub), name="all").get_json()
+    body = _exchange(world, _mailr(world, sub), name="all").get_json()
     assert body["scopes"] == ["read", "upload", "write"]
 
 
 @pytest.mark.parametrize("scopes", [["read", "delete"], ["full"], ["write"], [], "read", ["bogus"]])
 def test_exchange_refuses_scopes_beyond_the_maximum(world, scopes):
     uid, sub, _ = _alice(world)
-    resp = _exchange(world, world["provider"].token(sub), name="t", scopes=scopes)
+    resp = _exchange(world, _mailr(world, sub), name="t", scopes=scopes)
     assert resp.status_code == 400
     with app.app_context():
         assert APIToken.query.filter_by(user_id=uid).count() == 0
@@ -478,7 +487,7 @@ def test_exchange_refuses_scopes_beyond_the_maximum(world, scopes):
                                   {"name": "t", "expires_in_days": True}])
 def test_exchange_validates_its_body(world, body):
     _, sub, _ = _alice(world)
-    assert _exchange(world, world["provider"].token(sub), **body).status_code == 400
+    assert _exchange(world, _mailr(world, sub), **body).status_code == 400
 
 
 def test_exchange_refuses_an_api_token(world):
@@ -504,7 +513,7 @@ def test_exchange_refuses_a_session(world):
         s["_fresh"] = True
     assert c.post("/api/v1/tokens/exchange", json={"name": "x"}).status_code == 403
     # A session wins over a bearer header, as everywhere else.
-    resp = c.post("/api/v1/tokens/exchange", json={"name": "x"}, headers=_bearer(world["provider"].token(sub)))
+    resp = c.post("/api/v1/tokens/exchange", json={"name": "x"}, headers=_bearer(_mailr(world, sub)))
     assert resp.status_code == 403
     with app.app_context():
         assert APIToken.query.filter_by(user_id=uid).count() == 0
@@ -514,16 +523,47 @@ def test_exchange_without_any_token_is_401(world):
     assert world["client"].post("/api/v1/tokens/exchange", json={"name": "x"}).status_code == 401
 
 
+@pytest.mark.parametrize("exchange_clients", ["", "openwebui-client", "mailr-client, other", "not-allowed-anywhere"])
+def test_exchange_needs_a_client_in_both_lists(world, exchange_clients):
+    uid, sub, _ = _alice(world)
+    world["settings"].setenv("SSO_API_EXCHANGE_CLIENTS", exchange_clients)
+    if exchange_clients == "not-allowed-anywhere":
+        # In the exchange list but not in the allowed list: the token is refused outright.
+        tok = world["provider"].token(sub, aud="not-allowed-anywhere")
+        assert _exchange(world, tok, name="x").status_code == 401
+        return
+    # Open WebUI's token reads, but may exchange only when its client is listed.
+    owui = world["provider"].token(sub)
+    assert world["client"].get("/api/v1/users/me", headers=_bearer(owui)).status_code == 200
+    resp = _exchange(world, owui, name="owui")
+    if "openwebui-client" in exchange_clients:
+        assert resp.status_code == 201
+    else:
+        assert resp.status_code == 403 and resp.get_json()["code"] == "sso_exchange_not_allowed"
+    resp = _exchange(world, _mailr(world, sub), name="mailr")
+    assert resp.status_code == (201 if MAILR in exchange_clients else 403)
+    with app.app_context():
+        expected = int("openwebui-client" in exchange_clients) + int(MAILR in exchange_clients)
+        assert APIToken.query.filter_by(user_id=uid).count() == expected
+
+
+def test_exchange_records_the_exchanging_client_from_an_aud_list(world):
+    uid, sub, _ = _alice(world)
+    tok = world["provider"].token(sub, aud=["openwebui-client", MAILR])
+    body = _exchange(world, tok, name="both").get_json()
+    assert body["sso_client_id"] == MAILR
+
+
 def test_exchange_with_an_invalid_sso_token_is_401(world):
     _, sub, _ = _alice(world)
-    assert _exchange(world, world["provider"].token(sub, iss="https://evil.example.test"), name="x").status_code == 401
+    assert _exchange(world, _mailr(world, sub, iss="https://evil.example.test"), name="x").status_code == 401
 
 
 def test_exchange_respects_the_token_cap(world, monkeypatch):
     uid, sub, _ = _alice(world)
     import src.api.tokens as tokens_module
     monkeypatch.setattr(tokens_module, "API_MAX_TOKENS_PER_USER", 2)
-    tok = world["provider"].token(sub)
+    tok = _mailr(world, sub)
     assert _exchange(world, tok, name="one").status_code == 201
     assert _exchange(world, tok, name="two").status_code == 201
     resp = _exchange(world, tok, name="three")
@@ -536,7 +576,7 @@ def test_exchange_is_not_blocked_by_csrf(world):
     _, sub, _ = _alice(world)
     app.config["WTF_CSRF_ENABLED"] = True
     try:
-        resp = _exchange(world, world["provider"].token(sub), name="csrf")
+        resp = _exchange(world, _mailr(world, sub), name="csrf")
     finally:
         app.config["WTF_CSRF_ENABLED"] = False
     assert resp.status_code == 201
@@ -544,24 +584,27 @@ def test_exchange_is_not_blocked_by_csrf(world):
 
 def test_exchange_for_the_other_user_maps_by_subject(world):
     bob_id, bob_sub, _ = world["users"]["bob"]
-    body = _exchange(world, world["provider"].token(bob_sub), name="bob").get_json()
+    body = _exchange(world, _mailr(world, bob_sub), name="bob").get_json()
     with app.app_context():
         assert APIToken.query.filter_by(token_hash=hash_token(body["token"])).one().user_id == bob_id
 
 
 # --- OpenAPI -----------------------------------------------------------------
 
-def test_openapi_served_without_a_token_and_documents_the_exchange(world):
+def test_openapi_served_without_a_token_and_leaves_out_the_exchange(world):
+    # A tool server built from the document must never offer the exchange to a model.
     resp = world["client"].get("/api/v1/openapi.json")
     assert resp.status_code == 200
     spec = resp.get_json()
-    assert "post" in spec["paths"]["/tokens/exchange"]
+    assert "/tokens/exchange" not in spec["paths"]
+    full = world["client"].get("/api/v1/openapi.json", headers=_bearer(world["provider"].token(_alice(world)[1]))).get_json()
+    assert "/tokens/exchange" not in full["paths"]
     assert "SSO" in spec["components"]["securitySchemes"]["bearerAuth"]["description"]
 
 
 def test_openapi_with_an_sso_token_lists_only_what_it_may_call(world):
     _, sub, _ = _alice(world)
-    spec = world["client"].get("/api/v1/openapi.json", headers=_bearer(world["provider"].token(sub))).get_json()
+    spec = world["client"].get("/api/v1/openapi.json", headers=_bearer(_mailr(world, sub))).get_json()
     for operations in spec["paths"].values():
         for op in operations.values():
             assert set(op["x-required-scopes"]) <= {"read"}
@@ -569,5 +612,5 @@ def test_openapi_with_an_sso_token_lists_only_what_it_may_call(world):
 
 def test_capabilities_report_the_exchange(world):
     _, sub, _ = _alice(world)
-    body = world["client"].get("/api/v1/capabilities", headers=_bearer(world["provider"].token(sub))).get_json()
+    body = world["client"].get("/api/v1/capabilities", headers=_bearer(_mailr(world, sub))).get_json()
     assert body["features"]["sso_token_exchange"] is True

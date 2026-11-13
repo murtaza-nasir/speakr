@@ -244,32 +244,6 @@ OPENAPI_SPEC = {
                                                      "id is null then."}
                 }
             },
-            "TokenExchangeRequest": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {
-                    "name": {"type": "string", "maxLength": 100,
-                             "description": "Shown for the token in Account settings"},
-                    "scopes": {"type": "array", "items": {"type": "string"},
-                               "description": "A subset of SSO_API_SCOPES; all of them when omitted"},
-                    "expires_in_days": {"type": "integer", "minimum": 0,
-                                        "description": "0 or omitted: the token does not expire"}
-                }
-            },
-            "CreatedToken": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "integer"},
-                    "name": {"type": "string"},
-                    "token": {"type": "string", "description": "The plaintext token, shown only in this response"},
-                    "scopes": {"type": "array", "items": {"type": "string"}},
-                    "created_at": {"type": "string", "format": "date-time"},
-                    "expires_at": {"type": "string", "format": "date-time", "nullable": True},
-                    "last_used_at": {"type": "string", "format": "date-time", "nullable": True},
-                    "revoked": {"type": "boolean"},
-                    "sso_client_id": {"type": "string", "nullable": True}
-                }
-            },
             "Capabilities": {
                 "type": "object",
                 "properties": {
@@ -292,25 +266,6 @@ OPENAPI_SPEC = {
                 "responses": {"200": {"description": "Token details",
                                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenInfo"}}}},
                               "404": {"description": "No API token in this request"}}
-            }
-        },
-        "/tokens/exchange": {
-            "post": {
-                "tags": ["Tokens"],
-                "summary": "Exchange an SSO access token for an API token",
-                "description": "Only an SSO access token from an allowed client is accepted here, in the "
-                               "Authorization header; an API token or a browser session gets 403 "
-                               "sso_token_required. Available when the administrator turns on SSO access "
-                               "tokens. The new token appears in the user's Account settings and can be "
-                               "revoked there. The per-account token limit applies.",
-                "requestBody": {"required": True, "content": {"application/json": {
-                    "schema": {"$ref": "#/components/schemas/TokenExchangeRequest"}}}},
-                "responses": {"201": {"description": "Token created",
-                                      "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreatedToken"}}}},
-                              "400": {"description": "Invalid name, scopes or expiry"},
-                              "401": {"description": "No valid SSO access token"},
-                              "403": {"description": "Not an SSO access token (sso_token_required)"},
-                              "409": {"description": "Token limit reached (token_limit_reached)"}}
             }
         },
         "/capabilities": {
@@ -1062,18 +1017,29 @@ def exchange_sso_token():
     """Trade an SSO access token for a scoped API token.
 
     Accepted only from a request authenticated by an SSO access token
-    (src/auth/sso_access_tokens.py): an API token or a browser session is
-    refused, so a leaked API token cannot mint more of itself. The scopes are
+    (src/auth/sso_access_tokens.py) whose client is in
+    SSO_API_EXCHANGE_CLIENTS: an API token or a browser session is refused,
+    so a leaked API token cannot mint more of itself. The route is left out
+    of the served openapi.json, so a tool server built from the document
+    never offers it to a model; it is documented in the API reference. The scopes are
     a subset of SSO_API_SCOPES, and the per-account token cap applies.
     """
     from flask import session
     from src.utils.token_auth import current_api_token, is_sso_token
-    from src.auth.sso_access_tokens import granted_scopes
+    from src.auth.sso_access_tokens import granted_scopes, exchange_client_for
     from src.api.tokens import issue_token
     sso_token = None if session.get('_user_id') else current_api_token()
     if not is_sso_token(sso_token):
         return jsonify({'error': translate('server.apiError.sso_token_required'),
                         'code': 'sso_token_required'}), 403
+    # Only the clients in SSO_API_EXCHANGE_CLIENTS may mint a stored token;
+    # a tool server such as Open WebUI is allowed per request only.
+    client_id = exchange_client_for(sso_token)
+    if client_id is None:
+        current_app.logger.info("SSO token exchange refused for user %s: client %s may not exchange",
+                                sso_token.user_id, sso_token.client_id)
+        return jsonify({'error': translate('server.apiError.sso_exchange_not_allowed'),
+                        'code': 'sso_exchange_not_allowed'}), 403
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -1106,10 +1072,10 @@ def exchange_sso_token():
     else:
         requested = allowed
     response, status = issue_token(sso_token.user_id, name, expires_in_days,
-                                   json.dumps(sorted(requested)), sso_client_id=sso_token.client_id)
+                                   json.dumps(sorted(requested)), sso_client_id=client_id)
     if status == 201:
         current_app.logger.info("API token created through SSO token exchange for user %s by client %s",
-                                sso_token.user_id, sso_token.client_id)
+                                sso_token.user_id, client_id)
     return response, status
 
 

@@ -525,7 +525,8 @@
       "defaultAudioPlayerPositionDesc": "Position du lecteur audio sur la page d'un enregistrement pour les nouveaux comptes. Valeurs possibles : top, bottom. Les comptes existants conservent leur position.",
       "ssoApiTokensEnabledDesc": "Si activé, les applications qui connectent les utilisateurs par le même fournisseur SSO que Speakr peuvent appeler l'API avec le jeton d'accès SSO de l'utilisateur et l'échanger contre un jeton d'API. Le SSO doit être configuré et au moins un client doit être autorisé.",
       "ssoApiAllowedClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès sont acceptés, comparés à la revendication aud ou azp. Vide signifie qu'aucun jeton d'accès n'est accepté.",
-      "ssoApiScopesDesc": "Portées séparées par des virgules dont dispose une requête avec un jeton d'accès SSO. Un jeton échangé ne peut avoir que ces portées. Par défaut : read."
+      "ssoApiScopesDesc": "Portées séparées par des virgules dont dispose une requête avec un jeton d'accès SSO. Un jeton échangé ne peut avoir que ces portées. Par défaut : read.",
+      "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",
@@ -3576,7 +3577,8 @@
       "invalid_default_audio_player_position": "Position par défaut du lecteur audio invalide. Valeurs possibles : {{positions}}",
       "sso_token_required": "Cette route n'accepte qu'un jeton d'accès SSO dans l'en-tête Authorization",
       "token_name_too_long": "name doit comporter au plus {{max}} caractères",
-      "sso_scopes_not_allowed": "scopes doit être un sous-ensemble des portées autorisées pour les jetons d'accès SSO : {{allowed}}"
+      "sso_scopes_not_allowed": "scopes doit être un sous-ensemble des portées autorisées pour les jetons d'accès SSO : {{allowed}}",
+      "sso_exchange_not_allowed": "L'échange d'un jeton d'accès SSO n'est pas autorisé pour cette application"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

@@ -525,7 +525,8 @@
       "defaultAudioPlayerPositionDesc": "Posición del reproductor de audio en la página de una grabación para las cuentas nuevas. Uno de: top, bottom. Las cuentas existentes conservan su posición.",
       "ssoApiTokensEnabledDesc": "Si se activa, las aplicaciones que inician sesión de los usuarios con el mismo proveedor SSO que Speakr pueden llamar a la API con el token de acceso SSO del usuario y canjearlo por un token de API. SSO debe estar configurado y al menos un cliente debe estar permitido.",
       "ssoApiAllowedClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso se aceptan, comparados con la reclamación aud o azp. Vacío significa que no se acepta ningún token de acceso.",
-      "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read."
+      "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read.",
+      "ssoApiExchangeClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso pueden canjearse por tokens de API. Cada uno debe figurar también en sso_api_allowed_clients. Vacío significa que no se permite ningún canje. Añada solo aplicaciones que sincronizan en segundo plano, nunca un servidor de herramientas como Open WebUI."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -3576,7 +3577,8 @@
       "invalid_default_audio_player_position": "Posición predeterminada del reproductor de audio no válida. Debe ser una de: {{positions}}",
       "sso_token_required": "Esta ruta solo acepta un token de acceso SSO en el encabezado Authorization",
       "token_name_too_long": "name debe tener como máximo {{max}} caracteres",
-      "sso_scopes_not_allowed": "scopes debe ser un subconjunto de los ámbitos permitidos para tokens de acceso SSO: {{allowed}}"
+      "sso_scopes_not_allowed": "scopes debe ser un subconjunto de los ámbitos permitidos para tokens de acceso SSO: {{allowed}}",
+      "sso_exchange_not_allowed": "Esta aplicación no puede canjear un token de acceso SSO"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

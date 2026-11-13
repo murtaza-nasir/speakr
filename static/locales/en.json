@@ -525,7 +525,8 @@
       "defaultAudioPlayerPositionDesc": "Audio player position on a recording's page for new accounts. One of: top, bottom. Existing accounts keep their position.",
       "ssoApiTokensEnabledDesc": "When enabled, apps that sign users in through the same SSO provider as Speakr can call the API with the user's SSO access token, and exchange it for an API token. SSO must be configured, and at least one client must be allowed.",
       "ssoApiAllowedClientsDesc": "Comma-separated OIDC client IDs whose access tokens are accepted, matched against the aud or azp claim. Empty means that no access token is accepted.",
-      "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read."
+      "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read.",
+      "ssoApiExchangeClientsDesc": "Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means that no exchange is allowed. Add only apps that sync in the background, never a tool server such as Open WebUI."
     },
     "storageUsed": "Storage used",
     "summarizationInstructions": "Summarization instructions",
@@ -3576,7 +3577,8 @@
       "invalid_default_audio_player_position": "Invalid default audio player position. Must be one of: {{positions}}",
       "sso_token_required": "This route accepts only an SSO access token in the Authorization header",
       "token_name_too_long": "name must be at most {{max}} characters",
-      "sso_scopes_not_allowed": "scopes must be a subset of the scopes allowed for SSO access tokens: {{allowed}}"
+      "sso_scopes_not_allowed": "scopes must be a subset of the scopes allowed for SSO access tokens: {{allowed}}",
+      "sso_exchange_not_allowed": "Exchanging an SSO access token is not allowed for this app"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

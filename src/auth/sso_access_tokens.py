@@ -36,6 +36,7 @@ _SYSTEM_SETTING_MAP = {
     "SSO_API_TOKENS_ENABLED": ("sso_api_tokens_enabled", "SSO_API_TOKENS_ENABLED", False),
     "SSO_API_ALLOWED_CLIENTS": ("sso_api_allowed_clients", "SSO_API_ALLOWED_CLIENTS", ""),
     "SSO_API_SCOPES": ("sso_api_scopes", "SSO_API_SCOPES", "read"),
+    "SSO_API_EXCHANGE_CLIENTS": ("sso_api_exchange_clients", "SSO_API_EXCHANGE_CLIENTS", ""),
 }
 _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
 
@@ -82,8 +83,10 @@ class SSOAccessToken:
     revoked = False
     last_used_at = None
 
-    def __init__(self, user, client_id, scopes, claims):
+    def __init__(self, user, client_id, scopes, claims, clients=None):
         self.user = user
+        # Every allowed client the token names in aud or azp.
+        self.clients = frozenset(clients or {client_id})
         self.user_id = user.id
         self.id = f"sso-{user.id}"
         self.client_id = client_id
@@ -120,6 +123,21 @@ def _split(value):
 
 def allowed_clients():
     return set(_split(_self.SSO_API_ALLOWED_CLIENTS))
+
+
+def exchange_clients():
+    """Clients whose tokens may be exchanged: in SSO_API_EXCHANGE_CLIENTS and
+    in SSO_API_ALLOWED_CLIENTS. Empty means that no exchange is allowed."""
+    return set(_split(_self.SSO_API_EXCHANGE_CLIENTS)) & allowed_clients()
+
+
+def exchange_client_for(sso_token):
+    """The client to record for an exchange of this token, or None when the
+    token names no client that may exchange. azp is preferred."""
+    allowed = exchange_clients() & set(sso_token.clients)
+    if not allowed:
+        return None
+    return sso_token.client_id if sso_token.client_id in allowed else sorted(allowed)[0]
 
 
 def granted_scopes():
@@ -209,7 +227,7 @@ def _find_key(key_set, kid):
 
 
 def _verify(value):
-    """Check every claim of a JWT access token. Returns (claims, client_id)."""
+    """Check every claim of a JWT access token. Returns (claims, client_id, clients)."""
     from joserfc import jws, jwt
     from joserfc.errors import JoseError
 
@@ -273,7 +291,7 @@ def _verify(value):
         client_id = azp
     else:
         raise SSOTokenError(f"client not allowed (aud={audiences!r}, azp={azp!r})")
-    return claims, client_id
+    return claims, client_id, set(matched) | ({azp} if azp in clients else set())
 
 
 def validate(value):
@@ -283,7 +301,7 @@ def validate(value):
     try:
         if not is_enabled():
             return None
-        claims, client_id = _verify(value)
+        claims, client_id, matched_clients = _verify(value)
         scopes = granted_scopes()
         if not scopes:
             raise SSOTokenError("SSO_API_SCOPES grants no known scope")
@@ -296,7 +314,7 @@ def validate(value):
             raise SSOTokenError("no user is linked to this subject")
         if not getattr(user, "is_active", True):
             raise SSOTokenError(f"user {user.id} is not active")
-        return SSOAccessToken(user, client_id, scopes, claims)
+        return SSOAccessToken(user, client_id, scopes, claims, matched_clients)
     except SSOTokenError as exc:
         logger.info("SSO access token refused: %s", exc)
     except Exception as exc:  # never let a provider problem become a 500

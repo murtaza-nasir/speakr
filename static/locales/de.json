@@ -525,7 +525,8 @@
       "defaultAudioPlayerPositionDesc": "Position des Audioplayers auf der Seite einer Aufnahme für neue Konten. Einer der Werte: top, bottom. Bestehende Konten behalten ihre Position.",
       "ssoApiTokensEnabledDesc": "Wenn aktiviert, können Apps, die Benutzer über denselben SSO-Anbieter wie Speakr anmelden, die API mit dem SSO-Zugriffstoken des Benutzers aufrufen und es gegen ein API-Token tauschen. SSO muss eingerichtet und mindestens ein Client erlaubt sein.",
       "ssoApiAllowedClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken akzeptiert werden, abgeglichen mit dem Claim aud oder azp. Leer bedeutet, dass kein Zugriffstoken akzeptiert wird.",
-      "ssoApiScopesDesc": "Kommagetrennte Bereiche, die eine Anfrage mit einem SSO-Zugriffstoken hat. Ein getauschtes Token darf nur diese Bereiche haben. Standard: read."
+      "ssoApiScopesDesc": "Kommagetrennte Bereiche, die eine Anfrage mit einem SSO-Zugriffstoken hat. Ein getauschtes Token darf nur diese Bereiche haben. Standard: read.",
+      "ssoApiExchangeClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken gegen API-Token getauscht werden dürfen. Jede muss auch in sso_api_allowed_clients stehen. Leer bedeutet, dass kein Tausch erlaubt ist. Tragen Sie nur Apps ein, die im Hintergrund synchronisieren, nie einen Tool-Server wie Open WebUI."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -3576,7 +3577,8 @@
       "invalid_default_audio_player_position": "Ungültige Standardposition des Audioplayers. Zulässig ist einer der folgenden: {{positions}}",
       "sso_token_required": "Diese Route akzeptiert nur ein SSO-Zugriffstoken im Authorization-Header",
       "token_name_too_long": "name darf höchstens {{max}} Zeichen lang sein",
-      "sso_scopes_not_allowed": "scopes muss eine Teilmenge der für SSO-Zugriffstoken erlaubten Bereiche sein: {{allowed}}"
+      "sso_scopes_not_allowed": "scopes muss eine Teilmenge der für SSO-Zugriffstoken erlaubten Bereiche sein: {{allowed}}",
+      "sso_exchange_not_allowed": "Das Tauschen eines SSO-Zugriffstokens ist für diese App nicht erlaubt"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

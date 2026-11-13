@@ -108,6 +108,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'require_email_verification': ('REQUIRE_EMAIL_VERIFICATION', False, 'boolean', 'Whether verified email is required.'),
     'sso_api_tokens_enabled': ('SSO_API_TOKENS_ENABLED', False, 'boolean', 'Whether SSO access tokens from allowed apps are accepted on the API and can be exchanged for API tokens.'),
     'sso_api_allowed_clients': ('SSO_API_ALLOWED_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens are accepted (matched against aud or azp). Empty means none.'),
+    'sso_api_exchange_clients': ('SSO_API_EXCHANGE_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means no exchange.'),
     'sso_api_scopes': ('SSO_API_SCOPES', 'read', 'string', 'Comma-separated scopes a request with an SSO access token has, and the most an exchanged token may have.'),
 }
 
