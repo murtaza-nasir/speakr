@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.21-alpha: SSO access tokens, people in Ambrose, sharing and job fixes"
-    SSO access tokens from apps with the same single sign-on are accepted by the API, Ambrose finds people by any of their names, and reported bugs in sharing, jobs and uploads are fixed.
+!!! success "Latest Release: v0.10.22-alpha: Accounts from SSO, themed notifications, tablet and phone layout"
+    Apps with the same single sign-on can create Speakr accounts on first use, each with its own scope limit, notifications follow the interface theme, and the tablet and phone layouts are fixed.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.21-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.22-alpha) for details.
 
 ## Quick Navigation
 
@@ -127,6 +127,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.22-alpha - Accounts from SSO, themed notifications, layout fixes"
+    Three settings are added at startup without a value; account creation from access tokens is off until an admin turns it on. Read the Upgrading section of the release notes for the changes to token exchange and webhooks.
+
+    - **Single sign-on** - Accounts created on first use from an SSO access token, scope limits and display names per app.
+    - **Interface** - Notifications in the interface theme, the recording header on tablets and portrait videos on phones.
+    - **Fixes** - Shares after tag group changes, failure notices for empty and over-budget transcriptions, and `.weba` files in the watch folder.
 
 !!! info "Version 0.10.21-alpha - SSO access tokens, people in Ambrose, sharing and job fixes"
     One column and four settings are added at startup; SSO access tokens are off until an admin turns them on. Read the Upgrading section of the release notes for the changes to webhooks and API v1.

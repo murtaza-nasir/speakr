@@ -3886,6 +3886,12 @@
         "3": "Uma lista longa de fontes abaixo de uma resposta fica recolhida. Clique em “Fontes” para abri-la.",
         "4": "Se você perdeu várias atualizações, verá as novidades de cada uma.",
         "5": "Sair de uma página que ficou aberta por muito tempo funciona."
+      },
+      "0_10_22": {
+        "1": "As notificações seguem o seu tema. Os erros ficam até você fechá-los, e toda notificação pode ser fechada.",
+        "2": "No celular, um vídeo vertical não ocupa mais a tela inteira.",
+        "3": "No tablet, o cabeçalho da gravação cabe na tela, e as demais ações ficam no menu Mais.",
+        "4": "Os administradores podem permitir que aplicativos com o mesmo login único, como o Open WebUI, criem contas no Speakr no primeiro uso, cada um com seu próprio limite de acesso."
       }
     }
   },

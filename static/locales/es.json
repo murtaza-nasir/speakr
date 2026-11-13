@@ -3886,6 +3886,12 @@
         "3": "Una lista larga de fuentes bajo una respuesta aparece plegada. Haga clic en «Fuentes» para abrirla.",
         "4": "Si se perdió varias actualizaciones, verá las novedades de cada una.",
         "5": "Cerrar sesión desde una página que estuvo abierta mucho tiempo funciona."
+      },
+      "0_10_22": {
+        "1": "Las notificaciones siguen su tema. Los errores permanecen hasta que los cierra, y todas las notificaciones se pueden cerrar.",
+        "2": "En un teléfono, un video vertical ya no ocupa toda la pantalla.",
+        "3": "En una tableta, el encabezado de la grabación cabe, y las demás acciones están en el menú Más.",
+        "4": "Los administradores pueden permitir que las aplicaciones con el mismo inicio de sesión único, como Open WebUI, creen cuentas de Speakr en el primer uso, cada una con su propio límite de acceso."
       }
     }
   },

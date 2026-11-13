@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.21--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.22--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -237,7 +237,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.21-alpha)
+## Latest Release (v0.10.22-alpha)
+
+- Apps that use the same single sign-on can create Speakr accounts on first use when an admin allows it, and each app can be given its own scope limit.
+- Notifications follow the interface theme, errors stay until they are closed, and every notification can be closed.
+- On tablets the recording header fits, and on phones a portrait video no longer fills the screen.
+- Tag group changes update the group shares, and empty or over-budget transcriptions send a failure notice.
+- WebM audio (`.weba`) is taken from the watch folder.
+
+### v0.10.21-alpha
 
 - The API can be used with the user's SSO access token from any app that signs users in through the same single sign-on and supports this, such as Open WebUI, without a copied API token.
 - Ambrose finds people by a first name, a surname, an email or another spelling, and searches every name a person appears under.
@@ -253,15 +261,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - `.env` settings can be changed in System Settings (#567), and group shares last only while the group still gives a reason for them (#570, #582).
 - Translation progress in the processing queue, Markdown and Word downloads, and fixes for sharing permissions (#571, #578, #579, #581) and failed summaries (#583).
 
-### v0.10.19-alpha
-
-- Transcripts can be translated, on demand or automatically after transcription (PR #538, #463).
-- Uploads are answered before their files are converted, and a queued recording shows what it waits for (discussion #543).
-- Every waiting user gets a turn in the processing queues, and the API gives each recording's place in the queue (discussion #542).
-- Inquire indexing is done on its own worker (discussion #541), and watched files go through the upload pipeline without its size limits (PR #552).
-- Recordings made on iPhones play correctly (#495), `.local` email addresses can register (#551), and seeking in long videos no longer uses up the rate limit (#539).
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.21-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.22-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 

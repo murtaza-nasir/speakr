@@ -3886,6 +3886,12 @@
         "3": "A long Sources list under an answer is folded. Click Sources to open it.",
         "4": "If you missed several updates, you see what's new in each of them.",
         "5": "Signing out from a page that was open for a long time works."
+      },
+      "0_10_22": {
+        "1": "Notifications match your theme. Errors stay until you close them, and every notification can be closed.",
+        "2": "On a phone, a portrait video no longer fills the screen.",
+        "3": "On a tablet, the recording header fits, and the other actions are in the More menu.",
+        "4": "Admins can let apps that use the same single sign-on, such as Open WebUI, create Speakr accounts on first use, each with its own access limit."
       }
     }
   },

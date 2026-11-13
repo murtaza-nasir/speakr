@@ -3886,6 +3886,12 @@
         "3": "Eine lange Quellenliste unter einer Antwort wird eingeklappt. Klicken Sie auf „Quellen“, um sie zu öffnen.",
         "4": "Wenn Sie mehrere Updates verpasst haben, sehen Sie die Neuerungen jedes einzelnen.",
         "5": "Das Abmelden von einer Seite, die lange geöffnet war, funktioniert."
+      },
+      "0_10_22": {
+        "1": "Benachrichtigungen passen zu Ihrem Design. Fehlermeldungen bleiben, bis Sie sie schließen, und jede Benachrichtigung lässt sich schließen.",
+        "2": "Auf dem Smartphone füllt ein Hochformatvideo nicht mehr den Bildschirm.",
+        "3": "Auf dem Tablet passt die Kopfzeile der Aufnahme, und die übrigen Aktionen stehen im Menü „Mehr“.",
+        "4": "Administratoren können Apps mit demselben Single Sign-on, etwa Open WebUI, Speakr-Konten bei der ersten Nutzung anlegen lassen, jeweils mit eigener Zugriffsgrenze."
       }
     }
   },
