@@ -1229,10 +1229,17 @@ def test_a_completed_transcription_still_sends_the_ready_notices(track):
 # A transcription that returned no text sends the failure notices (#406, #595)
 # --------------------------------------------------------------------------
 
-def _empty_transcript_job(track, job_type="transcribe", notify=True):
-    """A job whose runner ends as the empty-transcript branch does (#406)."""
+def _empty_transcript_job(track, job_type="transcribe", notify=True,
+                          message=None, returns_message=False, transcript=None):
+    """A job whose runner ends as the empty-transcript branch does (#406).
+
+    With a message and returns_message, the runner ends as the over-budget
+    branch does instead: the recording is FAILED with the translated budget
+    message, which the task returns.
+    """
     from src.services import email as email_service
     from src.tasks.processing import EMPTY_TRANSCRIPT_MESSAGE
+    message = message or EMPTY_TRANSCRIPT_MESSAGE
     uid = _make_user(); track.user_ids.append(uid)
     user = db.session.get(User, uid)
     user.notify_email_on_completion = notify
@@ -1243,10 +1250,11 @@ def _empty_transcript_job(track, job_type="transcribe", notify=True):
 
     def runner(*args, **kwargs):
         rec = db.session.get(Recording, rid)
-        rec.transcription = None
+        rec.transcription = transcript
         rec.status = "FAILED"
-        rec.error_message = EMPTY_TRANSCRIPT_MESSAGE
+        rec.error_message = message
         db.session.commit()
+        return message if returns_message else None
 
     with patch("src.tasks.processing.transcribe_audio_task", side_effect=runner), \
          patch("src.services.storage.get_storage_service", return_value=_fake_materialized("/tmp/jq_test.mp3")), \
@@ -1279,6 +1287,42 @@ def test_an_empty_transcript_sends_one_failed_webhook_and_one_failure_email(trac
 def test_an_empty_transcript_mails_nobody_who_did_not_opt_in(track):
     rid, jid, emit, send = _empty_transcript_job(track, notify=False)
     assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    send.assert_not_called()
+
+
+OVER_BUDGET = "Monthly transcription budget exceeded (120 of 100 minutes used)."
+
+
+@pytest.mark.parametrize("job_type", ["transcribe", "reprocess_transcription"])
+def test_an_exhausted_budget_sends_one_failed_webhook_and_one_failure_email(track, job_type):
+    rid, jid, emit, send = _empty_transcript_job(track, job_type, message=OVER_BUDGET,
+                                                 returns_message=True, transcript="Old words.")
+    rec = db.session.get(Recording, rid)
+    assert (rec.status, rec.error_message) == ("FAILED", OVER_BUDGET)
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    assert emit.call_args.kwargs["data"] == {"recording_id": rid, "title": "JQ Test Recording",
+                                             "error": OVER_BUDGET}
+    assert send.call_count == 1
+    _, subject, html, text = send.call_args[0]
+    assert subject.startswith("Transcription failed")
+    assert OVER_BUDGET in text
+
+
+def test_an_exhausted_budget_mails_nobody_who_did_not_opt_in(track):
+    rid, jid, emit, send = _empty_transcript_job(track, notify=False, message=OVER_BUDGET,
+                                                 returns_message=True)
+    assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    send.assert_not_called()
+
+
+def test_a_failed_recording_with_an_unreturned_message_gets_no_failure_notices(track):
+    """Only the message the task returned, or the empty-transcript one, counts as terminal."""
+    rid, jid, emit, send = _empty_transcript_job(track, message=OVER_BUDGET, returns_message=False,
+                                                 transcript="Kept words.")
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert "recording.transcription.failed" not in types
+    assert "recording.transcription.completed" not in types
     send.assert_not_called()
 
 

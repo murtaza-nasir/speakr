@@ -252,8 +252,11 @@
                     <img src="{{ url_for('static', filename='img/icon-64.png') }}" srcset="{{ url_for('static', filename='img/icon-64.png') }} 1x, {{ url_for('static', filename='img/icon-128.png') }} 2x" alt="Speakr" class="app-logo w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
                     <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
                 </a>
-                <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
-                <span class="t-meta hidden sm:inline" v-text="t('inquire.title', { name: assistantName })"></span>
+                <!-- The page label shows from 768px: below that the Ask Ambrose and
+                     New Recording labels on the right leave it no room, and the
+                     Speakr name was squeezed out of view. -->
+                <span class="text-[var(--text-muted)] hidden md:inline" aria-hidden="true">/</span>
+                <span class="t-meta hidden md:inline" v-text="t('inquire.title', { name: assistantName })"></span>
             </div>
 
             <!-- Right side: the same controls as every other page

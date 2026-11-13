@@ -5,6 +5,7 @@ while it waits on the ASR service or the LLM; PostgreSQL's
 idle_in_transaction_session_timeout would drop the connection on long jobs.
 
 #406: a transcription that comes back empty is a failure, never COMPLETED.
+Over budget: the recording fails and the message reaches the job queue.
 
 SHARED-DB: every test uses its own user and removes its recordings.
 """
@@ -201,3 +202,66 @@ def test_mossland_task_that_finishes_empty_is_an_error():
                                   "segments": [{"text": "Hello", "start": 0, "end": 1}]}
     result = connector._poll_task(client, "task-2", "model")
     assert result.text == "Hello"
+
+
+# ------------------------------------------------------------ over budget
+
+BUDGET_MESSAGE = "Monthly transcription budget exceeded (120 of 100 minutes used)."
+
+
+def test_an_empty_transcript_returns_its_message(ctx):
+    rec = _recording()
+    connector = _connector(lambda request: _response(""))
+    path = os.path.join(app.config["UPLOAD_FOLDER"], f"wt_{rec.id}.mp3")
+    with open(path, "wb") as f:
+        f.write(b"\x00" * 1024)
+    conv = MagicMock()
+    conv.was_converted = False
+    with patch("src.services.transcription.get_connector", return_value=connector), \
+         patch.object(proc, "is_video_file", return_value=False), \
+         patch.object(proc, "convert_if_needed", return_value=conv), \
+         patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+         patch.object(proc, "chunking_service") as chunking:
+        chunking.needs_chunking.return_value = False
+        chunking.get_audio_duration.return_value = 60.0
+        outcome = proc.transcribe_with_connector(app.app_context(), rec.id, path, "w.mp3",
+                                                 time.time(), mime_type="audio/mpeg")
+    assert outcome == proc.EMPTY_TRANSCRIPT_MESSAGE
+
+
+def test_an_exhausted_budget_fails_the_recording_and_returns_the_message(ctx):
+    rec = _recording()
+    connector = _connector(lambda request: _response("never called"))
+    with patch("src.services.transcription.get_connector", return_value=connector), \
+         patch.object(proc.transcription_tracker, "check_budget",
+                      return_value=(False, 120.0, BUDGET_MESSAGE)):
+        outcome = proc.transcribe_audio_task(app.app_context(), rec.id, "/tmp/unused.mp3",
+                                             "w.mp3", proc.datetime.utcnow())
+    db.session.expire_all()
+    out = db.session.get(Recording, rec.id)
+    assert (out.status, out.error_message) == ("FAILED", BUDGET_MESSAGE)
+    assert outcome == BUDGET_MESSAGE
+    connector.transcribe.assert_not_called()
+
+
+def test_a_completed_transcription_returns_no_failure(ctx):
+    rec = _recording()
+    connector = _connector(lambda request: _response("Hello there."))
+    path = os.path.join(app.config["UPLOAD_FOLDER"], f"wt_{rec.id}.mp3")
+    with open(path, "wb") as f:
+        f.write(b"\x00" * 1024)
+    conv = MagicMock()
+    conv.was_converted = False
+    with patch("src.services.transcription.get_connector", return_value=connector), \
+         patch.object(proc, "is_video_file", return_value=False), \
+         patch.object(proc, "convert_if_needed", return_value=conv), \
+         patch.object(proc, "client", MagicMock()), \
+         patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+         patch.object(proc, "generate_title_task"), \
+         patch.object(proc, "generate_summary_only_task"), \
+         patch.object(proc, "chunking_service") as chunking:
+        chunking.needs_chunking.return_value = False
+        chunking.get_audio_duration.return_value = 60.0
+        outcome = proc.transcribe_with_connector(app.app_context(), rec.id, path, "w.mp3",
+                                                 time.time(), mime_type="audio/mpeg")
+    assert outcome is None

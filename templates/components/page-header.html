@@ -16,11 +16,13 @@
             <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
         </a>
         {% if page_label %}
-        <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
+        {# The page label shows from 768px, as on the Ask Ambrose page: below that
+           the labelled buttons on the right leave the Speakr name too little room. #}
+        <span class="text-[var(--text-muted)] hidden md:inline" aria-hidden="true">/</span>
         {% if page_label_key %}
-        <span class="t-meta hidden sm:inline" v-text="t('{{ page_label_key }}')"></span>
+        <span class="t-meta hidden md:inline" v-text="t('{{ page_label_key }}')"></span>
         {% else %}
-        <span class="t-meta hidden sm:inline">{{ page_label }}</span>
+        <span class="t-meta hidden md:inline">{{ page_label }}</span>
         {% endif %}
         {% endif %}
         {# Hidden in the default look; a UI theme may show it (docs/advanced/ui-themes.md). #}

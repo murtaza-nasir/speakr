@@ -446,7 +446,7 @@ class FairJobQueue:
                 runner_name = JOB_RUNNERS.get(job_type)
                 if runner_name is None:
                     raise ValueError(f"Unknown job type: {job_type}")
-                getattr(self, runner_name)(job, recording, params, job_type=job_type)
+                runner_outcome = getattr(self, runner_name)(job, recording, params, job_type=job_type)
 
                 # Mark as completed - re-fetch to ensure we have latest state
                 job = db.session.get(ProcessingJob, job_id)
@@ -465,24 +465,25 @@ class FairJobQueue:
                 # Best-effort: if the webhook subsystem throws, the job is
                 # still marked completed. Background jobs (translation,
                 # Inquire chunks) send no webhooks or emails.
-                empty_error = None
+                terminal_error = None
                 if not is_background(job_type):
                     try:
-                        empty_error = self._empty_transcript_error(job_type, recording_id)
+                        terminal_error = self._terminal_failure_error(job_type, recording_id, runner_outcome)
                     except Exception as e:
                         logger.warning(f"Outcome check on job {job_id} failed: {e}")
 
-                if empty_error:
-                    # The transcription returned no text (#406): the job ran
-                    # to its end, but the recording ended FAILED with no
-                    # transcript, so the notices are those of a failed
-                    # transcription, sent once (#595 left it silent).
+                if terminal_error:
+                    # The transcription ended FAILED without raising: it
+                    # returned no text (#406) or the transcription budget
+                    # was used up. The job ran to its end, so the notices
+                    # are those of a failed transcription, sent once (#595
+                    # left both silent).
                     try:
-                        self._emit_failure_webhook(job_type, recording_id, empty_error)
+                        self._emit_failure_webhook(job_type, recording_id, terminal_error)
                     except Exception as e:
-                        logger.warning(f"Webhook emit on job {job_id} empty transcript failed: {e}")
+                        logger.warning(f"Webhook emit on job {job_id} terminal failure failed: {e}")
                     try:
-                        self._emit_failure_email(job_type, recording_id, empty_error)
+                        self._emit_failure_email(job_type, recording_id, terminal_error)
                     except Exception as e:
                         logger.warning(f"Failure email for job {job_id} failed: {e}")
                 elif not is_background(job_type):
@@ -618,7 +619,11 @@ class FairJobQueue:
                     db.session.commit()
 
     def _run_audio_job(self, job, recording, params, job_type='transcribe'):
-        """Run a transcription (fresh or reprocess) task. Status updates handled by task function."""
+        """Run a transcription (fresh or reprocess) task. Status updates handled by task function.
+
+        Returns the error message of a failure without retry (an empty
+        transcript, an exhausted transcription budget), else None.
+        """
         from src.tasks.processing import transcribe_audio_task
         from flask import current_app
         from src.services.storage import get_storage_service
@@ -644,7 +649,7 @@ class FairJobQueue:
                 except Exception as e:
                     logger.warning(f"Webhook emit ({job_type} started) failed: {e}")
 
-            transcribe_audio_task(
+            return transcribe_audio_task(
                 current_app._get_current_object().app_context(),
                 recording.id,
                 filepath,
@@ -1120,13 +1125,16 @@ class FairJobQueue:
                 },
             )
 
-    def _empty_transcript_error(self, job_type: str, recording_id: int):
-        """The empty-transcript error when a transcription job ended so (#406), else None.
+    def _terminal_failure_error(self, job_type: str, recording_id: int, runner_outcome=None):
+        """The error of a transcription that ended FAILED without raising, else None.
 
-        The transcription step marks such a recording FAILED with
-        EMPTY_TRANSCRIPT_MESSAGE and returns without raising, so the job
-        completes. A recording that is FAILED for another reason (its
-        automatic summary failed, #595) keeps its own notices.
+        The transcription step marks a recording FAILED and returns the
+        message, without raising, when a retry cannot change the outcome: the
+        service returned no text (#406, EMPTY_TRANSCRIPT_MESSAGE) or the
+        transcription budget was used up (the translated budget message,
+        returned as runner_outcome). The job completes. A recording that is
+        FAILED for another reason (its automatic summary failed, #595) keeps
+        its own notices.
         """
         if job_type not in self._COMPLETION_EVENT_MAP:
             return None
@@ -1135,9 +1143,13 @@ class FairJobQueue:
             from src.models import Recording
             from src.tasks.processing import EMPTY_TRANSCRIPT_MESSAGE
             recording = db.session.get(Recording, recording_id)
-            if (recording is not None and recording.status == 'FAILED'
-                    and recording.error_message == EMPTY_TRANSCRIPT_MESSAGE):
-                return EMPTY_TRANSCRIPT_MESSAGE
+            if recording is None or recording.status != 'FAILED' or not recording.error_message:
+                return None
+            terminal = {EMPTY_TRANSCRIPT_MESSAGE}
+            if isinstance(runner_outcome, str):
+                terminal.add(runner_outcome)
+            if recording.error_message in terminal:
+                return recording.error_message
             return None
 
     def _emit_completion_webhook(self, job_type: str, recording_id: int):

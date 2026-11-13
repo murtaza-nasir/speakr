@@ -90,3 +90,44 @@ def test_the_loading_overlay_follows_the_theme_and_waits_before_showing(admin_cl
     html = admin_client.get("/account").get_data(as_text=True)
     assert "background: var(--bg-primary" in html
     assert "app-loading-appear" in html
+
+
+# ------------------------------------------------ recording header 641-1279px
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _source(*parts):
+    with open(os.path.join(_ROOT, *parts), encoding="utf-8") as f:
+        return f.read()
+
+
+@pytest.mark.parametrize("call", [
+    "toggleInbox(selectedRecording)", "toggleHighlight(selectedRecording)",
+    "toggleArchive(selectedRecording)", "editRecordingTags(selectedRecording)",
+])
+def test_below_1024px_the_lesser_header_actions_move_into_the_more_menu(call):
+    """At 768-1023px the row overflowed (Classic 782 > 768) and the title vanished."""
+    html = _source("templates", "themes", "default", "header-actions.html")
+    assert re.search(r'@click="%s" class="btn btn--icon hidden lg:inline-flex"' % re.escape(call), html), call
+    item = re.search(r'<button role="menuitem" @click="showHeaderMoreMenu = false; %s"\s+class="lg:hidden ' % re.escape(call), html)
+    assert item, call
+
+
+def test_the_more_menu_is_shown_below_1024px_without_delete_rights():
+    html = _source("templates", "themes", "default", "header-actions.html")
+    more = re.search(r'<div class="relative hidden md:inline-flex" data-header-more-menu\s+:class="([^"]+)"', html)
+    assert more and "'lg:hidden'" in more.group(1)
+    assert "data-header-more-folders" in html
+    assert 'class="btn btn--icon hidden lg:inline-flex"\n                    :title="t(\'buttons.identifySpeakers\')"' in html
+
+
+def test_the_recording_header_drops_its_button_labels_below_1280px():
+    css = _source("static", "css", "styles.css")
+    assert re.search(r"@media \(max-width: 1279px\) \{\s*\.app-header--detail \.header-action__label \{ display: none; \}", css)
+
+
+@pytest.mark.parametrize("template", ["inquire.html", "components/page-header.html"])
+def test_the_page_label_shows_from_768px(template):
+    html = _source("templates", *template.split("/"))
+    assert 't-meta hidden md:inline' in html and 't-meta hidden sm:inline' not in html

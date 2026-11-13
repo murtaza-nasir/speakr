@@ -212,6 +212,19 @@ EMPTY_TRANSCRIPT_MESSAGE = (
 )
 
 
+def _fail_without_retry(recording, message):
+    """Mark a recording FAILED for a cause a retry cannot change, and return the message.
+
+    The transcription returns this message instead of raising, so the job
+    queue completes the job without a retry and sends the failure notices
+    once (#406, over-budget recordings).
+    """
+    recording.status = 'FAILED'
+    recording.error_message = message
+    db.session.commit()
+    return recording.error_message
+
+
 def _has_transcript_content(transcription):
     """True when a stored transcript holds at least some text (#406).
 
@@ -1797,6 +1810,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
     - OpenAI GPT-4o Transcribe Diarize (gpt-4o-transcribe-diarize) - with speaker labels
     - Custom ASR endpoints (whisper-asr-webservice, WhisperX, etc.)
 
+    Returns the error message when the recording ended FAILED for a cause a
+    retry cannot change (an empty transcript, an exhausted transcription
+    budget), else None.
+
     Args:
         app_context: Flask app context
         recording_id: ID of the recording to process
@@ -1882,10 +1899,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             can_proceed, usage_pct, budget_msg = transcription_tracker.check_budget(recording.user_id)
             if not can_proceed:
                 current_app.logger.warning(f"User {recording.user_id} exceeded transcription budget: {budget_msg}")
-                recording.status = 'FAILED'
-                recording.error_message = _sanitize_error_message(budget_msg)
-                db.session.commit()
-                return
+                return _fail_without_retry(recording, _sanitize_error_message(budget_msg))
             elif budget_msg:
                 # Log warning but continue
                 current_app.logger.warning(budget_msg)
@@ -2337,10 +2351,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 current_app.logger.warning(
                     f"Transcription for recording {recording_id} returned no text; marking it failed")
                 recording.transcription = None
-                recording.status = 'FAILED'
-                recording.error_message = EMPTY_TRANSCRIPT_MESSAGE
-                db.session.commit()
-                return
+                return _fail_without_retry(recording, EMPTY_TRANSCRIPT_MESSAGE)
 
             # Calculate and save transcription duration
             transcription_end_time = time.time()
@@ -2571,6 +2582,10 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
         tag_id: Optional tag ID to apply custom prompt from
         hotwords: Optional comma-separated hotwords to bias recognition
         initial_prompt: Optional initial prompt to steer transcription
+
+    Returns:
+        The error message of a failure without retry (see
+        transcribe_with_connector), else None.
     """
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -2589,7 +2604,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
 
         mime_type = recording.mime_type if recording else None
 
-    transcribe_with_connector(
+    terminal_error = transcribe_with_connector(
         app_context, recording_id, filepath, filename_for_asr, start_time,
         mime_type=mime_type,
         language=user_transcription_language,
@@ -2609,6 +2624,8 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             end_time = datetime.utcnow()
             recording.processing_time_seconds = (end_time - start_time).total_seconds()
             db.session.commit()
+
+    return terminal_error
 
 
 def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, hotwords=None, initial_prompt=None, user=None, transcription_model=None):

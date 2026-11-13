@@ -48,7 +48,7 @@ Control transcription costs by setting monthly transcription budgets for individ
 **How Transcription Budgets Work**:
 
 - **Warning at 80%**: Users see a yellow warning indicator when they reach 80% of their monthly transcription budget
-- **Blocked at 100%**: Once the budget is exhausted, new transcriptions are blocked until the next month
+- **Blocked at 100%**: Once the budget is exhausted, new transcriptions are blocked until the next month. A blocked recording is marked failed with the budget message, and the `recording.transcription.failed` webhook and, for users who turned on processing emails, the failure email are sent once
 - **Budget Reset**: Transcription minutes reset automatically at the start of each calendar month
 - **No Limit**: Leave the budget field empty for unlimited transcription usage
 

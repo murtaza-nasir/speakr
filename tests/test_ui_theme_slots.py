@@ -35,6 +35,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 THEMES_DIR = os.path.join(ROOT, 'templates', 'themes')
 LOCALES = ('en', 'de', 'es', 'fr', 'pt-BR', 'ru', 'zh')
 
+# The default header's More menu repeats these actions below 1024px.
+_MORE_MENU_COPIES = {
+    'showHeaderMoreMenu = false; toggleInbox(selectedRecording)',
+    'showHeaderMoreMenu = false; toggleHighlight(selectedRecording)',
+    'showHeaderMoreMenu = false; toggleArchive(selectedRecording)',
+    'showHeaderMoreMenu = false; assignFolderToRecording(selectedRecording.id, null)',
+    'showHeaderMoreMenu = false; assignFolderToRecording(selectedRecording.id, folder.id)',
+    'showHeaderMoreMenu = false; editRecordingTags(selectedRecording)',
+    'showHeaderMoreMenu = false; openSpeakerModal()',
+}
+
 # (theme, slot) -> {kind: {item, ...}}: behaviours the override may leave out.
 # Every entry needs a comment with the reason. Kinds are the keys of
 # behaviours() below.
@@ -47,6 +58,18 @@ ALLOWED = {
         # which every theme shows; the rail has no second one.
         'handlers': {'switchToUploadView'},
         'label_keys': {'nav.newRecording'},
+    },
+    # Below 1024px the default header keeps Reprocess, Share and More, and the
+    # More menu repeats the organize and place actions and Speakers. Focus keeps
+    # every action in its overflow panel at every width, and Workspace shows them
+    # in the toolbar above the recording, so neither needs the repeated items.
+    ('focus', 'header-actions'): {
+        'handlers': _MORE_MENU_COPIES,
+        'data': {'data-header-more-folders'},
+    },
+    ('workspace', 'header-actions'): {
+        'handlers': _MORE_MENU_COPIES,
+        'data': {'data-header-more-folders'},
     },
 }
 
