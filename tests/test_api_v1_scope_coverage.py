@@ -29,7 +29,7 @@ EXPECTED = {
                "delete_folder", "delete_speaker"},
     "webhooks": {"list_webhooks", "create_webhook", "get_webhook", "update_webhook", "delete_webhook",
                  "rotate_secret", "test_fire", "list_deliveries", "get_delivery", "replay_delivery"},
-    "": {"get_current_token", "get_capabilities", "exchange_sso_token"},      # any valid token
+    "": {"get_current_token", "revoke_current_token", "get_capabilities", "exchange_sso_token"},      # any valid token
 }
 
 

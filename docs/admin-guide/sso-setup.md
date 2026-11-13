@@ -139,7 +139,7 @@ The feature is off by default. Four settings control it. Each can be set in **Sy
 | Setting | Variable in `.env` | Default | Meaning |
 |---|---|---|---|
 | `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` | `false` | Turns the feature on. SSO must also be configured (`ENABLE_SSO=true` and `SSO_DISCOVERY_URL`). |
-| `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` | empty | Comma-separated OIDC client IDs of the apps whose access tokens are accepted. A token is accepted when its `aud` claim (a string or a list) or its `azp` claim names one of them. Empty means that no access token is accepted. |
+| `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` | empty | Comma-separated OIDC client IDs of the apps whose access tokens are accepted. How the client of a token is found is described under [How an access token is checked](#how-an-access-token-is-checked). Empty means that no access token is accepted. |
 | `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` | empty | Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. A client must also be in `sso_api_allowed_clients`. Empty means that no exchange is allowed, and an exchange request gets `403` with `"code": "sso_exchange_not_allowed"`. Add only apps that sync in the background. |
 | `sso_api_scopes` | `SSO_API_SCOPES` | `read` | Comma-separated [scopes](../user-guide/api-tokens.md#scopes) that a request with an SSO access token has. A token created through the exchange may have these scopes and no others. `full` is not accepted here, and unknown names are ignored. |
 
@@ -150,6 +150,7 @@ A tool server such as Open WebUI belongs in `sso_api_allowed_clients` only, neve
 ### Requirements for the provider
 
 - Access tokens must be signed JWTs. Opaque access tokens, which only the provider can look up, are not supported, because no token introspection endpoint is called. Pocket ID, Keycloak and Authentik issue JWT access tokens. Google issues opaque access tokens and cannot be used for this.
+- Pocket ID issues access tokens in the JWT profile of RFC 9068: the header has `typ: at+jwt`, the `client_id` claim holds the client ID of the app, and `aud` holds the granted audience, which is often only the issuer. Such tokens are matched by `client_id`, so Pocket ID works without any audience setting.
 - The signing algorithm must be asymmetric: RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 or EdDSA. A token signed with HS256 or another shared-secret algorithm, or not signed at all, is refused.
 - The discovery document at `SSO_DISCOVERY_URL` must name the `issuer` and the `jwks_uri`.
 
@@ -162,7 +163,7 @@ Every check must pass:
 1. The signature is verified with a key from the `jwks_uri` in the discovery document. The discovery document and the key set are kept for an hour. When a token names a key ID (`kid`) that the kept key set lacks, as happens after the provider rotates its keys, the key set is fetched again, at most once every 30 seconds. No address taken from the token itself is ever fetched.
 2. `iss` equals the issuer in the discovery document.
 3. `exp` is in the future, and `nbf` and `iat` are not in the future. A clock difference of up to 60 seconds is allowed.
-4. `aud` or `azp` names a client in `sso_api_allowed_clients`.
+4. The client of the token is in `sso_api_allowed_clients`. For a token whose header has `typ` set to `at+jwt` or `application/at+jwt` (RFC 9068), the client is the `client_id` claim, which is then required; `aud` and `azp` are not used. For any other JWT, the client is named by `aud` (a string or a list) or `azp`, and a token that carries `nonce` or `at_hash` is refused, because those claims mark an ID token.
 5. `sub` equals the SSO subject of an existing, active Speakr account. The subject is stored when the user first signs in to Speakr with SSO or links SSO under **Account > Single Sign-On**. No account is created here, and the email address is never used to find an account. A user who has never signed in to Speakr with SSO therefore cannot use an access token.
 
 A token that fails any check gets the same `401` answer as an invalid API token. The reason is written to the Speakr log at INFO level, without the token.

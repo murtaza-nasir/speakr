@@ -133,6 +133,20 @@ The answer is `201` with the same fields as a token created in Account settings,
 
 A scope outside `sso_api_scopes`, a missing name or an invalid expiry gets `400`. The per-account token limit applies, so an account at the limit gets `409` with `"code": "token_limit_reached"`. The token appears in the user's token list with the note **Created through SSO by** and the app's client ID, and it is revoked there like any other token. `GET /api/v1/capabilities` reports `"sso_token_exchange": true` in `features` while the feature is on.
 
+### Revoke the Current Token
+
+```http
+DELETE /api/v1/tokens/current
+```
+
+**Scope:** none (any valid token, full or scoped)
+
+Revokes the API token used for the request, and no other token. Afterwards the token gets `401`. A client that holds only a scoped token can revoke it this way, for example when its user signs out; `DELETE /api/tokens/<id>` accepts only a signed-in browser session. A request made with an SSO access token or a browser session has no API token to revoke and gets `400` with `"code": "no_api_token"`. `GET /api/v1/capabilities` reports `"token_self_revoke": true` in `features`.
+
+```json
+{"message": "Token revoked"}
+```
+
 ### Capabilities
 
 ```http

@@ -18,7 +18,12 @@ token itself.
 - ``iss`` equals the discovery document's issuer.
 - ``exp`` is in the future; ``nbf`` and ``iat`` are not in the future (with
   CLOCK_LEEWAY seconds of leeway).
-- ``aud`` (string or list) or ``azp`` names a client in SSO_API_ALLOWED_CLIENTS.
+- The client is in SSO_API_ALLOWED_CLIENTS. For an RFC 9068 access token
+  (header ``typ`` ``at+jwt``, as Pocket ID issues) the client is the required
+  ``client_id`` claim; ``aud`` there is the granted audience, often only the
+  issuer. For any other JWT the client is named by ``aud`` (string or list)
+  or ``azp``, and a token carrying ``nonce`` or ``at_hash`` is refused as an
+  ID token.
 - ``sub`` belongs to an existing, active user linked by SSO (``sso_subject``).
   Nobody is registered here, and email is never used to match.
 """
@@ -226,6 +231,12 @@ def _find_key(key_set, kid):
     return None
 
 
+def _is_rfc9068(header):
+    """True for a JWT access token profile header (RFC 9068 section 2.1)."""
+    typ = header.get("typ")
+    return isinstance(typ, str) and typ.strip().lower() in ("at+jwt", "application/at+jwt")
+
+
 def _verify(value):
     """Check every claim of a JWT access token. Returns (claims, client_id, clients)."""
     from joserfc import jws, jwt
@@ -275,6 +286,16 @@ def _verify(value):
         raise SSOTokenError(f"claim check failed: {exc.description or exc.error}")
     if not isinstance(claims.get("exp"), (int, float)) or isinstance(claims.get("exp"), bool):
         raise SSOTokenError("exp is not a number")
+
+    if _is_rfc9068(header):
+        client_id = claims.get("client_id")
+        if not isinstance(client_id, str) or not client_id:
+            raise SSOTokenError("at+jwt token has no client_id")
+        if client_id not in clients:
+            raise SSOTokenError(f"client not allowed (client_id={client_id!r})")
+        return claims, client_id, {client_id}
+    if "nonce" in claims or "at_hash" in claims:
+        raise SSOTokenError("ID token, not an access token (nonce or at_hash present)")
 
     aud = claims.get("aud")
     if isinstance(aud, str):
