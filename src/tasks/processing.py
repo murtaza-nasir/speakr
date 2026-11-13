@@ -287,6 +287,18 @@ def _end_transaction_before_external_call(*instances):
         session.expire_on_commit = previous
 
 
+def _connector_specs_log(specs):
+    """The worker's "Connector specs" log line; an unset cap is unlimited (#588)."""
+    def _seconds(value):
+        return "unlimited" if value is None else f"{value}s"
+
+    return (
+        f"Connector specs: max_duration={_seconds(specs.max_duration_seconds)}, "
+        f"handles_internally={specs.handles_chunking_internally}, "
+        f"recommended_chunk={_seconds(specs.recommended_chunk_seconds)}"
+    )
+
+
 def finish_processing(recording_id, events_transcript=None, events_summary=None):
     """The last step of every processing path (#412).
 
@@ -2018,9 +2030,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 current_app.logger.info(f"Video passthrough: chunking skipped (ASR backend handles internally)")
             else:
                 current_app.logger.info(f"Chunking service available: {chunking_service is not None}")
-                current_app.logger.info(f"Connector specs: max_duration={connector_specs.max_duration_seconds}s, "
-                                       f"handles_internally={connector_specs.handles_chunking_internally}, "
-                                       f"recommended_chunk={connector_specs.recommended_chunk_seconds}s")
+                current_app.logger.info(_connector_specs_log(connector_specs))
 
                 if chunking_service:
                     should_chunk = chunking_service.needs_chunking(actual_filepath, False, connector_specs)
