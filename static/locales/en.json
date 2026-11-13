@@ -3688,6 +3688,10 @@
         "similarSearchOne": "1 similarity search",
         "similarSearches": "{{count}} similarity searches"
       }
+    },
+    "summaryError": {
+      "emptyReply": "The language model returned no summary text.",
+      "emptyReplyLength": "The language model used its whole output budget without writing a summary. Ask your admin to raise SUMMARY_MAX_TOKENS or to limit reasoning with TEXT_MODEL_EXTRA_BODY."
     }
   },
   "sharePage": {

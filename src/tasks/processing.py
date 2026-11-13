@@ -258,6 +258,50 @@ def _recording_deleted(recording_id, created_at=None):
     return created_at is not None and row[0] != created_at
 
 
+class EmptySummaryReply(Exception):
+    """The summary model answered with no text.
+
+    A reasoning model that spends max_tokens on its reasoning returns empty
+    content. The message (English, for the job and the log) carries the
+    finish reason and token usage; ``user_message`` is the owner-language
+    text stored as the summary.
+    """
+
+    def __init__(self, message, user_message):
+        super().__init__(message)
+        self.user_message = user_message
+
+
+def _completion_outcome(completion):
+    """finish_reason and token usage of a chat completion, for logs and errors."""
+    try:
+        choice = completion.choices[0]
+    except (AttributeError, IndexError, TypeError):
+        choice = None
+    finish_reason = getattr(choice, 'finish_reason', None)
+    parts = [f"finish_reason={finish_reason if isinstance(finish_reason, str) else 'unknown'}"]
+    usage = getattr(completion, 'usage', None)
+    completion_tokens = getattr(usage, 'completion_tokens', None)
+    if isinstance(completion_tokens, int):
+        parts.append(f"completion_tokens={completion_tokens}")
+    reasoning_tokens = getattr(getattr(usage, 'completion_tokens_details', None), 'reasoning_tokens', None)
+    if isinstance(reasoning_tokens, int):
+        parts.append(f"reasoning_tokens={reasoning_tokens}")
+    return (finish_reason if isinstance(finish_reason, str) else None), ", ".join(parts)
+
+
+def _empty_summary_reply(finish_reason, outcome, language):
+    from src.utils.localization import translate
+    if finish_reason == 'length':
+        message = (f"The language model used its whole output budget without writing a summary ({outcome}). "
+                   f"Raise SUMMARY_MAX_TOKENS or limit reasoning with TEXT_MODEL_EXTRA_BODY.")
+        user_text = translate('server.summaryError.emptyReplyLength', language)
+    else:
+        message = f"The language model returned no summary text ({outcome})."
+        user_text = translate('server.summaryError.emptyReply', language)
+    return EmptySummaryReply(message, f"{user_text} ({outcome})")
+
+
 def _stop_if_recording_replaced(recording_id, created_at):
     """Raise RecordingDeletedDuringJob when the job's row is gone or reused (#597)."""
     if _recording_deleted(recording_id, created_at):
@@ -781,6 +825,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         current_app.logger.debug(f"User prompt (length: {len(prompt_text)} chars):\n{prompt_text}")
         current_app.logger.debug(f"=== END SUMMARIZATION DEBUG for recording {recording_id} ===")
 
+        owner_language = recording.owner.ui_language if recording.owner else None
         try:
             llm_temperature = get_temperature('summary')  # read before the transaction ends
             _end_transaction_before_external_call(recording)
@@ -799,34 +844,34 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             # by the time the LLM answers (#597).
             _stop_if_recording_replaced(recording_id, loaded_created_at)
 
+            finish_reason, outcome = _completion_outcome(completion)
+            current_app.logger.info(f"Summary LLM call for recording {recording_id}: {outcome}")
             raw_response = completion.choices[0].message.content
             current_app.logger.info(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
 
             summary = clean_llm_response(raw_response) if raw_response else ""
             current_app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
+            if not summary:
+                # An empty reply is a failed summary, not a finished one:
+                # stored as "[Summary not generated]" it left the recording
+                # COMPLETED with nothing to read.
+                raise _empty_summary_reply(finish_reason, outcome, owner_language)
 
-            if summary:
-                recording.summary = summary
-                db.session.commit()
-                current_app.logger.info(f"Summary generated successfully for recording {recording_id}")
+            recording.summary = summary
+            db.session.commit()
+            current_app.logger.info(f"Summary generated successfully for recording {recording_id}")
 
-                summarization_end_time = time.time()
-                recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
-                db.session.commit()
-                current_app.logger.info(f"Summarization completed for recording {recording_id} in {recording.summarization_duration_seconds}s.")
-            else:
-                current_app.logger.warning(f"Empty summary generated for recording {recording_id}")
-                recording.summary = "[Summary not generated]"
-                summarization_end_time = time.time()
-                recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
-                db.session.commit()
+            summarization_end_time = time.time()
+            recording.summarization_duration_seconds = int(summarization_end_time - summarization_start_time)
+            db.session.commit()
+            current_app.logger.info(f"Summarization completed for recording {recording_id} in {recording.summarization_duration_seconds}s.")
 
             # Events, status, auto-shares, export and Inquire chunks (#305, #412).
             # The steps after COMPLETED are best-effort inside finish_processing,
             # so a share/export hiccup cannot reach the except below and
             # overwrite a good summary with an error.
             finish_processing(recording_id, events_transcript=formatted_transcription,
-                              events_summary=summary or None)
+                              events_summary=summary)
             from src.services.webhook_dispatch import emit_summary_result
             emit_summary_result(db.session.get(Recording, recording_id), ok=True)
 
@@ -836,7 +881,10 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.info(f"Recording {recording_id} was deleted during summarization; stopping")
             raise
         except Exception as e:
-            error_msg = format_api_error_message(str(e))
+            if isinstance(e, EmptySummaryReply):
+                error_msg = f"[Summary generation failed: {e.user_message}]"
+            else:
+                error_msg = format_api_error_message(str(e))
             current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             recording.summary = error_msg
             recording.status = 'FAILED'

@@ -3688,6 +3688,10 @@
         "similarSearchOne": "1 Ähnlichkeitssuche",
         "similarSearches": "{{count}} Ähnlichkeitssuchen"
       }
+    },
+    "summaryError": {
+      "emptyReply": "Das Sprachmodell hat keinen Zusammenfassungstext zurückgegeben.",
+      "emptyReplyLength": "Das Sprachmodell hat sein gesamtes Ausgabebudget verbraucht, ohne eine Zusammenfassung zu schreiben. Bitten Sie Ihren Administrator, SUMMARY_MAX_TOKENS zu erhöhen oder das Reasoning mit TEXT_MODEL_EXTRA_BODY zu begrenzen."
     }
   },
   "sharePage": {

@@ -3688,6 +3688,10 @@
         "similarSearchOne": "1 次相似搜索",
         "similarSearches": "{{count}} 次相似搜索"
       }
+    },
+    "summaryError": {
+      "emptyReply": "语言模型未返回任何摘要文本。",
+      "emptyReplyLength": "语言模型用尽了全部输出额度，未能写出摘要。请联系管理员调高 SUMMARY_MAX_TOKENS，或通过 TEXT_MODEL_EXTRA_BODY 限制推理。"
     }
   },
   "sharePage": {

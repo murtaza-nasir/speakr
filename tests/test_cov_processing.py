@@ -154,18 +154,22 @@ def test_summary_error_path_sets_failed():
         assert out.error_message == "[Summary generation failed: LLM boom]"
 
 
-def test_summary_empty_response_marks_not_generated():
+def test_summary_empty_response_is_a_summary_failure():
+    """An empty reply used to be stored as "[Summary not generated]" with the
+    recording COMPLETED; it is now a failed summary (tests/test_empty_summary_reply.py)."""
+    from src.services.error_classification import SummaryStepFailed
     with app.app_context():
         user = _make_user("sum_empty")
         rec = _make_recording(user.id)
         rid = rec.id
         with _patch_llm(content=""), patch.object(proc, "ENABLE_INQUIRE_MODE", False):
-            proc.generate_summary_only_task(app.app_context(), rid)
+            with pytest.raises(SummaryStepFailed):
+                proc.generate_summary_only_task(app.app_context(), rid)
 
         db.session.expire_all()
         out = db.session.get(Recording, rid)
-        assert out.status == "COMPLETED"
-        assert out.summary == "[Summary not generated]"
+        assert out.status == "FAILED"
+        assert out.summary.startswith("[Summary generation failed: ")
 
 
 def test_summary_inquire_mode_calls_process_chunks():
