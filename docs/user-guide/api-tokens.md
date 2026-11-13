@@ -195,6 +195,8 @@ The API Tokens tab shows all your active tokens with:
 
 ### Revoking Tokens
 
+An app can also revoke the token it holds with `DELETE /api/v1/tokens/current` (see [API Reference](api-reference.md#revoke-the-current-token)).
+
 Click the trash icon next to any token to revoke it immediately. Revoked tokens:
 
 - Stop working instantly

@@ -266,6 +266,15 @@ OPENAPI_SPEC = {
                 "responses": {"200": {"description": "Token details",
                                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenInfo"}}}},
                               "404": {"description": "No API token in this request"}}
+            },
+            "delete": {
+                "tags": ["Tokens"],
+                "summary": "Revoke the API token used for this request",
+                "description": "Any valid API token, full or scoped, no scope needed. Only the token that "
+                               "authenticates the request is revoked; afterwards it gets 401. A request made "
+                               "with an SSO access token or a browser session gets 400 no_api_token.",
+                "responses": {"200": {"description": "Token revoked"},
+                              "400": {"description": "No API token in this request (no_api_token)"}}
             }
         },
         "/capabilities": {
@@ -1009,6 +1018,28 @@ def get_current_token():
     })
 
 
+@api_v1_bp.route('/tokens/current', methods=['DELETE'])
+@require_scope()
+@login_required
+def revoke_current_token():
+    """Revoke the API token of this request, and only that one.
+
+    A scoped token cannot reach DELETE /api/tokens/<id> (it has no scope mark),
+    so a client that holds only a scoped token revokes it here, for example
+    when its user signs out. Revoking deletes the row, as Account settings
+    does. An SSO access token or a session has no token row to revoke.
+    """
+    from flask import session
+    from src.utils.token_auth import current_api_token, is_sso_token
+    token = None if session.get('_user_id') else current_api_token()
+    if token is None or is_sso_token(token):
+        return jsonify({'error': translate('server.apiError.no_api_token'), 'code': 'no_api_token'}), 400
+    current_app.logger.info("API token %s of user %s revoked by itself", token.id, token.user_id)
+    db.session.delete(token)
+    db.session.commit()
+    return jsonify({'message': translate('server.apiMessage.tokenRevoked')}), 200
+
+
 @api_v1_bp.route('/tokens/exchange', methods=['POST'])
 @require_scope()
 @rate_limit("10 per hour")
@@ -1083,6 +1114,7 @@ def exchange_sso_token():
 # ships; a missing key means false.
 CAPABILITY_FEATURES = {
     'token_scopes': True,
+    'token_self_revoke': True,
     'storage_quota': True,
     'changes_feed': True,
     'etags': True,
