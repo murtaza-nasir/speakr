@@ -134,7 +134,7 @@ Apps that sign users in through the same OIDC provider as Speakr can call the Sp
 - A tool server connection that sends each user's own access token on every call, such as Open WebUI with the **System OAuth** connection type.
 - An app that works in the background, such as a mail client that syncs on a schedule. A short-lived access token is not enough there, so the app exchanges the access token once for a normal Speakr API token at `POST /api/v1/tokens/exchange` and stores that token.
 
-The feature is off by default. Seven settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
+The feature is off by default. Six settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
 
 | Setting | Variable in `.env` | Default | Meaning |
 |---|---|---|---|
@@ -142,7 +142,6 @@ The feature is off by default. Seven settings control it. Each can be set in **S
 | `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` | empty | Comma-separated OIDC client IDs of the apps whose access tokens are accepted. How the client of a token is found is described under [How an access token is checked](#how-an-access-token-is-checked). Empty means that no access token is accepted. |
 | `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` | empty | Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. A client must also be in `sso_api_allowed_clients`. Empty means that no exchange is allowed, and an exchange request gets `403` with `"code": "sso_exchange_not_allowed"`. Add only apps that sync in the background. |
 | `sso_api_scopes` | `SSO_API_SCOPES` | `read` | Comma-separated [scopes](../user-guide/api-tokens.md#scopes) that a request with an SSO access token has. A token created through the exchange may have these scopes and no others. `full` is not accepted here, and unknown names are ignored. |
-| `sso_api_auto_register` | `SSO_API_AUTO_REGISTER` | `false` | Creates the Speakr account of a person who has never signed in to Speakr, the first time a valid access token for that person arrives. `SSO_AUTO_REGISTER` must also be `true`. See [Accounts for people who have not signed in to Speakr](#accounts-for-people-who-have-not-signed-in-to-speakr). |
 | `sso_api_client_names` | `SSO_API_CLIENT_NAMES` | empty | Display names for client IDs, as `client_id=Name` pairs separated by commas or new lines, for example `abc123=Open WebUI`. The name is shown in **Account settings > API tokens** for a token created through the exchange. Malformed pairs are ignored, and a name is cut to 60 characters. |
 | `sso_api_client_scopes` | `SSO_API_CLIENT_SCOPES` | empty | Scope limits per client ID, as `client_id=scope1 scope2` pairs separated by commas or new lines. The scopes of a pair are separated by spaces, `+` or `\|`. See [Scopes per app](#scopes-per-app). |
 
@@ -173,7 +172,6 @@ The same pairs may also be written with `+` or `|`, for example `mail-client=rea
 - Pocket ID issues access tokens in the JWT profile of RFC 9068: the header has `typ: at+jwt`, the `client_id` claim holds the client ID of the app, and `aud` holds the granted audience, which is often only the issuer. Such tokens are matched by `client_id`, so Pocket ID works without any audience setting.
 - The signing algorithm must be asymmetric: RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 or EdDSA. A token signed with HS256 or another shared-secret algorithm, or not signed at all, is refused.
 - The discovery document at `SSO_DISCOVERY_URL` must name the `issuer` and the `jwks_uri`.
-- For `sso_api_auto_register`, the discovery document must also name the `userinfo_endpoint`, and that endpoint must accept the access token of the app. With Pocket ID this holds when the sign-in of the app requested the `openid` scope.
 
 No new client has to be registered in the provider for Speakr. The client IDs to allow are those of the other apps.
 
@@ -185,46 +183,25 @@ Every check must pass:
 2. `iss` equals the issuer in the discovery document.
 3. `exp` is in the future, and `nbf` and `iat` are not in the future. A clock difference of up to 60 seconds is allowed.
 4. The client of the token is in `sso_api_allowed_clients`. For a token whose header has `typ` set to `at+jwt` or `application/at+jwt` (RFC 9068), the client is the `client_id` claim, which is then required; `aud` and `azp` are not used. For any other JWT, the client is named by `aud` (a string or a list) or `azp`, and a token that carries `nonce` or `at_hash` is refused, because those claims mark an ID token.
-5. `sub` equals the SSO subject of an existing, active Speakr account. The subject is stored when the user first signs in to Speakr with SSO or links SSO under **Account > Single Sign-On**. The email address is never used to find an account. When no account has that subject, the token is refused unless `sso_api_auto_register` is on, as described in [Accounts for people who have not signed in to Speakr](#accounts-for-people-who-have-not-signed-in-to-speakr).
+5. `sub` equals the SSO subject of an existing, active Speakr account. The subject is stored when the user first signs in to Speakr with SSO or links SSO under **Account > Single Sign-On**. The email address is never used to find an account. When no account has that subject, the token is refused, as described in [Accounts that do not exist yet](#accounts-that-do-not-exist-yet).
 
 A token that fails any check gets the same `401` answer as an invalid API token. The reason is written to the Speakr log at INFO level, without the token.
 
 A request with an SSO access token is treated like a request with an API token that has the scopes in `sso_api_scopes`. The same scope checks and rate limits apply. The rate limits count per user, and the account budget is shared with the user's API tokens. Such a request does not count as a browser sign-in. The token is accepted only in the `Authorization: Bearer` header, never in `?token=`.
 
-### Accounts for people who have not signed in to Speakr
+### Accounts that do not exist yet
 
-By default, a person who has never signed in to Speakr with SSO has no account, and an access token for that person is refused. With `sso_api_auto_register` on, the account is created the first time a valid access token for that person arrives, on the exchange and on any other API call. Three switches must all be on: `sso_api_tokens_enabled`, `sso_api_auto_register` and `SSO_AUTO_REGISTER`, the switch for sign-up through interactive SSO sign-in.
-
-An account is created only after the token has passed every check above. On the exchange, the client of the token must also be in `sso_api_exchange_clients`. An invalid token never leads to a request to the provider. The claims of the person are then read from the `userinfo_endpoint` of the discovery document, never from an address in the token, with the same access token. The `sub` of the answer must equal the `sub` of the token.
-
-The claim rules of interactive SSO sign-in apply:
-
-- The email domain must be allowed by `SSO_ALLOWED_DOMAINS`.
-- With `SSO_REQUIRE_VERIFIED_EMAIL=true`, the default, `email_verified` must be true.
-- The username comes from the claim in `SSO_DEFAULT_USERNAME_CLAIM`, or from the part of the email before `@`. A number is added when the username is taken.
-- The name comes from the claim in `SSO_DEFAULT_NAME_CLAIM`.
-- The account is given the defaults for new accounts, including the default storage quota, and is linked to the SSO subject.
-
-Two rules differ from interactive sign-in:
-
-- An existing Speakr account is never linked by email here. When an account with the same email exists, whether unlinked or linked to another SSO subject, the request is refused. That person signs in to Speakr once with SSO, which links the account through the usual rules, and the app then works.
-- A person whose userinfo has no email gets no account. No placeholder email is used.
-
-When two first requests for the same person arrive at the same time, one account is created.
-
-On the exchange, each refusal has its own code. On every other route, the answer is the same `401` as for an invalid token, so ordinary API clients see no difference, and the reason is written to the log at INFO level.
+A Speakr account is created only when a person signs in to Speakr with SSO, under the rules of `SSO_AUTO_REGISTER`. A valid access token for a person who has no Speakr account is refused. On the exchange, the refusal has its own code. On every other route, the answer is the same `401` as for an invalid token, and the reason is written to the log at INFO level.
 
 | Status | `code` | Meaning |
 |---|---|---|
-| `403` | `sso_registration_closed` | No account has this subject, and accounts are not created (one of the three switches is off). |
+| `403` | `sso_registration_closed` | No account has this subject. The person signs in to Speakr once with SSO. |
 | `403` | `sso_exchange_not_allowed` | No account has this subject, and the client of the token may not exchange. |
-| `409` | `sso_link_required` | An account with this email exists and is not linked to this subject. The person signs in to Speakr once with SSO. |
-| `403` | `sso_domain_not_allowed` | The email domain is not in `SSO_ALLOWED_DOMAINS`. |
-| `403` | `sso_email_not_verified` | `SSO_REQUIRE_VERIFIED_EMAIL` is on and the email is not verified. |
-| `403` | `sso_email_missing` | The userinfo answer has no email. |
-| `502` | `sso_userinfo_failed` | The userinfo endpoint is missing from the discovery document, cannot be reached, answers with a status other than 200 or with something other than a JSON object, or names another `sub`. |
+| `409` | `sso_link_required` | The token carries an `email` claim, and an account with this email exists that is not linked to this subject. The person signs in to Speakr once with SSO, which links the account through the usual rules. |
 
-`features.sso_exchange_provisioning` in `GET /api/v1/capabilities` is true when missing accounts are created on the exchange. An app with no token yet reads the same information at `GET /api/v1/sso/status`, which needs no authentication (see [SSO Status](../user-guide/api-reference.md#sso-status)).
+The `email` claim of the token only selects between `sso_link_required` and `sso_registration_closed`. It never links an account and never grants access. A token without an `email` claim gets `sso_registration_closed`.
+
+An app with no token yet reads at `GET /api/v1/sso/status`, which needs no authentication, whether the exchange is available (see [SSO Status](../user-guide/api-reference.md#sso-status)).
 
 ### Enabling it for Open WebUI
 
@@ -232,14 +209,14 @@ On the exchange, each refusal has its own code. On every other route, the answer
 2. In the provider, look up the client ID of the Open WebUI client (the value of `OAUTH_CLIENT_ID` in Open WebUI).
 3. In Speakr, open **System Settings** and set `sso_api_allowed_clients` to that client ID. Leave it out of `sso_api_exchange_clients`. Set `sso_api_scopes` to `read` for searching and reading, or to `read,process` if the model may also chat with a recording or start a summary. Then set `sso_api_tokens_enabled` to true.
 4. In Open WebUI, add Speakr as a tool server with the **System OAuth** connection type, as described in [Open WebUI with SSO](../user-guide/api-reference.md#open-webui-with-sso).
-5. Each user signs in to Speakr with SSO once, so that the account is linked. With `sso_api_auto_register` on, this step applies only to a person who already has a Speakr account with the same email.
+5. Each user signs in to Speakr with SSO once, so that the account is created or linked.
 
 ### Enabling it for an app that syncs in the background
 
 1. In the provider, look up the client ID of the app.
 2. In Speakr, add that client ID to `sso_api_allowed_clients`, separated by a comma from any other client ID, and to `sso_api_exchange_clients`. Make sure that `sso_api_scopes` holds every scope the app asks for, for example `read,write,upload`. Set `sso_api_tokens_enabled` to true.
 3. The app sends the user's access token once to `POST /api/v1/tokens/exchange` (see [Token Exchange](../user-guide/api-reference.md#token-exchange)) and stores the API token it receives.
-4. Each user signs in to Speakr with SSO once, so that the account is linked. With `sso_api_auto_register` on, this step applies only to a person who already has a Speakr account with the same email.
+4. Each user signs in to Speakr with SSO once, so that the account is created or linked.
 
 A token created this way appears in the user's **Account settings > API tokens** with the note **Created through SSO by** and the name of the app from `sso_api_client_names`, or its client ID when no name is set. It counts toward the per-account token limit, and the user can revoke it there like any other token. Turning the feature off stops access with SSO access tokens and further exchanges. Tokens created earlier through the exchange keep working until they expire or are revoked.
 
@@ -250,5 +227,4 @@ A token created this way appears in the user's **Account settings > API tokens**
 - **Domain rejected**: confirm `SSO_ALLOWED_DOMAINS` and that the IdP returns an `email` claim.
 - **Already linked**: ensure each SSO subject is unique; users can unlink from Account settings to re-link to a different account.
 - **An app gets 401 with an SSO access token**: the Speakr log names the failed check at INFO level (`SSO access token refused: ...`). The usual causes are a client ID missing from `sso_api_allowed_clients`, an opaque access token, a user who has never signed in to Speakr with SSO, or a different issuer for the app and for Speakr.
-- **The exchange gets 502 `sso_userinfo_failed`**: the log names the reason. Check that the discovery document names a `userinfo_endpoint` and that the endpoint accepts the access token of the app. With Pocket ID, the sign-in of the app must request the `openid` scope.
 
