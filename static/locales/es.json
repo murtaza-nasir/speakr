@@ -3708,7 +3708,8 @@
     },
     "summaryError": {
       "emptyReply": "El modelo de lenguaje no devolvió ningún texto de resumen.",
-      "emptyReplyLength": "El modelo de lenguaje agotó todo su presupuesto de salida sin escribir un resumen. Pida a su administrador que aumente SUMMARY_MAX_TOKENS o que limite el razonamiento con TEXT_MODEL_EXTRA_BODY."
+      "emptyReplyLength": "El modelo de lenguaje agotó todo su presupuesto de salida sin escribir un resumen. Pida a su administrador que aumente SUMMARY_MAX_TOKENS o que limite el razonamiento con TEXT_MODEL_EXTRA_BODY.",
+      "truncatedReply": "El resumen se cortó en el límite de salida del modelo de lenguaje. Pida a su administrador que aumente SUMMARY_MAX_TOKENS o que limite el razonamiento con TEXT_MODEL_EXTRA_BODY."
     }
   },
   "sharePage": {

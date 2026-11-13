@@ -179,3 +179,24 @@ def test_a_summary_job_with_an_empty_reply_is_retried_then_fails(rec_id):
         assert rec.status == "FAILED"
         assert rec.transcription == TRANSCRIPT
         assert "TEXT_MODEL_EXTRA_BODY" in rec.summary
+
+
+def test_a_reply_cut_off_at_the_limit_fails_and_is_not_stored(rec_id):
+    partial = "# Team updates\n\n**Recording date:** November 12, 2026\n**Meeting context:** S"
+    with _llm(_completion(partial, "length", 8000, 7911)):
+        with pytest.raises(SummaryStepFailed) as exc:
+            _run(rec_id)
+    reason = str(exc.value)
+    for part in ("cut off", "finish_reason=length", "reasoning_tokens=7911", "SUMMARY_MAX_TOKENS"):
+        assert part in reason
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert rec.status == "FAILED"
+        assert partial not in rec.summary
+        assert _locale("en")["server"]["summaryError"]["truncatedReply"] in rec.summary
+
+
+def test_every_locale_has_the_cut_off_message():
+    for lang in ("en", "de", "es", "fr", "pt-BR", "ru", "zh"):
+        text = _locale(lang)["server"]["summaryError"]["truncatedReply"]
+        assert "SUMMARY_MAX_TOKENS" in text and "TEXT_MODEL_EXTRA_BODY" in text, lang
