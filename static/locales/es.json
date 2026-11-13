@@ -3937,5 +3937,8 @@
     "warning": "Reemplaza el resumen actual, incluidas tus ediciones.",
     "regenerate": "Regenerar",
     "generate": "Generar"
+  },
+  "toast": {
+    "dismiss": "Descartar notificación"
   }
 }

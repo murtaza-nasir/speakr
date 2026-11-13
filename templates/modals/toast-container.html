@@ -1,9 +1,5 @@
-<!-- Toast Container.
-
-     Fixed in the top-right of the viewport, offset by the page header
-     height so toasts sit BELOW the header bar rather than overlapping it.
-     --app-header-height is the same variable the sidebar uses for its top
-     offset (56px today); the +16px inset matches the existing right edge
-     inset. Plain CSS — no JS, no observers, no fragility. -->
-<div id="toastContainer" class="fixed z-50 pointer-events-none"
-     style="top: calc(var(--app-header-height, 56px) + 16px); right: 16px;"></div>
+<!-- Toast container: a polite live region; each toast carries role="status",
+     or role="alert" for errors (static/js/modules/utils/toast.js). Placement
+     is in styles.css under "Toasts": top right below the page header on
+     desktop, full width above the bottom bars on phones. -->
+<div id="toastContainer" aria-live="polite" aria-relevant="additions text"></div>

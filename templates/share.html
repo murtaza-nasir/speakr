@@ -427,7 +427,7 @@
         </footer>
 
         <!-- Toast Container -->
-        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+        {% include 'modals/toast-container.html' %}
     </div>
 
     <script>
@@ -852,36 +852,12 @@
                     return fallback;
                 }
 
+                // The shared toast (static/js/modules/utils/toast.js), loaded on
+                // first use as this page is not a module.
                 function showToast(message) {
-                    const container = document.getElementById('toastContainer');
-                    const toast = document.createElement('div');
-                    toast.className = 'toast bg-[var(--bg-success)] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 pointer-events-auto';
-                    toast.style.cursor = 'pointer';
-                    toast.innerHTML = `<i class="fas fa-check"></i>${message}`;
-
-                    container.appendChild(toast);
-
-                    // Trigger animation
-                    setTimeout(() => toast.classList.add('show'), 10);
-
-                    // Function to dismiss the toast
-                    const dismissToast = () => {
-                        toast.classList.remove('show');
-                        setTimeout(() => {
-                            if (toast.parentNode) {
-                                container.removeChild(toast);
-                            }
-                        }, 300);
-                    };
-
-                    // Add click handler to dismiss toast
-                    toast.addEventListener('click', () => {
-                        clearTimeout(timeoutId);
-                        dismissToast();
-                    });
-
-                    // Auto-dismiss after 3 seconds
-                    const timeoutId = setTimeout(dismissToast, 3000);
+                    import('/static/js/modules/utils/toast.js')
+                        .then(m => m.showToast(message, 'fa-check-circle', 3000, 'success'))
+                        .catch(err => console.error('Toast failed:', err));
                 }
 
                 return {

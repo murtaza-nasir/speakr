@@ -74,7 +74,7 @@ body.unloaded {
     --scrollbar-thumb: #c5c5c5;
     --scrollbar-thumb-hover: #a8a8a8;
     
-    /* Toast notification colors */
+    /* Success fills (status badges, copy buttons) */
     --bg-success: #10b981;
     --border-success: #059669;
 }
@@ -1024,32 +1024,7 @@ div[v-if="!editingNotes"] {
     margin: 0.5rem 0;
 }
 
-/* Toast notification styles */
-.toast {
-    padding: 12px 18px;
-    border-radius: 8px;
-    background-color: #4CAF50;
-    color: white;
-    font-size: 14px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-    display: flex;
-    align-items: center;
-    min-width: 200px;
-}
- 
- .toast.show {
-     opacity: 1;
-     transform: translateY(0);
- }
- 
- .toast i {
-     margin-right: 8px;
- }
- 
- /* Copy button animation */
+/* Copy button animation */
  @keyframes copy-success {
      0% { transform: scale(1); }
      50% { transform: scale(1.2); }
@@ -2657,66 +2632,116 @@ body {
     }
 }
 
-/* Toast notifications */
+/* Toasts (static/js/modules/utils/toast.js, templates/modals/toast-container.html).
+ *
+ * A toast is a .surface-raised card, so each UI theme's floating surface
+ * (background, border, radius, shadow) applies; the type shows only in the
+ * icon and a thin accent strip on the leading edge. The text is the theme's
+ * primary text on that surface, which keeps AA contrast for every type.
+ * Info takes the colour scheme's accent; the others take the semantic tokens,
+ * which every theme and colour scheme defines for light and dark.
+ *
+ * Desktop: top right, below the page header. Phones: full width at the
+ * bottom, above the player, tab bar and processing queue (toast.js measures
+ * them into --toast-bottom). */
 #toastContainer {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
     z-index: 9999;
+    top: calc(var(--app-header-height, 56px) + 16px);
+    right: 16px;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 12px;
-}
-
-.toast {
-    background: var(--bg-success);
-    color: var(--text-success-strong);
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border-success);
-    transform: translateX(100%);
-    opacity: 0;
-    transition: all 0.3s ease-in-out;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
     gap: 8px;
-    max-width: 300px;
+    width: min(420px, calc(100vw - 32px));
+    pointer-events: none;
 }
 
-.toast.show {
-    transform: translateX(0);
-    opacity: 1;
-}
-
-.toast i {
-    flex-shrink: 0;
-}
-
-/* Toast message stacking with fly-in animation */
 .toast-message {
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-    pointer-events: auto;
-    transform: translateX(400px);
-    margin-bottom: 0.5rem;
-    display: block !important;
-    max-width: 450px;
-    word-wrap: break-word;
-    /* All other styles handled by Tailwind classes */
-}
-
-.toast-message.toast-show {
-    transform: translateX(0);
-}
-
-#toastContainer {
+    --toast-accent: var(--text-accent);
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    max-width: 450px;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 6px 10px 16px;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast-message.toast-show { opacity: 1; transform: none; }
+.toast-message::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    background: var(--toast-accent);
+}
+.toast--success { --toast-accent: var(--text-success-strong); }
+.toast--warning { --toast-accent: var(--text-warn-strong); }
+.toast--error   { --toast-accent: var(--text-danger); }
+
+.toast-message .toast__icon {
+    flex: none;
+    width: 18px;
+    margin-top: 2px;
+    text-align: center;
+    color: var(--toast-accent);
+}
+.toast-message .toast__body { flex: 1; min-width: 0; padding-top: 1px; }
+.toast-message .toast__body:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: 2px; }
+.toast-message .toast__count {
+    flex: none;
+    align-self: center;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+}
+.toast-message .toast__close {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: -4px 0 -4px 2px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.toast-message .toast__close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.toast-message .toast__close:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+
+@media (max-width: 640px) {
+    #toastContainer {
+        top: auto;
+        left: 12px;
+        right: 12px;
+        bottom: calc(var(--toast-bottom, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+        width: auto;
+        align-items: stretch;
+    }
+    .toast-message { transform: translateY(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast-message { transition: none; transform: none; }
 }
 
 /* Horizontal resize divider between the transcript and summary columns.
