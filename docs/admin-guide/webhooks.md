@@ -31,6 +31,13 @@ file's existence on disk is confirmed, so subscribers don't see
 misleading started→failed sequences for jobs that abort immediately
 (e.g. the audio file was deleted between upload and worker pickup).
 
+`recording.transcription.completed` fires only when the recording did not
+end `FAILED`. When the automatic summary that runs after a transcription
+fails, the transcript is kept and the recording is `FAILED`: subscribers
+receive `recording.summary.failed` and no `recording.transcription.completed`
+for that run. The same applies to a transcription that returned no text. A
+later summary reprocess that succeeds sends `recording.summary.completed`.
+
 `recording.updated` fires once per saved change, whether the change was made in the web
 app, through API v1 or by a speaker rename or merge. `fields_changed` uses these words:
 

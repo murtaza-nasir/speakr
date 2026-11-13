@@ -1047,3 +1047,217 @@ def test_process_job_dispatches_each_registered_type(track, job_type):
     db.session.expire_all()
     refreshed = db.session.get(ProcessingJob, jid)
     assert refreshed.status == "completed"
+
+
+# --------------------------------------------------------------------------
+# A failed merge job (#592)
+# --------------------------------------------------------------------------
+
+_MERGE_MSG = "Merge job is missing its source recordings."
+
+
+def _merge_job(track, retry_count=0):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "merge", params={"source_ids": []})
+    track.job_ids.append(jid)
+    if retry_count:
+        db.session.get(ProcessingJob, jid).retry_count = retry_count
+        db.session.commit()
+    return rid, jid, _claim(rid, TRANSCRIPTION_JOBS, "transcription")
+
+
+def test_merge_mergeerror_commits_user_safe_text(track):
+    from src.services.recording_merge import MergeError
+    rid, jid, job = _merge_job(track)
+    with patch("src.services.recording_merge.run_merge_job", side_effect=MergeError(_MERGE_MSG)), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch("src.services.email.send_transcription_failed_email") as fail_mail:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "queued"
+    assert refreshed.retry_count == 1
+    assert refreshed.error_message == _MERGE_MSG
+    rec = db.session.get(Recording, rid)
+    assert rec.status == "FAILED"
+    assert rec.error_message == _MERGE_MSG
+    assert _MERGE_MSG in rec.transcription
+    assert "is not defined" not in (rec.transcription or "")
+    emit.assert_not_called()
+    fail_mail.assert_not_called()
+
+
+def test_merge_terminal_failure_emits_webhook_and_email(track):
+    from src.services.recording_merge import MergeError
+    rid, jid, job = _merge_job(track, retry_count=MAX_RETRIES - 1)
+    with patch("src.services.recording_merge.run_merge_job", side_effect=MergeError(_MERGE_MSG)), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch("src.services.email.send_transcription_failed_email", return_value=True) as fail_mail:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "failed"
+    assert refreshed.retry_count == MAX_RETRIES
+    assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    assert emit.call_args.kwargs["data"]["error"] == _MERGE_MSG
+    fail_mail.assert_called_once()
+    rec = db.session.get(Recording, rid)
+    assert rec.status == "FAILED"
+    assert rec.error_message == _MERGE_MSG
+    stored = json.loads(rec.transcription[len("ERROR_JSON:"):])
+    assert stored["m"] == _MERGE_MSG
+
+
+def test_merge_job_success_completes_without_failure_notice(track):
+    rid, jid, job = _merge_job(track)
+    with patch("src.services.recording_merge.run_merge_job", return_value=None), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch("src.services.email.send_transcription_failed_email") as fail_mail:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    emit.assert_not_called()
+    fail_mail.assert_not_called()
+
+
+# --------------------------------------------------------------------------
+# A 5xx whose body contains a permanent-looking word (#594)
+# --------------------------------------------------------------------------
+
+_500_UNAUTHORIZED = "ASR request failed with status 500: the speaker said unauthorized access was discussed"
+
+
+@pytest.mark.parametrize("msg", [
+    _500_UNAUTHORIZED,
+    "Error code: 503 - billing service unreachable, permission denied upstream",
+    "ASR request failed with status 502: bad request from proxy",
+])
+def test_http_5xx_with_permanent_words_is_transient(msg):
+    assert job_queue._is_permanent_error(msg) is False
+
+
+@pytest.mark.parametrize("msg", [
+    "ASR request failed with status 401: unauthorized",
+    "unauthorized",
+    "Error code: 403 - Forbidden",
+    "Tencent ASR task had no clear outcome",
+])
+def test_status_401_unauthorized_stays_permanent(msg):
+    assert job_queue._is_permanent_error(msg) is True
+
+
+@pytest.mark.parametrize("error", [
+    _500_UNAUTHORIZED,
+    "Error code: 500 - internal server error",
+])
+def test_http_500_unauthorized_requeues_transcription(track, error):
+    from src.services.transcription.exceptions import ProviderError
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "transcribe"); track.job_ids.append(jid)
+    job = _claim(rid, ["transcribe"], "transcription")
+
+    with patch("src.tasks.processing.transcribe_audio_task", side_effect=ProviderError(error)), \
+         patch("src.services.storage.get_storage_service", return_value=_fake_materialized("/tmp/jq_test.mp3")), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch.object(job_queue, "_emit_failure_webhook") as fail_hook, \
+         patch.object(job_queue, "_emit_failure_email") as fail_mail:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    refreshed = db.session.get(ProcessingJob, jid)
+    assert refreshed.status == "queued"
+    assert refreshed.retry_count == 1
+    assert db.session.get(Recording, rid).audio_path == "/tmp/jq_test.mp3"
+    fail_hook.assert_not_called()
+    fail_mail.assert_not_called()
+
+
+# --------------------------------------------------------------------------
+# Completion notices for a recording that ended FAILED (#595)
+# --------------------------------------------------------------------------
+
+def _transcribe_job_ending(track, final_status):
+    """A transcribe job whose runner returns with the recording at final_status."""
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "transcribe"); track.job_ids.append(jid)
+    job = _claim(rid, ["transcribe"], "transcription")
+
+    def runner(*args, **kwargs):
+        rec = db.session.get(Recording, rid)
+        rec.transcription = "A transcript that was kept."
+        rec.status = final_status
+        if final_status == "FAILED":
+            rec.summary = "[Summary generation failed: Error code: 403 - Forbidden]"
+        db.session.commit()
+
+    with patch("src.tasks.processing.transcribe_audio_task", side_effect=runner), \
+         patch("src.services.storage.get_storage_service", return_value=_fake_materialized("/tmp/jq_test.mp3")), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch("src.services.email.send_transcription_complete_email", return_value=True) as ready_mail:
+        job_queue._process_job(job)
+    db.session.expire_all()
+    return rid, jid, emit, ready_mail
+
+
+def test_a_failed_recording_gets_no_transcription_ready_notices(track):
+    rid, jid, emit, ready_mail = _transcribe_job_ending(track, "FAILED")
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    assert db.session.get(Recording, rid).status == "FAILED"
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert "recording.transcription.completed" not in types
+    ready_mail.assert_not_called()
+
+
+def test_a_completed_transcription_still_sends_the_ready_notices(track):
+    rid, jid, emit, ready_mail = _transcribe_job_ending(track, "COMPLETED")
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert types == ["recording.transcription.completed"]
+    ready_mail.assert_called_once()
+
+
+# --------------------------------------------------------------------------
+# A stale job whose recording id was reused by a new upload (#597)
+# --------------------------------------------------------------------------
+
+def test_a_job_whose_recording_id_was_reused_leaves_the_new_row_alone(track):
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "transcribe"); track.job_ids.append(jid)
+    job = _claim(rid, ["transcribe"], "transcription")
+
+    def delete_and_reuse(*args, **kwargs):
+        # The owner deletes the recording, and the next upload gets its id.
+        with db.engine.begin() as conn:
+            conn.execute(db.text("DELETE FROM processing_job WHERE recording_id = :r"), {"r": rid})
+            conn.execute(db.text("DELETE FROM recording WHERE id = :r"), {"r": rid})
+            conn.execute(Recording.__table__.insert().values(
+                id=rid, user_id=uid, title="New upload", status="QUEUED",
+                transcription="new upload", created_at=datetime.utcnow() + timedelta(seconds=5)))
+        raise RuntimeError("Error code: 401 - invalid api key")
+
+    with patch("src.tasks.processing.transcribe_audio_task", side_effect=delete_and_reuse), \
+         patch("src.services.storage.get_storage_service", return_value=_fake_materialized("/tmp/jq_test.mp3")), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch.object(job_queue, "_emit_failure_webhook") as fail_hook, \
+         patch.object(job_queue, "_emit_failure_email") as fail_mail:
+        job_queue._process_job(job)
+
+    db.session.expire_all()
+    rec = db.session.get(Recording, rid)
+    assert rec.title == "New upload"
+    assert rec.status == "QUEUED"
+    assert rec.transcription == "new upload"
+    assert rec.error_message is None
+    fail_hook.assert_not_called()
+    fail_mail.assert_not_called()

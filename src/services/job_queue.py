@@ -696,6 +696,7 @@ class FairJobQueue:
         failure the recording is flipped to FAILED with the error visible.
         """
         from src.services.recording_merge import run_merge_job, MergeError
+        from src.database import db
 
         try:
             run_merge_job(recording, params)
@@ -1032,8 +1033,10 @@ class FairJobQueue:
         # mapping: those fire from the real transcribe job after a successful
         # stitch.
         'stitch': 'recording.transcription.failed',
-        # Likewise for an upload whose conversion failed (#543).
+        # Likewise for an upload whose conversion failed (#543), and for a
+        # merge or multi-file join whose audio was never assembled (#592).
         'convert': 'recording.transcription.failed',
+        'merge': 'recording.transcription.failed',
     }
 
     # No `summary.started` in the vocabulary today; if one is added later,
@@ -1073,6 +1076,11 @@ class FairJobQueue:
             from src.services.webhook_dispatch import emit_webhook_event
             recording = db.session.get(Recording, recording_id)
             if not recording:
+                return
+            if recording.status == 'FAILED':
+                # The transcription job returned, but the recording ended
+                # FAILED: its auto-summary failed (recording.summary.failed
+                # was already sent) or the transcript came back empty (#595).
                 return
             # Both of these were documented from #275 and neither was ever
             # sent. audio_duration_seconds read `recording.audio_duration`,
@@ -1120,12 +1128,16 @@ class FairJobQueue:
             recording, owner = self._load_recording_and_owner(recording_id)
             if not recording or not owner:
                 return
+            if recording.status == 'FAILED':
+                # "Transcription ready" would contradict the library (#595).
+                return
             if send_transcription_complete_email(owner, recording):
                 logger.info(f"Sent completion email for recording {recording_id} to user {owner.id}")
 
     def _emit_failure_email(self, job_type: str, recording_id: int, error: str):
-        # A failed conversion means the transcript will never come (#543).
-        if job_type not in self._EMAIL_JOB_TYPES + ('convert',):
+        # A failed conversion (#543) or merge (#592) means the transcript
+        # will never come.
+        if job_type not in self._EMAIL_JOB_TYPES + ('convert', 'merge'):
             return
         with self._app_context():
             from src.services.email import send_transcription_failed_email
