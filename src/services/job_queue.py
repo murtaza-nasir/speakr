@@ -1112,7 +1112,7 @@ class FairJobQueue:
             recording = db.session.get(Recording, recording_id)
             if not recording:
                 return
-            if recording.status == 'FAILED':
+            if getattr(recording, 'status', None) == 'FAILED':
                 # The transcription job returned, but the recording ended
                 # FAILED: its auto-summary failed (recording.summary.failed
                 # was already sent) or the transcript came back empty (#595).
@@ -1163,7 +1163,7 @@ class FairJobQueue:
             recording, owner = self._load_recording_and_owner(recording_id)
             if not recording or not owner:
                 return
-            if recording.status == 'FAILED':
+            if getattr(recording, 'status', None) == 'FAILED':
                 # "Transcription ready" would contradict the library (#595).
                 return
             if send_transcription_complete_email(owner, recording):
