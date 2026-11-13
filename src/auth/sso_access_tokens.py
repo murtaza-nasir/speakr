@@ -25,7 +25,19 @@ token itself.
   or ``azp``, and a token carrying ``nonce`` or ``at_hash`` is refused as an
   ID token.
 - ``sub`` belongs to an existing, active user linked by SSO (``sso_subject``).
-  Nobody is registered here, and email is never used to match.
+  Email is never used to match.
+
+Provisioning. When ``sub`` matches no user and SSO_API_AUTO_REGISTER,
+SSO_AUTO_REGISTER and SSO_API_TOKENS_ENABLED are all on, the account is
+created from the provider's userinfo endpoint (the discovery document's
+``userinfo_endpoint``, called with the same access token). The claim rules
+of interactive sign-in apply (allowed domains, verified email, username and
+name claims), with two differences: an existing local account is never
+linked by email (refused with sso_link_required), and userinfo without an
+email is refused. On the exchange route the token must also name a client
+that may exchange before an account is created. Each refusal has a code;
+the exchange route answers with it (see refusal_response), every other
+route gives the usual 401.
 """
 
 import logging
@@ -42,6 +54,8 @@ _SYSTEM_SETTING_MAP = {
     "SSO_API_ALLOWED_CLIENTS": ("sso_api_allowed_clients", "SSO_API_ALLOWED_CLIENTS", ""),
     "SSO_API_SCOPES": ("sso_api_scopes", "SSO_API_SCOPES", "read"),
     "SSO_API_EXCHANGE_CLIENTS": ("sso_api_exchange_clients", "SSO_API_EXCHANGE_CLIENTS", ""),
+    "SSO_API_AUTO_REGISTER": ("sso_api_auto_register", "SSO_API_AUTO_REGISTER", False),
+    "SSO_API_CLIENT_NAMES": ("sso_api_client_names", "SSO_API_CLIENT_NAMES", ""),
 }
 _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
 
@@ -73,6 +87,29 @@ def clear_cache():
 
 class SSOTokenError(Exception):
     """A token failed one of the checks. The message is for the log only."""
+
+
+class SSOProvisionRefused(Exception):
+    """A valid token whose subject has no account, and none is created.
+
+    ``code`` is the API error code the exchange route answers with; the
+    message is for the log only."""
+
+    def __init__(self, code, reason):
+        super().__init__(reason)
+        self.code = code
+
+
+# The status of each refusal on the exchange route.
+REFUSAL_STATUS = {
+    "sso_registration_closed": 403,
+    "sso_exchange_not_allowed": 403,
+    "sso_link_required": 409,
+    "sso_domain_not_allowed": 403,
+    "sso_email_not_verified": 403,
+    "sso_email_missing": 403,
+    "sso_userinfo_failed": 502,
+}
 
 
 class SSOAccessToken:
@@ -165,6 +202,61 @@ def is_enabled():
     return bool(_self.SSO_API_TOKENS_ENABLED and cfg["enabled"] and cfg["discovery_url"])
 
 
+def _truthy(value):
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in ("true", "1", "yes")
+
+
+def auto_register_enabled():
+    """True when an unknown subject with a valid token gets an account:
+    SSO_API_AUTO_REGISTER and SSO_AUTO_REGISTER both on, and the feature on."""
+    from src.auth.sso import get_sso_config
+    return bool(_truthy(_self.SSO_API_AUTO_REGISTER) and get_sso_config()["auto_register"]
+                and is_enabled())
+
+
+def exchange_available():
+    """True when an exchange can succeed for some client."""
+    return bool(is_enabled() and exchange_clients())
+
+
+def exchange_provisioning_available():
+    """True when an exchange for a person with no account creates the account."""
+    return bool(exchange_available() and auto_register_enabled())
+
+
+def client_names():
+    """SSO_API_CLIENT_NAMES as {client_id: name}.
+
+    Pairs are ``client_id=Name``, separated by commas or new lines. Pairs
+    without ``=``, with an empty side, or with an over-long side are ignored.
+    """
+    names = {}
+    raw = str(_self.SSO_API_CLIENT_NAMES or "")
+    for part in raw.replace("\r", "\n").replace(",", "\n").split("\n"):
+        if "=" not in part:
+            continue
+        client_id, name = (side.strip() for side in part.split("=", 1))
+        if not client_id or not name or len(client_id) > 255:
+            continue
+        names[client_id] = name[:CLIENT_NAME_MAX]
+    return names
+
+
+CLIENT_NAME_MAX = 60
+
+
+def client_name(client_id):
+    """The display name of an SSO client, or None when it has none."""
+    if not client_id:
+        return None
+    try:
+        return client_names().get(client_id)
+    except Exception:
+        return None
+
+
 def looks_like_jwt(value):
     return isinstance(value, str) and value.count(".") == 2 and len(value) < 16384
 
@@ -176,6 +268,21 @@ def _http_get_json(url):
                         headers={"Accept": "application/json"})
     resp.raise_for_status()
     return resp.json()
+
+
+def _http_get_userinfo(url, access_token):
+    """GET the userinfo document with the access token, with bounded timeouts
+    and no redirects. Returns (status code, parsed JSON or None)."""
+    import requests
+    resp = requests.get(url, timeout=HTTP_TIMEOUT, allow_redirects=False,
+                        headers={"Accept": "application/json",
+                                 "Authorization": f"Bearer {access_token}"})
+    if resp.status_code != 200:
+        return resp.status_code, None
+    try:
+        return resp.status_code, resp.json()
+    except ValueError:
+        return resp.status_code, None
 
 
 def _discovery():
@@ -315,6 +422,82 @@ def _verify(value):
     return claims, client_id, set(matched) | ({azp} if azp in clients else set())
 
 
+def _userinfo(value, subject):
+    """The provider's claims for this access token; sub must match the token."""
+    endpoint = _discovery().get("userinfo_endpoint")
+    if not isinstance(endpoint, str) or not endpoint.startswith(("https://", "http://")):
+        raise SSOProvisionRefused("sso_userinfo_failed", "discovery document has no userinfo_endpoint")
+    try:
+        status, claims = _http_get_userinfo(endpoint, value)
+    except Exception as exc:
+        raise SSOProvisionRefused("sso_userinfo_failed",
+                                  f"userinfo endpoint could not be reached: {type(exc).__name__}")
+    if status != 200:
+        raise SSOProvisionRefused("sso_userinfo_failed", f"userinfo endpoint answered {status}")
+    if not isinstance(claims, dict):
+        raise SSOProvisionRefused("sso_userinfo_failed", "userinfo is not a JSON object")
+    if claims.get("sub") != subject:
+        raise SSOProvisionRefused("sso_userinfo_failed", "userinfo sub does not match the token sub")
+    return claims
+
+
+def _provision(value, subject):
+    """Create the account for a valid token whose subject has none.
+
+    Raises SSOProvisionRefused with the reason when no account is created."""
+    from src.auth.sso import create_sso_account, get_sso_config, is_domain_allowed
+    from src.models import User
+    if not auto_register_enabled():
+        raise SSOProvisionRefused("sso_registration_closed", "no user is linked to this subject")
+    claims = _userinfo(value, subject)
+    email = User.normalize_email(claims.get("email")) if isinstance(claims.get("email"), str) else None
+    if not email:
+        raise SSOProvisionRefused("sso_email_missing", "userinfo has no email")
+    if not is_domain_allowed(email):
+        raise SSOProvisionRefused("sso_domain_not_allowed", "email domain is not allowed")
+    if get_sso_config()["require_verified_email"] and not _truthy(claims.get("email_verified")):
+        raise SSOProvisionRefused("sso_email_not_verified", "email is not verified")
+    existing = User.find_by_email(email)
+    if existing is not None and existing.sso_subject == subject:
+        return existing  # created by a concurrent first request
+    if existing is not None:
+        # Never linked by email here; the person signs in to Speakr once.
+        raise SSOProvisionRefused("sso_link_required",
+                                  f"user {existing.id} has this email and is not linked to this subject")
+    user = create_sso_account(claims, email)
+    logger.info("Account %s created from an SSO access token", user.id)
+    return user
+
+
+def _is_exchange_request():
+    from flask import has_request_context, request
+    return has_request_context() and request.endpoint == "api_v1.exchange_sso_token"
+
+
+def _record_refusal(code):
+    from flask import has_request_context, request
+    if has_request_context():
+        request.environ["_speakr_sso_refusal"] = code
+
+
+def refusal_code():
+    """The provisioning refusal of this request's SSO token, or None."""
+    from flask import has_request_context, request
+    if not has_request_context():
+        return None
+    return request.environ.get("_speakr_sso_refusal")
+
+
+def refusal_response():
+    """The (body, status) for a provisioning refusal on the exchange route,
+    or None when the request had none."""
+    code = refusal_code()
+    if code is None:
+        return None
+    from src.utils.localization import api_error
+    return api_error(code), REFUSAL_STATUS.get(code, 403)
+
+
 def validate(value):
     """The SSOAccessToken for a bearer value, or None. Never raises."""
     if not looks_like_jwt(value):
@@ -332,14 +515,26 @@ def validate(value):
             raise SSOTokenError("sub is missing")
         user = User.query.filter_by(sso_subject=subject).first()
         if user is None:
-            raise SSOTokenError("no user is linked to this subject")
+            if _is_exchange_request() and not (exchange_clients() & set(matched_clients)):
+                # Nothing is created for a client that may not exchange.
+                raise SSOProvisionRefused("sso_exchange_not_allowed",
+                                          f"client {client_id!r} may not exchange")
+            user = _provision(value, subject)
         if not getattr(user, "is_active", True):
             raise SSOTokenError(f"user {user.id} is not active")
         return SSOAccessToken(user, client_id, scopes, claims, matched_clients)
     except SSOTokenError as exc:
         logger.info("SSO access token refused: %s", exc)
+    except SSOProvisionRefused as exc:
+        logger.info("SSO access token refused (%s): %s", exc.code, exc)
+        _record_refusal(exc.code)
     except Exception as exc:  # never let a provider problem become a 500
         logger.info("SSO access token refused: unexpected %s", type(exc).__name__)
+        try:
+            from src.database import db
+            db.session.rollback()
+        except Exception:
+            pass
     return None
 
 

@@ -526,6 +526,8 @@
       "ssoApiTokensEnabledDesc": "Quando ativado, apps que fazem login dos usuários pelo mesmo provedor SSO do Speakr podem chamar a API com o token de acesso SSO do usuário e trocá-lo por um token de API. O SSO deve estar configurado e pelo menos um cliente deve ser permitido.",
       "ssoApiAllowedClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso são aceitos, comparados com a claim aud ou azp. Vazio significa que nenhum token de acesso é aceito.",
       "ssoApiScopesDesc": "Escopos separados por vírgula que uma requisição com um token de acesso SSO tem. Um token trocado só pode ter esses escopos. Padrão: read.",
+      "ssoApiAutoRegisterDesc": "Se um token de acesso SSO válido de uma pessoa sem conta no Speakr cria essa conta. SSO_AUTO_REGISTER também precisa estar ativado. Os dados são lidos do endpoint userinfo do provedor. Uma conta local existente nunca é vinculada pelo e-mail; essa pessoa entra no Speakr uma vez com SSO.",
+      "ssoApiClientNamesDesc": "Nomes de exibição para IDs de cliente OIDC, como pares client_id=Nome separados por vírgulas ou quebras de linha. Um token criado pela troca de tokens SSO mostra o nome do seu app nas configurações da conta. Pares malformados são ignorados.",
       "ssoApiExchangeClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso podem ser trocados por tokens de API. Cada um também deve estar em sso_api_allowed_clients. Vazio significa que nenhuma troca é permitida. Adicione apenas apps que sincronizam em segundo plano, nunca um servidor de ferramentas como o Open WebUI."
     },
     "storageUsed": "Armazenamento usado",
@@ -3580,7 +3582,13 @@
       "sso_token_required": "Esta rota aceita apenas um token de acesso SSO no cabeçalho Authorization",
       "token_name_too_long": "name deve ter no máximo {{max}} caracteres",
       "sso_scopes_not_allowed": "scopes deve ser um subconjunto dos escopos permitidos para tokens de acesso SSO: {{allowed}}",
-      "sso_exchange_not_allowed": "A troca de um token de acesso SSO não é permitida para este app"
+      "sso_exchange_not_allowed": "A troca de um token de acesso SSO não é permitida para este app",
+      "sso_registration_closed": "Nenhuma conta do Speakr está vinculada a esta identidade SSO, e contas não são criadas pela API",
+      "sso_link_required": "Já existe uma conta do Speakr com este e-mail. Entre no Speakr uma vez com SSO para vinculá-la",
+      "sso_domain_not_allowed": "O domínio de e-mail desta identidade SSO não é permitido",
+      "sso_email_not_verified": "O e-mail desta identidade SSO não está verificado",
+      "sso_email_missing": "O provedor SSO não retornou nenhum e-mail para esta identidade",
+      "sso_userinfo_failed": "Não foi possível ler o endpoint userinfo do provedor SSO"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

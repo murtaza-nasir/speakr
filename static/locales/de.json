@@ -526,6 +526,8 @@
       "ssoApiTokensEnabledDesc": "Wenn aktiviert, können Apps, die Benutzer über denselben SSO-Anbieter wie Speakr anmelden, die API mit dem SSO-Zugriffstoken des Benutzers aufrufen und es gegen ein API-Token tauschen. SSO muss eingerichtet und mindestens ein Client erlaubt sein.",
       "ssoApiAllowedClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken akzeptiert werden, abgeglichen mit dem Claim aud oder azp. Leer bedeutet, dass kein Zugriffstoken akzeptiert wird.",
       "ssoApiScopesDesc": "Kommagetrennte Bereiche, die eine Anfrage mit einem SSO-Zugriffstoken hat. Ein getauschtes Token darf nur diese Bereiche haben. Standard: read.",
+      "ssoApiAutoRegisterDesc": "Ob ein gültiges SSO-Zugriffstoken für eine Person ohne Speakr-Konto dieses Konto anlegt. SSO_AUTO_REGISTER muss ebenfalls aktiviert sein. Die Angaben werden vom Userinfo-Endpunkt des Anbieters gelesen. Ein vorhandenes lokales Konto wird nie über die E-Mail-Adresse verknüpft; diese Person meldet sich einmal mit SSO bei Speakr an.",
+      "ssoApiClientNamesDesc": "Anzeigenamen für OIDC-Client-IDs als Paare client_id=Name, getrennt durch Kommas oder Zeilenumbrüche. Ein über den SSO-Tokentausch erstelltes Token zeigt in den Kontoeinstellungen den Namen seiner App. Fehlerhafte Paare werden ignoriert.",
       "ssoApiExchangeClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken gegen API-Token getauscht werden dürfen. Jede muss auch in sso_api_allowed_clients stehen. Leer bedeutet, dass kein Tausch erlaubt ist. Tragen Sie nur Apps ein, die im Hintergrund synchronisieren, nie einen Tool-Server wie Open WebUI."
     },
     "storageUsed": "Genutzter Speicher",
@@ -3580,7 +3582,13 @@
       "sso_token_required": "Diese Route akzeptiert nur ein SSO-Zugriffstoken im Authorization-Header",
       "token_name_too_long": "name darf höchstens {{max}} Zeichen lang sein",
       "sso_scopes_not_allowed": "scopes muss eine Teilmenge der für SSO-Zugriffstoken erlaubten Bereiche sein: {{allowed}}",
-      "sso_exchange_not_allowed": "Das Tauschen eines SSO-Zugriffstokens ist für diese App nicht erlaubt"
+      "sso_exchange_not_allowed": "Das Tauschen eines SSO-Zugriffstokens ist für diese App nicht erlaubt",
+      "sso_registration_closed": "Mit dieser SSO-Identität ist kein Speakr-Konto verknüpft, und über die API werden keine Konten angelegt",
+      "sso_link_required": "Ein Speakr-Konto mit dieser E-Mail-Adresse existiert bereits. Melden Sie sich einmal mit SSO bei Speakr an, um es zu verknüpfen",
+      "sso_domain_not_allowed": "Die E-Mail-Domain dieser SSO-Identität ist nicht zugelassen",
+      "sso_email_not_verified": "Die E-Mail-Adresse dieser SSO-Identität ist nicht bestätigt",
+      "sso_email_missing": "Der SSO-Anbieter hat für diese Identität keine E-Mail-Adresse geliefert",
+      "sso_userinfo_failed": "Der Userinfo-Endpunkt des SSO-Anbieters konnte nicht gelesen werden"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

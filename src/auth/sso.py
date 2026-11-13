@@ -218,25 +218,57 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
             return existing_email_user
 
     # Create new user
+    return create_sso_account(userinfo, email or f"{subject}@placeholder.local")
+
+
+def create_sso_account(userinfo: Dict[str, str], email: str) -> User:
+    """Create the Speakr account for an SSO identity that has none.
+
+    Shared by interactive SSO sign-in and the API path that provisions an
+    account from an SSO access token (src/auth/sso_access_tokens.py). The
+    caller has applied its own checks (domain, verified email, linking) and
+    passes the email to store. The username comes from the configured
+    username claim, else the local part of the email; the name from the
+    configured name claim. New-user defaults and the default quota apply.
+
+    Two first requests for the same subject can race. sso_subject is unique,
+    so the second commit fails; the session is rolled back and the account
+    that won is returned. A username taken in the meantime is retried.
+    """
+    from sqlalchemy.exc import IntegrityError
+    from src.config.ui_themes import apply_new_user_defaults
+    from src.services.storage_quota import default_quota_mb
+
+    cfg = get_sso_config()
+    subject = userinfo.get("sub")
+    username_claim = cfg["username_claim"]
+    name_claim = cfg["name_claim"]
     preferred_username = userinfo.get(username_claim) or (email.split("@")[0] if email else None)
-    username = generate_unique_username(preferred_username)
     name_value = userinfo.get(name_claim) if name_claim else userinfo.get("name")
 
-    user = User(
-        username=username,
-        email=email or f"{subject}@placeholder.local",
-        password=None,
-        sso_provider=cfg["provider_name"],
-        sso_subject=subject,
-        name=name_value,
-    )
-    from src.services.storage_quota import default_quota_mb
-    user.storage_quota_mb = default_quota_mb()
-    from src.config.ui_themes import apply_new_user_defaults
-    apply_new_user_defaults(user)
-    db.session.add(user)
-    db.session.commit()
-    return user
+    for attempt in range(3):
+        user = User(
+            username=generate_unique_username(preferred_username),
+            email=email,
+            password=None,
+            sso_provider=cfg["provider_name"],
+            sso_subject=subject,
+            name=name_value,
+        )
+        user.storage_quota_mb = default_quota_mb()
+        apply_new_user_defaults(user)
+        db.session.add(user)
+        try:
+            db.session.commit()
+            return user
+        except IntegrityError:
+            db.session.rollback()
+            winner = User.query.filter_by(sso_subject=subject).first()
+            if winner is not None:
+                return winner
+            if attempt == 2:
+                raise
+    raise RuntimeError("unreachable")
 
 
 def _update_profile_fields(user: User, userinfo: Dict[str, str], name_claim: Optional[str]) -> None:

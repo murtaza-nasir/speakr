@@ -25,7 +25,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
-from src.utils.token_auth import require_scope, token_rate_key
+from src.utils.token_auth import public_route, require_scope, token_rate_key
 from sqlalchemy import func, extract, or_, and_
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -284,6 +284,31 @@ OPENAPI_SPEC = {
                 "description": "Any valid token or session. Clients read features here, never from the version string.",
                 "responses": {"200": {"description": "Capabilities",
                                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Capabilities"}}}}}
+            }
+        },
+        "/sso/status": {
+            "get": {
+                "tags": ["Tokens"],
+                "summary": "Whether SSO token exchange is available",
+                "description": "No authentication. An app that signs users in through the same OIDC provider "
+                               "reads here whether it can exchange a user's access token, and whether an "
+                               "account is created for a person who has none. exchange_client_allowed is "
+                               "null unless client_id is given; it is true only when that client ID is in "
+                               "both sso_api_allowed_clients and sso_api_exchange_clients. Rate-limited per "
+                               "IP address.",
+                "security": [],
+                "parameters": [
+                    {"name": "client_id", "in": "query", "required": False, "schema": {"type": "string"}}
+                ],
+                "responses": {"200": {"description": "SSO status",
+                                      "content": {"application/json": {"schema": {
+                                          "type": "object",
+                                          "properties": {
+                                              "sso_token_exchange": {"type": "boolean"},
+                                              "sso_exchange_provisioning": {"type": "boolean"},
+                                              "exchange_client_allowed": {"type": "boolean", "nullable": True},
+                                          }}}}},
+                              "429": {"description": "Too many requests from this address"}}
             }
         },
         "/search": {
@@ -1040,9 +1065,30 @@ def revoke_current_token():
     return jsonify({'message': translate('server.apiMessage.tokenRevoked')}), 200
 
 
+def _sso_provisioning_refusal(f):
+    """Answer the exchange with the provisioning refusal of its SSO token.
+
+    A valid SSO token whose subject has no account, and for which none was
+    created, is refused here with its code (403, 409 or 502) instead of the
+    401 of an invalid token (src/auth/sso_access_tokens.py)."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        from flask import session
+        from src.utils.token_auth import current_api_token
+        if not session.get('_user_id') and current_api_token() is None:
+            from src.auth.sso_access_tokens import refusal_response
+            refused = refusal_response()
+            if refused is not None:
+                body, status = refused
+                return jsonify(body), status
+        return f(*args, **kwargs)
+    return wrapper
+
+
 @api_v1_bp.route('/tokens/exchange', methods=['POST'])
 @require_scope()
 @rate_limit("10 per hour")
+@_sso_provisioning_refusal
 @login_required
 def exchange_sso_token():
     """Trade an SSO access token for a scoped API token.
@@ -1142,6 +1188,8 @@ def get_capabilities():
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
     from src.auth.sso_access_tokens import is_enabled as sso_access_tokens_enabled
     features['sso_token_exchange'] = sso_access_tokens_enabled()
+    from src.auth.sso_access_tokens import exchange_provisioning_available
+    features['sso_exchange_provisioning'] = exchange_provisioning_available()
     features['inquire'] = {
         'enabled': os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true',
         'agent': os.environ.get('ENABLE_INQUIRE_AGENT', 'false').lower() == 'true',
@@ -1153,6 +1201,34 @@ def get_capabilities():
         # True only when the administrator states that the text, chat and
         # embedding endpoints all run on machines they control.
         'models_local': os.environ.get('MODELS_ARE_LOCAL', 'false').lower() == 'true',
+    })
+
+
+@api_v1_bp.route('/sso/status', methods=['GET'])
+@public_route
+@rate_limit("30 per minute")
+def get_sso_status():
+    """Whether SSO token exchange is available, for apps that have no token yet.
+
+    No authentication and no token handling: a token sent here is ignored,
+    and the per-token limits do not apply. Only a per-IP limit does. Nothing
+    but the three values is returned: no version and no client IDs."""
+    from src.auth.sso_access_tokens import (allowed_clients, exchange_available,
+                                            exchange_clients, exchange_provisioning_available)
+    try:
+        exchange = exchange_available()
+        provisioning = exchange_provisioning_available()
+    except Exception:
+        current_app.logger.info("SSO status could not be read", exc_info=True)
+        exchange = provisioning = False
+    client_id = request.args.get('client_id')
+    allowed = None
+    if client_id is not None:
+        allowed = bool(exchange and client_id in exchange_clients() and client_id in allowed_clients())
+    return jsonify({
+        'sso_token_exchange': exchange,
+        'sso_exchange_provisioning': provisioning,
+        'exchange_client_allowed': allowed,
     })
 
 

@@ -526,6 +526,8 @@
       "ssoApiTokensEnabledDesc": "Si activé, les applications qui connectent les utilisateurs par le même fournisseur SSO que Speakr peuvent appeler l'API avec le jeton d'accès SSO de l'utilisateur et l'échanger contre un jeton d'API. Le SSO doit être configuré et au moins un client doit être autorisé.",
       "ssoApiAllowedClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès sont acceptés, comparés à la revendication aud ou azp. Vide signifie qu'aucun jeton d'accès n'est accepté.",
       "ssoApiScopesDesc": "Portées séparées par des virgules dont dispose une requête avec un jeton d'accès SSO. Un jeton échangé ne peut avoir que ces portées. Par défaut : read.",
+      "ssoApiAutoRegisterDesc": "Indique si un jeton d'accès SSO valide d'une personne sans compte Speakr crée ce compte. SSO_AUTO_REGISTER doit aussi être activé. Les informations sont lues sur le point de terminaison userinfo du fournisseur. Un compte local existant n'est jamais lié par l'adresse e-mail ; cette personne se connecte une fois à Speakr avec le SSO.",
+      "ssoApiClientNamesDesc": "Noms d'affichage des identifiants de client OIDC, sous forme de paires client_id=Nom séparées par des virgules ou des retours à la ligne. Un jeton créé par l'échange de jetons SSO affiche le nom de son application dans les paramètres du compte. Les paires mal formées sont ignorées.",
       "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI."
     },
     "storageUsed": "Stockage utilisé",
@@ -3580,7 +3582,13 @@
       "sso_token_required": "Cette route n'accepte qu'un jeton d'accès SSO dans l'en-tête Authorization",
       "token_name_too_long": "name doit comporter au plus {{max}} caractères",
       "sso_scopes_not_allowed": "scopes doit être un sous-ensemble des portées autorisées pour les jetons d'accès SSO : {{allowed}}",
-      "sso_exchange_not_allowed": "L'échange d'un jeton d'accès SSO n'est pas autorisé pour cette application"
+      "sso_exchange_not_allowed": "L'échange d'un jeton d'accès SSO n'est pas autorisé pour cette application",
+      "sso_registration_closed": "Aucun compte Speakr n'est lié à cette identité SSO, et aucun compte n'est créé par l'API",
+      "sso_link_required": "Un compte Speakr avec cette adresse e-mail existe déjà. Connectez-vous une fois à Speakr avec le SSO pour le lier",
+      "sso_domain_not_allowed": "Le domaine de l'adresse e-mail de cette identité SSO n'est pas autorisé",
+      "sso_email_not_verified": "L'adresse e-mail de cette identité SSO n'est pas vérifiée",
+      "sso_email_missing": "Le fournisseur SSO n'a renvoyé aucune adresse e-mail pour cette identité",
+      "sso_userinfo_failed": "Le point de terminaison userinfo du fournisseur SSO n'a pas pu être lu"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

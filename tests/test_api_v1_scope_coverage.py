@@ -30,6 +30,7 @@ EXPECTED = {
     "webhooks": {"list_webhooks", "create_webhook", "get_webhook", "update_webhook", "delete_webhook",
                  "rotate_secret", "test_fire", "list_deliveries", "get_delivery", "replay_delivery"},
     "": {"get_current_token", "revoke_current_token", "get_capabilities", "exchange_sso_token"},      # any valid token
+    "public": {"get_sso_status"},   # no authentication; a token sent there is ignored
 }
 
 
@@ -42,6 +43,9 @@ def _actual():
         view = app.view_functions[rule.endpoint]
         name = rule.endpoint.split(".", 1)[1]
         scopes = getattr(view, "_required_scopes", None)
+        if getattr(view, "_public_route", False):
+            found[name] = "public"
+            continue
         found[name] = None if scopes is None else ",".join(sorted(scopes))
     return found
 
