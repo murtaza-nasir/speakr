@@ -59,6 +59,7 @@ _SYSTEM_SETTING_MAP = {
     "SSO_API_EXCHANGE_CLIENTS": ("sso_api_exchange_clients", "SSO_API_EXCHANGE_CLIENTS", ""),
     "SSO_API_AUTO_REGISTER": ("sso_api_auto_register", "SSO_API_AUTO_REGISTER", False),
     "SSO_API_CLIENT_NAMES": ("sso_api_client_names", "SSO_API_CLIENT_NAMES", ""),
+    "SSO_API_CLIENT_SCOPES": ("sso_api_client_scopes", "SSO_API_CLIENT_SCOPES", ""),
 }
 _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
 
@@ -224,17 +225,49 @@ def exchange_client_for(sso_token):
     return sso_token.client_id if sso_token.client_id in allowed else sorted(allowed)[0]
 
 
-def granted_scopes():
-    """The scopes an SSO token carries: the known names in SSO_API_SCOPES.
+def granted_scopes(client_id=None):
+    """The scopes an SSO token carries: the known names in SSO_API_SCOPES,
+    narrowed for a client listed in SSO_API_CLIENT_SCOPES.
 
-    'full' is never granted to an SSO token; unknown names are ignored.
+    For a listed client the set is its list intersected with SSO_API_SCOPES;
+    SSO_API_SCOPES stays the outer limit, and it applies alone to a client
+    that is not listed. 'full' is never granted to an SSO token; unknown
+    names are ignored. An empty set means that the client is refused.
     """
     from src.models.api_token import TOKEN_SCOPES
     requested = set(_split(_self.SSO_API_SCOPES))
     unknown = requested - set(TOKEN_SCOPES)
     if unknown:
         logger.warning("SSO_API_SCOPES lists unknown scopes, ignored: %s", ", ".join(sorted(unknown)))
-    return frozenset(requested & set(TOKEN_SCOPES))
+    scopes = frozenset(requested & set(TOKEN_SCOPES))
+    if client_id is not None:
+        per_client = client_scopes()
+        if client_id in per_client:
+            scopes = scopes & per_client[client_id]
+    return scopes
+
+
+def client_scopes():
+    """SSO_API_CLIENT_SCOPES as {client_id: frozenset of scopes}.
+
+    Pairs are ``client_id=scope1 scope2``, separated by commas or new lines;
+    the scopes are separated by spaces, ``+`` or ``|``. A pair without ``=``
+    or with an empty client ID is ignored. Unknown scope names and 'full' are
+    dropped, so a listed client can end up with no scope, which refuses it.
+    """
+    from src.models.api_token import TOKEN_SCOPES
+    known = set(TOKEN_SCOPES)
+    result = {}
+    raw = str(_self.SSO_API_CLIENT_SCOPES or "")
+    for part in raw.replace("\r", "\n").replace(",", "\n").split("\n"):
+        if "=" not in part:
+            continue
+        client_id, value = (side.strip() for side in part.split("=", 1))
+        if not client_id or len(client_id) > 255:
+            continue
+        names = value.replace("+", " ").replace("|", " ").split()
+        result[client_id] = frozenset(n for n in names if n in known)
+    return result
 
 
 def is_enabled():
@@ -571,9 +604,10 @@ def validate(value):
         if not is_enabled():
             return None
         claims, client_id, matched_clients = _verify(value)
-        scopes = granted_scopes()
+        scopes = granted_scopes(client_id)
         if not scopes:
-            raise SSOTokenError("SSO_API_SCOPES grants no known scope")
+            raise SSOTokenError(f"no scope is granted to client {client_id!r} "
+                                "(SSO_API_SCOPES and SSO_API_CLIENT_SCOPES)")
         from src.models import User
         subject = claims.get("sub")
         if not isinstance(subject, str) or not subject:

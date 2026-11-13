@@ -90,7 +90,7 @@ Returns the token used for the request. A request signed in through the web inte
 
 ### SSO Access Tokens
 
-When the administrator turns on SSO access tokens (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)), the `Authorization: Bearer` header may also carry the access token that an allowed app received from the same OIDC provider as Speakr. The request is then made as the Speakr user linked to the token's `sub`, with the scopes set in `sso_api_scopes` (default `read`). Only JWT access tokens are supported; an opaque access token gets `401`. An access token that fails any check gets the same `401` answer as an invalid API token. An SSO access token is not accepted in `?token=`.
+When the administrator turns on SSO access tokens (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)), the `Authorization: Bearer` header may also carry the access token that an allowed app received from the same OIDC provider as Speakr. The request is then made as the Speakr user linked to the token's `sub`, with the scopes set in `sso_api_scopes` (default `read`), narrowed for the app by `sso_api_client_scopes` when the administrator lists it there. Only JWT access tokens are supported; an opaque access token gets `401`. An access token that fails any check gets the same `401` answer as an invalid API token. An SSO access token is not accepted in `?token=`.
 
 For such a request, `GET /api/v1/tokens/current` returns `"id": null` and the client ID of the app in `sso_client_id`.
 
@@ -107,7 +107,7 @@ Creates a Speakr API token for the user of an SSO access token. An app that work
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Required. Shown for the token in **Account settings** → **API tokens**. At most 100 characters. |
-| `scopes` | array | Optional. A subset of the scopes in `sso_api_scopes`. Every scope in `sso_api_scopes` when omitted. |
+| `scopes` | array | Optional. A subset of the scopes allowed for the exchanging app: `sso_api_scopes`, narrowed by the app's entry in `sso_api_client_scopes` when it has one. Every allowed scope when omitted. |
 | `expires_in_days` | integer | Optional. Days until the token expires; `0` or omitted means it does not expire. |
 
 ```bash
@@ -133,7 +133,7 @@ The answer is `201` with the same fields as a token created in Account settings,
 }
 ```
 
-A scope outside `sso_api_scopes`, a missing name or an invalid expiry gets `400`. The per-account token limit applies, so an account at the limit gets `409` with `"code": "token_limit_reached"`. The token appears in the user's token list with the note **Created through SSO by** and the app's client ID, and it is revoked there like any other token. `GET /api/v1/capabilities` reports `"sso_token_exchange": true` in `features` while the feature is on.
+A scope outside the scopes allowed for the app, a missing name or an invalid expiry gets `400`; the answer to a scope outside them lists the allowed scopes in `allowed_scopes`. An app whose entry in `sso_api_client_scopes` leaves no scope gets `400` with `"allowed_scopes": []`. The per-account token limit applies, so an account at the limit gets `409` with `"code": "token_limit_reached"`. The token appears in the user's token list with the note **Created through SSO by** and the app's client ID, and it is revoked there like any other token. `GET /api/v1/capabilities` reports `"sso_token_exchange": true` in `features` while the feature is on.
 
 When the access token is valid but no Speakr account has its subject, the account is created if the administrator has turned on `sso_api_auto_register`; the exchange then succeeds as above. Otherwise the exchange is refused with one of these codes (an invalid token still gets `401`):
 

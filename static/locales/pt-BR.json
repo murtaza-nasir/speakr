@@ -528,6 +528,7 @@
       "ssoApiScopesDesc": "Escopos separados por vírgula que uma requisição com um token de acesso SSO tem. Um token trocado só pode ter esses escopos. Padrão: read.",
       "ssoApiAutoRegisterDesc": "Se um token de acesso SSO válido de uma pessoa sem conta no Speakr cria essa conta. SSO_AUTO_REGISTER também precisa estar ativado. Os dados são lidos do endpoint userinfo do provedor. Uma conta local existente nunca é vinculada pelo e-mail; essa pessoa entra no Speakr uma vez com SSO.",
       "ssoApiClientNamesDesc": "Nomes de exibição para IDs de cliente OIDC, como pares client_id=Nome separados por vírgulas ou quebras de linha. O nome do app é exibido nas configurações da conta para um token criado pela troca de tokens SSO. Pares malformados são ignorados.",
+      "ssoApiClientScopesDesc": "Limites de escopos por app, como pares client_id=escopo1 escopo2 separados por vírgulas ou quebras de linha. Os escopos de um par são separados por espaços, + ou |. Um app listado recebe esses escopos dentro de sso_api_scopes; um app não listado recebe sso_api_scopes. Um app listado sem nenhum escopo conhecido é recusado. Pares malformados são ignorados.",
       "ssoApiExchangeClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso podem ser trocados por tokens de API. Cada um também deve estar em sso_api_allowed_clients. Vazio significa que nenhuma troca é permitida. Adicione apenas apps que sincronizam em segundo plano, nunca um servidor de ferramentas como o Open WebUI."
     },
     "storageUsed": "Armazenamento usado",
