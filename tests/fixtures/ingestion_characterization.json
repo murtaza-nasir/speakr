@@ -198,7 +198,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -227,7 +227,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -517,7 +517,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -787,7 +787,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -1505,7 +1505,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -1862,7 +1862,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2022,7 +2022,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2139,7 +2139,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2369,7 +2369,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2506,7 +2506,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2535,7 +2535,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2564,7 +2564,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2909,7 +2909,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -2938,7 +2938,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mkv",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -3342,7 +3342,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -3371,7 +3371,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -3751,7 +3751,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -3858,7 +3858,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -3965,7 +3965,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -4315,7 +4315,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -4667,7 +4667,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -5664,7 +5664,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -5760,7 +5760,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -5791,7 +5791,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -5857,7 +5857,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -5917,7 +5917,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mkv",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -5995,7 +5995,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -6284,7 +6284,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -6365,7 +6365,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -6472,7 +6472,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -6705,7 +6705,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -6831,7 +6831,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mkv",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -6975,7 +6975,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -7487,7 +7487,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -8704,7 +8704,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -8856,7 +8856,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".wav",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -9070,7 +9070,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".webm",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"
@@ -10020,7 +10020,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".mp4",
+     "ext": ".m4a",
      "size_is_file_size": true,
      "streams": [
       "audio:aac"
@@ -10265,7 +10265,7 @@
     "status": "QUEUED",
     "stored": {
      "content": "<converted>",
-     "ext": ".webm",
+     "ext": ".mp3",
      "size_is_file_size": true,
      "streams": [
       "audio:mp3"

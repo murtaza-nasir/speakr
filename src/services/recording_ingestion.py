@@ -701,6 +701,24 @@ def select_tags_and_folder(*, form, owner):
     return TagFolderSelection(selected_tags, selected_folder)
 
 
+def _stored_file_name(original_filename, filepath):
+    """The name the storage key is built from: the upload's name with the
+    extension of the file actually stored.
+
+    A conversion in the request (WebM to MP3, audio extracted from a video)
+    changes the file but not original_filename; the key kept the old
+    extension, and every transcription converted the MP3 again (#587). The
+    convert job already stores the converted extension. A staged path
+    without an extension (secure_filename can drop it) keeps the upload's.
+    """
+    stored_ext = os.path.splitext(filepath or '')[1]
+    name = original_filename or 'recording'
+    stem, ext = os.path.splitext(name)
+    if stored_ext and stored_ext.lower() != ext.lower():
+        return (stem or 'recording') + stored_ext
+    return name
+
+
 class StoredRecording(NamedTuple):
     """The recording :func:`store_recording` committed, or the quota refusal."""
     recording: Optional[Recording]
@@ -763,7 +781,8 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
     if prepare is not None:
         prepare(recording)
 
-    storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
+    storage_key = storage.build_recording_key(_stored_file_name(original_filename, filepath),
+                                              recording.id, now=now)
     stored_object = storage.upload_local_file(
         filepath,
         storage_key,

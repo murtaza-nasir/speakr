@@ -250,6 +250,13 @@ def convert_if_needed(
     # Handle audio files - check if conversion needed
     needs_conversion = False
     file_ext = os.path.splitext(filepath)[1].lower()
+    # The container ffprobe reports. An upload converted to MP3 before
+    # #587 is stored under its .webm name; its container is "mp3", and
+    # converting it again only re-encodes the MP3. Without a container name
+    # (no probe) a .webm is treated as WebM, as before.
+    container = (codec_info.get('format_name') or '') if codec_info else ''
+    container_names = {part.strip().lower() for part in container.split(',') if part.strip()}
+    is_webm_container = not container_names or bool(container_names & {'webm', 'matroska'})
 
     # Note: Connector-specific codec restrictions are handled via connector_specs.unsupported_codecs
     # which is already applied in get_supported_codecs() above
@@ -257,7 +264,7 @@ def convert_if_needed(
     if audio_codec is None:
         needs_conversion = True
         logger.info(f"Unknown codec for {original_filename}, will attempt conversion")
-    elif file_ext == '.webm':
+    elif file_ext == '.webm' and is_webm_container:
         # WebM containers from MediaRecorder often lack seek cues, making browser
         # audio players unable to seek. Force conversion to a seekable format.
         needs_conversion = True
