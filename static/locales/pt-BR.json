@@ -3856,6 +3856,8 @@
   },
   "whatsNew": {
     "title": "Novidades do Speakr {{version}}",
+    "titleSince": "Novidades desde a sua última visita",
+    "releaseHeading": "Speakr {{version}}",
     "dismiss": "Entendi",
     "releases": {
       "0_10_20": {

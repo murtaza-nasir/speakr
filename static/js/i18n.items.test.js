@@ -40,3 +40,15 @@ describe('i18n.items', () => {
         expect(i18n.items('list')).toEqual(['a', 'b']);
     });
 });
+
+describe('i18n.keys', () => {
+    it('lists the keys from the current language and English together', () => {
+        expect(load({ en: EN, de: DE }, 'de').keys('whatsNew.releases').sort()).toEqual(['0_10_20', '0_10_21']);
+    });
+
+    it('returns an empty list for a missing path or a string', () => {
+        const i18n = load({ en: EN }, 'en');
+        expect(i18n.keys('whatsNew.nothing')).toEqual([]);
+        expect(i18n.keys('whatsNew.releases.0_10_20.1')).toEqual([]);
+    });
+});

@@ -3,6 +3,7 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 // Import composables
 import { useRecordings } from './modules/composables/recordings.js';
 import { resolveInitialSort } from './modules/utils/sort-preference.js';
+import { releasesToShow, releaseVersion } from './modules/utils/whats-new.js';
 import { useUpload } from './modules/composables/upload.js';
 import { useAudio } from './modules/composables/audio.js';
 import { useUI } from './modules/composables/ui.js';
@@ -416,7 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pendingRecordingMode = ref(null);
             const uploadDisclaimer = ref('');
             const showUploadDisclaimerModal = ref(false);
-            const whatsNew = ref({ show: false, items: [], version: '' });
+            const whatsNew = ref({ show: false, items: [], version: '', releases: [] });
             // Close the What's new dialog and record it for the account, so
             // other devices do not show it again.
             const dismissWhatsNew = async () => {
@@ -4431,13 +4432,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
-                        // What's new after an update: once per account, only
-                        // when this release has notes in the locale files.
+                        // What's new after an update: once per account. Every
+                        // release with notes since the one the account last saw
+                        // is listed, newest first (utils/whats-new.js).
                         const wn = config.whats_new;
                         if (wn && wn.enabled && wn.release && wn.seen !== wn.release && window.i18n?.items) {
-                            const items = window.i18n.items('whatsNew.releases.' + wn.release);
-                            if (items.length) {
-                                whatsNew.value = { show: true, items,
+                            const available = window.i18n.keys ? window.i18n.keys('whatsNew.releases') : [wn.release];
+                            const releases = releasesToShow(available, wn.release, wn.seen)
+                                .map((key) => ({ key, version: releaseVersion(key),
+                                                 items: window.i18n.items('whatsNew.releases.' + key) }))
+                                .filter((release) => release.items.length);
+                            if (releases.length) {
+                                whatsNew.value = { show: true, releases, items: releases[0].items,
                                     version: String(wn.version || '').replace(/^v/, '').replace(/-.*$/, '') };
                             }
                         }

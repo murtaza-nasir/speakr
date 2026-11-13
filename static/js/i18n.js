@@ -248,6 +248,24 @@ class I18n {
     }
 
     /**
+     * The keys of an object in the translations (e.g. the releases under
+     * whatsNew.releases), from the current language and English together.
+     * @param {string} key - Dot-separated key path
+     * @returns {string[]} The keys, or an empty list
+     */
+    keys(key) {
+        const at = (locale) => {
+            let value = this.translations[locale];
+            for (const k of key.split('.')) {
+                if (value && typeof value === 'object' && k in value) value = value[k];
+                else return [];
+            }
+            return value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [];
+        };
+        return [...new Set([...at(this.currentLocale), ...at(this.fallbackLocale)])];
+    }
+
+    /**
      * Replace template variables in translation string
      * @param {string} text - Text with placeholders like {{variable}}
      * @param {Object} params - Parameters to replace
