@@ -102,6 +102,27 @@ def summary_prompt_params(custom_prompt=None, prompt_mode='replace', additional_
     return custom_prompt, bool(custom_prompt) and mode == 'append'
 
 
+def caller_summary_prompt(recording, user, custom_prompt, append):
+    """The prompt of the person who asks for a summary of another user's recording (#584).
+
+    The summary task resolves the owner's prompt. When the caller is not the
+    owner and sends no prompt of their own, or sends one to append, their own
+    prompt (the tags they can see, then their default) is resolved here and
+    passed as the prompt that runs. A prompt the caller sends to replace the
+    resolved one is used unchanged.
+    """
+    if user is None or recording.user_id is None or recording.user_id == user.id:
+        return custom_prompt, append
+    if custom_prompt and not append:
+        return custom_prompt, append
+    from src.tasks.processing import resolve_summary_instructions
+    base, _source = resolve_summary_instructions(recording, user)
+    if not custom_prompt:
+        return base, False
+    # The same wording generate_summary_only_task uses for an appended prompt.
+    return f"{base}\n\nAdditional context for this recording:\n{custom_prompt}", False
+
+
 def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='replace',
                             prompt_variables=None, job_type='reprocess_summary',
                             additional_instructions=None):
@@ -126,6 +147,7 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
         raise ReprocessError('summary_llm_not_configured', 503)
 
     custom_prompt, append = summary_prompt_params(custom_prompt, prompt_mode, additional_instructions)
+    custom_prompt, append = caller_summary_prompt(recording, user, custom_prompt, append)
     if prompt_variables is not None:
         recording.prompt_variables = sanitize_variable_values(prompt_variables)
 

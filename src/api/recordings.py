@@ -548,9 +548,11 @@ def generate_summary_endpoint(recording_id):
 
         # Optional custom prompt + mode (issue / discussion #253)
         data = request.get_json(silent=True) or {}
-        from src.services.reprocessing import summary_prompt_params
+        from src.services.reprocessing import summary_prompt_params, caller_summary_prompt
         custom_prompt, custom_prompt_append = summary_prompt_params(
             data.get('custom_prompt'), data.get('prompt_mode'), data.get('additional_instructions'))
+        custom_prompt, custom_prompt_append = caller_summary_prompt(
+            recording, current_user, custom_prompt, custom_prompt_append)
         if isinstance(data.get('prompt_variables'), dict):
             from src.utils.prompt_variables import sanitize_variable_values
             recording.prompt_variables = sanitize_variable_values(data['prompt_variables'])

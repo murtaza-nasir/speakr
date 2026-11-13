@@ -1393,11 +1393,21 @@ POST /api/v1/recordings/{id}/summarize
 
 ```json
 {
-  "custom_prompt": "Focus on technical decisions and action items only"
+  "custom_prompt": "Focus on technical decisions and action items only",
+  "prompt_mode": "replace",
+  "additional_instructions": "The client is Acme."
 }
 ```
 
-The custom prompt overrides the recording's tag prompts and user defaults.
+All fields are optional.
+
+| Field | Description |
+|-------|-------------|
+| `custom_prompt` | A prompt for this run |
+| `prompt_mode` | `replace` (default) runs `custom_prompt` instead of the recording's prompt; `append` adds it after that prompt |
+| `additional_instructions` | Context for this run only, added after the prompt that runs |
+
+Without `custom_prompt`, the recording's prompt is resolved as in the Regenerate summary dialog: tag prompts first, then the folder prompt, your default prompt, the admin default and the built-in default. On a recording shared with you, your own tags and default prompt are used, and the owner's folder prompt is not.
 
 ---
 
