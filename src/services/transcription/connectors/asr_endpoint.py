@@ -20,7 +20,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
-from src.utils.error_formatting import truncate_middle
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,10 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 body = ''
             # Keep both ends: a worker traceback names the exception on its
             # last line, and a cut from the start threw exactly that away.
-            body_excerpt = truncate_middle(body.strip(), 800)
+            # A gateway's HTML page is reduced to its text and anything that
+            # looks like a credential is redacted: this text reaches the log,
+            # the failure webhook and email, and the technical details (#593).
+            body_excerpt = summarize_error_body(body, 800)
             logger.error(
                 f"ASR request for {request.filename!r} failed with status "
                 f"{e.response.status_code}: {body_excerpt}"

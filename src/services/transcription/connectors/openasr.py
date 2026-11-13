@@ -19,6 +19,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,9 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
                 body = e.response.text
             except Exception:
                 body = ''
-            body_excerpt = body.strip()[:800]
+            # Summarised, not copied: the text reaches the log, the failure
+            # webhook and email, and the technical details (#593)
+            body_excerpt = summarize_error_body(body, 800)
             logger.error(f"OpenASR request failed: {e.response.status_code} {body_excerpt}")
             raise TranscriptionError(
                 f"OpenASR request failed (status {e.response.status_code}): {body_excerpt}"
