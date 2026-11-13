@@ -123,6 +123,10 @@ def delete_event(event_id):
         # Check permissions through recording access
         if not event or not has_recording_access(event.recording, current_user):
             return jsonify(api_error('event_not_found')), 404
+        # Deleting an event changes the recording for everyone who sees it,
+        # so it needs edit access, as the recording's other writes do (#598)
+        if not has_recording_access(event.recording, current_user, require_edit=True):
+            return jsonify(api_error('recording_modify_denied')), 403
 
         db.session.delete(event)
         db.session.commit()
