@@ -527,7 +527,7 @@
       "ssoApiAllowedClientsDesc": "Comma-separated OIDC client IDs whose access tokens are accepted, matched against the aud or azp claim. Empty means that no access token is accepted.",
       "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read.",
       "ssoApiAutoRegisterDesc": "Whether a valid SSO access token for a person with no Speakr account creates that account. SSO_AUTO_REGISTER must also be on. The claims are read from the provider's userinfo endpoint. An existing local account is never linked by email; that person signs in to Speakr once with SSO.",
-      "ssoApiClientNamesDesc": "Display names for OIDC client IDs, as client_id=Name pairs separated by commas or new lines. A token created through the SSO token exchange shows the name of its app in Account settings. Malformed pairs are ignored.",
+      "ssoApiClientNamesDesc": "Display names for OIDC client IDs, as client_id=Name pairs separated by commas or new lines. The name of the app is shown in Account settings for a token created through the SSO token exchange. Malformed pairs are ignored.",
       "ssoApiExchangeClientsDesc": "Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means that no exchange is allowed. Add only apps that sync in the background, never a tool server such as Open WebUI."
     },
     "storageUsed": "Storage used",

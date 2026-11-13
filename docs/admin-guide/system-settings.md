@@ -197,6 +197,8 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `require_email_verification` | `REQUIRE_EMAIL_VERIFICATION` |
 | `show_usernames_in_ui` | `SHOW_USERNAMES_IN_UI` |
 | `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` |
+| `sso_api_auto_register` | `SSO_API_AUTO_REGISTER` |
+| `sso_api_client_names` | `SSO_API_CLIENT_NAMES` |
 | `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` |
 | `sso_api_scopes` | `SSO_API_SCOPES` |
 | `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` |

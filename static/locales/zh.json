@@ -527,7 +527,7 @@
       "ssoApiAllowedClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌会被接受，与 aud 或 azp 声明比对。留空表示不接受任何访问令牌。",
       "ssoApiScopesDesc": "以逗号分隔的范围，即携带 SSO 访问令牌的请求所具有的范围。换取的令牌只能具有这些范围。默认值：read。",
       "ssoApiAutoRegisterDesc": "没有 Speakr 账户的人持有效 SSO 访问令牌时是否创建该账户。SSO_AUTO_REGISTER 也必须开启。资料从提供方的 userinfo 端点读取。已有的本地账户绝不会按电子邮件关联；此人需用 SSO 登录 Speakr 一次。",
-      "ssoApiClientNamesDesc": "OIDC 客户端 ID 的显示名称，格式为 client_id=名称，以逗号或换行分隔。通过 SSO 令牌换取创建的令牌会在账户设置中显示其应用名称。格式错误的条目会被忽略。",
+      "ssoApiClientNamesDesc": "OIDC 客户端 ID 的显示名称，格式为 client_id=名称，以逗号或换行分隔。对于通过 SSO 令牌换取创建的令牌，账户设置中会显示其应用名称。格式错误的条目会被忽略。",
       "ssoApiExchangeClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌可换取 API 令牌。每个 ID 也必须在 sso_api_allowed_clients 中。留空表示不允许任何换取。只添加在后台同步的应用，切勿添加 Open WebUI 等工具服务器。"
     },
     "storageUsed": "已用存储",

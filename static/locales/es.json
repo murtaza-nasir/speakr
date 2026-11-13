@@ -527,7 +527,7 @@
       "ssoApiAllowedClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso se aceptan, comparados con la reclamación aud o azp. Vacío significa que no se acepta ningún token de acceso.",
       "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read.",
       "ssoApiAutoRegisterDesc": "Si un token de acceso SSO válido de una persona sin cuenta de Speakr crea esa cuenta. SSO_AUTO_REGISTER también debe estar activado. Los datos se leen del endpoint userinfo del proveedor. Una cuenta local existente nunca se vincula por correo electrónico; esa persona inicia sesión una vez en Speakr con SSO.",
-      "ssoApiClientNamesDesc": "Nombres visibles para los ID de cliente OIDC, como pares client_id=Nombre separados por comas o saltos de línea. Un token creado mediante el canje de tokens SSO muestra el nombre de su aplicación en la configuración de la cuenta. Los pares mal formados se ignoran.",
+      "ssoApiClientNamesDesc": "Nombres visibles para los ID de cliente OIDC, como pares client_id=Nombre separados por comas o saltos de línea. El nombre de la aplicación se muestra en la configuración de la cuenta para un token creado mediante el canje de tokens SSO. Los pares mal formados se ignoran.",
       "ssoApiExchangeClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso pueden canjearse por tokens de API. Cada uno debe figurar también en sso_api_allowed_clients. Vacío significa que no se permite ningún canje. Añada solo aplicaciones que sincronizan en segundo plano, nunca un servidor de herramientas como Open WebUI."
     },
     "storageUsed": "Almacenamiento usado",
