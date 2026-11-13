@@ -128,11 +128,15 @@ OPENAPI_SPEC = {
     "components": {
         "securitySchemes": {
             "bearerAuth": {"type": "http", "scheme": "bearer",
-                           "description": "A personal API token. Tokens may carry scopes: read, write, upload, "
+                           "description": "A personal API token or, when the administrator turns on SSO access "
+                                          "tokens, the JWT access token that an allowed app received from the same "
+                                          "OIDC provider as Speakr. Tokens may carry scopes: read, write, upload, "
                                           "process, share, delete, webhooks, account. A token with no scopes "
-                                          "(reported as [\"full\"]) has every scope. Each operation lists the "
-                                          "scopes it needs in x-required-scopes; a scoped token without them "
-                                          "gets 403 insufficient_scope. Scoped tokens work only in a header."},
+                                          "(reported as [\"full\"]) has every scope. An SSO access token has the "
+                                          "scopes the administrator sets in SSO_API_SCOPES (default read). Each "
+                                          "operation lists the scopes it needs in x-required-scopes; a scoped token "
+                                          "without them gets 403 insufficient_scope. Scoped tokens work only in a "
+                                          "header."},
             "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
             "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token", "x-deprecated": True,
                             "description": "Deprecated. Accepted only on GET (and HEAD) requests; any other method "
@@ -234,7 +238,10 @@ OPENAPI_SPEC = {
                     "created_at": {"type": "string", "format": "date-time"},
                     "expires_at": {"type": "string", "format": "date-time", "nullable": True},
                     "last_used_at": {"type": "string", "format": "date-time", "nullable": True},
-                    "via": {"type": "string", "enum": ["header", "query"]}
+                    "via": {"type": "string", "enum": ["header", "query"]},
+                    "sso_client_id": {"type": "string", "nullable": True,
+                                      "description": "For an SSO access token: the OIDC client it was issued to. "
+                                                     "id is null then."}
                 }
             },
             "Capabilities": {
@@ -973,12 +980,24 @@ def get_current_token():
     """The API token of this request: id, name, scopes and times (mailr spec G1)."""
     from flask import g
     from src.utils.token_auth import current_api_token
+    from src.utils.token_auth import is_sso_token
     token = current_api_token()
     if token is None:
         return jsonify({'error': translate('server.apiError.no_api_token'), 'code': 'not_found'}), 404
 
     def _z(dt):
         return dt.isoformat(timespec='microseconds') + 'Z' if dt else None
+    if is_sso_token(token):
+        return jsonify({
+            'id': None,
+            'name': token.name,
+            'scopes': token.scope_list,
+            'created_at': _z(token.created_at),
+            'expires_at': _z(token.expires_at),
+            'last_used_at': None,
+            'via': 'header',
+            'sso_client_id': token.client_id,
+        })
     return jsonify({
         'id': token.id,
         'name': token.name,
@@ -988,6 +1007,76 @@ def get_current_token():
         'last_used_at': _z(token.last_used_at),
         'via': 'query' if g.get('api_token_via_query') else 'header',
     })
+
+
+@api_v1_bp.route('/tokens/exchange', methods=['POST'])
+@require_scope()
+@rate_limit("10 per hour")
+@login_required
+def exchange_sso_token():
+    """Trade an SSO access token for a scoped API token.
+
+    Accepted only from a request authenticated by an SSO access token
+    (src/auth/sso_access_tokens.py) whose client is in
+    SSO_API_EXCHANGE_CLIENTS: an API token or a browser session is refused,
+    so a leaked API token cannot mint more of itself. The route is left out
+    of the served openapi.json, so a tool server built from the document
+    never offers it to a model; it is documented in the API reference. The scopes are
+    a subset of SSO_API_SCOPES, and the per-account token cap applies.
+    """
+    from flask import session
+    from src.utils.token_auth import current_api_token, is_sso_token
+    from src.auth.sso_access_tokens import granted_scopes, exchange_client_for
+    from src.api.tokens import issue_token
+    sso_token = None if session.get('_user_id') else current_api_token()
+    if not is_sso_token(sso_token):
+        return jsonify({'error': translate('server.apiError.sso_token_required'),
+                        'code': 'sso_token_required'}), 403
+    # Only the clients in SSO_API_EXCHANGE_CLIENTS may mint a stored token;
+    # a tool server such as Open WebUI is allowed per request only.
+    client_id = exchange_client_for(sso_token)
+    if client_id is None:
+        current_app.logger.info("SSO token exchange refused for user %s: client %s may not exchange",
+                                sso_token.user_id, sso_token.client_id)
+        return jsonify({'error': translate('server.apiError.sso_exchange_not_allowed'),
+                        'code': 'sso_exchange_not_allowed'}), 403
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    name = data.get('name')
+    if not isinstance(name, str) or not name.strip():
+        return jsonify({'error': translate('server.apiError.name_required'), 'code': 'invalid_parameter'}), 400
+    name = name.strip()
+    if len(name) > 100:
+        return jsonify({'error': translate('server.apiError.token_name_too_long', max=100),
+                        'code': 'invalid_parameter'}), 400
+
+    expires_in_days = data.get('expires_in_days', 0)
+    if not isinstance(expires_in_days, int) or isinstance(expires_in_days, bool) or expires_in_days < 0:
+        return jsonify(api_error('invalid_expires_in_days')), 400
+
+    allowed = granted_scopes()
+    if 'scopes' in data:
+        from src.models.api_token import parse_scopes
+        scopes_value, error = parse_scopes(data.get('scopes'))
+        if error:
+            return jsonify({'error': error, 'code': 'invalid_parameter'}), 400
+        requested = None if scopes_value is None else frozenset(json.loads(scopes_value))
+        if requested is None or not requested <= allowed:
+            return jsonify({
+                'error': translate('server.apiError.sso_scopes_not_allowed', allowed=', '.join(sorted(allowed))),
+                'code': 'invalid_parameter',
+                'allowed_scopes': sorted(allowed),
+            }), 400
+    else:
+        requested = allowed
+    response, status = issue_token(sso_token.user_id, name, expires_in_days,
+                                   json.dumps(sorted(requested)), sso_client_id=client_id)
+    if status == 201:
+        current_app.logger.info("API token created through SSO token exchange for user %s by client %s",
+                                sso_token.user_id, client_id)
+    return response, status
 
 
 # Features this server supports (mailr spec G1). A key appears when the feature
@@ -1019,6 +1108,8 @@ def get_capabilities():
     features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
     from src.services.search_v1 import semantic_available
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
+    from src.auth.sso_access_tokens import is_enabled as sso_access_tokens_enabled
+    features['sso_token_exchange'] = sso_access_tokens_enabled()
     features['inquire'] = {
         'enabled': os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true',
         'agent': os.environ.get('ENABLE_INQUIRE_AGENT', 'false').lower() == 'true',

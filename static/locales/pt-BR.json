@@ -285,7 +285,8 @@
       "important": "Importante",
       "onlyTimeShown": "Esta é a única vez que o token é exibido. Copie-o agora.",
       "yourToken": "Seu token de API",
-      "savedConfirm": "Salvei o token"
+      "savedConfirm": "Salvei o token",
+      "createdBySso": "Criado via SSO por {{client}}"
     },
     "templatesTab": {
       "loadFailed": "Não foi possível carregar os modelos",
@@ -521,7 +522,11 @@
       "disableAutoTranslationDesc": "Quando habilitado, as gravações são apenas transcritas e os usuários precisam iniciar a tradução manualmente. Quando desabilitado, cada usuário pode ativar a tradução automática de novas gravações após a transcrição.",
       "defaultUiThemeDesc": "Tema da interface para novas contas e para as páginas de login em um navegador sem tema salvo. Um destes: default, classic, workspace, focus, desk, cards. As contas existentes mantêm o tema.",
       "defaultColorSchemeDesc": "Esquema de cores para novas contas e para as páginas de login em um navegador sem esquema salvo. Um destes: blue, emerald, purple, rose, amber, teal. As contas existentes mantêm o esquema de cores.",
-      "defaultAudioPlayerPositionDesc": "Posição do player de áudio na página de uma gravação para novas contas. Um destes: top, bottom. As contas existentes mantêm a posição."
+      "defaultAudioPlayerPositionDesc": "Posição do player de áudio na página de uma gravação para novas contas. Um destes: top, bottom. As contas existentes mantêm a posição.",
+      "ssoApiTokensEnabledDesc": "Quando ativado, apps que fazem login dos usuários pelo mesmo provedor SSO do Speakr podem chamar a API com o token de acesso SSO do usuário e trocá-lo por um token de API. O SSO deve estar configurado e pelo menos um cliente deve ser permitido.",
+      "ssoApiAllowedClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso são aceitos, comparados com a claim aud ou azp. Vazio significa que nenhum token de acesso é aceito.",
+      "ssoApiScopesDesc": "Escopos separados por vírgula que uma requisição com um token de acesso SSO tem. Um token trocado só pode ter esses escopos. Padrão: read.",
+      "ssoApiExchangeClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso podem ser trocados por tokens de API. Cada um também deve estar em sso_api_allowed_clients. Vazio significa que nenhuma troca é permitida. Adicione apenas apps que sincronizam em segundo plano, nunca um servidor de ferramentas como o Open WebUI."
     },
     "storageUsed": "Armazenamento usado",
     "summarizationInstructions": "Instruções de resumo",
@@ -3569,7 +3574,11 @@
       "invalid_filter_date": "Não foi possível ler o filtro de data",
       "invalid_default_ui_theme": "Tema de interface padrão inválido. Deve ser um destes: {{themes}}",
       "invalid_default_color_scheme": "Esquema de cores padrão inválido. Deve ser um destes: {{schemes}}",
-      "invalid_default_audio_player_position": "Posição padrão do player de áudio inválida. Deve ser uma destas: {{positions}}"
+      "invalid_default_audio_player_position": "Posição padrão do player de áudio inválida. Deve ser uma destas: {{positions}}",
+      "sso_token_required": "Esta rota aceita apenas um token de acesso SSO no cabeçalho Authorization",
+      "token_name_too_long": "name deve ter no máximo {{max}} caracteres",
+      "sso_scopes_not_allowed": "scopes deve ser um subconjunto dos escopos permitidos para tokens de acesso SSO: {{allowed}}",
+      "sso_exchange_not_allowed": "A troca de um token de acesso SSO não é permitida para este app"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

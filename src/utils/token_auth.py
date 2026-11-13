@@ -98,6 +98,8 @@ def find_api_token(token):
 
 
 def _mark_used(api_token):
+    if getattr(api_token, 'is_sso', False):
+        return  # an SSO access token has no row
     api_token.last_used_at = datetime.utcnow()
     from src.database import db
     db.session.commit()
@@ -136,6 +138,10 @@ def resolve_request_token():
         header_value = extract_token_from_request(headers_only=True)
         value = header_value or extract_token_from_request()
         api_token = find_api_token(value)
+        if api_token is None and header_value:
+            # An SSO access token (src/auth/sso_access_tokens.py), when the
+            # feature is on. Accepted only as Authorization: Bearer.
+            api_token = sso_token_from_request()
         via_query = bool(api_token is not None and not header_value)
         if via_query:
             # Deprecated (#500): marked for the Deprecation header, and
@@ -154,6 +160,22 @@ def resolve_request_token():
     g.api_token = api_token
     g.api_token_via_query = via_query
     return api_token, via_query
+
+
+def sso_token_from_request():
+    """The validated SSO access token in the Authorization: Bearer header of
+    this request, or None. The other token headers and ?token= never carry one."""
+    from src.auth.sso_access_tokens import looks_like_jwt, token_for_request
+    auth_header = request.headers.get('Authorization', '')
+    value = auth_header[7:] if auth_header.startswith('Bearer ') else None
+    if not looks_like_jwt(value):
+        return None
+    return token_for_request(value)
+
+
+def is_sso_token(api_token):
+    """True for an SSO access token, False for an APIToken row or None."""
+    return bool(getattr(api_token, 'is_sso', False))
 
 
 def _warn_query_token(api_token):
@@ -385,8 +407,16 @@ def load_user_from_token_headers_only():
     accepted headers (Authorization, X-API-Token, API-Token) all do
     trigger preflight and so cannot be set by a CSRF attack page.
 
-    Returns the authenticated User, or None.
+    Returns the authenticated User, or None. A valid SSO access token in a
+    header counts like an API token here (src/auth/sso_access_tokens.py).
     """
-    return load_user_from_token_value(extract_token_from_request(headers_only=True))
+    value = extract_token_from_request(headers_only=True)
+    user = load_user_from_token_value(value)
+    if user is None and value:
+        # An SSO access token in a header is a programmatic client too.
+        sso_token = sso_token_from_request()
+        if sso_token is not None:
+            return sso_token.user
+    return user
 
 
