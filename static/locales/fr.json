@@ -3876,8 +3876,7 @@
         "7": "Téléchargez un résumé en Markdown, et une réponse seule ou toute une conversation Demander à Ambrose en document Word."
       },
       "0_10_21": {
-        "1": "Vous pouvez connecter Speakr aux applications qui utilisent la même authentification unique, comme Open WebUI, sans jeton d'API, dès qu'un administrateur l'active.",
-        "2": "Ambrose dispose d'un outil pour rechercher des personnes par leur nom."
+        "1": "Ambrose dispose d'un outil pour rechercher des personnes par leur nom."
       },
       "0_10_22": {
         "1": "Les notifications sont affichées dans les couleurs de votre thème. Les messages d'erreur restent affichés jusqu'à ce que vous les fermiez, et chaque notification a un bouton de fermeture."

@@ -3876,8 +3876,7 @@
         "7": "Download a summary as Markdown, and single answers or whole Ask Ambrose conversations as Word documents."
       },
       "0_10_21": {
-        "1": "You can connect Speakr to apps that use the same single sign-on, such as Open WebUI, without an API token, once an admin turns this on.",
-        "2": "Ambrose has a tool to search for people by name."
+        "1": "Ambrose has a tool to search for people by name."
       },
       "0_10_22": {
         "1": "Notifications are shown in the colors of your theme. Error messages are kept on screen until you close them, and every notification has a close button."
