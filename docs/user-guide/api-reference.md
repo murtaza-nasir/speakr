@@ -86,6 +86,53 @@ Returns the token used for the request. A request signed in through the web inte
 }
 ```
 
+### SSO Access Tokens
+
+When the administrator turns on SSO access tokens (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)), the `Authorization: Bearer` header may also carry the access token that an allowed app received from the same OIDC provider as Speakr. The request is then made as the Speakr user linked to the token's `sub`, with the scopes set in `sso_api_scopes` (default `read`). Only JWT access tokens are supported; an opaque access token gets `401`. An access token that fails any check gets the same `401` answer as an invalid API token. An SSO access token is not accepted in `?token=`.
+
+For such a request, `GET /api/v1/tokens/current` returns `"id": null` and the client ID of the app in `sso_client_id`.
+
+### Token Exchange
+
+```http
+POST /api/v1/tokens/exchange
+```
+
+**Scope:** none (any valid token passes the scope check, but only an SSO access token is accepted)
+
+Creates a Speakr API token for the user of an SSO access token. An app that works in the background calls it once and then stores and uses the API token. The request must be authenticated with an SSO access token in the `Authorization` header. A request with a Speakr API token or a browser session gets `403` with `"code": "sso_token_required"`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Required. Shown for the token in **Account settings** → **API tokens**. At most 100 characters. |
+| `scopes` | array | Optional. A subset of the scopes in `sso_api_scopes`. Every scope in `sso_api_scopes` when omitted. |
+| `expires_in_days` | integer | Optional. Days until the token expires; `0` or omitted means it does not expire. |
+
+```bash
+curl -X POST https://speakr.example.com/api/v1/tokens/exchange \
+     -H "Authorization: Bearer SSO_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Mail sync", "scopes": ["read"], "expires_in_days": 365}'
+```
+
+The answer is `201` with the same fields as a token created in Account settings, including the plaintext token, which is shown only in this answer:
+
+```json
+{
+  "id": 21,
+  "name": "Mail sync",
+  "token": "kQ3...",
+  "scopes": ["read"],
+  "created_at": "2026-11-12T10:00:00",
+  "expires_at": "2027-11-12T10:00:00",
+  "last_used_at": null,
+  "revoked": false,
+  "sso_client_id": "mailr"
+}
+```
+
+A scope outside `sso_api_scopes`, a missing name or an invalid expiry gets `400`. The per-account token limit applies, so an account at the limit gets `409` with `"code": "token_limit_reached"`. The token appears in the user's token list with the note **Created through SSO by** and the app's client ID, and it is revoked there like any other token. `GET /api/v1/capabilities` reports `"sso_token_exchange": true` in `features` while the feature is on.
+
 ### Capabilities
 
 ```http
@@ -139,6 +186,19 @@ The specification is read from `/api/v1/openapi.json` under that URL, and each o
 A connection added in the admin settings is called from the Open WebUI server, which must be able to reach the Speakr URL. A connection that a user adds under their own **Settings** → **Integrations** is called from that user's browser instead. Such calls require CORS headers, which are not part of Speakr's responses, so they are blocked unless Speakr and Open WebUI are served from the same origin or a reverse proxy in front of Speakr adds the headers.
 
 Speech-to-text in Open WebUI is the job of a transcription server. If you use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) with Speakr, you can use it for Open WebUI as well, as it has an OpenAI-compatible endpoint (`/v1/audio/transcriptions`). Audio transcribed this way is not stored in Speakr.
+
+### Open WebUI with SSO
+
+When Open WebUI and Speakr sign users in through the same OIDC provider, each Open WebUI user can reach their own Speakr recordings without a Speakr token.
+
+1. The Speakr administrator turns on SSO access tokens with the Open WebUI client ID as an allowed client (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)).
+2. In Open WebUI, an administrator adds the connection as in the section above, with these values:
+    - **Type:** OpenAPI
+    - **URL:** `https://your-speakr-instance.com/api/v1`
+    - **Auth:** System OAuth. No token is entered.
+3. Each user signs in to Open WebUI through SSO. Each tool call is then made with that user's own access token, so only that user's recordings can be reached, with the scopes set in `sso_api_scopes`.
+
+The provider must issue JWT access tokens; opaque access tokens are not supported. Each user must have signed in to Speakr with SSO at least once, so that the Speakr account is linked to the SSO identity. The specification is fetched without a user token, so the tool list contains every operation, and a call to an operation outside `sso_api_scopes` gets `403` with `"code": "insufficient_scope"`.
 
 ---
 

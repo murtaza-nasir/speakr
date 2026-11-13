@@ -191,6 +191,7 @@ The API Tokens tab shows all your active tokens with:
 - **Created date** - When the token was created
 - **Last used** - When the token was last used for authentication
 - **Expiration** - When the token will expire (if set)
+- **Created through SSO by** - For a token that an app created through the SSO token exchange, the client ID of that app (see [Tokens From Single Sign-On](#tokens-from-single-sign-on))
 
 ### Revoking Tokens
 
@@ -202,6 +203,15 @@ Click the trash icon next to any token to revoke it immediately. Revoked tokens:
 
 !!! tip "Best Practice"
     Revoke tokens you no longer need. If you suspect a token has been compromised, revoke it immediately and create a new one.
+
+## Tokens From Single Sign-On
+
+When the administrator turns this on, an app that signs you in through the same single sign-on (SSO) provider as Speakr can reach your recordings without a token that you copy. Two kinds of app use it:
+
+- An app that sends your SSO access token with each request, such as Open WebUI. Nothing appears in your token list. The access is limited to the scopes the administrator sets, and it lasts as long as the app holds a valid access token for you.
+- An app that works in the background, such as a mail client. The app exchanges your SSO access token once for an API token. That token appears in your token list under the name the app gave it, with the note **Created through SSO by** and the app's client ID. You revoke it like any other token, and the app loses access at once.
+
+Your Speakr account must be linked to your SSO identity first. Sign in to Speakr with SSO once, or link SSO under **Account settings** → **Single Sign-On**.
 
 ## Limits
 

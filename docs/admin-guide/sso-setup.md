@@ -127,10 +127,67 @@ Users can unlink their SSO account from **Account > Single Sign-On** by clicking
 
 **Important:** Users who created their account via SSO (and have no password set) must first set a password before unlinking. Otherwise they would be locked out of their account.
 
+## API Access With SSO Access Tokens
+
+Apps that sign users in through the same OIDC provider as Speakr can call the Speakr API for a user with that user's access token from the provider. The user then has no Speakr API token to copy. Two uses are supported:
+
+- A tool server connection that sends each user's own access token on every call, such as Open WebUI with the **System OAuth** connection type.
+- An app that works in the background, such as a mail client that syncs on a schedule. A short-lived access token is not enough there, so the app exchanges the access token once for a normal Speakr API token at `POST /api/v1/tokens/exchange` and stores that token.
+
+The feature is off by default. Three settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
+
+| Setting | Variable in `.env` | Default | Meaning |
+|---|---|---|---|
+| `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` | `false` | Turns the feature on. SSO must also be configured (`ENABLE_SSO=true` and `SSO_DISCOVERY_URL`). |
+| `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` | empty | Comma-separated OIDC client IDs of the apps whose access tokens are accepted. A token is accepted when its `aud` claim (a string or a list) or its `azp` claim names one of them. Empty means that no access token is accepted. |
+| `sso_api_scopes` | `SSO_API_SCOPES` | `read` | Comma-separated [scopes](../user-guide/api-tokens.md#scopes) that a request with an SSO access token has. A token created through the exchange may have these scopes and no others. `full` is not accepted here, and unknown names are ignored. |
+
+`sso_api_scopes` applies to every allowed client. Give it the largest set that any of those apps needs.
+
+### Requirements for the provider
+
+- Access tokens must be signed JWTs. Opaque access tokens, which only the provider can look up, are not supported, because no token introspection endpoint is called. Pocket ID, Keycloak and Authentik issue JWT access tokens. Google issues opaque access tokens and cannot be used for this.
+- The signing algorithm must be asymmetric: RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 or EdDSA. A token signed with HS256 or another shared-secret algorithm, or not signed at all, is refused.
+- The discovery document at `SSO_DISCOVERY_URL` must name the `issuer` and the `jwks_uri`.
+
+No new client has to be registered in the provider for Speakr. The client IDs to allow are those of the other apps.
+
+### How an access token is checked
+
+Every check must pass:
+
+1. The signature is verified with a key from the `jwks_uri` in the discovery document. The discovery document and the key set are kept for an hour. When a token names a key ID (`kid`) that the kept key set lacks, as happens after the provider rotates its keys, the key set is fetched again, at most once every 30 seconds. No address taken from the token itself is ever fetched.
+2. `iss` equals the issuer in the discovery document.
+3. `exp` is in the future, and `nbf` and `iat` are not in the future. A clock difference of up to 60 seconds is allowed.
+4. `aud` or `azp` names a client in `sso_api_allowed_clients`.
+5. `sub` equals the SSO subject of an existing, active Speakr account. The subject is stored when the user first signs in to Speakr with SSO or links SSO under **Account > Single Sign-On**. No account is created here, and the email address is never used to find an account. A user who has never signed in to Speakr with SSO therefore cannot use an access token.
+
+A token that fails any check gets the same `401` answer as an invalid API token. The reason is written to the Speakr log at INFO level, without the token.
+
+A request with an SSO access token is treated like a request with an API token that has the scopes in `sso_api_scopes`. The same scope checks and rate limits apply. The rate limits count per user, and the account budget is shared with the user's API tokens. Such a request does not count as a browser sign-in. The token is accepted only in the `Authorization: Bearer` header, never in `?token=`.
+
+### Enabling it for Open WebUI
+
+1. Make sure that Open WebUI and Speakr sign users in through the same provider, with the same issuer.
+2. In the provider, look up the client ID of the Open WebUI client (the value of `OAUTH_CLIENT_ID` in Open WebUI).
+3. In Speakr, open **System Settings** and set `sso_api_allowed_clients` to that client ID. Set `sso_api_scopes` to `read` for searching and reading, or to `read,process` if the model may also chat with a recording or start a summary. Then set `sso_api_tokens_enabled` to true.
+4. In Open WebUI, add Speakr as a tool server with the **System OAuth** connection type, as described in [Open WebUI with SSO](../user-guide/api-reference.md#open-webui-with-sso).
+5. Each user signs in to Speakr with SSO once, so that the account is linked.
+
+### Enabling it for an app that syncs in the background
+
+1. In the provider, look up the client ID of the app.
+2. In Speakr, add that client ID to `sso_api_allowed_clients`, separated by a comma from any other client ID. Make sure that `sso_api_scopes` holds every scope the app asks for, for example `read,write,upload`. Set `sso_api_tokens_enabled` to true.
+3. The app sends the user's access token once to `POST /api/v1/tokens/exchange` (see [Token Exchange](../user-guide/api-reference.md#token-exchange)) and stores the API token it receives.
+4. Each user signs in to Speakr with SSO once, so that the account is linked.
+
+A token created this way appears in the user's **Account settings > API tokens** with the note **Created through SSO by** and the client ID of the app. It counts toward the per-account token limit, and the user can revoke it there like any other token. Turning the feature off stops access with SSO access tokens and further exchanges. Tokens created earlier through the exchange keep working until they expire or are revoked.
+
 ## Troubleshooting
 
 - **Login fails immediately**: verify `SSO_DISCOVERY_URL`, client credentials, and that the redirect URI matches exactly.
 - **User created without email**: some IdPs do not return `email`; user is created with a placeholder email based on `sub`.
 - **Domain rejected**: confirm `SSO_ALLOWED_DOMAINS` and that the IdP returns an `email` claim.
 - **Already linked**: ensure each SSO subject is unique; users can unlink from Account settings to re-link to a different account.
+- **An app gets 401 with an SSO access token**: the Speakr log names the failed check at INFO level (`SSO access token refused: ...`). The usual causes are a client ID missing from `sso_api_allowed_clients`, an opaque access token, a user who has never signed in to Speakr with SSO, or a different issuer for the app and for Speakr.
 
