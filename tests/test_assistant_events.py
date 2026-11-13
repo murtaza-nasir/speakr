@@ -148,7 +148,7 @@ def test_the_toolbox_and_prompt_offer_only_the_surface_tools():
     schemas, executors = ia.build_toolbox(every, ['search_transcripts', 'get_transcript'])
     assert [s['function']['name'] for s in schemas] == ['search_transcripts', 'get_transcript']
     assert set(executors) == {'search_transcripts', 'get_transcript'}
-    assert len(ia.build_toolbox(every)[0]) == 8
+    assert len(ia.build_toolbox(every)[0]) == 9  # find_people is the ninth
     assert ia.build_toolbox(every, [])[0] == []
     ctx = {'name': 'A', 'title': 'x', 'company': 'y', 'assistant_name': 'Iris'}
     prompt = ia._system_prompt(ctx, '', every, '', ['search_transcripts', 'get_transcript'])
@@ -156,7 +156,7 @@ def test_the_toolbox_and_prompt_offer_only_the_surface_tools():
     assert 'You have tools to search transcripts, and read transcripts.' in prompt
     assert "summaries" not in prompt.split("You have tools")[1].split("Work iteratively")[0]
     full = ia._system_prompt(ctx, '', {'summaries': True, 'notes': False}, '')
-    assert 'read transcripts, stored summaries, and metadata' in full
+    assert 'find similar recordings, look up people, and read transcripts, stored summaries, and metadata' in full
 
 
 # ---------------------------------------------------------------------------

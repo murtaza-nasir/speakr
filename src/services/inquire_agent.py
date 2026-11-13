@@ -35,6 +35,7 @@ from src.services.embeddings import (
 )
 from src.services.llm import call_chat_completion, TokenBudgetExceeded, get_chat_config
 from src.utils.localization import translate
+from src.services.recording_chat import WORDS_BEFORE_CITATIONS_RULE
 from src.services.assistant_present import (step_label, step_result, summary_label, summary_line,
                                               tool_icon)
 
@@ -269,8 +270,9 @@ def tool_search_transcripts(ctx, args):
             return {'query': query, 'search_type': 'none', 'result_count': 0, 'results': [],
                     'note': ' '.join(notes) or 'No recording in scope matches these tags and folder.'}
         filters['recording_ids'] = sorted(narrowed)
-    if args.get('speakers'):
-        filters['speaker_names'] = [str(s) for s in args['speakers']][:10]
+    speakers = _name_list(args.get('speakers'))
+    if speakers:
+        filters['speaker_names'] = speakers
     for key, arg in (('date_from', 'date_from'), ('date_to', 'date_to')):
         if args.get(arg):
             try:
@@ -327,8 +329,10 @@ def tool_search_transcripts(ctx, args):
 
 def tool_list_recordings(ctx, args):
     q = Recording.query.filter(Recording.id.in_(ctx.allowed_ids))
-    if args.get('participant'):
-        q = q.filter(Recording.participants.ilike(contains_pattern(args['participant']), escape=LIKE_ESCAPE))
+    names = _name_list(args.get('participants')) or _name_list(args.get('participant'))
+    if names:
+        q = q.filter(db.or_(*[Recording.participants.ilike(contains_pattern(n), escape=LIKE_ESCAPE)
+                              for n in names]))
     narrowed, notes = _label_filter(ctx, args)
     if narrowed is not None:
         q = q.filter(Recording.id.in_(sorted(narrowed)))
@@ -605,9 +609,10 @@ def tool_search_text(ctx, args):
     if err:
         return {'error': err}
     q = db.session.query(Recording.id).filter(Recording.id.in_(ids)) if ids else None
-    if q is not None and isinstance(args.get('speakers'), list) and args['speakers']:
-        q = q.filter(db.or_(*[Recording.participants.ilike(contains_pattern(str(s)), escape=LIKE_ESCAPE)
-                              for s in args['speakers'][:10]]))
+    speakers = _name_list(args.get('speakers'))
+    if q is not None and speakers:
+        q = q.filter(db.or_(*[Recording.participants.ilike(contains_pattern(s), escape=LIKE_ESCAPE)
+                              for s in speakers]))
     from src.utils.timezones import local_date_bounds, to_local, user_timezone_by_id
     zone = user_timezone_by_id(ctx.user_id)
     start, end = local_date_bounds(bounds.get('date_from'), bounds.get('date_to'), zone)
@@ -865,10 +870,144 @@ def tool_find_similar_recordings(ctx, args):
     return result
 
 
+# ---------------------------------------------------------------------------
+# People (find_people)
+# ---------------------------------------------------------------------------
+
+FIND_PEOPLE_CAP = 10
+
+
+def tool_find_people(ctx, args):
+    """The user's own speaker profiles and the participants of the recordings
+    in scope whose names match `name` (see src/services/person_names.py).
+    Never another user's profiles; recordings outside scope are not counted."""
+    from src.models import Speaker
+    from src.services.library_labels import is_generic_speaker
+    from src.services import person_names as pn
+    from src.utils.timezones import to_local, user_timezone_by_id
+
+    query = ' '.join(str(args.get('name') or '').split())[:120]
+    if not query or not pn.name_tokens(query):
+        return {'error': "name is required"}
+    if is_generic_speaker(query):
+        return {'name': query, 'result_count': 0, 'people': [],
+                'note': f'"{query}" is a diarization label, not a person.'}
+
+    # Participants of the recordings in scope: {folded name: (spelling, {rec id: date})}.
+    participants = {}
+    if ctx.allowed_ids:
+        for rid, text, date in db.session.query(Recording.id, Recording.participants, Recording.meeting_date) \
+                .filter(Recording.id.in_(ctx.allowed_ids), Recording.participants.isnot(None)):
+            for key, name in _speaker_names(text).items():
+                entry = participants.setdefault(pn.fold(key), {'name': name, 'spellings': [], 'recordings': {}})
+                if name not in entry['spellings']:
+                    entry['spellings'].append(name)
+                entry['recordings'][rid] = date
+
+    people = []
+    claimed = set()
+    for sp in Speaker.query.filter_by(user_id=ctx.user_id).order_by(Speaker.name).all():
+        if is_generic_speaker(sp.name):
+            continue
+        names = [sp.name] + [a for a in pn.aliases_of(sp) if pn.fold(a) != pn.fold(sp.name)]
+        person = {'name': sp.name, 'profile_names': [(sp.name, 'profile name')]
+                  + [(a, 'alias') for a in names[1:]],
+                  'email': sp.email or None, 'spellings': [], 'recordings': {}}
+        for n in names:
+            entry = participants.get(pn.fold(n))
+            if entry:
+                claimed.add(pn.fold(n))
+                person['spellings'] += [s for s in entry['spellings'] if s not in person['spellings']]
+                person['recordings'].update(entry['recordings'])
+        people.append(person)
+    for key, entry in participants.items():
+        if key not in claimed:
+            people.append({'name': entry['name'], 'profile_names': [], 'email': None,
+                           'spellings': list(entry['spellings']), 'recordings': dict(entry['recordings'])})
+
+    matched = []
+    for person in people:
+        candidates = list(person['profile_names']) + [(s, 'participant') for s in person['spellings']]
+        if person['email']:
+            candidates.append((pn.email_local(person['email']), 'email'))
+        best, how = None, []
+        for text, kind in candidates:
+            m = pn.name_match(query, text)
+            if not m:
+                continue
+            got, total, variant = m
+            score = (got / total, not variant)
+            if best is None or score > best:
+                best = score
+            if kind not in how:
+                how.append(kind)
+            if variant and 'spelling variant' not in how:
+                how.append('spelling variant')
+        if best is None:
+            continue
+        if best[0] < 1:
+            how.append('partial')
+        matched.append((best, len(person['recordings']), person, how))
+
+    zone = user_timezone_by_id(ctx.user_id)
+
+    def row(person, how):
+        names = []
+        for n in [n for n, _k in person['profile_names']] + person['spellings']:
+            if n not in names:
+                names.append(n)
+        dates = [d for d in person['recordings'].values() if d]
+        out = {'name': person['name'], 'names': names, 'match': how,
+               'recording_count': len(person['recordings']),
+               'latest_recording_date': to_local(max(dates), zone).strftime('%Y-%m-%d') if dates else None}
+        if person['email']:
+            out['email'] = person['email']
+        if person['profile_names']:
+            out['has_profile'] = True
+        return out
+
+    matched.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    result = {'name': query, 'result_count': min(len(matched), FIND_PEOPLE_CAP),
+              'people': [row(p, how) for _b, _n, p, how in matched[:FIND_PEOPLE_CAP]]}
+    if len(matched) > FIND_PEOPLE_CAP:
+        result['truncated'] = True
+    if matched:
+        result['note'] = ('To search by a person, pass every name in their `names` to `speakers` or '
+                          '`participants`. A spelling variant or partial match can be a different person: '
+                          'check it against the conversation.')
+        return result
+    close = sorted(((pn.closeness(query, n), n) for person in people
+                    for n in [x for x, _k in person['profile_names']] + person['spellings']), reverse=True)
+    closest = []
+    for score, n in close:
+        if score < 0.6 or len(closest) >= 5:
+            break
+        if n not in closest:
+            closest.append(n)
+    result['note'] = f'No speaker profile or participant matches "{query}".'
+    if closest:
+        result['closest'] = closest
+    return result
+
+
+def _name_list(value, cap=10):
+    """A name filter given as one name or a list of names."""
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [str(v).strip() for v in value if str(v).strip()][:cap]
+
+
 _DATE_PROPS = {
     'date_from': {'type': 'string', 'description': 'ISO date YYYY-MM-DD (inclusive)'},
     'date_to': {'type': 'string', 'description': 'ISO date YYYY-MM-DD (inclusive)'},
 }
+
+_SPEAKERS_PROP = {
+    'type': 'array', 'items': {'type': 'string'},
+    'description': 'Only recordings whose participants include any of these names. For a person, pass every '
+                   'name find_people returned for them (profile name, aliases and participant spellings).'}
 
 _LABEL_PROPS = {
     'tags': {'type': 'array', 'items': {'type': 'string'},
@@ -901,8 +1040,7 @@ def build_toolbox(availability, tool_names=None):
               'mode': {'type': 'string', 'enum': ['auto', 'semantic', 'keyword'],
                        'description': 'auto (default): semantic with keyword fallback; '
                                       'keyword: literal word/phrase matching only'},
-              'speakers': {'type': 'array', 'items': {'type': 'string'},
-                           'description': 'Restrict to recordings whose participants include these names'},
+              'speakers': _SPEAKERS_PROP,
               **_LABEL_PROPS,
               **_DATE_PROPS,
           },
@@ -924,8 +1062,7 @@ def build_toolbox(availability, tool_names=None):
                   and (f != 'notes' or availability.get('notes'))]},
                   'description': 'Where to look (default: all of them)'},
               'top_k': {'type': 'integer', 'description': 'Max results, 1-50 (default 20)'},
-              'speakers': {'type': 'array', 'items': {'type': 'string'},
-                           'description': 'Restrict to recordings whose participants include these names'},
+              'speakers': _SPEAKERS_PROP,
               **_LABEL_PROPS,
               **_DATE_PROPS,
           },
@@ -938,7 +1075,9 @@ def build_toolbox(availability, tool_names=None):
           'properties': {
               'sort': {'type': 'string', 'enum': ['newest', 'oldest']},
               'limit': {'type': 'integer', 'description': 'Max rows, 1-100 (default 25)'},
-              'participant': {'type': 'string', 'description': 'Only recordings whose participants include this name'},
+              'participants': {**_SPEAKERS_PROP},
+              'participant': {'type': 'string',
+                              'description': 'One name; the same as participants with a single name'},
               **_LABEL_PROPS,
               **_DATE_PROPS,
           }}),
@@ -953,6 +1092,16 @@ def build_toolbox(availability, tool_names=None):
               'limit': {'type': 'integer', 'description': 'Max results, 1-25 (default 8)'},
           },
           'required': ['recording_id']}),
+        ('find_people', tool_find_people,
+         'Look up a person by name in the user\'s own speaker profiles (names, aliases, emails) and the '
+         'participants of the recordings in scope. Matching ignores case and accents, matches whole name '
+         'parts (a first name or a surname alone, or an email such as m.najjar) and spelling variants of '
+         'transliterated names (Mohammad, Mohammed, Muhammad). Returns each person with every name they '
+         'appear under, how the name matched, and how many recordings they are in. Call it before an '
+         'exact-word search for a person, then pass all their names to the speakers or participants filter.',
+         {'type': 'object',
+          'properties': {'name': {'type': 'string', 'description': 'The name as the user wrote it'}},
+          'required': ['name']}),
         ('get_transcript', tool_get_transcript,
          'Read a window of a recording\'s full transcript, in order. Paginated: the result reports '
          'total_segments and next_offset; call again with offset=next_offset to continue.',
@@ -1014,6 +1163,7 @@ _TOOL_PHRASES = (
     ('search_text', 'search for exact words'),
     ('list_recordings', 'list recordings'),
     ('find_similar_recordings', 'find similar recordings'),
+    ('find_people', 'look up people'),
     ('get_transcript', 'read transcripts'),
     ('get_summary', 'read stored summaries'),
     ('get_notes', "read the user's own notes"),
@@ -1027,7 +1177,7 @@ def _tools_sentence(availability, tool_names):
         notes_line = "the user's own notes, " if availability.get('notes') else ''
         summaries_line = "stored summaries, " if availability.get('summaries') else ''
         return (f"You have tools to search transcripts, search for exact words, list recordings, find similar "
-                f"recordings, and read transcripts, {summaries_line}{notes_line}and metadata")
+                f"recordings, look up people, and read transcripts, {summaries_line}{notes_line}and metadata")
     offered = set(tool_names)
     if not availability.get('notes'):
         offered.discard('get_notes')
@@ -1055,7 +1205,20 @@ def _search_guidance(tool_names):
     if has('find_similar_recordings'):
         lines.append("When asked for recordings similar or related to one recording, call "
                      "find_similar_recordings first.")
+    if has('find_people'):
+        lines.append(PEOPLE_TOOL_RULE)
     return ' '.join(lines)
+
+
+PEOPLE_TOOL_RULE = ("When the user names a person, call find_people before any exact-word search for them, then "
+                    "pass every name it returns in `speakers` or `participants`.")
+
+PERSON_NAME_RULE = ("A first name alone, a surname alone or another spelling (Mohammad, Mohammed, Muhammad) can "
+                    "name the same person. When one person fits, treat the user's name as that person, say so in "
+                    "one short clause (for example \"Mohammed in these recordings is Mohammad Najjar, as you "
+                    "said\") and continue; ask only when two or more people fit equally. When the user gives a "
+                    "fuller name for a participant, you may use it in the answer; never claim the transcript "
+                    "contains it.")
 
 
 def _system_prompt(user_ctx, filters_text, availability, tool_mode_prompt_block, tool_names=None,
@@ -1072,7 +1235,7 @@ notes). {language_instruction}Today's date is {_today_for(user_ctx)}.
 answer once you have enough evidence. Prefer summaries to survey long recordings, transcripts for exact \
 quotes and details. If a search finds nothing, try different phrasings or list_recordings before giving up. \
 Never invent content that is not in the tool results; say clearly when something cannot be found.\
-{(' ' + _search_guidance(tool_names)) if _search_guidance(tool_names) else ''}\
+{(' ' + _search_guidance(tool_names)) if _search_guidance(tool_names) else ''} {PERSON_NAME_RULE}\
 {(chr(10) + chr(10) + names_line) if names_line else ''}
 
 {tool_mode_prompt_block}When you give your final answer:
@@ -1093,6 +1256,7 @@ Never write a "Sources" or "References" section yourself — the interface appen
 automatically; end your answer after the last point. When the user refers to a bare number \
 ("what about 5", "open 3"), they mean that numbered citation from your previous answer; the \
 displayed numbering is included with each earlier answer in this conversation — use it, never guess.
+- {WORDS_BEFORE_CITATIONS_RULE}
 - Order information from the most recent recordings first unless the question implies otherwise."""
 
 

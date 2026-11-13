@@ -3661,7 +3661,8 @@
         "searchingPhrase": "Recherche des mots exacts « {{query}} »",
         "searchingWords": "Recherche des mots « {{query}} »",
         "findingSimilar": "Recherche d’enregistrements proches de « {{title}} »",
-        "findingSimilarRecordings": "Recherche d’enregistrements proches"
+        "findingSimilarRecordings": "Recherche d’enregistrements proches",
+        "findingPerson": "Recherche de {{name}}"
       },
       "result": {
         "failed": "Impossible de terminer cette étape",
@@ -3675,7 +3676,10 @@
         "withKeyword": "avec recherche par mot-clé",
         "listed": "{{returned}} sur {{total}} enregistrements",
         "segments": "{{returned}} sur {{total}} segments",
-        "noSimilar": "Aucun enregistrement proche"
+        "noSimilar": "Aucun enregistrement proche",
+        "personOne": "1 personne",
+        "people": "{{count}} personnes",
+        "noPeople": "Personne de ce nom"
       },
       "count": {
         "stepOne": "1 étape",
@@ -3696,7 +3700,9 @@
         "textSearchOne": "1 recherche exacte",
         "textSearches": "{{count}} recherches exactes",
         "similarSearchOne": "1 recherche de similarité",
-        "similarSearches": "{{count}} recherches de similarité"
+        "similarSearches": "{{count}} recherches de similarité",
+        "peopleLookupOne": "1 recherche de personne",
+        "peopleLookups": "{{count}} recherches de personnes"
       }
     },
     "summaryError": {

@@ -3661,7 +3661,8 @@
         "searchingPhrase": "Searching for the exact words “{{query}}”",
         "searchingWords": "Searching for the words “{{query}}”",
         "findingSimilar": "Finding recordings like {{title}}",
-        "findingSimilarRecordings": "Finding similar recordings"
+        "findingSimilarRecordings": "Finding similar recordings",
+        "findingPerson": "Looking up {{name}}"
       },
       "result": {
         "failed": "Couldn't complete this step",
@@ -3675,7 +3676,10 @@
         "withKeyword": "with keyword search",
         "listed": "{{returned}} of {{total}} recordings",
         "segments": "{{returned}} of {{total}} segments",
-        "noSimilar": "No similar recordings"
+        "noSimilar": "No similar recordings",
+        "personOne": "1 person",
+        "people": "{{count}} people",
+        "noPeople": "No one by that name"
       },
       "count": {
         "stepOne": "1 step",
@@ -3696,7 +3700,9 @@
         "textSearchOne": "1 exact search",
         "textSearches": "{{count}} exact searches",
         "similarSearchOne": "1 similarity search",
-        "similarSearches": "{{count}} similarity searches"
+        "similarSearches": "{{count}} similarity searches",
+        "peopleLookupOne": "1 person lookup",
+        "peopleLookups": "{{count}} person lookups"
       }
     },
     "summaryError": {

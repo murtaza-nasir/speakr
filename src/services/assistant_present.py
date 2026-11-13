@@ -16,6 +16,7 @@ TOOL_ICONS = {
     'search_text': 'fa-quote-left',
     'list_recordings': 'fa-list',
     'find_similar_recordings': 'fa-clone',
+    'find_people': 'fa-user',
     'get_transcript': 'fa-file-lines',
     'get_summary': 'fa-file-alt',
     'get_notes': 'fa-note-sticky',
@@ -57,6 +58,8 @@ def step_label(tool, args, language=None, title=None):
         if not title:
             return translate('server.assistant.step.findingSimilarRecordings', language)
         return translate('server.assistant.step.findingSimilar', language, title=title)
+    if tool == 'find_people':
+        return translate('server.assistant.step.findingPerson', language, name=str(args.get('name', ''))[:80])
     if tool == 'get_transcript':
         if not title:
             return translate('server.assistant.step.readingATranscript', language)
@@ -97,6 +100,10 @@ _COUNTED = {
     'find_similar_recordings': lambda n, lang: (
         translate('server.assistant.count.similarSearchOne', lang) if n == 1
         else translate('server.assistant.count.similarSearches', lang, count=n)),
+    'person': lambda n, lang: (translate('server.assistant.result.personOne', lang) if n == 1
+                               else translate('server.assistant.result.people', lang, count=n)),
+    'find_people': lambda n, lang: (translate('server.assistant.count.peopleLookupOne', lang) if n == 1
+                                    else translate('server.assistant.count.peopleLookups', lang, count=n)),
     'get_transcript': lambda n, lang: (translate('server.assistant.count.transcriptReadOne', lang) if n == 1
                                        else translate('server.assistant.count.transcriptReads', lang, count=n)),
     'get_summary': lambda n, lang: (translate('server.assistant.count.summaryReadOne', lang) if n == 1
@@ -132,6 +139,11 @@ def step_result(tool, result, language=None):
         if not n:
             return 'empty', translate('server.assistant.result.noSimilar', language)
         return 'done', _COUNTED['recording'](n, language)
+    if tool == 'find_people':
+        n = result.get('result_count', 0)
+        if not n:
+            return 'empty', translate('server.assistant.result.noPeople', language)
+        return 'done', _COUNTED['person'](n, language)
     if tool == 'list_recordings':
         return 'done', translate('server.assistant.result.listed', language,
                                  returned=result.get('returned', 0), total=result.get('total_in_scope', 0))

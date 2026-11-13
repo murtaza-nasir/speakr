@@ -3661,7 +3661,8 @@
         "searchingPhrase": "Поиск точной фразы: «{{query}}»",
         "searchingWords": "Поиск слов: «{{query}}»",
         "findingSimilar": "Поиск записей, похожих на «{{title}}»",
-        "findingSimilarRecordings": "Поиск похожих записей"
+        "findingSimilarRecordings": "Поиск похожих записей",
+        "findingPerson": "Поиск человека: {{name}}"
       },
       "result": {
         "failed": "Не удалось выполнить этот шаг",
@@ -3675,7 +3676,10 @@
         "withKeyword": "с поиском по ключевым словам",
         "listed": "записей: {{returned}} из {{total}}",
         "segments": "сегментов: {{returned}} из {{total}}",
-        "noSimilar": "Похожих записей нет"
+        "noSimilar": "Похожих записей нет",
+        "personOne": "1 человек",
+        "people": "людей: {{count}}",
+        "noPeople": "Никого с таким именем"
       },
       "count": {
         "stepOne": "1 шаг",
@@ -3696,7 +3700,9 @@
         "textSearchOne": "1 точный поиск",
         "textSearches": "точных поисков: {{count}}",
         "similarSearchOne": "1 поиск похожих",
-        "similarSearches": "поисков похожих: {{count}}"
+        "similarSearches": "поисков похожих: {{count}}",
+        "peopleLookupOne": "1 поиск людей",
+        "peopleLookups": "поисков людей: {{count}}"
       }
     },
     "summaryError": {
