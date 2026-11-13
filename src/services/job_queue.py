@@ -72,6 +72,14 @@ JOB_RUNNERS = {
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
 
 
+class StitchTargetMismatch(Exception):
+    """A stitch job's session belongs to another recording (#596).
+
+    The job fails without a retry and without touching the recording row:
+    marking that row FAILED could hit another user's recording (#505).
+    """
+
+
 def job_progress_writer(job_id):
     """A callback that stores ``(done, total)`` on a running job.
 
@@ -483,6 +491,18 @@ class FairJobQueue:
                         db.session.commit()
                     return
 
+                if isinstance(e, StitchTargetMismatch):
+                    # The same session and recording would mismatch again, so
+                    # no retry; the recording row is not this job's (#596).
+                    job = db.session.get(ProcessingJob, job_id)
+                    if job:
+                        job.status = 'failed'
+                        job.error_message = error_str
+                        job.completed_at = datetime.utcnow()
+                        db.session.commit()
+                    logger.error(f"Job {job_id} failed: {error_str}")
+                    return
+
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
                 # Check if this is a permanent error that shouldn't be retried
@@ -652,9 +672,10 @@ class FairJobQueue:
             raise ValueError("stitch job missing required 'session_id' param")
 
         # The session must point at this recording, and both must belong to
-        # the same user. Otherwise the job is dropped without touching the
-        # recording: raising would mark another user's recording FAILED (#505).
-        # A missing session is left to stitch_recording_session, as before.
+        # the same user. Otherwise the job fails without touching the
+        # recording: a plain error would mark another user's recording FAILED
+        # (#505), and returning stored the job as completed (#596). A missing
+        # session is left to stitch_recording_session, as before.
         from src.models import RecordingSession
         from src.database import db
         sess = db.session.get(RecordingSession, session_id)
@@ -662,7 +683,8 @@ class FairJobQueue:
                                  or sess.user_id != recording.user_id):
             logger.error(f"Stitch job {job.id}: session {session_id} does not belong to "
                          f"recording {recording.id}; job dropped")
-            return
+            raise StitchTargetMismatch(
+                f"Recording session {session_id} does not belong to recording {recording.id}")
 
         try:
             recording_id, final_path, metadata = stitch_recording_session(session_id)
