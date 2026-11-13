@@ -72,7 +72,7 @@ GET /api/v1/tokens/current
 
 **Scope:** none (any valid token)
 
-Returns the token used for the request. A request signed in through the web interface gets `404` with `"code": "not_found"`.
+Returns the token used for the request. A request signed in through the web interface gets `404` with `"code": "not_found"`. For a token created through the [token exchange](#token-exchange), `sso_client_id` is the client ID of the app that exchanged, and `sso_client_name` is its display name when the administrator has set one in `sso_api_client_names`. Both are `null` for any other token. For a request made with an SSO access token, `id` is `null` and `sso_client_id` is the client the access token was issued to.
 
 ```json
 {
@@ -82,7 +82,9 @@ Returns the token used for the request. A request signed in through the web inte
   "created_at": "2026-10-02T09:00:00.000000Z",
   "expires_at": "2027-10-02T09:00:00.000000Z",
   "last_used_at": "2026-10-02T09:05:11.000000Z",
-  "via": "header"
+  "via": "header",
+  "sso_client_id": null,
+  "sso_client_name": null
 }
 ```
 

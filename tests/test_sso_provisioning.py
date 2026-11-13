@@ -628,3 +628,38 @@ def test_token_list_carries_the_name_and_not_the_mapping(world):
     assert "Hidden App" not in resp.get_data(as_text=True)
     with c.session_transaction() as s:
         s.clear()
+
+
+# --- /tokens/current names the exchanging client ---------------------------------------
+
+def test_current_token_of_an_exchanged_token_names_its_client(world):
+    sub = _person(world, "current")
+    world["env"].setenv("SSO_API_CLIENT_NAMES", f"{MAILR}=Mail Sync")
+    plain = _exchange(world, _mailr(world, sub)).get_json()["token"]
+    body = world["client"].get("/api/v1/tokens/current", headers=_bearer(plain)).get_json()
+    assert body["id"] is not None
+    assert body["sso_client_id"] == MAILR and body["sso_client_name"] == "Mail Sync"
+    world["env"].setenv("SSO_API_CLIENT_NAMES", "")
+    body = world["client"].get("/api/v1/tokens/current", headers=_bearer(plain)).get_json()
+    assert body["sso_client_id"] == MAILR and body["sso_client_name"] is None
+
+
+def test_current_token_of_a_manual_token_has_no_client(world):
+    uid = _local_user(world, f"manual.{world['tag']}@example.test")
+    plain = f"tok-{secrets.token_urlsafe(16)}"
+    with app.app_context():
+        db.session.add(APIToken(user_id=uid, token_hash=hash_token(plain), name="manual",
+                                scopes=json.dumps(["read"])))
+        db.session.commit()
+    body = world["client"].get("/api/v1/tokens/current", headers=_bearer(plain)).get_json()
+    assert body["name"] == "manual"
+    assert body["sso_client_id"] is None and body["sso_client_name"] is None
+
+
+def test_current_token_of_an_sso_access_token_carries_the_name(world):
+    sub = _person(world, "currentsso")
+    world["env"].setenv("SSO_API_CLIENT_NAMES", f"{CLIENT}=Open WebUI")
+    body = world["client"].get("/api/v1/tokens/current",
+                               headers=_bearer(world["provider"].token(sub))).get_json()
+    assert body["id"] is None
+    assert body["sso_client_id"] == CLIENT and body["sso_client_name"] == "Open WebUI"

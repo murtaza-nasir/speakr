@@ -240,8 +240,13 @@ OPENAPI_SPEC = {
                     "last_used_at": {"type": "string", "format": "date-time", "nullable": True},
                     "via": {"type": "string", "enum": ["header", "query"]},
                     "sso_client_id": {"type": "string", "nullable": True,
-                                      "description": "For an SSO access token: the OIDC client it was issued to. "
-                                                     "id is null then."}
+                                      "description": "For an SSO access token: the OIDC client it was issued to; "
+                                                     "id is null then. For an API token created through the "
+                                                     "SSO token exchange: the client that exchanged. Null for "
+                                                     "any other token."},
+                    "sso_client_name": {"type": "string", "nullable": True,
+                                        "description": "The display name of that client from "
+                                                       "sso_api_client_names, or null when it has none."}
                 }
             },
             "Capabilities": {
@@ -1015,6 +1020,7 @@ def get_current_token():
     from flask import g
     from src.utils.token_auth import current_api_token
     from src.utils.token_auth import is_sso_token
+    from src.auth.sso_access_tokens import client_name
     token = current_api_token()
     if token is None:
         return jsonify({'error': translate('server.apiError.no_api_token'), 'code': 'not_found'}), 404
@@ -1031,6 +1037,7 @@ def get_current_token():
             'last_used_at': None,
             'via': 'header',
             'sso_client_id': token.client_id,
+            'sso_client_name': client_name(token.client_id),
         })
     return jsonify({
         'id': token.id,
@@ -1040,6 +1047,8 @@ def get_current_token():
         'expires_at': _z(token.expires_at),
         'last_used_at': _z(token.last_used_at),
         'via': 'query' if g.get('api_token_via_query') else 'header',
+        'sso_client_id': token.sso_client_id,
+        'sso_client_name': client_name(token.sso_client_id),
     })
 
 
