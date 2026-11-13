@@ -15,7 +15,7 @@ or programmatically via the `/api/v1/webhooks` API.
 | `recording.created` | A recording row is created (upload arrived) | `recording_id`, `title`, `file_size`, `original_filename` |
 | `recording.transcription.started` | Worker picks up a transcribe or reprocess-transcription job and the audio file is on disk | `recording_id`, `title` |
 | `recording.transcription.completed` | Transcription job finished successfully | `recording_id`, `title`, `language`, `audio_duration_seconds`, `transcription_duration_seconds` |
-| `recording.transcription.failed` | Transcription failed permanently (retries exhausted), or the transcription service returned no text | `recording_id`, `title`, `error` |
+| `recording.transcription.failed` | Transcription failed permanently (retries exhausted), the transcription service returned no text, or the owner's monthly transcription budget was used up | `recording_id`, `title`, `error` |
 | `recording.summary.completed` | Summary generated successfully | `recording_id`, `title`, `summarization_duration_seconds` |
 | `recording.summary.failed` | Summary failed permanently | `recording_id`, `title`, `error` |
 | `recording.events.extracted` | Calendar event extraction finished and produced at least one event | `recording_id`, `title`, `events_count` |
@@ -44,6 +44,13 @@ again. Subscribers receive `recording.transcription.failed` once, with the
 `error` "The transcription service returned no text. The recording may
 contain no speech, or the service failed without reporting an error.", and no
 `recording.transcription.completed`.
+
+A recording whose owner has used up the monthly transcription budget ends
+`FAILED` in the same way, before any audio is sent to the transcription
+service and without a retry. Subscribers receive
+`recording.transcription.failed` once, with the budget message shown on the
+recording as `error`, and no `recording.transcription.completed`. The message
+is in the owner's interface language.
 
 `recording.updated` fires once per saved change, whether the change was made in the web
 app, through API v1 or by a speaker rename or merge. `fields_changed` uses these words:
