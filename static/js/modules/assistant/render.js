@@ -80,14 +80,19 @@ function marker(occurrence, opts) {
     return el;
 }
 
+// Up to this many sources are listed open; a longer list is folded into
+// "Sources (n)", which opens on click.
+const SOURCES_OPEN_MAX = 3;
+
 function sourcesList(sources, opts) {
     const { t } = opts;
-    const wrap = document.createElement('div');
+    const folded = sources.length > SOURCES_OPEN_MAX;
+    const wrap = document.createElement(folded ? 'details' : 'div');
     // citation-refs: the Ask page's (and its themes') Sources styling
-    wrap.className = 'chat-sources citation-refs';
-    const label = document.createElement('div');
+    wrap.className = 'chat-sources citation-refs' + (folded ? ' chat-sources--folded' : '');
+    const label = document.createElement(folded ? 'summary' : 'div');
     label.className = 'chat-sources__label citation-refs__label';
-    label.textContent = t('chat.sources');
+    label.textContent = folded ? t('chat.sourcesCount', { count: sources.length }) : t('chat.sources');
     wrap.appendChild(label);
     const ol = document.createElement('ol');
     for (const source of sources) {

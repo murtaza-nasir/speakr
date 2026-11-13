@@ -985,6 +985,7 @@
     "connectionEnded": "La conexión terminó antes de completar la respuesta: {{error}}",
     "errorWithMessage": "Error: {{error}}",
     "sources": "Fuentes",
+    "sourcesCount": "Fuentes ({{count}})",
     "quoteNotFound": "Cita no encontrada en la transcripción",
     "answeredIn": "{{name}} respondió en {{title}}",
     "answerFailedIn": "{{name}} no pudo responder en {{title}}",

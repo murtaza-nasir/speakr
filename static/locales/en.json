@@ -985,6 +985,7 @@
     "connectionEnded": "Connection ended before the response completed: {{error}}",
     "errorWithMessage": "Error: {{error}}",
     "sources": "Sources",
+    "sourcesCount": "Sources ({{count}})",
     "quoteNotFound": "Quote not found in the transcript",
     "answeredIn": "{{name}} answered in {{title}}",
     "answerFailedIn": "{{name}} couldn't answer in {{title}}",
