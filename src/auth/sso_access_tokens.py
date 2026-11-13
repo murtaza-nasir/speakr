@@ -425,7 +425,8 @@ def _no_account_refusal(claims, client_id, matched_clients):
         return SSOAccountRefused("sso_exchange_not_allowed",
                                  f"client {client_id!r} may not exchange")
     email = claims.get("email")
-    email = User.normalize_email(email) if isinstance(email, str) else None
+    verified = claims.get("email_verified") is True
+    email = User.normalize_email(email) if isinstance(email, str) and verified else None
     existing = User.find_by_email(email) if email else None
     if existing is not None:
         return SSOAccountRefused("sso_link_required",

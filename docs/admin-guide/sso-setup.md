@@ -197,9 +197,9 @@ A Speakr account is created only when a person signs in to Speakr with SSO, unde
 |---|---|---|
 | `403` | `sso_registration_closed` | No account has this subject. The person signs in to Speakr once with SSO. |
 | `403` | `sso_exchange_not_allowed` | No account has this subject, and the client of the token may not exchange. |
-| `409` | `sso_link_required` | The token carries an `email` claim, and an account with this email exists that is not linked to this subject. The person signs in to Speakr once with SSO, which links the account through the usual rules. |
+| `409` | `sso_link_required` | The token carries a verified `email` claim, and an account with this email exists that is not linked to this subject. The person signs in to Speakr once with SSO, which links the account through the usual rules. |
 
-The `email` claim of the token only selects between `sso_link_required` and `sso_registration_closed`. It never links an account and never grants access. A token without an `email` claim gets `sso_registration_closed`.
+The `email` claim of the token only selects between `sso_link_required` and `sso_registration_closed`. It never links an account and never grants access. A token without a verified `email` claim gets `sso_registration_closed`.
 
 An app with no token yet reads at `GET /api/v1/sso/status`, which needs no authentication, whether the exchange is available (see [SSO Status](../user-guide/api-reference.md#sso-status)).
 

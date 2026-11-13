@@ -107,6 +107,7 @@ def _linked(world, label):
 
 def _mailr(world, sub, **claims):
     claims.setdefault("aud", MAILR)
+    claims.setdefault("email_verified", True)
     return world["provider"].token(sub, **claims)
 
 
@@ -390,3 +391,12 @@ def test_current_token_of_an_sso_access_token_carries_the_name(world):
                                headers=_bearer(world["provider"].token(sub))).get_json()
     assert body["id"] is None
     assert body["sso_client_id"] == CLIENT and body["sso_client_name"] == "Open WebUI"
+
+
+def test_unverified_email_claim_gives_registration_closed(world):
+    sub = _sub(world, "unverified")
+    email = _email(world, "unverified")
+    _local_user(world, email)
+    resp = _exchange(world, _mailr(world, sub, email=email, email_verified=False))
+    assert resp.status_code == 403
+    assert resp.get_json()["code"] == "sso_registration_closed"

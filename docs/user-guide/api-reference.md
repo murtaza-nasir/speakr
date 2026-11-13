@@ -141,7 +141,7 @@ When the access token is valid but no Speakr account has its subject, the exchan
 |--------|--------|------------|
 | `403` | `sso_registration_closed` | No Speakr account is linked to the person. The person signs in to Speakr once with SSO. |
 | `403` | `sso_exchange_not_allowed` | The client of the token may not exchange. |
-| `409` | `sso_link_required` | The token carries an `email` claim, and a Speakr account with that email exists. The person signs in to Speakr once with SSO, which links that account. |
+| `409` | `sso_link_required` | The token carries a verified `email` claim, and a Speakr account with that email exists. The person signs in to Speakr once with SSO, which links that account. |
 
 Any other API call with such a token gets the usual `401`.
 
