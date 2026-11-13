@@ -5,7 +5,7 @@
  * A value from the last 7 days is shown with its time, so two tokens made
  * on the same day can be told apart; an older value shows the date only.
  * The tooltip always holds the full date and time. Both use the locale of
- * the interface (window.i18n.getIntlLocale()) through Intl, as the rest of
+ * the interface (window.i18n?.getIntlLocale?.()) through Intl, as the rest of
  * the page does.
  */
 (function (root) {
