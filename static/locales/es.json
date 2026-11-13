@@ -3872,7 +3872,7 @@
         "7": "Descargue un resumen en Markdown, y respuestas sueltas o conversaciones completas de Preguntar a Ambrose como documentos de Word."
       },
       "0_10_21": {
-        "1": "Puede conectar Open WebUI y otras aplicaciones con el mismo inicio de sesión único a Speakr, sin copiar un token de API, cuando un administrador lo active.",
+        "1": "Puede conectar aplicaciones en las que inicia sesión con el mismo inicio de sesión único que en Speakr, como Open WebUI, sin copiar un token de API, cuando un administrador lo active.",
         "2": "Ambrose encuentra a una persona por su nombre, su apellido u otra grafía, y busca con todos los nombres con los que aparece.",
         "3": "Una lista larga de fuentes bajo una respuesta aparece plegada. Haga clic en «Fuentes» para abrirla.",
         "4": "Si se perdió varias actualizaciones, verá las novedades de cada una.",
