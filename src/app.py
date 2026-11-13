@@ -823,6 +823,18 @@ def _csrf_rejection_message(reason):
     return True, translate('server.apiError.csrf_session_expired')
 
 
+def _same_origin_request():
+    """True when the Origin header, or the Referer when there is no Origin,
+    names this host. Browsers send Origin on every cross-site POST."""
+    origin = request.headers.get('Origin')
+    if origin and origin != 'null':
+        return urlparse(origin).netloc == request.host
+    if origin == 'null':
+        return False
+    referrer = request.referrer
+    return bool(referrer) and urlparse(referrer).netloc == request.host
+
+
 @app.errorhandler(CSRFError)
 def handle_csrf_error(error):
     """Answer fetch/XHR callers with JSON that says why CSRF validation failed.
@@ -844,6 +856,19 @@ def handle_csrf_error(error):
         and 'text/html' in request.headers.get('Accept', '')
     )
     if is_form_navigation:
+        same_origin = _same_origin_request()
+        # Sign out from a page whose token has expired. Only a request from
+        # Speakr's own pages is accepted, so a cross-site form still cannot
+        # sign anyone out.
+        if request.endpoint == 'auth.logout' and same_origin:
+            from flask_login import logout_user
+            logout_user()
+            return redirect(url_for('auth.login'))
+        # Any other form with an expired or missing token: back to the page
+        # it was sent from, with a message, in place of a bare 400 page.
+        if retryable and same_origin and request.referrer:
+            flash(translate('server.flash.pageExpired'), 'warning')
+            return redirect(request.referrer)
         return error
     return jsonify({
         'error': message,

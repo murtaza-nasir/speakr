@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "El enlace de verificación no es válido o ha caducado.",
       "verificationResent": "Se ha enviado un nuevo correo de verificación.",
       "verificationSendFailed": "No se pudo enviar el correo de verificación. Inténtelo de nuevo más tarde.",
-      "verificationSentIfExists": "Si existe una cuenta con este correo, se ha enviado un enlace de verificación."
+      "verificationSentIfExists": "Si existe una cuenta con este correo, se ha enviado un enlace de verificación.",
+      "pageExpired": "La página había caducado. Vuelva a intentarlo."
     },
     "password": {
       "needsLowercase": "La contraseña debe contener al menos una letra minúscula.",

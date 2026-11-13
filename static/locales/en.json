@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "The verification link is invalid or has expired.",
       "verificationResent": "A new verification email has been sent.",
       "verificationSendFailed": "Couldn't send verification email. Try again later.",
-      "verificationSentIfExists": "If an account exists with this email, a verification link has been sent."
+      "verificationSentIfExists": "If an account exists with this email, a verification link has been sent.",
+      "pageExpired": "The page had expired. Try again."
     },
     "password": {
       "needsLowercase": "Password must contain at least one lowercase letter.",

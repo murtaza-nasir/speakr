@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "Le lien de vérification est invalide ou a expiré.",
       "verificationResent": "Un nouvel e-mail de vérification a été envoyé.",
       "verificationSendFailed": "Impossible d'envoyer l'e-mail de vérification. Réessayez plus tard.",
-      "verificationSentIfExists": "Si un compte existe avec cette adresse e-mail, un lien de vérification a été envoyé."
+      "verificationSentIfExists": "Si un compte existe avec cette adresse e-mail, un lien de vérification a été envoyé.",
+      "pageExpired": "La page avait expiré. Réessayez."
     },
     "password": {
       "needsLowercase": "Le mot de passe doit contenir au moins une lettre minuscule.",
