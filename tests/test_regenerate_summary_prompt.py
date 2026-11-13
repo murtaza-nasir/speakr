@@ -343,3 +343,57 @@ def test_generate_summary_accepts_instructions_and_variables(world):
         params = enq.call_args.kwargs["params"]
         assert (params["custom_prompt"], params["custom_prompt_append"]) == ("Agenda", True)
         assert db.session.get(Recording, world["rec"]).prompt_variables == {"client": "Acme"}
+
+
+def _v1_token(user_id):
+    from src.models import APIToken
+    from src.utils.token_auth import hash_token
+    plain = f"test-token-{uuid.uuid4().hex}"
+    db.session.add(APIToken(user_id=user_id, token_hash=hash_token(plain), name="rg-v1"))
+    db.session.commit()
+    return plain
+
+
+def _v1_summarize(world, who, body):
+    from src.models import APIToken
+    plain = _v1_token(world[who])
+    try:
+        with patch("src.services.llm.client", MagicMock()), \
+                patch.object(job_queue, "enqueue", return_value=1) as enq:
+            with app.test_client() as c:
+                resp = c.post(f"/api/v1/recordings/{world['rec']}/summarize", json=body,
+                              headers={"Authorization": f"Bearer {plain}"})
+        assert resp.status_code == 200, resp.get_data(as_text=True)[:300]
+        return enq.call_args.kwargs["params"]
+    finally:
+        APIToken.query.filter_by(user_id=world[who], name="rg-v1").delete()
+        db.session.commit()
+
+
+def test_v1_summarize_by_an_editor_runs_the_editors_prompt(world):
+    with app.app_context():
+        _attach(world, "owner", "editor")
+        params = _v1_summarize(world, "editor", {})
+        assert (params["custom_prompt"], params["custom_prompt_append"]) == ("EDITOR TAG", False)
+
+
+def test_v1_summarize_by_an_editor_adds_instructions_to_the_editors_prompt(world):
+    with app.app_context():
+        _attach(world)
+        params = _v1_summarize(world, "editor", {"additional_instructions": "Focus on dates"})
+        assert params["custom_prompt_append"] is False
+        assert params["custom_prompt"] == "EDITOR DEFAULT\n\nAdditional context for this recording:\nFocus on dates"
+
+
+def test_v1_summarize_by_an_editor_keeps_a_replacing_prompt(world):
+    with app.app_context():
+        _attach(world, "editor")
+        params = _v1_summarize(world, "editor", {"custom_prompt": "Only the decisions"})
+        assert (params["custom_prompt"], params["custom_prompt_append"]) == ("Only the decisions", False)
+
+
+def test_v1_summarize_by_the_owner_is_unchanged(world):
+    with app.app_context():
+        _attach(world, "owner")
+        params = _v1_summarize(world, "owner", {})
+        assert (params["custom_prompt"], params["custom_prompt_append"]) == (None, False)
