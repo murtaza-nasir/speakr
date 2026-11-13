@@ -3448,6 +3448,9 @@ def bulk_update_tags():
                             order=max_order + 1
                         )
                         db.session.add(new_tag)
+                        # A group tag shares the same way as on the single-tag route (#591)
+                        from src.services.tag_sharing import apply_tag_shares
+                        apply_tag_shares(recording, tag, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
                         affected_ids.append(recording_id)
 
                 else:  # remove

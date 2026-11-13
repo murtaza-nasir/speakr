@@ -30,6 +30,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         resp = client.post("/v2/upload", content=audio_bytes,
                             headers={"content-type": "application/octet-stream"})
         if resp.status_code != 200:
-            raise ProviderError(f"AssemblyAI upload failed ({resp.status_code}): {resp.text[:300]}",
+            raise ProviderError(f"AssemblyAI upload failed ({resp.status_code}): {summarize_error_body(resp.text, 300)}",
                                 provider=self.PROVIDER_NAME, status_code=resp.status_code)
         url = resp.json().get('upload_url')
         if not url:
@@ -158,7 +159,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
             resp = client.get(f"/v2/transcript/{transcript_id}")
             if resp.status_code != 200:
                 raise ProviderError(
-                    f"AssemblyAI poll failed ({resp.status_code}): {resp.text[:300]}",
+                    f"AssemblyAI poll failed ({resp.status_code}): {summarize_error_body(resp.text, 300)}",
                     provider=self.PROVIDER_NAME, status_code=resp.status_code)
             data = resp.json()
             status = data.get('status')
@@ -194,7 +195,7 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
                                    headers={"content-type": "application/json"})
                 if resp.status_code not in (200, 201):
                     raise ProviderError(
-                        f"AssemblyAI submit failed ({resp.status_code}): {resp.text[:300]}",
+                        f"AssemblyAI submit failed ({resp.status_code}): {summarize_error_body(resp.text, 300)}",
                         provider=self.PROVIDER_NAME, status_code=resp.status_code)
                 transcript_id = resp.json().get('id')
                 if not transcript_id:

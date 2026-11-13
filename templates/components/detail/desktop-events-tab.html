@@ -20,7 +20,7 @@
                         <i class="fas fa-download"></i>
                         <span v-text="t('events.addToCalendar')"></span>
                     </button>
-                    <button @click="deleteEvent(event)"
+                    <button v-if="selectedRecording.can_edit !== false" @click="deleteEvent(event)"
                             class="p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                             :title="t('events.delete')">
                         <i class="fas fa-trash-alt"></i>

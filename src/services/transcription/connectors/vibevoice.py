@@ -25,6 +25,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                     error_detail = error_json.get('error', {}).get('message', response.text)
                 except Exception:
                     pass
+                error_detail = summarize_error_body(str(error_detail), 500)  # #593
                 raise ProviderError(
                     f"VibeVoice API error: {error_detail}",
                     provider=self.PROVIDER_NAME,

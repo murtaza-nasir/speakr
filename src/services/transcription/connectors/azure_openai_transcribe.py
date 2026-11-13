@@ -26,6 +26,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -241,6 +242,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
                         error_detail = error_json['error'].get('message', error_detail)
                 except:
                     pass
+                error_detail = summarize_error_body(error_detail, 500)  # #593
                 logger.error(f"Azure OpenAI transcription failed: {response.status_code} - {error_detail}")
                 raise TranscriptionError(f"Azure OpenAI transcription failed: {response.status_code} - {error_detail}")
 

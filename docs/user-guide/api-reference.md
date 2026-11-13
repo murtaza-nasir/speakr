@@ -954,6 +954,8 @@ PATCH /api/v1/recordings/{id}
 
 All fields are optional. Set `folder_id` to an integer to move the recording into that folder (you must have access to the target folder), or to `null` to remove it from any folder. `folder_id` requires folders to be enabled.
 
+On a recording shared with you, `is_inbox`, `is_highlighted` and `is_archived` are your own values: setting them changes them for you only, and the owner's values stay as they are. The response and `GET /api/v1/recordings/{id}` show your values.
+
 ### Replace Notes
 
 ```http
@@ -1664,7 +1666,7 @@ PATCH /api/v1/recordings/batch
 }
 ```
 
-Supported `updates` fields: `is_inbox`, `is_highlighted`, `add_tag_ids`, `remove_tag_ids`, and `folder_id` (move all selected recordings into that folder, or `null` to remove them from their folders; you must have access to the target folder, and folders must be enabled). A `403` is returned if you lack access to the target folder, and `404` if it does not exist.
+Supported `updates` fields: `is_inbox`, `is_highlighted`, `add_tag_ids`, `remove_tag_ids`, and `folder_id` (move all selected recordings into that folder, or `null` to remove them from their folders; you must have access to the target folder, and folders must be enabled). A `403` is returned if you lack access to the target folder, and `404` if it does not exist. On a recording shared with you, `is_inbox` and `is_highlighted` set your own values, as in the single update.
 
 **Response:**
 

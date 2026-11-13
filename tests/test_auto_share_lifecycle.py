@@ -394,3 +394,188 @@ def test_cleanup_removes_only_unfounded_auto_shares(team):
     assert _shares(stale.id) == {}
     assert t["member"].id in _shares(manual.id)
     assert remove_unfounded_auto_shares() == 0
+
+
+# --- #586: a folder's group changes; the new group's members get the share ---
+
+def _second_group(t, roles=("member",)):
+    """A group the owner administers, with new users of the given roles."""
+    other = Group(name=f"g5_{uuid.uuid4().hex[:8]}")
+    db.session.add(other)
+    users = []
+    for _role in roles:
+        s = uuid.uuid4().hex[:8]
+        users.append(User(username=f"nc_{s}", email=f"nc_{s}@local.test", password="x"))
+    db.session.add_all(users)
+    db.session.commit()
+    db.session.add(GroupMembership(user_id=t["owner"].id, group_id=other.id, role="admin"))
+    db.session.add_all([GroupMembership(user_id=u.id, group_id=other.id, role=role) for u, role in zip(users, roles)])
+    db.session.commit()
+    return other, users
+
+
+def _drop_second_group(other, users, recording_ids):
+    db.session.rollback()
+    ids = [u.id for u in users]
+    InternalShare.query.filter(InternalShare.recording_id.in_(recording_ids),
+                               InternalShare.shared_with_user_id.in_(ids)).delete(synchronize_session=False)
+    SharedRecordingState.query.filter(SharedRecordingState.recording_id.in_(recording_ids),
+                                      SharedRecordingState.user_id.in_(ids)).delete(synchronize_session=False)
+    Folder.query.filter(Folder.group_id == other.id).update({"group_id": None})
+    GroupMembership.query.filter_by(group_id=other.id).delete()
+    Group.query.filter_by(id=other.id).delete()
+    User.query.filter(User.id.in_(ids)).delete(synchronize_session=False)
+    db.session.commit()
+
+
+def test_changing_folder_group_shares_with_the_new_group(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    assert _can_read(t["member"], r.id)
+    other, (newcomer,) = _second_group(t)
+    try:
+        resp = _client(t["owner"]).put(f"/api/folders/{f.id}", json={"group_id": other.id})
+        assert resp.status_code == 200, resp.get_json()
+        shares = _shares(r.id)
+        assert set(shares) == {newcomer.id}
+        share = shares[newcomer.id]
+        assert (share.source_type, share.source_folder_id, share.can_edit) == ("group_folder", f.id, False)
+        assert len(_state(r.id, newcomer.id)) == 1
+        assert _can_read(newcomer, r.id)
+        assert not _can_read(t["member"], r.id)
+        assert _can_read(t["owner"], r.id)
+    finally:
+        _drop_second_group(other, [newcomer], [r.id])
+
+
+def test_changing_folder_group_follows_the_lead_only_setting(team):
+    t = team
+    f, r = t["folder"](auto=False, lead=True), t["recording"]()
+    _into_folder(t, r, f)
+    other, (member, lead) = _second_group(t, roles=("member", "admin"))
+    try:
+        assert _client(t["owner"]).put(f"/api/folders/{f.id}", json={"group_id": other.id}).status_code == 200
+        shares = _shares(r.id)
+        assert set(shares) == {lead.id}
+        assert shares[lead.id].can_edit is True
+    finally:
+        _drop_second_group(other, [member, lead], [r.id])
+
+
+def test_clearing_folder_group_revokes_the_share(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    _into_folder(t, r, f)
+    assert _can_read(t["member"], r.id)
+    resp = _client(t["owner"]).put(f"/api/folders/{f.id}", json={"group_id": None})
+    assert resp.status_code == 200
+    assert db.session.get(Folder, f.id).group_id is None
+    assert _shares(r.id) == {}
+    assert not _can_read(t["member"], r.id)
+    assert _can_read(t["owner"], r.id)
+
+
+def test_folder_group_change_keeps_a_manual_share(team):
+    t = team
+    f, r = t["folder"](), t["recording"]()
+    db.session.add(InternalShare(recording_id=r.id, owner_id=t["owner"].id, shared_with_user_id=t["member"].id,
+                                 can_edit=False, can_reshare=False, source_type="manual"))
+    db.session.commit()
+    _into_folder(t, r, f)
+    assert _client(t["owner"]).put(f"/api/folders/{f.id}", json={"group_id": None}).status_code == 200
+    assert {uid: s.source_type for uid, s in _shares(r.id).items()} == {t["member"].id: "manual"}
+
+
+# --- #591: a bulk add of a group tag shares as a single add does ------------
+
+def test_bulk_add_of_a_group_tag_creates_the_share(team):
+    t = team
+    r = t["recording"]()
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id,
+              auto_share_on_apply=True)
+    db.session.add(tag)
+    db.session.commit()
+    try:
+        assert not _can_read(t["member"], r.id)
+        resp = _client(t["owner"]).post("/api/recordings/bulk-tags", json={"recording_ids": [r.id], "tag_id": tag.id,
+                                                                           "action": "add"})
+        assert resp.status_code == 200
+        assert resp.get_json()["affected_count"] == 1
+        shares = _shares(r.id)
+        assert set(shares) == {t["other_admin"].id, t["member"].id}
+        assert (shares[t["member"].id].source_type, shares[t["member"].id].source_tag_id,
+                shares[t["member"].id].can_edit) == ("group_tag", tag.id, False)
+        assert shares[t["other_admin"].id].can_edit is True
+        assert len(_state(r.id, t["member"].id)) == 1
+        assert _can_read(t["member"], r.id)
+    finally:
+        RecordingTag.query.filter_by(tag_id=tag.id).delete()
+        InternalShare.query.filter_by(recording_id=r.id).delete()
+        Tag.query.filter_by(id=tag.id).delete()
+        db.session.commit()
+
+
+def test_bulk_add_of_a_group_tag_waits_for_processing(team):
+    t = team
+    r = t["recording"]()
+    r.status = "PROCESSING"
+    tag = Tag(name=f"t_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id,
+              auto_share_on_apply=True)
+    db.session.add(tag)
+    db.session.commit()
+    try:
+        resp = _client(t["owner"]).post("/api/recordings/bulk-tags", json={"recording_ids": [r.id], "tag_id": tag.id,
+                                                                           "action": "add"})
+        assert resp.status_code == 200
+        assert _shares(r.id) == {}
+    finally:
+        RecordingTag.query.filter_by(tag_id=tag.id).delete()
+        Tag.query.filter_by(id=tag.id).delete()
+        db.session.commit()
+
+
+def test_bulk_remove_keeps_a_share_another_group_tag_gives(tagged):
+    t = tagged
+    r, tag = t["rec"], t["tag"]
+    second = Tag(name=f"t2_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id,
+                 auto_share_on_apply=True)
+    db.session.add(second)
+    db.session.commit()
+    try:
+        db.session.add(RecordingTag(recording_id=r.id, tag_id=second.id, order=2))
+        db.session.commit()
+        resp = _client(t["owner"]).post("/api/recordings/bulk-tags", json={"recording_ids": [r.id], "tag_id": tag.id,
+                                                                           "action": "remove"})
+        assert resp.status_code == 200
+        share = _shares(r.id)[t["member"].id]
+        assert (share.source_type, share.source_tag_id) == ("group_tag", second.id)
+        assert _can_read(t["member"], r.id)
+    finally:
+        RecordingTag.query.filter_by(tag_id=second.id).delete()
+        Tag.query.filter_by(id=second.id).delete()
+        db.session.commit()
+
+
+# --- #590: deleting a group tag ends its shares, unless another tag gives them
+
+@pytest.mark.parametrize("how", ["web", "v1"])
+def test_deleting_a_group_tag_keeps_a_share_another_group_tag_gives(tagged, how):
+    t = tagged
+    r, tag = t["rec"], t["tag"]
+    second = Tag(name=f"t2_{uuid.uuid4().hex[:8]}", user_id=t["owner"].id, group_id=t["group"].id,
+                 auto_share_on_apply=True)
+    db.session.add(second)
+    db.session.commit()
+    try:
+        db.session.add(RecordingTag(recording_id=r.id, tag_id=second.id, order=2))
+        db.session.commit()
+        path = f"/api/tags/{tag.id}" if how == "web" else f"/api/v1/tags/{tag.id}"
+        assert _client(t["owner"]).delete(path).status_code == 200
+        share = _shares(r.id)[t["member"].id]
+        assert (share.source_type, share.source_tag_id) == ("group_tag", second.id)
+        assert _can_read(t["member"], r.id)
+    finally:
+        RecordingTag.query.filter_by(tag_id=second.id).delete()
+        Tag.query.filter_by(id=second.id).delete()
+        db.session.commit()

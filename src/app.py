@@ -313,7 +313,7 @@ def get_user_recording_status(recording, user):
         return (True, False)
 
 
-def set_user_recording_status(recording, user, is_inbox=None, is_highlighted=None):
+def set_user_recording_status(recording, user, is_inbox=None, is_highlighted=None, commit=True):
     """
     Set the inbox and/or highlighted status for a recording from a user's perspective.
 
@@ -325,6 +325,7 @@ def set_user_recording_status(recording, user, is_inbox=None, is_highlighted=Non
         user: User object (typically current_user)
         is_inbox: Boolean or None (None means don't change)
         is_highlighted: Boolean or None (None means don't change)
+        commit: False leaves the commit to the caller (the API v1 PATCH routes)
 
     Returns:
         Tuple of (is_inbox, is_highlighted) after update
@@ -335,7 +336,8 @@ def set_user_recording_status(recording, user, is_inbox=None, is_highlighted=Non
             recording.is_inbox = is_inbox
         if is_highlighted is not None:
             recording.is_highlighted = is_highlighted
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return (recording.is_inbox, recording.is_highlighted)
 
     # Shared recipient uses SharedRecordingState
@@ -360,7 +362,8 @@ def set_user_recording_status(recording, user, is_inbox=None, is_highlighted=Non
     if is_highlighted is not None:
         state.is_highlighted = is_highlighted
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return (state.is_inbox, state.is_highlighted)
 
 

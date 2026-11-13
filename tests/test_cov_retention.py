@@ -449,3 +449,114 @@ class TestGlobalRetentionFlag(RetentionTestBase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# ---------------------------------------------------------------------------
+# A personal tag binds retention only for the recording's owner (#589)
+# ---------------------------------------------------------------------------
+
+class TestForeignPersonalTag(RetentionTestBase):
+    """A share recipient may attach their own personal tag to a recording they
+    can view. The owner cannot see that tag, so it must not set the
+    recording's retention or exempt it."""
+
+    def setUp(self):
+        super().setUp()
+        suffix = uuid.uuid4().hex[:8]
+        self.other = User(username=f"ret2_{suffix}", email=f"ret2_{suffix}@local.test", password="x")
+        db.session.add(self.other)
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.rollback()
+        for tag in Tag.query.filter_by(user_id=self.other.id).all():
+            RecordingTag.query.filter_by(tag_id=tag.id).delete()
+            db.session.delete(tag)
+        db.session.commit()
+        db.session.delete(db.session.get(User, self.other.id))
+        db.session.commit()
+        super().tearDown()
+
+    def foreign_tag(self, **kwargs):
+        tag = Tag(name=f"ftag_{uuid.uuid4().hex[:8]}", user_id=self.other.id, **kwargs)
+        db.session.add(tag)
+        db.session.flush()
+        return tag
+
+    def test_foreign_personal_tag_does_not_shorten_retention(self):
+        rec = self.make_recording()
+        self.tag_recording(rec, self.foreign_tag(retention_days=1))
+        with patch.object(retention, 'GLOBAL_RETENTION_DAYS', 30):
+            self.assertEqual(retention.get_retention_days_for_recording(rec), 30)
+
+    def test_foreign_personal_tag_does_not_exempt(self):
+        rec = self.make_recording()
+        self.tag_recording(rec, self.foreign_tag(retention_days=-1, protect_from_deletion=True))
+        self.assertFalse(rec.deletion_exempt)
+        self.assertFalse(retention.is_recording_exempt_from_deletion(rec))
+
+    def test_owner_tag_still_counts_beside_a_foreign_one(self):
+        rec = self.make_recording()
+        self.tag_recording(rec, self.foreign_tag(retention_days=1))
+        self.tag_recording(rec, self.make_tag(retention_days=7))
+        with patch.object(retention, 'GLOBAL_RETENTION_DAYS', 30):
+            self.assertEqual(retention.get_retention_days_for_recording(rec), 7)
+
+    def test_group_tag_still_counts_whoever_made_it(self):
+        from src.models import Group
+        group = Group(name=f"retg_{uuid.uuid4().hex[:8]}")
+        db.session.add(group)
+        db.session.commit()
+        try:
+            rec = self.make_recording()
+            self.tag_recording(rec, self.foreign_tag(retention_days=3, group_id=group.id))
+            with patch.object(retention, 'GLOBAL_RETENTION_DAYS', 30):
+                self.assertEqual(retention.get_retention_days_for_recording(rec), 3)
+            other_rec = self.make_recording()
+            self.tag_recording(other_rec, self.foreign_tag(protect_from_deletion=True, group_id=group.id))
+            self.assertTrue(retention.is_recording_exempt_from_deletion(other_rec))
+        finally:
+            db.session.rollback()
+            for tag in Tag.query.filter_by(group_id=group.id).all():
+                RecordingTag.query.filter_by(tag_id=tag.id).delete()
+                db.session.delete(tag)
+            db.session.delete(db.session.get(Group, group.id))
+            db.session.commit()
+
+    def test_foreign_tag_does_not_delete_the_recording(self):
+        rec = self.make_recording(age_days=5)
+        self.tag_recording(rec, self.foreign_tag(retention_days=1))
+        storage = _make_storage_mock()
+        with patch.object(retention, 'ENABLE_AUTO_DELETION', True), \
+                patch.object(retention, 'GLOBAL_RETENTION_DAYS', 30), \
+                patch.object(retention, 'DELETION_MODE', 'full_recording'), \
+                patch.object(retention, 'get_storage_service', return_value=storage), \
+                patch('src.services.speaker_cleanup.cleanup_orphaned_speakers',
+                      return_value={'speakers_deleted': 0, 'embeddings_removed': 0, 'speakers_evaluated': 0}):
+            retention.process_auto_deletion()
+        self.assertIsNotNone(db.session.get(Recording, rec.id))
+        storage.delete.assert_not_called()
+
+    def test_admin_preview_does_not_name_a_foreign_tag(self):
+        import src.api.admin as admin_module
+        admin = User(username=f"reta_{uuid.uuid4().hex[:8]}", email=f"reta_{uuid.uuid4().hex[:8]}@local.test",
+                     password="x", is_admin=True)
+        db.session.add(admin)
+        db.session.commit()
+        try:
+            rec = self.make_recording(deletion_exempt=True)
+            ftag = self.foreign_tag(protect_from_deletion=True)
+            self.tag_recording(rec, ftag)
+            client = app.test_client()
+            with client.session_transaction() as sess:
+                sess["_user_id"] = str(admin.id)
+                sess["_fresh"] = True
+            with patch.object(admin_module, 'ENABLE_AUTO_DELETION', True):
+                body = client.get('/admin/auto-deletion/preview').get_json()
+            row = next(r for r in body['would_exempt'] if r['id'] == rec.id)
+            self.assertEqual(row['exempt_reason'], ['manually_exempted'])
+            self.assertNotIn(ftag.name, row['tags'])
+        finally:
+            db.session.rollback()
+            db.session.delete(db.session.get(User, admin.id))
+            db.session.commit()

@@ -17,7 +17,8 @@ from src.models import *
 from src.utils import *
 from src.utils.localization import translate, api_error
 from src.utils.search import contains_pattern, LIKE_ESCAPE
-from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
+from src.services.retention import (is_recording_exempt_from_deletion, get_retention_days_for_recording,
+                                    process_auto_deletion, retention_tags)
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
@@ -1201,7 +1202,7 @@ def preview_auto_deletion():
                 'title': recording.title,
                 'created_at': recording.created_at.isoformat(),
                 'age_days': (current_time - recording.created_at).days,
-                'tags': [tag.tag.name for tag in recording.tag_associations]
+                'tags': [tag.name for tag in retention_tags(recording)]
             }
 
             # Check if exempt from deletion entirely
@@ -1209,9 +1210,9 @@ def preview_auto_deletion():
                 rec_data['exempt_reason'] = []
                 if recording.deletion_exempt:
                     rec_data['exempt_reason'].append('manually_exempted')
-                for tag_assoc in recording.tag_associations:
-                    if tag_assoc.tag.protect_from_deletion:
-                        rec_data['exempt_reason'].append(f'tag:{tag_assoc.tag.name}')
+                for tag in retention_tags(recording):
+                    if tag.protect_from_deletion:
+                        rec_data['exempt_reason'].append(f'tag:{tag.name}')
                 preview_data['would_exempt'].append(rec_data)
                 continue
 

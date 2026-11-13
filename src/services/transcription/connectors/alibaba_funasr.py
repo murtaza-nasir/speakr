@@ -23,6 +23,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -360,9 +361,12 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
             error_detail = ""
             try:
                 error_response = e.response.json()
-                error_detail = f": {json.dumps(error_response)}"
+                error_detail = json.dumps(error_response)
             except Exception:
-                error_detail = f": {e.response.text[:200]}"
+                error_detail = e.response.text
+            # Summarised, not copied (#593)
+            error_detail = summarize_error_body(error_detail, 300)
+            error_detail = f": {error_detail}" if error_detail else ""
 
             raise ProviderError(
                 f"FunASR request failed, status {e.response.status_code}{error_detail}",

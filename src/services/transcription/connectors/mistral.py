@@ -21,6 +21,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
                     error_detail = error_json.get('message', error_json.get('detail', response.text))
                 except Exception:
                     pass
+                error_detail = summarize_error_body(str(error_detail), 500)  # #593
                 raise ProviderError(
                     f"Mistral API error: {error_detail}",
                     provider=self.PROVIDER_NAME,

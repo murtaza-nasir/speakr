@@ -16,6 +16,7 @@ from ..base import (
     TranscriptionRequest, TranscriptionResponse, TranscriptionSegment,
 )
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
+from src.utils.error_body import summarize_error_body
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
     @classmethod
     def _api_error(cls, label: str, response: httpx.Response) -> ProviderError:
         return ProviderError(
-            f"Mossland {label} failed ({response.status_code}): {response.text[:300]}",
+            f"Mossland {label} failed ({response.status_code}): {summarize_error_body(response.text, 300)}",
             provider=cls.PROVIDER_NAME, status_code=response.status_code,
         )
 

@@ -116,7 +116,7 @@ Group folders work like group tags with auto-sharing:
 
 When you move a recording to a group folder with auto-share enabled, all group members receive access automatically.
 
-These shares last as long as the recording stays in the folder. When you move the recording out of the folder, delete the folder, or move the folder to another group, the members lose the access they had through the folder. A member keeps access they still have through a group tag on the recording, and a share you made by hand. A member who leaves the group loses the access they had through the group's folders and tags. Their personal notes are kept and return if the recording is shared with them again.
+These shares last as long as the recording stays in the folder. When you move the recording out of the folder, delete the folder, or move the folder to another group, the members lose the access they had through the folder. When you move the folder to another group, the recordings in it are shared with the new group's members as the folder's settings say. A member keeps access they still have through a group tag on the recording, and a share you made by hand. A member who leaves the group loses the access they had through the group's folders and tags. Their personal notes are kept and return if the recording is shared with them again.
 
 ## Folders vs Tags
 
