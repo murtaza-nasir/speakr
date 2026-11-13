@@ -71,13 +71,13 @@ class Provider:
             return {"keys": [k.as_dict(private=False) for k in self.keys]}
         raise AssertionError(f"unexpected fetch of {url}")
 
-    def token(self, sub, key=None, alg="RS256", **claims):
+    def token(self, sub, key=None, alg="RS256", typ="JWT", **claims):
         key = key or self.rsa
         now = int(time.time())
         body = {"iss": ISSUER, "sub": sub, "aud": CLIENT, "iat": now, "exp": now + 300}
         body.update(claims)
         body = {k: v for k, v in body.items() if v is not None}
-        header = {"alg": alg, "typ": "at+jwt"}
+        header = {"alg": alg, "typ": typ}
         if key.kid:
             header["kid"] = key.kid
         return jose_jwt.encode(header, body, key, algorithms=[alg])
@@ -614,3 +614,108 @@ def test_capabilities_report_the_exchange(world):
     _, sub, _ = _alice(world)
     body = world["client"].get("/api/v1/capabilities", headers=_bearer(_mailr(world, sub))).get_json()
     assert body["features"]["sso_token_exchange"] is True
+
+
+# --- RFC 9068 access tokens (Pocket ID) ----------------------------------------
+
+def _rfc9068(world, sub, typ="at+jwt", **claims):
+    """A token shaped as Pocket ID issues it: client_id claim, aud = issuer, no azp."""
+    claims.setdefault("aud", [ISSUER])
+    claims.setdefault("client_id", MAILR)
+    return world["provider"].token(sub, typ=typ, **claims)
+
+
+@pytest.mark.parametrize("typ", ["at+jwt", "AT+JWT", "application/at+jwt"])
+def test_rfc9068_token_matched_by_client_id(world, typ):
+    _, sub, username = _alice(world)
+    resp = world["client"].get("/api/v1/users/me", headers=_bearer(_rfc9068(world, sub, typ=typ)))
+    assert resp.status_code == 200 and resp.get_json()["username"] == username
+
+
+def test_rfc9068_token_can_be_exchanged_and_records_client_id(world):
+    uid, sub, _ = _alice(world)
+    body = _exchange(world, _rfc9068(world, sub), name="mailr").get_json()
+    assert body["sso_client_id"] == MAILR
+    with app.app_context():
+        assert APIToken.query.filter_by(user_id=uid, sso_client_id=MAILR).count() == 1
+
+
+@pytest.mark.parametrize("claims", [
+    {"client_id": None},                         # at+jwt without client_id
+    {"client_id": "someone-else"},               # client not allowed
+    {"client_id": "someone-else", "aud": [MAILR]},  # aud no longer counts for at+jwt
+    {"client_id": 5},
+])
+def test_rfc9068_token_refused_without_an_allowed_client_id(world, claims):
+    _, sub, _ = _alice(world)
+    resp = world["client"].get("/api/v1/users/me", headers=_bearer(_rfc9068(world, sub, **claims)))
+    assert resp.status_code == 401
+
+
+@pytest.mark.parametrize("extra", [{"nonce": "n-123"}, {"at_hash": "abc"}])
+def test_id_token_shaped_token_refused(world, extra):
+    _, sub, _ = _alice(world)
+    tok = world["provider"].token(sub, aud=CLIENT, **extra)
+    assert world["client"].get("/api/v1/users/me", headers=_bearer(tok)).status_code == 401
+
+
+# --- DELETE /api/v1/tokens/current ---------------------------------------------
+
+def _api_token(uid, scopes, name="t"):
+    plain = f"tok-{secrets.token_urlsafe(16)}"
+    with app.app_context():
+        row = APIToken(user_id=uid, token_hash=hash_token(plain), name=name,
+                       scopes=None if scopes is None else json.dumps(scopes))
+        db.session.add(row)
+        db.session.commit()
+        return plain, row.id
+
+
+@pytest.mark.parametrize("scopes", [["read"], ["upload"], None])
+def test_token_revokes_itself_and_then_gets_401(world, scopes):
+    uid, _, _ = _alice(world)
+    plain, tid = _api_token(uid, scopes)
+    other, other_id = _api_token(uid, ["read"], name="other")
+    c = world["client"]
+    resp = c.delete("/api/v1/tokens/current", headers=_bearer(plain))
+    assert resp.status_code == 200 and resp.get_json()["message"]
+    assert c.get("/api/v1/tokens/current", headers=_bearer(plain)).status_code == 401
+    with app.app_context():
+        assert db.session.get(APIToken, tid) is None
+        assert db.session.get(APIToken, other_id) is not None   # only its own token
+    assert c.get("/api/v1/tokens/current", headers=_bearer(other)).status_code == 200
+
+
+def test_scoped_token_cannot_revoke_another_token(world):
+    uid, _, _ = _alice(world)
+    plain, _ = _api_token(uid, ["read"])
+    _, other_id = _api_token(uid, ["read"], name="other")
+    resp = world["client"].delete(f"/api/tokens/{other_id}", headers=_bearer(plain))
+    assert resp.status_code == 403
+    with app.app_context():
+        assert db.session.get(APIToken, other_id) is not None
+
+
+def test_self_revoke_refused_for_sso_token_and_session(world):
+    uid, sub, _ = _alice(world)
+    keep, keep_id = _api_token(uid, ["read"])
+    c = world["client"]
+    resp = c.delete("/api/v1/tokens/current", headers=_bearer(world["provider"].token(sub)))
+    assert resp.status_code == 400 and resp.get_json()["code"] == "no_api_token"
+    with c.session_transaction() as sess:
+        sess["_user_id"] = str(uid)
+        sess["_fresh"] = True
+    resp = c.delete("/api/v1/tokens/current")
+    assert resp.status_code == 400 and resp.get_json()["code"] == "no_api_token"
+    # A session wins over a header token, so the token in the header is kept.
+    assert c.delete("/api/v1/tokens/current", headers=_bearer(keep)).status_code == 400
+    with app.app_context():
+        assert db.session.get(APIToken, keep_id) is not None
+
+
+def test_self_revoke_is_in_the_spec_and_capabilities(world):
+    _, sub, _ = _alice(world)
+    spec = world["client"].get("/api/v1/openapi.json").get_json()
+    assert "delete" in spec["paths"]["/tokens/current"]
+    body = world["client"].get("/api/v1/capabilities", headers=_bearer(world["provider"].token(sub))).get_json()
+    assert body["features"]["token_self_revoke"] is True
