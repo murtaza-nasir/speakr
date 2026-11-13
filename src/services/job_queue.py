@@ -416,6 +416,7 @@ class FairJobQueue:
             from src.models import ProcessingJob, Recording
             from flask import current_app
 
+            loaded_created_at = None
             try:
                 # Parse job parameters
                 params = json.loads(params_str) if params_str else {}
@@ -430,6 +431,9 @@ class FairJobQueue:
                 recording = db.session.get(Recording, recording_id)
                 if not recording:
                     raise ValueError(f"Recording {recording_id} not found")
+                # Tells this recording from a later upload that received its
+                # id after a delete (SQLite reuses the highest id, #597).
+                loaded_created_at = recording.created_at
 
                 # Webhook fan-out for "started" events (#275) is now
                 # emitted INSIDE each job handler after the
@@ -446,11 +450,15 @@ class FairJobQueue:
 
                 # Mark as completed - re-fetch to ensure we have latest state
                 job = db.session.get(ProcessingJob, job_id)
-                if job:
-                    job.status = 'completed'
-                    job.completed_at = datetime.utcnow()
-                    db.session.commit()
-                    logger.info(f"Job {job_id} completed successfully")
+                if job is None:
+                    # Deleting a recording deletes its jobs: the id may now
+                    # be a new upload's, so nothing is reported (#597).
+                    logger.info(f"Job {job_id} was removed with its recording while it ran; no notices sent")
+                    return
+                job.status = 'completed'
+                job.completed_at = datetime.utcnow()
+                db.session.commit()
+                logger.info(f"Job {job_id} completed successfully")
 
                 # Webhook fan-out (#275). One emit per job-type completion;
                 # subscribers map these to user-visible lifecycle events.
@@ -480,8 +488,13 @@ class FairJobQueue:
                 except Exception:
                     pass
 
-                if db.session.get(Recording, recording_id) is None:
-                    # Deleted while the job ran: nothing to retry or report
+                from src.tasks.processing import RecordingDeletedDuringJob
+                current = db.session.get(Recording, recording_id)
+                if (current is None or isinstance(e, RecordingDeletedDuringJob)
+                        or (loaded_created_at is not None and current.created_at != loaded_created_at)):
+                    # Deleted while the job ran, or the id now belongs to a
+                    # new upload (#597): nothing to retry or report, and the
+                    # row with this id is not this job's to write.
                     logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
                     job = db.session.get(ProcessingJob, job_id)
                     if job:

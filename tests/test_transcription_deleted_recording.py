@@ -124,3 +124,103 @@ def test_a_live_recording_still_resets_its_voice_samples(rec_id):
     forget.assert_called_once()
     with app.app_context():
         assert db.session.get(Recording, rec_id).transcription == "Some words were said."
+
+
+# --- a deleted recording whose id a new upload received (#597) ----------------
+
+def _delete_and_reuse_elsewhere(rid):
+    """Delete the row and insert a later upload under the same id, as SQLite
+    does when the deleted row held the highest id."""
+    from datetime import datetime, timedelta
+    with db.engine.begin() as conn:
+        user_id = conn.execute(db.text("SELECT user_id FROM recording WHERE id = :r"), {"r": rid}).scalar()
+        conn.execute(Recording.__table__.delete().where(Recording.__table__.c.id == rid))
+        conn.execute(Recording.__table__.insert().values(
+            id=rid, user_id=user_id, title="New upload", status="QUEUED",
+            transcription="new upload", original_filename="new.mp3",
+            created_at=datetime.utcnow() + timedelta(seconds=5)))
+
+
+def _empty_response():
+    response = _response()
+    response.text = ""
+    return response
+
+
+def test_a_reused_id_keeps_the_new_upload(rec_id):
+    def transcribe(request):
+        _delete_and_reuse_elsewhere(rec_id)
+        return _response()
+
+    with pytest.raises(proc.RecordingDeletedDuringJob):
+        _run(rec_id, _connector(transcribe))
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert (rec.title, rec.status, rec.transcription) == ("New upload", "QUEUED", "new upload")
+        assert rec.error_message is None
+
+
+def test_an_empty_result_does_not_fail_the_reused_upload(rec_id):
+    def transcribe(request):
+        _delete_and_reuse_elsewhere(rec_id)
+        return _empty_response()
+
+    with pytest.raises(proc.RecordingDeletedDuringJob):
+        _run(rec_id, _connector(transcribe))
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert rec.status == "QUEUED"
+        assert rec.transcription == "new upload"
+        assert rec.error_message != proc.EMPTY_TRANSCRIPT_MESSAGE
+
+
+def test_an_empty_result_still_fails_the_recording_it_belongs_to(rec_id):
+    _run(rec_id, _connector(lambda request: _empty_response()))
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert rec.status == "FAILED"
+        assert rec.error_message == proc.EMPTY_TRANSCRIPT_MESSAGE
+
+
+def test_a_summary_for_a_reused_id_is_not_stored_on_the_new_upload(rec_id):
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        rec.transcription = "A transcript long enough to summarise."
+        db.session.commit()
+
+    def llm(**kwargs):
+        _delete_and_reuse_elsewhere(rec_id)
+        return MagicMock(choices=[MagicMock(message=MagicMock(content="Old summary", reasoning=None))])
+
+    with patch.object(proc, "client", MagicMock()), \
+         patch.object(proc, "call_llm_completion", side_effect=llm), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit:
+        with app.app_context():
+            with pytest.raises(proc.RecordingDeletedDuringJob):
+                proc.generate_summary_only_task(app.app_context(), rec_id)
+    emit.assert_not_called()
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert (rec.status, rec.summary, rec.error_message) == ("QUEUED", None, None)
+
+
+def test_a_title_for_a_reused_id_is_not_stored_on_the_new_upload(rec_id):
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        rec.transcription = "A transcript long enough to title."
+        rec.title_source = "auto"
+        db.session.commit()
+
+    def compute(recording):
+        _delete_and_reuse_elsewhere(rec_id)
+        return "Old title"
+
+    with patch("src.services.titling.compute_title", side_effect=compute), \
+         patch.object(proc, "finish_processing") as finish:
+        with app.app_context():
+            with pytest.raises(proc.RecordingDeletedDuringJob):
+                proc.generate_title_task(app.app_context(), rec_id)
+    finish.assert_not_called()
+    with app.app_context():
+        rec = db.session.get(Recording, rec_id)
+        assert (rec.title, rec.status) == ("New upload", "QUEUED")
