@@ -1702,6 +1702,7 @@ def get_recording(recording_id):
         share = InternalShare.query.filter_by(
             recording_id=recording.id, shared_with_user_id=current_user.id).first()
     folder = visible_folder(recording, current_user.id, share)
+    caller_inbox, caller_highlighted = get_user_recording_status(recording, current_user)
 
     response = {
         'id': recording.id,
@@ -1714,8 +1715,8 @@ def get_recording(recording_id):
         'file_size': recording.file_size,
         'original_filename': recording.original_filename,
         'mime_type': recording.mime_type,
-        'is_inbox': recording.is_inbox,
-        'is_highlighted': recording.is_highlighted,
+        'is_inbox': caller_inbox,
+        'is_highlighted': caller_highlighted,
         'is_archived': get_user_archived(recording, current_user),
         'audio_available': recording.audio_deleted_at is None,
         'audio_duration': recording.get_audio_duration(),
@@ -1972,10 +1973,13 @@ def update_recording(recording_id):
                 recording.meeting_date = None
         except ValueError:
             return jsonify(api_error('invalid_meeting_date')), 400
-    if 'is_inbox' in data:
-        recording.is_inbox = bool(data['is_inbox'])
-    if 'is_highlighted' in data:
-        recording.is_highlighted = bool(data['is_highlighted'])
+    if 'is_inbox' in data or 'is_highlighted' in data:
+        # Inbox and star are per user: a shared editor sets their own (#599)
+        set_user_recording_status(
+            recording, current_user,
+            is_inbox=bool(data['is_inbox']) if 'is_inbox' in data else None,
+            is_highlighted=bool(data['is_highlighted']) if 'is_highlighted' in data else None,
+            commit=False)
     if 'is_archived' in data:
         archived = parse_archived_flag(data['is_archived'])
         if archived is None:
@@ -2008,6 +2012,7 @@ def update_recording(recording_id):
     # recording.updated goes out from the change listener after the commit
     # (src/services/recording_changes.py), the same for every write path.
 
+    caller_inbox, caller_highlighted = get_user_recording_status(recording, current_user)
     return jsonify({
         'success': True,
         'recording': {
@@ -2017,8 +2022,8 @@ def update_recording(recording_id):
             'notes': recording.get_user_notes(current_user),
             'summary': recording.summary,
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
-            'is_inbox': recording.is_inbox,
-            'is_highlighted': recording.is_highlighted,
+            'is_inbox': caller_inbox,
+            'is_highlighted': caller_highlighted,
             'is_archived': get_user_archived(recording, current_user),
             'folder_id': recording.folder_id,
             'updated_at': _updated_at_z(recording),
@@ -3551,10 +3556,13 @@ def batch_update_recordings():
                 continue
 
         try:
-            if 'is_inbox' in updates:
-                recording.is_inbox = bool(updates['is_inbox'])
-            if 'is_highlighted' in updates:
-                recording.is_highlighted = bool(updates['is_highlighted'])
+            if 'is_inbox' in updates or 'is_highlighted' in updates:
+                # Per user, as on the single PATCH (#599)
+                set_user_recording_status(
+                    recording, current_user,
+                    is_inbox=bool(updates['is_inbox']) if 'is_inbox' in updates else None,
+                    is_highlighted=bool(updates['is_highlighted']) if 'is_highlighted' in updates else None,
+                    commit=False)
             if 'is_archived' in updates:
                 set_user_archived(recording, current_user, batch_archived, commit=False)
             if 'folder_id' in updates:
