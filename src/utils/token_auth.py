@@ -140,8 +140,8 @@ def resolve_request_token():
         api_token = find_api_token(value)
         if api_token is None and header_value:
             # An SSO access token (src/auth/sso_access_tokens.py), when the
-            # feature is on. Accepted only from a header, never as ?token=.
-            api_token = sso_token_from_value(header_value)
+            # feature is on. Accepted only as Authorization: Bearer.
+            api_token = sso_token_from_request()
         via_query = bool(api_token is not None and not header_value)
         if via_query:
             # Deprecated (#500): marked for the Deprecation header, and
@@ -162,9 +162,12 @@ def resolve_request_token():
     return api_token, via_query
 
 
-def sso_token_from_value(value):
-    """The validated SSO access token for a header value, or None."""
+def sso_token_from_request():
+    """The validated SSO access token in the Authorization: Bearer header of
+    this request, or None. The other token headers and ?token= never carry one."""
     from src.auth.sso_access_tokens import looks_like_jwt, token_for_request
+    auth_header = request.headers.get('Authorization', '')
+    value = auth_header[7:] if auth_header.startswith('Bearer ') else None
     if not looks_like_jwt(value):
         return None
     return token_for_request(value)
@@ -411,7 +414,7 @@ def load_user_from_token_headers_only():
     user = load_user_from_token_value(value)
     if user is None and value:
         # An SSO access token in a header is a programmatic client too.
-        sso_token = sso_token_from_value(value)
+        sso_token = sso_token_from_request()
         if sso_token is not None:
             return sso_token.user
     return user

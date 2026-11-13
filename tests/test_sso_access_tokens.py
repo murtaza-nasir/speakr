@@ -387,6 +387,13 @@ def test_sso_token_in_query_string_is_not_accepted(world):
     assert resp.status_code == 401
 
 
+@pytest.mark.parametrize("header", ["X-API-Token", "API-Token"])
+def test_sso_token_only_in_the_authorization_header(world, header):
+    _, sub, _ = _alice(world)
+    resp = world["client"].get("/api/v1/users/me", headers={header: world["provider"].token(sub)})
+    assert resp.status_code == 401
+
+
 def test_jku_header_is_never_fetched(world):
     _, sub, _ = _alice(world)
     p = world["provider"]
