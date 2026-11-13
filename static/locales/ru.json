@@ -985,6 +985,7 @@
     "connectionEnded": "Соединение прервалось до завершения ответа: {{error}}",
     "errorWithMessage": "Ошибка: {{error}}",
     "sources": "Источники",
+    "sourcesCount": "Источники ({{count}})",
     "quoteNotFound": "Цитата не найдена в транскрипции",
     "answeredIn": "{{name}} ответил в «{{title}}»",
     "answerFailedIn": "{{name}} не смог ответить в «{{title}}»",

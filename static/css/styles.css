@@ -4768,6 +4768,17 @@ select:disabled {
     font-weight: 600;
     color: var(--text-muted);
 }
+.chat-sources--folded > summary.chat-sources__label {
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
+}
+.chat-sources--folded[open] > summary.chat-sources__label {
+    margin-bottom: var(--sp-1);
+}
+.chat-sources--folded > summary.chat-sources__label:hover {
+    color: var(--text-secondary);
+}
 .chat-sources ol {
     margin: 0;
     padding-inline-start: 1.4em;
