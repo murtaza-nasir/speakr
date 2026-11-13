@@ -663,3 +663,102 @@ def test_current_token_of_an_sso_access_token_carries_the_name(world):
                                headers=_bearer(world["provider"].token(sub))).get_json()
     assert body["id"] is None
     assert body["sso_client_id"] == CLIENT and body["sso_client_name"] == "Open WebUI"
+
+
+# --- Only under /api/v1 ------------------------------------------------------------------
+
+@pytest.mark.parametrize("path", ["/", "/account", "/api/recordings"])
+def test_no_account_is_created_outside_api_v1(world, path):
+    sub = _person(world, "outside")
+    world["client"].get(path, headers=_bearer(world["provider"].token(sub)))
+    assert world["provider"].userinfo_calls == []
+    assert _account(sub) is None
+    # The same token on an API v1 route then creates the account.
+    assert _me(world, world["provider"].token(sub)).status_code == 200
+    assert _account(sub) is not None
+
+
+def test_validate_without_a_request_creates_nothing(world):
+    sub = _person(world, "norequest")
+    with app.app_context():
+        assert sat.validate(world["provider"].token(sub)) is None
+    assert world["provider"].userinfo_calls == []
+    assert _account(sub) is None
+
+
+# --- Refusal cache -------------------------------------------------------------------------
+
+def _expire(key):
+    with sat._cache_lock:
+        code, reason, _ = sat._refusals[key]
+        sat._refusals[key] = (code, reason, 0.0)
+
+
+@pytest.mark.parametrize("label, claims, setup, code", [
+    ("cachelink", {}, "local", "sso_link_required"),
+    ("cachedomain", {}, "domain", "sso_domain_not_allowed"),
+    ("cacheunverified", {"email_verified": False}, None, "sso_email_not_verified"),
+    ("cachenoemail", {"email": None}, None, "sso_email_missing"),
+])
+def test_policy_refusal_is_cached_for_five_minutes(world, label, claims, setup, code):
+    sub = _person(world, label, **claims)
+    if setup == "local":
+        _local_user(world, world["provider"].people[sub]["email"])
+    if setup == "domain":
+        world["env"].setenv("SSO_ALLOWED_DOMAINS", "corp.example")
+    p = world["provider"]
+    first = _exchange(world, _mailr(world, sub))
+    assert first.get_json()["code"] == code and len(p.userinfo_calls) == 1
+    for _ in range(3):
+        again = _exchange(world, _mailr(world, sub))
+        assert again.status_code == first.status_code and again.get_json()["code"] == code
+        assert _me(world, p.token(sub)).status_code == 401
+    assert len(p.userinfo_calls) == 1
+    key = (ISSUER, sub)
+    remaining = sat._refusals[key][2] - __import__("time").monotonic()
+    assert sat.REFUSAL_TTL - 5 < remaining <= sat.REFUSAL_TTL
+    _expire(key)
+    assert _exchange(world, _mailr(world, sub)).get_json()["code"] == code
+    assert len(p.userinfo_calls) == 2
+
+
+def test_userinfo_failure_is_cached_for_a_minute_and_then_retried(world):
+    sub = _person(world, "cachefail")
+    p = world["provider"]
+    p.userinfo_answer = lambda url, tok: (500, None)
+    assert _exchange(world, _mailr(world, sub)).status_code == 502
+    p.userinfo_answer = None   # the provider recovers
+    resp = _exchange(world, _mailr(world, sub))
+    assert resp.status_code == 502 and resp.get_json()["code"] == "sso_userinfo_failed"
+    assert len(p.userinfo_calls) == 1
+    key = (ISSUER, sub)
+    remaining = sat._refusals[key][2] - __import__("time").monotonic()
+    assert sat.USERINFO_FAILURE_TTL - 5 < remaining <= sat.USERINFO_FAILURE_TTL
+    _expire(key)
+    assert _exchange(world, _mailr(world, sub)).status_code == 201
+    assert len(p.userinfo_calls) == 2 and _account(sub) is not None
+    assert key not in sat._refusals
+
+
+def test_cache_entry_is_cleared_when_the_account_is_created(world):
+    sub = _person(world, "cacheclear")
+    sat._remember_refusal((ISSUER, sub), "sso_email_missing", "test")
+    _expire((ISSUER, sub))
+    assert _exchange(world, _mailr(world, sub)).status_code == 201
+    assert (ISSUER, sub) not in sat._refusals
+
+
+def test_registration_closed_is_not_cached(world):
+    world["env"].setenv("SSO_API_AUTO_REGISTER", "false")
+    sub = _person(world, "closedcache")
+    assert _exchange(world, _mailr(world, sub)).get_json()["code"] == "sso_registration_closed"
+    world["env"].setenv("SSO_API_AUTO_REGISTER", "true")
+    assert _exchange(world, _mailr(world, sub)).status_code == 201
+
+
+def test_refusal_cache_is_capped(world, monkeypatch):
+    monkeypatch.setattr(sat, "REFUSAL_CACHE_MAX", 3)
+    for i in range(5):
+        sat._remember_refusal((ISSUER, f"s{i}"), "sso_email_missing", "test")
+    assert len(sat._refusals) == 3
+    assert set(sat._refusals) == {(ISSUER, "s2"), (ISSUER, "s3"), (ISSUER, "s4")}

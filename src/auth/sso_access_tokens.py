@@ -37,7 +37,10 @@ linked by email (refused with sso_link_required), and userinfo without an
 email is refused. On the exchange route the token must also name a client
 that may exchange before an account is created. Each refusal has a code;
 the exchange route answers with it (see refusal_response), every other
-route gives the usual 401.
+route gives the usual 401. Accounts are created only on requests under
+/api/v1. A refusal decided from userinfo is kept per (issuer, sub) for five
+minutes, a userinfo failure for one minute, so retries do not reach the
+provider.
 """
 
 import logging
@@ -78,11 +81,50 @@ _cache = {
 }
 
 
+# Refusals decided from userinfo, kept per (issuer, sub) so that a client
+# that keeps retrying does not call the provider on every request.
+REFUSAL_TTL = 300            # seconds for a policy refusal (link, domain, email)
+USERINFO_FAILURE_TTL = 60    # seconds for sso_userinfo_failed
+REFUSAL_CACHE_MAX = 1024     # entries kept at most
+_refusals = {}               # (issuer, sub) -> (code, reason, expiry on time.monotonic())
+
+
 def clear_cache():
-    """Forget the discovery document and the key set (tests, settings changes)."""
+    """Forget the discovery document, the key set and the cached refusals
+    (tests, settings changes)."""
     with _cache_lock:
         _cache.update(discovery=None, discovery_url=None, discovery_at=0.0,
                       jwks=None, jwks_uri=None, jwks_at=0.0, jwks_forced_at=0.0)
+        _refusals.clear()
+
+
+def _cached_refusal(key):
+    now = time.monotonic()
+    with _cache_lock:
+        entry = _refusals.get(key)
+        if entry is None:
+            return None
+        if entry[2] <= now:
+            del _refusals[key]
+            return None
+        return entry
+
+
+def _remember_refusal(key, code, reason):
+    ttl = USERINFO_FAILURE_TTL if code == "sso_userinfo_failed" else REFUSAL_TTL
+    now = time.monotonic()
+    with _cache_lock:
+        if key not in _refusals and len(_refusals) >= REFUSAL_CACHE_MAX:
+            for stale in [k for k, v in _refusals.items() if v[2] <= now]:
+                del _refusals[stale]
+            while len(_refusals) >= REFUSAL_CACHE_MAX:
+                del _refusals[next(iter(_refusals))]   # the oldest entry
+        _refusals[key] = (code, reason, now + ttl)
+
+
+def _forget_refusal(key):
+    with _cache_lock:
+        _refusals.pop(key, None)
 
 
 class SSOTokenError(Exception):
@@ -441,14 +483,31 @@ def _userinfo(value, subject):
     return claims
 
 
-def _provision(value, subject):
+def _provision(value, subject, issuer):
     """Create the account for a valid token whose subject has none.
 
-    Raises SSOProvisionRefused with the reason when no account is created."""
-    from src.auth.sso import create_sso_account, get_sso_config, is_domain_allowed
-    from src.models import User
+    Raises SSOProvisionRefused with the reason when no account is created.
+    A refusal decided from userinfo, or a userinfo failure, is kept for
+    REFUSAL_TTL or USERINFO_FAILURE_TTL seconds; within that time the same
+    refusal is given without calling the provider."""
     if not auto_register_enabled():
         raise SSOProvisionRefused("sso_registration_closed", "no user is linked to this subject")
+    key = (issuer, subject)
+    cached = _cached_refusal(key)
+    if cached is not None:
+        raise SSOProvisionRefused(cached[0], f"{cached[1]} (cached)")
+    try:
+        user = _provision_from_userinfo(value, subject)
+    except SSOProvisionRefused as exc:
+        _remember_refusal(key, exc.code, str(exc))
+        raise
+    _forget_refusal(key)
+    return user
+
+
+def _provision_from_userinfo(value, subject):
+    from src.auth.sso import create_sso_account, get_sso_config, is_domain_allowed
+    from src.models import User
     claims = _userinfo(value, subject)
     email = User.normalize_email(claims.get("email")) if isinstance(claims.get("email"), str) else None
     if not email:
@@ -467,6 +526,12 @@ def _provision(value, subject):
     user = create_sso_account(claims, email)
     logger.info("Account %s created from an SSO access token", user.id)
     return user
+
+
+def _may_provision_here():
+    """Accounts are created only on requests under /api/v1."""
+    from flask import has_request_context, request
+    return has_request_context() and request.path.startswith("/api/v1/")
 
 
 def _is_exchange_request():
@@ -515,11 +580,13 @@ def validate(value):
             raise SSOTokenError("sub is missing")
         user = User.query.filter_by(sso_subject=subject).first()
         if user is None:
+            if not _may_provision_here():
+                raise SSOTokenError("no user is linked to this subject")
             if _is_exchange_request() and not (exchange_clients() & set(matched_clients)):
                 # Nothing is created for a client that may not exchange.
                 raise SSOProvisionRefused("sso_exchange_not_allowed",
                                           f"client {client_id!r} may not exchange")
-            user = _provision(value, subject)
+            user = _provision(value, subject, claims.get("iss"))
         if not getattr(user, "is_active", True):
             raise SSOTokenError(f"user {user.id} is not active")
         return SSOAccessToken(user, client_id, scopes, claims, matched_clients)
