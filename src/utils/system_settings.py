@@ -102,6 +102,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'help_center_label': ('HELP_CENTER_LABEL', '', 'string', 'Optional help center label.'),
     'default_ui_theme': ('DEFAULT_UI_THEME', 'cards', 'string', 'UI theme for new accounts, and for the sign-in pages in a browser with no saved theme.'),
     'default_color_scheme': ('DEFAULT_COLOR_SCHEME', 'emerald', 'string', 'Color scheme for new accounts, and for the sign-in pages in a browser with no saved color scheme.'),
+    'default_audio_player_position': ('DEFAULT_AUDIO_PLAYER_POSITION', 'top', 'string', 'Audio player position on the recording page for new accounts: top or bottom.'),
     'max_concurrent_uploads': ('MAX_CONCURRENT_UPLOADS', 3, 'integer', 'Maximum number of concurrent uploads.'),
     'enable_email_verification': ('ENABLE_EMAIL_VERIFICATION', False, 'boolean', 'Whether email verification is enabled.'),
     'require_email_verification': ('REQUIRE_EMAIL_VERIFICATION', False, 'boolean', 'Whether verified email is required.'),

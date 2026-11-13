@@ -520,7 +520,8 @@
       "maxAudioOnlyVideoSizeDesc": "Maximum file size (in MB) for video uploads in audio-only mode. Only the extracted audio is stored, so the upload itself can be larger than the regular file-size limit.",
       "disableAutoTranslationDesc": "When enabled, recordings are only transcribed and users must trigger translation manually. When disabled, each user can opt in to auto-translate new recordings after transcription.",
       "defaultUiThemeDesc": "UI theme for new accounts, and for the sign-in pages in a browser with no saved theme. One of: default, classic, workspace, focus, desk, cards. Existing accounts keep their theme.",
-      "defaultColorSchemeDesc": "Color scheme for new accounts, and for the sign-in pages in a browser with no saved color scheme. One of: blue, emerald, purple, rose, amber, teal. Existing accounts keep their color scheme."
+      "defaultColorSchemeDesc": "Color scheme for new accounts, and for the sign-in pages in a browser with no saved color scheme. One of: blue, emerald, purple, rose, amber, teal. Existing accounts keep their color scheme.",
+      "defaultAudioPlayerPositionDesc": "Audio player position on a recording's page for new accounts. One of: top, bottom. Existing accounts keep their position."
     },
     "storageUsed": "Storage used",
     "summarizationInstructions": "Summarization instructions",
@@ -1194,7 +1195,7 @@
     "audioPlayerPositionLabel": "Player position",
     "audioPlayerPositionHelp": "Where the player sits on a recording's page",
     "playerPositionBottom": "Bottom",
-    "playerPositionBottomHelp": "Under the transcript and summary. Default.",
+    "playerPositionBottomHelp": "Under the transcript and summary.",
     "playerPositionTop": "Top",
     "playerPositionTopHelp": "Under the title, above the transcript and summary.",
     "recordingsListSection": "Recordings list",
@@ -3567,7 +3568,8 @@
       "summary_prompt_save_denied": "You can't save the prompt there.",
       "invalid_filter_date": "Couldn't read the date filter",
       "invalid_default_ui_theme": "Invalid default UI theme. Must be one of: {{themes}}",
-      "invalid_default_color_scheme": "Invalid default color scheme. Must be one of: {{schemes}}"
+      "invalid_default_color_scheme": "Invalid default color scheme. Must be one of: {{schemes}}",
+      "invalid_default_audio_player_position": "Invalid default audio player position. Must be one of: {{positions}}"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

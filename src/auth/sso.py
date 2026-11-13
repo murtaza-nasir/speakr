@@ -232,8 +232,8 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
     )
     from src.services.storage_quota import default_quota_mb
     user.storage_quota_mb = default_quota_mb()
-    from src.config.ui_themes import apply_new_user_theme
-    apply_new_user_theme(user)
+    from src.config.ui_themes import apply_new_user_defaults
+    apply_new_user_defaults(user)
     db.session.add(user)
     db.session.commit()
     return user

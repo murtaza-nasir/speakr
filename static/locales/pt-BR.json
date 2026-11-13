@@ -520,7 +520,8 @@
       "maxAudioOnlyVideoSizeDesc": "Tamanho máximo (em MB) para envios de vídeo em modo apenas-áudio. Apenas o áudio extraído é armazenado, portanto o envio em si pode ser maior que o limite habitual.",
       "disableAutoTranslationDesc": "Quando habilitado, as gravações são apenas transcritas e os usuários precisam iniciar a tradução manualmente. Quando desabilitado, cada usuário pode ativar a tradução automática de novas gravações após a transcrição.",
       "defaultUiThemeDesc": "Tema da interface para novas contas e para as páginas de login em um navegador sem tema salvo. Um destes: default, classic, workspace, focus, desk, cards. As contas existentes mantêm o tema.",
-      "defaultColorSchemeDesc": "Esquema de cores para novas contas e para as páginas de login em um navegador sem esquema salvo. Um destes: blue, emerald, purple, rose, amber, teal. As contas existentes mantêm o esquema de cores."
+      "defaultColorSchemeDesc": "Esquema de cores para novas contas e para as páginas de login em um navegador sem esquema salvo. Um destes: blue, emerald, purple, rose, amber, teal. As contas existentes mantêm o esquema de cores.",
+      "defaultAudioPlayerPositionDesc": "Posição do player de áudio na página de uma gravação para novas contas. Um destes: top, bottom. As contas existentes mantêm a posição."
     },
     "storageUsed": "Armazenamento usado",
     "summarizationInstructions": "Instruções de resumo",
@@ -1194,7 +1195,7 @@
     "audioPlayerPositionLabel": "Posição do reprodutor",
     "audioPlayerPositionHelp": "Onde o reprodutor fica na página de uma gravação",
     "playerPositionBottom": "Inferior",
-    "playerPositionBottomHelp": "Abaixo da transcrição e do resumo. Padrão.",
+    "playerPositionBottomHelp": "Abaixo da transcrição e do resumo.",
     "playerPositionTop": "Superior",
     "playerPositionTopHelp": "Abaixo do título, acima da transcrição e do resumo.",
     "recordingsListSection": "Lista de gravações",
@@ -3567,7 +3568,8 @@
       "summary_prompt_save_denied": "Você não pode salvar o prompt aí.",
       "invalid_filter_date": "Não foi possível ler o filtro de data",
       "invalid_default_ui_theme": "Tema de interface padrão inválido. Deve ser um destes: {{themes}}",
-      "invalid_default_color_scheme": "Esquema de cores padrão inválido. Deve ser um destes: {{schemes}}"
+      "invalid_default_color_scheme": "Esquema de cores padrão inválido. Deve ser um destes: {{schemes}}",
+      "invalid_default_audio_player_position": "Posição padrão do player de áudio inválida. Deve ser uma destas: {{positions}}"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

@@ -40,6 +40,11 @@ html[data-ui-theme="cards"] {
     --c-r-xl: 24px;       /* sheets */
     --c-r-pill: 999px;
 
+    /* space around the floating player pill on a recording page: the same
+       above and below in both positions (Account > Preferences) */
+    --c-player-gap-y: 14px;
+    --c-player-gap-x: 16px;
+
     --c-ease: cubic-bezier(0.2, 0, 0, 1);
     --c-dur: 160ms;
 
@@ -688,11 +693,10 @@ html[data-ui-theme="cards"] .speaker-bubble .speaker-bubble-content { font-size:
 html[data-ui-theme="cards"] .speaker-bubble.active-playing-segment { background-color: var(--c-primary-c) !important; box-shadow: none !important; opacity: 1; transform: none; color: var(--c-on-primary-c); }
 html[data-ui-theme="cards"] .view-mode-toggle { border-radius: var(--c-r-pill); background: var(--c-surface-2); border-color: var(--c-divider); }
 
-/* player: a floating pill, not a full-width bar */
-/* player placed above the split view (account setting): space above the pill as well */
-html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button):has(+ #mainContentColumns) { margin-top: 14px; }
+/* player: a floating pill, not a full-width bar. The same space above and
+   below it at the top and at the bottom of the page. */
 html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button) {
-    margin: 0 16px 14px;
+    margin: var(--c-player-gap-y) var(--c-player-gap-x);
     padding: 8px 18px;
     background: var(--c-surface);
     border: 1px solid var(--c-divider);

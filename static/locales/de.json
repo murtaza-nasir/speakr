@@ -520,7 +520,8 @@
       "maxAudioOnlyVideoSizeDesc": "Maximale Dateigröße (in MB) für Video-Uploads im Nur-Audio-Modus. Nur das extrahierte Audio wird gespeichert, daher kann der Upload selbst größer als das normale Limit sein.",
       "disableAutoTranslationDesc": "Wenn aktiviert, werden Aufnahmen nur transkribiert und Benutzer müssen die Übersetzung manuell auslösen. Wenn deaktiviert, kann jeder Benutzer neue Aufnahmen nach der Transkription automatisch übersetzen lassen.",
       "defaultUiThemeDesc": "UI-Design für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Design. Einer der Werte: default, classic, workspace, focus, desk, cards. Bestehende Konten behalten ihr Design.",
-      "defaultColorSchemeDesc": "Farbschema für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Farbschema. Einer der Werte: blue, emerald, purple, rose, amber, teal. Bestehende Konten behalten ihr Farbschema."
+      "defaultColorSchemeDesc": "Farbschema für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Farbschema. Einer der Werte: blue, emerald, purple, rose, amber, teal. Bestehende Konten behalten ihr Farbschema.",
+      "defaultAudioPlayerPositionDesc": "Position des Audioplayers auf der Seite einer Aufnahme für neue Konten. Einer der Werte: top, bottom. Bestehende Konten behalten ihre Position."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -1194,7 +1195,7 @@
     "audioPlayerPositionLabel": "Player-Position",
     "audioPlayerPositionHelp": "Wo der Player auf der Seite einer Aufnahme angezeigt wird",
     "playerPositionBottom": "Unten",
-    "playerPositionBottomHelp": "Unter Transkript und Zusammenfassung. Standard.",
+    "playerPositionBottomHelp": "Unter Transkript und Zusammenfassung.",
     "playerPositionTop": "Oben",
     "playerPositionTopHelp": "Unter dem Titel, über Transkript und Zusammenfassung.",
     "recordingsListSection": "Aufnahmeliste",
@@ -3567,7 +3568,8 @@
       "summary_prompt_save_denied": "Sie können den Prompt dort nicht speichern.",
       "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden",
       "invalid_default_ui_theme": "Ungültiges Standard-UI-Design. Zulässig ist einer der folgenden: {{themes}}",
-      "invalid_default_color_scheme": "Ungültiges Standard-Farbschema. Zulässig ist einer der folgenden: {{schemes}}"
+      "invalid_default_color_scheme": "Ungültiges Standard-Farbschema. Zulässig ist einer der folgenden: {{schemes}}",
+      "invalid_default_audio_player_position": "Ungültige Standardposition des Audioplayers. Zulässig ist einer der folgenden: {{positions}}"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

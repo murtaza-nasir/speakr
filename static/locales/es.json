@@ -520,7 +520,8 @@
       "maxAudioOnlyVideoSizeDesc": "Tamaño máximo (en MB) para subidas de vídeo en modo solo audio. Solo se almacena el audio extraído, por lo que la subida en sí puede ser mayor que el límite habitual.",
       "disableAutoTranslationDesc": "Cuando está activado, las grabaciones solo se transcriben y los usuarios deben iniciar la traducción manualmente. Cuando está desactivado, cada usuario puede activar la traducción automática de sus grabaciones nuevas tras la transcripción.",
       "defaultUiThemeDesc": "Tema de la interfaz para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin tema guardado. Uno de: default, classic, workspace, focus, desk, cards. Las cuentas existentes conservan su tema.",
-      "defaultColorSchemeDesc": "Esquema de colores para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin esquema guardado. Uno de: blue, emerald, purple, rose, amber, teal. Las cuentas existentes conservan su esquema de colores."
+      "defaultColorSchemeDesc": "Esquema de colores para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin esquema guardado. Uno de: blue, emerald, purple, rose, amber, teal. Las cuentas existentes conservan su esquema de colores.",
+      "defaultAudioPlayerPositionDesc": "Posición del reproductor de audio en la página de una grabación para las cuentas nuevas. Uno de: top, bottom. Las cuentas existentes conservan su posición."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -1194,7 +1195,7 @@
     "audioPlayerPositionLabel": "Posición del reproductor",
     "audioPlayerPositionHelp": "Dónde se sitúa el reproductor en la página de una grabación",
     "playerPositionBottom": "Inferior",
-    "playerPositionBottomHelp": "Debajo de la transcripción y el resumen. Predeterminado.",
+    "playerPositionBottomHelp": "Debajo de la transcripción y el resumen.",
     "playerPositionTop": "Superior",
     "playerPositionTopHelp": "Debajo del título, encima de la transcripción y el resumen.",
     "recordingsListSection": "Lista de grabaciones",
@@ -3567,7 +3568,8 @@
       "summary_prompt_save_denied": "No puedes guardar el prompt ahí.",
       "invalid_filter_date": "No se pudo leer el filtro de fecha",
       "invalid_default_ui_theme": "Tema de interfaz predeterminado no válido. Debe ser uno de: {{themes}}",
-      "invalid_default_color_scheme": "Esquema de colores predeterminado no válido. Debe ser uno de: {{schemes}}"
+      "invalid_default_color_scheme": "Esquema de colores predeterminado no válido. Debe ser uno de: {{schemes}}",
+      "invalid_default_audio_player_position": "Posición predeterminada del reproductor de audio no válida. Debe ser una de: {{positions}}"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",
