@@ -239,7 +239,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Latest Release (v0.10.21-alpha)
 
-- The API can be used with the user's SSO access token from Mailr, Open WebUI and other apps that sign users in through the same single sign-on, without a copied API token.
+- The API can be used with the user's SSO access token from Open WebUI and other apps that sign users in through the same single sign-on, without a copied API token.
 - Ambrose finds people by a first name, a surname, an email or another spelling, and searches every name a person appears under.
 - Sharing and permission fixes for group folders, bulk tags, retention, calendar events and API v1 flags (#586, #589, #591, #598 to #600).
 - Job and upload fixes for merges, retries, failure notices, reused ids and repeated tags (#587, #592, #594 to #597, #601), and summaries cut off by reasoning models are reported as failed.

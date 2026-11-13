@@ -131,7 +131,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 !!! info "Version 0.10.21-alpha - SSO access tokens, people in Ambrose, sharing and job fixes"
     One column and four settings are added at startup; SSO access tokens are off until an admin turns them on. Read the Upgrading section of the release notes for the changes to webhooks and API v1.
 
-    - **Single sign-on** - SSO access tokens on the API, for Open WebUI and for apps that sync in the background, such as Mailr.
+    - **Single sign-on** - SSO access tokens on the API, for Open WebUI and for apps that sync in the background.
     - **Ambrose** - People are found by any of their names, and long Sources lists are folded.
     - **Fixes** - Sharing and permissions (#586, #589, #591, #598 to #600), jobs and uploads (#587, #592, #594 to #597, #601), error pages from transcription services (#593), and cut-off summaries.
 

@@ -77,7 +77,7 @@ Returns the token used for the request. A request signed in through the web inte
 ```json
 {
   "id": 14,
-  "name": "mailr",
+  "name": "My app",
   "scopes": ["read", "write", "upload"],
   "created_at": "2026-10-02T09:00:00.000000Z",
   "expires_at": "2027-10-02T09:00:00.000000Z",
@@ -127,7 +127,7 @@ The answer is `201` with the same fields as a token created in Account settings,
   "expires_at": "2027-11-12T10:00:00",
   "last_used_at": null,
   "revoked": false,
-  "sso_client_id": "mailr"
+  "sso_client_id": "my-app"
 }
 ```
 
