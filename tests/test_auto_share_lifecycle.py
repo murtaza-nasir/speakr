@@ -422,6 +422,9 @@ def _drop_second_group(other, users, recording_ids):
     SharedRecordingState.query.filter(SharedRecordingState.recording_id.in_(recording_ids),
                                       SharedRecordingState.user_id.in_(ids)).delete(synchronize_session=False)
     Folder.query.filter(Folder.group_id == other.id).update({"group_id": None})
+    # A tag moved into the second group would be removed with it on PostgreSQL
+    # (foreign keys are enforced there), while recordings still carry it.
+    Tag.query.filter(Tag.group_id == other.id).update({"group_id": None})
     GroupMembership.query.filter_by(group_id=other.id).delete()
     Group.query.filter_by(id=other.id).delete()
     User.query.filter(User.id.in_(ids)).delete(synchronize_session=False)
