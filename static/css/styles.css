@@ -5280,11 +5280,12 @@ select:disabled {
    muted description fell under 4.5:1 in several themes. */
 .color-scheme-option.active .color-scheme-description { color: var(--text-secondary); }
 
-/* Recording header between 768 and 1023px: the title, its edit buttons and the
-   recording actions share one row; Inquire and New Recording drop their labels
-   (icon and accessible name stay) so the title keeps room instead of its buttons
-   running under the actions. */
-@media (max-width: 1023px) {
+/* Recording header below 1280px: the title, its edit buttons and the recording
+   actions share one row; Inquire and New Recording drop their labels (icon and
+   accessible name stay) so the title keeps room instead of its buttons running
+   under the actions. Below 1024px the lesser actions also move into the More
+   menu (themes/default/header-actions.html). */
+@media (max-width: 1279px) {
     .app-header--detail .header-action__label { display: none; }
 }
 
@@ -5406,8 +5407,17 @@ select:disabled {
     color: var(--text-accent);
     border-color: transparent;
 }
+@media (max-width: 1279px) {
+    #app > header.app-header--detail .btn.header-action {
+        width: var(--hdr-icon-w);
+        min-width: var(--hdr-icon-w);
+        height: var(--hdr-icon-h);
+        min-height: var(--hdr-icon-h);
+        padding: 0;
+        justify-content: center;
+    }
+}
 @media (max-width: 1023px) {
-    #app > header.app-header--detail .btn.header-action,
     :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle] {
         width: var(--hdr-icon-w);
         min-width: var(--hdr-icon-w);
