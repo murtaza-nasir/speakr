@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "Der Bestätigungslink ist ungültig oder abgelaufen.",
       "verificationResent": "Eine neue Bestätigungs-E-Mail wurde gesendet.",
       "verificationSendFailed": "Die Bestätigungs-E-Mail konnte nicht gesendet werden. Versuchen Sie es später erneut.",
-      "verificationSentIfExists": "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Bestätigungslink gesendet."
+      "verificationSentIfExists": "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Bestätigungslink gesendet.",
+      "pageExpired": "Die Seite war abgelaufen. Versuchen Sie es erneut."
     },
     "password": {
       "needsLowercase": "Das Passwort muss mindestens einen Kleinbuchstaben enthalten.",

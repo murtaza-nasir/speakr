@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "验证链接无效或已过期。",
       "verificationResent": "新的验证邮件已发送。",
       "verificationSendFailed": "无法发送验证邮件。请稍后重试。",
-      "verificationSentIfExists": "如果存在使用此邮箱的账户，验证链接已发送。"
+      "verificationSentIfExists": "如果存在使用此邮箱的账户，验证链接已发送。",
+      "pageExpired": "页面已过期，请重试。"
     },
     "password": {
       "needsLowercase": "密码必须至少包含一个小写字母。",

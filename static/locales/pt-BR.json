@@ -3175,7 +3175,8 @@
       "verificationLinkInvalid": "O link de verificação é inválido ou expirou.",
       "verificationResent": "Um novo e-mail de verificação foi enviado.",
       "verificationSendFailed": "Não foi possível enviar o e-mail de verificação. Tente novamente mais tarde.",
-      "verificationSentIfExists": "Se existir uma conta com este e-mail, um link de verificação foi enviado."
+      "verificationSentIfExists": "Se existir uma conta com este e-mail, um link de verificação foi enviado.",
+      "pageExpired": "A página havia expirado. Tente novamente."
     },
     "password": {
       "needsLowercase": "A senha deve conter pelo menos uma letra minúscula.",

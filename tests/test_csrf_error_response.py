@@ -90,3 +90,57 @@ def test_rejection_is_logged_with_hosts(client, caplog):
     logged = ' '.join(rec.getMessage() for rec in caplog.records)
     assert 'CSRF validation failed' in logged
     assert 'speakr.example' in logged and 'speakr:8899' in logged
+
+
+# --- Form posts with an expired or missing token (sign-out, other forms) ---
+
+FORM = {'Accept': 'text/html,application/xhtml+xml'}
+
+
+def _form(client, path, headers):
+    return client.post(path, data={'x': '1'},
+                       headers={**FORM, **headers})
+
+
+def _signed_in(client):
+    with client.session_transaction() as sess:
+        return bool(sess.get('_user_id'))
+
+
+def test_sign_out_with_an_expired_token_from_speakr_signs_out(client):
+    r = _form(client, '/logout', {'Origin': 'http://localhost'})
+    assert r.status_code == 302 and r.headers['Location'].endswith('/login')
+    assert not _signed_in(client)
+
+
+def test_sign_out_with_only_a_same_site_referer_signs_out(client):
+    r = _form(client, '/logout', {'Referer': 'http://localhost/recordings'})
+    assert r.status_code == 302
+    assert not _signed_in(client)
+
+
+@pytest.mark.parametrize('headers', [
+    {'Origin': 'https://attacker.example'},
+    {'Origin': 'null'},
+    {'Referer': 'https://attacker.example/page'},
+    {},
+])
+def test_sign_out_from_another_site_is_still_refused(client, headers):
+    r = _form(client, '/logout', headers)
+    assert r.status_code == 400
+    assert _signed_in(client)
+
+
+def test_another_form_with_an_expired_token_goes_back_with_a_message(client):
+    r = _form(client, '/recording/999999/reset_status', {'Referer': 'http://localhost/account'})
+    assert r.status_code == 302 and r.headers['Location'] == 'http://localhost/account'
+    with client.session_transaction() as sess:
+        flashes = sess.get('_flashes') or []
+    assert any(category == 'warning' for category, _ in flashes)
+    assert _signed_in(client)
+
+
+def test_another_form_from_another_site_keeps_the_400(client):
+    r = _form(client, '/recording/999999/reset_status', {'Origin': 'https://attacker.example',
+                                                        'Referer': 'https://attacker.example/x'})
+    assert r.status_code == 400
