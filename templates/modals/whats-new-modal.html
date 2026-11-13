@@ -1,15 +1,27 @@
 <!-- What's new: shown once per account after an update (show_whats_new
      admin setting; the notes are whatsNew.releases.<release> in the locale
-     files, English as the fallback). -->
+     files, English as the fallback). An account that missed several updates
+     sees each release since its last visit (utils/whats-new.js). -->
 <div v-if="whatsNew.show" @click.self="dismissWhatsNew" class="modal-overlay">
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
         <div class="modal-header">
             <i class="fas fa-gift text-2xl text-[var(--text-accent)]" aria-hidden="true"></i>
-            <h3 id="whats-new-title" class="modal-title" v-text="t('whatsNew.title', { version: whatsNew.version })"></h3>
+            <h3 id="whats-new-title" class="modal-title"
+                v-text="whatsNew.releases.length > 1 ? t('whatsNew.titleSince') : t('whatsNew.title', { version: whatsNew.version })"></h3>
             <button @click="dismissWhatsNew" class="modal-close" :title="t('buttons.close')" :aria-label="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body">
-            <ul class="whats-new-list">
+        <div class="modal-body whats-new-body">
+            <!-- Several releases since the account last saw this dialog: one
+                 section per release, newest first. -->
+            <template v-if="whatsNew.releases.length > 1">
+                <section v-for="release in whatsNew.releases" :key="release.key" class="whats-new-release">
+                    <h4 class="whats-new-release__heading" v-text="t('whatsNew.releaseHeading', { version: release.version })"></h4>
+                    <ul class="whats-new-list">
+                        <li v-for="(item, i) in release.items" :key="i" v-text="item"></li>
+                    </ul>
+                </section>
+            </template>
+            <ul v-else class="whats-new-list">
                 <li v-for="(item, i) in whatsNew.items" :key="i" v-text="item"></li>
             </ul>
         </div>

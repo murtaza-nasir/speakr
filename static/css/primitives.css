@@ -1694,6 +1694,19 @@ textarea:focus-visible {
 }
 
 /* What's new dialog (modals/whats-new-modal.html) */
+.whats-new-body {
+    max-height: min(65vh, 36rem);
+    overflow-y: auto;
+}
+.whats-new-release + .whats-new-release {
+    margin-top: var(--sp-4);
+}
+.whats-new-release__heading {
+    margin: 0 0 var(--sp-2);
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
 .whats-new-list {
     margin: 0;
     padding-left: 1.25rem;

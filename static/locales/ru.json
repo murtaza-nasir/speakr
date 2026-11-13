@@ -3856,6 +3856,8 @@
   },
   "whatsNew": {
     "title": "Что нового в Speakr {{version}}",
+    "titleSince": "Что нового с вашего последнего визита",
+    "releaseHeading": "Speakr {{version}}",
     "dismiss": "Понятно",
     "releases": {
       "0_10_20": {
