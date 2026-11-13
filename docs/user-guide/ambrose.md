@@ -58,6 +58,8 @@ Ambrose supports statements with citations, shown as small numbers in the answer
 
 The numbers stay the same for the whole chat, so a follow-up such as "tell me more about 3" refers to the source you saw.
 
+When an answer has more than three sources, the list is folded into **Sources (n)**. Click it to open the list.
+
 ## What Ambrose can search
 
 On the Ask page, and in the recording chat when your administrator has turned on the agent, Ambrose can look through your library before it answers. Each step is shown while Ambrose works, for example "Searching for “budget”".
@@ -72,6 +74,7 @@ Ambrose can:
 | Meaning | Find passages about a topic, even when other words were used, such as "cost overruns" for a question about budget concerns |
 | Tags and folders | Limit a search or a list of recordings to some tags or folders; a folder includes its subfolders |
 | Similar recordings | Rank the recordings most like one recording, by shared speakers, shared tags, folder, date and content |
+| People | Find a person in your speaker profiles and among the participants of your recordings, by a first name, a surname, an email or another spelling, and list every name the person appears under |
 | Transcripts | Read a whole transcript, part by part |
 | Recording details | Read the title, date, participants, duration, tags and folder of a recording |
 | Summaries | Read the summary of a recording, when summaries are allowed |
@@ -82,3 +85,9 @@ Under Account → Prompt options → **What Ambrose can read**, you choose wheth
 Ambrose searches only the recordings you can open. On the Ask page, the filters set the limit: Ambrose can narrow a search within them and cannot go beyond them. In the recording chat, Ambrose uses the other recordings only when a question needs them, for example "Did we discuss this anywhere else?".
 
 When the agent is off, Ambrose answers from the open recording only in the recording chat, and from one search of your library on the Ask page.
+
+### Asking about a person
+
+You can name a person the way you know them. In the recording chat, a first name, a surname or another spelling of a name (Mohammad, Mohammed or Muhammad) is matched to the participants of the open recording, and the answer says in a few words which participant was taken. When two participants fit equally, Ambrose asks which one you mean.
+
+Searches of your library cover every name a person appears under. Those names come from your speaker profiles: the name, the other names and the email of each profile, and the names in the participant lists of your recordings. To connect a full name with the short name used in your recordings, add the full name as another name of the speaker profile, for example "Mohammad Najjar" for the speaker "Mohammed". Only your own speaker profiles are used.
