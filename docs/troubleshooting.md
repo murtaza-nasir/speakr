@@ -120,6 +120,12 @@ The choice of transcription model impacts speed. Whisper Large is more accurate 
 
 Models that reason before answering, such as Qwen3, GPT-5 or DeepSeek, can take many times longer than the answer alone requires, and on paid services the reasoning tokens are billed as output. Summaries and titles rarely benefit from long reasoning. Lower the reasoning effort or turn reasoning off with `TEXT_MODEL_EXTRA_BODY`, using the field your provider accepts; see [Provider-Specific Request Parameters](admin-guide/model-configuration.md#provider-specific-request-parameters). Compare the response time or the token counts in the [system statistics](admin-guide/statistics.md) before and after the change, since some local servers ignore fields they do not recognise.
 
+### Summary Failed Because the Reply Was Empty or Cut Off
+
+A summary fails with a message about the output limit when the language model used all of `SUMMARY_MAX_TOKENS` before it finished the summary. With a reasoning model, the reasoning tokens count toward this limit, so a long transcript can use it up before any summary text is written. The error message gives the finish reason and the token counts, for example `finish_reason=length, completion_tokens=8000, reasoning_tokens=7911`, and the same line is in the log for every summary call.
+
+Raise `SUMMARY_MAX_TOKENS`, limit or turn off reasoning with `TEXT_MODEL_EXTRA_BODY` (see [Slow Summaries and Titles With a Reasoning Model](#slow-summaries-and-titles-with-a-reasoning-model)), and regenerate the summary. The failed summary job is retried automatically before it is marked failed, and the transcript is kept.
+
 ### Recordings Stuck After Restart
 
 If Speakr crashed or restarted while recordings were processing, they automatically resume on next startup. The job queue persists to the database, so no uploads are lost. Check the logs for "Recovered orphaned jobs" messages confirming jobs were resumed.

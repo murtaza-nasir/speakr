@@ -526,6 +526,8 @@ CHAT_MODEL_EXTRA_BODY={"reasoning": {"effort": "low"}}
 TRANSLATION_MODEL_EXTRA_BODY={"reasoning": {"effort": "low"}}
 ```
 
+Not every model applies each reasoning field. With some models on OpenRouter, the effort level and the reasoning token limit are ignored, and only `{"reasoning": {"enabled": false}}` changes the amount of reasoning. After a change, check the reasoning token count of a few summary calls in your provider's request log.
+
 ## Prefix-Cache-Friendly Prompts (`PREFIX_CACHE_OPTIMIZED_PROMPTS`)
 
 **Default: `false`. Opt-in.**

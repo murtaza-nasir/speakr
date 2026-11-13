@@ -151,6 +151,8 @@ Existing accounts keep their position. Users who never picked a position keep th
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
 
+A user who missed several updates sees the lists of all releases since their last visit, newest first, up to five releases.
+
 The **show_whats_new** setting turns the dialog on or off for everyone. It is on by default; switch it off if you announce updates to your users yourself.
 
 The list for each release is part of Speakr's translations, so it appears in the user's interface language, with English as the fallback.
