@@ -1233,3 +1233,73 @@ def test_share_internal_single_user_id_unchanged():
             assert _batch(owner, rec, {}).status_code == 400
     finally:
         _cleanup_ids([owner, a], [rec])
+
+
+# --- #600: a boolean user_id is not a user id --------------------------------
+
+def _account_one():
+    """Account 1, created for the test when the shared DB has none. Returns
+    (id, created)."""
+    with _db():
+        if db.session.get(User, 1) is not None:
+            return 1, False
+        tok = uuid.uuid4().hex[:8]
+        db.session.add(User(id=1, username=f"one_{tok}", email=f"one_{tok}@local.test", password="x"))
+        db.session.commit()
+        return 1, True
+
+
+def test_share_internal_true_does_not_share_account_1():
+    one, created = _account_one()
+    with _db():
+        owner = _setup_user("p600_owner")
+        rec = _make_recording(owner)
+    assert owner != 1
+    try:
+        with _internal_enabled():
+            for value in (True, False, "2", 1.0, 0, -4, None, [one]):
+                resp = _batch(owner, rec, {"user_id": value, "can_edit": False, "can_reshare": False})
+                assert resp.status_code == 400, value
+                assert resp.get_json()["code"] == "user_id_required", value
+        assert _rows(rec) == {}
+        with _db():
+            assert SharedRecordingState.query.filter_by(recording_id=rec, user_id=one).count() == 0
+    finally:
+        _cleanup_ids([owner] + ([one] if created else []), [rec])
+
+
+def test_share_internal_user_ids_true_stays_invalid():
+    with _db():
+        owner = _setup_user("p600b_owner")
+        other = _setup_user("p600b_other")
+        rec = _make_recording(owner)
+    try:
+        with _internal_enabled():
+            resp = _batch(owner, rec, {"user_ids": [True, other]})
+        assert resp.status_code == 400
+        assert resp.get_json()["code"] == "share_recipients_invalid"
+        assert _rows(rec) == {}
+    finally:
+        _cleanup_ids([owner, other], [rec])
+
+
+def test_share_internal_single_user_id_unchanged():
+    with _db():
+        owner = _setup_user("p600c_owner")
+        other = _setup_user("p600c_other")
+        rec = _make_recording(owner)
+    try:
+        with _internal_enabled():
+            resp = _batch(owner, rec, {"user_id": other, "can_edit": True})
+            assert resp.status_code == 201, resp.get_json()
+            assert resp.get_json()["share"]["user_id"] == other
+            assert resp.get_json()["share"]["can_edit"] is True
+            assert _batch(owner, rec, {"user_id": other}).status_code == 409
+            assert _batch(owner, rec, {"user_id": 999999999}).status_code == 404
+            assert _batch(owner, rec, {"user_id": owner}).status_code == 400
+            empty = _batch(owner, rec, {})
+            assert empty.status_code == 400
+            assert empty.get_json()["code"] == "user_id_required"
+        assert set(_rows(rec)) == {other}
+    finally:
+        _cleanup_ids([owner, other], [rec])

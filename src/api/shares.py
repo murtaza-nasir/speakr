@@ -582,11 +582,17 @@ def share_recording_internal(recording_id):
         if isinstance(data, dict) and 'user_ids' in data:
             return _share_with_many(recording_id, data)
 
+        if not isinstance(data, dict):
+            return jsonify(api_error('user_id_required')), 400
         shared_with_user_id = data.get('user_id')
         can_edit = data.get('can_edit', False)
         can_reshare = data.get('can_reshare', False)
 
-        if not shared_with_user_id:
+        # A user id is a positive integer. JSON true is a Python bool, which
+        # is an int equal to 1, and shared the recording with account 1 (#600);
+        # the user_ids list refuses the same values.
+        if (isinstance(shared_with_user_id, bool) or not isinstance(shared_with_user_id, int)
+                or shared_with_user_id < 1):
             return jsonify(api_error('user_id_required')), 400
 
         # Check recording exists and user has permission to share it
