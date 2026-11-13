@@ -301,9 +301,8 @@ def public_route(f):
 
     No token is read on such a route (resolve_request_token returns none), so
     a token sent there has no effect: no scope check, no per-token or
-    per-account rate limit, and no SSO account provisioning. The route sets
-    its own per-IP limit. Marked with no required scopes, so a scoped token's
-    openapi.json still lists it."""
+    per-account rate limit. The route sets its own per-IP limit. Marked with
+    no required scopes, so a scoped token's openapi.json still lists it."""
     f._required_scopes = frozenset()
     f._public_route = True
     return f

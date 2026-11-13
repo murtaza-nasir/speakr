@@ -239,7 +239,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Latest Release (v0.10.22-alpha)
 
-- Apps that use the same single sign-on can create Speakr accounts on first use when an admin allows it, and each app can be given its own scope limit.
+- Each app that uses the same single sign-on can be given its own scope limit, and tokens show the name of the app that created them.
 - Notifications follow the interface theme, errors stay until they are closed, and every notification can be closed.
 - On tablets the recording header fits, and on phones a portrait video no longer fills the screen.
 - Tag group changes update the group shares, and empty or over-budget transcriptions send a failure notice.

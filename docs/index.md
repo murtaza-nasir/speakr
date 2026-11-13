@@ -6,8 +6,8 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.22-alpha: Accounts from SSO, themed notifications, tablet and phone layout"
-    Apps with the same single sign-on can create Speakr accounts on first use, each with its own scope limit, notifications follow the interface theme, and the tablet and phone layouts are fixed.
+!!! success "Latest Release: v0.10.22-alpha: Scope limits per SSO app, themed notifications, tablet and phone layout"
+    Each app with the same single sign-on can be given its own scope limit, notifications follow the interface theme, and the tablet and phone layouts are fixed.
 
     See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.22-alpha) for details.
 
@@ -128,10 +128,10 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.10.22-alpha - Accounts from SSO, themed notifications, layout fixes"
-    Three settings are added at startup without a value; account creation from access tokens is off until an admin turns it on. Read the Upgrading section of the release notes for the changes to token exchange and webhooks.
+!!! info "Version 0.10.22-alpha - Scope limits per SSO app, themed notifications, layout fixes"
+    Two settings are added at startup without a value, so nothing changes until an admin sets them. Read the Upgrading section of the release notes for the changes to token exchange and webhooks.
 
-    - **Single sign-on** - Accounts created on first use from an SSO access token, scope limits and display names per app.
+    - **Single sign-on** - Scope limits and display names per app, and a refusal code when a person has no Speakr account yet.
     - **Interface** - Notifications in the interface theme, the recording header on tablets and portrait videos on phones.
     - **Fixes** - Shares after tag group changes, failure notices for empty and over-budget transcriptions, and `.weba` files in the watch folder.
 
