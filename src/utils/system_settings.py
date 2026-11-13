@@ -110,7 +110,6 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'sso_api_allowed_clients': ('SSO_API_ALLOWED_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens are accepted (matched against aud or azp). Empty means none.'),
     'sso_api_exchange_clients': ('SSO_API_EXCHANGE_CLIENTS', '', 'string', 'Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means no exchange.'),
     'sso_api_scopes': ('SSO_API_SCOPES', 'read', 'string', 'Comma-separated scopes a request with an SSO access token has, and the most an exchanged token may have.'),
-    'sso_api_auto_register': ('SSO_API_AUTO_REGISTER', False, 'boolean', 'Whether a valid SSO access token for a person with no Speakr account creates the account. SSO_AUTO_REGISTER must also be on. An existing account is never linked by email.'),
     'sso_api_client_scopes': ('SSO_API_CLIENT_SCOPES', '', 'string', 'Per-app scope limits, as client_id=scope1 scope2 pairs separated by commas or new lines. A listed app gets those scopes within sso_api_scopes; an app not listed gets sso_api_scopes.'),
     'sso_api_client_names': ('SSO_API_CLIENT_NAMES', '', 'string', 'Display names for OIDC client IDs, as client_id=Name pairs separated by commas or new lines. Shown on API tokens created through the SSO token exchange.'),
 }
