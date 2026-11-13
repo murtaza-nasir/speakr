@@ -3661,7 +3661,8 @@
         "searchingPhrase": "正在搜索原文“{{query}}”",
         "searchingWords": "正在搜索词语“{{query}}”",
         "findingSimilar": "正在查找与“{{title}}”相似的录音",
-        "findingSimilarRecordings": "正在查找相似的录音"
+        "findingSimilarRecordings": "正在查找相似的录音",
+        "findingPerson": "正在查找 {{name}}"
       },
       "result": {
         "failed": "无法完成此步骤",
@@ -3675,7 +3676,10 @@
         "withKeyword": "含关键词搜索",
         "listed": "{{total}} 条录音中的 {{returned}} 条",
         "segments": "{{total}} 个片段中的 {{returned}} 个",
-        "noSimilar": "没有相似的录音"
+        "noSimilar": "没有相似的录音",
+        "personOne": "1 人",
+        "people": "{{count}} 人",
+        "noPeople": "没有叫这个名字的人"
       },
       "count": {
         "stepOne": "1 个步骤",
@@ -3696,7 +3700,9 @@
         "textSearchOne": "1 次原文搜索",
         "textSearches": "{{count}} 次原文搜索",
         "similarSearchOne": "1 次相似搜索",
-        "similarSearches": "{{count}} 次相似搜索"
+        "similarSearches": "{{count}} 次相似搜索",
+        "peopleLookupOne": "1 次人员查找",
+        "peopleLookups": "{{count}} 次人员查找"
       }
     },
     "summaryError": {

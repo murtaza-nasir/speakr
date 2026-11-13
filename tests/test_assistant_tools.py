@@ -168,8 +168,10 @@ def test_the_open_recording_offers_the_library_tools_and_keeps_its_prompt(world,
     note = call['messages'][1]
     assert note['role'] == 'system'
     assert note['content'].startswith("You have tools to search transcripts, search for exact words, list "
-                                      "recordings, find similar recordings, read transcripts, read stored "
-                                      "summaries, and read metadata in Jordan Avery's recording library.")
+                                      "recordings, find similar recordings, look up people, read transcripts, "
+                                      "read stored summaries, and read metadata in Jordan Avery's recording "
+                                      "library.")
+    assert 'call find_people before any exact-word search' in note['content']
     assert "own notes" not in note['content']
     assert '[S12 "exact words"]' in note['content'] and '/recordings/<recording_id>' in note['content']
     assert call['operation_type'] == 'chat'
@@ -203,7 +205,7 @@ def test_the_ask_page_offers_every_tool(world, agent_on):
     from src.services.assistant_events import tools_for_surface
     assert tools_for_surface('ask') is None
     every = {'summaries': True, 'notes': True}
-    assert len(ia.build_toolbox(every, tools_for_surface('ask'))[0]) == 8
+    assert len(ia.build_toolbox(every, tools_for_surface('ask'))[0]) == 9  # find_people is the ninth
     assert [s['function']['name'] for s in ia.build_toolbox(every, tools_for_surface('recording'))[0]] == \
         list(LIBRARY_TOOLS)
     assert ia.build_toolbox(every, tools_for_surface('incognito'))[0] == []

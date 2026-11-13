@@ -77,6 +77,52 @@ def _speakers(segments):
     return names
 
 
+_MAX_ANNOTATED = 20
+_MAX_ALIASES = 5
+
+PARTICIPANT_NAME_RULE = (
+    "When the user names a person, first match the name against the participants and speakers of this "
+    "recording, allowing for a first name alone, a surname alone and spelling variants (Mohammad, Mohammed and "
+    "Muhammad are one name). If one participant fits, treat the user's name as that participant, say so in one "
+    "short clause (for example \"Mohammed in this meeting is Mohammad Najjar, as you said\") and continue. Ask "
+    "only when two or more participants fit equally. When the user gives a fuller name for a participant, you "
+    "may use it in the answer; do not claim the transcript contains it.")
+
+WORDS_BEFORE_CITATIONS_RULE = ("Every bullet and sentence states its point in words. A citation follows the words "
+                               "it supports and is never the whole content of a bullet or sentence.")
+
+
+def participants_with_aliases(participants, user):
+    """The participants text with the other names from the user's own speaker
+    profiles: "Aziz, Mohammed (also: Mohammad Najjar)". A participant gets
+    them when a profile of this user has exactly that name (any case or
+    accents). At most 20 participants and 5 names each."""
+    if not participants or not getattr(user, 'id', None):
+        return participants
+    from src.models import Speaker
+    from src.services.library_labels import is_generic_speaker
+    from src.services.person_names import aliases_of, fold
+    try:
+        profiles = {}
+        for sp in Speaker.query.filter_by(user_id=user.id).all():
+            others = [a[:100] for a in aliases_of(sp) if fold(a) != fold(sp.name)]
+            if others and not is_generic_speaker(sp.name):
+                profiles.setdefault(fold(sp.name.strip()), others)
+    except Exception:
+        return participants
+    if not profiles:
+        return participants
+    parts = re.split(r'([,;\n])', participants)
+    annotated = 0
+    for i in range(0, len(parts), 2):
+        name = re.sub(r'\(.*?\)', '', parts[i]).strip()
+        others = profiles.get(fold(name)) if name else None
+        if others and annotated < _MAX_ANNOTATED:
+            annotated += 1
+            parts[i] = parts[i].rstrip() + f" (also: {', '.join(others[:_MAX_ALIASES])})"
+    return ''.join(parts)
+
+
 def metadata_lines(recording, user, segments=None):
     """The lines of the metadata block, empty ones left out; [] for an
     incognito recording."""
@@ -184,7 +230,10 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
 Here you answer questions about one recording: what was said, who said it, and what it means. A recording can be a meeting, a call, a lecture, a voice note or an everyday conversation; take it as what it is and do not judge it against a meeting.
 {about}{citation}
 Participants and their roles:
-{recording.participants or "No specific participants information provided."}
+{participants_with_aliases(recording.participants, user) or "No specific participants information provided."}
+
+{PARTICIPANT_NAME_RULE}
+{WORDS_BEFORE_CITATIONS_RULE}
 
 Transcript:
 <<start transcript>>

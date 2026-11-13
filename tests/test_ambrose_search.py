@@ -328,7 +328,7 @@ def test_prompt_carries_names_and_search_guidance():
     assert 'call find_similar_recordings first' in prompt
     assert 'Use search_text for exact words' in prompt and 'search_transcripts for topics' in prompt
     assert prompt.count('You have tools to search transcripts, search for exact words, list recordings, '
-                        'find similar recordings, and read transcripts, stored summaries') == 1
+                        'find similar recordings, look up people, and read transcripts, stored summaries') == 1
     narrow = ia._system_prompt(ctx, '', EVERY, '', ['search_transcripts', 'get_transcript'])
     assert 'search_text' not in narrow and 'find_similar' not in narrow
 

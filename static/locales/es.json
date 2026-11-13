@@ -3661,7 +3661,8 @@
         "searchingPhrase": "Buscando las palabras exactas «{{query}}»",
         "searchingWords": "Buscando las palabras «{{query}}»",
         "findingSimilar": "Buscando grabaciones parecidas a {{title}}",
-        "findingSimilarRecordings": "Buscando grabaciones parecidas"
+        "findingSimilarRecordings": "Buscando grabaciones parecidas",
+        "findingPerson": "Buscando a {{name}}"
       },
       "result": {
         "failed": "No se pudo completar este paso",
@@ -3675,7 +3676,10 @@
         "withKeyword": "con búsqueda por palabra clave",
         "listed": "{{returned}} de {{total}} grabaciones",
         "segments": "{{returned}} de {{total}} segmentos",
-        "noSimilar": "Sin grabaciones parecidas"
+        "noSimilar": "Sin grabaciones parecidas",
+        "personOne": "1 persona",
+        "people": "{{count}} personas",
+        "noPeople": "Nadie con ese nombre"
       },
       "count": {
         "stepOne": "1 paso",
@@ -3696,7 +3700,9 @@
         "textSearchOne": "1 búsqueda exacta",
         "textSearches": "{{count}} búsquedas exactas",
         "similarSearchOne": "1 búsqueda de similitud",
-        "similarSearches": "{{count}} búsquedas de similitud"
+        "similarSearches": "{{count}} búsquedas de similitud",
+        "peopleLookupOne": "1 búsqueda de personas",
+        "peopleLookups": "{{count}} búsquedas de personas"
       }
     },
     "summaryError": {
