@@ -375,7 +375,7 @@ def test_find_similar_uses_embeddings_when_stored(lib):
     with app.app_context():
         for rid, vector in ((lib['r1'], [1, 0, 0]), (lib['r3'], [0.9, 0.1, 0]), (lib['r2'], [0, 1, 0])):
             for chunk in TranscriptChunk.query.filter_by(recording_id=rid):
-                chunk.embedding = serialize_embedding(np.array(vector, dtype=np.float32))
+                chunk.embedding = np.array(vector, dtype=np.float32).tobytes()
         db.session.commit()
         res = ia.tool_find_similar_recordings(_owner_ctx(lib), {'recording_id': lib['r1']})
         assert res['content_method'] == 'embeddings'

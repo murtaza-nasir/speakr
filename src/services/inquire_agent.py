@@ -743,16 +743,17 @@ def _content_scores(source_id, candidate_ids):
     of the first chunks. ({}, None) when neither is possible."""
     import numpy as np
     from src.models import TranscriptChunk
-    from src.services.embeddings import deserialize_embedding
     ids = list(candidate_ids) + [source_id]
     vectors = {}
     for rid, blob in db.session.query(TranscriptChunk.recording_id, TranscriptChunk.embedding) \
             .filter(TranscriptChunk.recording_id.in_(ids), TranscriptChunk.embedding.isnot(None)):
+        # Stored vectors are float32 bytes; reading them needs numpy only,
+        # not the embedding model.
         try:
-            v = deserialize_embedding(blob)
+            v = np.frombuffer(blob, dtype=np.float32) if blob else None
         except Exception:
             v = None
-        if v is not None:
+        if v is not None and v.size:
             vectors.setdefault(rid, []).append(v)
     if vectors.get(source_id):
         dim = vectors[source_id][0].shape[0]
