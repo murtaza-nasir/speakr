@@ -398,7 +398,7 @@ def probe_upload(*, filepath, original_filename):
     """Probe the staged upload's codecs with ffprobe.
 
     A probe that fails leaves codec_info None and the FFProbeError in
-    probe_error; a .webm, .mkv or .mka whose header is not at the front is
+    probe_error; a .webm, .weba, .mkv or .mka whose header is not at the front is
     trimmed to it and probed again (#340).
     """
     # Probe once and use shared conversion utility
@@ -422,7 +422,7 @@ def probe_upload(*, filepath, original_filename):
         # isn't at the front (chunk-order artifact, seen on crash-recovered
         # recordings). If so, trim to the real header and re-probe before we
         # fall through to a conversion that would just fail again.
-        if os.path.splitext(original_filename)[1].lower() in ('.webm', '.mkv', '.mka'):
+        if os.path.splitext(original_filename)[1].lower() in ('.webm', '.weba', '.mkv', '.mka'):
             repaired_info = try_repair_malformed_webm(filepath, timeout=probe_timeout)
             if repaired_info is not None:
                 codec_info = repaired_info

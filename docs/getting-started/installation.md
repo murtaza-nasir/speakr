@@ -413,6 +413,8 @@ When enabled, Speakr checks the watch directory every 30 seconds for new audio f
 
 Watched files are processed like uploads, without the upload size limits. A file that cannot be processed is renamed by adding `.failed` to its name (`meeting.mp3` becomes `meeting.mp3.failed`), and its owner is notified. Later scans skip it; to try it again, remove `.failed` from its name. A file that is refused (one that cannot be read as audio, an empty file, a video without an audio track) is renamed at once. After any other error, the file keeps its name and is tried again on the first scan at least 1, 2, 4 and 8 minutes later, and it is renamed after the fifth failed attempt. The attempts are counted in memory, so they start again from the first after a restart.
 
+Only files with one of these extensions are picked up, in any letter case: `aac`, `aiff`, `amr`, `asf`, `avi`, `caf`, `flac`, `flv`, `m4a`, `m4v`, `mkv`, `mov`, `mp3`, `mp4`, `mpeg`, `mpg`, `mts`, `oga`, `ogg`, `ogv`, `opus`, `ts`, `vob`, `wav`, `weba`, `webm`, `wma`, `wmv`, `3gp` and `3gpp`. A file with any other extension stays in the folder and is reported once in the log, at INFO level.
+
 To use this feature, you'll need to mount an additional volume in your Docker Compose configuration, which we'll cover in the next steps.
 
 #### File Storage Backend (Local / S3-Compatible)

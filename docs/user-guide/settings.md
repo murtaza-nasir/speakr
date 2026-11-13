@@ -166,7 +166,7 @@ This setting is not the same as **Naming templates** (Account → Templates), wh
 
 ### Notifications
 
-**Email me when a transcription finishes.** When enabled, Speakr sends a message to your account email address as each recording finishes transcribing, and again if one fails permanently. The message names the recording, its length and how long transcription took, and links straight to it. Summaries do not send mail, since a summary follows a transcript you have already been told about.
+**Email me when a transcription finishes.** When enabled, Speakr sends a message to your account email address as each recording finishes transcribing, and again if one fails permanently or the transcription service returns no text. The message names the recording, its length and how long transcription took, and links straight to it. Summaries do not send mail, since a summary follows a transcript you have already been told about.
 
 Off by default. It is most useful for long recordings you would rather not sit and wait for; less so if you upload many files at once, because each one sends its own message.
 

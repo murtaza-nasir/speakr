@@ -24,6 +24,8 @@ SPEAKR_MEDIA_TYPES = (
     ('audio/aac', '.aac'),
     ('audio/x-m4a', '.m4a'),
     ('audio/webm', '.webm'),
+    # WebM audio, as browsers save an audio-only WebM
+    ('audio/webm', '.weba'),
     ('audio/flac', '.flac'),
     ('audio/ogg', '.ogg'),
 )

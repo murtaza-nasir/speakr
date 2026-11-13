@@ -264,7 +264,7 @@ def convert_if_needed(
     if audio_codec is None:
         needs_conversion = True
         logger.info(f"Unknown codec for {original_filename}, will attempt conversion")
-    elif file_ext == '.webm' and is_webm_container:
+    elif file_ext in ('.webm', '.weba') and is_webm_container:
         # WebM containers from MediaRecorder often lack seek cues, making browser
         # audio players unable to seek. Force conversion to a seekable format.
         needs_conversion = True

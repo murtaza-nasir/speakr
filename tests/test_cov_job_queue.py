@@ -1226,6 +1226,74 @@ def test_a_completed_transcription_still_sends_the_ready_notices(track):
 
 
 # --------------------------------------------------------------------------
+# A transcription that returned no text sends the failure notices (#406, #595)
+# --------------------------------------------------------------------------
+
+def _empty_transcript_job(track, job_type="transcribe", notify=True):
+    """A job whose runner ends as the empty-transcript branch does (#406)."""
+    from src.services import email as email_service
+    from src.tasks.processing import EMPTY_TRANSCRIPT_MESSAGE
+    uid = _make_user(); track.user_ids.append(uid)
+    user = db.session.get(User, uid)
+    user.notify_email_on_completion = notify
+    db.session.commit()
+    rid = _make_recording(uid, status="QUEUED"); track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, job_type); track.job_ids.append(jid)
+    job = _claim(rid, [job_type], "transcription")
+
+    def runner(*args, **kwargs):
+        rec = db.session.get(Recording, rid)
+        rec.transcription = None
+        rec.status = "FAILED"
+        rec.error_message = EMPTY_TRANSCRIPT_MESSAGE
+        db.session.commit()
+
+    with patch("src.tasks.processing.transcribe_audio_task", side_effect=runner), \
+         patch("src.services.storage.get_storage_service", return_value=_fake_materialized("/tmp/jq_test.mp3")), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch("src.services.webhook_dispatch.emit_webhook_event") as emit, \
+         patch.object(email_service, "is_smtp_configured", return_value=True), \
+         patch.object(email_service, "_send_email", return_value=True) as send:
+        job_queue._process_job(job)
+    db.session.expire_all()
+    return rid, jid, emit, send
+
+
+@pytest.mark.parametrize("job_type", ["transcribe", "reprocess_transcription"])
+def test_an_empty_transcript_sends_one_failed_webhook_and_one_failure_email(track, job_type):
+    from src.tasks.processing import EMPTY_TRANSCRIPT_MESSAGE
+    rid, jid, emit, send = _empty_transcript_job(track, job_type)
+    rec = db.session.get(Recording, rid)
+    assert (rec.status, rec.error_message, rec.transcription) == ("FAILED", EMPTY_TRANSCRIPT_MESSAGE, None)
+    assert db.session.get(ProcessingJob, jid).status == "completed"
+    assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    assert emit.call_args.kwargs["data"] == {"recording_id": rid, "title": "JQ Test Recording",
+                                             "error": EMPTY_TRANSCRIPT_MESSAGE}
+    assert send.call_count == 1
+    _, subject, html, text = send.call_args[0]
+    assert subject.startswith("Transcription failed")
+    assert EMPTY_TRANSCRIPT_MESSAGE in text
+
+
+def test_an_empty_transcript_mails_nobody_who_did_not_opt_in(track):
+    rid, jid, emit, send = _empty_transcript_job(track, notify=False)
+    assert [c.kwargs["event_type"] for c in emit.call_args_list] == ["recording.transcription.failed"]
+    send.assert_not_called()
+
+
+def test_a_failed_summary_still_sends_no_transcription_failure(track):
+    """#595 unchanged: the transcript is kept and only recording.summary.failed applies."""
+    with patch("src.services.email.send_transcription_failed_email") as fail_mail:
+        rid, jid, emit, ready_mail = _transcribe_job_ending(track, "FAILED")
+    types = [c.kwargs["event_type"] for c in emit.call_args_list]
+    assert "recording.transcription.failed" not in types
+    assert "recording.transcription.completed" not in types
+    fail_mail.assert_not_called()
+    ready_mail.assert_not_called()
+
+
+# --------------------------------------------------------------------------
 # A stale job whose recording id was reused by a new upload (#597)
 # --------------------------------------------------------------------------
 

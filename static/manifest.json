@@ -108,7 +108,7 @@
     {
       "action": "/",
       "accept": {
-        "audio/*": [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".flac", ".aac", ".wma", ".opus"]
+        "audio/*": [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".weba", ".flac", ".aac", ".wma", ".opus"]
       }
     }
   ],

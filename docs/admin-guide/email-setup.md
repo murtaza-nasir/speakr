@@ -61,7 +61,8 @@ Restart Speakr after updating environment variables.
 Once SMTP works, each user can turn on "Email me when a transcription finishes"
 under Account, Preferences. It is off by default, so upgrading an existing
 instance does not start mailing anyone. The message is sent when a transcription
-completes and when one fails permanently. Summaries do not send mail, since a
+completes and when one fails permanently, including a transcription that
+returned no text. Summaries do not send mail, since a
 summary is quick and follows a transcript the user has already been told about.
 
 Two things suppress the mail regardless of the user's preference. SMTP has to be
