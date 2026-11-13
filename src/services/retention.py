@@ -14,6 +14,26 @@ from src.utils.localization import api_error
 
 
 
+def tag_binds_retention(recording, tag):
+    """Whether a tag on the recording takes part in its retention.
+
+    A group tag always does. A personal tag is private to the user who made
+    it, and anyone who can view a recording may attach their own (#589), so
+    only the owner's personal tags count: a tag the owner cannot see must
+    not shorten the recording's life or keep it forever.
+    """
+    if tag is None:
+        return False
+    if tag.group_id is not None:
+        return True
+    return recording.user_id is not None and tag.user_id == recording.user_id
+
+
+def retention_tags(recording):
+    """The recording's tags that take part in its retention."""
+    return [assoc.tag for assoc in recording.tag_associations if tag_binds_retention(recording, assoc.tag)]
+
+
 def is_recording_exempt_from_deletion(recording):
     """
     Check if a recording is exempt from auto-deletion.
@@ -30,10 +50,10 @@ def is_recording_exempt_from_deletion(recording):
 
     # Check if any of the recording's tags protect it from deletion
     # Protection can be indicated by either protect_from_deletion flag OR retention_days == -1
-    for tag_assoc in recording.tag_associations:
-        if tag_assoc.tag.protect_from_deletion:
+    for tag in retention_tags(recording):
+        if tag.protect_from_deletion:
             return True
-        if tag_assoc.tag.retention_days == -1:
+        if tag.retention_days == -1:
             return True
 
     return False
@@ -58,9 +78,9 @@ def get_retention_days_for_recording(recording):
     # Collect all tag-level retention periods
     # Skip -1 (infinite retention/protected) as that's handled in is_recording_exempt_from_deletion
     tag_retention_periods = []
-    for tag_assoc in recording.tag_associations:
-        if tag_assoc.tag.retention_days and tag_assoc.tag.retention_days > 0:
-            tag_retention_periods.append(tag_assoc.tag.retention_days)
+    for tag in retention_tags(recording):
+        if tag.retention_days and tag.retention_days > 0:
+            tag_retention_periods.append(tag.retention_days)
 
     # If any tags have retention periods, use the shortest one (most conservative)
     if tag_retention_periods:
