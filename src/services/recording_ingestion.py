@@ -658,10 +658,12 @@ def select_tags_and_folder(*, form, owner):
 
     A tag or folder is accepted when it is owner's own or a group's of which
     owner is a member. tag_ids[0], tag_ids[1], ... are read in order up to
-    the first missing index; tag_id is read only when none was accepted.
+    the first missing index, and a repeated id is kept once, at its first
+    place (#601); tag_id is read only when none was accepted.
     """
     # Get selected tags if provided (multiple tags support)
     selected_tags = []
+    seen_tag_ids = set()
     tag_index = 0
     while True:
         tag_id_key = f'tag_ids[{tag_index}]'
@@ -671,10 +673,11 @@ def select_tags_and_folder(*, form, owner):
 
         # Check if tag belongs to user OR is a group tag where user is a member
         tag = Tag.query.filter_by(id=tag_id).first()
-        if tag:
+        if tag and tag.id not in seen_tag_ids:
             # Allow tag if it's user's own tag OR it's a group tag where user is a member
             if tag.user_id == owner.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=owner.id).first()):
                 selected_tags.append(tag)
+                seen_tag_ids.add(tag.id)
         tag_index += 1
 
     # For backward compatibility with single tag uploads
@@ -772,21 +775,32 @@ def store_recording(*, owner, storage, filepath, now, recorded_in_app, original_
     # always read from recording.audio_path via the storage facade.
     recording.audio_path = stored_object.locator
 
-    # Add tags to recording if selected (preserve order)
-    for order, tag in enumerate(selected_tags, 1):
-        new_association = RecordingTag(
-            recording_id=recording.id,
-            tag_id=tag.id,
-            order=order,
-            added_at=datetime.utcnow()
-        )
-        db.session.add(new_association)
+    try:
+        # Add tags to recording if selected (preserve order)
+        for order, tag in enumerate(selected_tags, 1):
+            new_association = RecordingTag(
+                recording_id=recording.id,
+                tag_id=tag.id,
+                order=order,
+                added_at=datetime.utcnow()
+            )
+            db.session.add(new_association)
 
-    if selected_folder:
-        from src.api.folders import apply_group_folder_shares
-        apply_group_folder_shares(recording, selected_folder)
+        if selected_folder:
+            from src.api.folders import apply_group_folder_shares
+            apply_group_folder_shares(recording, selected_folder)
 
-    db.session.commit()
+        db.session.commit()
+    except Exception:
+        # The caller rolls the recording back, so the stored file would
+        # belong to no row (#601). It is removed while this transaction
+        # still holds the id, before a later upload can receive it.
+        try:
+            storage.delete(stored_object.locator)
+        except Exception as cleanup_error:
+            current_app.logger.warning(
+                f"Could not remove stored file {stored_object.locator} of a failed upload: {cleanup_error}")
+        raise
 
     if selected_tags:
         tag_names = [tag.name for tag in selected_tags]
