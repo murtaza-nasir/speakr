@@ -58,7 +58,7 @@ class FileMonitor:
         # Keep a basic list for initial filtering to avoid probing every file
         self.potential_audio_extensions = {
             '.wav', '.mp3', '.flac', '.amr', '.3gp', '.3gpp', 
-            '.m4a', '.aac', '.ogg', '.oga', '.wma', '.webm', '.mp4', '.mov',
+            '.m4a', '.aac', '.ogg', '.oga', '.wma', '.webm', '.weba', '.mp4', '.mov',
             '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi',
             '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf'
         }
@@ -71,6 +71,9 @@ class FileMonitor:
 
         # Files left in the folder for the storage quota, logged once (#413)
         self._quota_skipped = set()
+
+        # Files skipped for their extension, logged once while they stay
+        self._extension_skipped = set()
 
         # Failed attempts per watched file: path -> (attempts, retry after)
         self._failures = {}
@@ -229,6 +232,25 @@ class FileMonitor:
         if not directory.exists():
             return
 
+        skipped_here = set()
+        try:
+            self._scan_files(directory, user_id, tag_id, skipped_here)
+        finally:
+            # A skipped file that left the folder is logged again if it returns
+            self._extension_skipped = {p for p in self._extension_skipped
+                                       if Path(p).parent != directory or p in skipped_here}
+
+    def _skip_extension(self, file_path, skipped_here):
+        """Log once, at INFO, a file skipped for its extension."""
+        key = str(file_path)
+        skipped_here.add(key)
+        if key in self._extension_skipped:
+            return
+        self._extension_skipped.add(key)
+        self.logger.info(f"Skipping {file_path} in the watch folder: the extension "
+                         f"'{file_path.suffix or '(none)'}' is not a supported audio or video type")
+
+    def _scan_files(self, directory, user_id, tag_id, skipped_here):
         for file_path in directory.iterdir():
             if not file_path.is_file():
                 continue
@@ -238,6 +260,9 @@ class FileMonitor:
                 continue
 
             if file_path.suffix.lower() not in self.potential_audio_extensions:
+                # A file set aside after failing (<name>.failed) is no news
+                if not file_path.name.endswith(FAILED_SUFFIX):
+                    self._skip_extension(file_path, skipped_here)
                 continue
 
             failure = self._failures.get(str(file_path))
