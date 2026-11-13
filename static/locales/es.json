@@ -3876,7 +3876,8 @@
         "7": "Descargue un resumen en Markdown, y respuestas sueltas o conversaciones completas de Preguntar a Ambrose como documentos de Word."
       },
       "0_10_21": {
-        "1": "Ambrose tiene una herramienta para buscar personas por nombre."
+        "1": "Puede conectar Speakr con aplicaciones como Open WebUI mediante el inicio de sesión único.",
+        "2": "Ambrose tiene una herramienta para buscar personas por nombre."
       },
       "0_10_22": {
         "1": "Las notificaciones se muestran con los colores de su tema. Los mensajes de error se mantienen en pantalla hasta que los cierra, y cada notificación tiene un botón para cerrarla."
