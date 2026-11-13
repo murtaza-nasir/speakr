@@ -642,7 +642,10 @@ _AUDIO_PATH = re.compile(r'/audio/\d+')
 def exempt_status_endpoints():
     """Exempt status polling endpoints from rate limiting."""
     from flask import request
-    # Exempt status endpoints that are polled frequently during processing
+    # Exempt status endpoints that are polled frequently during processing.
+    # /api/v1/sso/status needs no authentication and keeps its per-IP limit.
+    if request.path == '/api/v1/sso/status':
+        return False
     if '/status' in request.path and request.method == 'GET':
         return True
     if request.path.endswith('/batch-status') and request.method == 'POST':

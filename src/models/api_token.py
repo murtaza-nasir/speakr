@@ -73,7 +73,15 @@ class APIToken(db.Model):
             'revoked': self.revoked,
             'scopes': self.scope_list,
             'sso_client_id': self.sso_client_id,
+            'sso_client_name': self._sso_client_name(),
         }
+
+    def _sso_client_name(self):
+        """The display name of the SSO client from SSO_API_CLIENT_NAMES, or None."""
+        if not self.sso_client_id:
+            return None
+        from src.auth.sso_access_tokens import client_name
+        return client_name(self.sso_client_id)
 
     @property
     def scope_set(self):

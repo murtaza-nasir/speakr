@@ -17,6 +17,7 @@
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script src="{{ url_for('static', filename='js/asr-languages.js') }}"></script>
     <script src="{{ url_for('static', filename='js/folder-tree.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/token-dates.js') }}"></script>
     <script src="{{ url_for('static', filename='js/organizer-modals.js') }}"></script>
 
     <!-- Loading overlay to prevent FOUC -->
@@ -6430,8 +6431,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 activeTokensList.innerHTML = activeTokens.map(token => {
                     const statusClass = getTokenStatusClass(token);
                     const status = getTokenStatus(token);
-                    const createdDate = parseInstant(token.created_at).toLocaleDateString(window.i18n?.getIntlLocale?.());
-                    const lastUsed = token.last_used_at ? parseInstant(token.last_used_at).toLocaleDateString(window.i18n?.getIntlLocale?.()) : null;
+                    const intlLocale = window.i18n?.getIntlLocale?.();
+                    const created = window.SpeakrTokenDates.formatTokenDate(parseInstant(token.created_at), intlLocale);
+                    const lastUsed = token.last_used_at ? window.SpeakrTokenDates.formatTokenDate(parseInstant(token.last_used_at), intlLocale) : null;
+                    const ssoClient = token.sso_client_name || token.sso_client_id;
 
                     return `
                         <div class="bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200">
@@ -6456,18 +6459,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <div class="grid grid-cols-2 gap-1 text-[10px] text-[var(--text-muted)]">
                                     <div class="flex items-center gap-1">
                                         <i class="fas fa-calendar-plus opacity-60"></i>
-                                        <span>${createdDate}</span>
+                                        <span title="${escapeHtml(created.title)}">${escapeHtml(created.text)}</span>
                                     </div>
                                     <div class="flex items-center gap-1">
                                         <i class="fas fa-clock opacity-60"></i>
-                                        <span>${lastUsed || escapeHtml(tf('apiTokens.neverUsed', 'Never used'))}</span>
+                                        ${lastUsed ? `<span title="${escapeHtml(lastUsed.title)}">${escapeHtml(lastUsed.text)}</span>` : `<span>${escapeHtml(tf('apiTokens.neverUsed', 'Never used'))}</span>`}
                                     </div>
                                 </div>
 
                                 ${token.sso_client_id ? `
                                 <div class="mt-2 text-[10px] text-[var(--text-muted)]">
                                     <i class="fas fa-id-badge opacity-60"></i>
-                                    ${escapeHtml(tf('account.tokensTab.createdBySso', 'Created through SSO by ' + token.sso_client_id, { client: token.sso_client_id }))}
+                                    ${escapeHtml(tf('account.tokensTab.createdBySso', 'Created through SSO by ' + ssoClient, { client: ssoClient }))}
                                 </div>` : ''}
 
                                 <!-- Scopes -->

@@ -72,7 +72,7 @@ GET /api/v1/tokens/current
 
 **Scope:** none (any valid token)
 
-Returns the token used for the request. A request signed in through the web interface gets `404` with `"code": "not_found"`.
+Returns the token used for the request. A request signed in through the web interface gets `404` with `"code": "not_found"`. For a token created through the [token exchange](#token-exchange), `sso_client_id` is the client ID of the app that exchanged, and `sso_client_name` is its display name when the administrator has set one in `sso_api_client_names`. Both are `null` for any other token. For a request made with an SSO access token, `id` is `null` and `sso_client_id` is the client the access token was issued to.
 
 ```json
 {
@@ -82,7 +82,9 @@ Returns the token used for the request. A request signed in through the web inte
   "created_at": "2026-10-02T09:00:00.000000Z",
   "expires_at": "2027-10-02T09:00:00.000000Z",
   "last_used_at": "2026-10-02T09:05:11.000000Z",
-  "via": "header"
+  "via": "header",
+  "sso_client_id": null,
+  "sso_client_name": null
 }
 ```
 
@@ -132,6 +134,42 @@ The answer is `201` with the same fields as a token created in Account settings,
 ```
 
 A scope outside `sso_api_scopes`, a missing name or an invalid expiry gets `400`. The per-account token limit applies, so an account at the limit gets `409` with `"code": "token_limit_reached"`. The token appears in the user's token list with the note **Created through SSO by** and the app's client ID, and it is revoked there like any other token. `GET /api/v1/capabilities` reports `"sso_token_exchange": true` in `features` while the feature is on.
+
+When the access token is valid but no Speakr account has its subject, the account is created if the administrator has turned on `sso_api_auto_register`; the exchange then succeeds as above. Otherwise the exchange is refused with one of these codes (an invalid token still gets `401`):
+
+| Status | `code` | What to do |
+|--------|--------|------------|
+| `403` | `sso_registration_closed` | Accounts are not created through the API. The person signs in to Speakr once with SSO. |
+| `403` | `sso_exchange_not_allowed` | The client of the token may not exchange. |
+| `409` | `sso_link_required` | A Speakr account with the same email exists. The person signs in to Speakr once with SSO, which links that account. |
+| `403` | `sso_domain_not_allowed` | The email domain is not allowed on this instance. |
+| `403` | `sso_email_not_verified` | The provider does not mark the email as verified. |
+| `403` | `sso_email_missing` | The provider returned no email for the person. |
+| `502` | `sso_userinfo_failed` | The userinfo endpoint of the provider could not be read with the access token. Retry later; the administrator finds the reason in the Speakr log. |
+
+`features.sso_exchange_provisioning` in `GET /api/v1/capabilities` is `true` when missing accounts are created. Any other API call with such a token gets the usual `401` for every one of these refusals.
+
+### SSO Status
+
+```http
+GET /api/v1/sso/status?client_id=CLIENT_ID
+```
+
+**Scope:** none (no authentication; a token sent here is ignored). Requests are limited per IP address.
+
+The answer states whether the token exchange is available, for an app that holds no token yet. `client_id` is optional.
+
+```json
+{"sso_token_exchange": true, "sso_exchange_provisioning": true, "exchange_client_allowed": true}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `sso_token_exchange` | SSO access tokens are on and at least one client may exchange. |
+| `sso_exchange_provisioning` | An exchange for a person with no Speakr account creates the account. |
+| `exchange_client_allowed` | `null` without `client_id`. With it, `true` only when that client ID is in both `sso_api_allowed_clients` and `sso_api_exchange_clients`. |
+
+No version and no other client IDs are returned.
 
 ### Revoke the Current Token
 

@@ -134,6 +134,8 @@ def resolve_request_token():
     same row. Returns (APIToken or None, via_query).
     """
     env = request.environ
+    if '_speakr_api_token' not in env and _is_public_route():
+        env['_speakr_api_token'] = (None, False)
     if '_speakr_api_token' not in env:
         header_value = extract_token_from_request(headers_only=True)
         value = header_value or extract_token_from_request()
@@ -292,6 +294,25 @@ def user_rate_key():
 def is_token_request():
     """True when this request is authenticated by an API token (not a session)."""
     return current_api_token() is not None
+
+
+def public_route(f):
+    """Mark a view that needs no authentication at all.
+
+    No token is read on such a route (resolve_request_token returns none), so
+    a token sent there has no effect: no scope check, no per-token or
+    per-account rate limit, and no SSO account provisioning. The route sets
+    its own per-IP limit. Marked with no required scopes, so a scoped token's
+    openapi.json still lists it."""
+    f._required_scopes = frozenset()
+    f._public_route = True
+    return f
+
+
+def _is_public_route():
+    from flask import current_app
+    view = current_app.view_functions.get(request.endpoint) if request.endpoint else None
+    return bool(getattr(view, '_public_route', False))
 
 
 def require_scope(*scopes):

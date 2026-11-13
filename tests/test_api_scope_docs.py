@@ -17,6 +17,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _norm = lambda path: re.sub(r'<[^>]+>|\{[^}]+\}', '{}', path.split('?')[0].rstrip('/'))
 
 
+def _public_routes():
+    """(method, path) of the routes that need no authentication (public_route)."""
+    found = set()
+    for rule in app.url_map.iter_rules():
+        if getattr(app.view_functions.get(rule.endpoint), '_public_route', False):
+            found |= {(m, _norm(rule.rule)) for m in rule.methods - {'HEAD', 'OPTIONS'}}
+    return found
+
+
 def _route_scopes():
     table = {}
     for rule in app.url_map.iter_rules():
@@ -30,6 +39,7 @@ def _route_scopes():
 
 def test_every_documented_request_states_its_scope():
     routes = _route_scopes()
+    public = _public_routes()
     text = open(os.path.join(ROOT, 'docs/user-guide/api-reference.md'), encoding='utf-8').read()
     blocks = re.findall(r'```http\n(GET|POST|PUT|PATCH|DELETE) (/api/v1\S*)\n```\n\n(\*\*Scope:\*\* [^\n]*)?', text)
     assert len(blocks) > 40
@@ -39,7 +49,8 @@ def test_every_documented_request_states_its_scope():
         if scopes is None:
             problems.append(f'{method} {path}: no such route')
             continue
-        expected = 'none (any valid token' if not scopes else ', '.join(f'`{s}`' for s in scopes)
+        expected = ('none (no authentication' if (method, _norm(path)) in public
+                    else 'none (any valid token' if not scopes else ', '.join(f'`{s}`' for s in scopes))
         if not line or expected not in line:
             problems.append(f'{method} {path}: documented {line!r}, route needs {scopes}')
     assert not problems, '\n'.join(problems)
