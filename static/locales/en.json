@@ -3870,6 +3870,13 @@
         "5": "In Regenerate summary, you see the prompt that will run and can edit it first.",
         "6": "Follow a translation's progress in the processing queue and the Translation tab.",
         "7": "Download a summary as Markdown, and single answers or whole Ask Ambrose conversations as Word documents."
+      },
+      "0_10_21": {
+        "1": "You can connect Mailr and Open WebUI to Speakr through single sign-on, without copying an API token, once an admin turns this on.",
+        "2": "Ambrose finds a person by a first name, a surname or another spelling, and searches every name the person appears under.",
+        "3": "A long Sources list under an answer is folded. Click Sources to open it.",
+        "4": "If you missed several updates, you see what's new in each of them.",
+        "5": "Signing out from a page that was open for a long time works."
       }
     }
   },

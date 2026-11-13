@@ -3870,6 +3870,13 @@
         "5": "Em Regenerar resumo, você vê o prompt que será executado e pode editá-lo antes.",
         "6": "Acompanhe o progresso de uma tradução na fila de processamento e na aba Tradução.",
         "7": "Baixe um resumo em Markdown, e respostas avulsas ou conversas inteiras do Perguntar a Ambrose como documentos do Word."
+      },
+      "0_10_21": {
+        "1": "Você pode conectar o Mailr e o Open WebUI ao Speakr por login único, sem copiar um token de API, quando um administrador ativar isso.",
+        "2": "O Ambrose encontra uma pessoa pelo nome, pelo sobrenome ou por outra grafia e pesquisa todos os nomes com que ela aparece.",
+        "3": "Uma lista longa de fontes abaixo de uma resposta fica recolhida. Clique em “Fontes” para abri-la.",
+        "4": "Se você perdeu várias atualizações, verá as novidades de cada uma.",
+        "5": "Sair de uma página que ficou aberta por muito tempo funciona."
       }
     }
   },

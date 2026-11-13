@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.20-alpha: interface themes, Ambrose, nested folders"
-    Six interface themes, one assistant named Ambrose for the recording chat and Inquire, nested folders, a Regenerate summary dialog with an editable prompt, and `.env` settings in System Settings.
+!!! success "Latest Release: v0.10.21-alpha: SSO access tokens, people in Ambrose, sharing and job fixes"
+    SSO access tokens from apps with the same single sign-on are accepted by the API, Ambrose finds people by any of their names, and reported bugs in sharing, jobs and uploads are fixed.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.20-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.21-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.21-alpha - SSO access tokens, people in Ambrose, sharing and job fixes"
+    One column and four settings are added at startup; SSO access tokens are off until an admin turns them on. Read the Upgrading section of the release notes for the changes to webhooks and API v1.
+
+    - **Single sign-on** - SSO access tokens on the API, for Open WebUI and for apps that sync in the background, such as Mailr.
+    - **Ambrose** - People are found by any of their names, and long Sources lists are folded.
+    - **Fixes** - Sharing and permissions (#586, #589, #591, #598 to #600), jobs and uploads (#587, #592, #594 to #597, #601), error pages from transcription services (#593), and cut-off summaries.
+
 !!! info "Version 0.10.20-alpha - Interface themes, Ambrose, nested folders"
     Eight columns are added at startup, and recordings left without an owner by earlier versions are removed by a daily step. New accounts start with the Cards theme; read the Upgrading section of the release notes for the defaults and how to keep the previous ones.
 
@@ -144,15 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Watch folder** - Watched files go through the upload pipeline without its size limits, and a file that cannot be processed is renamed to `<name>.failed` (PR #552).
     - **Fixes** - Recordings made on iPhones (#495), `.local` email addresses (#551), seeking in long videos (#539), and #530 to #534.
 
-!!! info "Version 0.10.18-alpha - Login lock, incognito fixes, scoped API tools"
-    A `login_failure` table and two login settings are added at startup.
-
-    - **Security** - Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
-    - **Incognito** - Chat works again (#527), and the recording is kept through a page reload (#528).
-    - **API** - The OpenAPI document lists only the operations a scoped token may call (#526).
-
 !!! note "Earlier releases"
-    Release notes for v0.10.17 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.18 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

@@ -3870,6 +3870,13 @@
         "5": "En Regenerar resumen, verá el prompt que se ejecutará y podrá editarlo antes.",
         "6": "Siga el progreso de una traducción en la cola de procesamiento y en la pestaña Traducción.",
         "7": "Descargue un resumen en Markdown, y respuestas sueltas o conversaciones completas de Preguntar a Ambrose como documentos de Word."
+      },
+      "0_10_21": {
+        "1": "Puede conectar Mailr y Open WebUI con Speakr mediante el inicio de sesión único, sin copiar un token de API, cuando un administrador lo active.",
+        "2": "Ambrose encuentra a una persona por su nombre, su apellido u otra grafía, y busca con todos los nombres con los que aparece.",
+        "3": "Una lista larga de fuentes bajo una respuesta aparece plegada. Haga clic en «Fuentes» para abrirla.",
+        "4": "Si se perdió varias actualizaciones, verá las novedades de cada una.",
+        "5": "Cerrar sesión desde una página que estuvo abierta mucho tiempo funciona."
       }
     }
   },

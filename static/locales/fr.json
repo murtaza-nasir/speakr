@@ -3870,6 +3870,13 @@
         "5": "Dans Régénérer le résumé, vous voyez le prompt qui sera exécuté et pouvez le modifier avant.",
         "6": "Suivez la progression d'une traduction dans la file de traitement et dans l'onglet Traduction.",
         "7": "Téléchargez un résumé en Markdown, et une réponse seule ou toute une conversation Demander à Ambrose en document Word."
+      },
+      "0_10_21": {
+        "1": "Vous pouvez connecter Mailr et Open WebUI à Speakr par authentification unique, sans copier de jeton d'API, dès qu'un administrateur l'active.",
+        "2": "Ambrose trouve une personne par son prénom, son nom ou une autre orthographe, et recherche sous tous les noms où elle apparaît.",
+        "3": "Une longue liste de sources sous une réponse est repliée. Cliquez sur « Sources » pour l'ouvrir.",
+        "4": "Si vous avez manqué plusieurs mises à jour, vous voyez les nouveautés de chacune.",
+        "5": "La déconnexion depuis une page restée ouverte longtemps fonctionne."
       }
     }
   },

@@ -3870,6 +3870,13 @@
         "5": "Unter „Zusammenfassung neu generieren“ sehen Sie den Prompt, der ausgeführt wird, und können ihn vorher bearbeiten.",
         "6": "Verfolgen Sie den Fortschritt einer Übersetzung in der Verarbeitungswarteschlange und im Tab Übersetzung.",
         "7": "Laden Sie eine Zusammenfassung als Markdown herunter, einzelne Antworten oder ganze Unterhaltungen unter „Ambrose fragen“ als Word-Dokument."
+      },
+      "0_10_21": {
+        "1": "Sie können Mailr und Open WebUI per Single Sign-on mit Speakr verbinden, ohne ein API-Token zu kopieren, sobald ein Administrator dies aktiviert.",
+        "2": "Ambrose findet eine Person über den Vornamen, den Nachnamen oder eine andere Schreibweise und durchsucht alle Namen, unter denen die Person vorkommt.",
+        "3": "Eine lange Quellenliste unter einer Antwort wird eingeklappt. Klicken Sie auf „Quellen“, um sie zu öffnen.",
+        "4": "Wenn Sie mehrere Updates verpasst haben, sehen Sie die Neuerungen jedes einzelnen.",
+        "5": "Das Abmelden von einer Seite, die lange geöffnet war, funktioniert."
       }
     }
   },

@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.20--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.21--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -237,7 +237,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.20-alpha)
+## Latest Release (v0.10.21-alpha)
+
+- The API can be used with the user's SSO access token from Mailr, Open WebUI and other apps that sign users in through the same single sign-on, without a copied API token.
+- Ambrose finds people by a first name, a surname, an email or another spelling, and searches every name a person appears under.
+- Sharing and permission fixes for group folders, bulk tags, retention, calendar events and API v1 flags (#586, #589, #591, #598 to #600).
+- Job and upload fixes for merges, retries, failure notices, reused ids and repeated tags (#587, #592, #594 to #597, #601), and summaries cut off by reasoning models are reported as failed.
+- Error pages from transcription services are kept only as a short, redacted summary in logs, webhooks and emails (#593).
+
+### v0.10.20-alpha
 
 - Six interface themes, each with every color scheme and dark mode; new accounts start with Cards and Forest Emerald.
 - The recording chat and Inquire are one assistant, Ambrose, with cited answers you can play from and a chat kept per recording until the tab is closed.
@@ -253,13 +261,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Inquire indexing is done on its own worker (discussion #541), and watched files go through the upload pipeline without its size limits (PR #552).
 - Recordings made on iPhones play correctly (#495), `.local` email addresses can register (#551), and seeking in long videos no longer uses up the rate limit (#539).
 
-### v0.10.18-alpha
-
-- Chat on incognito recordings works again (#527), and an incognito recording is kept through a page reload (#528).
-- Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
-- The API specification lists only the operations a scoped token may call, so tool servers such as Open WebUI offer only those tools (#526).
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.20-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.21-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
