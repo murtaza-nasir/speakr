@@ -38,7 +38,7 @@
                        @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
                        @dblclick="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoFullscreen && enterVideoFullscreen()"
                        :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')
-                           ? (videoFullscreen ? 'video-fullscreen-video' : (videoCollapsed ? 'hidden' : 'w-full rounded-lg mb-2 cursor-pointer'))
+                           ? (videoFullscreen ? 'video-fullscreen-video' : (videoCollapsed ? 'hidden' : 'w-full rounded-lg mb-2 cursor-pointer mobile-player-video'))
                            : 'hidden'">
                 </component>
 

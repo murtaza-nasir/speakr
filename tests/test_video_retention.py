@@ -349,6 +349,16 @@ class TestFrontendTemplates(unittest.TestCase):
             if 'desktop-bottom-player' not in tmpl:
                 self.assertIn("'w-full rounded-lg", content, f"Missing video styling in {tmpl}")
 
+    def test_the_phone_video_height_is_capped(self):
+        """A portrait video at its natural height filled the phone screen."""
+        content = self._read_template('templates/components/detail/audio-player.html')
+        self.assertIn("'w-full rounded-lg mb-2 cursor-pointer mobile-player-video'", content)
+        css = self._read_template('static/css/styles.css')
+        rule = css[css.index('.mobile-player-video {'):]
+        rule = rule[:rule.index('}')]
+        self.assertIn('max-height: max(40vh, 75vw);', rule)
+        self.assertIn('object-fit: contain;', rule)
+
     def test_template_div_balance(self):
         """Verify player-specific templates have balanced div tags."""
         # Only check templates we fully control (not share.html which has pre-existing imbalance)

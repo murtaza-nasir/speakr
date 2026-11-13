@@ -5437,3 +5437,14 @@ select:disabled {
         justify-content: center;
     }
 }
+
+/* Video in the phone player. A portrait clip at its natural height filled the
+   screen and pushed the player controls and the transcript out of view, so its
+   height is capped and the whole frame is shown, centred on the theme's
+   surface. The cap is never below three quarters of the screen width, the
+   natural height of a 4:3 video, so landscape videos keep their size. */
+.mobile-player-video {
+    max-height: max(40vh, 75vw);
+    object-fit: contain;
+    background: var(--bg-tertiary);
+}
