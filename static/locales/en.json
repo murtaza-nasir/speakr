@@ -528,6 +528,7 @@
       "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read.",
       "ssoApiAutoRegisterDesc": "Whether a valid SSO access token for a person with no Speakr account creates that account. SSO_AUTO_REGISTER must also be on. The claims are read from the provider's userinfo endpoint. An existing local account is never linked by email; that person signs in to Speakr once with SSO.",
       "ssoApiClientNamesDesc": "Display names for OIDC client IDs, as client_id=Name pairs separated by commas or new lines. The name of the app is shown in Account settings for a token created through the SSO token exchange. Malformed pairs are ignored.",
+      "ssoApiClientScopesDesc": "Per-app scope limits, as client_id=scope1 scope2 pairs separated by commas or new lines. Scopes within a pair are separated by spaces, + or |. A listed app gets those scopes within sso_api_scopes; an app not listed gets sso_api_scopes. A listed app left with no known scope is refused. Malformed pairs are ignored.",
       "ssoApiExchangeClientsDesc": "Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means that no exchange is allowed. Add only apps that sync in the background, never a tool server such as Open WebUI."
     },
     "storageUsed": "Storage used",

@@ -134,7 +134,7 @@ Apps that sign users in through the same OIDC provider as Speakr can call the Sp
 - A tool server connection that sends each user's own access token on every call, such as Open WebUI with the **System OAuth** connection type.
 - An app that works in the background, such as a mail client that syncs on a schedule. A short-lived access token is not enough there, so the app exchanges the access token once for a normal Speakr API token at `POST /api/v1/tokens/exchange` and stores that token.
 
-The feature is off by default. Six settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
+The feature is off by default. Seven settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
 
 | Setting | Variable in `.env` | Default | Meaning |
 |---|---|---|---|
@@ -144,10 +144,28 @@ The feature is off by default. Six settings control it. Each can be set in **Sys
 | `sso_api_scopes` | `SSO_API_SCOPES` | `read` | Comma-separated [scopes](../user-guide/api-tokens.md#scopes) that a request with an SSO access token has. A token created through the exchange may have these scopes and no others. `full` is not accepted here, and unknown names are ignored. |
 | `sso_api_auto_register` | `SSO_API_AUTO_REGISTER` | `false` | Creates the Speakr account of a person who has never signed in to Speakr, the first time a valid access token for that person arrives. `SSO_AUTO_REGISTER` must also be `true`. See [Accounts for people who have not signed in to Speakr](#accounts-for-people-who-have-not-signed-in-to-speakr). |
 | `sso_api_client_names` | `SSO_API_CLIENT_NAMES` | empty | Display names for client IDs, as `client_id=Name` pairs separated by commas or new lines, for example `abc123=Open WebUI`. The name is shown in **Account settings > API tokens** for a token created through the exchange. Malformed pairs are ignored, and a name is cut to 60 characters. |
+| `sso_api_client_scopes` | `SSO_API_CLIENT_SCOPES` | empty | Scope limits per client ID, as `client_id=scope1 scope2` pairs separated by commas or new lines. The scopes of a pair are separated by spaces, `+` or `\|`. See [Scopes per app](#scopes-per-app). |
 
-`sso_api_scopes` applies to every allowed client. Give it the largest set that any of those apps needs.
+`sso_api_scopes` applies to every allowed client that `sso_api_client_scopes` does not list. Give it the largest set that any of those apps needs.
 
 A tool server such as Open WebUI belongs in `sso_api_allowed_clients` only, never in `sso_api_exchange_clients`. A model that calls tools on a user's behalf can then never create a stored token, even when text in a recording tries to make it do so. For the same reason, `POST /api/v1/tokens/exchange` is not listed in `/api/v1/openapi.json`, so a tool list built from that document does not contain it.
+
+### Scopes per app
+
+With `sso_api_client_scopes`, the scopes of single apps are narrowed. A listed client gets the scopes of its pair that are also in `sso_api_scopes`, so `sso_api_scopes` stays the outer limit for every app. A client that is not listed keeps `sso_api_scopes`. The limit applies to each request made with an access token of that app, and to the exchange: the scopes requested there must be within the limit of the exchanging client, and a token from a request without `scopes` is given every scope within that limit.
+
+Unknown scope names are ignored, and `full` is never granted. A pair without `=` or without a client ID is ignored. A listed client that ends up with no scope, for example `abc123=` or `abc123=bogus`, is refused: its access tokens get the same `401` as an invalid token, and an exchange for it gets `400` with `"allowed_scopes": []`.
+
+In the following example, an assistant tool server such as Open WebUI (client ID `owui-client`) is limited to `read`, and a mail app that syncs in the background (client ID `mail-client`) is given `read`, `write`, `upload`, `share` and `webhooks`. In `.env`:
+
+```
+SSO_API_SCOPES=read,write,upload,share,webhooks
+SSO_API_CLIENT_SCOPES="owui-client=read, mail-client=read write upload share webhooks"
+```
+
+In **System Settings**, the same value is entered without the quotation marks.
+
+The same pairs may also be written with `+` or `|`, for example `mail-client=read+write+upload`.
 
 ### Requirements for the provider
 

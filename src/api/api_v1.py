@@ -1108,7 +1108,8 @@ def exchange_sso_token():
     so a leaked API token cannot mint more of itself. The route is left out
     of the served openapi.json, so a tool server built from the document
     never offers it to a model; it is documented in the API reference. The scopes are
-    a subset of SSO_API_SCOPES, and the per-account token cap applies.
+    a subset of the ceiling of the exchanging client (its SSO_API_CLIENT_SCOPES
+    entry within SSO_API_SCOPES), and the per-account token cap applies.
     """
     from flask import session
     from src.utils.token_auth import current_api_token, is_sso_token
@@ -1142,7 +1143,17 @@ def exchange_sso_token():
     if not isinstance(expires_in_days, int) or isinstance(expires_in_days, bool) or expires_in_days < 0:
         return jsonify(api_error('invalid_expires_in_days')), 400
 
-    allowed = granted_scopes()
+    # The ceiling of the exchanging client (SSO_API_CLIENT_SCOPES within
+    # SSO_API_SCOPES). An empty ceiling refuses every exchange with 400.
+    allowed = granted_scopes(client_id)
+    if not allowed:
+        current_app.logger.info("SSO token exchange refused for user %s: client %s has no scope",
+                                sso_token.user_id, client_id)
+        return jsonify({
+            'error': translate('server.apiError.sso_scopes_not_allowed', allowed=''),
+            'code': 'invalid_parameter',
+            'allowed_scopes': [],
+        }), 400
     if 'scopes' in data:
         from src.models.api_token import parse_scopes
         scopes_value, error = parse_scopes(data.get('scopes'))
