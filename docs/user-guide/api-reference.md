@@ -155,7 +155,7 @@ When the access token is valid but no Speakr account has its subject, the accoun
 GET /api/v1/sso/status?client_id=CLIENT_ID
 ```
 
-**Scope:** none, and no authentication. A token sent here is ignored. Requests are limited per IP address.
+**Scope:** none (no authentication; a token sent here is ignored). Requests are limited per IP address.
 
 The answer states whether the token exchange is available, for an app that holds no token yet. `client_id` is optional.
 
