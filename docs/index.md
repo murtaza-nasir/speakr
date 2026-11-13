@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.19-alpha: transcript translation, faster uploads, fair queues"
-    Transcript translation, uploads answered before their files are converted, turns for every user in the processing queues, Inquire indexing on its own worker, and fixes for recordings made on iPhones and for `.local` email addresses.
+!!! success "Latest Release: v0.10.20-alpha: interface themes, Ambrose, nested folders"
+    Six interface themes, one assistant named Ambrose for the recording chat and Inquire, nested folders, a Regenerate summary dialog with an editable prompt, and `.env` settings in System Settings.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.19-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.20-alpha) for details.
 
 ## Quick Navigation
 
@@ -128,6 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.10.20-alpha - Interface themes, Ambrose, nested folders"
+    Eight columns are added at startup, and recordings left without an owner by earlier versions are removed by a daily step. New accounts start with the Cards theme; read the Upgrading section of the release notes for the defaults and how to keep the previous ones.
+
+    - **Interface** - Six themes with every color scheme and dark mode, and a What's new list after each update.
+    - **Ambrose** - One assistant for the recording chat and Inquire, with cited answers and a chat per recording.
+    - **Folders and prompts** - Nested folders (PR #585) and the Regenerate summary dialog (#584).
+    - **Administration and sharing** - `.env` settings in System Settings (#567), group shares that follow the group (#570, #582), and fixes for #571, #572, #578, #579, #581 and #583.
+
 !!! info "Version 0.10.19-alpha - Transcript translation, faster uploads, fair queues"
     Five columns and a unique index on active processing jobs are added at startup. Uploads are converted by convert jobs (`CONVERT_QUEUE_WORKERS`, default 2); read the release notes before going back to an earlier version.
 
@@ -143,16 +151,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Incognito** - Chat works again (#527), and the recording is kept through a page reload (#528).
     - **API** - The OpenAPI document lists only the operations a scoped token may call (#526).
 
-!!! info "Version 0.10.17-alpha - SSO security update, share permissions, folder fixes"
-    Two indexes are added at startup. Set `TRUSTED_PROXIES` to the reverse proxy address, and send API tokens in the `Authorization` header for writes.
-
-    - **Security** - Authlib 1.9.1 for SSO, query-string tokens only for reading (#500), and sign-in required for the app configuration and system info (#499, #502).
-    - **Sharing** - Permissions on an existing share can be changed, and several people can be selected in the share window (discussions #517, #519).
-    - **Folders** - Name and color checks, group folder names unique in the group, and group sharing through the API (#511 to #516).
-    - **Fixes** - SSO sign-in (#496), upload formats (#510), the storage quota (#509), and recording sessions (#505).
-
 !!! note "Earlier releases"
-    Release notes for v0.10.16 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
+    Release notes for v0.10.17 and earlier are on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 

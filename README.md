@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.19--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.20--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -237,7 +237,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.19-alpha)
+## Latest Release (v0.10.20-alpha)
+
+- Six interface themes, each with every color scheme and dark mode; new accounts start with Cards and Forest Emerald.
+- The recording chat and Inquire are one assistant, Ambrose, with cited answers you can play from and a chat kept per recording until the tab is closed.
+- Folders can be nested (PR #585), and the Regenerate summary dialog shows the prompt that will run and lets you edit it first (#584).
+- `.env` settings can be changed in System Settings (#567), and group shares last only while the group still gives a reason for them (#570, #582).
+- Translation progress in the processing queue, Markdown and Word downloads, and fixes for sharing permissions (#571, #578, #579, #581) and failed summaries (#583).
+
+### v0.10.19-alpha
 
 - Transcripts can be translated, on demand or automatically after transcription (PR #538, #463).
 - Uploads are answered before their files are converted, and a queued recording shows what it waits for (discussion #543).
@@ -251,14 +259,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Password sign-in is locked per account and client address after repeated wrong passwords, with an unlock in User Management (discussion #529).
 - The API specification lists only the operations a scoped token may call, so tool servers such as Open WebUI offer only those tools (#526).
 
-### v0.10.17-alpha
-
-- Security update of Authlib for SSO, and SSO sign-in works again under the default security policy (#496).
-- API tokens in the query string only for reading, and sign-in required for the app configuration and system info (#499, #500, #502).
-- Permissions on an existing share can be changed, and several people can be found and selected in the share window (discussions #517, #519).
-- Folder fixes for names, filters and group sharing (#511 to #516), and a per-account default sort for the recordings list.
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.19-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.20-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
