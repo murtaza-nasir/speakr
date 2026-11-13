@@ -15,7 +15,7 @@ or programmatically via the `/api/v1/webhooks` API.
 | `recording.created` | A recording row is created (upload arrived) | `recording_id`, `title`, `file_size`, `original_filename` |
 | `recording.transcription.started` | Worker picks up a transcribe or reprocess-transcription job and the audio file is on disk | `recording_id`, `title` |
 | `recording.transcription.completed` | Transcription job finished successfully | `recording_id`, `title`, `language`, `audio_duration_seconds`, `transcription_duration_seconds` |
-| `recording.transcription.failed` | Transcription failed permanently (retries exhausted) | `recording_id`, `title`, `error` |
+| `recording.transcription.failed` | Transcription failed permanently (retries exhausted), or the transcription service returned no text | `recording_id`, `title`, `error` |
 | `recording.summary.completed` | Summary generated successfully | `recording_id`, `title`, `summarization_duration_seconds` |
 | `recording.summary.failed` | Summary failed permanently | `recording_id`, `title`, `error` |
 | `recording.events.extracted` | Calendar event extraction finished and produced at least one event | `recording_id`, `title`, `events_count` |
@@ -35,8 +35,15 @@ misleading started→failed sequences for jobs that abort immediately
 end `FAILED`. When the automatic summary that runs after a transcription
 fails, the transcript is kept and the recording is `FAILED`: subscribers
 receive `recording.summary.failed` and no `recording.transcription.completed`
-for that run. The same applies to a transcription that returned no text. A
-later summary reprocess that succeeds sends `recording.summary.completed`.
+for that run. A later summary reprocess that succeeds sends
+`recording.summary.completed`.
+
+A transcription that returned no text also ends `FAILED`, without a
+transcript and without a retry, since silent audio would come back empty
+again. Subscribers receive `recording.transcription.failed` once, with the
+`error` "The transcription service returned no text. The recording may
+contain no speech, or the service failed without reporting an error.", and no
+`recording.transcription.completed`.
 
 `recording.updated` fires once per saved change, whether the change was made in the web
 app, through API v1 or by a speaker rename or merge. `fields_changed` uses these words:
