@@ -6,6 +6,13 @@ delegates to is_permanent_error to keep the existing call sites and
 tests working.
 """
 
+import re
+
+# The status of the failed request as the connectors and SDKs word it
+# ("status 500", "Error code: 503"). The first one in the message is the
+# request's own status; anything after it is the response body.
+_STATUS_RE = re.compile(r'(?:error\s*code|status)[:\s]*(\d{3})(?!\d)', re.IGNORECASE)
+
 
 def is_permanent_error(error_str: str) -> bool:
     """Return True when error_str describes a permanent failure.
@@ -15,8 +22,16 @@ def is_permanent_error(error_str: str) -> bool:
     models, and unsupported/invalid file formats. Everything else (network
     blips, timeouts, 5xx) is treated as transient and retried up to
     MAX_RETRIES.
+
+    The status code wins over the words: a 5xx is transient even when its
+    body contains "unauthorized" or "bad request" (#594), because the body
+    is whatever the service or the audio put there.
     """
     error_lower = (error_str or "").lower()
+
+    status = _STATUS_RE.search(error_lower)
+    if status and status.group(1).startswith('5'):
+        return False
 
     # HTTP status codes that indicate permanent errors
     permanent_codes = ['400', '413', '401', '402', '403', '404']

@@ -3698,6 +3698,10 @@
         "similarSearchOne": "1 recherche de similarité",
         "similarSearches": "{{count}} recherches de similarité"
       }
+    },
+    "summaryError": {
+      "emptyReply": "Le modèle de langage n'a renvoyé aucun texte de résumé.",
+      "emptyReplyLength": "Le modèle de langage a épuisé tout son budget de sortie sans écrire de résumé. Demandez à votre administrateur d'augmenter SUMMARY_MAX_TOKENS ou de limiter le raisonnement avec TEXT_MODEL_EXTRA_BODY."
     }
   },
   "sharePage": {

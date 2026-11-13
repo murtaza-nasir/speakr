@@ -3698,6 +3698,10 @@
         "similarSearchOne": "1 поиск похожих",
         "similarSearches": "поисков похожих: {{count}}"
       }
+    },
+    "summaryError": {
+      "emptyReply": "Языковая модель не вернула текст сводки.",
+      "emptyReplyLength": "Языковая модель израсходовала весь лимит вывода, не написав сводку. Попросите администратора увеличить SUMMARY_MAX_TOKENS или ограничить рассуждения с помощью TEXT_MODEL_EXTRA_BODY."
     }
   },
   "sharePage": {

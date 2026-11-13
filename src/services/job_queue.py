@@ -72,6 +72,14 @@ JOB_RUNNERS = {
 BACKGROUND_JOBS = ('translate_transcription', 'index_chunks')
 
 
+class StitchTargetMismatch(Exception):
+    """A stitch job's session belongs to another recording (#596).
+
+    The job fails without a retry and without touching the recording row:
+    marking that row FAILED could hit another user's recording (#505).
+    """
+
+
 def job_progress_writer(job_id):
     """A callback that stores ``(done, total)`` on a running job.
 
@@ -408,6 +416,7 @@ class FairJobQueue:
             from src.models import ProcessingJob, Recording
             from flask import current_app
 
+            loaded_created_at = None
             try:
                 # Parse job parameters
                 params = json.loads(params_str) if params_str else {}
@@ -422,6 +431,9 @@ class FairJobQueue:
                 recording = db.session.get(Recording, recording_id)
                 if not recording:
                     raise ValueError(f"Recording {recording_id} not found")
+                # Tells this recording from a later upload that received its
+                # id after a delete (SQLite reuses the highest id, #597).
+                loaded_created_at = recording.created_at
 
                 # Webhook fan-out for "started" events (#275) is now
                 # emitted INSIDE each job handler after the
@@ -438,11 +450,15 @@ class FairJobQueue:
 
                 # Mark as completed - re-fetch to ensure we have latest state
                 job = db.session.get(ProcessingJob, job_id)
-                if job:
-                    job.status = 'completed'
-                    job.completed_at = datetime.utcnow()
-                    db.session.commit()
-                    logger.info(f"Job {job_id} completed successfully")
+                if job is None:
+                    # Deleting a recording deletes its jobs: the id may now
+                    # be a new upload's, so nothing is reported (#597).
+                    logger.info(f"Job {job_id} was removed with its recording while it ran; no notices sent")
+                    return
+                job.status = 'completed'
+                job.completed_at = datetime.utcnow()
+                db.session.commit()
+                logger.info(f"Job {job_id} completed successfully")
 
                 # Webhook fan-out (#275). One emit per job-type completion;
                 # subscribers map these to user-visible lifecycle events.
@@ -472,8 +488,13 @@ class FairJobQueue:
                 except Exception:
                     pass
 
-                if db.session.get(Recording, recording_id) is None:
-                    # Deleted while the job ran: nothing to retry or report
+                from src.tasks.processing import RecordingDeletedDuringJob
+                current = db.session.get(Recording, recording_id)
+                if (current is None or isinstance(e, RecordingDeletedDuringJob)
+                        or (loaded_created_at is not None and current.created_at != loaded_created_at)):
+                    # Deleted while the job ran, or the id now belongs to a
+                    # new upload (#597): nothing to retry or report, and the
+                    # row with this id is not this job's to write.
                     logger.info(f"Job {job_id}: recording {recording_id} was deleted while the job ran; job dropped")
                     job = db.session.get(ProcessingJob, job_id)
                     if job:
@@ -481,6 +502,18 @@ class FairJobQueue:
                         job.error_message = 'Recording deleted while the job ran'
                         job.completed_at = datetime.utcnow()
                         db.session.commit()
+                    return
+
+                if isinstance(e, StitchTargetMismatch):
+                    # The same session and recording would mismatch again, so
+                    # no retry; the recording row is not this job's (#596).
+                    job = db.session.get(ProcessingJob, job_id)
+                    if job:
+                        job.status = 'failed'
+                        job.error_message = error_str
+                        job.completed_at = datetime.utcnow()
+                        db.session.commit()
+                    logger.error(f"Job {job_id} failed: {error_str}")
                     return
 
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
@@ -652,9 +685,10 @@ class FairJobQueue:
             raise ValueError("stitch job missing required 'session_id' param")
 
         # The session must point at this recording, and both must belong to
-        # the same user. Otherwise the job is dropped without touching the
-        # recording: raising would mark another user's recording FAILED (#505).
-        # A missing session is left to stitch_recording_session, as before.
+        # the same user. Otherwise the job fails without touching the
+        # recording: a plain error would mark another user's recording FAILED
+        # (#505), and returning stored the job as completed (#596). A missing
+        # session is left to stitch_recording_session, as before.
         from src.models import RecordingSession
         from src.database import db
         sess = db.session.get(RecordingSession, session_id)
@@ -662,7 +696,8 @@ class FairJobQueue:
                                  or sess.user_id != recording.user_id):
             logger.error(f"Stitch job {job.id}: session {session_id} does not belong to "
                          f"recording {recording.id}; job dropped")
-            return
+            raise StitchTargetMismatch(
+                f"Recording session {session_id} does not belong to recording {recording.id}")
 
         try:
             recording_id, final_path, metadata = stitch_recording_session(session_id)
@@ -696,6 +731,7 @@ class FairJobQueue:
         failure the recording is flipped to FAILED with the error visible.
         """
         from src.services.recording_merge import run_merge_job, MergeError
+        from src.database import db
 
         try:
             run_merge_job(recording, params)
@@ -1032,8 +1068,10 @@ class FairJobQueue:
         # mapping: those fire from the real transcribe job after a successful
         # stitch.
         'stitch': 'recording.transcription.failed',
-        # Likewise for an upload whose conversion failed (#543).
+        # Likewise for an upload whose conversion failed (#543), and for a
+        # merge or multi-file join whose audio was never assembled (#592).
         'convert': 'recording.transcription.failed',
+        'merge': 'recording.transcription.failed',
     }
 
     # No `summary.started` in the vocabulary today; if one is added later,
@@ -1073,6 +1111,11 @@ class FairJobQueue:
             from src.services.webhook_dispatch import emit_webhook_event
             recording = db.session.get(Recording, recording_id)
             if not recording:
+                return
+            if getattr(recording, 'status', None) == 'FAILED':
+                # The transcription job returned, but the recording ended
+                # FAILED: its auto-summary failed (recording.summary.failed
+                # was already sent) or the transcript came back empty (#595).
                 return
             # Both of these were documented from #275 and neither was ever
             # sent. audio_duration_seconds read `recording.audio_duration`,
@@ -1120,12 +1163,16 @@ class FairJobQueue:
             recording, owner = self._load_recording_and_owner(recording_id)
             if not recording or not owner:
                 return
+            if getattr(recording, 'status', None) == 'FAILED':
+                # "Transcription ready" would contradict the library (#595).
+                return
             if send_transcription_complete_email(owner, recording):
                 logger.info(f"Sent completion email for recording {recording_id} to user {owner.id}")
 
     def _emit_failure_email(self, job_type: str, recording_id: int, error: str):
-        # A failed conversion means the transcript will never come (#543).
-        if job_type not in self._EMAIL_JOB_TYPES + ('convert',):
+        # A failed conversion (#543) or merge (#592) means the transcript
+        # will never come.
+        if job_type not in self._EMAIL_JOB_TYPES + ('convert', 'merge'):
             return
         with self._app_context():
             from src.services.email import send_transcription_failed_email

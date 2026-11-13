@@ -1163,3 +1163,41 @@ def test_video_extensions_are_the_listed_ones():
         {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'})
     with app.app_context():
         assert _policy(filename="talk.mka").is_likely_video_by_ext is False
+
+
+# --- the same tag id twice in one upload (#601) --------------------------------
+
+def test_select_keeps_a_repeated_tag_id_once(tagworld):
+    w = tagworld
+    with app.app_context():
+        form = {"tag_ids[0]": str(w.own_tag), "tag_ids[1]": str(w.own_tag),
+                "tag_ids[2]": str(w.own_tag2)}
+        assert _select(w.owner, form) == ([w.own_tag, w.own_tag2], None)
+
+
+class _DeletingStorage(_Storage):
+    """Records deletes, so a stored object left behind by a failed commit shows."""
+
+    def __init__(self):
+        super().__init__()
+        self.deleted = []
+
+    def delete(self, locator, missing_ok=True):
+        self.deleted.append(locator)
+        return True
+
+
+def test_a_failed_commit_removes_the_stored_object(tagworld, staged):
+    from sqlalchemy.exc import IntegrityError
+    w = tagworld
+    with app.app_context():
+        tag = db.session.get(Tag, w.own_tag)
+        storage = _DeletingStorage()
+        with patch("src.services.storage_quota.reserve_room"), pytest.raises(IntegrityError):
+            # store_recording expects distinct tags; a repeat breaks the commit.
+            _store(w.owner, staged, storage, selected_tags=[tag, tag])
+        db.session.rollback()
+        uploaded = [c for c in storage.calls if c[0] == "upload"]
+        assert len(uploaded) == 1
+        assert storage.deleted == [f"local://{uploaded[0][2]}"]
+

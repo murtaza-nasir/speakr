@@ -143,7 +143,9 @@ def test_stitch_job_for_a_recording_that_is_not_the_sessions_leaves_it_untouched
         others_rec = _recording(other, "COMPLETED")
         s = _session(owner, "finalizing", own_rec.id)
 
-        with patch("src.services.recording_stitch.stitch_recording_session") as stitch:
+        from src.services.job_queue import StitchTargetMismatch
+        with patch("src.services.recording_stitch.stitch_recording_session") as stitch, \
+                pytest.raises(StitchTargetMismatch):
             job_queue._run_stitch(SimpleNamespace(id=1), others_rec, {"session_id": s.id})
         stitch.assert_not_called()
         db.session.expire_all()
@@ -191,3 +193,72 @@ def test_migration_runs_on_any_database():
         _clear_stale_session_links(db.engine, app)
         db.session.expire_all()
         assert db.session.get(RecordingSession, valid.id).finalized_recording_id == rec.id
+
+
+# --- a stitch job for a recording the session does not belong to (#596) ----
+
+def _stitch_job(user, recording, session):
+    from src.models import ProcessingJob
+    job = ProcessingJob(user_id=user.id, recording_id=recording.id, job_type="stitch",
+                        status="processing", params=f'{{"session_id": "{session.id}"}}',
+                        started_at=datetime.utcnow())
+    db.session.add(job)
+    db.session.commit()
+    return job
+
+
+def _run_mismatched_stitch(job):
+    from src.services.job_queue import job_queue
+    job_queue.init_app(app)
+    with patch("src.services.recording_stitch.stitch_recording_session") as stitch, \
+         patch.object(job_queue, "_emit_failure_webhook") as fail_hook, \
+         patch.object(job_queue, "_emit_failure_email") as fail_mail, \
+         patch.object(job_queue, "_emit_completion_webhook") as done_hook:
+        job_queue._process_job(job)
+    stitch.assert_not_called()
+    fail_hook.assert_not_called()
+    fail_mail.assert_not_called()
+    done_hook.assert_not_called()
+
+
+def test_mismatched_stitch_job_fails_and_leaves_the_other_recording():
+    from src.models import ProcessingJob
+    with app.app_context():
+        owner, other = _user("link_st4"), _user("link_st5")
+        own_rec = _recording(owner)
+        others_rec = _recording(other, "COMPLETED")
+        others_rec.transcription = "kept"
+        db.session.commit()
+        s = _session(owner, "finalizing", own_rec.id)
+        job = _stitch_job(other, others_rec, s)
+        jid, rid = job.id, others_rec.id
+
+        _run_mismatched_stitch(job)
+
+        db.session.expire_all()
+        refreshed = db.session.get(ProcessingJob, jid)
+        assert refreshed.status == "failed"
+        assert refreshed.retry_count == 0
+        assert refreshed.completed_at is not None
+        assert "does not belong" in refreshed.error_message
+        rec = db.session.get(Recording, rid)
+        assert (rec.status, rec.transcription) == ("COMPLETED", "kept")
+
+
+def test_mismatched_stitch_job_leaves_a_same_user_recording_stitching():
+    from src.models import ProcessingJob
+    with app.app_context():
+        owner = _user("link_st6")
+        rec_a = _recording(owner)
+        rec_b = _recording(owner)
+        s = _session(owner, "finalizing", rec_a.id)
+        job = _stitch_job(owner, rec_b, s)
+        jid, rid = job.id, rec_b.id
+
+        _run_mismatched_stitch(job)
+
+        db.session.expire_all()
+        refreshed = db.session.get(ProcessingJob, jid)
+        assert (refreshed.status, refreshed.retry_count) == ("failed", 0)
+        rec = db.session.get(Recording, rid)
+        assert (rec.status, rec.transcription) == ("STITCHING", None)

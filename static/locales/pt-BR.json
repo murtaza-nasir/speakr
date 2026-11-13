@@ -3698,6 +3698,10 @@
         "similarSearchOne": "1 busca de semelhança",
         "similarSearches": "{{count}} buscas de semelhança"
       }
+    },
+    "summaryError": {
+      "emptyReply": "O modelo de linguagem não retornou nenhum texto de resumo.",
+      "emptyReplyLength": "O modelo de linguagem usou todo o seu limite de saída sem escrever um resumo. Peça ao seu administrador para aumentar SUMMARY_MAX_TOKENS ou limitar o raciocínio com TEXT_MODEL_EXTRA_BODY."
     }
   },
   "sharePage": {
