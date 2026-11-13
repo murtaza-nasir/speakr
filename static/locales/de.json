@@ -285,7 +285,8 @@
       "important": "Wichtig",
       "onlyTimeShown": "Das Token wird nur dieses eine Mal angezeigt. Kopieren Sie es jetzt.",
       "yourToken": "Ihr API-Token",
-      "savedConfirm": "Ich habe das Token gespeichert"
+      "savedConfirm": "Ich habe das Token gespeichert",
+      "createdBySso": "Über SSO erstellt von {{client}}"
     },
     "templatesTab": {
       "loadFailed": "Vorlagen konnten nicht geladen werden",
@@ -521,7 +522,10 @@
       "disableAutoTranslationDesc": "Wenn aktiviert, werden Aufnahmen nur transkribiert und Benutzer müssen die Übersetzung manuell auslösen. Wenn deaktiviert, kann jeder Benutzer neue Aufnahmen nach der Transkription automatisch übersetzen lassen.",
       "defaultUiThemeDesc": "UI-Design für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Design. Einer der Werte: default, classic, workspace, focus, desk, cards. Bestehende Konten behalten ihr Design.",
       "defaultColorSchemeDesc": "Farbschema für neue Konten und für die Anmeldeseiten in einem Browser ohne gespeichertes Farbschema. Einer der Werte: blue, emerald, purple, rose, amber, teal. Bestehende Konten behalten ihr Farbschema.",
-      "defaultAudioPlayerPositionDesc": "Position des Audioplayers auf der Seite einer Aufnahme für neue Konten. Einer der Werte: top, bottom. Bestehende Konten behalten ihre Position."
+      "defaultAudioPlayerPositionDesc": "Position des Audioplayers auf der Seite einer Aufnahme für neue Konten. Einer der Werte: top, bottom. Bestehende Konten behalten ihre Position.",
+      "ssoApiTokensEnabledDesc": "Wenn aktiviert, können Apps, die Benutzer über denselben SSO-Anbieter wie Speakr anmelden, die API mit dem SSO-Zugriffstoken des Benutzers aufrufen und es gegen ein API-Token tauschen. SSO muss eingerichtet und mindestens ein Client erlaubt sein.",
+      "ssoApiAllowedClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken akzeptiert werden, abgeglichen mit dem Claim aud oder azp. Leer bedeutet, dass kein Zugriffstoken akzeptiert wird.",
+      "ssoApiScopesDesc": "Kommagetrennte Bereiche, die eine Anfrage mit einem SSO-Zugriffstoken hat. Ein getauschtes Token darf nur diese Bereiche haben. Standard: read."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -3569,7 +3573,10 @@
       "invalid_filter_date": "Der Datumsfilter konnte nicht gelesen werden",
       "invalid_default_ui_theme": "Ungültiges Standard-UI-Design. Zulässig ist einer der folgenden: {{themes}}",
       "invalid_default_color_scheme": "Ungültiges Standard-Farbschema. Zulässig ist einer der folgenden: {{schemes}}",
-      "invalid_default_audio_player_position": "Ungültige Standardposition des Audioplayers. Zulässig ist einer der folgenden: {{positions}}"
+      "invalid_default_audio_player_position": "Ungültige Standardposition des Audioplayers. Zulässig ist einer der folgenden: {{positions}}",
+      "sso_token_required": "Diese Route akzeptiert nur ein SSO-Zugriffstoken im Authorization-Header",
+      "token_name_too_long": "name darf höchstens {{max}} Zeichen lang sein",
+      "sso_scopes_not_allowed": "scopes muss eine Teilmenge der für SSO-Zugriffstoken erlaubten Bereiche sein: {{allowed}}"
     },
     "apiMessage": {
       "accountUpdated": "Kontodaten aktualisiert",

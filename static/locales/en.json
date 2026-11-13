@@ -285,7 +285,8 @@
       "important": "Important",
       "onlyTimeShown": "This is the only time the token is shown. Copy it now.",
       "yourToken": "Your API token",
-      "savedConfirm": "I've saved the token"
+      "savedConfirm": "I've saved the token",
+      "createdBySso": "Created through SSO by {{client}}"
     },
     "templatesTab": {
       "loadFailed": "Couldn't load templates",
@@ -521,7 +522,10 @@
       "disableAutoTranslationDesc": "When enabled, recordings are only transcribed and users must trigger translation manually. When disabled, each user can opt in to auto-translate new recordings after transcription.",
       "defaultUiThemeDesc": "UI theme for new accounts, and for the sign-in pages in a browser with no saved theme. One of: default, classic, workspace, focus, desk, cards. Existing accounts keep their theme.",
       "defaultColorSchemeDesc": "Color scheme for new accounts, and for the sign-in pages in a browser with no saved color scheme. One of: blue, emerald, purple, rose, amber, teal. Existing accounts keep their color scheme.",
-      "defaultAudioPlayerPositionDesc": "Audio player position on a recording's page for new accounts. One of: top, bottom. Existing accounts keep their position."
+      "defaultAudioPlayerPositionDesc": "Audio player position on a recording's page for new accounts. One of: top, bottom. Existing accounts keep their position.",
+      "ssoApiTokensEnabledDesc": "When enabled, apps that sign users in through the same SSO provider as Speakr can call the API with the user's SSO access token, and exchange it for an API token. SSO must be configured, and at least one client must be allowed.",
+      "ssoApiAllowedClientsDesc": "Comma-separated OIDC client IDs whose access tokens are accepted, matched against the aud or azp claim. Empty means that no access token is accepted.",
+      "ssoApiScopesDesc": "Comma-separated scopes that a request with an SSO access token has. An exchanged token may have these scopes and no others. Default: read."
     },
     "storageUsed": "Storage used",
     "summarizationInstructions": "Summarization instructions",
@@ -3569,7 +3573,10 @@
       "invalid_filter_date": "Couldn't read the date filter",
       "invalid_default_ui_theme": "Invalid default UI theme. Must be one of: {{themes}}",
       "invalid_default_color_scheme": "Invalid default color scheme. Must be one of: {{schemes}}",
-      "invalid_default_audio_player_position": "Invalid default audio player position. Must be one of: {{positions}}"
+      "invalid_default_audio_player_position": "Invalid default audio player position. Must be one of: {{positions}}",
+      "sso_token_required": "This route accepts only an SSO access token in the Authorization header",
+      "token_name_too_long": "name must be at most {{max}} characters",
+      "sso_scopes_not_allowed": "scopes must be a subset of the scopes allowed for SSO access tokens: {{allowed}}"
     },
     "apiMessage": {
       "accountUpdated": "Account details updated",

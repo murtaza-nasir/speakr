@@ -120,9 +120,19 @@ def create_token():
         if error:
             return jsonify({'error': error, 'code': 'invalid_parameter'}), 400
 
+    return issue_token(current_user.id, name, expires_in_days, scopes_value)
+
+
+def issue_token(user_id, name, expires_in_days, scopes_value, sso_client_id=None):
+    """Create a token for a user, within the per-account cap (#484).
+
+    Shared by Account settings and the SSO token exchange
+    (POST /api/v1/tokens/exchange). Returns (response, status); the response
+    holds the plaintext token, the only time it is shown.
+    """
     if API_MAX_TOKENS_PER_USER:
         now = datetime.utcnow()
-        active = (APIToken.query.filter_by(user_id=current_user.id, revoked=False)
+        active = (APIToken.query.filter_by(user_id=user_id, revoked=False)
                   .filter(db.or_(APIToken.expires_at.is_(None), APIToken.expires_at > now))
                   .count())
         if active >= API_MAX_TOKENS_PER_USER:
@@ -144,11 +154,12 @@ def create_token():
 
     # Create the token record
     api_token = APIToken(
-        user_id=current_user.id,
+        user_id=user_id,
         token_hash=token_hash,
         name=name,
         expires_at=expires_at,
         scopes=scopes_value,
+        sso_client_id=sso_client_id,
     )
 
     db.session.add(api_token)

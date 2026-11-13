@@ -285,7 +285,8 @@
       "important": "Importante",
       "onlyTimeShown": "Esta es la única vez que se muestra el token. Cópielo ahora.",
       "yourToken": "Su token de API",
-      "savedConfirm": "He guardado el token"
+      "savedConfirm": "He guardado el token",
+      "createdBySso": "Creado mediante SSO por {{client}}"
     },
     "templatesTab": {
       "loadFailed": "No se pudieron cargar las plantillas",
@@ -521,7 +522,10 @@
       "disableAutoTranslationDesc": "Cuando está activado, las grabaciones solo se transcriben y los usuarios deben iniciar la traducción manualmente. Cuando está desactivado, cada usuario puede activar la traducción automática de sus grabaciones nuevas tras la transcripción.",
       "defaultUiThemeDesc": "Tema de la interfaz para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin tema guardado. Uno de: default, classic, workspace, focus, desk, cards. Las cuentas existentes conservan su tema.",
       "defaultColorSchemeDesc": "Esquema de colores para las cuentas nuevas y para las páginas de inicio de sesión en un navegador sin esquema guardado. Uno de: blue, emerald, purple, rose, amber, teal. Las cuentas existentes conservan su esquema de colores.",
-      "defaultAudioPlayerPositionDesc": "Posición del reproductor de audio en la página de una grabación para las cuentas nuevas. Uno de: top, bottom. Las cuentas existentes conservan su posición."
+      "defaultAudioPlayerPositionDesc": "Posición del reproductor de audio en la página de una grabación para las cuentas nuevas. Uno de: top, bottom. Las cuentas existentes conservan su posición.",
+      "ssoApiTokensEnabledDesc": "Si se activa, las aplicaciones que inician sesión de los usuarios con el mismo proveedor SSO que Speakr pueden llamar a la API con el token de acceso SSO del usuario y canjearlo por un token de API. SSO debe estar configurado y al menos un cliente debe estar permitido.",
+      "ssoApiAllowedClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso se aceptan, comparados con la reclamación aud o azp. Vacío significa que no se acepta ningún token de acceso.",
+      "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -3569,7 +3573,10 @@
       "invalid_filter_date": "No se pudo leer el filtro de fecha",
       "invalid_default_ui_theme": "Tema de interfaz predeterminado no válido. Debe ser uno de: {{themes}}",
       "invalid_default_color_scheme": "Esquema de colores predeterminado no válido. Debe ser uno de: {{schemes}}",
-      "invalid_default_audio_player_position": "Posición predeterminada del reproductor de audio no válida. Debe ser una de: {{positions}}"
+      "invalid_default_audio_player_position": "Posición predeterminada del reproductor de audio no válida. Debe ser una de: {{positions}}",
+      "sso_token_required": "Esta ruta solo acepta un token de acceso SSO en el encabezado Authorization",
+      "token_name_too_long": "name debe tener como máximo {{max}} caracteres",
+      "sso_scopes_not_allowed": "scopes debe ser un subconjunto de los ámbitos permitidos para tokens de acceso SSO: {{allowed}}"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

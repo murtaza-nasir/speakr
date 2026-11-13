@@ -52,6 +52,9 @@ class APIToken(db.Model):
     revoked = db.Column(db.Boolean, default=False, nullable=False, index=True)
     # JSON list of scopes; NULL = full access (every token created before scopes).
     scopes = db.Column(db.Text, nullable=True)
+    # OIDC client ID of the app that created the token through
+    # POST /api/v1/tokens/exchange; NULL for a token made in Account settings.
+    sso_client_id = db.Column(db.String(255), nullable=True)
 
     # Relationship to User
     user = db.relationship('User', backref=db.backref('api_tokens', lazy=True, cascade='all, delete-orphan'))
@@ -69,6 +72,7 @@ class APIToken(db.Model):
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'revoked': self.revoked,
             'scopes': self.scope_list,
+            'sso_client_id': self.sso_client_id,
         }
 
     @property

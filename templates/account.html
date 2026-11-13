@@ -6464,6 +6464,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     </div>
                                 </div>
 
+                                ${token.sso_client_id ? `
+                                <div class="mt-2 text-[10px] text-[var(--text-muted)]">
+                                    <i class="fas fa-id-badge opacity-60"></i>
+                                    ${escapeHtml(tf('account.tokensTab.createdBySso', 'Created through SSO by ' + token.sso_client_id, { client: token.sso_client_id }))}
+                                </div>` : ''}
+
                                 <!-- Scopes -->
                                 <div class="mt-2 text-[10px] text-[var(--text-muted)]">
                                     <i class="fas fa-shield-alt opacity-60"></i>

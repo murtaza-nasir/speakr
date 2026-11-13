@@ -285,7 +285,8 @@
       "important": "重要",
       "onlyTimeShown": "令牌仅显示这一次。请立即复制。",
       "yourToken": "您的 API 令牌",
-      "savedConfirm": "我已保存令牌"
+      "savedConfirm": "我已保存令牌",
+      "createdBySso": "由 {{client}} 通过 SSO 创建"
     },
     "templatesTab": {
       "loadFailed": "无法加载模板",
@@ -521,7 +522,10 @@
       "disableAutoTranslationDesc": "启用后，录音只会进行转录，用户必须手动触发翻译。禁用后，每位用户可以选择在转录完成后自动翻译新录音。",
       "defaultUiThemeDesc": "新账户以及未保存主题的浏览器中登录页面使用的界面主题。可选值：default、classic、workspace、focus、desk、cards。现有账户保留各自的主题。",
       "defaultColorSchemeDesc": "新账户以及未保存配色方案的浏览器中登录页面使用的配色方案。可选值：blue、emerald、purple、rose、amber、teal。现有账户保留各自的配色方案。",
-      "defaultAudioPlayerPositionDesc": "新账户在录音页面上的音频播放器位置。可选值：top、bottom。现有账户保留各自的位置。"
+      "defaultAudioPlayerPositionDesc": "新账户在录音页面上的音频播放器位置。可选值：top、bottom。现有账户保留各自的位置。",
+      "ssoApiTokensEnabledDesc": "启用后，通过与 Speakr 相同的 SSO 提供方登录用户的应用可以使用用户的 SSO 访问令牌调用 API，并将其换取 API 令牌。必须已配置 SSO，并且至少允许一个客户端。",
+      "ssoApiAllowedClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌会被接受，与 aud 或 azp 声明比对。留空表示不接受任何访问令牌。",
+      "ssoApiScopesDesc": "以逗号分隔的范围，即携带 SSO 访问令牌的请求所具有的范围。换取的令牌只能具有这些范围。默认值：read。"
     },
     "storageUsed": "已用存储",
     "summarizationInstructions": "摘要说明",
@@ -3569,7 +3573,10 @@
       "invalid_filter_date": "无法读取日期筛选条件",
       "invalid_default_ui_theme": "无效的默认界面主题。必须是以下之一：{{themes}}",
       "invalid_default_color_scheme": "无效的默认配色方案。必须是以下之一：{{schemes}}",
-      "invalid_default_audio_player_position": "无效的默认音频播放器位置。必须是以下之一：{{positions}}"
+      "invalid_default_audio_player_position": "无效的默认音频播放器位置。必须是以下之一：{{positions}}",
+      "sso_token_required": "此路由仅接受 Authorization 请求头中的 SSO 访问令牌",
+      "token_name_too_long": "name 最多 {{max}} 个字符",
+      "sso_scopes_not_allowed": "scopes 必须是 SSO 访问令牌允许范围的子集：{{allowed}}"
     },
     "apiMessage": {
       "accountUpdated": "账户信息已更新",
