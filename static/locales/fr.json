@@ -3876,16 +3876,11 @@
         "7": "Téléchargez un résumé en Markdown, et une réponse seule ou toute une conversation Demander à Ambrose en document Word."
       },
       "0_10_21": {
-        "1": "Vous pouvez connecter les applications où vous vous connectez avec la même authentification unique que Speakr, comme Open WebUI, sans copier de jeton d'API, dès qu'un administrateur l'active.",
-        "2": "Ambrose trouve une personne par son prénom, son nom ou une autre orthographe, et recherche sous tous les noms où elle apparaît.",
-        "3": "Une longue liste de sources sous une réponse est repliée. Cliquez sur « Sources » pour l'ouvrir.",
-        "4": "Si vous avez manqué plusieurs mises à jour, vous voyez les nouveautés de chacune.",
-        "5": "La déconnexion depuis une page restée ouverte longtemps fonctionne."
+        "1": "Vous pouvez connecter Speakr aux applications qui utilisent la même authentification unique, comme Open WebUI, sans jeton d'API, dès qu'un administrateur l'active.",
+        "2": "Ambrose dispose d'un outil pour rechercher des personnes par leur nom."
       },
       "0_10_22": {
-        "1": "Les notifications suivent votre thème. Les erreurs restent affichées jusqu'à leur fermeture, et chaque notification peut être fermée.",
-        "2": "Sur un téléphone, une vidéo en portrait ne remplit plus l'écran.",
-        "3": "Sur une tablette, l'en-tête de l'enregistrement tient sur la ligne, et les autres actions sont dans le menu Plus."
+        "1": "Les notifications sont affichées dans les couleurs de votre thème. Les messages d'erreur restent affichés jusqu'à ce que vous les fermiez, et chaque notification a un bouton de fermeture."
       }
     }
   },

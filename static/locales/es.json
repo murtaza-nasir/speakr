@@ -3876,16 +3876,11 @@
         "7": "Descargue un resumen en Markdown, y respuestas sueltas o conversaciones completas de Preguntar a Ambrose como documentos de Word."
       },
       "0_10_21": {
-        "1": "Puede conectar aplicaciones en las que inicia sesión con el mismo inicio de sesión único que en Speakr, como Open WebUI, sin copiar un token de API, cuando un administrador lo active.",
-        "2": "Ambrose encuentra a una persona por su nombre, su apellido u otra grafía, y busca con todos los nombres con los que aparece.",
-        "3": "Una lista larga de fuentes bajo una respuesta aparece plegada. Haga clic en «Fuentes» para abrirla.",
-        "4": "Si se perdió varias actualizaciones, verá las novedades de cada una.",
-        "5": "Cerrar sesión desde una página que estuvo abierta mucho tiempo funciona."
+        "1": "Puede conectar Speakr con aplicaciones que usan el mismo inicio de sesión único, como Open WebUI, sin un token de API, cuando un administrador lo active.",
+        "2": "Ambrose tiene una herramienta para buscar personas por nombre."
       },
       "0_10_22": {
-        "1": "Las notificaciones siguen su tema. Los errores permanecen hasta que los cierra, y todas las notificaciones se pueden cerrar.",
-        "2": "En un teléfono, un video vertical ya no ocupa toda la pantalla.",
-        "3": "En una tableta, el encabezado de la grabación cabe, y las demás acciones están en el menú Más."
+        "1": "Las notificaciones se muestran con los colores de su tema. Los mensajes de error se mantienen en pantalla hasta que los cierra, y cada notificación tiene un botón para cerrarla."
       }
     }
   },

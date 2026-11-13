@@ -3876,16 +3876,11 @@
         "7": "Laden Sie eine Zusammenfassung als Markdown herunter, einzelne Antworten oder ganze Unterhaltungen unter „Ambrose fragen“ als Word-Dokument."
       },
       "0_10_21": {
-        "1": "Sie können Apps, bei denen Sie sich mit demselben Single Sign-on wie bei Speakr anmelden, etwa Open WebUI, ohne Kopieren eines API-Tokens verbinden, sobald ein Administrator dies aktiviert.",
-        "2": "Ambrose findet eine Person über den Vornamen, den Nachnamen oder eine andere Schreibweise und durchsucht alle Namen, unter denen die Person vorkommt.",
-        "3": "Eine lange Quellenliste unter einer Antwort wird eingeklappt. Klicken Sie auf „Quellen“, um sie zu öffnen.",
-        "4": "Wenn Sie mehrere Updates verpasst haben, sehen Sie die Neuerungen jedes einzelnen.",
-        "5": "Das Abmelden von einer Seite, die lange geöffnet war, funktioniert."
+        "1": "Sie können Speakr ohne API-Token mit Apps verbinden, die dasselbe Single Sign-on verwenden, etwa Open WebUI, sobald ein Administrator dies aktiviert.",
+        "2": "Ambrose hat ein Werkzeug, um Personen nach Namen zu suchen."
       },
       "0_10_22": {
-        "1": "Benachrichtigungen passen zu Ihrem Design. Fehlermeldungen bleiben, bis Sie sie schließen, und jede Benachrichtigung lässt sich schließen.",
-        "2": "Auf dem Smartphone füllt ein Hochformatvideo nicht mehr den Bildschirm.",
-        "3": "Auf dem Tablet passt die Kopfzeile der Aufnahme, und die übrigen Aktionen stehen im Menü „Mehr“."
+        "1": "Benachrichtigungen werden in den Farben Ihres Designs angezeigt. Fehlermeldungen bleiben sichtbar, bis Sie sie schließen, und jede Benachrichtigung hat eine Schaltfläche zum Schließen."
       }
     }
   },
