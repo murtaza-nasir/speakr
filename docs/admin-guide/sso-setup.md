@@ -134,15 +134,18 @@ Apps that sign users in through the same OIDC provider as Speakr can call the Sp
 - A tool server connection that sends each user's own access token on every call, such as Open WebUI with the **System OAuth** connection type.
 - An app that works in the background, such as a mail client that syncs on a schedule. A short-lived access token is not enough there, so the app exchanges the access token once for a normal Speakr API token at `POST /api/v1/tokens/exchange` and stores that token.
 
-The feature is off by default. Three settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
+The feature is off by default. Four settings control it. Each can be set in **System Settings** or in `.env` (see [Settings That Fall Back to .env](system-settings.md#settings-that-fall-back-to-env)), and a value saved in System Settings takes effect without a restart.
 
 | Setting | Variable in `.env` | Default | Meaning |
 |---|---|---|---|
 | `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` | `false` | Turns the feature on. SSO must also be configured (`ENABLE_SSO=true` and `SSO_DISCOVERY_URL`). |
 | `sso_api_allowed_clients` | `SSO_API_ALLOWED_CLIENTS` | empty | Comma-separated OIDC client IDs of the apps whose access tokens are accepted. A token is accepted when its `aud` claim (a string or a list) or its `azp` claim names one of them. Empty means that no access token is accepted. |
+| `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` | empty | Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. A client must also be in `sso_api_allowed_clients`. Empty means that no exchange is allowed, and an exchange request gets `403` with `"code": "sso_exchange_not_allowed"`. Add only apps that sync in the background. |
 | `sso_api_scopes` | `SSO_API_SCOPES` | `read` | Comma-separated [scopes](../user-guide/api-tokens.md#scopes) that a request with an SSO access token has. A token created through the exchange may have these scopes and no others. `full` is not accepted here, and unknown names are ignored. |
 
 `sso_api_scopes` applies to every allowed client. Give it the largest set that any of those apps needs.
+
+A tool server such as Open WebUI belongs in `sso_api_allowed_clients` only, never in `sso_api_exchange_clients`. A model that calls tools on a user's behalf can then never create a stored token, even when text in a recording tries to make it do so. For the same reason, `POST /api/v1/tokens/exchange` is not listed in `/api/v1/openapi.json`, so a tool list built from that document does not contain it.
 
 ### Requirements for the provider
 
@@ -170,14 +173,14 @@ A request with an SSO access token is treated like a request with an API token t
 
 1. Make sure that Open WebUI and Speakr sign users in through the same provider, with the same issuer.
 2. In the provider, look up the client ID of the Open WebUI client (the value of `OAUTH_CLIENT_ID` in Open WebUI).
-3. In Speakr, open **System Settings** and set `sso_api_allowed_clients` to that client ID. Set `sso_api_scopes` to `read` for searching and reading, or to `read,process` if the model may also chat with a recording or start a summary. Then set `sso_api_tokens_enabled` to true.
+3. In Speakr, open **System Settings** and set `sso_api_allowed_clients` to that client ID. Leave it out of `sso_api_exchange_clients`. Set `sso_api_scopes` to `read` for searching and reading, or to `read,process` if the model may also chat with a recording or start a summary. Then set `sso_api_tokens_enabled` to true.
 4. In Open WebUI, add Speakr as a tool server with the **System OAuth** connection type, as described in [Open WebUI with SSO](../user-guide/api-reference.md#open-webui-with-sso).
 5. Each user signs in to Speakr with SSO once, so that the account is linked.
 
 ### Enabling it for an app that syncs in the background
 
 1. In the provider, look up the client ID of the app.
-2. In Speakr, add that client ID to `sso_api_allowed_clients`, separated by a comma from any other client ID. Make sure that `sso_api_scopes` holds every scope the app asks for, for example `read,write,upload`. Set `sso_api_tokens_enabled` to true.
+2. In Speakr, add that client ID to `sso_api_allowed_clients`, separated by a comma from any other client ID, and to `sso_api_exchange_clients`. Make sure that `sso_api_scopes` holds every scope the app asks for, for example `read,write,upload`. Set `sso_api_tokens_enabled` to true.
 3. The app sends the user's access token once to `POST /api/v1/tokens/exchange` (see [Token Exchange](../user-guide/api-reference.md#token-exchange)) and stores the API token it receives.
 4. Each user signs in to Speakr with SSO once, so that the account is linked.
 

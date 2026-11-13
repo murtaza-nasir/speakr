@@ -100,7 +100,7 @@ POST /api/v1/tokens/exchange
 
 **Scope:** none (any valid token passes the scope check, but only an SSO access token is accepted)
 
-Creates a Speakr API token for the user of an SSO access token. An app that works in the background calls it once and then stores and uses the API token. The request must be authenticated with an SSO access token in the `Authorization` header. A request with a Speakr API token or a browser session gets `403` with `"code": "sso_token_required"`.
+Creates a Speakr API token for the user of an SSO access token. An app that works in the background calls it once and then stores and uses the API token. The request must be authenticated with an SSO access token in the `Authorization` header. A request with a Speakr API token or a browser session gets `403` with `"code": "sso_token_required"`. The access token must also be issued to a client that the administrator lists in `sso_api_exchange_clients`; any other client gets `403` with `"code": "sso_exchange_not_allowed"`. This route is not listed in `/api/v1/openapi.json`, so a tool server built from that document never offers it.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -191,7 +191,7 @@ Speech-to-text in Open WebUI is the job of a transcription server. If you use [W
 
 When Open WebUI and Speakr sign users in through the same OIDC provider, each Open WebUI user can reach their own Speakr recordings without a Speakr token.
 
-1. The Speakr administrator turns on SSO access tokens with the Open WebUI client ID as an allowed client (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)).
+1. The Speakr administrator turns on SSO access tokens with the Open WebUI client ID in `sso_api_allowed_clients` and not in `sso_api_exchange_clients` (see [SSO Setup](../admin-guide/sso-setup.md#api-access-with-sso-access-tokens)).
 2. In Open WebUI, an administrator adds the connection as in the section above, with these values:
     - **Type:** OpenAPI
     - **URL:** `https://your-speakr-instance.com/api/v1`
