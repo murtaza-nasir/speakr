@@ -3938,5 +3938,8 @@
     "warning": "Ersetzt die aktuelle Zusammenfassung, einschließlich Ihrer Änderungen.",
     "regenerate": "Neu generieren",
     "generate": "Generieren"
+  },
+  "toast": {
+    "dismiss": "Benachrichtigung schließen"
   }
 }

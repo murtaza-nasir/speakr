@@ -3938,5 +3938,8 @@
     "warning": "替换当前摘要，包括你的编辑。",
     "regenerate": "重新生成",
     "generate": "生成"
+  },
+  "toast": {
+    "dismiss": "关闭通知"
   }
 }

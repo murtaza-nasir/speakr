@@ -3938,5 +3938,8 @@
     "warning": "Replaces the current summary, including your edits.",
     "regenerate": "Regenerate",
     "generate": "Generate"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification"
   }
 }
