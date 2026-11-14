@@ -1010,8 +1010,8 @@ def account():
         default_summary_prompt_text = DEFAULT_SUMMARY_PROMPT
 
     # The title instructions a user gets when they leave their own blank.
-    from src.tasks.processing import _user_title_instructions
-    default_title_prompt_text = _user_title_instructions(None)[0]
+    from src.services.titling import user_title_instructions
+    default_title_prompt_text = user_title_instructions(None)[0]
 
     USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
     USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'

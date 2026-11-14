@@ -68,7 +68,7 @@ def test_a_marker_split_across_chunks_arrives_whole_after_its_source():
 
 
 def test_numbering_and_quote_checks_follow_parse_sources():
-    from src.services.recording_chat import parse_sources
+    from src.services.citations import parse_sources
     reply = 'Travel [S1 "budget freeze applies to travel"], hiring [S1 "freeze on hiring"] [S9 "x"], again [S1  "budget freeze applies to travel"].'
     cites = SegmentCitations(CANON)
     events = cites.feed(reply) + cites.flush()
@@ -77,7 +77,10 @@ def test_numbering_and_quote_checks_follow_parse_sources():
     assert [s['verified'] for s in sources] == [True, False, False, True]
     assert sources[2]['segment_index'] is None
     _, parsed = parse_sources(reply, CANON)
-    assert [(p['n'], p['verified']) for p in parsed] == [(s['n'], s['verified']) for s in sources[:3]]
+    by_n = {p['n']: p for p in parsed}
+    assert len(parsed) == 3                                   # the batch keeps one source per number
+    for s in sources:                                         # the whole stream, the repeat included
+        assert {k: v for k, v in s.items() if k != 'marker'} == by_n[s['n']]
 
 
 @pytest.mark.parametrize('reply', [

@@ -27,7 +27,9 @@ from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError, has_audio_stream, probe_rejected_input
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
-from src.utils.error_formatting import format_error_for_storage
+from src.utils.error_formatting import format_error_for_storage, sanitize_error_message
+from src.utils.transcript_render import resolve_timestamp_template_format
+from src.services.titling import user_title_instructions
 from src.utils.mime import guess_media_type
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
 import src.config.app_config as _app_config
@@ -101,41 +103,12 @@ def _user_content(prompt_text, transcript_text):
     )
 
 
-# Maximum length for user-visible error_message text. The Recording.error_message
-# column is TEXT (unbounded) but the UI shows the value verbatim; capping avoids
-# scrolling-banner text from a runaway ffmpeg traceback or pathological provider
-# message. The full error continues to be logged at error level.
-_ERROR_MESSAGE_MAX_CHARS = 500
-
-
 def resolve_hotwords(hotwords, admin_default):
     """Hotwords to use: an explicit value wins; otherwise the admin default
     (or the original falsy value when there is no default)."""
     if hotwords:
         return hotwords
     return admin_default or hotwords
-
-
-def _sanitize_error_message(text):
-    """Trim and redact a raw exception string before persisting on a
-    Recording so it stays useful but doesn't leak deployment paths or
-    fill the UI with a giant traceback.
-
-    - Replaces absolute paths under common storage roots with ``<path>``
-      so the operator's directory layout doesn't reach end-users.
-    - Collapses runs of whitespace to keep the message single-paragraph.
-    - Hard-caps the length at _ERROR_MESSAGE_MAX_CHARS.
-    """
-    if not text:
-        return text
-    s = str(text)
-    # Redact paths under common upload / temp roots.
-    s = re.sub(r'(/data/uploads|/data/exports|/data/instance|/tmp|/var/tmp)/\S+', r'\1/<path>', s)
-    # Collapse all whitespace runs.
-    s = re.sub(r'\s+', ' ', s).strip()
-    if len(s) > _ERROR_MESSAGE_MAX_CHARS:
-        s = s[: _ERROR_MESSAGE_MAX_CHARS - 1].rstrip() + '…'
-    return s
 
 
 def apply_team_tag_auto_shares(recording_id):
@@ -176,18 +149,6 @@ def apply_team_tag_auto_shares(recording_id):
     if shares_created > 0:
         db.session.commit()
         current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} after processing completed")
-
-
-def _resolve_timestamp_template_format(user, template_id):
-    """Return the format string of a user's transcript template, or None (#304).
-
-    Scoped to the user's own templates so one user can't reference another's.
-    """
-    if not template_id or user is None:
-        return None
-    from src.models import TranscriptTemplate
-    tpl = TranscriptTemplate.query.filter_by(id=template_id, user_id=user.id).first()
-    return tpl.template if tpl else None
 
 
 # format_transcription_for_llm and clean_llm_response live in
@@ -469,18 +430,6 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.info(f"Title generation complete, leaving status unchanged (auto-summarization will follow) for recording {recording_id}")
 
 
-def _user_title_instructions(user):
-    """The user, admin and shipped levels of the title precedence."""
-    from src.config.prompts import DEFAULT_TITLE_PROMPT
-
-    if user and user.title_prompt and user.title_prompt.strip():
-        return user.title_prompt.strip(), 'user'
-    admin_prompt = SystemSetting.get_setting('admin_default_title_prompt', None)
-    if admin_prompt and str(admin_prompt).strip():
-        return str(admin_prompt).strip(), 'admin'
-    return DEFAULT_TITLE_PROMPT, 'default'
-
-
 def resolve_summary_instructions(recording, viewer=None):
     """Instructions for a recording's summary, and which level supplied them.
 
@@ -556,7 +505,7 @@ def resolve_title_instructions(recording, viewer=None):
     if folder and folder.title_prompt and folder.title_prompt.strip():
         return folder.title_prompt.strip(), 'folder'
 
-    return _user_title_instructions(recording.owner)
+    return user_title_instructions(recording.owner)
 
 
 def _generate_ai_title(recording):
@@ -584,7 +533,7 @@ def _generate_ai_title(recording):
         formatted_transcription = format_transcription_for_llm(
             recording.transcription,
             include_timestamps=True,
-            template_format=_resolve_timestamp_template_format(_t_owner, _t_owner.summary_timestamp_template_id),
+            template_format=resolve_timestamp_template_format(_t_owner, _t_owner.summary_timestamp_template_id),
         )
     else:
         formatted_transcription = format_transcription_for_llm(recording.transcription)
@@ -719,7 +668,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         formatted_transcription = format_transcription_for_llm(
             recording.transcription,
             include_timestamps=_summary_ts,
-            template_format=_resolve_timestamp_template_format(
+            template_format=resolve_timestamp_template_format(
                 _owner, _owner.summary_timestamp_template_id) if _summary_ts else None,
         )
 
@@ -909,7 +858,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             recording.summary = error_msg
             recording.status = 'FAILED'
-            recording.error_message = _sanitize_error_message(error_msg)
+            recording.error_message = sanitize_error_message(error_msg)
             db.session.commit()
             # The caller owns the outcome (#583). The job queue marks the job
             # failed (or re-queues a transient error) and sends
@@ -1899,7 +1848,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             can_proceed, usage_pct, budget_msg = transcription_tracker.check_budget(recording.user_id)
             if not can_proceed:
                 current_app.logger.warning(f"User {recording.user_id} exceeded transcription budget: {budget_msg}")
-                return _fail_without_retry(recording, _sanitize_error_message(budget_msg))
+                return _fail_without_retry(recording, sanitize_error_message(budget_msg))
             elif budget_msg:
                 # Log warning but continue
                 current_app.logger.warning(budget_msg)
@@ -1971,7 +1920,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_message = _sanitize_error_message(f"Audio extraction failed: {str(e)}")
+                        recording.error_message = sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
                         raise
                 else:
@@ -2029,7 +1978,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_message = _sanitize_error_message(f"Audio extraction failed: {str(e)}")
+                        recording.error_message = sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
                         raise  # Re-raise so job queue marks the job as failed
 
@@ -2917,7 +2866,7 @@ def _generate_incognito_title(transcription_text, user=None):
         user_output_language = user.output_language if user else None
         # Incognito recordings have no tags or folder, so only the user,
         # admin and shipped levels apply.
-        title_instructions, _ = _user_title_instructions(user)
+        title_instructions, _ = user_title_instructions(user)
 
         system_message_content, prompt_text = build_title_prompt(
             limited_text,

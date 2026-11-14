@@ -7,8 +7,8 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
-  logo: assets/images/speakr-logo.png
-  favicon: assets/images/speakr-logo.png
+  logo: assets/images/speakr-icon-192.png
+  favicon: assets/images/favicon-32.png
   palette:
     # Light mode
     - media: "(prefers-color-scheme: light)"

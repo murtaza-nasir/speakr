@@ -99,6 +99,16 @@ def test_shipped_default_when_nothing_is_set(ctx):
         assert processing.resolve_title_instructions(rec) == (DEFAULT_TITLE_PROMPT, 'default')
 
 
+def test_user_title_instructions_from_titling(ctx):
+    from src.services.titling import user_title_instructions
+    with admin_title_prompt(''):
+        assert user_title_instructions(None) == (DEFAULT_TITLE_PROMPT, 'default')
+    with admin_title_prompt('  ADMIN  '):
+        assert user_title_instructions(None) == ('ADMIN', 'admin')
+        assert user_title_instructions(_user(title_prompt=' USER ')) == ('USER', 'user')
+        assert user_title_instructions(_user(title_prompt='   ')) == ('ADMIN', 'admin')
+
+
 def test_each_level_overrides_the_ones_below(ctx):
     user = _user()
     folder = _folder(user)
