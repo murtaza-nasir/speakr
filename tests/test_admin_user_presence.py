@@ -207,3 +207,26 @@ def test_a_second_request_within_the_throttle_keeps_the_timestamp(accounts):
 
         assert member_client.get('/api/v1/capabilities').status_code == 200
         assert _stored_last_seen(member) == first
+
+
+def test_an_anonymous_request_records_no_activity(accounts):
+    with app.app_context():
+        user = _user(accounts, 'member')
+
+        resp = app.test_client().get('/admin/users')
+
+        assert resp.status_code == 302
+        assert '/login' in resp.headers['Location']
+        assert _stored_last_seen(user) is None
+
+
+def test_a_request_with_an_invalid_token_records_no_activity(accounts):
+    with app.app_context():
+        user = _user(accounts, 'member')
+
+        resp = app.test_client().get(
+            '/admin/users',
+            headers={'Authorization': 'Bearer not-a-real-token'})
+
+        assert resp.status_code == 401
+        assert _stored_last_seen(user) is None
