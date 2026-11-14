@@ -1808,27 +1808,6 @@ body {
     margin-right: 0.5rem;
 }
 
-/* Brief highlight shown on the ASR editor row that was the target of a
-   double-click-to-edit jump from the simple view.
-   The editor's table sets `td { padding: 0; }` so the inputs fill each
-   cell. Form controls (inputs, textareas) paint their own widget surface
-   over any td-level background, which is why earlier attempts at
-   td-background or td::before only painted the action column (the only
-   cell without an input filler). The reliable fix is to colour the
-   inputs/textareas themselves and the action cell's td. */
-
-/* The cell fields are transparent (see .asr-editor-field), so the row is
-   painted through its cells. */
-.asr-editor-row--highlighted > td {
-    background-color: var(--bg-accent) !important;
-    transition: background-color 0.6s ease-out;
-}
-
-/* Left accent bar on the first cell as an additional visual cue. */
-.asr-editor-row--highlighted > td:first-child {
-    box-shadow: inset 4px 0 0 var(--border-accent) !important;
-}
-
 /* Active segment highlighting - for currently playing transcript */
 .speaker-segment.active-playing-segment,
 .transcript-segment.active-playing-segment {
@@ -3508,93 +3487,694 @@ body {
     color: var(--text-secondary);
 }
 
-/* ASR Editor Table Styles */
-.asr-editor-table {
-    width: 100%;
-    border-collapse: collapse; /* Changed to collapse */
-}
+/* ---- Segment transcript editor ---------------------------------------------
+   templates/modals/asr-editor-modal.html and the asr-editor-pane component.
+   The pane reads like the transcript: a speaker chip, a time and the text,
+   which is edited in place. Only the rows in view are in the DOM.
+   Colours come from the theme variables; the speaker chips use the
+   .speaker-color-N classes of the transcript view. */
 
-.asr-editor-table th {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-size: 0.75rem;
-    font-weight: 600;
+.asr-editor-modal {
+    height: 88vh;
+}
+/* A long transcript: while its editor is open, the page behind the dialog
+   is not rendered (the class is set in composables/asr-editor.js). The
+   transcript view keeps every segment in the DOM; with thousands of them,
+   each change in the editor made the browser restyle them all, about a third
+   of a second per change at 20,000 segments. The page keeps its state and
+   comes back when the editor closes. */
+html.asr-editor-long .main-content {
+    content-visibility: hidden;
+}
+.asr-editor-player {
+    padding: var(--sp-3) var(--sp-5);
+}
+.asr-editor-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-5);
+    border-top: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-tertiary);
+    flex-shrink: 0;
+}
+.asr-editor-footer__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+}
+.asr-editor-footer__status--hint {
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--border-primary);
+    font-size: 0.75rem;
 }
 
-.asr-editor-table td {
-    padding: 0; /* No padding - let inputs fill the cell */
-    vertical-align: middle;
-    border: 1px solid var(--border-secondary);
+.asr-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
-/* More visible borders in dark mode */
-.dark .asr-editor-table,
-.dark .asr-editor-table th,
-.dark .asr-editor-table td {
-    border-color: rgba(148, 163, 184, 0.3); /* slate-400 with opacity for visibility */
+/* Toolbar */
+.asr-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-2) var(--sp-4);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    min-height: 48px;
+}
+.asr-toolbar__group {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-width: 0;
+}
+.asr-toolbar__end {
+    margin-left: auto;
+}
+.asr-toolbar__rule {
+    width: 1px;
+    height: 20px;
+    margin: 0 var(--sp-1);
+    background: var(--border-primary);
+}
+.asr-toolbar__selection {
+    padding-left: var(--sp-3);
+    border-left: var(--border-hairline) solid var(--border-primary);
+}
+.asr-toolbar__count {
+    margin-right: var(--sp-1);
+    font-size: var(--fs-meta);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.asr-toolbar__ok {
+    padding: 0 var(--sp-2);
+    font-size: var(--fs-meta);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.asr-toolbar .asr-toolbar__problems {
+    background: var(--tint-warn);
+    border-color: var(--tint-warn-border);
+    color: var(--tint-warn-fg);
+}
+.asr-toolbar .asr-toolbar__problems:hover:not(:disabled) {
+    background: var(--tint-warn);
+    border-color: var(--tint-warn-fg);
+    color: var(--tint-warn-fg);
+}
+.asr-toolbar .asr-toggle[aria-pressed="true"],
+.asr-toolbar [data-asr-action="find"][aria-pressed="true"] {
+    background: var(--bg-accent);
+    color: var(--text-accent);
 }
 
-/* ASR Editor inputs - blend into table cells */
-.asr-editor-table input,
-.asr-editor-table textarea {
-    border-radius: 0 !important; /* Override global rounded corners */
-    margin: 0;
-    display: block;
-    min-height: 100%;
+/* Draft offer */
+.asr-draft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-2) var(--sp-4);
+    border-bottom: var(--border-hairline) solid var(--tint-info-border);
+    background: var(--tint-info);
+    color: var(--text-primary);
+    font-size: var(--fs-meta);
+    flex-shrink: 0;
 }
+.asr-draft > i { color: var(--tint-info-fg); }
+.asr-draft__text { flex: 1 1 12rem; min-width: 0; }
 
-/* The fields show the cell behind them in every theme and colour scheme.
-   The generic dark-mode field rule (.dark input[type="text"] and others)
-   would otherwise give them the input background, which differs from the
-   table in some themes and leaves bands where a wrapped sentence makes the
-   row taller than the field. */
-.asr-editor-table .asr-editor-field,
-.dark .asr-editor-table .asr-editor-field {
-    background-color: transparent;
-    box-shadow: none;
+/* The list. No padding on the scroller: row offsets are measured from its top. */
+.asr-list {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-anchor: none;
+    background: var(--bg-secondary);
 }
-
-/* Times are typed; the browser's spin buttons covered the digits. Arrow keys
-   still step the value. */
-.asr-editor-table input[type="number"] {
-    -moz-appearance: textfield;
-    appearance: textfield;
-}
-.asr-editor-table input[type="number"]::-webkit-inner-spin-button,
-.asr-editor-table input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.asr-editor-table textarea {
-    vertical-align: top;
-    min-height: 2.5rem; /* Minimum height for single line */
-    line-height: 1.5;
-}
-
-/* The cell inputs have no border and drop the browser outline
-   (focus:outline-none), so a keyboard user could not see which cell has
-   focus. An inset ring in the focus colour marks it; inset so the ring
-   stays inside the cell and is not cut by the neighbouring cells. */
-.asr-editor-table .asr-editor-field:focus-visible {
+.asr-list:focus { outline: none; }
+.asr-list:focus-visible {
     outline: 2px solid var(--border-focus);
     outline-offset: -2px;
 }
-
-/* Sticky header for ASR editor table */
-.asr-editor-table thead {
-    position: sticky;
+.asr-list__sizer {
+    position: relative;
+    min-height: 1px;
+}
+.asr-list__window {
+    position: absolute;
     top: 0;
-    z-index: 10;
+    left: 0;
+    right: 0;
+}
+.asr-list__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-3);
+    color: var(--text-muted);
+    font-size: var(--fs-body);
 }
 
-.asr-editor-table thead th {
+/* A segment */
+.asr-seg {
+    display: grid;
+    grid-template-columns: 12.5rem minmax(0, 1fr) auto;
+    column-gap: var(--sp-3);
+    align-items: start;
+    padding: 5px var(--sp-4) 5px calc(var(--sp-4) - 3px);
+    border-left: 3px solid transparent;
+    transition: background-color var(--t-fast) ease;
+}
+@media (hover: hover) {
+    .asr-seg:hover { background-color: var(--bg-tertiary); }
+}
+.asr-seg--selected {
     background-color: var(--bg-tertiary);
-    border-collapse: collapse;
+    background-color: color-mix(in srgb, var(--border-focus) 13%, transparent);
+    border-left-color: var(--border-focus);
+}
+@media (hover: hover) {
+    .asr-seg--selected:hover {
+        background-color: var(--bg-tertiary);
+        background-color: color-mix(in srgb, var(--border-focus) 18%, transparent);
+    }
+}
+/* The segment being played, as in the transcript view */
+.asr-seg--active,
+.asr-seg--active:hover {
+    background-color: var(--bg-accent);
+}
+.asr-seg--active.asr-seg--selected {
+    border-left-color: var(--border-focus);
+}
+/* Where a jump landed: a double-click from the transcript, a find match, the next problem */
+.asr-seg--flash {
+    box-shadow: inset 0 0 0 2px var(--border-focus);
+    animation: asrSegFlash 2.4s ease-out forwards;
+}
+@keyframes asrSegFlash {
+    0%, 60% { box-shadow: inset 0 0 0 2px var(--border-focus); }
+    100% { box-shadow: inset 0 0 0 2px transparent; }
+}
+
+.asr-seg__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-width: 0;
+    min-height: 32px;
+}
+.asr-seg__chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 8.25rem;
+    min-height: 24px;
+    padding: 2px 9px;
+    border: 0;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    cursor: pointer;
+    transition: opacity var(--t-fast) ease, box-shadow var(--t-fast) ease;
+}
+.asr-seg__chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.asr-seg__chip-match {
+    margin-left: 6px;
+    font-size: 0.6rem;
+    opacity: 0.8;
+}
+.asr-seg__chip:hover { box-shadow: 0 0 0 1px currentColor; }
+/* The same speaker goes on: the chip steps back, as the transcript shows the name once per turn */
+.asr-seg--continued .asr-seg__chip { opacity: 0.5; }
+.asr-seg--continued:hover .asr-seg__chip,
+.asr-seg--continued.asr-seg--selected .asr-seg__chip,
+.asr-seg--continued .asr-seg__chip:focus-visible { opacity: 1; }
+
+.asr-seg__time {
+    margin-left: auto;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.asr-seg__time:hover {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+}
+.asr-seg__problem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--tint-warn);
+    color: var(--tint-warn-fg);
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+.asr-seg__body { min-width: 0; }
+
+/* The text reads as transcript text until it has focus. The longer selectors
+   outweigh the page's generic field rules in both modes. */
+.asr-pane .asr-seg__text,
+.dark .asr-pane .asr-seg__text {
+    display: block;
+    width: 100%;
+    min-height: calc(1.6em + 8px);
+    margin: 0;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: var(--radius-sm) !important;
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+}
+@media (hover: hover) {
+    .asr-pane .asr-seg__text:hover { box-shadow: inset 0 0 0 1px var(--border-secondary); }
+}
+.asr-pane .asr-seg__text:focus,
+.dark .asr-pane .asr-seg__text:focus {
+    outline: none;
+    background-color: var(--bg-input);
+    box-shadow: 0 0 0 2px var(--border-focus);
+}
+
+.asr-seg__menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+}
+.asr-seg:hover .asr-seg__menu,
+.asr-seg--selected .asr-seg__menu,
+.asr-seg__menu:focus-visible { opacity: 1; }
+.asr-seg__menu:hover {
+    background: var(--bg-accent);
+    color: var(--text-primary);
+}
+@media (hover: none) {
+    .asr-seg__menu { opacity: 1; }
+}
+
+.asr-seg__chip:focus-visible,
+.asr-seg__time:focus-visible,
+.asr-seg__problem:focus-visible,
+.asr-seg__menu:focus-visible,
+.asr-suggest button:focus-visible,
+.asr-pop__item:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
+}
+
+/* Voice-match suggestion for an unnamed speaker */
+.asr-suggest {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+    margin: 2px 0 2px 8px;
+    border: var(--border-hairline) solid var(--tint-info-border);
+    border-radius: var(--radius-pill);
+    background: var(--tint-info);
+    font-size: 0.75rem;
+    line-height: 1.3;
+    overflow: hidden;
+}
+.asr-suggest--picker { margin: 0; align-self: flex-start; }
+.asr-suggest__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 4px 8px 4px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.asr-suggest__name > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.asr-suggest__name > i { color: var(--tint-info-fg); font-size: 0.65rem; }
+.asr-suggest__name:hover { background: var(--tint-info); }
+.asr-suggest__accept {
+    padding: 4px 12px;
+    border: 0;
+    background: var(--bg-button);
+    color: var(--text-button);
+    font-weight: 600;
+    cursor: pointer;
+}
+.asr-suggest__accept:hover { background: var(--bg-button-hover); }
+
+/* Popovers: speaker picker, times, segment menu, shortcuts. Teleported to
+   <body>; the layer takes the click that closes them. */
+.asr-pop-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+}
+.asr-pop {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+.asr-pop:focus { outline: none; }
+.asr-pop--sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 72vh;
+    padding: var(--sp-3) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+    border-width: var(--border-hairline) 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.asr-pop--help:not(.asr-pop--sheet) {
+    max-height: min(560px, calc(100vh - 32px)) !important;
+}
+.asr-pop__list,
+.asr-pop__menu {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    min-height: 0;
+}
+.asr-pop__header {
+    padding: 6px 8px 2px;
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.asr-pop__option {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 32px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-meta);
+    cursor: pointer;
+}
+.asr-pop__option.is-active { background: var(--bg-tertiary); }
+.asr-pop__option.is-current .asr-pop__name { font-weight: 600; }
+.asr-pop__dot {
+    width: 10px;
+    height: 10px;
+    flex: none;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+.asr-pop__icon {
+    width: 10px;
+    flex: none;
+    font-size: 10px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.asr-pop__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.asr-pop__note {
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.asr-pop__none {
+    padding: var(--sp-2);
+    font-size: var(--fs-meta);
+    color: var(--text-muted);
+}
+.asr-pop__all {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-2) 2px;
+    border-top: var(--border-hairline) solid var(--border-primary);
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.asr-pop__all > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.asr-pop__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    text-align: left;
+    cursor: pointer;
+}
+.asr-pop__item > i {
+    width: 16px;
+    flex: none;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+.asr-pop__item:hover:not(:disabled),
+.asr-pop__item:focus-visible { background: var(--bg-tertiary); }
+.asr-pop__item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.asr-pop__item--danger,
+.asr-pop__item--danger > i { color: var(--text-danger); }
+
+.asr-kbd {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 6px;
+    border: var(--border-hairline) solid var(--border-secondary);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.asr-times {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-1);
+}
+.asr-times__row {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.asr-times__label {
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+}
+.asr-times__row .field { font-variant-numeric: tabular-nums; }
+.asr-times__hint {
+    margin: 0;
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+}
+.asr-times__hint--error { color: var(--text-danger); }
+.asr-times__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+}
+
+.asr-help {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+.asr-help__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 var(--sp-1) var(--sp-2);
+}
+.asr-help__title {
+    margin: 0;
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+.asr-help__list {
+    margin: 0;
+    padding: 0 var(--sp-2) var(--sp-1);
+    overflow-y: auto;
+    min-height: 0;
+}
+.asr-help__row {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--sp-3);
+    padding: 5px 0;
+    border-top: var(--border-hairline) solid var(--border-primary);
+    font-size: var(--fs-meta);
+}
+.asr-help__row dt {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+.asr-help__row dd {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+/* Phones: the same pane, stacked, with touch-sized controls and nothing that
+   needs a pointer to appear. */
+@media (max-width: 639px) {
+    .asr-editor-modal { height: auto; }
+    .asr-editor-player { padding: var(--sp-2) var(--sp-3); }
+    .asr-editor-footer { padding: var(--sp-2) var(--sp-3); }
+    .asr-editor-footer__status--hint { display: none; }
+    .asr-toolbar {
+        padding: var(--sp-1) var(--sp-2);
+        gap: var(--sp-1);
+    }
+    .asr-toolbar .btn--sm {
+        min-width: 40px;
+        min-height: 40px;
+    }
+    .asr-toolbar .btn--ghost.btn--sm { padding: 0 var(--sp-2); }
+    .asr-toolbar__label,
+    .asr-toolbar__ok,
+    .asr-toolbar__rule { display: none; }
+    /* The actions for the selection float over the foot of the list, within
+       reach of the thumb. In the toolbar they would add a line and push the
+       list down under the finger that has just selected a segment. */
+    .asr-pane { position: relative; }
+    .asr-toolbar__selection {
+        position: absolute;
+        left: var(--sp-2);
+        right: var(--sp-2);
+        bottom: var(--sp-2);
+        z-index: 5;
+        padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+        border: var(--border-hairline) solid var(--border-primary);
+        border-radius: var(--radius-lg);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-md);
+    }
+    .asr-toolbar__count { margin-right: auto; }
+    /* Room to scroll the last rows out from under those actions */
+    .asr-list__sizer { margin-bottom: 64px; }
+    .asr-seg {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "meta menu" "body body";
+        row-gap: 0;
+        padding: 6px var(--sp-2) 8px calc(var(--sp-3) - 3px);
+    }
+    .asr-seg__meta { grid-area: meta; min-height: 40px; }
+    .asr-seg__body { grid-area: body; }
+    .asr-seg__menu {
+        grid-area: menu;
+        width: 40px;
+        height: 40px;
+        opacity: 1;
+    }
+    .asr-seg__chip {
+        max-width: 60%;
+        min-height: 32px;
+        padding: 4px 12px;
+    }
+    .asr-seg--continued .asr-seg__chip { opacity: 0.7; }
+    .asr-seg__time {
+        margin-left: 0;
+        min-height: 36px;
+        padding: 8px 10px;
+        font-size: 0.8125rem;
+    }
+    .asr-seg__problem { width: 32px; height: 32px; }
+    /* 16px keeps iOS from zooming the page when the text gets focus */
+    .asr-pane .asr-seg__text,
+    .dark .asr-pane .asr-seg__text { font-size: 1rem; padding: 4px 6px; }
+    .asr-suggest { margin-left: 0; font-size: 0.8125rem; }
+    .asr-suggest__name, .asr-suggest__accept { min-height: 36px; }
+    .asr-pop__option, .asr-pop__item { min-height: 44px; font-size: var(--fs-body); }
+    .asr-help__row { grid-template-columns: 8rem minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .asr-seg,
+    .asr-seg__chip { transition: none; }
+    .asr-seg--flash { animation: none; }
 }
 
 /* Custom Number Input with Subtle Spinners */
@@ -5319,11 +5899,6 @@ select:disabled {
 @container (max-width: 300px) {
     .stats-col-pct { display: none; }
     .stats-speaker-card th, .stats-speaker-card td { padding-inline: 8px; }
-}
-
-/* Transcript editor on a phone: tighter header cells so the five columns fit 390px */
-@media (max-width: 639px) {
-    .asr-editor-table th { padding: 0.5rem 0.375rem; letter-spacing: 0; }
 }
 
 /* ---- Recording view: one header row across the two panes ------------------- */

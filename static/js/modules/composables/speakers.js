@@ -3,6 +3,8 @@
  * Handles speaker identification, naming, and navigation
  */
 
+import { saveTranscriptWithSpeakers } from '../utils/speaker-save.js';
+
 export function useSpeakers(state, utils, processedTranscription) {
     const { nextTick } = Vue;
     const {
@@ -191,29 +193,11 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         try {
             // Save transcript without closing modal
-            const filteredSpeakerMap = Object.entries(speakerMap.value).reduce((acc, [speakerId, speakerData]) => {
-                if (speakerData.name && speakerData.name.trim() !== '') {
-                    acc[speakerId] = speakerData;
-                }
-                return acc;
-            }, {});
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch(`/recording/${selectedRecording.value.id}/update_transcript`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    transcript_data: transcriptData,
-                    speaker_map: filteredSpeakerMap,
-                    regenerate_summary: false // Don't regenerate on immediate saves
-                })
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || t('errors.updateTranscriptFailed'));
+            const data = await saveTranscriptWithSpeakers(selectedRecording.value.id, {
+                transcriptData: transcriptData,
+                speakerMap: speakerMap.value,
+                regenerateSummary: false // Don't regenerate on immediate saves
+            }, { fallbackMessage: t('errors.updateTranscriptFailed') });
 
             // Update recordings list and selected recording without closing modal
             const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
@@ -237,29 +221,11 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         try {
             // Save both speaker names and transcript edits
-            const filteredSpeakerMap = Object.entries(speakerMap.value).reduce((acc, [speakerId, speakerData]) => {
-                if (speakerData.name && speakerData.name.trim() !== '') {
-                    acc[speakerId] = speakerData;
-                }
-                return acc;
-            }, {});
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch(`/recording/${selectedRecording.value.id}/update_transcript`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    transcript_data: editedTranscriptData.value,
-                    speaker_map: filteredSpeakerMap,
-                    regenerate_summary: regenerateSummaryAfterSpeakerUpdate.value
-                })
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || t('errors.updateTranscriptFailed'));
+            const data = await saveTranscriptWithSpeakers(selectedRecording.value.id, {
+                transcriptData: editedTranscriptData.value,
+                speakerMap: speakerMap.value,
+                regenerateSummary: regenerateSummaryAfterSpeakerUpdate.value
+            }, { fallbackMessage: t('errors.updateTranscriptFailed') });
 
             // The edits are now persisted on the server — clear the staged
             // flag BEFORE closing so closeSpeakerModal doesn't mistake this

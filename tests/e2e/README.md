@@ -59,3 +59,16 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
 
 With `SPEAKR_E2E_SHOTS` set, a screenshot of each main step is saved in that directory.
 
+## Segment editor browser test
+
+`test_asr_editor_ui.py` covers the segment transcript editor in the browser: the transcript pane (speaker chips, compact times, text edited in place), Enter to split and Backspace to merge, speakers from the picker and the number keys, a voice-match suggestion accepted and saved through the route of the speaker dialog, selection with merge and delete, typed times and the problem count, undo and redo, find and replace as one undo step, the question before unsaved changes are discarded, the local draft, playback keys, and a phone-width layout. A last test stores a transcript of 20,000 segments (about ten hours) and checks that only the rows in view are in the DOM, that the end of the list can be reached, and that an edit there is saved, printing the measured times.
+
+The recordings it opens come from `seed_recordings.py`, which `run_speakr.py` runs when it starts the instance (two finished recordings of the admin, each with a short WAV file and a transcript of twelve segments; nothing here runs an ASR service). On an instance without them, such as the published image in `docker-publish.yml`, the tests are skipped. Each test first stores the seeded transcript again through the app's own save route, and the long transcript is replaced by the seeded one afterwards. It runs with the same gate and instance as the smoke test, in the same `browser-smoke` job:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_asr_editor_ui.py -q --noconftest -rs -s
+```
+
+With the seeded recordings on the instance, the smoke test's recording checks (the detail view, the chat panel layout) run as well instead of being skipped.
+

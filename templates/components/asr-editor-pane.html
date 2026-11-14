@@ -1,0 +1,205 @@
+<!-- Transcript pane of the segment editor: the template of the asr-editor-pane
+     component (static/js/modules/asr-editor/pane.js). Included in index.html
+     outside #app, so the page's root template does not compile it.
+
+     Only the rows in view are in the DOM (.asr-list__window is moved down by
+     the height of the rows above it; .asr-list__sizer has the full height).
+     The text fields are not bound with v-model: typing goes to the editing
+     model and does not render anything. -->
+<script type="text/x-template" id="asr-editor-pane-template">
+<div class="asr-pane" ref="root">
+    <div class="asr-toolbar" role="toolbar" :aria-label="t('asrEditor.toolbar')">
+        <div class="asr-toolbar__group">
+            <button type="button" class="btn btn--icon btn--sm" data-asr-action="undo" :disabled="!canUndo" @click="undo"
+                    :title="t('asrEditor.undo')" :aria-label="t('asrEditor.undo')"><i class="fas fa-rotate-left"></i></button>
+            <button type="button" class="btn btn--icon btn--sm" data-asr-action="redo" :disabled="!canRedo" @click="redo"
+                    :title="t('asrEditor.redo')" :aria-label="t('asrEditor.redo')"><i class="fas fa-rotate-right"></i></button>
+            <span class="asr-toolbar__rule" aria-hidden="true"></span>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="add" @click="addSegment()" :title="t('buttons.addSegment')">
+                <i class="fas fa-plus text-xs"></i><span class="asr-toolbar__label" v-text="t('buttons.addSegment')"></span>
+            </button>
+            <button type="button" class="btn btn--icon btn--sm" data-asr-action="find" :aria-pressed="findOpen ? 'true' : 'false'"
+                    @click="$emit('toggle-find')" :title="t('findReplace.open')" :aria-label="t('findReplace.open')"><i class="fas fa-search"></i></button>
+        </div>
+
+        <div v-if="selectionCount > 0" class="asr-toolbar__group asr-toolbar__selection" data-asr-selection>
+            <span class="asr-toolbar__count" aria-live="polite" v-text="tc('asrEditor.selectedCount', selectionCount, { count: selectionCount })"></span>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="set-speaker" @click="openPickerForSelection($event)" :title="t('asrEditor.setSpeaker')">
+                <i class="fas fa-user text-xs"></i><span class="asr-toolbar__label" v-text="t('asrEditor.setSpeaker')"></span>
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="merge" :disabled="selectionCount < 2" @click="mergeSelection" :title="t('asrEditor.mergeSelected')">
+                <i class="fas fa-compress text-xs"></i><span class="asr-toolbar__label" v-text="t('asrEditor.merge')"></span>
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" data-asr-action="delete" @click="removeSelection" :title="t('asrEditor.deleteSelected')">
+                <i class="fas fa-trash text-xs"></i><span class="asr-toolbar__label" v-text="t('common.delete')"></span>
+            </button>
+            <button type="button" class="btn btn--icon btn--sm" @click="clearSelection" :title="t('asrEditor.clearSelection')" :aria-label="t('asrEditor.clearSelection')"><i class="fas fa-times text-xs"></i></button>
+        </div>
+
+        <div class="asr-toolbar__group asr-toolbar__end">
+            <button v-if="problemCount > 0" type="button" class="btn btn--ghost btn--sm asr-toolbar__problems" data-asr-action="next-problem"
+                    @click="goToNextProblem" :title="t('asrEditor.nextProblem')">
+                <i class="fas fa-triangle-exclamation text-xs"></i>
+                <span v-text="tc('asrEditor.problemCount', problemCount, { count: problemCount })"></span>
+                <i class="fas fa-chevron-down text-xs" aria-hidden="true"></i>
+            </button>
+            <span v-else class="asr-toolbar__ok" v-text="t('asrEditor.noProblems')"></span>
+            <button type="button" class="btn btn--icon btn--sm asr-toggle" data-asr-action="loop" :aria-pressed="looping ? 'true' : 'false'" @click="toggleLoop"
+                    :title="t('asrEditor.loop')" :aria-label="t('asrEditor.loop')"><i class="fas fa-repeat"></i></button>
+            <button type="button" class="btn btn--icon btn--sm asr-toggle" data-asr-action="follow" :aria-pressed="follow ? 'true' : 'false'" @click="toggleFollow"
+                    :title="t('asrEditor.follow')" :aria-label="t('asrEditor.follow')"><i class="fas fa-location-crosshairs"></i></button>
+            <button type="button" class="btn btn--icon btn--sm" data-asr-help @click="openHelp($event)"
+                    :title="t('asrEditor.shortcuts')" :aria-label="t('asrEditor.shortcuts')"><i class="fas fa-keyboard"></i></button>
+        </div>
+    </div>
+
+    <div v-if="draftOffer" class="asr-draft" role="status" data-asr-draft>
+        <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+        <span class="asr-draft__text" v-text="t('asrEditor.draftFound', { when: draftOffer.when })"></span>
+        <button type="button" class="btn btn--primary btn--sm" data-asr-action="restore-draft" @click="restoreDraft" v-text="t('asrEditor.draftRestore')"></button>
+        <button type="button" class="btn btn--ghost btn--sm" data-asr-action="discard-draft" @click="discardDraft" v-text="t('asrEditor.draftDiscard')"></button>
+    </div>
+
+    <div class="asr-list custom-scrollbar" ref="scroller" tabindex="0" role="list" :aria-label="t('asrEditor.segments')" @scroll.passive="onScroll">
+        <div class="asr-list__sizer" :style="{ height: totalHeight + 'px' }">
+            <div class="asr-list__window" :style="{ transform: 'translateY(' + topPad + 'px)' }">
+                <div v-for="row in rows" :key="row.id" role="listitem"
+                     class="asr-seg"
+                     :class="{ 'asr-seg--selected': row.selected, 'asr-seg--active': row.active, 'asr-seg--flash': row.flash, 'asr-seg--continued': row.continued, 'asr-seg--problem': row.problem }"
+                     :data-id="row.id" :data-index="row.index" :aria-current="row.active ? 'true' : null"
+                     @mousedown="onRowMouseDown(row, $event)" @click="onRowClick(row, $event)">
+                    <div class="asr-seg__meta">
+                        <button type="button" class="asr-seg__chip" :class="row.color" @click.stop="openPicker(row, $event)"
+                                :title="row.match ? t('asrEditor.suggestionOnChip', { speaker: row.speaker, match: row.match }) : row.speaker"
+                                :aria-label="t('asrEditor.speakerSuggestions', { n: row.number })">
+                            <span class="asr-seg__chip-name" v-text="row.speaker || t('asrEditor.noSpeaker')"></span>
+                            <i v-if="row.match" class="fas fa-wave-square asr-seg__chip-match" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="asr-seg__time" @click.stop="playFrom(row)" :title="row.exact"
+                                :aria-label="t('asrEditor.playFromTime', { time: row.clock })" v-text="row.clock"></button>
+                        <button v-if="row.problem" type="button" class="asr-seg__problem" @click.stop="openTimesFor(row, $event)"
+                                :title="row.problemText" :aria-label="row.problemText"><i class="fas fa-triangle-exclamation"></i></button>
+                    </div>
+                    <div class="asr-seg__body">
+                        <div v-if="row.suggestion" class="asr-suggest" data-asr-suggestion>
+                            <button type="button" class="asr-suggest__name" @click.stop="previewSpeaker(row.speaker)" :title="t('asrEditor.suggestionPlay')">
+                                <i class="fas fa-wave-square" aria-hidden="true"></i>
+                                <span v-text="row.suggestionLabel"></span>
+                                <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="asr-suggest__accept" data-asr-action="accept-suggestion" @click.stop="acceptSuggestion(row.speaker)" v-text="t('asrEditor.suggestionAccept')"></button>
+                        </div>
+                        <textarea class="asr-seg__text" rows="1" dir="auto" :value="row.seg.sentence"
+                                  :aria-label="t('asrEditor.textInput', { n: row.number })"
+                                  @input="onTextInput(row, $event)" @keydown="onTextKeydown(row, $event)"
+                                  @focus="onTextFocus(row, $event)" @blur="onTextBlur(row, $event)"
+                                  @keyup="rememberCaret(row, $event)" @mouseup="rememberCaret(row, $event)"></textarea>
+                    </div>
+                    <button type="button" class="asr-seg__menu" @mousedown.prevent @click.stop="openMenu(row, $event)"
+                            :title="t('asrEditor.segmentMenu', { n: row.number })" :aria-label="t('asrEditor.segmentMenu', { n: row.number })" aria-haspopup="menu">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div v-if="rowCount === 0" class="asr-list__empty">
+            <p v-text="t('asrEditor.empty')"></p>
+            <button type="button" class="btn btn--ghost btn--sm" @click="addSegment()"><i class="fas fa-plus text-xs"></i><span v-text="t('buttons.addSegment')"></span></button>
+        </div>
+    </div>
+
+    <teleport to="body">
+        <div v-if="popover.kind" class="asr-pop-layer" :class="{ 'asr-pop-layer--sheet': popover.sheet }" @mousedown.self="closePopover()">
+            <div ref="popEl" class="asr-pop" :class="['asr-pop--' + popover.kind, { 'asr-pop--sheet': popover.sheet }]" :style="popover.style"
+                 role="dialog" tabindex="-1" :data-asr-popover="popover.kind"
+                 :aria-label="popover.kind === 'picker' ? t('asrEditor.setSpeaker') : popover.kind === 'times' ? t('asrEditor.editTimes') : popover.kind === 'help' ? t('asrEditor.shortcuts') : t('help.actions')">
+
+                <template v-if="popover.kind === 'picker'">
+                    <input ref="pickerInput" type="text" class="field field--sm" data-autofocus v-model="pickerQuery"
+                           :placeholder="t('asrEditor.pickerPlaceholder')" :aria-label="t('asrEditor.pickerPlaceholder')"
+                           role="combobox" aria-expanded="true" aria-controls="asr-picker-list" autocomplete="off"
+                           @input="onPickerInput" @keydown="onPickerKeydown">
+                    <div v-if="pickerSuggestion" class="asr-suggest asr-suggest--picker">
+                        <button type="button" class="asr-suggest__name" @click="previewSpeaker(pickerSuggestion.speaker)" :title="t('asrEditor.suggestionPlay')">
+                            <i class="fas fa-wave-square" aria-hidden="true"></i>
+                            <span v-text="pickerSuggestion.label"></span>
+                            <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="asr-suggest__accept" @click="acceptSuggestion(pickerSuggestion.speaker)" v-text="t('asrEditor.suggestionAccept')"></button>
+                    </div>
+                    <ul id="asr-picker-list" class="asr-pop__list" role="listbox">
+                        <template v-for="(option, i) in pickerOptions" :key="option.kind + ':' + option.name">
+                            <li v-if="option.header" class="asr-pop__header" role="presentation" v-text="option.header"></li>
+                            <li role="option" class="asr-pop__option" :class="{ 'is-active': i === pickerIndex, 'is-current': option.current }"
+                                :aria-selected="i === pickerIndex ? 'true' : 'false'" :data-asr-option="option.name"
+                                @mousedown.prevent @mousemove="pickerIndex = i" @click="choosePickerOption(option)">
+                                <span v-if="option.color" class="asr-pop__dot" :class="option.color" aria-hidden="true"></span>
+                                <i v-else class="fas asr-pop__icon" :class="option.kind === 'new' ? 'fa-plus' : option.kind === 'voice' ? 'fa-wave-square' : 'fa-user'" aria-hidden="true"></i>
+                                <span class="asr-pop__name" v-text="option.label"></span>
+                                <span v-if="option.note" class="asr-pop__note" v-text="option.note"></span>
+                                <kbd v-if="option.key" class="asr-kbd" v-text="option.key"></kbd>
+                            </li>
+                        </template>
+                        <li v-if="!pickerOptions.length" class="asr-pop__none" v-text="t('asrEditor.pickerEmpty')"></li>
+                    </ul>
+                    <label v-if="popover.speaker" class="asr-pop__all">
+                        <input type="checkbox" v-model="pickerAll">
+                        <span v-text="t('asrEditor.pickerAll', { name: popover.speaker })"></span>
+                    </label>
+                </template>
+
+                <template v-else-if="popover.kind === 'times'">
+                    <div class="asr-times">
+                        <label class="asr-times__row">
+                            <span class="asr-times__label" v-text="t('help.startTime')"></span>
+                            <input type="text" inputmode="decimal" class="field field--sm" data-autofocus data-asr-time="start" v-model="timeStart" @keydown.enter.prevent="applyTimes">
+                            <button type="button" class="btn btn--icon btn--sm" @click="timesFromPlayhead('start')" :title="t('asrEditor.setStartToPlayhead')" :aria-label="t('asrEditor.setStartToPlayhead')"><i class="fas fa-right-to-bracket"></i></button>
+                        </label>
+                        <label class="asr-times__row">
+                            <span class="asr-times__label" v-text="t('help.endTime')"></span>
+                            <input type="text" inputmode="decimal" class="field field--sm" data-asr-time="end" v-model="timeEnd" @keydown.enter.prevent="applyTimes">
+                            <button type="button" class="btn btn--icon btn--sm" @click="timesFromPlayhead('end')" :title="t('asrEditor.setEndToPlayhead')" :aria-label="t('asrEditor.setEndToPlayhead')"><i class="fas fa-right-from-bracket"></i></button>
+                        </label>
+                        <p class="asr-times__hint" :class="{ 'asr-times__hint--error': timeError }" role="status" v-text="t('asrEditor.timeFormat')"></p>
+                        <label class="asr-pop__all">
+                            <input type="checkbox" v-model="timeLinked">
+                            <span v-text="t('asrEditor.timeLinked')"></span>
+                        </label>
+                        <div class="asr-times__actions">
+                            <button type="button" class="btn btn--ghost btn--sm" @click="closePopover()" v-text="t('common.cancel')"></button>
+                            <button type="button" class="btn btn--primary btn--sm" data-asr-action="apply-times" @click="applyTimes" v-text="t('asrEditor.apply')"></button>
+                        </div>
+                    </div>
+                </template>
+
+                <template v-else-if="popover.kind === 'menu'">
+                    <ul class="asr-pop__menu" role="menu" @keydown="onMenuKeydown">
+                        <li v-for="item in menuItems" :key="item.action" role="none">
+                            <button type="button" role="menuitem" class="asr-pop__item" :class="{ 'asr-pop__item--danger': item.danger }"
+                                    :disabled="item.disabled" :data-asr-menu="item.action" @click="menuAction(item.action)">
+                                <i class="fas" :class="item.icon" aria-hidden="true"></i>
+                                <span v-text="item.label"></span>
+                            </button>
+                        </li>
+                    </ul>
+                </template>
+
+                <template v-else-if="popover.kind === 'help'">
+                    <div class="asr-help">
+                        <div class="asr-help__head">
+                            <h4 class="asr-help__title" v-text="t('asrEditor.shortcuts')"></h4>
+                            <button type="button" class="btn btn--icon btn--sm" data-autofocus @click="closePopover()" :title="t('buttons.close')" :aria-label="t('buttons.close')"><i class="fas fa-times text-xs"></i></button>
+                        </div>
+                        <dl class="asr-help__list">
+                            <div v-for="item in shortcutList" :key="item.label" class="asr-help__row">
+                                <dt><kbd v-for="key in item.keys" :key="key" class="asr-kbd" v-text="key"></kbd></dt>
+                                <dd v-text="item.label"></dd>
+                            </div>
+                        </dl>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </teleport>
+</div>
+</script>

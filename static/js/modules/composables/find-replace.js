@@ -3,7 +3,8 @@
  *
  * Works on the open editor: the sentences of the segment editor, or the text
  * of the plain transcript editor. Changes are made to the editor's copy, so
- * Cancel still discards them.
+ * Cancel still discards them. In the segment editor they go through its
+ * editing model: a replacement is one undo step, and so is Replace all.
  */
 
 import { buildMatcher, findMatches, replaceAllIn, replaceAt } from '../utils/find-replace.js';
@@ -15,7 +16,7 @@ const computedOr = (fn) => (typeof Vue !== 'undefined' && Vue.computed)
 export function useFindReplace(state, utils) {
     const {
         findReplace, showAsrEditorModal, showTextEditorModal,
-        editingSegments, editingTranscriptionContent, asrEditorHighlightIndex
+        asrEditorSession, asrEditorRev, editingTranscriptionContent
     } = state;
     const { showToast, nextTick = (fn) => fn && fn(), t = (key) => key } = utils;
 
@@ -25,9 +26,16 @@ export function useFindReplace(state, utils) {
         return null;
     };
 
+    const session = () => (asrEditorSession ? asrEditorSession.value : null);
+    const model = () => (session() ? session().model : null);
+
     const editorTexts = () => {
         const editor = openEditor();
-        if (editor === 'segments') return editingSegments.value.map((s) => s.sentence || '');
+        if (editor === 'segments') {
+            // The model is not reactive: asrEditorRev counts its changes.
+            void (asrEditorRev && asrEditorRev.value);
+            return model() ? model().segments.map((s) => s.sentence || '') : [];
+        }
         if (editor === 'text') return [editingTranscriptionContent.value || ''];
         return [];
     };
@@ -43,29 +51,32 @@ export function useFindReplace(state, utils) {
     });
 
     const setText = (index, text) => {
-        if (openEditor() === 'segments') editingSegments.value[index].sentence = text;
+        if (openEditor() === 'segments') model().replaceText([{ index, text }]);
         else editingTranscriptionContent.value = text;
     };
 
     // Show the match in the editor: scroll its row into view and select it.
     const revealMatch = (match) => {
-        if (!match || typeof document === 'undefined') return;
+        if (!match) return;
         if (openEditor() === 'segments') {
-            if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = match.index;
-            if (utils.scrollAsrEditorToIndex) utils.scrollAsrEditorToIndex(match.index);
+            const current = session();
+            if (!current || !current.pane) return;
+            // Enter in the revealed text goes on to the next match.
+            current.findStep = goToMatch;
+            current.pane.revealIndex(match.index, { highlight: true, textRange: [match.start, match.end] });
+            return;
         }
+        if (typeof document === 'undefined') return;
         nextTick(() => {
-            const field = openEditor() === 'segments'
-                ? document.querySelector(`[data-segment-index="${match.index}"] textarea`)
-                : document.querySelector('[data-transcript-textarea]');
+            const field = document.querySelector('[data-transcript-textarea]');
             if (!field) return;
             field.blur();
             field.setSelectionRange(match.start, match.end);
-            field.focus({ preventScroll: openEditor() === 'segments' });
+            field.focus();
         });
     };
 
-    const goToMatch = (step = 1) => {
+    function goToMatch(step = 1) {
         const total = findReplaceMatches.value.length;
         if (!total) {
             findReplace.current = -1;
@@ -74,7 +85,7 @@ export function useFindReplace(state, utils) {
         const from = findReplace.current < 0 && step < 0 ? 0 : findReplace.current;
         findReplace.current = ((from + step) % total + total) % total;
         revealMatch(findReplaceMatches.value[findReplace.current]);
-    };
+    }
 
     // Replace the current match, then show the one after it.
     const replaceCurrentMatch = () => {
@@ -99,17 +110,27 @@ export function useFindReplace(state, utils) {
     const replaceAllMatches = () => {
         const m = matcher();
         let total = 0;
+        const changes = [];
         editorTexts().forEach((text, index) => {
             const result = replaceAllIn(text, m, findReplace.replace);
             if (result.count) {
-                setText(index, result.text);
+                changes.push({ index, text: result.text });
                 total += result.count;
             }
         });
+        // One undo step in the segment editor, however many segments change.
+        if (openEditor() === 'segments') model().replaceText(changes);
+        else changes.forEach((change) => setText(change.index, change.text));
         findReplace.current = -1;
-        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
+        clearHighlight();
         if (total && showToast) showToast(t('findReplace.replacedCount', { count: total }), 'fa-check-circle');
     };
+
+    function clearHighlight() {
+        const current = session();
+        if (current && current.pane) current.pane.clearHighlight();
+        if (current) current.findStep = null;
+    }
 
     const openFindReplace = () => {
         findReplace.open = true;
@@ -125,7 +146,7 @@ export function useFindReplace(state, utils) {
     const closeFindReplace = () => {
         findReplace.open = false;
         findReplace.current = -1;
-        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
+        clearHighlight();
     };
 
     // A new search starts again from the first match
