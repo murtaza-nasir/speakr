@@ -48,3 +48,14 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 \
 
 `--noconftest` keeps the repository's `conftest.py`, which imports the app, out of a run that only needs Playwright.
 
+## Group permission browser test
+
+`test_group_permission_ui.py` covers who can create groups (#576) in the browser: the `permission_create_groups` radio buttons in System settings, the "Can create groups" toggle in the edit-user dialog, the "Members can create groups" toggle in the group dialog, the Group Management entry in the account menu, and group creation, duplicate names, members added by exact username, group admins and deletion on `/group-management`. Setup goes through the app's HTTP API as the seeded admin (internal sharing on, four users with generated passwords, one group); every user signs in through the login form, and the settings are restored afterwards. The checks for failed responses, JavaScript errors and template text are in `browser_checks.py`, shared with the smoke test; a step that expects a refusal (a duplicate name, an unknown username) registers it. It runs with the same gate and instance as the smoke test, in the same `browser-smoke` job:
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py -q --noconftest -rs
+```
+
+With `SPEAKR_E2E_SHOTS` set, a screenshot of each main step is saved in that directory.
+

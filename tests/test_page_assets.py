@@ -114,6 +114,21 @@ def test_the_transcription_error_card_takes_its_colours_from_the_notice_level():
         assert f".notice--{level}" in css
 
 
+def test_pages_with_primitive_classes_link_primitives_css():
+    """A page that uses the dialog, button or field primitives links primitives.css.
+
+    group-admin.html did not, so its dialogs had no overlay and sat unstyled
+    below the page footer (found by tests/e2e/test_group_permission_ui.py).
+    """
+    uses = re.compile(r'modal-overlay|btn--|class="field')
+    for name in sorted(os.listdir(os.path.join(ROOT, "templates"))):
+        if not name.endswith(".html"):
+            continue
+        page = open(os.path.join(ROOT, "templates", name), encoding="utf-8").read()
+        if "<html" in page and uses.search(page):
+            assert "css/primitives.css" in page, f"templates/{name} uses primitives without primitives.css"
+
+
 # --- i18n_bootstrap() --------------------------------------------------------
 
 def test_bootstrap_has_the_locale_and_english():

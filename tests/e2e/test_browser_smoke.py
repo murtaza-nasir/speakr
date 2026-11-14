@@ -24,10 +24,8 @@ tests/e2e/run_speakr.py; docker-publish.yml runs the built image before it is
 pushed). SPEAKR_SMOKE_USER / SPEAKR_SMOKE_PASSWORD default to the admin in
 config/env.whisperx.example.
 
-Console messages that are not failures (documented allowlist):
-- messages from browser extensions (chrome-extension://);
-- "Failed to load resource": the browser's echo of a failed response, which
-  is already reported with its URL by the response check.
+The response, JavaScript and template checks, with their console allowlist,
+are in browser_checks.py, shared with test_group_permission_ui.py.
 """
 
 import os
@@ -44,6 +42,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
+from browser_checks import PageProblems, check_common, login, open_page  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
 BASE = os.environ.get("SPEAKR_BASE_URL", "http://127.0.0.1:8899").rstrip("/")
@@ -52,46 +51,9 @@ USER = os.environ.get("SPEAKR_SMOKE_USER", _example.get("ADMIN_EMAIL", "admin@ex
 PASSWORD = os.environ.get("SPEAKR_SMOKE_PASSWORD", _example.get("ADMIN_PASSWORD", "changeme"))
 
 MENU_ENTRIES = ("Notifications", "Settings", "Shared recordings", "Sign out")
-IGNORED_CONSOLE = (re.compile(r"chrome-extension://"), re.compile(r"Failed to load resource"))
-PLAY_CDN = re.compile(r"tailwind\.min\.js|cdn\.tailwindcss\.com")
 # A translation key: two or more dot-separated identifiers, the first one
 # lower case (nav.account, inquire.title, tokenBudget.percentage).
 TRANSLATION_KEY = re.compile(r"\b[a-z][a-zA-Z]*(?:\.[a-zA-Z]+)+\b")
-
-
-class PageProblems:
-    """Collects failed responses and JavaScript errors for the current page."""
-
-    def __init__(self, page):
-        self.failed, self.errors, self.play_cdn = [], [], []
-        page.on("request", self._request)
-        page.on("response", self._response)
-        page.on("pageerror", lambda exc: self.errors.append(f"uncaught: {exc}"))
-        page.on("console", self._console)
-
-    def _request(self, request):
-        if PLAY_CDN.search(request.url):
-            self.play_cdn.append(f"request: {request.url}")
-
-    def _response(self, response):
-        if response.url.startswith(BASE) and response.status >= 400:
-            self.failed.append(f"{response.status} {response.url}")
-
-    def _console(self, msg):
-        text = msg.text
-        if "cdn.tailwindcss.com" in text:
-            self.play_cdn.append(f"console {msg.type}: {text}")
-        if msg.type != "error":
-            return
-        location = (msg.location or {}).get("url", "")
-        if any(p.search(text) or p.search(location) for p in IGNORED_CONSOLE):
-            return
-        self.errors.append(f"console: {text}")
-
-    def reset(self):
-        self.failed.clear()
-        self.errors.clear()
-        self.play_cdn.clear()
 
 
 @pytest.fixture(scope="module")
@@ -100,13 +62,8 @@ def browser_page():
         browser = p.chromium.launch()
         context = browser.new_context(viewport={"width": 1400, "height": 900}, locale="en-US")
         page = context.new_page()
-        problems = PageProblems(page)
-        page.goto(f"{BASE}/login")
-        page.fill("input[name=email]", USER)
-        page.fill("input[name=password]", PASSWORD)
-        page.locator("form:has(input[name=password]) [type=submit]:visible").first.click()
-        page.wait_for_load_state("load")
-        assert "/login" not in page.url, f"could not log in as {USER}"
+        problems = PageProblems(page, BASE)
+        login(page, BASE, USER, PASSWORD)
         problems.reset()
         yield page, problems
         context.close()
@@ -114,38 +71,11 @@ def browser_page():
 
 
 def _open(page, problems, path):
-    # Leave the previous page first: its requests still in flight are
-    # aborted on unload and logged as "Failed to fetch", which belongs to
-    # that page, not the one being checked.
-    page.goto("about:blank")
-    page.wait_for_timeout(300)
-    problems.reset()
-    response = page.goto(f"{BASE}{path}")
-    page.wait_for_load_state("load")
-    # Headers mount after the page's scripts run; give polling apps a moment.
-    page.wait_for_timeout(2500)
-    return response
+    return open_page(page, problems, BASE, path)
 
 
 def _check_common(page, problems, path):
-    body = page.inner_text("body")
-    leftovers = [m for m in ("${", "{{") if m in body]
-    assert not leftovers, f"{path}: template text left in the page: {leftovers}"
-    assert not problems.failed, f"{path}: failed requests: {problems.failed}"
-    assert not problems.errors, f"{path}: JavaScript errors: {problems.errors}"
-    assert not problems.play_cdn, f"{path}: Tailwind Play CDN in use: {problems.play_cdn}"
-    # Utilities from the compiled stylesheet apply (a probe element, so the
-    # check does not depend on any page's markup).
-    probe = page.evaluate("""() => {
-        const el = document.createElement('div');
-        el.className = 'rounded-lg px-4 hidden';
-        document.body.appendChild(el);
-        const s = getComputedStyle(el);
-        const out = {display: s.display, radius: s.borderTopLeftRadius, padding: s.paddingLeft};
-        el.remove();
-        return out;
-    }""")
-    assert probe == {"display": "none", "radius": "8px", "padding": "16px"}, f"{path}: Tailwind utilities not applied: {probe}"
+    check_common(page, problems, path)
 
 
 def _check_header_translated(page, path, selector):
