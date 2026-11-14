@@ -97,6 +97,8 @@ On instances that ran an earlier release, the recordings of a deleted user could
 
 The recording count and storage columns reveal how users interact with your Speakr instance. High recording counts might indicate power users who rely heavily on the system, while low counts could suggest users who need training or might not need accounts at all.
 
+The **Last activity** column shows how long ago each account last made an authenticated request, whether from a browser session or with an API token. A green value inside the last five minutes means the account is in use right now; red means the last request is older. Hovering over the value shows the exact time. **Never** means the account has not made an authenticated request yet, which is worth checking for someone you expected to be using the instance. Activity is written at most once per minute per account, so an idle user produces no database writes, and the value refreshes the next time the page loads.
+
 Storage consumption tells another important story. Users with disproportionately high storage might be uploading very long recordings, keeping everything indefinitely, or possibly misusing the system. You can adjust [file size limits](system-settings.md#maximum-file-size) and review [chunking settings](../troubleshooting.md#files-over-25mb-fail-with-openai) if needed. This information helps you have informed conversations about resource usage and establish appropriate policies.
 
 Patterns often emerge when you regularly review this data. You might notice seasonal variations in academic settings, project-based spikes in corporate environments, or gradual growth that signals the need for infrastructure expansion.
