@@ -815,6 +815,29 @@ def enforce_token_scopes():
         return scope_error_response(missing, api_token)
 
 
+@app.before_request
+def record_user_presence():
+    """Remember when the signed-in account was last active (admin user list).
+
+    Every authenticated request counts, whether it came from a browser session
+    or an API token. Static assets do not, and neither does a request the
+    scope check above already refused: Flask runs the hooks in registration
+    order and stops at the first response. Presence is best-effort, so a
+    database failure here never fails the request the user actually made.
+    """
+    if not request.endpoint or request.endpoint == 'static':
+        return
+    from flask_login import current_user
+    if not current_user.is_authenticated:
+        return
+    from src.services.presence import record_activity
+    try:
+        record_activity(current_user)
+    except Exception:
+        app.logger.warning('Could not record presence for user %s',
+                           getattr(current_user, 'id', '?'), exc_info=True)
+        db.session.rollback()
+
 
 def _csrf_rejection_message(reason):
     """Turn a Flask-WTF CSRFError description into something an admin can act on.

@@ -23,7 +23,7 @@ from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chun
 from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
-from src.services import login_lock
+from src.services import login_lock, presence
 from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 
@@ -251,7 +251,12 @@ def admin_get_users():
             'current_transcription_usage_minutes': current_transcription_usage // 60,
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
             'login_locked': user.id in locked_ids,
-            'create_groups_granted': user.id in create_groups_ids
+            'create_groups_granted': user.id in create_groups_ids,
+            # Presence for the "Last activity" column: the ISO timestamp of the
+            # most recent authenticated request (null = never) and whether it
+            # is inside the online window.
+            'last_seen_at': user.last_seen_at.isoformat() if user.last_seen_at else None,
+            'online': presence.is_online(user.last_seen_at),
         })
 
     has_next = page < total_pages

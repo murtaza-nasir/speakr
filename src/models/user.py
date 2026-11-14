@@ -151,6 +151,11 @@ class User(db.Model, UserMixin):
     # column existed stay valid until the password is next set.
     session_version = db.Column(db.Integer, nullable=True, default=0)
 
+    # Most recent authenticated request (browser session or API token), for the
+    # "Last activity" column of the admin user list. NULL means never seen.
+    # Written best-effort at most once per minute; see src/services/presence.py.
+    last_seen_at = db.Column(db.DateTime, nullable=True)
+
     def get_id(self):
         version = self.session_version or 0
         return f"{self.id}:{version}" if version else str(self.id)

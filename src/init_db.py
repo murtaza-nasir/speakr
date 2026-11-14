@@ -322,6 +322,11 @@ def _run_migrations(app, engine):
             app.logger.info("Added sso_provider column to user table")
         if add_column_if_not_exists(engine, 'user', 'sso_subject', 'VARCHAR(255)'):
             app.logger.info("Added sso_subject column to user table")
+        # Most recent authenticated request, for the admin "Last activity"
+        # column (src/services/presence.py). NULL for an account that has not
+        # made one since the upgrade; no backfill is possible or wanted.
+        if add_column_if_not_exists(engine, 'user', 'last_seen_at', 'DATETIME'):
+            app.logger.info("Added last_seen_at column to user table")
         
         # SSO users authenticate against their provider and never hold a local
         # password, so the column has to accept NULL.

@@ -1,0 +1,172 @@
+"""Presence in the admin user list: last activity and the online flag.
+
+Every authenticated request records the account's last activity, at most once
+per minute. ``GET /admin/users`` reports the stored timestamp and whether it
+falls inside the online window. An account that never made an authenticated
+request keeps a null timestamp and is reported offline.
+"""
+
+import os
+import sys
+import uuid
+from datetime import datetime, timedelta
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.app import app, db, bcrypt  # noqa: E402
+from src.models import APIToken, User  # noqa: E402
+from src.utils.token_auth import hash_token  # noqa: E402
+
+app.config['WTF_CSRF_ENABLED'] = False
+
+# The window the spec defines for "online", independent of the backend constant.
+ONLINE_WINDOW = timedelta(minutes=5)
+
+
+@pytest.fixture
+def made():
+    """Accounts created by the test, removed afterwards."""
+    with app.app_context():
+        created = []
+        yield created
+        for user_id in created:
+            row = db.session.get(User, user_id)
+            if row is not None:
+                APIToken.query.filter_by(user_id=row.id).delete()
+                db.session.delete(row)
+        db.session.commit()
+
+
+def _user(made, prefix, **extra):
+    suffix = uuid.uuid4().hex[:8]
+    user = User(username=f'{prefix[:9]}_{suffix}', email=f'{prefix}_{suffix}@local.test',
+                password=bcrypt.generate_password_hash('Passw0rd!').decode(), **extra)
+    db.session.add(user)
+    db.session.commit()
+    made.append(user.id)
+    return user
+
+
+def _login(client, user):
+    from flask import g
+    with client.session_transaction() as sess:
+        sess.clear()
+        sess['_user_id'] = str(user.id)
+        sess['_fresh'] = True
+    try:
+        g.pop('_login_user', None)
+    except RuntimeError:
+        pass
+
+
+def _listed_users(client):
+    resp = client.get('/admin/users?per_page=100')
+    assert resp.status_code == 200, resp.data
+    return {row['id']: row for row in resp.get_json()['users']}
+
+
+def _stored_last_seen(user):
+    """The persisted value, read fresh from the database."""
+    db.session.expire_all()
+    return db.session.get(User, user.id).last_seen_at
+
+
+def _api_token(user):
+    plain = uuid.uuid4().hex + uuid.uuid4().hex
+    db.session.add(APIToken(user_id=user.id, name='presence test', token_hash=hash_token(plain)))
+    db.session.commit()
+    return plain
+
+
+def test_listing_reports_no_activity_for_an_account_that_never_signed_in(made):
+    with app.app_context():
+        admin = _user(made, 'admin', is_admin=True)
+        fresh = _user(made, 'fresh')
+
+        client = app.test_client()
+        _login(client, admin)
+        rows = _listed_users(client)
+
+        assert rows[fresh.id]['last_seen_at'] is None
+        assert rows[fresh.id]['online'] is False
+
+
+def test_an_authenticated_request_records_last_activity(made):
+    with app.app_context():
+        admin = _user(made, 'admin', is_admin=True)
+        member = _user(made, 'member')
+
+        before = datetime.utcnow()
+        member_client = app.test_client()
+        _login(member_client, member)
+        assert member_client.get('/api/v1/capabilities').status_code == 200
+
+        admin_client = app.test_client()
+        _login(admin_client, admin)
+        row = _listed_users(admin_client)[member.id]
+
+        assert row['online'] is True
+        recorded = datetime.fromisoformat(row['last_seen_at'])
+        assert before - timedelta(seconds=1) <= recorded <= datetime.utcnow() + timedelta(seconds=1)
+
+
+def test_api_token_usage_counts_as_activity(made):
+    with app.app_context():
+        admin = _user(made, 'admin', is_admin=True)
+        member = _user(made, 'member')
+        token = _api_token(member)
+
+        member_client = app.test_client()
+        resp = member_client.get('/api/v1/capabilities', headers={'Authorization': f'Bearer {token}'})
+        assert resp.status_code == 200
+
+        admin_client = app.test_client()
+        _login(admin_client, admin)
+        row = _listed_users(admin_client)[member.id]
+
+        assert row['online'] is True
+        assert row['last_seen_at'] is not None
+
+
+def test_activity_older_than_the_online_window_is_offline(made):
+    with app.app_context():
+        admin = _user(made, 'admin', is_admin=True)
+        member = _user(made, 'member')
+        stale = datetime.utcnow() - ONLINE_WINDOW - timedelta(minutes=5)
+        member.last_seen_at = stale
+        db.session.commit()
+
+        client = app.test_client()
+        _login(client, admin)
+        row = _listed_users(client)[member.id]
+
+        assert row['online'] is False
+        assert datetime.fromisoformat(row['last_seen_at']) == stale
+
+
+def test_static_assets_are_not_activity(made):
+    with app.app_context():
+        user = _user(made, 'reader')
+
+        client = app.test_client()
+        _login(client, user)
+        assert client.get('/static/css/styles.css').status_code == 200
+
+        assert _stored_last_seen(user) is None
+
+
+def test_a_second_request_within_the_throttle_keeps_the_timestamp(made):
+    with app.app_context():
+        admin = _user(made, 'admin', is_admin=True)
+        member = _user(made, 'member')
+
+        member_client = app.test_client()
+        _login(member_client, member)
+        assert member_client.get('/api/v1/capabilities').status_code == 200
+        first = _stored_last_seen(member)
+        assert first is not None
+
+        assert member_client.get('/api/v1/capabilities').status_code == 200
+        assert _stored_last_seen(member) == first
