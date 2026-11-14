@@ -110,7 +110,8 @@ def test_an_authenticated_request_records_last_activity(accounts):
         row = _listed_users(admin_client)[member.id]
 
         assert row['online'] is True
-        recorded = datetime.fromisoformat(row['last_seen_at'])
+        assert row['last_seen_at'].endswith('Z')
+        recorded = datetime.fromisoformat(row['last_seen_at'].removesuffix('Z'))
         assert before - timedelta(seconds=1) <= recorded <= datetime.utcnow() + timedelta(seconds=1)
 
 
@@ -129,7 +130,7 @@ def test_api_token_usage_counts_as_activity(accounts):
         row = _listed_users(admin_client)[member.id]
 
         assert row['online'] is True
-        assert row['last_seen_at'] is not None
+        assert row['last_seen_at'].endswith('Z')
 
 
 def test_activity_older_than_the_online_window_is_offline(accounts):
@@ -145,7 +146,8 @@ def test_activity_older_than_the_online_window_is_offline(accounts):
         row = _listed_users(client)[member.id]
 
         assert row['online'] is False
-        assert datetime.fromisoformat(row['last_seen_at']) == stale
+        assert row['last_seen_at'].endswith('Z')
+        assert datetime.fromisoformat(row['last_seen_at'].removesuffix('Z')) == stale
 
 
 def test_static_assets_are_not_activity(accounts):

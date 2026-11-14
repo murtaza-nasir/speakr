@@ -252,10 +252,14 @@ def admin_get_users():
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
             'login_locked': user.id in locked_ids,
             'create_groups_granted': user.id in create_groups_ids,
-            # Presence for the "Last activity" column: the ISO timestamp of the
-            # most recent authenticated request (null = never) and whether it
-            # is inside the online window.
-            'last_seen_at': user.last_seen_at.isoformat() if user.last_seen_at else None,
+            # Presence for the "Last activity" column: the timestamp of the most
+            # recent authenticated request (null = never) and whether it is
+            # inside the online window. Stored as naive UTC like every other
+            # timestamp; the explicit designator makes this new field an
+            # unambiguous instant for clients and for the <time datetime>
+            # attribute that renders it.
+            'last_seen_at': (user.last_seen_at.isoformat() + 'Z')
+                            if user.last_seen_at else None,
             'online': presence.is_online(user.last_seen_at),
         })
 

@@ -167,8 +167,10 @@ def test_admin_users_table_shows_last_activity(browser_page):
         else:
             assert value.evaluate("el => el.tagName") == "TIME", (
                 f"/admin: {text!r} is not a time element")
-            assert value.get_attribute("datetime"), (
-                f"/admin: {text!r} has no machine-readable datetime")
+            stamp = value.get_attribute("datetime")
+            assert stamp, f"/admin: {text!r} has no machine-readable datetime"
+            assert stamp.endswith("Z"), (
+                f"/admin: {text!r} datetime is not an explicit UTC instant: {stamp}")
             assert value.get_attribute("title"), (
                 f"/admin: {text!r} has no exact timestamp title")
             assert ("text-[var(--text-success-strong)]" in classes
