@@ -27,6 +27,7 @@ from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from src.utils.token_auth import public_route, require_scope, token_rate_key
 from sqlalchemy import func, extract, or_, and_
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
@@ -181,6 +182,8 @@ OPENAPI_SPEC = {
                 "properties": {
                     "id": {"type": "integer"},
                     "name": {"type": "string"},
+                    "group_id": {"type": "integer", "nullable": True, "description": "Group of a group tag; null for a personal tag"},
+                    "is_group_tag": {"type": "boolean"},
                     "color": {"type": "string"},
                     "custom_prompt": {"type": "string"},
                     "title_prompt": {"type": "string"},
@@ -201,6 +204,8 @@ OPENAPI_SPEC = {
                     "group_id": {"type": "integer", "nullable": True},
                     "parent_id": {"type": "integer", "nullable": True, "description": "Parent folder id; null for a top-level folder"},
                     "is_group_folder": {"type": "boolean"},
+                    "auto_share_on_apply": {"type": "boolean", "description": "Group folders: recordings in the folder are shared with every group member"},
+                    "share_with_group_lead": {"type": "boolean", "description": "Group folders: recordings in the folder are shared with the group admins"},
                     "custom_prompt": {"type": "string"},
                     "title_prompt": {"type": "string"},
                     "default_language": {"type": "string"},
@@ -591,7 +596,7 @@ OPENAPI_SPEC = {
             "post": {"tags": ["Tags"], "summary": "Create tag", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Tag created"}}}
         },
         "/tags/{id}": {
-            "put": {"tags": ["Tags"], "summary": "Update tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Tag updated"}}},
+            "put": {"tags": ["Tags"], "summary": "Update tag", "description": "After a change of group_id, auto_share_on_apply or share_with_group_lead, the recordings that carry the tag are shared as the new values say, as in the web app. A change that creates shares requires the share scope.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "group_id": {"type": "integer", "nullable": True, "description": "Group of the tag; null for a personal tag. Only an admin of the new group can set it."}, "auto_share_on_apply": {"type": "boolean", "description": "Group tags only: share the tagged recordings with every group member"}, "share_with_group_lead": {"type": "boolean", "description": "Group tags only: share the tagged recordings with the group admins"}}}}}}, "responses": {"200": {"description": "Tag updated"}, "403": {"description": "Not an admin of the new group, a recording that does not allow the group tag, or a token without the share scope for a change that creates shares"}}},
             "delete": {"tags": ["Tags"], "summary": "Delete tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag deleted"}}}
         },
         "/folders": {
@@ -600,7 +605,7 @@ OPENAPI_SPEC = {
         },
         "/folders/{id}": {
             "get": {"tags": ["Folders"], "summary": "Get folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Folder"}}}}}},
-            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "parent_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
+            "patch": {"tags": ["Folders"], "summary": "Update folder", "description": "Also accepted as PUT. After a change of group_id, auto_share_on_apply or share_with_group_lead, the recordings in the folder are shared as the new values say, as in the web app. A change that creates shares requires the share scope.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "parent_id": {"type": "integer", "nullable": True}, "group_id": {"type": "integer", "nullable": True, "description": "Group of the folder; null for a personal folder. Only an admin of the new group can set it; a folder with subfolders keeps its group."}, "auto_share_on_apply": {"type": "boolean", "description": "Group folders only: share the recordings in the folder with every group member"}, "share_with_group_lead": {"type": "boolean", "description": "Group folders only: share the recordings in the folder with the group admins"}, "custom_prompt": {"type": "string"}, "title_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
             "delete": {"tags": ["Folders"], "summary": "Delete folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder deleted"}}}
         },
         "/transcription": {
@@ -2557,7 +2562,22 @@ def update_tag(tag_id):
     data = request.get_json()
     if not data:
         return jsonify(api_error('no_data_provided')), 400
+    from src.services.auto_shares import regroup_error, share_scope_refusal, sharing_state, sync_source_shares
+    before = sharing_state(tag)
 
+    if 'group_id' in data:
+        # The rule of the web app: an admin of the new group, and each
+        # recording that carries the tag allows a group tag (#578, #579)
+        new_group_id = data['group_id'] or None
+        if str(new_group_id or '') != str(tag.group_id or ''):
+            error_key = regroup_error(tag, new_group_id, current_user, has_recording_access)
+            if error_key:
+                return jsonify(api_error(error_key)), 403
+            tag.group_id = new_group_id
+    if 'auto_share_on_apply' in data and tag.group_id:
+        tag.auto_share_on_apply = bool(data['auto_share_on_apply'])
+    if 'share_with_group_lead' in data and tag.group_id:
+        tag.share_with_group_lead = bool(data['share_with_group_lead'])
     if 'name' in data:
         tag.name = data['name']
     if 'color' in data:
@@ -2575,12 +2595,27 @@ def update_tag(tag_id):
     if 'protect_from_deletion' in data:
         tag.protect_from_deletion = data['protect_from_deletion']
 
-    db.session.commit()
+    try:
+        db.session.flush()
+        # A new group or new share settings: the shares follow, as in the web app (#586)
+        _removed, created = sync_source_shares(tag, before)
+        refusal = share_scope_refusal(created)
+        if refusal is not None:
+            db.session.rollback()
+            return refusal
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(api_error('tag_name_exists')), 400
 
     return jsonify({'success': True, 'tag': {
         'id': tag.id,
         'name': tag.name,
         'color': tag.color,
+        'is_group_tag': tag.group_id is not None,
+        'group_id': tag.group_id,
+        'auto_share_on_apply': tag.auto_share_on_apply,
+        'share_with_group_lead': tag.share_with_group_lead,
         'custom_prompt': tag.custom_prompt,
         'title_prompt': tag.title_prompt,
         'default_language': tag.default_language,

@@ -16,7 +16,8 @@ from sqlalchemy.exc import IntegrityError
 from src.database import db
 from src.models import *
 from src.utils.localization import api_error
-from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
+from src.services.auto_shares import (apply_folder_shares, drop_stale_auto_shares, regroup_error,
+                                      share_scope_refusal, sharing_state, sync_source_shares)
 
 # Create blueprint
 folders_bp = Blueprint('folders', __name__)
@@ -298,6 +299,7 @@ def update_folder(folder_id):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         data = {}
+    before = sharing_state(folder)
 
     if 'name' in data:
         # A stored name from before the length check (#512) can be sent back
@@ -323,25 +325,16 @@ def update_folder(folder_id):
     # Handle group_id changes (converting between personal and group folders)
     if 'group_id' in data:
         new_group_id = data['group_id'] if data['group_id'] else None
-
-        # If changing to a group folder, verify user is admin of that group
-        if new_group_id:
-            membership = GroupMembership.query.filter_by(
-                group_id=new_group_id,
-                user_id=current_user.id
-            ).first()
-
-            if not membership or membership.role != 'admin':
-                return jsonify(api_error('folder_group_assign_admin_only')), 403
-
-        # Children stay in the old scope, so a folder with children keeps
-        # its group (#585). str() lets a group id sent as "3" match 3.
-        group_changed = str(new_group_id or '') != str(folder.group_id or '')
-        if group_changed and Folder.query.filter_by(parent_id=folder.id).first():
-            return jsonify(api_error('folder_group_tree_invalid')), 400
-        regrouped = group_changed
-    else:
-        regrouped = False
+        # str() lets a group id sent as "3" match 3.
+        if str(new_group_id or '') != str(folder.group_id or ''):
+            # Admin of the new group, with edit access to other users' recordings in the folder
+            error_key = regroup_error(folder, new_group_id, current_user, has_recording_access)
+            if error_key:
+                return jsonify(api_error(error_key)), 403
+            # Children stay in the old scope, so a folder with children keeps
+            # its group (#585).
+            if Folder.query.filter_by(parent_id=folder.id).first():
+                return jsonify(api_error('folder_group_tree_invalid')), 400
 
     # The parent is checked against the folder's new scope when either one
     # changes, before anything is written.
@@ -424,14 +417,15 @@ def update_folder(folder_id):
     name, group_id = folder.name, folder.group_id
 
     try:
-        if regrouped:
-            # Shares the folder's previous group received end with the move (#582),
-            # and the recordings in it are shared with the new group as a
-            # move into the folder shares them (#586)
-            recordings = list(folder.recordings)
-            drop_stale_auto_shares(recording_ids=[r.id for r in recordings])
-            for recording in recordings:
-                apply_group_folder_shares(recording, folder)
+        # A name clash surfaces here; the settings lookup below would hide it
+        db.session.flush()
+        # A new group or new share settings: the shares follow (#582, #586)
+        _removed, created = sync_source_shares(folder, before, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
+        # API v1 delegates here: a token without the share scope may not create shares
+        refusal = share_scope_refusal(created)
+        if refusal is not None:
+            db.session.rollback()
+            return refusal
         db.session.commit()
     except IntegrityError:
         # A duplicate name is a refused request, not an application error (#511).
@@ -819,62 +813,10 @@ def apply_group_folder_shares(recording, folder):
 
 
 def _apply_folder_auto_shares(recording, folder):
-    """
-    Apply auto-shares for a group folder when a recording is assigned to it.
-
-    Args:
-        recording: Recording being assigned to the folder
-        folder: Folder with auto-share settings
-    """
-    if not _self.ENABLE_INTERNAL_SHARING:
-        return
-
-    if not folder.group_id:
-        return
-
-    # Determine who to share with
-    if folder.auto_share_on_apply:
-        group_members = GroupMembership.query.filter_by(group_id=folder.group_id).all()
-    elif folder.share_with_group_lead:
-        group_members = GroupMembership.query.filter_by(group_id=folder.group_id, role='admin').all()
-    else:
-        return
-
-    shares_created = 0
-
-    for membership in group_members:
-        # Skip the recording owner
-        if membership.user_id == recording.user_id:
-            continue
-
-        # Check if already shared
-        existing_share = InternalShare.query.filter_by(
-            recording_id=recording.id,
-            shared_with_user_id=membership.user_id
-        ).first()
-
-        if not existing_share:
-            # Create internal share with correct permissions
-            share = InternalShare(
-                recording_id=recording.id,
-                owner_id=recording.user_id,
-                shared_with_user_id=membership.user_id,
-                can_edit=(membership.role == 'admin'),
-                can_reshare=False,
-                source_type='group_folder',
-                source_tag_id=None,
-                source_folder_id=folder.id  # share-reason folder, surfaced to the recipient (#314)
-            )
-            db.session.add(share)
-
-            # The recipient's state row, reused when an earlier share left one (#571)
-            ensure_recipient_state(recording.id, membership.user_id)
-
-            shares_created += 1
-            current_app.logger.info(f"Auto-shared recording {recording.id} with user {membership.user_id} via group folder '{folder.name}'")
-
-    if shares_created > 0:
-        current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording.id} via folder assignment")
+    """Apply a group folder's auto-shares to a recording assigned to it (see apply_folder_shares)."""
+    created = apply_folder_shares(recording, folder, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
+    if created > 0:
+        current_app.logger.info(f"Created {created} auto-shares for recording {recording.id} via folder assignment")
 
 
 # Hot-applied System Settings (high priority) with environment fallback.
