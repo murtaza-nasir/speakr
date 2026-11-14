@@ -6,10 +6,10 @@ The notes in the prompt are the ones the chatting user can see: the owner's
 for the owner, a recipient's own personal notes otherwise.
 
 with_sources: the transcript is sent with segment markers ([S12 12:34 Dana])
-and the model is asked to cite [S12 "exact words"]; parse_sources turns those
-into numbered sources and checks each quote against its segment. The web
-panel streams, so there assistant_events.SegmentCitations does the same work
-as the text arrives.
+and the model is asked to cite [S12 "exact words"]. The numbering of those
+citations and the check of each quote against its segment are defined once,
+in src/services/citations.py, for the streamed web panel and the API v1
+reply alike.
 
 The prompt names the assistant with the user's chosen name (decision 3).
 
@@ -20,8 +20,6 @@ tags, so it has no block.
 """
 
 import re
-
-_CITE = re.compile(r'\[S(\d+)(?:\s+"([^"\]]*)")?\]')
 
 
 def _clock(seconds):
@@ -247,32 +245,3 @@ The user's notes on this recording:
     messages.extend(history or [])
     messages.append({"role": "user", "content": message})
     return messages, (segments if use_markers else None)
-
-
-def _norm(text):
-    return re.sub(r'\s+', ' ', (text or '')).strip().lower()
-
-
-def parse_sources(reply, segments):
-    """Replace [S12 "quote"] citations with [n]; returns (reply, sources)."""
-    by_index = {seg['index']: seg for seg in segments or []}
-    sources, numbers = [], {}
-
-    def _replace(match):
-        index, quote = int(match.group(1)), match.group(2)
-        key = (index, _norm(quote))
-        if key not in numbers:
-            seg = by_index.get(index)
-            numbers[key] = len(sources) + 1
-            sources.append({
-                'n': numbers[key],
-                'segment_index': index if seg else None,
-                'start_time': seg['start_time'] if seg else None,
-                'end_time': seg['end_time'] if seg else None,
-                'speaker': seg['speaker'] if seg else None,
-                'quote': quote,
-                'verified': bool(seg and quote and _norm(quote) in _norm(seg['text'])),
-            })
-        return f'[{numbers[key]}]'
-
-    return _CITE.sub(_replace, reply or ''), sources

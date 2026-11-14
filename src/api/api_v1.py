@@ -3469,7 +3469,8 @@ def chat_with_recording(recording_id):
     """Chat about a recording's content. with_sources: true returns numbered
     sources with segment, time, speaker and a checked quote (mailr spec G9)."""
     from src.services.llm import chat_client, call_chat_completion
-    from src.services.recording_chat import build_chat_messages, parse_sources
+    from src.services.citations import parse_sources
+    from src.services.recording_chat import build_chat_messages
 
     recording = db.session.get(Recording, recording_id)
     if not recording or not has_recording_access(recording, current_user):
