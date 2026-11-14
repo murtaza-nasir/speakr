@@ -837,7 +837,8 @@
     "endTimeInput": "Heure de fin, segment {{n}}",
     "textInput": "Texte, segment {{n}}",
     "speakerSuggestions": "Choisir l'intervenant, segment {{n}}",
-    "volume": "Volume"
+    "volume": "Volume",
+    "saveAndClose": "Enregistrer et fermer"
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",

@@ -171,6 +171,11 @@ body.unloaded {
 }
 
 /* Dark Theme Base */
+/* Native controls (scrollbars, number and date pickers) follow the colour
+   scheme in every theme. */
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+
 .dark {
     --bg-primary: #111827; /* gray-900 */
     --bg-secondary: #1f2937; /* gray-800 */
@@ -1812,16 +1817,9 @@ body {
    cell without an input filler). The reliable fix is to colour the
    inputs/textareas themselves and the action cell's td. */
 
-.asr-editor-row--highlighted input,
-.asr-editor-row--highlighted textarea {
-    background-color: var(--bg-accent) !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-    transition: background-color 0.6s ease-out;
-}
-
-/* Action cell has no input filler, so paint the td directly. */
-.asr-editor-row--highlighted > td:last-child {
+/* The cell fields are transparent (see .asr-editor-field), so the row is
+   painted through its cells. */
+.asr-editor-row--highlighted > td {
     background-color: var(--bg-accent) !important;
     transition: background-color 0.6s ease-out;
 }
@@ -3547,6 +3545,29 @@ body {
     margin: 0;
     display: block;
     min-height: 100%;
+}
+
+/* The fields show the cell behind them in every theme and colour scheme.
+   The generic dark-mode field rule (.dark input[type="text"] and others)
+   would otherwise give them the input background, which differs from the
+   table in some themes and leaves bands where a wrapped sentence makes the
+   row taller than the field. */
+.asr-editor-table .asr-editor-field,
+.dark .asr-editor-table .asr-editor-field {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* Times are typed; the browser's spin buttons covered the digits. Arrow keys
+   still step the value. */
+.asr-editor-table input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.asr-editor-table input[type="number"]::-webkit-inner-spin-button,
+.asr-editor-table input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .asr-editor-table textarea {

@@ -837,7 +837,8 @@
     "endTimeInput": "结束时间，第 {{n}} 段",
     "textInput": "文本，第 {{n}} 段",
     "speakerSuggestions": "选择说话人，第 {{n}} 段",
-    "volume": "音量"
+    "volume": "音量",
+    "saveAndClose": "保存并关闭"
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",

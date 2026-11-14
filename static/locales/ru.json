@@ -837,7 +837,8 @@
     "endTimeInput": "Время окончания, сегмент {{n}}",
     "textInput": "Текст, сегмент {{n}}",
     "speakerSuggestions": "Выбрать говорящего, сегмент {{n}}",
-    "volume": "Громкость"
+    "volume": "Громкость",
+    "saveAndClose": "Сохранить и закрыть"
   },
   "findReplace": {
     "open": "Найти и заменить (Ctrl+F)",

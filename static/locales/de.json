@@ -837,7 +837,8 @@
     "endTimeInput": "Endzeit, Segment {{n}}",
     "textInput": "Text, Segment {{n}}",
     "speakerSuggestions": "Sprecher wählen, Segment {{n}}",
-    "volume": "Lautstärke"
+    "volume": "Lautstärke",
+    "saveAndClose": "Speichern und schließen"
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",
