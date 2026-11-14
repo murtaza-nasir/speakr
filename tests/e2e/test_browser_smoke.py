@@ -125,6 +125,55 @@ def test_settings_pages(browser_page, path):
     _check_common(page, problems, path)
 
 
+def test_admin_users_table_shows_last_activity(browser_page):
+    """The User Management table renders the presence column from the listing.
+
+    The column is additive, so a fresh instance exercises it with the admin
+    who just signed in: a relative time inside the online window, coloured
+    green, with the exact timestamp in the title. Any row that has no
+    recorded activity must say "Never" in the neutral colour instead of
+    leaving the cell blank.
+    """
+    page, problems = browser_page
+    _open(page, problems, "/admin")
+
+    table = page.locator("table").filter(
+        has=page.locator("th", has_text="Last activity")).first
+    table.locator("th", has_text="Last activity").first.wait_for(
+        state="visible", timeout=15000)
+
+    headers = [h.strip().lower() for h in table.locator("thead th").all_inner_texts()]
+    assert headers[-2:] == ["last activity", "actions"], (
+        f"/admin: Last activity is not the column before Actions: {headers}")
+
+    rows = table.locator("tbody tr")
+    checked = 0
+    for index in range(rows.count()):
+        cells = rows.nth(index).locator("td")
+        if cells.count() < 9:  # the empty-state or loading row
+            continue
+        cell = cells.nth(7)
+        text = cell.inner_text().strip()
+        assert text, f"/admin: empty Last activity cell in row {index}"
+        span = cell.locator("span").first
+        classes = span.get_attribute("class") or ""
+        if text == "Never":
+            assert "text-[var(--text-muted)]" in classes, (
+                f"/admin: Never is not neutral: {classes}")
+            assert not span.get_attribute("title"), (
+                "/admin: Never should not carry a timestamp title")
+        else:
+            assert span.get_attribute("title"), (
+                f"/admin: {text!r} has no exact timestamp title")
+            assert ("text-[var(--text-success-strong)]" in classes
+                    or "text-[var(--text-danger-strong)]" in classes), (
+                f"/admin: {text!r} is not coloured: {classes}")
+        checked += 1
+
+    assert checked, "/admin: no user rows to check"
+    _check_common(page, problems, "/admin")
+
+
 def test_inquire_page(browser_page):
     page, problems = browser_page
     response = _open(page, problems, "/inquire")
