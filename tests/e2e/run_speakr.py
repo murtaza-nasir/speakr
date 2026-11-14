@@ -4,8 +4,9 @@
 
 Settings come from smoke_env.py (config/env.whisperx.example plus a few
 test changes). Like docker-entrypoint.sh, the database and the example's
-admin account are created first; gunicorn then runs in the foreground until
-it is stopped. Run it in the background and wait for /login to answer.
+admin account are created first, then two recordings with transcripts
+(seed_recordings.py); gunicorn then runs in the foreground until it is
+stopped. Run it in the background and wait for /login to answer.
 """
 
 import argparse
@@ -45,6 +46,8 @@ def main():
 
     run([sys.executable, "-c", "from src.app import app, db; app.app_context().push(); db.create_all()"])
     run([sys.executable, "scripts/docker_create_admin.py"])
+    # Recordings for the browser tests (no ASR service runs here)
+    run([sys.executable, "tests/e2e/seed_recordings.py"])
     os.execvpe(sys.executable, [sys.executable, "-m", "gunicorn", "--workers", "2", "--worker-class", "gthread",
                                 "--threads", "4", "--bind", f"{args.host}:{args.port}", "--timeout", "600",
                                 "--chdir", ROOT, "src.app:app"], env)
