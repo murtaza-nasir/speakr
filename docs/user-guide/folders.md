@@ -118,6 +118,8 @@ When you move a recording to a group folder with auto-share enabled, all group m
 
 These shares last as long as the recording stays in the folder. When you move the recording out of the folder, delete the folder, or move the folder to another group, the members lose the access they had through the folder. When you move the folder to another group, the recordings in it are shared with the new group's members as the folder's settings say. A member keeps access they still have through a group tag on the recording, and a share you made by hand. A member who leaves the group loses the access they had through the group's folders and tags. Their personal notes are kept and return if the recording is shared with them again.
 
+A change of the folder's sharing settings applies to the recordings already in it. Members the new settings include gain access, whatever the processing status of the recording, and members they leave out lose the access the folder gave them. The change covers the folder's own recordings; a subfolder keeps its own settings. Moving a folder to a group requires admin rights in that group, and edit access to every recording in it that belongs to another user.
+
 ## Folders vs Tags
 
 Both folders and tags help organize recordings, but they serve different purposes:

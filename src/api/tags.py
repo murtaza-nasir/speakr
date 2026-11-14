@@ -315,6 +315,8 @@ def update_tag(tag_id):
             return jsonify(api_error('tag_edit_denied')), 403
 
     data = request.get_json()
+    from src.services.auto_shares import regroup_error, sharing_state, sync_source_shares
+    before = sharing_state(tag)
 
     if 'name' in data:
         # Check if new name conflicts with another tag
@@ -330,31 +332,13 @@ def update_tag(tag_id):
     # Handle group_id changes (converting between personal and group tags)
     if 'group_id' in data:
         new_group_id = data['group_id'] if data['group_id'] else None
-
-        # If changing to a group tag, verify user is admin of that group
-        if new_group_id:
-            membership = GroupMembership.query.filter_by(
-                group_id=new_group_id,
-                user_id=current_user.id
-            ).first()
-
-            if not membership or membership.role != 'admin':
-                return jsonify(api_error('tag_group_assign_admin_only')), 403
-
         # str() lets a group id sent as "3" match 3, as for folders (#586)
-        regrouped = str(new_group_id or '') != str(tag.group_id or '')
-        if regrouped and new_group_id:
-            # The tag is already on recordings: making it a group tag puts a
-            # group tag on each, so each must allow that, checked before the
-            # change (after it, the tag itself would grant edit) (#578, #579)
-            from src.services.tag_sharing import group_tag_apply_error
-            for rt in tag.recording_associations:
-                error_key = group_tag_apply_error(rt.recording, new_group_id, current_user, has_recording_access)
-                if error_key:
-                    return jsonify(api_error(error_key)), 403
-        tag.group_id = new_group_id
-    else:
-        regrouped = False
+        if str(new_group_id or '') != str(tag.group_id or ''):
+            # Admin of the new group, and each recording allows the group tag (#578, #579)
+            error_key = regroup_error(tag, new_group_id, current_user, has_recording_access)
+            if error_key:
+                return jsonify(api_error(error_key)), 403
+            tag.group_id = new_group_id
 
     if 'color' in data:
         color_ok, color_val = _validate_tag_color(data['color'])
@@ -434,18 +418,11 @@ def update_tag(tag_id):
 
     tag.updated_at = datetime.utcnow()
 
-    if regrouped:
-        # Shares the tag made for its previous group end (#570), and the
-        # recordings that carry it are shared with the new group as adding
-        # the tag shares them, after the share settings above are set
-        from src.services.auto_shares import drop_stale_auto_shares
-        from src.services.tag_sharing import apply_tag_shares
-        recordings = [rt.recording for rt in tag.recording_associations]
-        drop_stale_auto_shares(recording_ids=[r.id for r in recordings])
-        for recording in recordings:
-            apply_tag_shares(recording, tag, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
-
     try:
+        # A name clash surfaces here; the settings lookup below would hide it
+        db.session.flush()
+        # A new group or new share settings: the shares follow (#570, #586)
+        sync_source_shares(tag, before, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
         db.session.commit()
     except IntegrityError as e:
         db.session.rollback()

@@ -162,14 +162,14 @@ Both options can be enabled simultaneously, though this is redundant - sharing w
 
 ### Managing Group Tags
 
-Existing group tags appear in the group tags modal with their current settings. Click the edit icon to modify a tag's name, color, retention, protection, or sharing settings. Changes affect the tag going forward but don't retroactively change already-applied tags or shares.
+Existing group tags appear in the group tags modal with their current settings. Click the edit icon to modify a tag's name, color, retention, protection, or sharing settings. A change of the sharing settings also applies to the recordings that already carry the tag: members the new settings include gain access to the completed recordings, and members they leave out lose the access the tag gave them. A share made by hand, and access through another group tag or group folder, stay.
 
 Delete group tags by clicking the trash icon. Deleted tags:
 
 - Are removed from all recordings they were applied to
 - Disappear from tag selectors for all group members
 - Don't delete the recordings themselves
-- Don't revoke access already granted through the tag
+- End the access granted through the tag, except where a share made by hand, another group tag or a group folder still gives it
 
 If a tag was widely used, consider the impact before deletion. Users may have organized content around that tag, and deletion removes that organizational structure. In most cases, retaining unused tags causes no harm.
 

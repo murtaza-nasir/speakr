@@ -1265,9 +1265,14 @@ PUT /api/v1/tags/{id}
 {
   "name": "Updated Name",
   "color": "#EF4444",
-  "custom_prompt": "New prompt..."
+  "custom_prompt": "New prompt...",
+  "group_id": 3,
+  "auto_share_on_apply": true,
+  "share_with_group_lead": true
 }
 ```
+
+All fields are optional. `group_id` moves the tag to a group, or makes it personal again with `null`; only an admin of the new group can set it, and each recording that carries the tag must allow the group tag (on another user's recording, edit access is required). `auto_share_on_apply` and `share_with_group_lead` apply to group tags only. After a change of any of these three fields, the completed recordings that carry the tag are shared as the new values say, as in the web app, and access the tag no longer gives ends. Manual shares and access through another group tag or group folder stay. A change that creates shares requires the `share` scope (`403 insufficient_scope` otherwise; nothing is changed). The response contains the updated tag, including `group_id`, `is_group_tag`, `auto_share_on_apply` and `share_with_group_lead`.
 
 ### Delete Tag
 
@@ -1870,7 +1875,7 @@ PUT   /api/v1/folders/{id}
 **Scope:** `write`
 ```
 
-Accepts the same fields as create; all are optional. A folder cannot be moved beneath itself or a descendant, and a folder with child folders cannot change its group. Only the folder owner (personal) or a group admin (group folder) may update. Returns the updated folder.
+Accepts the same fields as create, plus `auto_share_on_apply` and `share_with_group_lead` for a group folder; all are optional. A folder cannot be moved beneath itself or a descendant, and a folder with child folders cannot change its group. Only the folder owner (personal) or a group admin (group folder) may update. `group_id` moves the folder to a group, or makes it personal again with `null`; only an admin of the new group can set it, with edit access to every recording in the folder that belongs to another user. After a change of `group_id`, `auto_share_on_apply` or `share_with_group_lead`, the recordings in the folder are shared as the new values say, and access the folder no longer gives ends; manual shares and access through a group tag stay. A change that creates shares requires the `share` scope. Returns the updated folder.
 
 ### Delete Folder
 
