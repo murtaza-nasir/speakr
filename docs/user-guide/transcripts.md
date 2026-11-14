@@ -50,17 +50,31 @@ For transcriptions processed with [ASR](../features.md#speaker-diarization) and 
 
 ![ASR Transcription Editor](../assets/images/screenshots/edit-transcript-modal.png)
 
-The ASR editor presents your transcription as a table of segments, where each row represents a single utterance with its associated metadata. For each segment, you can:
+The ASR editor shows your transcription the way the transcript reads: each segment has a speaker chip, a compact time and its text. Everything is edited in place, every change can be undone, and long recordings stay responsive because only the segments in view are drawn.
 
-**Edit Speaker Names**: Each segment shows who is speaking. You can click on any speaker field to change it, with an intelligent dropdown that suggests speakers from your saved speaker database. As you type, the system filters suggestions to help you quickly find the right speaker. This is particularly useful for correcting misidentified speakers or standardizing speaker names across the transcription.
+**Edit Text Content**: Click into the text of a segment and type. Press **Enter** to split the segment at the cursor; the time of the cut follows the share of the text before it, or the playhead when it lies inside the segment. Press **Backspace** at the very start of a segment to merge it into the previous one, which keeps the previous segment's speaker. **Esc** leaves the text field so that the single-key shortcuts below work.
 
-**Adjust Timestamps**: The start and end times for each segment can be fine-tuned using the adjustment arrows. This is helpful when the automatic segmentation isn't quite right, allowing you to precisely mark when each person starts and stops speaking.
+**Change Speakers**: Click a speaker chip to open the speaker picker. It lists the speakers of this recording first, then your saved speakers (those whose voice matches come first), and accepts a new name typed into its field. Check **All segments of …** to rename a speaker in the whole recording in one step. With one or more segments selected, the keys **1** to **9** assign the recording's speakers in the order shown in the picker.
 
-**Edit Text Content**: The main content of each utterance can be edited directly in its text field. You can correct transcription errors, fix grammar, add punctuation, or clarify unclear speech while maintaining the segment structure.
+**Voice Match Suggestions**: When a speaker is still an unnamed label (such as `SPEAKER_00`) and its voice matches one of your saved speakers, the best match is offered on the speaker's first segment and in the picker, for example "Dana Lee, 87%". Click the suggestion to hear a few of that speaker's longest segments, and **Accept** to rename the speaker in the whole recording. The match is recorded when you save, exactly as in the speaker identification dialog.
 
-**Find and Replace**: Click the search icon in the header of either editor, or press Ctrl+F (Cmd+F on a Mac), to open the find and replace bar. The number of matches is shown as you type. Enter moves to the next match and Shift+Enter to the previous one; **Replace** replaces the selected match, and **Replace all** replaces every match in the transcript text. **Aa** limits the search to the same capitals, and **ab** to whole words. Speaker names are not changed (use the speaker editor for those), and nothing is saved until you save the transcript, so Cancel discards the replacements. After correcting a name throughout, regenerate the summary to carry the correction into it.
+**Select Segments**: Click beside the text of a segment to select it, Shift-click to select a range, and Ctrl-click (Cmd-click on a Mac) to add or remove single segments. The toolbar then offers **Set speaker**, **Merge** and **Delete** for the selection.
 
-**Manage Segments**: Use the trash icon to remove segments that shouldn't be in the transcription (such as false detections or noise). You can also add new segments if the ASR system missed something, positioning them with appropriate timestamps.
+**Adjust Timestamps**: Click a segment's time to play from it; hover over it to see the exact start and end. With a segment selected, **[** and **]** set its start and end to the playhead, and **Alt+Left** and **Alt+Right** move the start by 0.1 seconds (with Shift, the end). A neighbor that touches the edge moves with it. To type exact times, open the segment's menu (the three dots) and choose **Edit times**, or press **T**. Segments stay in order of their start time.
+
+**Playback**: **Space** plays and pauses while the cursor is not in a text field, **L** loops the selected segment, and **S** splits it at the playhead. The segment being played is highlighted; the crosshair button in the toolbar turns following it on and off.
+
+**Problems**: The toolbar counts segments whose end is not after their start and segments that overlap the previous segment of the same speaker. Click the count to step through them.
+
+**Undo and Redo**: **Ctrl+Z** undoes and **Ctrl+Shift+Z** or **Ctrl+Y** redoes (Cmd on a Mac), also with the toolbar buttons. A burst of typing is one step, and so are a rename of a speaker in the whole recording and a Replace all.
+
+**Find and Replace**: Click the search icon in the toolbar of the segment editor (or in the header of the text editor), or press Ctrl+F (Cmd+F on a Mac), to open the find and replace bar. The number of matches is shown as you type. Enter moves to the next match and Shift+Enter to the previous one; **Replace** replaces the selected match, and **Replace all** replaces every match in the transcript text. **Aa** limits the search to the same capitals, and **ab** to whole words. Speaker names are not changed (use the speaker picker for those), and nothing is saved until you save the transcript, so Cancel discards the replacements. After correcting a name throughout, regenerate the summary to carry the correction into it.
+
+**Manage Segments**: **Add segment** in the toolbar adds an empty segment after the selected one (or at the playhead). The segment menu also holds Split at cursor, Merge with previous, Merge with next, Set start or end to playhead, Add segment below and Delete segment, so everything is reachable on a phone without a keyboard. **Delete** removes the selected segments.
+
+The keyboard button in the toolbar lists all shortcuts.
+
+**Unsaved Changes**: Closing the editor with unsaved changes asks before discarding them. While you edit, your changes are also kept in this browser; if the page is closed or reloaded before you save, the editor offers to restore them the next time you open the same transcript.
 
 The ASR editor maintains the JSON structure of your transcription, which is essential for features like speaker-based search, audio synchronization (clicking on text to jump to that point in the audio), and proper display in bubble view. When you save changes in the ASR editor, the system preserves all timing and speaker information while applying your corrections.
 
@@ -72,7 +86,7 @@ The ASR editor includes several quality-of-life features for working through lon
 
 **Autosave**: When enabled in your account preferences (`Account → Preferences → Autosave editor`), edits are saved automatically two seconds after the last keystroke. The Save indicator briefly flashes "Saved" each time a save completes. Autosave is opt-in so users who prefer explicit control over save points can leave it off.
 
-**Save Without Closing**: The save button next to the close button keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your scroll position.
+**Save Without Closing**: **Save** keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your place; **Save and close** saves and closes it.
 
 **Ctrl+S**: Pressing `Ctrl+S` (or `Cmd+S` on macOS) anywhere in the editor saves without closing. Equivalent to clicking the save-without-closing button.
 
