@@ -155,6 +155,17 @@ def sharing_state(source):
             bool(source.auto_share_on_apply), bool(source.share_with_group_lead))
 
 
+def regroup_name_error(tag, new_group_id, name):
+    """'group_tag_name_exists_for_group' when another tag of group new_group_id
+    has the name name, else None. A tag made personal cannot clash: the
+    database keeps tag names unique per owner."""
+    from src.models import Tag
+    if not new_group_id:
+        return None
+    clash = Tag.query.filter(Tag.id != tag.id, Tag.name == name, Tag.group_id == new_group_id).first()
+    return 'group_tag_name_exists_for_group' if clash is not None else None
+
+
 def regroup_error(source, new_group_id, user, has_recording_access):
     """Why user may not move a tag or folder into group new_group_id, as an error key, or None.
 

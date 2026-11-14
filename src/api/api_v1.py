@@ -2571,7 +2571,7 @@ def update_tag(tag_id):
     data = request.get_json()
     if not data:
         return jsonify(api_error('no_data_provided')), 400
-    from src.services.auto_shares import regroup_error, share_scope_refusal, sharing_state, sync_source_shares
+    from src.services.auto_shares import regroup_error, regroup_name_error, share_scope_refusal, sharing_state, sync_source_shares
     before = sharing_state(tag)
 
     if 'group_id' in data:
@@ -2579,6 +2579,9 @@ def update_tag(tag_id):
         # recording that carries the tag allows a group tag (#578, #579)
         new_group_id = data['group_id'] or None
         if str(new_group_id or '') != str(tag.group_id or ''):
+            name_error = regroup_name_error(tag, new_group_id, data.get('name') or tag.name)
+            if name_error:
+                return jsonify(api_error(name_error)), 400
             error_key = regroup_error(tag, new_group_id, current_user, has_recording_access)
             if error_key:
                 return jsonify(api_error(error_key)), 403

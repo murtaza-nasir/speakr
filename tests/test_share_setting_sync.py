@@ -455,3 +455,23 @@ def test_demoted_admin_loses_a_lead_only_share(team, tag_on, token_for):
     assert t["other_admin"].id not in _shares(lead_only.id)
     share = _shares(everyone.id)[t["other_admin"].id]
     assert share.can_edit is False
+
+
+
+@pytest.mark.parametrize("how", HOWS)
+def test_tag_regroup_refused_when_the_name_is_taken(team, tag_on, token_for, how):
+    t = team
+    r = t["recording"]()
+    tag = tag_on(None, r)
+    taken = Tag(name=tag.name, user_id=t["other_admin"].id, group_id=t["group"].id)
+    db.session.add(taken)
+    db.session.commit()
+    try:
+        resp = _change(t, tag, {"group_id": t["group"].id}, how, token_for, expect=400)
+        assert resp.get_json()["code"] == "group_tag_name_exists_for_group"
+        assert db.session.get(Tag, tag.id).group_id is None
+        assert _shares(r.id) == {}
+    finally:
+        db.session.rollback()
+        Tag.query.filter_by(id=taken.id).delete()
+        db.session.commit()

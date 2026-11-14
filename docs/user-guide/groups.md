@@ -79,7 +79,7 @@ Your edit capabilities come with important limitations. You cannot delete group 
 
 When you access a group recording, you can add personal notes that remain completely private. These personal notes never appear to the recording owner or other group members - they're your private space for observations, follow-ups, questions, or action items.
 
-Personal notes persist as long as you have access to the recording. If you leave the group or a group admin revokes your access, your personal notes are automatically deleted. This cleanup prevents orphaned data and ensures notes don't persist after access ends.
+Personal notes are kept when your access to the recording ends, for example when you leave the group. They cannot be seen while you have no access, and they are shown again if you get access to the recording again.
 
 Use personal notes to track what matters to you without cluttering shared notes. The recording owner's notes should contain universal context, while your personal notes capture your specific perspective, tasks, or concerns. This separation keeps shared notes focused while giving everyone space for individual tracking.
 

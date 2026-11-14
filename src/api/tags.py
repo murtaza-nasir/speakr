@@ -315,7 +315,7 @@ def update_tag(tag_id):
             return jsonify(api_error('tag_edit_denied')), 403
 
     data = request.get_json()
-    from src.services.auto_shares import regroup_error, sharing_state, sync_source_shares
+    from src.services.auto_shares import regroup_error, regroup_name_error, sharing_state, sync_source_shares
     before = sharing_state(tag)
 
     if 'name' in data:
@@ -335,6 +335,9 @@ def update_tag(tag_id):
         # str() lets a group id sent as "3" match 3, as for folders (#586)
         if str(new_group_id or '') != str(tag.group_id or ''):
             # Admin of the new group, and each recording allows the group tag (#578, #579)
+            name_error = regroup_name_error(tag, new_group_id, tag.name)
+            if name_error:
+                return jsonify(api_error(name_error)), 400
             error_key = regroup_error(tag, new_group_id, current_user, has_recording_access)
             if error_key:
                 return jsonify(api_error(error_key)), 403
