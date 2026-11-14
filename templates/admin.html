@@ -280,10 +280,9 @@
                                     <!-- Presence: green inside the online window, red
                                          outside it, exact timestamp on hover. -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span v-if="user.last_seen_at" class="inline-flex items-center"
+                                        <span v-if="user.last_seen_at"
                                               :class="user.online ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-danger-strong)]'"
                                               :title="formatDate(user.last_seen_at)">
-                                            <i class="fas fa-circle mr-1" style="font-size: 0.4rem;" aria-hidden="true"></i>
                                             ${ relativeTime(user.last_seen_at) }
                                         </span>
                                         <span v-else class="text-[var(--text-muted)]">${ t('adminDashboard.never') }</span>
@@ -2999,10 +2998,10 @@ Summarization Instructions:
                 // exact timestamp stays available in the cell's title.
                 const relativeTime = (dateString) => {
                     const date = parseInstant(dateString);
-                    if (isNaN(date.getTime())) return formatDate(dateString);
-                    return window.i18n?.formatRelativeTime
-                        ? window.i18n.formatRelativeTime(date)
-                        : formatDate(dateString);
+                    if (isNaN(date.getTime()) || !window.i18n?.formatRelativeTime) {
+                        return formatDate(dateString);
+                    }
+                    return window.i18n.formatRelativeTime(date);
                 };
                 
                 // Settings that hold the mode of a named permission (#576)
