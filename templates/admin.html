@@ -1440,8 +1440,9 @@ Summarization Instructions:
                     <!-- Individual create_groups grant (#576) -->
                     <div v-if="!editingUser.is_admin" class="mb-4">
                         <label class="flex items-center cursor-pointer">
-                            <input v-model="editingUser.create_groups_granted" type="checkbox" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                            <span class="ml-2 text-sm text-[var(--text-secondary)]">${t('adminDashboard.canCreateGroups')}</span>
+                            <input v-model="editingUser.create_groups_granted" type="checkbox" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+                            <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.canCreateGroups')}</span>
                         </label>
                         <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.canCreateGroupsHelp')}</p>
                     </div>
@@ -1712,8 +1713,9 @@ Summarization Instructions:
                         <!-- Group create_groups grant (#576) -->
                         <div>
                             <label class="flex items-center cursor-pointer">
-                                <input v-model="teamForm.members_create_groups_granted" type="checkbox" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                                <span class="ml-2 text-sm text-[var(--text-secondary)]">${ t('groups.membersCanCreateGroups') }</span>
+                                <input v-model="teamForm.members_create_groups_granted" type="checkbox" class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+                                <span class="ml-3 text-sm text-[var(--text-secondary)]">${ t('groups.membersCanCreateGroups') }</span>
                             </label>
                             <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.canCreateGroupsHelp') }</p>
                         </div>
