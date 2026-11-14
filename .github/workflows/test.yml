@@ -255,11 +255,13 @@ jobs:
           for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:8899/login && break; sleep 2; done
           curl -fs -o /dev/null http://127.0.0.1:8899/login
 
-      - name: Browser smoke test
+      # The group permission test (#576) runs on the same instance after
+      # the smoke test; the settings it changes are restored afterwards.
+      - name: Browser smoke test and group permission test
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
-        run: pytest tests/e2e/test_browser_smoke.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py -q -p no:cacheprovider --noconftest -rs
 
       - name: Speakr log
         if: always()
