@@ -717,7 +717,6 @@ def record_user_presence():
     """
     if not request.endpoint or request.endpoint == 'static':
         return
-    from flask_login import current_user
     if not current_user.is_authenticated:
         return
     from src.services.presence import record_activity
@@ -838,6 +837,7 @@ def enforce_token_scopes():
     missing = required - api_token.scope_set
     if missing:
         return scope_error_response(missing, api_token)
+
 
 
 def _csrf_rejection_message(reason):
