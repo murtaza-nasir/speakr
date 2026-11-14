@@ -12,11 +12,10 @@ Two constants tune the feature:
     online. The admin table colours the value with it.
 
 ``WRITE_THROTTLE``
-    The shortest interval between two writes of the same account. Every
-    request from an active user inside the interval issues an UPDATE that
-    matches no row, which is cheaper than the write and keeps an idle tab from
-    writing once per poll. A user who makes no requests issues no statement
-    at all.
+    The shortest interval between two writes of the same account. Inside the
+    interval, a request from that account issues no statement: the value just
+    loaded with the request is recent enough, so there is nothing to write.
+    An account that makes no requests issues no statement at all.
 
 The value is persisted rather than kept in memory so that several workers and
 processes agree on it, and so that it survives a restart. SQLite runs in WAL
@@ -34,15 +33,14 @@ ONLINE_WINDOW = timedelta(minutes=5)
 WRITE_THROTTLE = timedelta(minutes=1)
 
 
-def is_online(last_seen_at, now=None):
+def is_online(last_seen_at):
     """True when ``last_seen_at`` is inside the online window. NULL is offline."""
     if last_seen_at is None:
         return False
-    now = now or datetime.utcnow()
-    return now - last_seen_at < ONLINE_WINDOW
+    return datetime.utcnow() - last_seen_at < ONLINE_WINDOW
 
 
-def record_activity(user, now=None):
+def record_activity(user):
     """Store the account's last activity, throttled to one write per minute.
 
     The UPDATE carries its own WHERE clause as well, so two workers that
@@ -53,7 +51,7 @@ def record_activity(user, now=None):
     if user is None or not getattr(user, 'is_authenticated', False):
         return False
 
-    now = now or datetime.utcnow()
+    now = datetime.utcnow()
     cutoff = now - WRITE_THROTTLE
     # The user row was just loaded for this request, so a recent value means
     # there is nothing to write and no statement needs to run at all.

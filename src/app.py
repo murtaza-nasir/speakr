@@ -705,6 +705,31 @@ app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
 
 @app.before_request
+def record_user_presence():
+    """Remember when the signed-in account was last active (admin user list).
+
+    Every authenticated request counts, whether it came from a browser session
+    or an API token, so this runs before the checks below that can refuse a
+    request (a CSRF rejection or a token scope the route does not allow). A
+    request that presents neither a session nor a token has no account to
+    record and is ignored, and so are static assets. Presence is best-effort,
+    so a database failure here never fails the request the user made.
+    """
+    if not request.endpoint or request.endpoint == 'static':
+        return
+    from flask_login import current_user
+    if not current_user.is_authenticated:
+        return
+    from src.services.presence import record_activity
+    try:
+        record_activity(current_user)
+    except Exception:
+        app.logger.warning('Could not record presence for user %s',
+                           getattr(current_user, 'id', '?'), exc_info=True)
+        db.session.rollback()
+
+
+@app.before_request
 def refuse_query_token_writes():
     """?token= is deprecated and read-only (#500).
 
@@ -813,30 +838,6 @@ def enforce_token_scopes():
     missing = required - api_token.scope_set
     if missing:
         return scope_error_response(missing, api_token)
-
-
-@app.before_request
-def record_user_presence():
-    """Remember when the signed-in account was last active (admin user list).
-
-    Every authenticated request counts, whether it came from a browser session
-    or an API token. Static assets do not, and neither does a request the
-    scope check above already refused: Flask runs the hooks in registration
-    order and stops at the first response. Presence is best-effort, so a
-    database failure here never fails the request the user actually made.
-    """
-    if not request.endpoint or request.endpoint == 'static':
-        return
-    from flask_login import current_user
-    if not current_user.is_authenticated:
-        return
-    from src.services.presence import record_activity
-    try:
-        record_activity(current_user)
-    except Exception:
-        app.logger.warning('Could not record presence for user %s',
-                           getattr(current_user, 'id', '?'), exc_info=True)
-        db.session.rollback()
 
 
 def _csrf_rejection_message(reason):
