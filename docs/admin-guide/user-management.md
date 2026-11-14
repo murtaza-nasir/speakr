@@ -10,6 +10,8 @@ When you open User Management, you're greeted with a comprehensive table showing
 
 The search bar at the top responds instantly as you type, filtering the table to help you find specific users quickly. This becomes invaluable as your user base grows beyond what fits on a single screen. The table updates in real-time when you make changes, so you always see the current state of your system.
 
+Each column header is also a button. Click it to sort the users by that column, and click it again to reverse the order; an arrow shows the active column and direction. Text columns start ascending, while counts and permissions start with the largest or enabled value first, and the table opens sorted by ID ascending as before. **Storage used** sorts on the bytes in use, the size shown before the quota. Sorting reorders only the rows on the current page: the search and the page controls keep working as they did, and the **Actions** column is not sortable.
+
 ## Adding New Users
 
 Creating a user account starts with clicking the Add User button in the top right corner. The modal that appears asks for the essentials - username, email address, and password. You'll also decide immediately whether this person needs admin privileges, though you can always change this later.
