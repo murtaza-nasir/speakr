@@ -1021,7 +1021,11 @@ def inject_group_admin_status():
     from src.models.organization import GroupMembership
 
     user_admin_groups = []
+    can_create_groups = False
     if current_user.is_authenticated:
+        # Users who may create groups reach the group management page (#576)
+        from src.api.groups import can_create_groups as _can_create_groups
+        can_create_groups = _can_create_groups(current_user)
         memberships = GroupMembership.query.filter_by(
             user_id=current_user.id,
             role='admin'
@@ -1034,6 +1038,7 @@ def inject_group_admin_status():
     return {
         'is_group_admin': bool(user_admin_groups),
         'user_admin_groups': user_admin_groups,
+        'can_create_groups': can_create_groups,
     }
 
 # Ensure upload and instance directories exist

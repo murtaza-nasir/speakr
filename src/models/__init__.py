@@ -23,6 +23,7 @@ from .recording import Recording, RecordingTombstone, TranscriptChunk
 from .external_ref import RecordingExternalRef
 from .sharing import Share, InternalShare, SharedRecordingState
 from .organization import Group, GroupMembership, Tag, RecordingTag, Folder
+from .permission import PermissionGrant
 from .events import Event
 from .templates import TranscriptTemplate
 from .naming_template import NamingTemplate
@@ -76,6 +77,7 @@ __all__ = [
     'Tag',
     'RecordingTag',
     'Folder',
+    'PermissionGrant',
     # Other models
     'Event',
     'TranscriptTemplate',

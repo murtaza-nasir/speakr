@@ -378,7 +378,7 @@ OPENAPI_SPEC = {
             "get": {
                 "tags": ["Users"],
                 "summary": "Get current user profile",
-                "description": "Returns the authenticated user's profile (id, username, email, name, role flags, preferences), group memberships, and storage (used_bytes, quota_bytes, available_bytes; quota_bytes is null when there is no quota).",
+                "description": "Returns the authenticated user's profile (id, username, email, name, role flags, can_share_publicly, can_create_groups, preferences), group memberships, and storage (used_bytes, quota_bytes, available_bytes; quota_bytes is null when there is no quota).",
                 "responses": {"200": {"description": "User profile object"}}
             }
         },
@@ -1191,6 +1191,12 @@ CAPABILITY_FEATURES = {
 # search: {'keyword': True, 'semantic': <Inquire on>} is filled in get_capabilities.
 
 
+def _can_create_groups(user):
+    """Whether the user may create groups (#576); imported late to avoid a cycle."""
+    from src.api.groups import can_create_groups
+    return can_create_groups(user)
+
+
 @api_v1_bp.route('/capabilities', methods=['GET'])
 @require_scope()
 @login_required
@@ -1202,6 +1208,7 @@ def get_capabilities():
     features['internal_sharing'] = bool(SystemSetting.get_setting('enable_internal_sharing', os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'))
     features['public_sharing'] = bool(SystemSetting.get_setting('enable_public_sharing', os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'))
     features['can_share_publicly'] = bool(features['public_sharing'] and getattr(current_user, 'can_share_publicly', True))
+    features['can_create_groups'] = _can_create_groups(current_user)
     from src.services.search_v1 import semantic_available
     features['search'] = {'keyword': True, 'semantic': semantic_available()}
     from src.auth.sso_access_tokens import is_enabled as sso_access_tokens_enabled
@@ -1278,6 +1285,8 @@ def get_current_user():
         'email_verified': bool(current_user.email_verified),
         'sso_provider': current_user.sso_provider,
         'can_share_publicly': bool(current_user.can_share_publicly),
+        # Whether this user may create groups (#576)
+        'can_create_groups': _can_create_groups(current_user),
         'preferences': {
             'ui_language': current_user.ui_language,
             'transcription_language': current_user.transcription_language,

@@ -145,7 +145,7 @@
                 <div v-show="activeTab === 'groups'">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${ t('groups.title') }</h3>
-                        <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <button v-if="canCreateGroups" @click="openCreateTeamModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
                             <i class="fas fa-plus mr-2"></i> ${ t('groups.createTeam') }
                         </button>
                     </div>
@@ -193,7 +193,7 @@
                                             <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" :title="t('tooltips.editTeam')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" :title="t('tooltips.deleteTeam')">
+                                            <button v-if="group.can_delete" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" :title="t('tooltips.deleteTeam')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -203,8 +203,8 @@
                         </div>
                         <div v-else class="p-8 text-center">
                             <i class="fas fa-users-slash text-4xl text-[var(--text-muted)] mb-3"></i>
-                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? t('adminDashboard.noGroupsAdmin') : t('adminDashboard.noGroupsCreated')"></p>
-                            <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="mt-4 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
+                            <p class="text-[var(--text-muted)]" v-text="canCreateGroups ? t('adminDashboard.noGroupsCreated') : t('adminDashboard.noGroupsAdmin')"></p>
+                            <button v-if="canCreateGroups" @click="openCreateTeamModal" class="mt-4 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
                                 <i class="fas fa-plus mr-2"></i> ${ t('adminDashboard.createFirstGroup') }
                             </button>
                         </div>
@@ -260,12 +260,11 @@
                         <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">${ t('groups.addMember') }</h4>
                         <div class="flex space-x-2">
                             <div class="flex-1">
-                                <select v-model="newMemberUserId" class="field w-full">
-                                    <option value="">${ t('groups.selectUser') }</option>
-                                    <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                                        ${ user.username } (${ user.email })
-                                    </option>
-                                </select>
+                                <!-- Exact username or email only: no user list for group admins (#576) -->
+                                <input v-model="newMemberIdentifier" type="text" class="field w-full"
+                                       autocomplete="off" @keydown.enter.prevent="addTeamMember"
+                                       :placeholder="t('groups.memberIdentifierPlaceholder')"
+                                       :aria-label="t('groups.memberIdentifierPlaceholder')">
                             </div>
                             <div>
                                 <select v-model="newMemberRole" class="field">
@@ -273,10 +272,11 @@
                                     <option value="admin">${ t('groups.roleAdmin') }</option>
                                 </select>
                             </div>
-                            <button @click="addTeamMember" :disabled="!newMemberUserId" class="btn btn--primary">
+                            <button @click="addTeamMember" :disabled="!newMemberIdentifier.trim()" class="btn btn--primary">
                                 <i class="fas fa-plus"></i> ${ t('unifiedShareModal.add') }
                             </button>
                         </div>
+                        <p class="text-xs text-[var(--text-muted)] mt-2">${ t('groups.memberIdentifierHelp') }</p>
                     </div>
 
                     <!-- Current Members -->
@@ -816,9 +816,10 @@
                 const teamError = ref('');
                 const teamMembers = ref([]);
                 const teamMemberError = ref('');
-                const newMemberUserId = ref('');
+                const newMemberIdentifier = ref('');
                 const newMemberRole = ref('member');
-                const availableUsers = ref([]);
+                // Set from GET /api/admin/groups (#576)
+                const canCreateGroups = ref(false);
                 const teamTags = ref([]);
                 const editingTeamTagId = ref(null);
                 const newTeamTag = ref({
@@ -864,6 +865,7 @@
                         if (!response.ok) throw new Error('Failed to load groups');
                         const data = await response.json();
                         groups.value = data.groups || [];
+                        canCreateGroups.value = !!data.can_create_groups;
                     } catch (error) {
                         console.error('Error loading teams:', error);
                     }
@@ -951,7 +953,7 @@
 
                 const openManageTeamModal = async (group) => {
                     currentTeam.value = group;
-                    newMemberUserId.value = '';
+                    newMemberIdentifier.value = '';
                     newMemberRole.value = 'member';
                     teamMemberError.value = '';
                     showManageTeamModal.value = true;
@@ -962,7 +964,7 @@
                     showManageTeamModal.value = false;
                     currentTeam.value = null;
                     teamMembers.value = [];
-                    newMemberUserId.value = '';
+                    newMemberIdentifier.value = '';
                     newMemberRole.value = 'member';
                     teamMemberError.value = '';
                 };
@@ -980,7 +982,8 @@
                 };
 
                 const addTeamMember = async () => {
-                    if (!newMemberUserId.value) return;
+                    const identifier = newMemberIdentifier.value.trim();
+                    if (!identifier) return;
 
                     teamMemberError.value = '';
                     try {
@@ -992,7 +995,7 @@
                             method: 'POST',
                             headers,
                             body: JSON.stringify({
-                                user_id: parseInt(newMemberUserId.value),
+                                identifier,
                                 role: newMemberRole.value
                             })
                         });
@@ -1002,7 +1005,7 @@
                             throw new Error(error.error || t('groups.addMemberFailed'));
                         }
 
-                        newMemberUserId.value = '';
+                        newMemberIdentifier.value = '';
                         newMemberRole.value = 'member';
                         await loadTeamMembers(currentTeam.value.id);
                         await loadGroups(); // Refresh to update member count
@@ -1548,9 +1551,9 @@
                     teamError,
                     teamMembers,
                     teamMemberError,
-                    newMemberUserId,
+                    newMemberIdentifier,
                     newMemberRole,
-                    availableUsers,
+                    canCreateGroups,
                     teamTags,
                     editingTeamTagId,
                     newTeamTag,

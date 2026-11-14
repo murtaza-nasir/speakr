@@ -13,7 +13,7 @@ Groups transform how groups work together in Speakr, enabling seamless collabora
 
 Groups in Speakr are organized groups of users who regularly need access to the same recordings. Unlike individual sharing where you manually grant access user-by-user, groups use smart tags that automatically share content with all group members when applied. This automation makes groups perfect for departments, project groups, or any collection of people who work together regularly.
 
-Your administrator creates and manages groups through the admin dashboard. Once you're added to a group, you gain access to group-specific tags and automatically receive recordings when teammates apply group tags. This creates a collaborative space where everyone stays informed without constant manual intervention.
+Your administrator creates and manages groups through the admin dashboard. Your administrator can also allow some or all users to create groups; see [Creating a Group](#creating-a-group). Once you're added to a group, you gain access to group-specific tags and automatically receive recordings when teammates apply group tags. This creates a collaborative space where everyone stays informed without constant manual intervention.
 
 Groups work alongside personal organization tools. Your personal tags remain private and independent, while group tags create shared context. You can combine both - use personal tags for your workflow organization and group tags for automatic collaboration, creating a system that serves both individual and group needs.
 
@@ -83,9 +83,15 @@ Use personal notes to track what matters to you without cluttering shared notes.
 
 Your group membership determines which group tags you can see and which recordings you automatically receive when teammates tag content. Group administrators can adjust membership as projects and roles evolve.
 
+### Creating a Group
+
+If your administrator allows you to create groups, **Group Management** appears in your account menu, and the **Create group** button appears on that page. Enter a name and an optional description. Group names are unique across the instance, ignoring case, so a name that is already in use is refused.
+
+You become the group admin of a group you create. You can rename it, add and remove members, change their roles, and manage its tags and folders. You can also delete the group while you are one of its group admins. Other group admins of the group cannot delete it; a site admin can.
+
 ### Joining a Group
 
-Group membership is managed by administrators through the admin dashboard. When you're added to a group, you immediately gain access to that group's tags and can apply them to your recordings. You also begin receiving recordings when teammates use group tags going forward.
+Group membership is managed by site admins and group admins. When you're added to a group, you immediately gain access to that group's tags and can apply them to your recordings. You also begin receiving recordings when teammates use group tags going forward.
 
 New group membership doesn't grant retroactive access. If a group has been using group tags before you joined, you won't automatically see older group-tagged recordings. This prevents information leakage and maintains security. Group admins can manually share historical recordings if needed.
 
@@ -105,13 +111,13 @@ If you're a group admin rather than a regular member, you have access to group m
 
 ### Accessing Group Management
 
-Group admins see a "Groups" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
+Group admins, and users who are allowed to create groups, see a "Group Management" link in their account menu, replacing the regular admin link. Clicking this takes you to a focused interface showing only groups you administer. You cannot see or manage other groups, maintaining security boundaries between different group administrators.
 
 The group management interface lets you view group members with their roles, add new members from your organization, change member roles between admin and regular member, remove members who no longer need access, and manage group tags including retention and protection settings.
 
 ### Managing Group Members
 
-Adding members to your group makes them immediately eligible to receive group-tagged recordings. Search for users by username, select their initial role, and add them. They gain access to group tags right away and will receive future group recordings.
+Adding members to your group makes them immediately eligible to receive group-tagged recordings. Enter the exact username or the exact email address of the person, select their initial role, and add them. The page does not list or search other users, so you need to know the username or email address of the person to add. They gain access to group tags right away and will receive future group recordings.
 
 Changing roles between member and admin adjusts capabilities. Promoting a member to admin grants them group management abilities, useful for distributing administrative workload. Demoting an admin to member removes management capabilities while preserving their group access.
 

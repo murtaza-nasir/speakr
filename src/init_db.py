@@ -947,6 +947,17 @@ def _run_migrations(app, engine):
         if create_index_if_not_exists(engine, 'ix_recording_session_kind', 'recording_session', 'kind'):
             app.logger.info("Added index on recording_session.kind")
 
+    with _migration_section(app, failures, "group creators and permission grants"):
+        # Who created each group (#576). Existing groups keep NULL: their
+        # creator is not known, so only site admins can delete them. The
+        # REFERENCES clause gives an upgraded database the same foreign key
+        # as a fresh one. The permission_grant table comes from create_all().
+        if add_column_if_not_exists(engine, 'group', 'created_by',
+                                    'INTEGER REFERENCES "user" (id) ON DELETE SET NULL'):
+            app.logger.info("Added created_by column to group table")
+        if create_index_if_not_exists(engine, 'ix_group_created_by', 'group', 'created_by'):
+            app.logger.info("Created index ix_group_created_by on group.created_by")
+
     with _migration_section(app, failures, "performance and uniqueness indexes"):
         # Add index on TranscriptChunk.speaker_name for performance
         # This improves speaker rename operations which update all chunks
@@ -1282,6 +1293,14 @@ def _run_migrations(app, engine):
                 setting_type='string'
             )
             app.logger.info("Initialized default_timezone setting")
+
+        # The mode of each named permission (#576). Admins only by default,
+        # so nothing changes until an admin chooses otherwise.
+        from src.auth.permissions import PERMISSIONS, MODE_ADMINS
+        for _key, _desc in PERMISSIONS.values():
+            if not SystemSetting.query.filter_by(key=_key).first():
+                SystemSetting.set_setting(key=_key, value=MODE_ADMINS, description=_desc, setting_type='string')
+                app.logger.info(f"Initialized {_key} setting")
 
         # Settings that can be changed in System Settings and fall back to
         # .env. The rows have no value, so the .env value applies until an

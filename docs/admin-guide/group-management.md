@@ -37,7 +37,23 @@ When disabled (`false`), usernames are hidden from the interface. Users must kno
 
 ## Creating and Managing Groups
 
-Groups are created and managed exclusively through the admin dashboard. Regular users cannot create groups, ensuring centralized control over organizational structure.
+Site admins create and manage groups in the admin dashboard. By default only site admins can create groups; the **Who can create groups** setting extends this to selected users and groups or to everyone.
+
+### Who Can Create Groups
+
+The **permission_create_groups** setting on the System Settings tab decides who can create groups:
+
+| Value | Who can create groups |
+|-------|-----------------------|
+| `admins` | Site admins only. This is the default. |
+| `selected` | Site admins, users with **Can create groups**, and the members of groups with **Members can create groups**. |
+| `everyone` | Every signed-in user. |
+
+**Can create groups** is a checkbox in the user edit dialog on the Users tab. **Members can create groups** is a checkbox in the group edit dialog on the Groups tab; it applies to every member of that group, whatever their role. Both checkboxes take effect only while the setting is `selected`. They are kept when the setting changes, so they can be prepared before the setting is switched to `selected`.
+
+A user who is allowed to create groups sees **Group Management** in the account menu and the **Create group** button on that page. Groups need internal sharing, so nobody can create a group while internal sharing is off. The server checks the permission on every request, whatever the interface shows.
+
+A user who is not a site admin and creates a group becomes its group admin. The user can then rename the group, manage its members, tags and folders, and delete it. Each group records its creator.
 
 ### Creating a Group
 
@@ -45,13 +61,17 @@ Navigate to the Admin Dashboard and select the Groups tab. Click "Create group" 
 
 The description field is optional but recommended. Use it to explain the group's purpose, which projects or departments it serves, or who should be members. Good descriptions help future administrators understand group organization and make membership decisions.
 
-Click "Create group" to finalize creation. The group appears in your groups list immediately, though it starts with no members. The creating user (you) doesn't automatically join - membership must be explicitly granted even for group creators.
+Click "Create group" to finalize creation. The group appears in your groups list immediately. A site admin who creates a group does not join it; membership must be granted explicitly. A user who is not a site admin joins the new group as its group admin.
+
+Group names are unique across the instance, ignoring case. A name that is already in use, such as "sales" when "Sales" exists, is refused with a message saying that a group with this name already exists.
 
 ### Managing Group Membership
 
 Click the users-cog icon next to any group to open the group management modal. This interface shows current members, their roles, and provides tools for adding or removing members.
 
-To add a member, select a user from the dropdown and choose their role:
+To add a member, search for a user and choose their role. A site admin searches all users by username or email address. A group admin who is not a site admin enters the exact username or the exact email address of the person to add; no list of users and no partial search is available to them, so the user directory is not exposed to group admins. The email address is compared without regard to case.
+
+The roles are:
 
 - **Member**: Can use group tags and access group-tagged recordings. Suitable for most group participants who need to collaborate on content.
 - **Admin**: All member capabilities plus the ability to manage group membership, create and delete group tags, and access group management features. Useful for group leads or managers who need administrative control.
@@ -78,6 +98,8 @@ Click the red user-times icon next to any member to remove them from the group. 
 A recording the owner shared with them by hand stays shared, as does one they still have through a tag or folder of another group.
 
 ### Deleting Groups
+
+A group can be deleted by a site admin, and by the user who created it while that user is still a group admin of it. Other group admins cannot delete the group. A group created before group creators were recorded has no recorded creator, so only a site admin can delete it. When the creator's account is deleted, the group stays and only site admins can delete it.
 
 Click the red trash icon next to a group to delete it entirely. A confirmation dialog prevents accidental deletion. Deleting a group:
 
