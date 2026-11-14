@@ -71,8 +71,8 @@ def queue_transcription_reprocess(recording, user, overrides=None):
         db.session.rollback()
         recording = db.session.get(type(recording), recording.id)
         recording.status = 'FAILED'
-        from src.tasks.processing import _sanitize_error_message
-        recording.error_message = _sanitize_error_message(f'Could not queue reprocessing: {e}')
+        from src.utils.error_formatting import sanitize_error_message
+        recording.error_message = sanitize_error_message(f'Could not queue reprocessing: {e}')
         db.session.commit()
         raise ReprocessError('reprocess_queue_failed', 503) from e
 

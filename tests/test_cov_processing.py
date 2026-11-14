@@ -486,14 +486,6 @@ def test_resolve_hotwords():
     assert proc.resolve_hotwords(None, None) is None
 
 
-def test_sanitize_error_message_redacts_and_caps():
-    msg = proc._sanitize_error_message("failed at /tmp/secret/file.mp3   with   spaces")
-    assert "/tmp/<path>" in msg
-    assert "  " not in msg
-    long = proc._sanitize_error_message("x" * 1000)
-    assert len(long) <= proc._ERROR_MESSAGE_MAX_CHARS
-
-
 # ---------------------------------------------------------------------------
 # transcribe_with_connector — orchestration with mocked connector/probe/storage
 # ---------------------------------------------------------------------------

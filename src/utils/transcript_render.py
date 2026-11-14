@@ -111,3 +111,15 @@ def render_transcription(transcription_text, template_format):
     if segments is None:
         return None
     return render_segments(segments, template_format or DEFAULT_TIMESTAMP_FORMAT)
+
+
+def resolve_timestamp_template_format(user, template_id):
+    """Return the format string of a user's transcript template, or None (#304).
+
+    Scoped to the user's own templates so one user can't reference another's.
+    """
+    if not template_id or user is None:
+        return None
+    from src.models import TranscriptTemplate
+    tpl = TranscriptTemplate.query.filter_by(id=template_id, user_id=user.id).first()
+    return tpl.template if tpl else None

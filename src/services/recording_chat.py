@@ -181,7 +181,8 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
     from src.models import SystemSetting
     from src.utils.assistant_name import assistant_name_of, assistant_identity
     from src.services.transcript_segments import canonical_segments
-    from src.tasks.processing import _resolve_timestamp_template_format, format_transcription_for_llm
+    from src.tasks.processing import format_transcription_for_llm
+    from src.utils.transcript_render import resolve_timestamp_template_format
 
     segments = None
     if with_sources:
@@ -194,7 +195,7 @@ def build_chat_messages(recording, user, message, history=None, with_sources=Fal
         transcript = format_transcription_for_llm(
             recording.transcription,
             include_timestamps=include_timestamps,
-            template_format=_resolve_timestamp_template_format(
+            template_format=resolve_timestamp_template_format(
                 user, user.chat_timestamp_template_id) if include_timestamps else None,
         )
     limit = SystemSetting.get_setting('transcript_length_limit', 30000)

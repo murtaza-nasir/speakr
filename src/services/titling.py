@@ -19,7 +19,7 @@ import os
 from flask import current_app
 
 from src.database import db
-from src.models import Folder
+from src.models import Folder, SystemSetting
 
 
 def resolve_naming_template(recording):
@@ -95,3 +95,15 @@ def compute_title(recording, *, raise_budget_errors=False):
         title = os.path.splitext(recording.original_filename)[0]
         current_app.logger.info(f"Using filename as title for recording {recording.id}: '{title}'")
     return title
+
+
+def user_title_instructions(user):
+    """The user, admin and shipped levels of the title precedence."""
+    from src.config.prompts import DEFAULT_TITLE_PROMPT
+
+    if user and user.title_prompt and user.title_prompt.strip():
+        return user.title_prompt.strip(), 'user'
+    admin_prompt = SystemSetting.get_setting('admin_default_title_prompt', None)
+    if admin_prompt and str(admin_prompt).strip():
+        return str(admin_prompt).strip(), 'admin'
+    return DEFAULT_TITLE_PROMPT, 'default'

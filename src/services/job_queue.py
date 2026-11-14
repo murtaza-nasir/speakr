@@ -589,8 +589,8 @@ class FairJobQueue:
                                 # The v1 API reports error_message for FAILED
                                 # recordings; this path never set it (#583).
                                 try:
-                                    from src.tasks.processing import _sanitize_error_message
-                                    recording.error_message = _sanitize_error_message(error_str)
+                                    from src.utils.error_formatting import sanitize_error_message
+                                    recording.error_message = sanitize_error_message(error_str)
                                 except Exception:
                                     recording.error_message = error_str[:1000]
 
