@@ -155,15 +155,21 @@ def test_admin_users_table_shows_last_activity(browser_page):
         cell = cells.nth(7)
         text = cell.inner_text().strip()
         assert text, f"/admin: empty Last activity cell in row {index}"
-        span = cell.locator("span").first
-        classes = span.get_attribute("class") or ""
+        value = cell.locator("time, span").first
+        classes = value.get_attribute("class") or ""
         if text == "Never":
+            assert value.evaluate("el => el.tagName") == "SPAN", (
+                "/admin: Never should not be a time element")
             assert "text-[var(--text-muted)]" in classes, (
                 f"/admin: Never is not neutral: {classes}")
-            assert not span.get_attribute("title"), (
+            assert not value.get_attribute("title"), (
                 "/admin: Never should not carry a timestamp title")
         else:
-            assert span.get_attribute("title"), (
+            assert value.evaluate("el => el.tagName") == "TIME", (
+                f"/admin: {text!r} is not a time element")
+            assert value.get_attribute("datetime"), (
+                f"/admin: {text!r} has no machine-readable datetime")
+            assert value.get_attribute("title"), (
                 f"/admin: {text!r} has no exact timestamp title")
             assert ("text-[var(--text-success-strong)]" in classes
                     or "text-[var(--text-danger-strong)]" in classes), (

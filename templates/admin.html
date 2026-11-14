@@ -280,11 +280,12 @@
                                     <!-- Presence: green inside the online window, red
                                          outside it, exact timestamp on hover. -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span v-if="user.last_seen_at"
+                                        <time v-if="user.last_seen_at"
+                                              :datetime="user.last_seen_at"
                                               :class="user.online ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-danger-strong)]'"
                                               :title="formatDate(user.last_seen_at)">
-                                            ${ relativeTime(user.last_seen_at) }
-                                        </span>
+                                            ${ formatRelativeTime(user.last_seen_at) }
+                                        </time>
                                         <span v-else class="text-[var(--text-muted)]">${ t('adminDashboard.never') }</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
@@ -2995,14 +2996,10 @@ Summarization Instructions:
                     return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
                 };
                 // Elapsed time for the "Last activity" cell ("2 min ago"). The
-                // exact timestamp stays available in the cell's title.
-                const relativeTime = (dateString) => {
-                    const date = parseInstant(dateString);
-                    if (isNaN(date.getTime()) || !window.i18n?.formatRelativeTime) {
-                        return formatDate(dateString);
-                    }
-                    return window.i18n.formatRelativeTime(date);
-                };
+                // exact timestamp stays available in the cell's title. Templates
+                // cannot reach window.i18n (Vue resolves names against the
+                // component), so the i18n call is exposed through setup.
+                const formatRelativeTime = (dateString) => i18nInstance.formatRelativeTime(dateString);
                 
                 // Settings that hold the mode of a named permission (#576)
                 const permissionModes = ['admins', 'selected', 'everyone'];
@@ -4394,7 +4391,7 @@ Summarization Instructions:
                     saveSettingValue,
                     updateSetting,
                     formatDate,
-                    relativeTime,
+                    formatRelativeTime,
                     parseInstant,
                     getSettingDescription,
                     permissionModes,
