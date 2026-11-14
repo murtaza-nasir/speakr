@@ -528,7 +528,8 @@
       "ssoApiScopesDesc": "Ámbitos separados por comas que tiene una solicitud con un token de acceso SSO. Un token canjeado solo puede tener estos ámbitos. Predeterminado: read.",
       "ssoApiClientNamesDesc": "Nombres visibles para los ID de cliente OIDC, como pares client_id=Nombre separados por comas o saltos de línea. El nombre de la aplicación se muestra en la configuración de la cuenta para un token creado mediante el canje de tokens SSO. Los pares mal formados se ignoran.",
       "ssoApiClientScopesDesc": "Límites de ámbitos por aplicación, como pares client_id=ámbito1 ámbito2 separados por comas o saltos de línea. Los ámbitos de un par se separan con espacios, + o |. Una aplicación de la lista recibe esos ámbitos dentro de sso_api_scopes; una aplicación que no está en la lista recibe sso_api_scopes. Una aplicación de la lista sin ningún ámbito conocido se rechaza. Los pares mal formados se ignoran.",
-      "ssoApiExchangeClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso pueden canjearse por tokens de API. Cada uno debe figurar también en sso_api_allowed_clients. Vacío significa que no se permite ningún canje. Añada solo aplicaciones que sincronizan en segundo plano, nunca un servidor de herramientas como Open WebUI."
+      "ssoApiExchangeClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso pueden canjearse por tokens de API. Cada uno debe figurar también en sso_api_allowed_clients. Vacío significa que no se permite ningún canje. Añada solo aplicaciones que sincronizan en segundo plano, nunca un servidor de herramientas como Open WebUI.",
+      "permissionCreateGroupsDesc": "Quién puede crear grupos: solo administradores, usuarios y grupos seleccionados, o todos. Los usuarios y grupos se seleccionan en sus diálogos de edición. Quien crea un grupo pasa a ser su administrador de grupo."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -774,7 +775,12 @@
     "transcriptLimitRecommendation": "Recomendado: 30000-50000 caracteres para la mayoría de los LLM",
     "scrollLeft": "Desplazar a la izquierda",
     "scrollRight": "Desplazar a la derecha",
-    "tabsLabel": "Pestañas"
+    "tabsLabel": "Pestañas",
+    "canCreateGroups": "Puede crear grupos",
+    "canCreateGroupsHelp": "Se aplica cuando \"Quién puede crear grupos\" (permission_create_groups) está configurado en usuarios y grupos seleccionados.",
+    "permissionModeAdmins": "Solo administradores",
+    "permissionModeSelected": "Usuarios y grupos seleccionados",
+    "permissionModeEveryone": "Todos"
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
@@ -1736,7 +1742,10 @@
     "protected": "Protegido",
     "customPromptConfigured": "Tiene su propio prompt",
     "noTeamFolders": "Aún no se han creado carpetas de grupo",
-    "roleAdmin": "Administrador"
+    "roleAdmin": "Administrador",
+    "membersCanCreateGroups": "Los miembros pueden crear grupos",
+    "memberIdentifierPlaceholder": "Nombre de usuario o correo electrónico exacto",
+    "memberIdentifierHelp": "Introduzca el nombre de usuario o la dirección de correo electrónico exactos de la persona que desea añadir."
   },
   "headerActions": {
     "deleteRecording": "Eliminar grabación",
@@ -3584,7 +3593,11 @@
       "sso_scopes_not_allowed": "scopes debe ser un subconjunto de los ámbitos permitidos para tokens de acceso SSO: {{allowed}}",
       "sso_exchange_not_allowed": "Esta aplicación no puede canjear un token de acceso SSO",
       "sso_registration_closed": "Ninguna cuenta de Speakr está vinculada a esta identidad SSO. Inicie sesión primero una vez en Speakr con SSO",
-      "sso_link_required": "Ya existe una cuenta de Speakr con este correo electrónico. Inicie sesión una vez en Speakr con SSO para vincularla"
+      "sso_link_required": "Ya existe una cuenta de Speakr con este correo electrónico. Inicie sesión una vez en Speakr con SSO para vincularla",
+      "group_create_not_permitted": "No tiene permiso para crear grupos.",
+      "group_delete_not_permitted": "Solo un administrador del sitio, o el creador del grupo mientras sea administrador de este, puede eliminar este grupo.",
+      "member_identifier_required": "Introduzca el nombre de usuario o la dirección de correo electrónico exactos de la persona que desea añadir.",
+      "invalid_permission_mode": "Valor no válido. Debe ser uno de: {{modes}}"
     },
     "apiMessage": {
       "accountUpdated": "Datos de la cuenta actualizados",

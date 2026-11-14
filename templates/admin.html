@@ -724,6 +724,7 @@
                             <span v-else-if="setting.key === 'asr_timeout_seconds'" class="text-[var(--text-primary)]">
                                 ${ Number(setting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')}
                             </span>
+                                            <span v-else-if="isPermissionModeSetting(setting.key)" class="text-[var(--text-primary)]">${ permissionModeLabel(setting.value) }</span>
                                             <span v-else-if="setting.value && setting.value.length > 80" class="text-[var(--text-muted)] italic">${ setting.value.substring(0, 80) }...</span>
                                             <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
                                         </div>
@@ -1436,6 +1437,14 @@ Summarization Instructions:
                             <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.adminUser')}</span>
                         </label>
                     </div>
+                    <!-- Individual create_groups grant (#576) -->
+                    <div v-if="!editingUser.is_admin" class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input v-model="editingUser.create_groups_granted" type="checkbox" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                            <span class="ml-2 text-sm text-[var(--text-secondary)]">${t('adminDashboard.canCreateGroups')}</span>
+                        </label>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.canCreateGroupsHelp')}</p>
+                    </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.monthlyTokenBudget')}</label>
                         <input v-model.number="editingUser.monthly_token_budget" type="number" min="100000" step="10000" :placeholder="t('adminDashboard.tokenBudgetPlaceholder')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -1641,6 +1650,14 @@ Summarization Instructions:
                             </label>
                         </div>
 
+                        <!-- Who holds a named permission (#576) -->
+                        <div v-else-if="isPermissionModeSetting(editingSetting.key)" class="space-y-2">
+                            <label v-for="mode in permissionModes" :key="mode" class="flex items-center cursor-pointer">
+                                <input v-model="settingNewValue" type="radio" :value="mode" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                                <span class="text-[var(--text-primary)]">${ permissionModeLabel(mode) }</span>
+                            </label>
+                        </div>
+
                         <!-- String type -->
                         <textarea v-else v-model="settingNewValue" rows="3"
                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
@@ -1691,6 +1708,14 @@ Summarization Instructions:
                             <textarea v-model="teamForm.description" rows="3"
                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
                                       :placeholder="t('groups.optionalDescription')"></textarea>
+                        </div>
+                        <!-- Group create_groups grant (#576) -->
+                        <div>
+                            <label class="flex items-center cursor-pointer">
+                                <input v-model="teamForm.members_create_groups_granted" type="checkbox" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                                <span class="ml-2 text-sm text-[var(--text-secondary)]">${ t('groups.membersCanCreateGroups') }</span>
+                            </label>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${ t('adminDashboard.canCreateGroupsHelp') }</p>
                         </div>
                         <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
                             ${ teamError }
@@ -2949,6 +2974,16 @@ Summarization Instructions:
                     return date.toLocaleDateString(window.i18n?.getIntlLocale?.()) + ' ' + date.toLocaleTimeString(window.i18n?.getIntlLocale?.());
                 };
                 
+                // Settings that hold the mode of a named permission (#576)
+                const permissionModes = ['admins', 'selected', 'everyone'];
+                const permissionModeKeys = {
+                    admins: 'adminDashboard.permissionModeAdmins',
+                    selected: 'adminDashboard.permissionModeSelected',
+                    everyone: 'adminDashboard.permissionModeEveryone'
+                };
+                const isPermissionModeSetting = (key) => key === 'permission_create_groups';
+                const permissionModeLabel = (mode) => permissionModeKeys[mode] ? t(permissionModeKeys[mode]) : (mode || '');
+
                 const getSettingDescription = (setting) => {
                     // Map setting keys to translation keys
                     const descriptionKeys = {
@@ -2971,7 +3006,8 @@ Summarization Instructions:
                         'sso_api_exchange_clients': 'adminDashboard.settings.ssoApiExchangeClientsDesc',
                         'sso_api_scopes': 'adminDashboard.settings.ssoApiScopesDesc',
                         'sso_api_client_names': 'adminDashboard.settings.ssoApiClientNamesDesc',
-                        'sso_api_client_scopes': 'adminDashboard.settings.ssoApiClientScopesDesc'
+                        'sso_api_client_scopes': 'adminDashboard.settings.ssoApiClientScopesDesc',
+                        'permission_create_groups': 'adminDashboard.settings.permissionCreateGroupsDesc'
                     };
                     
                     const key = descriptionKeys[setting.key];
@@ -3055,6 +3091,7 @@ Summarization Instructions:
                             username: editingUser.value.username,
                             email: editingUser.value.email,
                             is_admin: editingUser.value.is_admin,
+                            create_groups_granted: !!editingUser.value.create_groups_granted,
                             monthly_token_budget: editingUser.value.monthly_token_budget || null,
                             monthly_transcription_budget: transcriptionBudgetSeconds,
                             storage_quota_mb: editingUser.value.storage_quota_mb || null
@@ -3237,14 +3274,15 @@ Summarization Instructions:
 
                 const openCreateTeamModal = () => {
                     editingTeam.value = null;
-                    teamForm.value = { name: '', description: '' };
+                    teamForm.value = { name: '', description: '', members_create_groups_granted: false };
                     teamError.value = '';
                     showTeamModal.value = true;
                 };
 
                 const openEditTeamModal = (group) => {
                     editingTeam.value = group;
-                    teamForm.value = { name: group.name, description: group.description || '' };
+                    teamForm.value = { name: group.name, description: group.description || '',
+                                       members_create_groups_granted: !!group.members_create_groups_granted };
                     teamError.value = '';
                     showTeamModal.value = true;
                 };
@@ -4318,6 +4356,9 @@ Summarization Instructions:
                     formatDate,
                     parseInstant,
                     getSettingDescription,
+                    permissionModes,
+                    isPermissionModeSetting,
+                    permissionModeLabel,
                     addUser,
                     editUser,
                     updateUser,

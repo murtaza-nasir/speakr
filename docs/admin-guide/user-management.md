@@ -26,6 +26,8 @@ Beyond the admin role, Speakr offers granular per-user permissions that control 
 
 Use this permission to control external information sharing on a per-user basis. You might grant public sharing to executives, sales groups, or marketing staff who regularly communicate with external stakeholders, while restricting it for users handling sensitive internal data.
 
+**Group Creation Permission**: The **Can create groups** checkbox in the user edit dialog allows the user to create groups. It takes effect only while the **permission_create_groups** system setting is `selected`. The checkbox is hidden for site admins, who can always create groups. See [Who Can Create Groups](group-management.md#who-can-create-groups).
+
 ### Token Budget Management
 
 Control LLM costs by setting monthly token budgets for individual users. When creating or editing a user, you can specify a monthly token limit that restricts their AI usage.

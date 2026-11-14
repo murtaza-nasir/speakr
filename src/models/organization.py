@@ -21,6 +21,9 @@ class Group(db.Model):
     description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # The user who created the group (#576). NULL for groups created before
+    # this column existed and after the creator's account is deleted.
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
 
     # Relationships
     memberships = db.relationship('GroupMembership', back_populates='group', cascade='all, delete-orphan')
@@ -32,6 +35,7 @@ class Group(db.Model):
             'name': self.name,
             'description': self.description,
             'member_count': len(self.memberships),
+            'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

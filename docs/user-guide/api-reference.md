@@ -357,6 +357,7 @@ Returns the authenticated user's profile, preferences, and group memberships. Us
   "email_verified": true,
   "sso_provider": null,
   "can_share_publicly": true,
+  "can_create_groups": false,
   "preferences": {
     "ui_language": "en",
     "transcription_language": "en",
@@ -387,6 +388,8 @@ Returns the authenticated user's profile, preferences, and group memberships. Us
 ```
 
 `storage.quota_bytes` and `storage.available_bytes` are `null` when the user has no storage quota.
+
+`can_create_groups` is `true` when the user may create groups: a site admin, or a user the administrator allows under **Who can create groups** (see [Group Management](../admin-guide/group-management.md#who-can-create-groups)). It is `false` while internal sharing is off. `GET /api/v1/capabilities` reports the same value as `features.can_create_groups`. API v1 has no group endpoints; groups are created and managed in the web interface.
 
 ---
 

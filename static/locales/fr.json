@@ -528,7 +528,8 @@
       "ssoApiScopesDesc": "Portées séparées par des virgules dont dispose une requête avec un jeton d'accès SSO. Un jeton échangé ne peut avoir que ces portées. Par défaut : read.",
       "ssoApiClientNamesDesc": "Noms d'affichage des identifiants de client OIDC, sous forme de paires client_id=Nom séparées par des virgules ou des retours à la ligne. Le nom de l'application est affiché dans les paramètres du compte pour un jeton créé par l'échange de jetons SSO. Les paires mal formées sont ignorées.",
       "ssoApiClientScopesDesc": "Limites de portées par application, sous forme de paires client_id=portée1 portée2 séparées par des virgules ou des retours à la ligne. Les portées d'une paire sont séparées par des espaces, + ou |. Une application listée reçoit ces portées dans la limite de sso_api_scopes ; une application non listée reçoit sso_api_scopes. Une application listée sans aucune portée connue est refusée. Les paires mal formées sont ignorées.",
-      "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI."
+      "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI.",
+      "permissionCreateGroupsDesc": "Qui peut créer des groupes : administrateurs uniquement, utilisateurs et groupes sélectionnés, ou tout le monde. Les utilisateurs et les groupes sont sélectionnés dans leur fenêtre de modification. L’utilisateur qui crée un groupe en devient l’administrateur."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",
@@ -774,7 +775,12 @@
     "transcriptLimitRecommendation": "Recommandé : 30000-50000 caractères pour la plupart des LLM",
     "scrollLeft": "Défiler vers la gauche",
     "scrollRight": "Défiler vers la droite",
-    "tabsLabel": "Onglets"
+    "tabsLabel": "Onglets",
+    "canCreateGroups": "Peut créer des groupes",
+    "canCreateGroupsHelp": "S’applique lorsque « Qui peut créer des groupes » (permission_create_groups) est réglé sur les utilisateurs et groupes sélectionnés.",
+    "permissionModeAdmins": "Administrateurs uniquement",
+    "permissionModeSelected": "Utilisateurs et groupes sélectionnés",
+    "permissionModeEveryone": "Tout le monde"
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",
@@ -1736,7 +1742,10 @@
     "protected": "Protégé",
     "customPromptConfigured": "Possède sa propre invite",
     "noTeamFolders": "Aucun dossier de groupe créé pour le moment",
-    "roleAdmin": "Administrateur"
+    "roleAdmin": "Administrateur",
+    "membersCanCreateGroups": "Les membres peuvent créer des groupes",
+    "memberIdentifierPlaceholder": "Nom d’utilisateur ou adresse e-mail exacts",
+    "memberIdentifierHelp": "Saisissez le nom d’utilisateur ou l’adresse e-mail exacts de la personne à ajouter."
   },
   "headerActions": {
     "deleteRecording": "Supprimer l’enregistrement",
@@ -3584,7 +3593,11 @@
       "sso_scopes_not_allowed": "scopes doit être un sous-ensemble des portées autorisées pour les jetons d'accès SSO : {{allowed}}",
       "sso_exchange_not_allowed": "L'échange d'un jeton d'accès SSO n'est pas autorisé pour cette application",
       "sso_registration_closed": "Aucun compte Speakr n'est lié à cette identité SSO. Connectez-vous d'abord une fois à Speakr avec le SSO",
-      "sso_link_required": "Un compte Speakr avec cette adresse e-mail existe déjà. Connectez-vous une fois à Speakr avec le SSO pour le lier"
+      "sso_link_required": "Un compte Speakr avec cette adresse e-mail existe déjà. Connectez-vous une fois à Speakr avec le SSO pour le lier",
+      "group_create_not_permitted": "Vous n’êtes pas autorisé à créer des groupes.",
+      "group_delete_not_permitted": "Seul un administrateur du site, ou le créateur du groupe tant qu’il en est administrateur, peut supprimer ce groupe.",
+      "member_identifier_required": "Saisissez le nom d’utilisateur ou l’adresse e-mail exacts de la personne à ajouter.",
+      "invalid_permission_mode": "Valeur non valide. Valeurs possibles : {{modes}}"
     },
     "apiMessage": {
       "accountUpdated": "Informations du compte mises à jour",

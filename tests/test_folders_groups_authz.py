@@ -653,7 +653,8 @@ def test_add_member_requires_admin():
 
 
 def test_group_admin_can_add_member():
-    """A group admin (not site admin) CAN add members to their own group."""
+    """A group admin (not site admin) CAN add members to their own group,
+    by exact username (#576)."""
     with app.app_context():
         group_admin = _setup_user("gam_admin")
         target = _setup_user("gam_target")
@@ -666,7 +667,7 @@ def test_group_admin_can_add_member():
         with patch.object(groups_module, "ENABLE_INTERNAL_SHARING", True):
             resp = client.post(
                 f"/api/admin/groups/{group.id}/members",
-                json={"user_id": target.id, "role": "member"},
+                json={"identifier": target.username, "role": "member"},
             )
         assert resp.status_code == 201
         assert GroupMembership.query.filter_by(

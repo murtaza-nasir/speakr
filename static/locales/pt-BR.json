@@ -528,7 +528,8 @@
       "ssoApiScopesDesc": "Escopos separados por vírgula que uma requisição com um token de acesso SSO tem. Um token trocado só pode ter esses escopos. Padrão: read.",
       "ssoApiClientNamesDesc": "Nomes de exibição para IDs de cliente OIDC, como pares client_id=Nome separados por vírgulas ou quebras de linha. O nome do app é exibido nas configurações da conta para um token criado pela troca de tokens SSO. Pares malformados são ignorados.",
       "ssoApiClientScopesDesc": "Limites de escopos por app, como pares client_id=escopo1 escopo2 separados por vírgulas ou quebras de linha. Os escopos de um par são separados por espaços, + ou |. Um app listado recebe esses escopos dentro de sso_api_scopes; um app não listado recebe sso_api_scopes. Um app listado sem nenhum escopo conhecido é recusado. Pares malformados são ignorados.",
-      "ssoApiExchangeClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso podem ser trocados por tokens de API. Cada um também deve estar em sso_api_allowed_clients. Vazio significa que nenhuma troca é permitida. Adicione apenas apps que sincronizam em segundo plano, nunca um servidor de ferramentas como o Open WebUI."
+      "ssoApiExchangeClientsDesc": "IDs de cliente OIDC separados por vírgula cujos tokens de acesso podem ser trocados por tokens de API. Cada um também deve estar em sso_api_allowed_clients. Vazio significa que nenhuma troca é permitida. Adicione apenas apps que sincronizam em segundo plano, nunca um servidor de ferramentas como o Open WebUI.",
+      "permissionCreateGroupsDesc": "Quem pode criar grupos: somente administradores, usuários e grupos selecionados, ou todos. Usuários e grupos são selecionados nas respectivas janelas de edição. Quem cria um grupo se torna administrador do grupo."
     },
     "storageUsed": "Armazenamento usado",
     "summarizationInstructions": "Instruções de resumo",
@@ -774,7 +775,12 @@
     "transcriptLimitRecommendation": "Recomendado: 30000-50000 caracteres para a maioria dos LLMs",
     "scrollLeft": "Rolar para a esquerda",
     "scrollRight": "Rolar para a direita",
-    "tabsLabel": "Abas"
+    "tabsLabel": "Abas",
+    "canCreateGroups": "Pode criar grupos",
+    "canCreateGroupsHelp": "Vale quando \"Quem pode criar grupos\" (permission_create_groups) está definido como usuários e grupos selecionados.",
+    "permissionModeAdmins": "Somente administradores",
+    "permissionModeSelected": "Usuários e grupos selecionados",
+    "permissionModeEveryone": "Todos"
   },
   "apiTokens": {
     "activeTokens": "Tokens ativos",
@@ -1736,7 +1742,10 @@
     "protected": "Protegido",
     "customPromptConfigured": "Tem prompt próprio",
     "noTeamFolders": "Nenhuma pasta de grupo criada ainda",
-    "roleAdmin": "Administrador"
+    "roleAdmin": "Administrador",
+    "membersCanCreateGroups": "Os membros podem criar grupos",
+    "memberIdentifierPlaceholder": "Nome de usuário ou e-mail exato",
+    "memberIdentifierHelp": "Digite o nome de usuário ou o endereço de e-mail exato da pessoa a ser adicionada."
   },
   "headerActions": {
     "deleteRecording": "Excluir gravação",
@@ -3584,7 +3593,11 @@
       "sso_scopes_not_allowed": "scopes deve ser um subconjunto dos escopos permitidos para tokens de acesso SSO: {{allowed}}",
       "sso_exchange_not_allowed": "A troca de um token de acesso SSO não é permitida para este app",
       "sso_registration_closed": "Nenhuma conta do Speakr está vinculada a esta identidade SSO. Entre primeiro no Speakr uma vez com SSO",
-      "sso_link_required": "Já existe uma conta do Speakr com este e-mail. Entre no Speakr uma vez com SSO para vinculá-la"
+      "sso_link_required": "Já existe uma conta do Speakr com este e-mail. Entre no Speakr uma vez com SSO para vinculá-la",
+      "group_create_not_permitted": "Você não tem permissão para criar grupos.",
+      "group_delete_not_permitted": "Somente um administrador do site, ou o criador do grupo enquanto for administrador dele, pode excluir este grupo.",
+      "member_identifier_required": "Digite o nome de usuário ou o endereço de e-mail exato da pessoa a ser adicionada.",
+      "invalid_permission_mode": "Valor inválido. Deve ser um destes: {{modes}}"
     },
     "apiMessage": {
       "accountUpdated": "Dados da conta atualizados",

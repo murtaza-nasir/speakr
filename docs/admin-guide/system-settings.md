@@ -161,6 +161,10 @@ A value outside the list is refused on this page. In `.env`, a value outside the
 
 Existing accounts keep their position. Users who never picked a position keep the player at the bottom. Users change it under **Account → Preferences → Player position**.
 
+## Who Can Create Groups
+
+The **permission_create_groups** setting decides who can create groups: `admins` (site admins only, the default), `selected` (site admins, users with **Can create groups** and members of groups with **Members can create groups**) or `everyone`. Any other value is refused on this page. A user who is not a site admin and creates a group becomes its group admin. See [Who Can Create Groups](group-management.md#who-can-create-groups).
+
 ## What's New After Updates
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.

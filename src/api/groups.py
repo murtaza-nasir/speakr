@@ -17,6 +17,8 @@ from src.models import *
 from src.utils import *
 from src.utils.localization import api_error, translate
 from src.services.auto_shares import drop_stale_auto_shares, ensure_recipient_state
+from src.auth.permissions import CREATE_GROUPS, group_has_grant, set_group_grant, user_can
+from sqlalchemy.exc import IntegrityError
 
 # Create blueprint
 groups_bp = Blueprint('groups', __name__)
@@ -38,6 +40,59 @@ def init_groups_helpers(**kwargs):
     bcrypt = kwargs.get('bcrypt')
     csrf = kwargs.get('csrf')
     limiter = kwargs.get('limiter')
+
+
+def can_create_groups(user):
+    """Whether the user may create a group now (#576).
+
+    Groups need internal sharing, so nobody can create one while it is off.
+    """
+    return bool(_self.ENABLE_INTERNAL_SHARING) and user_can(user, CREATE_GROUPS)
+
+
+def _is_admin_of_group(user, group_id):
+    return GroupMembership.query.filter_by(
+        group_id=group_id, user_id=user.id, role='admin'
+    ).first() is not None
+
+
+def can_delete_group(user, group):
+    """Site admins, and the group's creator while still a group admin of it (#576)."""
+    if user.is_admin:
+        return True
+    return group.created_by is not None and group.created_by == user.id \
+        and _is_admin_of_group(user, group.id)
+
+
+def _group_payload(group):
+    """A group as the management pages show it to the current user."""
+    data = group.to_dict()
+    data['can_delete'] = can_delete_group(current_user, group)
+    if current_user.is_admin:
+        # Only a site admin grants permissions, so only a site admin sees them
+        data['members_create_groups_granted'] = group_has_grant(CREATE_GROUPS, group.id)
+    return data
+
+
+def _group_name_taken(name, exclude_id=None):
+    """Group names are unique instance-wide, ignoring case (#576)."""
+    query = Group.query.filter(db.func.lower(Group.name) == name.lower())
+    if exclude_id is not None:
+        query = query.filter(Group.id != exclude_id)
+    return query.first() is not None
+
+
+def _find_user_exactly(identifier):
+    """The account with exactly this username, or else this email address.
+
+    The email comparison ignores case. No partial match, so a group admin who
+    is not a site admin can add only a person whose username or email they
+    already know (#576).
+    """
+    user = User.query.filter(User.username == identifier).first()
+    if user is None and '@' in identifier:
+        user = User.query.filter(db.func.lower(User.email) == identifier.lower()).first()
+    return user
 
 
 # --- Routes ---
@@ -147,7 +202,8 @@ def get_teams():
         role='admin'
     ).first() is not None
 
-    if not current_user.is_admin and not is_group_admin:
+    may_create = can_create_groups(current_user)
+    if not current_user.is_admin and not is_group_admin and not may_create:
         return jsonify(api_error('admin_required')), 403
 
     # If full admin, return all groups; if group admin, return only their groups
@@ -161,38 +217,50 @@ def get_teams():
         ).all()
         groups = [m.group for m in group_memberships]
 
-    return jsonify({'groups': [group.to_dict() for group in groups]})
+    return jsonify({'groups': [_group_payload(group) for group in groups],
+                    'can_create_groups': may_create})
 
 
 
 @groups_bp.route('/api/admin/groups', methods=['POST'])
 @login_required
 def create_team():
-    """Create a new group (admin only)."""
-    if not current_user.is_admin:
-        return jsonify(api_error('admin_required')), 403
+    """Create a new group: site admins and users with create_groups (#576).
+
+    A creator who is not a site admin becomes the group's admin.
+    """
+    if not user_can(current_user, CREATE_GROUPS):
+        return jsonify(api_error('group_create_not_permitted')), 403
 
     if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('groups_require_internal_sharing')), 403
 
-    data = request.get_json()
-    name = data.get('name', '').strip()
-    description = data.get('description', '').strip()
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    description = (data.get('description') or '').strip()
 
     if not name:
         return jsonify(api_error('group_name_required')), 400
 
-    # Check if group name already exists
-    existing = Group.query.filter_by(name=name).first()
-    if existing:
+    if _group_name_taken(name):
         return jsonify(api_error('group_name_exists')), 400
 
-    group = Group(name=name, description=description)
+    group = Group(name=name, description=description, created_by=current_user.id)
     db.session.add(group)
-    db.session.commit()
+    if not current_user.is_admin:
+        group.memberships.append(GroupMembership(user_id=current_user.id, role='admin'))
+    try:
+        db.session.flush()
+        if current_user.is_admin and data.get('members_create_groups_granted'):
+            set_group_grant(CREATE_GROUPS, group.id, True)
+        db.session.commit()
+    except IntegrityError:
+        # Another request created the same name first
+        db.session.rollback()
+        return jsonify(api_error('group_name_exists')), 400
 
-    current_app.logger.info(f"Admin {current_user.username} created group: {name}")
-    return jsonify(group.to_dict()), 201
+    current_app.logger.info(f"User {current_user.username} created group: {name}")
+    return jsonify(_group_payload(group)), 201
 
 
 
@@ -214,7 +282,7 @@ def get_team(group_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    group_dict = group.to_dict()
+    group_dict = _group_payload(group)
     group_dict['members'] = [m.to_dict() for m in group.memberships]
     return jsonify(group_dict)
 
@@ -238,35 +306,47 @@ def update_team(group_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json()
-    name = data.get('name', '').strip()
-    description = data.get('description', '').strip()
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    description = (data.get('description') or '').strip()
+
+    if 'members_create_groups_granted' in data:
+        # A permission grant, which only a site admin may change (#576)
+        if not current_user.is_admin:
+            return jsonify(api_error('admin_required')), 403
+        set_group_grant(CREATE_GROUPS, group.id, bool(data['members_create_groups_granted']))
 
     if name:
         # Check if new name conflicts with another group
-        existing = Group.query.filter(Group.name == name, Group.id != group_id).first()
-        if existing:
+        if _group_name_taken(name, exclude_id=group_id):
             return jsonify(api_error('group_name_exists')), 400
         group.name = name
 
-    group.description = description
-    db.session.commit()
+    if 'description' in data:
+        group.description = description
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(api_error('group_name_exists')), 400
 
     current_app.logger.info(f"Admin {current_user.username} updated group: {group.name}")
-    return jsonify(group.to_dict())
+    return jsonify(_group_payload(group))
 
 
 
 @groups_bp.route('/api/admin/groups/<int:group_id>', methods=['DELETE'])
 @login_required
 def delete_team(group_id):
-    """Delete group (admin only)."""
-    if not current_user.is_admin:
-        return jsonify(api_error('admin_required')), 403
-
+    """Delete a group: site admins, or its creator while a group admin of it (#576)."""
     group = db.session.get(Group, group_id)
     if not group:
+        if not current_user.is_admin:
+            return jsonify(api_error('admin_required')), 403
         return jsonify(api_error('group_not_found')), 404
+
+    if not can_delete_group(current_user, group):
+        return jsonify(api_error('group_delete_not_permitted')), 403
 
     group_name = group.name
     member_ids = [m.user_id for m in group.memberships]
@@ -283,7 +363,7 @@ def delete_team(group_id):
     drop_stale_auto_shares(user_ids=member_ids)
     db.session.commit()
 
-    current_app.logger.info(f"Admin {current_user.username} deleted group: {group_name}")
+    current_app.logger.info(f"User {current_user.username} deleted group: {group_name}")
     return jsonify({'success': True})
 
 
@@ -309,19 +389,29 @@ def add_team_member(group_id):
     if not current_user.is_admin and not is_group_admin:
         return jsonify(api_error('admin_required')), 403
 
-    data = request.get_json()
-    user_id = data.get('user_id')
+    data = request.get_json(silent=True) or {}
     role = data.get('role', 'member')
-
-    if not user_id:
-        return jsonify(api_error('user_id_required')), 400
+    identifier = data.get('identifier')
+    identifier = identifier.strip() if isinstance(identifier, str) else ''
 
     if role not in ['admin', 'member']:
         return jsonify(api_error('invalid_group_role')), 400
 
-    user = db.session.get(User, user_id)
+    if current_user.is_admin and data.get('user_id'):
+        # Site admins pick from the full user list (/admin/users)
+        user = db.session.get(User, data.get('user_id'))
+    elif identifier:
+        user = _find_user_exactly(identifier)
+    elif current_user.is_admin:
+        return jsonify(api_error('user_id_required')), 400
+    else:
+        # A group admin who is not a site admin names the person exactly:
+        # no user ids, no listing and no partial search (#576)
+        return jsonify(api_error('member_identifier_required')), 400
+
     if not user:
         return jsonify(api_error('user_not_found')), 404
+    user_id = user.id
 
     # Check if already a member
     existing = GroupMembership.query.filter_by(group_id=group_id, user_id=user_id).first()

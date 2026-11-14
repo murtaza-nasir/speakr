@@ -24,6 +24,7 @@ from src.services.token_tracking import token_tracker
 from src.services.transcription_tracking import transcription_tracker
 from src.services.storage_quota import default_quota_mb
 from src.services import login_lock
+from src.auth.permissions import CREATE_GROUPS, set_user_grant, user_has_grant
 from src.config.startup import get_file_monitor_functions
 
 # Create blueprint
@@ -60,12 +61,15 @@ def admin():
         role='admin'
     ).first() is not None
 
-    if not current_user.is_admin and not is_team_admin:
+    from src.api.groups import can_create_groups
+    may_create_groups = not current_user.is_admin and can_create_groups(current_user)
+    if not current_user.is_admin and not is_team_admin and not may_create_groups:
         flash(translate('server.flash.adminAccessDenied'), 'danger')
         return redirect(url_for('recordings.index'))
 
-    # Redirect group admins to their dedicated management page
-    if is_team_admin and not current_user.is_admin:
+    # Redirect group admins, and users who may create groups, to their
+    # dedicated management page
+    if not current_user.is_admin:
         return redirect(url_for('admin.group_management'))
 
     # Full admins only get here
@@ -83,14 +87,16 @@ def admin():
 @admin_bp.route('/group-management', methods=['GET'])
 @login_required
 def group_management():
-    """Dedicated group management page for group admins (non-full admins)."""
+    """Dedicated group management page for group admins (non-full admins)
+    and for users who may create groups (#576)."""
     # Check if user is a group admin
     is_team_admin = GroupMembership.query.filter_by(
         user_id=current_user.id,
         role='admin'
     ).first() is not None
 
-    if not is_team_admin:
+    from src.api.groups import can_create_groups
+    if not is_team_admin and not current_user.is_admin and not can_create_groups(current_user):
         flash(translate('server.flash.groupAccessDenied'), 'danger')
         return redirect(url_for('recordings.index'))
 
@@ -206,6 +212,15 @@ def admin_get_users():
         counts_by_uid = {}
         sizes_by_uid = {}
 
+    # Individual create_groups grants, for the site admin's edit dialog (#576)
+    create_groups_ids = set()
+    if page_ids and current_user.is_admin:
+        create_groups_ids = {
+            row[0] for row in db.session.query(PermissionGrant.user_id).filter(
+                PermissionGrant.permission == CREATE_GROUPS,
+                PermissionGrant.user_id.in_(page_ids)).all()
+        }
+
     for user in users:
         recordings_count = counts_by_uid.get(user.id, 0)
         storage_used = sizes_by_uid.get(user.id) or 0
@@ -235,7 +250,8 @@ def admin_get_users():
             'current_transcription_usage': current_transcription_usage,
             'current_transcription_usage_minutes': current_transcription_usage // 60,
             'transcription_usage_percentage': round(transcription_usage_percentage, 1),
-            'login_locked': user.id in locked_ids
+            'login_locked': user.id in locked_ids,
+            'create_groups_granted': user.id in create_groups_ids
         })
 
     has_next = page < total_pages
@@ -383,6 +399,9 @@ def admin_update_user(user_id):
     if 'can_share_publicly' in data:
         user.can_share_publicly = data['can_share_publicly']
 
+    if 'create_groups_granted' in data:
+        set_user_grant(CREATE_GROUPS, user.id, bool(data['create_groups_granted']))
+
     if 'monthly_token_budget' in data:
         # Allow setting to None (unlimited) or a positive integer
         budget = data['monthly_token_budget']
@@ -429,6 +448,7 @@ def admin_update_user(user_id):
         'email': user.email,
         'is_admin': user.is_admin,
         'can_share_publicly': user.can_share_publicly,
+        'create_groups_granted': user_has_grant(CREATE_GROUPS, user.id),
         'recordings_count': recordings_count,
         'storage_used': storage_used,
         'storage_quota_mb': user.storage_quota_mb,
@@ -483,6 +503,9 @@ def admin_delete_user(user_id):
     InternalShare.query.filter(
         (InternalShare.owner_id == user_id) | (InternalShare.shared_with_user_id == user_id)
     ).delete()
+
+    # Groups the user created keep existing without a creator (#576)
+    Group.query.filter_by(created_by=user_id).update({'created_by': None}, synchronize_session=False)
 
     # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
@@ -1056,6 +1079,13 @@ def admin_update_setting():
     if key == 'deletion_mode':
         if value not in ('audio_only', 'full_recording'):
             return jsonify(api_error('invalid_deletion_mode_value')), 400
+
+    from src.auth.permissions import MODES as PERMISSION_MODES, permission_for_setting
+    if permission_for_setting(key):
+        value = str(value or '').strip().lower()
+        if value not in PERMISSION_MODES:
+            return jsonify(api_error('invalid_permission_mode', modes=', '.join(PERMISSION_MODES))), 400
+        setting_type = 'string'
 
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
