@@ -41,6 +41,20 @@ Setting this too low causes longer recordings to fail even when the transcriptio
 
 Your optimal timeout depends on your transcription service's performance and your users' recording lengths. Monitor processing times for successful transcriptions and set the timeout comfortably above your longest normal processing time. If you regularly process multi-hour recordings, you might need 3,600 seconds or more.
 
+## Asynchronous WhisperX Jobs
+
+The `asr_async_jobs` setting (`ASR_ASYNC_JOBS` in `.env`, default `true`) determines whether the asynchronous jobs API of the [WhisperX ASR service](whisperx-setup.md), version 0.5.0 and later, is used. With the setting on, the `capabilities` object of the service's `/health` answer is read before each transcription. When the jobs API is advertised, the audio is submitted as a job, the job is polled at the interval the service suggests, and the result is fetched and then deleted from the service. The synchronous `/asr` request is used for services without the jobs API, and for every service while the setting is off.
+
+With the jobs API in use:
+
+- The remote job id is saved on the processing job. A retry after a failed attempt or a restart of Speakr polls the same job. The audio is submitted again only when the service no longer knows the job or its result has expired.
+- Each submit has an `Idempotency-Key` header built from the recording, the processing job, the audio and the transcription parameters, so a repeated submit is attached to the job already running.
+- After a busy answer (503, or 413 with `Retry-After`), the submit is repeated once the `Retry-After` time has passed, within the ASR timeout.
+- After a job error marked as not retryable, such as `audio_too_long` or `file_too_large`, the recording is marked failed without a retry. Other job errors are retried up to `JOB_MAX_RETRIES`.
+- The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
+- When a recording or its processing job is deleted, the remote job is cancelled on the service.
+- The estimated progress of the job is stored on the processing job as `progress_done` out of a `progress_total` of 100, and is part of the job queue status.
+
 ## Login Lock
 
 Wrong passwords on the sign-in page are counted for each account and client address. After `login_max_failed_attempts` wrong passwords (default `5`) from one address for one account, password sign-in for that account from that address is refused for `login_lockout_minutes` (default `15`), even with the correct password. Sign-ins from other addresses are not affected: the owner can still sign in from elsewhere, and an account cannot be locked for everyone by repeated guesses from one address. To turn the lock off, set `login_max_failed_attempts` to `0`.
@@ -178,6 +192,7 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | Setting | Variable in `.env` |
 |---|---|
 | `allow_registration` | `ALLOW_REGISTRATION` |
+| `asr_async_jobs` | `ASR_ASYNC_JOBS` |
 | `default_audio_player_position` | `DEFAULT_AUDIO_PLAYER_POSITION` |
 | `default_color_scheme` | `DEFAULT_COLOR_SCHEME` |
 | `default_ui_theme` | `DEFAULT_UI_THEME` |

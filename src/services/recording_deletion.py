@@ -58,6 +58,16 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
     RecordingSession.query.filter_by(finalized_recording_id=recording_id).update(
         {'finalized_recording_id': None}, synchronize_session=False)
 
+    # A transcription still running on the WhisperX ASR service is cancelled
+    # there, and a finished one has its stored transcript removed.
+    try:
+        from src.services.transcription.provider_tasks import cancel_remote_tasks
+        cancel_remote_tasks(ProcessingJob.query.filter(
+            ProcessingJob.recording_id == recording_id,
+            ProcessingJob.provider_task.isnot(None)).all())
+    except Exception as e:
+        current_app.logger.warning(f"Cancelling ASR jobs of recording {recording_id} failed: {e}")
+
     snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
     jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
     if snippets or jobs:

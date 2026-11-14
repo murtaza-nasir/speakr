@@ -95,6 +95,13 @@ class TranscriptionRequest:
     # submitting the audio again. Both are None outside a processing job.
     provider_task: Optional[Dict[str, Any]] = None
     save_provider_task: Optional[Callable[[Optional[Dict[str, Any]]], None]] = None
+    # A stable name for this processing job and these audio bytes, the same
+    # on every retry of the job, for services that accept an idempotency key.
+    # None outside a processing job.
+    task_key: Optional[str] = None
+    # Stores (done, total) as the progress of the running processing job.
+    # None outside a processing job.
+    report_progress: Optional[Callable[[int, int], None]] = None
 
 
 @dataclass
