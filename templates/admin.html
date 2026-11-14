@@ -248,7 +248,13 @@
                         <table class="min-w-full divide-y divide-[var(--border-primary)]">
                             <thead class="bg-[var(--bg-tertiary)]">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.id')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'id' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('id')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.id')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'id' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
                                         :aria-sort="userSort.key === 'username' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
                                         <button type="button" @click="sortUserListBy('username')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
@@ -256,11 +262,41 @@
                                             <i class="fas text-[10px]" :class="userSort.key === 'username' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
                                         </button>
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.email')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.admin')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.publicShare')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.recordings')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.storageUsed')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'email' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('email')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.email')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'email' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'is_admin' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('is_admin')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.admin')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'is_admin' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'can_share_publicly' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('can_share_publicly')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.publicShare')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'can_share_publicly' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'recordings_count' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('recordings_count')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.recordings')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'recordings_count' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
+                                        :aria-sort="adminUsersSort.key === 'storage_used' ? (adminUsersSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
+                                        <button type="button" @click="sortAdminUsersBy('storage_used')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
+                                            <span>${t('adminDashboard.storageUsed')}</span>
+                                            <i class="fas text-[10px]" aria-hidden="true" :class="adminUsersSort.key === 'storage_used' ? (adminUsersSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
+                                        </button>
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider"
                                         :aria-sort="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'ascending' : 'descending') : 'none'">
                                         <button type="button" @click="sortUserListBy('last_active')" class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--text-primary)]">
@@ -268,11 +304,13 @@
                                             <i class="fas text-[10px]" :class="userSort.key === 'last_active' ? (userSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort opacity-40'"></i>
                                         </button>
                                     </th>
+                                        </button>
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
-                                <tr v-for="user in users" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
+                                <tr v-for="user in sortedUsers" :key="user.id" class="hover:bg-[var(--bg-tertiary)]">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.id }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">${ user.username }<i v-if="user.login_locked" class="fas fa-lock ml-2 text-[var(--text-warning-strong)]" :title="t('adminDashboard.loginLocked')" :aria-label="t('adminDashboard.loginLocked')"></i></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ user.email }</td>
@@ -2279,6 +2317,9 @@ Summarization Instructions:
                 const isTeamAdminOnly = ref({% if is_group_admin_only %}true{% else %}false{% endif %});
                 const activeTab = ref({% if is_group_admin_only %}'teams'{% else %}'users'{% endif %});
                 const users = ref([]);
+                // User Management sorts only the loaded page; ID ascending is
+                // the listing's own order, so it stays the first-load default.
+                const adminUsersSort = ref({ key: 'id', dir: 1 });
                 const stats = ref({
                     total_users: 0,
                     total_recordings: 0,
@@ -2626,6 +2667,7 @@ Summarization Instructions:
                 // used first, then the least recently used), the next reverses.
                 const userSort = ref({ key: null, dir: 1 });
                 const sortUserListBy = (key) => {
+                    adminUsersSort.value = { key: null, dir: 1 };
                     userSort.value = userSort.value.key === key
                         ? { key, dir: -userSort.value.dir }
                         : { key, dir: 1 };
@@ -2909,6 +2951,42 @@ Summarization Instructions:
                         if (x == null) return 1;
                         if (y == null) return -1;
                         return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
+                    });
+                });
+                // User Management columns. Keys are the fields of the
+                // /admin/users listing, so sorting needs no extra request.
+                const adminUserColumns = computed(() => [
+                    { key: 'id', label: _t('adminDashboard.id') },
+                    { key: 'username', label: _t('adminDashboard.username') },
+                    { key: 'email', label: _t('adminDashboard.email') },
+                    { key: 'is_admin', label: _t('adminDashboard.admin') },
+                    { key: 'can_share_publicly', label: _t('adminDashboard.publicShare') },
+                    { key: 'recordings_count', label: _t('adminDashboard.recordings') },
+                    { key: 'storage_used', label: _t('adminDashboard.storageUsed') },
+                ]);
+                const ADMIN_USER_TEXT_SORT_KEYS = ['username', 'email'];
+                // Text columns open ascending; counts and flags open with the
+                // largest or true value first. ID opens ascending to match the
+                // listing order, and re-selecting a column reverses its sort.
+                const sortAdminUsersBy = (key) => {
+                    userSort.value = { key: null, dir: 1 };
+                    adminUsersSort.value = adminUsersSort.value.key === key
+                        ? { key, dir: -adminUsersSort.value.dir }
+                        : { key, dir: (key === 'id' || ADMIN_USER_TEXT_SORT_KEYS.includes(key)) ? 1 : -1 };
+                };
+                const sortedUsers = computed(() => {
+                    const rows = [...users.value];
+                    const { key, dir } = adminUsersSort.value;
+                    if (!key) return rows;
+                    return rows.sort((a, b) => {
+                        const x = a[key], y = b[key];
+                        if (x == null && y == null) return 0;
+                        if (x == null) return 1;
+                        if (y == null) return -1;
+                        if (typeof x === 'string' && typeof y === 'string') {
+                            return x.localeCompare(y, window.i18n?.getIntlLocale?.() || undefined) * dir;
+                        }
+                        return (Number(x) - Number(y)) * dir;
                     });
                 });
                 // Storage used against a quota in MB, as a percentage (#413).
@@ -4603,6 +4681,7 @@ Summarization Instructions:
                     voiceEmbedding, voiceEmbeddingBusy, checkVoiceEmbedding, rebaselineVoiceEmbedding,
                     statsDays, overview, overviewLoading, overviewCards, statusRows,
                     userColumns, statsSort, sortUsersBy, sortedStatsUsers, budgetBarClass, storagePct, storagePctClass,
+                    adminUserColumns, adminUsersSort, sortAdminUsersBy, sortedUsers,
                     formatCompact, formatCost, formatModelCost, formatSeconds, formatDay,
                     settings,
                     displayedSettings,

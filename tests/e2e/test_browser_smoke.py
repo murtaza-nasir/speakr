@@ -125,6 +125,46 @@ def test_settings_pages(browser_page, path):
     _check_common(page, problems, path)
 
 
+def _admin_users_table(page):
+    """The User Management table (the only one with a Public share column)."""
+    table = page.locator("table").filter(
+        has=page.locator("th", has_text="Public share")).first
+    table.locator("th", has_text="Public share").first.wait_for(
+        state="visible", timeout=15000)
+    return table
+
+
+def _admin_user_rows(table):
+    """Visible data rows as lists of cell text (the empty-state row is skipped)."""
+    rows = table.locator("tbody tr")
+    headers = table.locator("thead th")
+    out = []
+    for index in range(rows.count()):
+        cells = rows.nth(index).locator("td")
+        if cells.count() < headers.count():  # the empty-state or loading row
+            continue
+        out.append([cells.nth(i).inner_text().strip() for i in range(cells.count())])
+    return out
+
+
+def _file_size_bytes(text):
+    """The primary size in a storage cell ("12.3 MB / 5 GB") in bytes."""
+    match = re.match(r"([\d.,]+)\s*(B|KB|MB|GB|TB)", text.split("/")[0].strip())
+    assert match, f"unparsable storage cell: {text!r}"
+    number = float(match.group(1).replace(",", ""))
+    return number * 1024 ** ("B KB MB GB TB".split().index(match.group(2)))
+
+
+def _assert_sorted(page, values, ascending, column):
+    if column in ("username", "email"):
+        expected = page.evaluate(
+            "([vals, asc]) => [...vals].sort((a, b) => asc ? a.localeCompare(b) : b.localeCompare(a))",
+            [values, ascending])
+    else:
+        expected = sorted(values, reverse=not ascending)
+    assert values == expected, f"/admin: {column} not sorted {'ascending' if ascending else 'descending'}: {values}"
+
+
 def test_admin_users_table_shows_last_active(browser_page):
     """The User Management table renders the Last active column from the listing.
 
@@ -197,6 +237,79 @@ def test_admin_users_table_shows_last_active(browser_page):
     page.wait_for_function(
         "el => el.getAttribute('aria-sort') === 'descending'", arg=header.element_handle())
     assert check_rows(), "/admin: no user rows after sorting"
+
+
+def test_admin_users_table_sorting(browser_page):
+    """Every data column sorts the loaded page and reports its direction.
+
+    User Management paginates and searches on the server; the sort is a
+    client-side reorder of the rows already loaded, so this test reads the
+    rendered cells, clicks a header, and checks the same rows come back in
+    the expected order. The direction opens with text ascending and counts
+    or flags descending, and re-selecting the header reverses it.
+    """
+    page, problems = browser_page
+    _open(page, problems, "/admin")
+
+    table = _admin_users_table(page)
+    headers = table.locator("thead th")
+    labels = [h.strip().lower() for h in headers.all_inner_texts()]
+    assert labels[-1] == "actions", f"/admin: unexpected last column: {labels}"
+    index = {label: i for i, label in enumerate(labels)}
+    expected_columns = ["id", "username", "email", "admin", "public share",
+                        "recordings", "storage used"]
+    assert labels[:len(expected_columns)] == expected_columns, (
+        f"/admin: unexpected User Management columns: {labels}")
+
+    actions_header = headers.nth(index["actions"])
+    assert actions_header.locator("button").count() == 0, (
+        "/admin: the Actions column should not be sortable")
+
+    def column_values(column):
+        rows = _admin_user_rows(table)
+        assert rows, "/admin: no user rows to sort"
+        i = index[column]
+        if column == "id":
+            return [int(r[i]) for r in rows]
+        if column == "recordings":
+            return [int(r[i]) for r in rows]
+        if column == "storage used":
+            return [_file_size_bytes(r[i]) for r in rows]
+        if column == "admin":
+            return [r[i].lower() == "yes" for r in rows]
+        if column == "public share":
+            return [r[i].lower() == "allowed" for r in rows]
+        return [r[i] for r in rows]  # raw text; the browser collates it
+
+    def assert_direction(column, ascending):
+        actual = headers.nth(index[column]).get_attribute("aria-sort")
+        expected = "ascending" if ascending else "descending"
+        assert actual == expected, f"/admin: {column} aria-sort is {actual!r}, wanted {expected!r}"
+        for other in labels[:-1]:
+            if other != column:
+                assert headers.nth(index[other]).get_attribute("aria-sort") == "none", (
+                    f"/admin: {other} kept a sort indicator while {column} is sorted")
+        _assert_sorted(page, column_values(column), ascending, column)
+
+    # First load keeps the listing order: ID ascending.
+    assert_direction("id", True)
+
+    for column, first_ascending in (
+        ("username", True),
+        ("email", True),
+        ("admin", False),
+        ("public share", False),
+        ("recordings", False),
+        ("storage used", False),
+        ("id", True),  # ID keeps its ascending default when selected again
+    ):
+        headers.nth(index[column]).locator("button").click()
+        page.wait_for_timeout(300)
+        assert_direction(column, first_ascending)
+        headers.nth(index[column]).locator("button").click()
+        page.wait_for_timeout(300)
+        assert_direction(column, not first_ascending)
+
     _check_common(page, problems, "/admin")
 
 
