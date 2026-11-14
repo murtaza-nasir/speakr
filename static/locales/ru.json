@@ -458,6 +458,7 @@
     "settingFromEnv": "Задано в .env",
     "deletionModeAudioOnly": "Только аудио",
     "deletionModeFullRecording": "Вся запись",
+    "lastActivity": "Последняя активность",
     "lastUpdated": "Последнее обновление",
     "maxFileSizeHelp": "Максимальный размер файла в мегабайтах (1-10000 МБ)",
     "megabytes": "МБ",

@@ -458,6 +458,7 @@
     "settingFromEnv": "在 .env 中设置",
     "deletionModeAudioOnly": "仅音频",
     "deletionModeFullRecording": "整个录音",
+    "lastActivity": "最近活动",
     "lastUpdated": "最后更新",
     "maxFileSizeHelp": "最大文件大小（兆字节）（1-10000 MB）",
     "megabytes": "MB",

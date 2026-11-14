@@ -458,6 +458,7 @@
     "settingFromEnv": "Definido no .env",
     "deletionModeAudioOnly": "Somente áudio",
     "deletionModeFullRecording": "Gravação completa",
+    "lastActivity": "Última atividade",
     "lastUpdated": "Última atualização",
     "maxFileSizeHelp": "Tamanho máximo do arquivo em megabytes (1-10.000 MB)",
     "megabytes": "MB",
