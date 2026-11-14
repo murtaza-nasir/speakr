@@ -13,6 +13,8 @@ import { useSharing } from './modules/composables/sharing.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
 import { useFindReplace } from './modules/composables/find-replace.js';
+import { useAsrEditor } from './modules/composables/asr-editor.js';
+import { createAsrEditorPane } from './modules/asr-editor/pane.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
@@ -787,11 +789,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
             const showAsrEditorModal = ref(false);
-            // Placeholder refs — the actual hydration Sets are wired up
-            // later (after speakerModalTranscriptRef and asrEditorRef are
-            // declared). Declared here so the rest of this state block
-            // can reference them without temporal-dead-zone errors.
-            const asrEditorHydratedRows = ref(new Set());
+            // Segment editor: the open editing session (model and pane API,
+            // not reactive: see modules/composables/asr-editor.js), whether
+            // it has unsaved changes, a counter of its changes for find and
+            // replace, and whether a save is under way.
+            const asrEditorSession = Vue.shallowRef(null);
+            const asrEditorDirty = ref(false);
+            const asrEditorRev = ref(0);
+            const asrEditorSaving = ref(false);
             // Regenerate summary dialog (#584). prompt is the textarea; base is
             // the start-from entry it began as; resolvedPrompt is the viewer's
             // resolved prompt, which an unchanged owner run leaves to the server.
@@ -1631,11 +1636,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nextTick(() => { chatLayoutTick.value += 1; });
             });
 
-            // --- Dropdown Positioning ---
-            const dropdownPositions = ref({});
-            // Single-ref dropdown tracking for ASR editor (performance optimization)
-            const openAsrDropdownIndex = ref(null);
-
             // --- App Configuration ---
             const useAsrEndpoint = ref(false);
             const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
@@ -1670,22 +1670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Virtual Scroll Container Refs ---
             const speakerModalTranscriptRef = ref(null);
             const mainTranscriptRef = ref(null);
-            const asrEditorRef = ref(null);
             const asrEditorSaveFlash = ref(false);  // Brief "Saved" indicator after Save (without close)
-            const asrEditorHighlightIndex = ref(null);  // Segment index briefly highlighted after double-click open
-
-            // Lazy-hydration was previously wired for both modals but
-            // (a) the ASR editor went back to virtual scrolling (uniform
-            // row heights make fixed-itemHeight the right tool) and
-            // (b) the speaker modal hydration scheme made the speaker
-            // highlight glow intermittent because the hydrated/placeholder
-            // template split interacted badly with v-memo as rows
-            // promoted/demoted mid-selection. Speaker modal now mounts
-            // all rows in full; content-visibility: auto on .speaker-segment
-            // still skips paint for off-screen rows so most of the perf
-            // win is preserved. Keep the hydrate stubs as no-ops in case
-            // any leftover template reference still calls them.
-            const hydrateAsrEditorRow = () => {};
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
@@ -2013,7 +1998,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
                 editingSegments, findReplace, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
@@ -2072,8 +2057,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 leftColumnWidth, rightColumnWidth, isResizing,
 
                 // Dropdown Positioning
-                dropdownPositions,
-                openAsrDropdownIndex,
 
                 // App Config
                 useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI,
@@ -2087,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 reprocessingPolls,
 
                 // Virtual Scroll
-                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef, asrEditorSaveFlash, asrEditorHighlightIndex
+                speakerModalTranscriptRef, mainTranscriptRef, asrEditorSaveFlash
             };
 
             // =========================================================================
@@ -2834,6 +2817,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const modalsComposable = useModals(state, utils);
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
+            const asrEditorComposable = useAsrEditor(state, utils, {
+                saveTranscriptionContent: transcriptionComposable.saveTranscriptionContent
+            });
+            // The transcript's Edit button opens the segment editor through utils.
+            utils.openAsrEditorModal = asrEditorComposable.openAsrEditorModal;
             const findReplaceComposable = useFindReplace(state, utils);
             // The recording chat (shared AssistantChat): it reads the
             // transcript's error state to disable its composer.
@@ -2913,31 +2901,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overscan: 5
             });
 
-            // Virtual scroll for ASR editor modal (uses editingSegments)
-            // Rows grow to show their whole sentence, so the editor measures
-            // them (44px is only the estimate for rows not yet rendered).
-            const sizeAsrEditorTextareas = (rows) => {
-                rows.forEach((row) => {
-                    const box = row.querySelector('textarea');
-                    if (!box) return;
-                    const key = box.value.length + ':' + box.clientWidth;
-                    if (box.dataset.sizedFor === key) return;
-                    box.style.height = 'auto';
-                    box.style.height = box.scrollHeight + 'px';
-                    box.dataset.sizedFor = key;
-                });
-            };
-            const asrEditorVirtualScroll = useVirtualScroll({
-                items: editingSegments,
-                itemHeight: 44,
-                containerRef: asrEditorRef,
-                overscan: 10,
-                variableHeight: true,
-                rowSelector: 'tr[data-segment-index]',
-                rowIndexAttr: 'segmentIndex',
-                beforeMeasure: sizeAsrEditorTextareas
-            });
-
             // Scroll a transcript segment into view by index.
             //
             // The speaker modal no longer uses virtual scrolling — see the
@@ -3001,16 +2964,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Add scrollToSegmentIndex to utils for composables that need it
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
-            utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
-            // Scroll to the target row but offset upward so the row lands
-            // comfortably below the sticky table header (~2 rows of clearance)
-            // instead of being clipped at the top.
-            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
-            utils.setAsrEditorScrollTop = (scrollTop) => {
-                if (asrEditorRef.value) {
-                    asrEditorRef.value.scrollTop = scrollTop;
-                }
-            };
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
             const speakerModalComposable = useSpeakerModal(state, utils);
@@ -4747,7 +4700,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 filteredSpeakersForFilter,
                 selectedTags,
                 colorSchemes,
-                dropdownPositions,
                 toasts,
                 datePresetOptions,
                 languageOptions,
@@ -4841,16 +4793,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Virtual scroll
                 speakerModalTranscriptRef,
                 mainTranscriptRef,
-                asrEditorRef,
                 asrEditorSaveFlash,
+                asrEditorSession,
+                asrEditorDirty,
+                asrEditorSaving,
                 mainTranscriptVisibleSegments: mainTranscriptVirtualScroll.visibleItems,
                 mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
                 mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
                 onMainTranscriptScroll: mainTranscriptVirtualScroll.onScroll,
-                asrEditorVisibleSegments: asrEditorVirtualScroll.visibleItems,
-                asrEditorSpacerBefore: asrEditorVirtualScroll.spacerBefore,
-                asrEditorSpacerAfter: asrEditorVirtualScroll.spacerAfter,
-                onAsrEditorScroll: asrEditorVirtualScroll.onScroll,
                 scrollToSegmentIndex,
                 getVirtualItemKey,
 
@@ -4874,6 +4824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...sharingComposable,
                 ...reprocessComposable,
                 ...transcriptionComposable,
+                ...asrEditorComposable,
                 ...findReplaceComposable,
                 ...speakersComposable,
                 ...speakerModalComposable,
@@ -4914,6 +4865,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return window.i18n.tc(key, count, params);
     });
+
+    // The transcript pane of the segment editor (templates/components/asr-editor-pane.html).
+    app.component('asr-editor-pane', createAsrEditorPane());
 
     app.mount('#app');
 });

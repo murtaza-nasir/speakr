@@ -181,6 +181,9 @@
     <!-- Shared tag/folder editor modals (outside the Vue root; driven by organizer-modals.js) -->
     {% include 'includes/organizer_modals.html' %}
 
+    <!-- Template of the segment editor's transcript pane (a component of the app) -->
+    {% include 'components/asr-editor-pane.html' %}
+
     <!-- CSRF Token Management -->
     <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
 

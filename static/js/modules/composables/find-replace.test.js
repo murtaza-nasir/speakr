@@ -1,21 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import { useFindReplace } from './find-replace.js';
+import { createAsrModel } from '../asr-editor/model.js';
 
 const ref = (value) => ({ value });
 
 function editor({ segments = null, text = '' } = {}) {
+    const model = segments
+        ? createAsrModel(segments.map((sentence, i) => ({ speaker: 'A', sentence, start_time: i, end_time: i + 1 })))
+        : null;
+    const revealed = [];
+    const pane = { revealIndex: (index, options) => revealed.push({ index, ...options }), clearHighlight() {} };
     const state = {
         findReplace: { open: true, find: '', replace: '', matchCase: false, wholeWord: false, current: -1 },
         showAsrEditorModal: ref(!!segments),
         showTextEditorModal: ref(!segments),
-        editingSegments: ref((segments || []).map((sentence) => ({ speaker: 'A', sentence }))),
+        asrEditorSession: ref(model ? { model, pane, findStep: null } : null),
+        asrEditorRev: ref(0),
         editingTranscriptionContent: ref(text),
-        asrEditorHighlightIndex: ref(null),
     };
     const toasts = [];
     const api = useFindReplace(state, { showToast: (m) => toasts.push(m), t: (k, p) => (p ? `${k}:${p.count}` : k) });
-    return { state, api, toasts };
+    const sentences = () => model.segments.map((s) => s.sentence);
+    return { state, api, toasts, model, sentences, revealed };
 }
 
 describe('find and replace in the transcript editors (#440)', () => {
@@ -27,25 +34,45 @@ describe('find and replace in the transcript editors (#440)', () => {
     });
 
     it('replaces every match in the segments', () => {
-        const { state, api, toasts } = editor({ segments: ['Acme agreed', 'acme and ACME'] });
+        const { state, api, toasts, model, sentences } = editor({ segments: ['Acme agreed', 'acme and ACME'] });
         Object.assign(state.findReplace, { find: 'acme', replace: 'Akme' });
         api.replaceAllMatches();
-        expect(state.editingSegments.value.map((s) => s.sentence)).toEqual(['Akme agreed', 'Akme and Akme']);
-        expect(state.editingSegments.value[0].speaker).toBe('A');
+        expect(sentences()).toEqual(['Akme agreed', 'Akme and Akme']);
+        expect(model.get(0).speaker).toBe('A');
         expect(toasts).toEqual(['findReplace.replacedCount:3']);
     });
 
+    it('makes Replace all one undo step in the segment editor', () => {
+        const { state, api, model, sentences } = editor({ segments: ['cat', 'dog', 'cat cat', 'bird'] });
+        Object.assign(state.findReplace, { find: 'cat', replace: 'cow' });
+        api.replaceAllMatches();
+        expect(sentences()).toEqual(['cow', 'dog', 'cow cow', 'bird']);
+        expect(model.undoDepth).toBe(1);
+        model.undo();
+        expect(sentences()).toEqual(['cat', 'dog', 'cat cat', 'bird']);
+        expect(model.canUndo).toBe(false);
+    });
+
+    it('shows a match in the transcript pane with its text selected', () => {
+        const { state, api, revealed } = editor({ segments: ['none', 'a cat here'] });
+        state.findReplace.find = 'cat';
+        api.goToMatch(1);
+        expect(revealed).toEqual([{ index: 1, highlight: true, textRange: [2, 5] }]);
+        expect(state.asrEditorSession.value.findStep).toBe(api.goToMatch);
+    });
+
     it('replaces one match at a time, moving to the next', () => {
-        const { state, api } = editor({ segments: ['cat cat', 'cat'] });
+        const { state, api, model, sentences } = editor({ segments: ['cat cat', 'cat'] });
         Object.assign(state.findReplace, { find: 'cat', replace: 'dog' });
         api.goToMatch(1);
         expect(state.findReplace.current).toBe(0);
         api.replaceCurrentMatch();
-        expect(state.editingSegments.value[0].sentence).toBe('dog cat');
+        expect(sentences()[0]).toBe('dog cat');
         expect(api.findReplaceLabel.value).toBe('1 / 2');
         api.replaceCurrentMatch();
         api.replaceCurrentMatch();
-        expect(state.editingSegments.value.map((s) => s.sentence)).toEqual(['dog dog', 'dog']);
+        expect(sentences()).toEqual(['dog dog', 'dog']);
+        expect(model.undoDepth).toBe(3);
         expect(state.findReplace.current).toBe(-1);
         expect(api.findReplaceLabel.value).toBe('findReplace.noMatches');
     });
