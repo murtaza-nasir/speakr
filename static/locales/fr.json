@@ -529,7 +529,7 @@
       "ssoApiClientNamesDesc": "Noms d'affichage des identifiants de client OIDC, sous forme de paires client_id=Nom séparées par des virgules ou des retours à la ligne. Le nom de l'application est affiché dans les paramètres du compte pour un jeton créé par l'échange de jetons SSO. Les paires mal formées sont ignorées.",
       "ssoApiClientScopesDesc": "Limites de portées par application, sous forme de paires client_id=portée1 portée2 séparées par des virgules ou des retours à la ligne. Les portées d'une paire sont séparées par des espaces, + ou |. Une application listée reçoit ces portées dans la limite de sso_api_scopes ; une application non listée reçoit sso_api_scopes. Une application listée sans aucune portée connue est refusée. Les paires mal formées sont ignorées.",
       "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI.",
-      "permissionCreateGroupsDesc": "Qui peut créer des groupes : administrateurs uniquement, utilisateurs et groupes sélectionnés, ou tout le monde. Les utilisateurs et les groupes sont sélectionnés dans leur fenêtre de modification. L’utilisateur qui crée un groupe en devient l’administrateur."
+      "permissionCreateGroupsDesc": "Qui peut créer des groupes. La personne qui crée un groupe en devient l'administrateur."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",

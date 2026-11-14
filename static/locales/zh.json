@@ -529,7 +529,7 @@
       "ssoApiClientNamesDesc": "OIDC 客户端 ID 的显示名称，格式为 client_id=名称，以逗号或换行分隔。对于通过 SSO 令牌换取创建的令牌，账户设置中会显示其应用名称。格式错误的条目会被忽略。",
       "ssoApiClientScopesDesc": "按应用限制范围，格式为 client_id=范围1 范围2，以逗号或换行分隔。同一条目中的范围以空格、+ 或 | 分隔。列出的应用在 sso_api_scopes 之内获得这些范围；未列出的应用获得 sso_api_scopes。列出的应用若没有任何已知范围则被拒绝。格式错误的条目会被忽略。",
       "ssoApiExchangeClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌可换取 API 令牌。每个 ID 也必须在 sso_api_allowed_clients 中。留空表示不允许任何换取。只添加在后台同步的应用，切勿添加 Open WebUI 等工具服务器。",
-      "permissionCreateGroupsDesc": "谁可以创建群组：仅管理员、所选用户和群组，或所有人。用户和群组在各自的编辑对话框中选择。创建群组的用户成为该群组的管理员。"
+      "permissionCreateGroupsDesc": "谁可以创建群组。创建者成为该群组的管理员。"
     },
     "storageUsed": "已用存储",
     "summarizationInstructions": "摘要说明",

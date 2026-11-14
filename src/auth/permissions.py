@@ -28,8 +28,7 @@ CREATE_GROUPS = 'create_groups'
 PERMISSIONS = {
     CREATE_GROUPS: (
         'permission_create_groups',
-        'Who can create groups: admins (site admins only), selected (site admins, '
-        'users granted the permission and members of groups granted it) or everyone.',
+        "Who can create groups: admins, selected or everyone. A creator becomes the group's admin.",
     ),
 }
 

@@ -529,7 +529,7 @@
       "ssoApiClientNamesDesc": "Anzeigenamen für OIDC-Client-IDs als Paare client_id=Name, getrennt durch Kommas oder Zeilenumbrüche. Für ein über den SSO-Tokentausch erstelltes Token wird der Name der App in den Kontoeinstellungen angezeigt. Fehlerhafte Paare werden ignoriert.",
       "ssoApiClientScopesDesc": "Bereichsgrenzen je App als Paare client_id=bereich1 bereich2, getrennt durch Kommas oder Zeilenumbrüche. Die Bereiche eines Paares werden durch Leerzeichen, + oder | getrennt. Eine aufgeführte App erhält diese Bereiche innerhalb von sso_api_scopes; eine nicht aufgeführte App erhält sso_api_scopes. Eine aufgeführte App ohne bekannten Bereich wird abgewiesen. Fehlerhafte Paare werden ignoriert.",
       "ssoApiExchangeClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken gegen API-Token getauscht werden dürfen. Jede muss auch in sso_api_allowed_clients stehen. Leer bedeutet, dass kein Tausch erlaubt ist. Tragen Sie nur Apps ein, die im Hintergrund synchronisieren, nie einen Tool-Server wie Open WebUI.",
-      "permissionCreateGroupsDesc": "Wer Gruppen erstellen darf: nur Administratoren, ausgewählte Benutzer und Gruppen oder alle. Benutzer und Gruppen werden in ihren Bearbeitungsdialogen ausgewählt. Wer eine Gruppe erstellt, wird ihr Gruppenadministrator."
+      "permissionCreateGroupsDesc": "Wer Gruppen erstellen kann. Wer eine Gruppe erstellt, wird ihr Administrator."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
