@@ -952,6 +952,15 @@ def regenerate_title(recording_id):
         return jsonify({'error': str(e)}), 500
 
 
+def _cancel_remote_asr_jobs(jobs):
+    """Best-effort cancel of the WhisperX ASR jobs saved on these processing jobs."""
+    try:
+        from src.services.transcription.provider_tasks import cancel_remote_tasks
+        cancel_remote_tasks([job for job in jobs if job.provider_task])
+    except Exception as e:
+        current_app.logger.warning(f"Cancelling ASR service jobs failed: {e}")
+
+
 @recordings_bp.route('/recording/<int:recording_id>/reset_status', methods=['POST'])
 @login_required
 def reset_status(recording_id):
@@ -973,6 +982,10 @@ def reset_status(recording_id):
             # A job still waiting in the queue would claim the recording
             # later and overwrite the reset. A running job cannot be stopped
             # from here; it finishes on its own and sets a final status.
+            # A queued job may hold an ASR service job from an earlier
+            # attempt; that job is cancelled on the service.
+            _cancel_remote_asr_jobs(ProcessingJob.query.filter_by(
+                recording_id=recording.id, status='queued').all())
             ProcessingJob.query.filter_by(recording_id=recording.id, status='queued').update(
                 {'status': 'failed', 'error_message': 'Cancelled by manual reset.'},
                 synchronize_session=False)
@@ -2830,6 +2843,10 @@ def delete_job(job_id):
 
         if job.user_id != current_user.id:
             return jsonify(api_error('access_denied')), 403
+
+        # A transcription still running on the WhisperX ASR service is
+        # cancelled there, and a finished one has its stored transcript removed.
+        _cancel_remote_asr_jobs([job])
 
         # If it's a failed new upload, also delete the recording
         if job.status == 'failed' and job.is_new_upload:

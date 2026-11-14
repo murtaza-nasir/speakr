@@ -2,11 +2,19 @@
 ASR Endpoint connector for custom self-hosted ASR services.
 
 Supports whisper-asr-webservice, WhisperX, and other compatible ASR services
-that expose a /asr endpoint.
+that expose a /asr endpoint. A WhisperX ASR service that advertises the
+asynchronous jobs API in /health (0.5.0 and later) is used through POST /jobs.
 """
 
+import email.utils
+import hashlib
+import json
 import logging
 import os
+import re
+import time
+from datetime import datetime, timezone
+
 import httpx
 from typing import Dict, Any, Set, Optional
 
@@ -37,6 +45,9 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "asr_endpoint"
+    # A job of the WhisperX jobs API is saved on the processing job, so a
+    # retry or a restart polls it instead of submitting the audio again.
+    SUPPORTS_TASK_RESUME = True
 
     # SPECIFICATIONS is set dynamically in __init__ based on ASR_ENABLE_CHUNKING config
     # Default values here for class-level reference (overridden per-instance)
@@ -124,58 +135,82 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         """
         Transcribe audio using ASR webservice.
 
+        The asynchronous jobs API of the WhisperX ASR service (POST /jobs) is
+        used when the service advertises it in /health and the asr_async_jobs
+        setting is on; every other service gets the synchronous /asr request.
+
         Args:
             request: Standardized transcription request
 
         Returns:
             TranscriptionResponse with segments and speaker information
         """
+        params = self._build_params(request)
+        if self._async_jobs_enabled():
+            capabilities = self._job_capabilities()
+            if capabilities is not None:
+                try:
+                    return self._transcribe_async(request, params, capabilities)
+                except _JobsUnavailable as e:
+                    logger.info(f"ASR asynchronous jobs are unavailable ({e}); using the synchronous endpoint")
+        if request.provider_task and request.save_provider_task:
+            # A job saved while the jobs API was in use is not resumed by the
+            # synchronous path.
+            request.save_provider_task(None)
+        _rewind(request)
+        return self._transcribe_sync(request, params)
+
+    def _build_params(self, request: TranscriptionRequest) -> Dict[str, Any]:
+        """Query parameters shared by /asr and POST /jobs."""
+        params = {
+            'encode': True,
+            'task': 'transcribe',
+            'output': 'json'
+        }
+
+        if request.language:
+            params['language'] = request.language
+            logger.info(f"Using transcription language: {request.language}")
+
+        # Determine if we should diarize
+        should_diarize = request.diarize if request.diarize is not None else self.default_diarize
+
+        # Send both parameter names for compatibility:
+        # - 'diarize' is used by whisper-asr-webservice
+        # - 'enable_diarization' is used by WhisperX
+        params['diarize'] = should_diarize
+        params['enable_diarization'] = should_diarize
+
+        if should_diarize and self.return_embeddings:
+            params['return_speaker_embeddings'] = True
+
+        if request.min_speakers:
+            params['min_speakers'] = request.min_speakers
+        if request.max_speakers:
+            params['max_speakers'] = request.max_speakers
+
+        if request.prompt:
+            params['initial_prompt'] = request.prompt
+        if request.hotwords:
+            params['hotwords'] = request.hotwords
+
+        # Per-request model override (issue #266). The whisperx-asr-service
+        # fork accepts a `model` query parameter (e.g. large-v3,
+        # distil-medium.en) and switches the loaded Whisper model
+        # on demand. The upstream onerahmet/whisper-asr-webservice
+        # ignores unknown params, so this is safe in both cases.
+        # Never an empty or whitespace name: the service would take it
+        # literally instead of using its own default model.
+        model = self._effective_model(request).strip()
+        if model:
+            params['model'] = model
+            logger.info(f"Using per-request model override: {model}")
+        return params
+
+    def _transcribe_sync(self, request: TranscriptionRequest, params: Dict[str, Any]) -> TranscriptionResponse:
+        """One synchronous POST /asr request."""
         try:
             url = f"{self.base_url}/asr"
-
-            params = {
-                'encode': True,
-                'task': 'transcribe',
-                'output': 'json'
-            }
-
-            if request.language:
-                params['language'] = request.language
-                logger.info(f"Using transcription language: {request.language}")
-
-            # Determine if we should diarize
-            should_diarize = request.diarize if request.diarize is not None else self.default_diarize
-
-            # Send both parameter names for compatibility:
-            # - 'diarize' is used by whisper-asr-webservice
-            # - 'enable_diarization' is used by WhisperX
-            params['diarize'] = should_diarize
-            params['enable_diarization'] = should_diarize
-
-            if should_diarize and self.return_embeddings:
-                params['return_speaker_embeddings'] = True
-
-            if request.min_speakers:
-                params['min_speakers'] = request.min_speakers
-            if request.max_speakers:
-                params['max_speakers'] = request.max_speakers
-
-            if request.prompt:
-                params['initial_prompt'] = request.prompt
-            if request.hotwords:
-                params['hotwords'] = request.hotwords
-
-            # Per-request model override (issue #266). The whisperx-asr-service
-            # fork accepts a `model` query parameter (e.g. large-v3,
-            # distil-medium.en) and switches the loaded Whisper model
-            # on demand. The upstream onerahmet/whisper-asr-webservice
-            # ignores unknown params, so this is safe in both cases.
-            # Never an empty or whitespace name: the service would take it
-            # literally instead of using its own default model.
-            model = self._effective_model(request).strip()
-            if model:
-                params['model'] = model
-                logger.info(f"Using per-request model override: {model}")
 
             content_type = request.mime_type or 'application/octet-stream'
             files = {
@@ -194,7 +229,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
 
             logger.info(f"Sending ASR request to {url} with params: {params} (timeout: {self.timeout}s)")
 
-            with httpx.Client() as client:
+            with self._http_client() as client:
                 response = client.post(url, params=params, files=files, timeout=timeout)
                 logger.info(f"ASR request completed with status: {response.status_code}")
                 response.raise_for_status()
@@ -257,6 +292,274 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             error_msg = str(e)
             logger.error(f"ASR transcription failed: {error_msg}")
             raise TranscriptionError(f"ASR transcription failed: {error_msg}") from e
+
+    # -- Asynchronous jobs (WhisperX ASR service 0.5.0 and later) -----------
+
+    def _http_client(self, **kwargs) -> httpx.Client:
+        return httpx.Client(**kwargs)
+
+    def _async_jobs_enabled(self) -> bool:
+        """The asr_async_jobs setting (ASR_ASYNC_JOBS in .env, default on)."""
+        from src.utils.system_settings import env_fallback
+        fallback = env_fallback('ASR_ASYNC_JOBS', True)
+        try:
+            from flask import has_app_context
+            if has_app_context():
+                from src.models import SystemSetting
+                return bool(SystemSetting.get_setting('asr_async_jobs', fallback))
+        except Exception:
+            pass
+        return fallback
+
+    def _job_capabilities(self) -> Optional[Dict[str, Any]]:
+        """The service's job capabilities, or None when it has no jobs API.
+
+        Read from the `capabilities` object of GET /health, or of GET / when
+        /health gives no JSON. Services before 0.5.0 report no such object.
+        """
+        try:
+            with self._http_client(timeout=HEALTH_TIMEOUT_SECONDS) as client:
+                for path in ('/health', '/'):
+                    try:
+                        response = client.get(f"{self.base_url}{path}")
+                        data = response.json()
+                    except (httpx.HTTPError, ValueError):
+                        continue
+                    if not isinstance(data, dict):
+                        continue
+                    capabilities = data.get('capabilities')
+                    version = capabilities.get('jobs_api_version') if isinstance(capabilities, dict) else None
+                    if (isinstance(capabilities, dict) and capabilities.get('async_jobs') is True
+                            and type(version) is int and version == JOBS_API_VERSION):
+                        return capabilities
+                    return None
+        except Exception as e:
+            logger.debug(f"ASR capability check failed: {e}")
+        return None
+
+    @staticmethod
+    def _idempotency_key(request: TranscriptionRequest, params: Dict[str, Any]) -> Optional[str]:
+        """Idempotency-Key for POST /jobs: the processing job, the audio and the parameters.
+
+        The task key names the recording, the processing job and the audio
+        bytes, and is the same on every retry of that job; the digest of the
+        parameters changes the key when the parameters change.
+        """
+        if not request.task_key:
+            return None
+        digest = hashlib.sha256(json.dumps(params, sort_keys=True, default=str).encode()).hexdigest()[:12]
+        return f"{request.task_key}-{digest}"
+
+    def _transcribe_async(self, request: TranscriptionRequest, params: Dict[str, Any],
+                          capabilities: Dict[str, Any]) -> TranscriptionResponse:
+        """Submit a job (or resume the saved one), poll it and fetch the result."""
+        save = request.save_provider_task or (lambda task: None)
+        job_params = {k: v for k, v in params.items() if k not in ('output', 'encode')}
+        headers = {}
+        key = self._idempotency_key(request, job_params)
+        if key and capabilities.get('idempotency_key') is not False:
+            headers['Idempotency-Key'] = key
+        deadline = _now() + float(self.timeout)
+
+        saved = request.provider_task if isinstance(request.provider_task, dict) else {}
+        job_id = None
+        if _valid_job_id(saved.get('job_id')) and saved.get('base_url') == self.base_url:
+            job_id = saved['job_id']
+            logger.info(f"ASR job {job_id}: resuming the saved job")
+        resubmits_left = 1
+
+        try:
+            with self._http_client() as client:
+                while True:
+                    if job_id is None:
+                        job_id = self._submit_job(client, request, job_params, headers, deadline)
+                        save({'job_id': job_id, 'base_url': self.base_url})
+                    try:
+                        data = self._wait_for_result(client, job_id, request, deadline)
+                        break
+                    except _RemoteJobGone as gone:
+                        save(None)
+                        if resubmits_left <= 0:
+                            raise ProviderError(
+                                f"ASR job {job_id} was lost on the service ({gone}) after a new submit",
+                                provider=self.PROVIDER_NAME) from None
+                        resubmits_left -= 1
+                        logger.warning(f"ASR job {job_id}: {gone}; the audio is submitted again")
+                        job_id = None
+                    except RemoteJobFailed:
+                        # The service does not reuse a failed or cancelled
+                        # job, so a retry submits again.
+                        save(None)
+                        raise
+
+                response = self._parse_response(data)
+                self._delete_job(client, job_id)
+                save(None)
+                return response
+
+        except (_JobsUnavailable, TranscriptionError):
+            raise
+        except httpx.TimeoutException as e:
+            logger.error(f"ASR job request timed out: {e}")
+            raise TranscriptionError(f"ASR job request timed out after {self.timeout}s") from e
+        except Exception as e:
+            logger.error(f"ASR transcription failed: {e}")
+            raise TranscriptionError(f"ASR transcription failed: {e}") from e
+
+    def _upload_timeout(self) -> httpx.Timeout:
+        return httpx.Timeout(None, connect=60.0, read=float(self.timeout), write=float(self.timeout), pool=None)
+
+    def _submit_job(self, client, request: TranscriptionRequest, params: Dict[str, Any],
+                    headers: Dict[str, str], deadline: float) -> str:
+        """POST /jobs; waits out a busy answer (413 or 503 with Retry-After)."""
+        content_type = request.mime_type or 'application/octet-stream'
+        while True:
+            _rewind(request)
+            files = {'audio_file': (request.filename, request.audio_file, content_type)}
+            logger.info(f"Submitting ASR job to {self.base_url}/jobs with params: {params}")
+            response = client.post(f"{self.base_url}/jobs", params=params, files=files,
+                                   headers=headers, timeout=self._upload_timeout())
+            status = response.status_code
+            if status in (200, 202):
+                data = _json_body(response)
+                job_id = data.get('job_id') if isinstance(data, dict) else None
+                if not _valid_job_id(job_id):
+                    raise ProviderError("ASR job submit returned no valid job id",
+                                        provider=self.PROVIDER_NAME, status_code=status)
+                logger.info(f"ASR job {job_id} accepted (status {data.get('status')}, "
+                            f"deduplicated={bool(data.get('deduplicated'))})")
+                return job_id
+            if status in (404, 405):
+                raise _JobsUnavailable(f"POST /jobs answered {status}")
+            retry_after = _retry_after(response)
+            if status in (413, 503) and retry_after is not None:
+                wait = min(retry_after, MAX_BUSY_WAIT_SECONDS)
+                if _now() + wait > deadline:
+                    raise ProviderError(
+                        f"ASR service busy: the job submit was refused (HTTP {status}, "
+                        f"Retry-After {retry_after:.0f}s) until the timeout of {self.timeout}s",
+                        provider=self.PROVIDER_NAME, status_code=status)
+                logger.info(f"ASR service busy (HTTP {status}); the job is submitted again in {wait:.0f}s")
+                _sleep(wait)
+                continue
+            self._raise_for_status(response, "ASR job submit")
+
+    def _wait_for_result(self, client, job_id: str, request: TranscriptionRequest,
+                         deadline: float) -> Dict[str, Any]:
+        """Poll GET /jobs/{id} at the pace the service asks for, then fetch the result."""
+        state: Dict[str, Any] = {}
+        failures = 0
+        while True:
+            response = None
+            try:
+                response = client.get(f"{self.base_url}/jobs/{job_id}", timeout=POLL_REQUEST_TIMEOUT_SECONDS)
+            except httpx.TransportError as e:
+                failure = str(e) or type(e).__name__
+            else:
+                failure = None
+                if response.status_code == 404:
+                    raise _RemoteJobGone("the job is not known to the service")
+                if response.status_code >= 500:
+                    failure = f"HTTP {response.status_code}"
+                elif response.status_code != 200:
+                    self._raise_for_status(response, f"ASR job {job_id} poll")
+
+            if failure is not None:
+                # A dropped connection or a restarting service: the job is
+                # kept, and a retry of the Speakr job resumes it.
+                failures += 1
+                if failures > MAX_POLL_FAILURES:
+                    raise TranscriptionError(f"ASR job {job_id} could not be polled: {failure}")
+                wait = POLL_DEFAULT_SECONDS
+                status = 'unreachable'
+            else:
+                failures = 0
+                data = _json_body(response)
+                if not isinstance(data, dict):
+                    raise ProviderError(f"ASR job {job_id} poll returned no job state",
+                                        provider=self.PROVIDER_NAME, status_code=response.status_code)
+                status = data.get('status')
+                self._note_progress(job_id, data, request, state)
+                if status == 'done':
+                    result = self._fetch_result(client, job_id)
+                    if result is not None:
+                        return result
+                elif status == 'error':
+                    raise _job_error(job_id, data.get('error'))
+                elif status == 'cancelled':
+                    raise RemoteJobFailed(f"ASR job {job_id} was cancelled on the service", permanent=True,
+                                          provider=self.PROVIDER_NAME)
+                elif status == 'interrupted':
+                    raise _RemoteJobGone("the service restarted while the job ran")
+                elif status not in ('queued', 'running'):
+                    raise ProviderError(f"ASR job {job_id} reported an unknown status {status!r}",
+                                        provider=self.PROVIDER_NAME)
+                wait = _poll_wait(data, response)
+
+            if _now() + wait > deadline:
+                raise TranscriptionError(
+                    f"ASR job {job_id} timed out after {self.timeout}s (status {status}); "
+                    f"a retry resumes the same job")
+            _sleep(wait)
+
+    def _fetch_result(self, client, job_id: str) -> Optional[Dict[str, Any]]:
+        """GET /jobs/{id}/result as JSON; None while the job is unfinished."""
+        timeout = httpx.Timeout(None, connect=60.0, read=float(self.timeout), write=60.0, pool=None)
+        response = client.get(f"{self.base_url}/jobs/{job_id}/result",
+                              params={'output_format': 'json'}, timeout=timeout)
+        if response.status_code == 202:
+            return None
+        if response.status_code == 404:
+            raise _RemoteJobGone("the result has expired or is not known to the service")
+        if response.status_code == 409:
+            raise RemoteJobFailed(f"ASR job {job_id} ended without a result", permanent=False,
+                                  provider=self.PROVIDER_NAME)
+        if response.status_code != 200:
+            self._raise_for_status(response, f"ASR job {job_id} result")
+        data = _json_body(response)
+        if not isinstance(data, dict):
+            raise ProviderError(f"ASR job {job_id} returned an invalid result",
+                                provider=self.PROVIDER_NAME, status_code=response.status_code)
+        return data
+
+    def _delete_job(self, client, job_id: str) -> None:
+        """DELETE /jobs/{id} once the result is fetched, so the transcript leaves the service."""
+        try:
+            response = client.delete(f"{self.base_url}/jobs/{job_id}", timeout=CANCEL_TIMEOUT_SECONDS)
+            if response.status_code not in (200, 404):
+                logger.warning(f"ASR job {job_id}: DELETE answered {response.status_code}")
+        except Exception as e:
+            logger.warning(f"ASR job {job_id}: the stored result could not be deleted: {e}")
+
+    @staticmethod
+    def _note_progress(job_id: str, data: Dict[str, Any], request: TranscriptionRequest,
+                       state: Dict[str, Any]) -> None:
+        """Log stage changes and store the estimated fraction on the processing job."""
+        progress = data.get('progress') if isinstance(data.get('progress'), dict) else {}
+        stage = progress.get('stage')
+        fraction = progress.get('fraction')
+        if isinstance(fraction, bool) or not isinstance(fraction, (int, float)):
+            fraction = None
+        status = data.get('status')
+        if state.get('stage') != (status, stage):
+            state['stage'] = (status, stage)
+            detail = f", stage {stage}" if stage else ""
+            if fraction is not None:
+                estimated = " (estimated)" if progress.get('fraction_estimated') else ""
+                detail += f", {fraction:.0%}{estimated}"
+            logger.info(f"ASR job {job_id}: {status}{detail}")
+        if fraction is not None and request.report_progress:
+            done = max(0, min(100, int(round(fraction * 100))))
+            if state.get('done') != done:
+                state['done'] = done
+                request.report_progress(done, 100)
+
+    def _raise_for_status(self, response: httpx.Response, what: str) -> None:
+        body_excerpt = summarize_error_body(response.text or '', 800)
+        logger.error(f"{what} failed with status {response.status_code}: {body_excerpt}")
+        detail = (f"{what} failed with status {response.status_code}: {body_excerpt}"
+                  if body_excerpt else f"{what} failed with status {response.status_code}")
+        raise ProviderError(detail, provider=self.PROVIDER_NAME, status_code=response.status_code)
 
     def _parse_response(self, data: Dict[str, Any]) -> TranscriptionResponse:
         """
@@ -396,3 +699,141 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 }
             }
         }
+
+
+# Asynchronous jobs of the WhisperX ASR service (POST /jobs, 0.5.0 and later).
+JOBS_API_VERSION = 1
+HEALTH_TIMEOUT_SECONDS = 10.0
+POLL_REQUEST_TIMEOUT_SECONDS = 30.0
+CANCEL_TIMEOUT_SECONDS = 5.0
+# poll_after_seconds from the service is followed within these bounds.
+POLL_MIN_SECONDS = 2.0
+POLL_MAX_SECONDS = 60.0
+POLL_DEFAULT_SECONDS = 10.0
+# Longest single wait on a busy answer (Retry-After) before the next submit.
+MAX_BUSY_WAIT_SECONDS = 600.0
+# Polls in a row that may fail (connection, 5xx) before the attempt ends.
+MAX_POLL_FAILURES = 5
+# Error codes the service marks as not retryable, for an error object
+# without the retryable field.
+NON_RETRYABLE_CODES = frozenset({'audio_too_long', 'file_too_large', 'decode_failed', 'invalid_request'})
+
+_JOB_ID_RE = re.compile(r'^[A-Za-z0-9_-]{1,128}$')
+
+# Replaced in tests.
+_sleep = time.sleep
+_now = time.monotonic
+
+
+class RemoteJobFailed(ProviderError):
+    """An ASR service job ended in error or was cancelled.
+
+    ``permanent`` tells the job queue whether a retry can help: a job refused
+    for its audio (audio_too_long, file_too_large) fails at once, and one that
+    ran out of memory or found the service unavailable is retried.
+    """
+
+    def __init__(self, message: str, permanent: bool, code: Optional[str] = None, provider: Optional[str] = None):
+        super().__init__(message, provider=provider)
+        self.permanent = permanent
+        self.code = code
+
+
+class _JobsUnavailable(Exception):
+    """The service has no jobs API after all; the synchronous endpoint is used."""
+
+
+class _RemoteJobGone(Exception):
+    """The job is unknown to the service, its result has expired, or the service restarted."""
+
+
+def _valid_job_id(job_id: Any) -> bool:
+    return isinstance(job_id, str) and bool(_JOB_ID_RE.match(job_id))
+
+
+def _rewind(request: TranscriptionRequest) -> None:
+    try:
+        request.audio_file.seek(0)
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
+def _json_body(response: httpx.Response) -> Any:
+    try:
+        return response.json()
+    except ValueError:
+        return None
+
+
+def _number(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def _retry_after(response: httpx.Response) -> Optional[float]:
+    """Seconds from a Retry-After header (seconds or HTTP date) or a retry_after body field."""
+    raw = response.headers.get('Retry-After')
+    seconds = _number(raw)
+    if seconds is None and raw:
+        try:
+            when = email.utils.parsedate_to_datetime(raw)
+            seconds = (when - datetime.now(timezone.utc)).total_seconds()
+        except (TypeError, ValueError):
+            seconds = None
+    if seconds is None:
+        body = _json_body(response)
+        if isinstance(body, dict):
+            seconds = _number(body.get('retry_after'))
+    if seconds is None:
+        return None
+    return max(1.0, seconds)
+
+
+def _poll_wait(data: Dict[str, Any], response: httpx.Response) -> float:
+    """poll_after_seconds (or Retry-After), kept within the polling bounds."""
+    seconds = _number(data.get('poll_after_seconds'))
+    if seconds is None:
+        seconds = _number(response.headers.get('Retry-After'))
+    if seconds is None:
+        seconds = POLL_DEFAULT_SECONDS
+    return min(POLL_MAX_SECONDS, max(POLL_MIN_SECONDS, seconds))
+
+
+def _job_error(job_id: str, error: Any) -> RemoteJobFailed:
+    """The failure of a job in status error, retryable or not as the service says."""
+    error = error if isinstance(error, dict) else {}
+    code = str(error.get('code') or 'internal')
+    message = summarize_error_body(str(error.get('message') or ''), 500)
+    retryable = error.get('retryable')
+    if not isinstance(retryable, bool):
+        retryable = code not in NON_RETRYABLE_CODES
+    text = f"ASR job {job_id} failed ({code})"
+    if message:
+        text += f": {message}"
+    return RemoteJobFailed(text, permanent=not retryable, code=code, provider=ASREndpointConnector.PROVIDER_NAME)
+
+
+def cancel_remote_job(base_url: str, job_id: str, timeout: float = CANCEL_TIMEOUT_SECONDS) -> bool:
+    """DELETE /jobs/{id} on the service: cancels a running job or drops its result.
+
+    Best effort; returns whether the service confirmed it (200, or 404 for a
+    job it no longer knows).
+    """
+    if not _valid_job_id(job_id) or not base_url:
+        return False
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            response = client.delete(f"{base_url.rstrip('/')}/jobs/{job_id}")
+        logger.info(f"ASR job {job_id}: cancel answered {response.status_code}")
+        return response.status_code in (200, 404)
+    except Exception as e:
+        logger.warning(f"ASR job {job_id} could not be cancelled: {e}")
+        return False

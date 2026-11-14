@@ -2101,10 +2101,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 cleanup_funasr_staging,
                                 prepare_funasr_file_url,
                             )
-                        provider_task = save_provider_task = None
+                        provider_task = save_provider_task = task_key = report_progress = None
                         if getattr(connector, 'SUPPORTS_TASK_RESUME', False) is True and recording:
-                            from src.services.transcription.provider_tasks import provider_task_for
-                            provider_task, save_provider_task = provider_task_for(
+                            from src.services.transcription.provider_tasks import provider_task_context
+                            provider_task, save_provider_task, task_key, report_progress = provider_task_context(
                                 recording.id, connector.PROVIDER_NAME, actual_filepath)
                         with open(actual_filepath, 'rb') as audio_file:
                             # FunASR requires an externally reachable object URL.
@@ -2128,6 +2128,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 extra_options=extra_options,
                                 provider_task=provider_task,
                                 save_provider_task=save_provider_task,
+                                task_key=task_key,
+                                report_progress=report_progress,
                             )
 
                             current_app.logger.info(

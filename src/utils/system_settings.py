@@ -98,6 +98,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'recording_tombstone_days': ('RECORDING_TOMBSTONE_DAYS', 90, 'integer', 'Days to keep changes-feed tombstones.'),
     'video_retention': ('VIDEO_RETENTION', False, 'boolean', 'Whether to keep the original video stream.'),
     'video_passthrough_asr': ('VIDEO_PASSTHROUGH_ASR', False, 'boolean', 'Whether to send original video to ASR.'),
+    'asr_async_jobs': ('ASR_ASYNC_JOBS', True, 'boolean', 'Whether the asynchronous jobs API of the WhisperX ASR service is used when the service advertises it. Off: every transcription is sent to the synchronous /asr endpoint.'),
     'help_center_url': ('HELP_CENTER_URL', '', 'string', 'Optional help center URL.'),
     'help_center_label': ('HELP_CENTER_LABEL', '', 'string', 'Optional help center label.'),
     'default_ui_theme': ('DEFAULT_UI_THEME', 'cards', 'string', 'UI theme for new accounts, and for the sign-in pages in a browser with no saved theme.'),

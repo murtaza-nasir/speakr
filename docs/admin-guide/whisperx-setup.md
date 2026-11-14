@@ -198,6 +198,12 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=true
 
 Replace `GPU_MACHINE_IP` with actual IP address.
 
+### Asynchronous Jobs
+
+From version 0.5.0, the WhisperX ASR service has an asynchronous jobs API, which is advertised in `/health`. The API is used automatically: the audio is submitted as a job, the job is polled until it is done, and the transcript is deleted from the service once it has been fetched. After a dropped connection or a restart of Speakr, the saved job is polled again, and the transcription is not lost. For older versions of the service, the synchronous `/asr` request is used as before.
+
+To keep the synchronous request with a current service, set `ASR_ASYNC_JOBS=false` in `.env` or turn off `asr_async_jobs` in System Settings. See [Asynchronous WhisperX Jobs](system-settings.md#asynchronous-whisperx-jobs) for the details.
+
 ## Configuration
 
 ### Performance Tuning
