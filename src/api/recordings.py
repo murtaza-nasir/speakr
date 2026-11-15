@@ -2212,6 +2212,15 @@ def upload_incognito():
                 'max_size_mb': float(effective_limit_mb),
             }), 413
 
+        # The monthly transcription budget applies to an incognito request as
+        # to any other. It is checked before the upload is saved, so nothing
+        # of a refused request reaches the disk.
+        from src.services.transcription_tracking import transcription_tracker
+        can_proceed, _usage_pct, budget_msg = transcription_tracker.check_budget(current_user.id)
+        if not can_proceed:
+            incognito_log.warning(f"[Incognito] User {current_user.id} exceeded the transcription budget")
+            return jsonify({'incognito': True, 'error': budget_msg, 'budget_exceeded': True}), 403
+
         # Save to temp file - use secure temp directory. Suffix carries only
         # the extension, not the user's filename: the temp path is logged and
         # filenames can themselves be sensitive (no PHI in logs or paths).
@@ -2271,6 +2280,8 @@ def upload_incognito():
         if result.get('error'):
             incognito_log.error(f"[Incognito] Transcription failed: type={result.get('error_type')}, "
                                 f"code={result.get('error_code')}")
+            if result.get('error_code') == 'transcription_budget_exceeded':
+                return jsonify({'incognito': True, 'error': result['error'], 'budget_exceeded': True}), 403
             # result['error'] is English; a known kind of failure carries
             # error_code and is answered in the interface language (#477).
             if result.get('error_code') == 'audio_decode_failed':
@@ -2289,9 +2300,14 @@ def upload_incognito():
 
         # Optionally generate summary
         summary = None
+        summary_budget_message = None
         if auto_summarize and result.get('transcription'):
             incognito_log.info("[Incognito] Auto-summarize requested, generating summary...")
-            summary = generate_incognito_summary(result['transcription'], current_user)
+            try:
+                summary = generate_incognito_summary(result['transcription'], current_user)
+            except TokenBudgetExceeded as budget_error:
+                # The transcript is still answered; the summary is left out.
+                summary_budget_message = str(budget_error)
 
         # Build response
         # Render markdown to HTML for summary display
@@ -2311,6 +2327,9 @@ def upload_incognito():
             'original_filename': original_filename,
             'file_size': file_size
         }
+        if summary_budget_message:
+            response_data['summary_error'] = summary_budget_message
+            response_data['summary_budget_exceeded'] = True
 
         incognito_log.info(f"[Incognito] Request completed successfully for user {current_user.id}")
 
@@ -2388,6 +2407,7 @@ def chat_incognito():
                                                  with_sources=True)
 
         user_id = current_user.id
+        app = current_app._get_current_object()
 
         incognito_log.info(f"[Incognito Chat] User {user_id} sending message "
                            f"({len(user_message)} characters, transcript {len(transcription)} characters, "
@@ -2398,16 +2418,27 @@ def chat_incognito():
 
         def generate():
             """Stream the chat response."""
+            # The budget check and the usage row need the database while the
+            # answer streams, as in the recording panel's /chat.
+            ctx = app.app_context()
+            ctx.push()
             try:
-                # No user_id, so nothing is tracked for incognito. The same
-                # events as the recording panel's /chat; [DONE] stays last
-                # for a tab loaded before this change.
-                response = call_chat_completion(messages, temperature=chat_temperature, stream=True)
-                for event in recording_events(process_streaming_with_thinking(response), segments):
+                # Counted against the user's monthly token budget: the usage
+                # row holds numbers and the model name only. The same events
+                # as the recording panel's /chat; [DONE] stays last for a tab
+                # loaded before this change.
+                response = call_chat_completion(messages, temperature=chat_temperature, stream=True,
+                                                user_id=user_id, operation_type='chat')
+                stream = process_streaming_with_thinking(response, user_id=user_id, operation_type='chat',
+                                                         app=app)
+                for event in recording_events(stream, segments):
                     yield event
 
                 yield "data: [DONE]\n\n"
 
+            except TokenBudgetExceeded as e:
+                incognito_log.warning(f"[Incognito Chat] Token budget exceeded for user {user_id}")
+                yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
                 incognito_log.error(f"[Incognito Chat] Error during streaming: {describe_error(e)}")
                 # Provide more helpful error message for connection issues
@@ -2418,6 +2449,8 @@ def chat_incognito():
                     # The provider's text can quote the transcript or the
                     # message: the answer is a fixed message.
                     yield f"data: {json.dumps(api_error('chat_error'))}\n\n"
+            finally:
+                ctx.pop()
 
         return Response(generate(), mimetype='text/event-stream')
 
@@ -2474,6 +2507,9 @@ def generate_incognito_summary_endpoint():
         else:
             return jsonify(api_error('summary_generation_failed')), 503
 
+    except TokenBudgetExceeded as e:
+        incognito_log.warning(f"[Incognito Summary] Token budget exceeded for user {current_user.id}")
+        return jsonify({'error': str(e), 'budget_exceeded': True}), 403
     except Exception as e:
         incognito_log.error(f"[Incognito Summary] Error: {describe_error(e)}")
         # Provide more helpful error message for connection issues

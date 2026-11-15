@@ -2650,6 +2650,17 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         connector_name = type(connector).__name__
         incognito_log.info(f"[Incognito] Using transcription connector: {connector_name}")
 
+        # The monthly transcription budget applies to an incognito request as
+        # to any other. The route checks it before the upload is saved; this
+        # check covers every other caller.
+        if user is not None and getattr(user, 'id', None):
+            can_proceed, _usage_pct, budget_msg = transcription_tracker.check_budget(user.id)
+            if not can_proceed:
+                incognito_log.warning(f"[Incognito] User {user.id} exceeded the transcription budget")
+                result['error'] = budget_msg
+                result['error_code'] = 'transcription_budget_exceeded'
+                return result
+
         # Determine mime type from the real filename, but use an anonymized
         # name (extension only) everywhere downstream: the shared conversion
         # utilities and connectors log the filename they are given, and user
@@ -2835,6 +2846,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             result['error'] = EMPTY_TRANSCRIPT_MESSAGE
             return result
         incognito_log.info(f"[Incognito] Transcription completed in {result['processing_time_seconds']}s")
+        _record_incognito_transcription_usage(user, connector, actual_filepath, result['audio_duration_seconds'])
 
         # Generate a title if we have transcription
         if result['transcription'] and len(result['transcription']) > 10:
@@ -2881,6 +2893,35 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                     incognito_log.error(f"[Incognito] Failed to delete derived temp file {_tmp}: {describe_error(_e)}")
 
 
+def _record_incognito_transcription_usage(user, connector, audio_path, duration_seconds):
+    """Count an incognito transcription against the user's monthly budget.
+
+    The same daily usage row as an ordinary transcription: user id, date,
+    connector, model, seconds, cost and request count. The row holds no
+    title, no filename, no content and no recording id.
+    """
+    user_id = getattr(user, 'id', None)
+    if not user_id:
+        return
+    try:
+        duration = duration_seconds
+        if (not duration or duration <= 0) and chunking_service and audio_path and os.path.exists(audio_path):
+            duration = chunking_service.get_audio_duration(audio_path)
+        if not duration or duration <= 0:
+            incognito_log.warning("[Incognito] Could not determine audio duration for usage tracking")
+            return
+        connector_type = getattr(connector, 'PROVIDER_NAME', None) or type(connector).__name__
+        transcription_tracker.record_usage(
+            user_id=user_id,
+            connector_type=connector_type,
+            audio_duration_seconds=int(duration),
+            model_name=getattr(connector, 'model', None) or connector_type,
+        )
+        incognito_log.info(f"[Incognito] Recorded transcription usage: {int(duration)}s for user {user_id}")
+    except Exception as e:
+        incognito_log.warning(f"[Incognito] Failed to record transcription usage: {describe_error(e)}")
+
+
 def _generate_incognito_title(transcription_text, user=None):
     """Generate a title for incognito recording without database storage."""
     if not client:
@@ -2907,7 +2948,8 @@ def _generate_incognito_title(transcription_text, user=None):
             False,
         )
 
-        # No user_id, so nothing is tracked for incognito
+        # Counted against the user's monthly token budget, as for a stored
+        # recording: the usage row holds numbers and the model name only.
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
@@ -2916,7 +2958,9 @@ def _generate_incognito_title(transcription_text, user=None):
             temperature=get_temperature('title'),
             # Match the main title-generation path so reasoning-model users
             # have a single knob (TITLE_MAX_TOKENS) that covers both flows.
-            max_tokens=int(os.environ.get("TITLE_MAX_TOKENS", "5000"))
+            max_tokens=int(os.environ.get("TITLE_MAX_TOKENS", "5000")),
+            user_id=getattr(user, 'id', None),
+            operation_type='title_generation'
         )
 
         raw_response = completion.choices[0].message.content
@@ -2932,7 +2976,10 @@ def _generate_incognito_title(transcription_text, user=None):
 
 
 def generate_incognito_summary(transcription_text, user=None):
-    """Generate a summary for incognito recording without database storage."""
+    """Generate a summary for incognito recording without database storage.
+
+    Raises TokenBudgetExceeded when the user's monthly token budget is used up.
+    """
     if not client:
         return None
 
@@ -2970,14 +3017,17 @@ def generate_incognito_summary(transcription_text, user=None):
 
         incognito_log.info(f"[Incognito] Generating summary...")
 
-        # No user_id, so nothing is tracked for incognito
+        # Counted against the user's monthly token budget, as for a stored
+        # recording: the usage row holds numbers and the model name only.
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": prompt_text}
             ],
             temperature=get_temperature('summary'),
-            max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
+            max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
+            user_id=getattr(user, 'id', None),
+            operation_type='summarization'
         )
 
         raw_response = completion.choices[0].message.content
@@ -2987,6 +3037,9 @@ def generate_incognito_summary(transcription_text, user=None):
             incognito_log.info(f"[Incognito] Summary generated: {len(summary)} characters")
             return summary
 
+    except TokenBudgetExceeded:
+        incognito_log.warning(f"[Incognito] Token budget exceeded for user {getattr(user, 'id', None)}")
+        raise
     except Exception as e:
         incognito_log.warning(f"[Incognito] Summary generation failed: {describe_error(e)}")
 
