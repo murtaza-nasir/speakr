@@ -1550,11 +1550,6 @@ html[data-ui-theme="workspace"] .ws-input { min-height: 40px; font-size: 16px; }
     html[data-ui-theme="workspace"] .modal-footer .btn { flex: 1 1 auto; }
 }
 
-/* Mobile bottom navigation: 3-pill indicator style */
-html[data-ui-theme="workspace"] [data-mobile-bottom-nav] {
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-primary);
-}
 
 /* Upload sheet footer: wraps instead of overflowing a 390px screen. */
 @media (max-width: 640px) {
@@ -1670,3 +1665,41 @@ html[data-ui-theme="workspace"] :is(#app > header, #inquire-app > header, #globa
     border-color: var(--border-secondary);
 }
 html[data-ui-theme="workspace"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--bg-tertiary); }
+
+/* ============================================================================
+ * Phone layout (below 768px): the recording page and the recording list.
+ * The structure and its base are shared by every theme (static/css/phone.css,
+ * templates/components/phone/); this section sets its tokens and the few
+ * shapes that give it the Workspace look: grey chrome, 1px lines, small radii, no shadow.
+ * ========================================================================= */
+html[data-ui-theme="workspace"] {
+    --ph-page: var(--bg-secondary);
+    --ph-bar: var(--bg-primary);
+    --ph-surface: var(--bg-secondary);
+    --ph-surface-2: var(--bg-tertiary);
+    --ph-surface-3: var(--bg-tertiary);
+    --ph-danger: var(--ws-danger);
+    --ph-star: var(--ws-star);
+    --ph-shadow: 0 0 0 1px var(--border-secondary), 0 12px 32px rgba(0, 0, 0, 0.14);
+    --ph-shadow-1: 0 0 0 1px var(--border-secondary);
+    --ph-fs-title: 15px;
+    --ph-fs-read: var(--fs-read, 14px);
+    --ph-r-ctl: 6px;
+    --ph-r-field: 6px;
+    --ph-r-seg: 6px;
+    --ph-r-chip: 6px;
+    --ph-r-md: 6px;
+    --ph-r-sheet: 10px;
+    --ph-r-fab: 8px;
+    --ph-r-composer: 8px;
+    --ph-tab-pill: var(--ws-selected);
+    --ph-tab-on: var(--text-primary);
+}
+html[data-ui-theme="workspace"] .ph-bar { min-height: 52px; }
+html[data-ui-theme="workspace"] .ph-details { background: var(--bg-secondary); }
+html[data-ui-theme="workspace"] .ph-row { font-size: 14px; }
+html[data-ui-theme="workspace"] .ph-tabs,
+html[data-ui-theme="workspace"] .ph-player { background: var(--bg-primary); }
+html[data-ui-theme="workspace"] .ph-tabs__icon { width: 48px; border-radius: 6px; }
+html[data-ui-theme="workspace"] .ph-fab { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
+html[data-ui-theme="workspace"] .ph-acct__avatar { border-radius: 6px; }

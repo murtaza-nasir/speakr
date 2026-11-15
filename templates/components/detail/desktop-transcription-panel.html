@@ -57,8 +57,9 @@
                 <i class="fas fa-copy"></i>
             </button>
 
-            <!-- Download with dropdown -->
-            <div v-if="selectedRecording && selectedRecording.transcription" class="relative">
+            <!-- Download with dropdown. Not for an incognito recording: the
+                 download routes need a stored recording. -->
+            <div v-if="selectedRecording && selectedRecording.transcription && !selectedRecording.incognito" class="relative">
                 <button @click="showDownloadMenu = !showDownloadMenu"
                         data-download-toggle
                         class="btn btn--icon"

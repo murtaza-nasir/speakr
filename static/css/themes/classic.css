@@ -1062,14 +1062,6 @@ html[data-ui-theme="classic"] .chat-message .prose a[href^="/recordings/"] {
 }
 html[data-ui-theme="classic"] .chat-message .citation-refs__label { letter-spacing: 0.03em; }
 
-/* Mobile detail header: meta on one row, the tab's tools on their own scrolling row
-   (they used to overflow the meta strip and overlap the tag chips). */
-html[data-ui-theme="classic"] .mhdr-strip { background: var(--surface); }
-html[data-ui-theme="classic"] .mhdr-tools { overflow-x: auto; margin-inline: -8px; padding-inline: 4px; scrollbar-width: none; justify-content: flex-start; }
-html[data-ui-theme="classic"] .mhdr-tools::-webkit-scrollbar { display: none; }
-html[data-ui-theme="classic"] .mhdr-tools > * { flex: none; }
-html[data-ui-theme="classic"] .mhdr-meta { width: 100%; }
-html[data-ui-theme="classic"] .mhdr-meta .chip { max-width: 100%; }
 @media (max-width: 639px) {
     /* Only the recordings page drops the header's New: its phone list shows the rail's New.
        Ask Ambrose and the account pages keep it, as they have no other one. */
@@ -1100,3 +1092,37 @@ html[data-ui-theme="classic"] .flex-shrink-0.border-t:has(+ #mainContentColumns)
 
 /* Header icon set (styles.css): Search, New and the account menu are 40px circles */
 html[data-ui-theme="classic"] { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }
+
+/* ============================================================================
+ * Phone layout (below 768px): the recording page and the recording list.
+ * The structure and its base are shared by every theme (static/css/phone.css,
+ * templates/components/phone/); this section sets its tokens and the few
+ * shapes that give it the Classic look: a tinted page, white surfaces, tonal containers.
+ * ========================================================================= */
+html[data-ui-theme="classic"] {
+    --ph-page: var(--bg);
+    --ph-bar: var(--surface);
+    --ph-surface: var(--surface);
+    --ph-surface-2: var(--surface-dim);
+    --ph-surface-3: var(--surface-container);
+    --ph-text: var(--text);
+    --ph-text-2: var(--text-2);
+    --ph-text-3: var(--text-3);
+    --ph-divider: var(--divider);
+    --ph-line: var(--border);
+    --ph-accent: var(--primary);
+    --ph-on-accent: var(--on-primary);
+    --ph-accent-c: var(--primary-container);
+    --ph-on-accent-c: var(--on-primary-container);
+    --ph-link: var(--accent);
+    --ph-star: var(--star);
+    --ph-scrim: var(--scrim);
+    --ph-shadow: var(--shadow-3);
+    --ph-shadow-1: var(--shadow-1);
+    --ph-fs-title: 16px;
+    --ph-r-md: var(--radius-md);
+    --ph-r-sheet: var(--radius-xl);
+    --ph-r-fab: var(--radius-lg);
+}
+html[data-ui-theme="classic"] .ph-bar { min-height: 60px; }
+html[data-ui-theme="classic"] .ph-pane .prose-flush { font-size: 15px; }

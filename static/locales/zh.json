@@ -4073,5 +4073,30 @@
   },
   "toast": {
     "dismiss": "关闭通知"
+  },
+  "phone": {
+    "about": "关于此录音的更多信息",
+    "back15": "后退 15 秒",
+    "backToList": "返回录音列表",
+    "changeMeetingDate": "更改会议日期",
+    "editParticipants": "编辑参与者",
+    "folder": "文件夹",
+    "forward15": "前进 15 秒",
+    "menu": "菜单",
+    "moreFilters": "更多筛选",
+    "off": "关",
+    "on": "开",
+    "openPlayer": "打开播放器",
+    "organize": "整理",
+    "position": "位置",
+    "sections": "录音分区",
+    "shareExport": "共享与导出",
+    "showAsBubbles": "以气泡显示",
+    "speakerStats": "发言人统计",
+    "textShown": "显示的文本",
+    "translateAgain": "重新翻译",
+    "uploaded": "上传于 {{date}}",
+    "uploadedLabel": "上传时间",
+    "uploadedOn": "上传于 {{date}}"
   }
 }

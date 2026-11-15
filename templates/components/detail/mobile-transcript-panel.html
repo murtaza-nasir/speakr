@@ -1,9 +1,45 @@
-<!-- Mobile Transcript Panel. The toolbar (follow-player, view-mode,
-     copy / download / edit) now lives in the chevron row of
-     mobile-header.html instead of taking a whole separate row here. -->
-<div v-if="mobileTab === 'transcript'" class="h-full flex flex-col">
-    {% include 'components/detail/_transcript-find.html' %}
-    <div class="flex-grow overflow-y-auto px-3 py-3 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
+<!-- The transcript tab of a recording on a phone.
+
+     Its first child is the pinned bar (.ph-tbar, position: sticky): the
+     Transcription / Translation switch, find, copy and follow playback stay
+     under the top bar while the transcript scrolls, in the one scrolling
+     area of the recording (.ph-scroll, components/detail-view.html). The
+     transcript below it is the windowed list of
+     composables/transcript-view.js, which takes its scrolling element from
+     the page, so the list needs no scrolling area of its own.
+     Bubble view, download, edit and translate are in Actions
+     (components/phone/recording-sheets.html). -->
+<div v-if="mobileTab === 'transcript'" class="ph-pane ph-pane--transcript" :class="{ 'has-find': transcriptFind.open }" data-phone-pane="transcript">
+    <div class="ph-tbar" data-phone-transcript-bar>
+        <div class="ph-tbar__main">
+            <div v-if="!selectedRecording.incognito" class="ph-seg" role="group" :aria-label="t('phone.textShown')" data-phone-switch>
+                <button type="button" data-phone-switch-option="transcription" @click="viewingTranslation = false"
+                        :aria-pressed="viewingTranslation ? 'false' : 'true'" v-text="t('transcription.title')"></button>
+                <button type="button" data-phone-switch-option="translation" @click="viewingTranslation = true"
+                        :aria-pressed="viewingTranslation ? 'true' : 'false'" v-text="t('translation.title')"></button>
+            </div>
+            <span v-else class="ph-tbar__title" v-text="t('transcription.title')"></span>
+            <button v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0 && !processedTranscription.isError"
+                    type="button" class="ph-ib ph-toggle" data-phone-find @click="toggleTranscriptFind"
+                    :aria-pressed="transcriptFind.open ? 'true' : 'false'"
+                    :aria-label="t('findReplace.find')" :title="t('findReplace.find')">
+                <i class="fas fa-search" aria-hidden="true"></i>
+            </button>
+            <button v-if="selectedRecording.transcription" type="button" class="ph-ib" data-phone-copy @click="copyTranscription"
+                    :aria-label="t('tooltips.copyTranscript')" :title="t('tooltips.copyTranscript')">
+                <i class="fas fa-copy" aria-hidden="true"></i>
+            </button>
+            <button v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
+                    type="button" class="ph-ib ph-toggle" data-phone-follow @click="toggleFollowPlayerMode"
+                    :aria-pressed="followPlayerMode ? 'true' : 'false'"
+                    :aria-label="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')"
+                    :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
+                <i class="fas fa-arrows-alt-v" aria-hidden="true"></i>
+            </button>
+        </div>
+        {% include 'components/detail/_transcript-find.html' %}
+    </div>
+    <div class="ph-pane__body ph-pane__body--transcript relative">
         <!-- Floating Processing Indicator (Mobile) -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
              :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">
@@ -36,12 +72,6 @@
         <!-- Error Display (when transcription is an error message) -->
         <div v-if="processedTranscription.isError" class="error-display-container p-2">
             {% include 'components/detail/_transcription-error.html' %}
-        </div>
-
-        <!-- Translation toggle (mobile) -->
-        <div v-if="selectedRecording && selectedRecording.transcription_translation" class="flex items-center gap-2 mb-3 px-1">
-            <button @click="viewingTranslation = false" :class="['btn btn--sm', viewingTranslation ? 'btn--ghost' : 'btn--primary']" v-text="t('transcription.title')"></button>
-            <button @click="viewingTranslation = true" :class="['btn btn--sm', viewingTranslation ? 'btn--primary' : 'btn--ghost']" v-text="t('translation.title')"></button>
         </div>
 
         <!-- Translation in progress (mobile): same spinner state as the
@@ -140,7 +170,11 @@
         </div>
     </div>
 
-    <!-- Translation generation modal (mobile) -->
+</div>
+
+<!-- The translation dialog (target language), for Translation preferences in
+     Actions and the button of an empty translation. Outside the tab's block,
+     so Actions can open it from any tab. -->
     <div v-if="showTranslationModal" class="modal-overlay" @click.self="showTranslationModal = false">
         <div class="modal-panel modal-panel--sm">
             <div class="modal-header">
@@ -159,4 +193,3 @@
             </div>
         </div>
     </div>
-</div>

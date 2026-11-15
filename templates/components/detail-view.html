@@ -1,7 +1,9 @@
 <!-- Detail View Container -->
 <div v-if="currentView === 'detail' && selectedRecording" class="flex-1 flex flex-col overflow-hidden">
-    <!-- Incognito Mode Indicator Bar (theme-safe tint via --tint-incognito) -->
-    <div v-if="selectedRecording.incognito"
+    <!-- Incognito Mode Indicator Bar (theme-safe tint via --tint-incognito).
+         On a phone the details block carries the incognito mark and Actions
+         the discard button, so no second bar is drawn under the top bar. -->
+    <div v-if="selectedRecording.incognito && !isMobile"
          class="border-b px-4 py-2 flex-shrink-0"
          style="background: var(--tint-incognito); border-color: var(--tint-incognito-border);">
         <div class="flex items-center justify-between gap-4 max-w-4xl mx-auto">
@@ -25,32 +27,31 @@
         </div>
     </div>
 
-    <!-- Mobile View — bottom-nav shell.
-         Top: compact header (mobile-header.html)
-         Middle: tab content (single panel visible)
-         Above bottom nav: persistent mini-player (compact audio strip)
-         Bottom: tab navigation (Summary / Transcript / Chat / More) -->
-    <div v-if="isMobile" class="flex flex-col h-full overflow-hidden">
-        {% with ui_slot = 'mobile-detail-header' %}{% include 'themes/slot.html' %}{% endwith %}
-
-        <!-- Mobile Tab Content. No outer padding — each panel owns
-             its own edges so the content goes full-width to the
-             screen edges instead of sitting inside a 16 px gutter
-             that read as a "box within a box". -->
-        <div class="flex-1 overflow-y-auto">
-            {% include 'components/detail/mobile-transcript-panel.html' %}
+    <!-- Phone view (below 768px, isMobile). One scrolling area holds the
+         details block and the open tab, so the details scroll away with the
+         text and the transcript's pinned bar (position: sticky) stays under
+         the top bar. Under it the player strip and the tab bar. The top bar
+         is components/phone/recording-bar.html (in components/header.html);
+         the sheets are components/phone/recording-sheets.html. The same
+         structure serves every UI theme; a theme styles it in its
+         stylesheet (static/css/phone.css has the base). -->
+    <div v-if="isMobile" class="ph-detail" data-phone-detail>
+        <div class="ph-scroll" :class="{ 'ph-scroll--fill': phoneFill }" data-phone-scroll
+             tabindex="0" role="region" :aria-label="selectedRecording.title || t('help.untitled')">
+            {% include 'components/phone/details.html' %}
             {% include 'components/detail/mobile-summary-panel.html' %}
+            {% include 'components/detail/mobile-transcript-panel.html' %}
             {% include 'components/detail/mobile-notes-panel.html' %}
             {% include 'components/detail/mobile-chat-panel.html' %}
-            {% include 'components/detail/mobile-events-panel.html' %}
-            {% include 'components/detail/mobile-stats-panel.html' %}
         </div>
 
-        <!-- Persistent mini-player (compact strip) -->
+        <!-- Player strip -->
         {% include 'components/detail/audio-player.html' %}
 
-        <!-- Bottom nav -->
+        <!-- Tab bar -->
         {% include 'components/detail/tab-navigation.html' %}
+
+        {% include 'components/phone/recording-sheets.html' %}
     </div>
 
     <!-- Desktop View -->

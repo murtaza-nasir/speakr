@@ -7,11 +7,15 @@
         {% call assistant_chat(...) %}empty state{% endcall %}   or   {{ assistant_chat(...) }}
 
     The caller block is the empty state (default: the monogram). `footer` is
-    a macro for the lines under the composer. Bindings only, no ${ }
+    a macro for the lines under the composer. `composer_rows` is the height
+    of the empty composer in lines and `composer_attrs` extra attributes of
+    its element (the phone layout). `download_if` is a condition for the
+    Download button of an answer (an incognito recording has no downloads). Bindings only, no ${ }
     expressions, so one app's delimiters never matter (phase 1 guard). -#}
 {% macro assistant_chat(timeline_class='floating-chat-messages', composer_class='floating-chat-input',
                         answer_class='bidi-auto', bubble_class='', rows=false, placeholder='chat.placeholder',
-                        download='downloadChatResponse', memory=false, footer=none) -%}
+                        download='downloadChatResponse', memory=false, footer=none,
+                        composer_rows=2, composer_attrs='', download_if=none) -%}
 <div :ref="assistant.setScroller" class="{{ timeline_class }} assistant-timeline"
      @scroll.passive="assistant.onScroll" @click="assistant.onTimelineClick">
     <div v-if="assistant.messages.length === 0" class="assistant-empty">
@@ -92,7 +96,7 @@
                         :aria-label="t('buttons.copyMessage')">
                     <i class="fas fa-copy"></i>
                 </button>
-                <button type="button" @click="{{ download }}(index)"
+                <button{% if download_if %} v-if="{{ download_if }}"{% endif %} type="button" @click="{{ download }}(index)"
                         class="btn btn--icon btn--sm"
                         :title="t('buttons.downloadResponse')"
                         :aria-label="t('buttons.downloadResponse')">
@@ -112,7 +116,7 @@
     </div>
 </div>
 
-<div class="{{ composer_class }} assistant-composer">
+<div class="{{ composer_class }} assistant-composer"{% if composer_attrs %} {{ composer_attrs }}{% endif %}>
     <!-- "Jump to latest" while the user reads further up: a pill in its own
          row above the textarea, so it never covers the answer or its Sources. -->
     <div v-if="!assistant.following && assistant.messages.length > 0" class="assistant-composer__bar">
@@ -129,7 +133,7 @@
                   :title="t('assistant.sendHint')"
                   class="field flex-1"
                   style="resize: none;"
-                  rows="2"></textarea>
+                  rows="{{ composer_rows }}"></textarea>
         <button v-if="assistant.loading" type="button" @click="assistant.stop()"
                 class="btn btn--ghost btn--icon btn--lg flex-shrink-0"
                 :title="t('inquire.stop')"

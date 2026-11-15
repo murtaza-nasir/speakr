@@ -4073,5 +4073,30 @@
   },
   "toast": {
     "dismiss": "Benachrichtigung schließen"
+  },
+  "phone": {
+    "about": "Mehr zu dieser Aufnahme",
+    "back15": "15 Sekunden zurück",
+    "backToList": "Zurück zu den Aufnahmen",
+    "changeMeetingDate": "Besprechungsdatum ändern",
+    "editParticipants": "Teilnehmer bearbeiten",
+    "folder": "Ordner",
+    "forward15": "15 Sekunden vor",
+    "menu": "Menü",
+    "moreFilters": "Weitere Filter",
+    "off": "Aus",
+    "on": "An",
+    "openPlayer": "Player öffnen",
+    "organize": "Ordnen",
+    "position": "Position",
+    "sections": "Bereiche der Aufnahme",
+    "shareExport": "Teilen und exportieren",
+    "showAsBubbles": "Als Sprechblasen anzeigen",
+    "speakerStats": "Sprecherstatistik",
+    "textShown": "Angezeigter Text",
+    "translateAgain": "Erneut übersetzen",
+    "uploaded": "hochgeladen {{date}}",
+    "uploadedLabel": "Hochgeladen",
+    "uploadedOn": "Hochgeladen {{date}}"
   }
 }

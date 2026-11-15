@@ -4073,5 +4073,30 @@
   },
   "toast": {
     "dismiss": "Dismiss notification"
+  },
+  "phone": {
+    "about": "More about this recording",
+    "back15": "Back 15 seconds",
+    "backToList": "Back to recordings",
+    "changeMeetingDate": "Change meeting date",
+    "editParticipants": "Edit participants",
+    "folder": "Folder",
+    "forward15": "Forward 15 seconds",
+    "menu": "Menu",
+    "moreFilters": "More filters",
+    "off": "Off",
+    "on": "On",
+    "openPlayer": "Open player",
+    "organize": "Organize",
+    "position": "Position",
+    "sections": "Recording sections",
+    "shareExport": "Share and export",
+    "showAsBubbles": "Show as bubbles",
+    "speakerStats": "Speaker stats",
+    "textShown": "Text shown",
+    "translateAgain": "Translate again",
+    "uploaded": "uploaded {{date}}",
+    "uploadedLabel": "Uploaded",
+    "uploadedOn": "Uploaded {{date}}"
   }
 }

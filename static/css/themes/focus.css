@@ -1138,26 +1138,6 @@ html[data-ui-theme="focus"] body .transcription-box .speaker-tablet { font-famil
     html[data-ui-theme="focus"] body header.flex-shrink-0 { min-height: 56px !important; padding-inline: 8px; }
     html[data-ui-theme="focus"] body header h1[dir="auto"] { font-size: 18px; }
     html[data-ui-theme="focus"] body .focus-side-head { padding-top: 14px; }
-    /* mobile detail header: participants, tags, then one tidy action row
-       (no chips wrapping under icons, no overlap) */
-    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer.flex.items-center.gap-3 {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        row-gap: 6px;
-        padding: 10px 16px 6px;
-    }
-    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1.min-w-0 { display: contents; }
-    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1 > .flex.items-center { grid-row: 1; }
-    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-1 > .flex-wrap { grid-row: 2; margin-top: 0; }
-    html[data-ui-theme="focus"] body .px-4.py-2.cursor-pointer > .flex-shrink-0 {
-        grid-row: 3;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        margin-inline: -6px;
-    }
-    html[data-ui-theme="focus"] body [data-mobile-player],
-html[data-ui-theme="focus"] body [data-mobile-bottom-nav] { background: var(--f-surface); border-top: 1px solid var(--f-divider); }
-    html[data-ui-theme="focus"] body [data-mobile-bottom-nav] button { font-size: 11px; }
     html[data-ui-theme="focus"] body .prose-flush { font-size: 17px; padding-inline: 20px !important; }
     html[data-ui-theme="focus"] body .transcription-simple-view { font-size: 17px; }
 }
@@ -1278,3 +1258,53 @@ html[data-ui-theme="focus"] body :is(#app > header, #inquire-app > header, #glob
     color: var(--f-text-2);
 }
 html[data-ui-theme="focus"] body :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--f-surface-2); color: var(--f-text); }
+
+/* ============================================================================
+ * Phone layout (below 768px): the recording page and the recording list.
+ * The structure and its base are shared by every theme (static/css/phone.css,
+ * templates/components/phone/); this section sets its tokens and the few
+ * shapes that give it the Focus look: warm paper, a serif reading face, almost no fills.
+ * ========================================================================= */
+html[data-ui-theme="focus"] {
+    --ph-page: var(--f-bg);
+    --ph-bar: var(--f-bg);
+    --ph-surface: var(--f-surface);
+    --ph-surface-2: var(--f-surface-2);
+    --ph-surface-3: var(--f-surface-3);
+    --ph-text: var(--f-text);
+    --ph-text-2: var(--f-text-2);
+    --ph-text-3: var(--f-text-3);
+    --ph-divider: var(--f-divider);
+    --ph-line: var(--f-border);
+    --ph-accent: var(--f-accent);
+    --ph-on-accent: var(--f-on-accent);
+    --ph-accent-c: var(--f-accent-c);
+    --ph-on-accent-c: var(--f-on-accent-c);
+    --ph-link: var(--f-accent-text);
+    --ph-scrim: var(--f-scrim);
+    --ph-shadow: var(--f-shadow-2);
+    --ph-shadow-1: var(--f-shadow-1);
+    --ph-font-title: var(--f-font-read);
+    --ph-font-read: var(--f-font-read);
+    --ph-fs-title: 18px;
+    --ph-fs-read: 17px;
+    --ph-r-ctl: var(--f-r-md);
+    --ph-r-field: var(--f-r-md);
+    --ph-r-seg: var(--f-r-md);
+    --ph-r-chip: var(--f-r-md);
+    --ph-r-md: var(--f-r-md);
+    --ph-r-sheet: var(--f-r-lg);
+    --ph-r-fab: 999px;
+    --ph-r-composer: 12px;
+    --ph-tab-pill: transparent;
+    --ph-tab-on: var(--f-accent-text);
+}
+/* Folder and tag chips as quiet marks, without a fill */
+html[data-ui-theme="focus"] .ph-details .ph-chip { background: none; border-color: transparent; padding: 0 8px 0 0; color: var(--f-text-2); }
+html[data-ui-theme="focus"] .ph-details { border-bottom-color: transparent; }
+html[data-ui-theme="focus"] .ph-bar--recording { border-bottom-color: transparent; }
+html[data-ui-theme="focus"] .ph-player,
+html[data-ui-theme="focus"] .ph-tabs { background: var(--f-surface); border-top: 1px solid var(--f-divider); }
+html[data-ui-theme="focus"] .ph-pane__body { padding-inline: max(20px, var(--ph-safe-l)) max(20px, var(--ph-safe-r)); }
+html[data-ui-theme="focus"] body .ph-pane .prose-flush { padding-inline: 0 !important; }
+html[data-ui-theme="focus"] .ph-sheet__title { font-size: 19px; }

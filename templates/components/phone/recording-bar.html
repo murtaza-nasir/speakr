@@ -1,0 +1,35 @@
+<!-- The top bar of a recording on a phone: back to the list, the title on up
+     to two lines, the star and More. Everything else a recording offers is
+     in the sheet behind More (components/phone/recording-sheets.html); the
+     account menu and New recording are on the list. A div, not a header
+     element, so the themes' rules for the page header do not reach it. -->
+<div v-else-if="isMobile && currentView === 'detail' && selectedRecording" class="ph-bar ph-bar--recording flex-shrink-0" role="banner" data-phone-bar="recording">
+    <button type="button" class="ph-ib" data-phone-back @click="showPhoneList()"
+            :aria-label="t('phone.backToList')" :title="t('phone.backToList')">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+    </button>
+    <h1 v-if="!editingTitle" class="ph-bar__title" data-phone-title dir="auto"
+        :class="{ 'is-shared': selectedRecording.is_shared }"
+        v-text="selectedRecording.title || t('help.untitled')"></h1>
+    <input v-else
+           v-model="selectedRecording.title"
+           @blur="saveTitle"
+           @keyup.enter="saveTitle"
+           @keyup.esc="cancelEditTitle"
+           ref="titleInput"
+           data-phone-title-input
+           class="ph-bar__input" dir="auto"
+           :aria-label="t('common.rename')"
+           :placeholder="t('help.untitled')">
+    <button v-if="!selectedRecording.incognito && !editingTitle" type="button" class="ph-ib ph-star" data-phone-star
+            @click="toggleHighlight(selectedRecording)"
+            :aria-pressed="selectedRecording.is_highlighted ? 'true' : 'false'"
+            :aria-label="selectedRecording.is_highlighted ? t('tooltips.removeHighlight') : t('tooltips.highlight')"
+            :title="selectedRecording.is_highlighted ? t('tooltips.removeHighlight') : t('tooltips.highlight')">
+        <i :class="selectedRecording.is_highlighted ? 'fas fa-star' : 'far fa-star'" aria-hidden="true"></i>
+    </button>
+    <button v-if="!editingTitle" type="button" class="ph-ib" data-phone-more @click="openPhoneSheet('actions')"
+            aria-haspopup="dialog" :aria-label="t('headerActions.more')" :title="t('headerActions.more')">
+        <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+    </button>
+</div>

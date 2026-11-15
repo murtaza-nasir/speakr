@@ -1054,14 +1054,7 @@ html[data-ui-theme="cards"] #mainColumnResizer { margin-inline: -5px; position: 
 html[data-ui-theme="cards"] .sidebar .sb-head .btn--primary { background: var(--c-primary-c); border-color: transparent; color: var(--c-on-primary-c); box-shadow: none; }
 html[data-ui-theme="cards"] .sidebar .sb-head .btn--primary:hover:not(:disabled) { background: color-mix(in oklab, var(--c-primary-c) 78%, var(--c-primary)); }
 html[data-ui-theme="cards"] .sidebar .sb-head .btn--primary { min-width: 40px; }
-html[data-ui-theme="cards"] .mh-row { background: var(--c-surface); border-bottom: 1px solid var(--c-divider); }
-html[data-ui-theme="cards"] .mh-row .chip,
-html[data-ui-theme="cards"] .mh-row .chip-meta { max-width: 100%; }
-html[data-ui-theme="cards"] .mh-row .chip .chip__label { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 640px) {
-    html[data-ui-theme="cards"] .mh-row { flex-wrap: wrap; row-gap: 4px; }
-    html[data-ui-theme="cards"] .mh-row > .flex-1 { flex: 1 1 100%; }
-    html[data-ui-theme="cards"] .mh-tools { width: 100%; justify-content: flex-start; gap: 2px; overflow-x: auto; scrollbar-width: none; }
     html[data-ui-theme="cards"] .sb-head { padding-top: max(12px, env(safe-area-inset-top)); }
     html[data-ui-theme="cards"] .modal-footer--between { flex-wrap: wrap; }
     html[data-ui-theme="cards"] .modal-footer--between > div { width: 100%; order: -1; flex-wrap: wrap; }
@@ -1070,9 +1063,6 @@ html[data-ui-theme="cards"] .mh-row .chip .chip__label { overflow: hidden; text-
     html[data-ui-theme="cards"] .modal-footer .btn { white-space: normal; text-align: center; }
     html[data-ui-theme="cards"] .border-t.px-5.py-2:has(.player-play-button) { margin: 0; border-radius: 0; border-left: 0; border-right: 0; box-shadow: none; padding: 8px 14px; }
     html[data-ui-theme="cards"] .speaker-run { padding: 10px 14px 4px; }
-}
-@media (max-width: 1023px) {
-    html[data-ui-theme="cards"] [data-mobile-bottom-nav] { background: var(--c-surface); border-top: 1px solid var(--c-divider); }
 }
 
 /* share page and stats: speaker tablets as quiet tonal pills */
@@ -1098,7 +1088,6 @@ html[data-ui-theme="cards"] #rightMainColumn div:has(> table.w-full.text-sm) { o
 /* Phones: the tool icons under the header and the header's Inquire and New buttons keep the
    design's heights (icon buttons 38px tall, header buttons 40px) instead of the 30px of btn--sm. */
 @media (max-width: 767px) {
-    html[data-ui-theme="cards"] .mh-tools .btn--icon.btn--sm { min-height: 38px; }
     html[data-ui-theme="cards"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action.btn--sm { min-height: 40px; }
 }
 
@@ -1115,3 +1104,40 @@ html[data-ui-theme="cards"] .progress-popup .progress-popup__summary { opacity: 
    at every width where their labels are hidden (Search and New were 39x30 and
    38x30 pills beside a 40px account circle in the 640-1023px recording view). */
 html[data-ui-theme="cards"] { --hdr-icon-w: 40px; --hdr-icon-h: 40px; }
+
+/* ============================================================================
+ * Phone layout (below 768px): the recording page and the recording list.
+ * The structure and its base are shared by every theme (static/css/phone.css,
+ * templates/components/phone/); this section sets its tokens and the few
+ * shapes that give it the Cards look: tonal surfaces, pills, soft elevation.
+ * ========================================================================= */
+html[data-ui-theme="cards"] {
+    --ph-page: var(--c-bg);
+    --ph-bar: var(--c-surface);
+    --ph-surface: var(--c-surface);
+    --ph-surface-2: var(--c-surface-2);
+    --ph-surface-3: var(--c-surface-3);
+    --ph-text: var(--c-text);
+    --ph-text-2: var(--c-text-2);
+    --ph-text-3: var(--c-text-3);
+    --ph-divider: var(--c-divider);
+    --ph-line: var(--c-border);
+    --ph-accent: var(--c-primary);
+    --ph-on-accent: var(--c-on-primary);
+    --ph-accent-c: var(--c-primary-c);
+    --ph-on-accent-c: var(--c-on-primary-c);
+    --ph-link: var(--c-link);
+    --ph-scrim: var(--c-scrim);
+    --ph-shadow: var(--c-e3);
+    --ph-shadow-1: var(--c-e1);
+    --ph-fs-read: var(--c-fs-base);
+    --ph-r-md: var(--c-r-md);
+    --ph-r-sheet: var(--c-r-xl);
+    --ph-r-fab: var(--c-r-lg);
+}
+/* The list's section headers sit on the page tint, not on the drawer's surface */
+@media (max-width: 767px) {
+    html[data-ui-theme="cards"] .sidebar.ph-list { --sb-bg: var(--c-bg); }
+}
+html[data-ui-theme="cards"] .ph-fab { box-shadow: var(--c-e2); }
+html[data-ui-theme="cards"] .ph-pane--transcript .speaker-run { padding: 10px 14px 4px; }

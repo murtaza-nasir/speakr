@@ -1,10 +1,26 @@
-<!-- Mobile Chat Panel: the shared AssistantChat (components/assistant/chat.html).
-     Clear sits in the mobile header's contextual toolbar. -->
+<!-- The Ambrose tab of a recording on a phone: the shared AssistantChat
+     (components/assistant/chat.html). The composer is in the page only on
+     this tab; it is one line high and grows with its text
+     (composables/phone-layout.js). The chat has its own scrolling timeline,
+     so this pane fills the screen under the details block. -->
 {% from 'components/assistant/chat.html' import assistant_chat with context %}
 {% from 'components/detail/recording-chat-footer.html' import recording_chat_footer %}
-<div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden">
-    {% call assistant_chat(timeline_class='flex-1 overflow-y-auto px-3 py-3 space-y-4',
-                           composer_class='border-t border-[var(--border-primary)] px-3 py-3',
+<div v-if="mobileTab === 'chat'" class="ph-pane ph-pane--fill ph-chat" data-phone-pane="chat">
+    <div v-if="chatMessages && chatMessages.length > 0" class="ph-acts ph-chat__acts" data-phone-acts="chat">
+        <span class="assistant-scope"><i class="fas fa-file-audio" aria-hidden="true"></i><span v-text="t('assistant.scopeRecording')"></span></span>
+        <span class="flex-1"></span>
+        <button v-if="!selectedRecording.incognito" type="button" class="ph-tbtn" data-phone-download="chat" @click="downloadChat" :title="t('buttons.downloadChat')">
+            <i class="fas fa-download" aria-hidden="true"></i><span v-text="t('common.download')"></span>
+        </button>
+        <button type="button" class="ph-tbtn" data-phone-clear-chat @click="clearChat" :title="t('tooltips.clearChat')">
+            <i class="fas fa-times" aria-hidden="true"></i><span v-text="t('tooltips.clearChat')"></span>
+        </button>
+    </div>
+    {% call assistant_chat(timeline_class='ph-chat__timeline flex-1 overflow-y-auto px-3 py-3 space-y-4',
+                           composer_class='ph-composer',
+                           composer_rows=1,
+                           composer_attrs='data-phone-composer',
+                           download_if='!selectedRecording.incognito',
                            footer=recording_chat_footer) %}
         <div class="empty">
             {% with avatar_size = 'lg' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
