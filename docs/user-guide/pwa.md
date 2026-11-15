@@ -56,19 +56,56 @@ A Progressive Web App combines the best of web and mobile apps:
 
 ## PWA Features
 
-### Mobile-First Detail View (v0.9.0+)
+### Phone Layout
 
-The mobile recording detail view is a first-class member of the design system. When you open a recording on a phone you see:
+On a screen narrower than 768 px, the recording list and a recording are two separate screens. The layout is the same in every interface theme; a theme changes colors, shapes and type only.
 
-- **Single header** — the global app header carries the title + edit pen + regenerate-title; the per-recording strip below carries participants, status, folder / tag / share pills, and a chevron to expand for action toolbar + secondary metadata.
-- **Bottom navigation** — Summary, Transcript and the assistant (Ambrose) as direct tabs, plus a **More** overflow that opens a bottom-sheet for Notes / Stats / Events when those tabs are available.
-- **Contextual icons in the chevron row** — Copy / download / edit for Summary and Notes, the follow-player and view-mode toggles for Transcript, calendar-export for Events. Shares the chevron's row so it doesn't take a separate row of vertical space.
-- **Edge-to-edge content** — Panels run full-width to the screen edges instead of sitting inside nested gutters.
-- **Sticky speaker pills** — In the transcript, the speaker tablet pins to the top of the scroll area for the entire speaker's run.
-- **Editor with sticky Cancel / Save footer** — Markdown editing for Summary and Notes uses a flat-corner editor that spans edge-to-edge, with a sticky footer that keeps Cancel and Save reachable for long content.
-- **Audio player** — Sits above the bottom nav with `.btn--icon.btn--sm` consistency across speed / volume / download / fullscreen / video-toggle. The volume slider popover opens upward.
-- **Upload modal as a bottom sheet** — Drag the modal header down to dismiss; the sheet animates fully off-screen if you drag past 120 px or 25 % of viewport height.
-- **Processing queue as a bottom sheet** — When background jobs are running, the queue sits above the player + nav strip (was overlapping them in earlier versions).
+![The recording list on a phone](../assets/images/screenshots/mobile-main.png)
+
+**The recording list**
+
+- The top bar holds the menu button, the search field and the button for selection mode. Tags, speakers, a date range and the other filters are opened with the button inside the search field.
+- Under the top bar, filter chips are shown for the sort order, the folder, **Inbox**, **Starred**, **Archived** and **From others**. The chips wrap to a second row on a narrow screen.
+- Notifications, shared recordings, settings, the color scheme, dark mode and **Sign out** are found in the menu. The same menu leads to Ask Ambrose and, for administrators, to the admin pages.
+- A recording is opened with a tap on its row.
+- **New recording** is a button over the lower right corner of the list. The upload and record choices are opened with it.
+- In selection mode, the actions for the selected recordings are shown in a bar at the bottom edge. Selection mode is left with **Done**.
+
+![A recording on a phone](../assets/images/screenshots/mobile-summary.png)
+
+**A recording**
+
+- One top bar is shown: the back arrow to the list, the title on up to two lines, the star and **More**.
+- The details block under the top bar is scrolled away with the text. Its first line gives the meeting date, the upload date when the recording was uploaded on another day, the length and the file size. Participants, the folder, tags and **Info** follow. The block is folded with a tap on its first line.
+- **Info** opens a sheet with the full details: both dates with their times, the file name, the owner of a shared recording, processing times and the transcription hints. The meeting date and the participants are changed from this sheet.
+- **More** opens the **Actions** sheet, in which every action for the recording is listed with a label: inbox, star and archive, folder, tags, rename, regenerate title, identify speakers, edit transcript, bubble view, download transcript, translate, reprocess, regenerate summary, events, speaker stats, share, download audio and the two delete actions. An action that the user's rights or the state of the recording do not allow is left out.
+- Four tabs are always shown at the bottom: **Summary**, **Transcript**, **Notes** and the assistant. Events and speaker stats are opened as sheets, from the rows at the end of the summary or from **Actions**.
+- **Copy**, **Download** and **Edit** are found above the summary and above the notes.
+
+![The transcript on a phone](../assets/images/screenshots/mobile-transcript.png)
+
+**The transcript**
+
+- A bar with the **Transcript** / **Translation** switch, find, copy and follow playback is pinned under the top bar. It remains in place while the transcript is scrolled, so the translation of the passage on screen is one tap away.
+- Find works in transcripts of any length on a phone. Matches are marked in the text, and the arrows in the find bar lead to the previous and the next match.
+- Bubble view, download, edit and translate are found in **Actions**.
+
+**The player**
+
+- One slim strip above the tabs shows play or pause, the position, the current speaker and a thin progress line.
+- A tap on the strip opens the player sheet with a scrubber, back and forward by 15 seconds, the playback speeds and **Download audio**. For a video recording the sheet also holds the video and fullscreen controls.
+- The player has no volume control on a phone. The volume is set with the keys of the phone.
+
+**The assistant**
+
+- The field for a question is shown on the assistant's tab only. It is one line high and grows with the text to about five lines.
+- While the on-screen keyboard is open, the player strip, the tabs and the details block are hidden, so the chat and the field remain visible above the keyboard.
+
+**Editors, uploads and the queue**
+
+- The summary and notes editors fill the screen, with **Cancel** and **Save** in a footer under the editor.
+- The upload dialog is a sheet that is dismissed with a downward drag on its header.
+- While background jobs are running, the processing queue is shown as a bar above the player strip, or at the bottom edge of the list.
 
 ### Share to Speakr (Share Target)
 

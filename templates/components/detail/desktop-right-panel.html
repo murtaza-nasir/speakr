@@ -51,7 +51,8 @@
                     <template v-if="!editingSummary">
                         <span class="tabs-bar__inline">
                             <button class="btn btn--icon" @click="copySummary" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-                            <div class="relative inline-flex">
+                            <!-- No downloads for an incognito recording: the download routes need a stored recording -->
+                            <div v-if="!selectedRecording.incognito" class="relative inline-flex">
                                 <button class="btn btn--icon" data-summary-download-toggle @click.stop="showSummaryDownloadMenu = !showSummaryDownloadMenu" :title="t('buttons.downloadSummary')"><i class="fas fa-download"></i></button>
                                 <div v-if="showSummaryDownloadMenu" data-summary-download-dropdown
                                      class="absolute right-0 top-full mt-1 surface-raised z-50 overflow-hidden whitespace-nowrap" style="min-width: 200px;">
@@ -74,8 +75,8 @@
                             <summary class="btn btn--icon" :title="t('headerActions.more')" :aria-label="t('headerActions.more')"><i class="fas fa-ellipsis"></i></summary>
                             <div class="tabs-bar__menu">
                                 <button type="button" @click="copySummary"><i class="fas fa-copy"></i><span v-text="t('buttons.copySummary')"></span></button>
-                                <button type="button" @click="downloadSummary('docx')" :title="t('buttons.downloadSummary')"><i class="fas fa-file-word"></i><span v-text="t('buttons.formatWord')"></span></button>
-                                <button type="button" @click="downloadSummary('md')" :title="t('buttons.downloadSummary')"><i class="fab fa-markdown"></i><span v-text="t('buttons.formatMarkdown')"></span></button>
+                                <button v-if="!selectedRecording.incognito" type="button" @click="downloadSummary('docx')" :title="t('buttons.downloadSummary')"><i class="fas fa-file-word"></i><span v-text="t('buttons.formatWord')"></span></button>
+                                <button v-if="!selectedRecording.incognito" type="button" @click="downloadSummary('md')" :title="t('buttons.downloadSummary')"><i class="fab fa-markdown"></i><span v-text="t('buttons.formatMarkdown')"></span></button>
                                 <button type="button" @click="toggleEditSummary"><i class="fas fa-pen"></i><span v-text="t('buttons.editSummary')"></span></button>
                                 <button v-if="!selectedRecording.incognito && selectedRecording.can_edit !== false" type="button" @click="openRegenerateSummaryModal(selectedRecording)"><i class="fas fa-sliders-h"></i><span v-text="t('summary.customizePrompt')"></span></button>
                             </div>
@@ -92,7 +93,7 @@
                     <template v-if="!editingNotes">
                         <span class="tabs-bar__inline">
                             <button v-if="selectedRecording.notes" class="btn btn--icon" @click="copyNotes" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
-                            <button v-if="selectedRecording.notes" class="btn btn--icon" @click="downloadNotes" :title="t('buttons.downloadNotes')"><i class="fas fa-download"></i></button>
+                            <button v-if="selectedRecording.notes && !selectedRecording.incognito" class="btn btn--icon" @click="downloadNotes" :title="t('buttons.downloadNotes')"><i class="fas fa-download"></i></button>
                             <button class="btn btn--icon" @click="toggleEditNotes" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
                         </span>
                         <details class="tabs-bar__more" data-close-outside
@@ -101,7 +102,7 @@
                             <summary class="btn btn--icon" :title="t('headerActions.more')" :aria-label="t('headerActions.more')"><i class="fas fa-ellipsis"></i></summary>
                             <div class="tabs-bar__menu">
                                 <button v-if="selectedRecording.notes" type="button" @click="copyNotes"><i class="fas fa-copy"></i><span v-text="t('buttons.copyNotes')"></span></button>
-                                <button v-if="selectedRecording.notes" type="button" @click="downloadNotes"><i class="fas fa-download"></i><span v-text="t('buttons.downloadNotes')"></span></button>
+                                <button v-if="selectedRecording.notes && !selectedRecording.incognito" type="button" @click="downloadNotes"><i class="fas fa-download"></i><span v-text="t('buttons.downloadNotes')"></span></button>
                                 <button type="button" @click="toggleEditNotes"><i class="fas fa-pen"></i><span v-text="t('buttons.editNotes')"></span></button>
                             </div>
                         </details>

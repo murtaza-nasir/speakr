@@ -1,0 +1,27 @@
+{#- A sheet of the phone layout (static/css/phone.css, composables/phone-layout.js).
+
+        {% from 'components/phone/_sheet.html' import phone_sheet %}
+        {% call phone_sheet('info', "t('common.info')") %} rows {% endcall %}
+
+    `name` is the value of phoneSheet that shows it, `title` a Vue expression
+    for its heading. A sheet slides up from the bottom edge; with drawer=true
+    it comes in from the left and has no heading (the menu of the list). The
+    block is in the page only while the sheet is open. -#}
+{% macro phone_sheet(name, title, drawer=false) -%}
+<div v-if="phoneSheet === '{{ name }}'" class="ph-sheet-layer" data-phone-sheet="{{ name }}">
+    <div class="ph-scrim" @click="closePhoneSheet()"></div>
+    <div class="ph-sheet{{ ' ph-sheet--drawer' if drawer }}" role="dialog" aria-modal="true" tabindex="-1" :aria-label="{{ title }}">
+        {%- if not drawer %}
+        <div class="ph-sheet__head">
+            <h3 class="ph-sheet__title" dir="auto" v-text="{{ title }}"></h3>
+            <button type="button" class="ph-ib" data-phone-sheet-close @click="closePhoneSheet()" :aria-label="t('buttons.close')" :title="t('buttons.close')">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        {%- endif %}
+        <div class="ph-sheet__body">
+            {{- caller() -}}
+        </div>
+    </div>
+</div>
+{%- endmacro %}

@@ -1,10 +1,10 @@
-<!-- Mobile Stats Panel — same data as desktop-stats-tab.html but laid
-     out for narrow screens: 2-column metric grid instead of 4-column,
-     stacked per-speaker cards instead of a wide HTML table. Gated on
-     hasRecordingStats so the tab only surfaces meaningful data (the
-     stats are derived from per-segment start/end times). -->
-<div v-if="mobileTab === 'stats'" class="h-full overflow-y-auto px-3 py-3"
-     tabindex="0" role="region" :aria-label="t('stats.title')">
+<!-- The speaker stats of a recording on a phone: the body of the Speaker
+     stats sheet (components/phone/recording-sheets.html), opened from the
+     end of the summary and from Actions. Same data as desktop-stats-tab.html,
+     laid out for narrow screens: a 2-column metric grid and one card per
+     speaker. Gated on hasRecordingStats (the stats are derived from
+     per-segment start and end times). -->
+<div class="ph-stats px-1 py-2" data-phone-stats>
     <div v-if="hasRecordingStats" class="space-y-4">
 
         <!-- Headline metrics -->

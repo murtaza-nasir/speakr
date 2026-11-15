@@ -1,0 +1,45 @@
+<!-- The filter chips of the recording list on a phone, at the top of the
+     scrolling list: sort order, folder, Inbox, Starred, Archived and From
+     others. They wrap; nothing scrolls sideways. The further filters (tags,
+     speakers, dates and the rest) are in the sheet behind the button in the
+     search field (components/phone/list-sheets.html). -->
+<div class="ph-filters" data-phone-filters>
+    <button type="button" class="ph-fc" data-phone-filter="sort"
+            @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+            :title="t('sidebar.sortBy')">
+        <i class="fas fa-arrow-down-wide-short" aria-hidden="true"></i>
+        <span v-text="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')"></span>
+    </button>
+    <button v-if="foldersEnabled && availableFolders.length > 0" type="button" class="ph-fc" data-phone-filter="folder"
+            @click="openPhoneSheet('list-folder')" aria-haspopup="dialog"
+            :aria-pressed="filterFolder ? 'true' : 'false'">
+        <i class="fas fa-folder" aria-hidden="true"
+           :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderMarkColor(filterFolder) : '' }"></i>
+        <span class="ph-fc__label" v-text="!filterFolder ? t('folderManagement.allFolders') : (filterFolder === 'none' ? t('sidebar.unfiled') : getFolderName(filterFolder))"></span>
+        <i class="fas fa-chevron-down ph-fc__chev" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="ph-fc" data-phone-filter="inbox" @click="filterInbox = !filterInbox"
+            :aria-pressed="filterInbox ? 'true' : 'false'">
+        <i class="fas fa-inbox" aria-hidden="true"></i><span v-text="t('sidebar.inbox')"></span>
+    </button>
+    <button type="button" class="ph-fc" data-phone-filter="starred" @click="filterStarred = !filterStarred"
+            :aria-pressed="filterStarred ? 'true' : 'false'">
+        <i class="fas fa-star" aria-hidden="true"></i><span v-text="t('sidebar.starred')"></span>
+    </button>
+    <button type="button" class="ph-fc" data-phone-filter="archived" @click="showArchivedRecordings = !showArchivedRecordings"
+            :aria-pressed="showArchivedRecordings ? 'true' : 'false'" :title="t('archive.showArchived')">
+        <i class="fas fa-box-archive" aria-hidden="true"></i><span v-text="t('archive.archived')"></span>
+    </button>
+    <button v-if="enableInternalSharing" type="button" class="ph-fc" data-phone-filter="shared" @click="showSharedWithMe = !showSharedWithMe"
+            :aria-pressed="showSharedWithMe ? 'true' : 'false'" :title="t('sidebar.sharedWithMe')">
+        <i class="fas fa-users" aria-hidden="true"></i><span v-text="t('sidebar.shared')"></span>
+    </button>
+    <button v-if="searchQuery || phoneFilterCount > 0 || filterStarred || filterInbox" type="button" class="ph-fc ph-fc--clear" data-phone-filter="clear"
+            @click="clearAllFilters" :title="t('buttons.clearAllFilters')">
+        <i class="fas fa-times" aria-hidden="true"></i><span v-text="t('common.clearAll')"></span>
+    </button>
+    <label v-if="foldersEnabled && selectedFolderHasChildren" class="ph-filters__check">
+        <input type="checkbox" v-model="includeChildFolders">
+        <span v-text="t('folderManagement.includeSubfolders')"></span>
+    </label>
+</div>

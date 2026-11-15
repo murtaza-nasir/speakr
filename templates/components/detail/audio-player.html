@@ -1,17 +1,18 @@
-<!-- Audio Player Component (Mobile) — sits above the bottom nav as a
-     persistent mini-player. Top border separates it from the content
-     above; padding tightened so it doesn't shove the bottom-nav too
-     far up. -->
-<div data-mobile-player class="bg-[var(--bg-secondary)] px-3 py-2 border-t border-[var(--border-primary)] flex-shrink-0">
+<!-- The player of a recording on a phone: one slim strip above the tab bar
+     (play or pause, the time, the current speaker, a thin progress line).
+     A tap on the strip opens the player sheet: scrubber, back and forward
+     15 seconds, speed and download. There is no volume control; the phone's
+     keys set the volume. The media element stays in the strip, so playback
+     goes on while the sheet opens and closes. -->
+{% from 'components/phone/_sheet.html' import phone_sheet %}
+<div data-mobile-player class="ph-player flex-shrink-0">
     <!-- Show message if audio has been deleted -->
-    <div v-if="selectedRecording.audio_deleted_at"
-         class="text-[var(--text-muted)] text-sm flex items-center gap-2">
+    <div v-if="selectedRecording.audio_deleted_at" class="ph-player__note">
         <i class="fas fa-info-circle"></i>
         <span v-text="t('help.audioDeletedMessage')"></span>
     </div>
     <!-- Show message for incognito recordings (no audio stored) -->
-    <div v-else-if="selectedRecording.incognito"
-         class="text-[var(--text-muted)] text-sm flex items-center gap-2">
+    <div v-else-if="selectedRecording.incognito" class="ph-player__note">
         <i class="fas fa-user-secret"></i>
         <span v-text="t('incognito.audioNotStored')"></span>
     </div>
@@ -120,147 +121,74 @@
             </div>
         </Teleport>
 
-        <!-- Normal Controls (hidden when fullscreen) -->
-        <div v-show="!videoFullscreen">
-            <!-- Progress Bar (draggable, touch support) -->
-            <div class="w-full h-4 rounded-full cursor-pointer relative mb-2 group flex items-center"
-                 @mousedown="startProgressDrag"
-                 @touchstart.prevent="startProgressDrag">
-                <!-- Track background -->
-                <div class="progress-track w-full h-2 rounded-full relative bg-[var(--border-accent)] opacity-40">
-                    <!-- Progress fill -->
-                    <div class="h-full bg-[var(--text-accent)] rounded-full pointer-events-none opacity-100"
-                         :style="{ width: audioProgressPercent + '%' }"></div>
-                </div>
-                <!-- Progress dot - stays within track bounds -->
-                <div class="absolute top-1/2 w-4 h-4 bg-[var(--text-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
-                     :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
-                     style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
-            </div>
-
-            <!-- Controls Row -->
-            <div class="flex items-center gap-2">
-                <!-- Play/Pause Button -->
-                <button @click="toggleAudioPlayback"
-                        :disabled="selectedRecording && selectedRecording.audio_ready === false"
-                        class="w-10 h-10 flex items-center justify-center rounded-full player-play-button transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-md"
-                        :title="(selectedRecording && selectedRecording.audio_ready === false) ? t('mergeRecordings.audioPreparing') : (audioIsPlaying ? t('tooltips.pause') : t('tooltips.play'))">
-                    <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
-                </button>
-
-                <!-- Time Display -->
-                <div class="flex items-baseline gap-1 flex-shrink-0">
-                    <span class="text-sm font-semibold font-mono" :class="isDraggingProgress ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">${ formatAudioTime(displayCurrentTime) }</span>
-                    <span class="text-xs text-[var(--text-muted)]">/</span>
-                    <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
-                </div>
-
-                <!-- Playback Speed Control. Uses .btn--icon.btn--sm
-                     for visual rhythm with the other player buttons;
-                     speed text remains as inner content. -->
-                <div class="relative flex-shrink-0">
-                    <button ref="speedButtonMobile"
-                            @click="showSpeedMenu = !showSpeedMenu; $nextTick(() => updateSpeedMenuPosition($refs.speedButtonMobile))"
-                            data-speed-toggle
-                            class="btn btn--icon btn--sm"
-                            style="color: var(--text-accent);"
-                            :title="t('tooltips.playbackSpeed') || 'Playback speed'">
-                        <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
-                    </button>
-                    <!-- Dropdown menu (teleported to body, fixed positioning) -->
-                    <Teleport to="body">
-                        <div v-if="showSpeedMenu" @click.stop
-                             data-speed-dropdown
-                             class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-[9999] speed-dropdown overflow-y-auto backdrop-blur-sm"
-                             :style="speedMenuPosition">
-                            <div class="py-0.5">
-                                <button v-for="speed in playbackSpeeds" :key="speed"
-                                        @mousedown.prevent="setPlaybackRate(speed); showSpeedMenu = false"
-                                        class="w-full px-2 py-0.5 text-[11px] font-mono text-left hover:bg-[var(--bg-accent-light)] transition-colors"
-                                        :class="speed === playbackRate ? 'text-[var(--text-accent)] font-semibold bg-[var(--bg-accent-light)]' : 'text-[var(--text-primary)]'">
-                                    ${ speed }x
-                                </button>
-                            </div>
-                        </div>
-                    </Teleport>
-                </div>
-
-                <!-- Spacer -->
-                <div class="flex-1"></div>
-
-                <!-- Volume Control -->
-                <div class="relative flex items-center flex-shrink-0 group/vol"
-                     @mouseenter="showVolumeSlider = true"
-                     @mouseleave="showVolumeSlider = false">
-                    <button @click="toggleAudioMute"
-                            class="btn btn--icon btn--sm"
-                            :style="audioIsMuted || playerVolume === 0 ? '' : 'color: var(--text-accent);'"
-                            :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
-                        <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
-                    </button>
-                    <!-- Volume slider popover — anchored ABOVE the
-                         button (bottom-full + pb-2) because the audio
-                         player sits at the bottom of the viewport, so
-                         a top-anchored popup would have rendered off-
-                         screen below the player and behind the bottom
-                         nav. The pb-2 is a hover bridge that lets the
-                         cursor cross from the button into the popover
-                         without breaking the :hover state. -->
-                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 z-50 transition-all duration-200"
-                         :class="showVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
-                         style="transform-origin: bottom center;"
-                         @mouseenter="showVolumeSlider = true"
-                         @mouseleave="showVolumeSlider = false">
-                        <div class="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
-                            <span class="text-[10px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
-                            <!-- The rotated input reserves a layout box
-                                 equal to its pre-rotation width × height,
-                                 so the wrap forces a square slot the
-                                 rotation can spin inside without
-                                 shifting the popover's centre. -->
-                            <div class="volume-slider-vertical-wrap" style="width: 20px; height: 80px;">
-                                <input type="range" min="0" max="1" step="0.05"
-                                       :value="audioIsMuted ? 0 : playerVolume"
-                                       @input="(e) => setAudioVolume(parseFloat(e.target.value))"
-                                       :aria-label="t('speakerModal.volume')"
-                                       class="volume-slider-vertical"
-                                       style="width: 80px;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Download Button -->
-                <a :href="'/audio/' + selectedRecording.id + '?download=true'"
-                   download
-                   class="btn btn--icon btn--sm flex-shrink-0"
-                   style="color: var(--text-accent);"
-                   :title="t('buttons.downloadAudio') || 'Download audio'">
-                    <i class="fas fa-download text-sm"></i>
-                </a>
-
-                <!-- Video Fullscreen Button -->
-                <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoCollapsed"
-                        @click="enterVideoFullscreen"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        style="color: var(--text-accent);"
-                        :title="t('tooltips.fullscreenVideo')">
-                    <i class="fas fa-expand text-sm"></i>
-                </button>
-
-                <!-- Video Toggle Button. Matches the desktop player's
-                     video toggle (fa-video / fa-video-slash, accent when
-                     shown). Mobile's video state is videoCollapsed
-                     (true = hidden), so it's negated to read the same way
-                     as desktop's videoDockEnabled (true = shown). -->
-                <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
-                        @click="videoCollapsed = !videoCollapsed"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        :style="!videoCollapsed ? 'color: var(--text-accent);' : ''"
-                        :title="!videoCollapsed ? t('tooltips.hideVideo') : t('tooltips.showVideo')">
-                    <i :class="!videoCollapsed ? 'fas fa-video' : 'fas fa-video-slash'" class="text-sm"></i>
-                </button>
-            </div>
+        <!-- The strip (hidden while a video is fullscreen) -->
+        <div v-show="!videoFullscreen" class="ph-mp" data-phone-player-strip>
+            <div class="ph-mp__track" aria-hidden="true"><div class="ph-mp__line" data-phone-progress :style="{ width: audioProgressPercent + '%' }"></div></div>
+            <button type="button" class="ph-ib ph-mp__play" data-phone-play @click="toggleAudioPlayback"
+                    :disabled="selectedRecording && selectedRecording.audio_ready === false"
+                    :aria-label="(selectedRecording && selectedRecording.audio_ready === false) ? t('mergeRecordings.audioPreparing') : (audioIsPlaying ? t('tooltips.pause') : t('tooltips.play'))"
+                    :title="(selectedRecording && selectedRecording.audio_ready === false) ? t('mergeRecordings.audioPreparing') : (audioIsPlaying ? t('tooltips.pause') : t('tooltips.play'))">
+                <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="ph-mp__open" data-phone-player-open @click="openPhoneSheet('player')"
+                    aria-haspopup="dialog" :aria-label="t('phone.openPlayer')">
+                <span class="ph-mp__time" data-phone-time>${ formatAudioTime(displayCurrentTime) } / ${ formatAudioTime(audioDuration) }</span>
+                <span class="ph-mp__who" data-phone-speaker dir="auto" v-text="phoneSpeaker"></span>
+                <span v-if="playbackRate !== 1" class="ph-mp__rate" v-text="formatPlaybackRate(playbackRate)"></span>
+                <span class="ph-mp__chev" aria-hidden="true"><i class="fas fa-chevron-up"></i></span>
+            </button>
         </div>
     </div>
+
+    <!-- The player sheet -->
+    {% call phone_sheet('player', "selectedRecording.title || t('help.audioPlayer')") %}
+    <div class="ph-ps" data-phone-player-sheet>
+        <div>
+            <div class="ph-ps__scrub" data-phone-scrubber role="slider" tabindex="0"
+                 :aria-label="t('phone.position')" aria-valuemin="0" :aria-valuemax="Math.round(audioDuration || 0)"
+                 :aria-valuenow="Math.round(displayCurrentTime || 0)" :aria-valuetext="formatAudioTime(displayCurrentTime)"
+                 @mousedown="startProgressDrag" @touchstart.prevent="startProgressDrag"
+                 @keydown.left.prevent="skipAudio(-5)" @keydown.right.prevent="skipAudio(5)">
+                <div class="progress-track ph-ps__track">
+                    <div class="ph-ps__fill" :style="{ width: audioProgressPercent + '%' }"></div>
+                </div>
+                <div class="ph-ps__thumb" :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 9px), calc(100% - 18px))' }"></div>
+            </div>
+            <div class="ph-ps__times">
+                <span data-phone-sheet-time v-text="formatAudioTime(displayCurrentTime)"></span>
+                <span v-text="formatAudioTime(audioDuration)"></span>
+            </div>
+        </div>
+        <div class="ph-ps__main">
+            <button type="button" class="ph-ps__skip" data-phone-skip="-15" @click="skipAudio(-15)" :aria-label="t('phone.back15')" :title="t('phone.back15')">
+                <i class="fas fa-rotate-left" aria-hidden="true"></i><span>15</span>
+            </button>
+            <button type="button" class="ph-ps__play" data-phone-sheet-play @click="toggleAudioPlayback"
+                    :disabled="selectedRecording && selectedRecording.audio_ready === false"
+                    :aria-label="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
+                <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="ph-ps__skip" data-phone-skip="15" @click="skipAudio(15)" :aria-label="t('phone.forward15')" :title="t('phone.forward15')">
+                <span>15</span><i class="fas fa-rotate-right" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="ph-ps__speeds" role="group" :aria-label="t('tooltips.playbackSpeed')" data-phone-speeds>
+            <button v-for="speed in playbackSpeeds" :key="speed" type="button" :data-phone-speed="speed"
+                    @click="setPlaybackRate(speed)" :aria-pressed="speed === playbackRate ? 'true' : 'false'"
+                    v-text="formatPlaybackRate(speed)"></button>
+        </div>
+    </div>
+    <template v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')">
+        <button type="button" class="ph-row" data-phone-action="video-toggle" @click="videoCollapsed = !videoCollapsed">
+            <i :class="!videoCollapsed ? 'fas fa-video' : 'fas fa-video-slash'" aria-hidden="true"></i>
+            <span class="ph-row__label" v-text="!videoCollapsed ? t('tooltips.hideVideo') : t('tooltips.showVideo')"></span>
+        </button>
+        <button v-if="!videoCollapsed" type="button" class="ph-row" data-phone-action="video-fullscreen" @click="closePhoneSheet(); enterVideoFullscreen()">
+            <i class="fas fa-expand" aria-hidden="true"></i><span class="ph-row__label" v-text="t('tooltips.fullscreenVideo')"></span>
+        </button>
+    </template>
+    <a class="ph-row" data-phone-action="player-download" :href="'/audio/' + selectedRecording.id + '?download=true'" download>
+        <i class="fas fa-download" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.downloadAudio')"></span>
+    </a>
+    {% endcall %}
 </div>

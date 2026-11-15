@@ -1,8 +1,8 @@
-<!-- Mobile Events Panel. Calendar-export button moved into the
-     mobile-header's contextual toolbar so this panel now drops
-     straight into its event list. -->
-<div v-if="mobileTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0" class="h-full flex flex-col">
-    <div class="flex-grow overflow-y-auto px-3 py-3 space-y-3" tabindex="0" role="region" :aria-label="t('events.title')">
+<!-- The events of a recording on a phone: the body of the Events sheet
+     (components/phone/recording-sheets.html), opened from the end of the
+     summary and from Actions. Export to calendar is the sheet's last row. -->
+<div v-if="selectedRecording.events && selectedRecording.events.length > 0" class="ph-events" data-phone-events>
+    <div class="space-y-3 px-1 py-2">
         <div v-for="event in selectedRecording.events" :key="event.id"
              class="bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)]">
             <div class="flex justify-between items-start mb-2">

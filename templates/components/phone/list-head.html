@@ -1,0 +1,31 @@
+<!-- The top bar of the recording list on a phone: the menu, the search field
+     with the further filters behind the button inside it, and selection
+     mode. On a phone the list is a screen of its own (the sidebar at full
+     width, composables/phone-layout.js), so this bar takes the place of the
+     theme's sidebar header (the sidebar-nav slot). -->
+<div class="ph-bar ph-bar--list flex-shrink-0" data-phone-bar="list">
+    <button type="button" class="ph-ib" data-phone-menu @click="openPhoneSheet('menu')"
+            aria-haspopup="dialog" :aria-label="t('phone.menu')" :title="t('phone.menu')">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span v-if="unreadCount > 0" class="ph-ib__badge" data-notification-badge v-text="unreadCount > 9 ? '9+' : unreadCount"></span>
+    </button>
+    <div class="ph-search" role="search">
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <input v-model="filterTextQuery" type="search" enterkeyhint="search" autocomplete="off" data-phone-search
+               :placeholder="t('sidebar.searchRecordings')" :aria-label="t('sidebar.searchRecordings')">
+        <button type="button" class="ph-ib ph-toggle" data-phone-more-filters @click="openPhoneSheet('filters')"
+                aria-haspopup="dialog" :aria-pressed="phoneFilterCount > 0 ? 'true' : 'false'"
+                :aria-label="t('phone.moreFilters')" :title="t('phone.moreFilters')">
+            <i class="fas fa-sliders-h" aria-hidden="true"></i>
+            <span v-if="phoneFilterCount > 0" class="ph-ib__badge" v-text="phoneFilterCount"></span>
+        </button>
+    </div>
+    <button v-if="!selectionMode" type="button" class="ph-ib" data-phone-select @click="enterSelectionMode"
+            :disabled="recordings.length === 0"
+            :aria-label="t('bulkActions.selectMultipleHint')" :title="t('bulkActions.selectMultipleHint')">
+        <i class="fas fa-list-check" aria-hidden="true"></i>
+    </button>
+    <button v-else type="button" class="ph-tbtn" data-phone-select-done @click="exitSelectionMode" :title="t('bulkActions.exitSelection')">
+        <span v-text="t('common.done')"></span>
+    </button>
+</div>

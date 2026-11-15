@@ -1,0 +1,74 @@
+<!-- The details block of a recording on a phone. One line with both dates
+     (the meeting date and, when it is another day, the upload date), the
+     length and the file size; under it the participants, the folder and tag
+     chips and Info. The block scrolls away with the text. -->
+<div class="ph-details" data-phone-details v-show="!phoneEditing">
+    <button type="button" class="ph-details__line" data-phone-details-toggle
+            @click="phoneDetailsOpen = !phoneDetailsOpen"
+            :aria-expanded="phoneDetailsOpen ? 'true' : 'false'"
+            :title="phoneDetailsOpen ? t('tooltips.hideDetails') : t('tooltips.showDetails')">
+        <span class="ph-details__when">
+            <span v-if="phoneDates.meeting" class="ph-details__fact" data-phone-meeting-date :title="t('metadata.meetingDate')">
+                <i class="far fa-calendar" aria-hidden="true"></i><span class="sr-only" v-text="t('metadata.meetingDate')"></span>
+                <span v-text="phoneDates.meeting"></span>
+            </span>
+            <span v-if="phoneDates.uploaded" class="ph-details__fact" data-phone-uploaded-date
+                  v-text="t(phoneDates.only ? 'phone.uploadedOn' : 'phone.uploaded', { date: phoneDates.uploaded })"></span>
+            <span v-if="!phoneDates.meeting && !phoneDates.uploaded && !selectedRecording.incognito" class="ph-details__fact" v-text="t('help.noDateSet')"></span>
+            <span v-if="selectedRecording.audio_duration || selectedRecording.duration" class="ph-details__fact" data-phone-duration v-text="formatDuration(selectedRecording.audio_duration || selectedRecording.duration)"></span>
+            <span v-if="selectedRecording.file_size" class="ph-details__fact" data-phone-size v-text="formatFileSize(selectedRecording.file_size)"></span>
+        </span>
+        <span class="ph-details__chev" aria-hidden="true"><i :class="['fas fa-chevron-down', { 'rotate-180': phoneDetailsOpen }]"></i></span>
+    </button>
+    <div v-if="phoneDetailsOpen" class="ph-details__more">
+        <div v-if="selectedRecording.incognito" class="ph-details__state">
+            <span class="ph-pill ph-pill--incognito" data-phone-incognito>
+                <i class="fas fa-user-secret" aria-hidden="true"></i><span v-text="t('incognito.badge')"></span>
+            </span>
+            <span class="ph-details__hint">${ t('incognito.sessionOnly') } · ${ t('incognito.notSavedToAccount') }</span>
+        </div>
+        <div v-if="selectedRecording.status !== 'COMPLETED'" class="ph-details__state">
+            <span :class="getStatusClass(selectedRecording.status)" data-phone-status
+                  class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap"
+                  v-text="formatRecordingStatus(selectedRecording)"></span>
+        </div>
+        <div class="ph-details__people" data-phone-participants>
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span dir="auto" v-text="selectedRecording.participants || t('help.noParticipants')"></span>
+        </div>
+        <div class="ph-details__chips">
+            <span class="ph-chips">
+                <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
+                      class="ph-chip" data-phone-folder-chip
+                      :style="{ '--tag': getFolderMarkColor(selectedRecording.folder_id) }"
+                      :title="t('tooltips.folderLabel', { name: getFolderName(selectedRecording.folder_id) })">
+                    <i class="fas fa-folder" aria-hidden="true"></i>
+                    <span class="ph-chip__label" v-text="getFolderName(selectedRecording.folder_id)"></span>
+                    <i v-if="selectedRecording.folder && selectedRecording.folder.is_foreign" class="fas fa-share-nodes ph-chip__shared" aria-hidden="true"></i>
+                </span>
+                <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id" type="button"
+                        class="ph-chip" data-phone-tag-chip
+                        @click="phoneFilterByTag(tag)"
+                        :style="{ '--tag': folderMarkColor(tag.color || '#6B7280') }"
+                        :title="tag.group_id ? t('tooltips.groupLabel', { name: tag.group_name }) : t('tooltips.filterByName', { name: tag.name })">
+                    <i v-if="tag.group_id" class="fas fa-users" aria-hidden="true"></i>
+                    <span v-else class="ph-chip__dot" aria-hidden="true"></span>
+                    <span class="ph-chip__label" v-text="tag.name"></span>
+                    <i v-if="tag.is_foreign" class="fas fa-share-nodes ph-chip__shared" aria-hidden="true"></i>
+                </button>
+                <span v-if="selectedRecording.is_shared" class="ph-pill ph-pill--info" data-phone-shared-in :title="selectedRecording.owner_username || ''">
+                    <i class="fas fa-arrow-down" aria-hidden="true"></i><span v-text="t('sharing.sharedBadge')"></span>
+                </span>
+                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="ph-pill ph-pill--info" :title="t('tooltips.shareWithUsers')">
+                    <i class="fas fa-arrow-up" aria-hidden="true"></i><span v-text="selectedRecording.shared_with_count"></span>
+                </span>
+                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0" class="ph-pill ph-pill--info">
+                    <i class="fas fa-globe" aria-hidden="true"></i><span v-text="selectedRecording.public_share_count"></span>
+                </span>
+            </span>
+            <button type="button" class="ph-tbtn" data-phone-info @click="openPhoneSheet('info')" aria-haspopup="dialog">
+                <i class="fas fa-circle-info" aria-hidden="true"></i><span v-text="t('common.info')"></span>
+            </button>
+        </div>
+    </div>
+</div>

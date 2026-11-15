@@ -53,7 +53,7 @@
                     <span v-if="chatMessages && chatMessages.length > 0" class="tab__count">${chatMessages.length}</span>
                 </div>
                 <div class="floating-chat-header-actions" @mousedown.stop @touchstart.stop>
-                    <button v-if="chatMessages.length > 0"
+                    <button v-if="chatMessages.length > 0 && !selectedRecording.incognito"
                             @click="downloadChat"
                             class="btn btn--icon btn--sm"
                             :title="t('buttons.downloadChat')">
@@ -138,7 +138,7 @@
 
             <!-- Timeline and composer: the shared AssistantChat
                  (components/assistant/chat.html) -->
-            {{ assistant_chat(footer=recording_chat_footer) }}
+            {{ assistant_chat(footer=recording_chat_footer, download_if='!selectedRecording.incognito') }}
 
             <!-- Resize handle (floating mode only) -->
             <div v-if="chatPanelState === 'floating'"

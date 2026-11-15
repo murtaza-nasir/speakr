@@ -1,0 +1,223 @@
+{#- The sheets of a recording on a phone (composables/phone-layout.js):
+    Actions (behind More in the top bar), Info, Events, Speaker stats, the
+    folder picker and the summary's download formats. The player sheet is
+    with the player (components/detail/audio-player.html).
+
+    Actions holds every action a recording has, each under the condition it
+    has on the desktop header and panels (themes/default/header-actions.html,
+    components/detail/desktop-*.html). A row closes the sheet and then acts,
+    so a dialog an action opens is never under the sheet. -#}
+{% from 'components/phone/_sheet.html' import phone_sheet %}
+
+{% call phone_sheet('actions', "t('help.actions')") %}
+    <template v-if="!selectedRecording.incognito">
+        <div class="ph-quick" data-phone-quick>
+            <button type="button" data-phone-action="inbox" @click="toggleInbox(selectedRecording)"
+                    :aria-pressed="selectedRecording.is_inbox ? 'true' : 'false'"
+                    :title="selectedRecording.is_inbox ? t('tooltips.markAsRead') : t('tooltips.moveToInbox')">
+                <i class="fas fa-inbox" aria-hidden="true"></i><span v-text="t('sidebar.inbox')"></span>
+            </button>
+            <button type="button" data-phone-action="star" @click="toggleHighlight(selectedRecording)"
+                    :aria-pressed="selectedRecording.is_highlighted ? 'true' : 'false'"
+                    :title="selectedRecording.is_highlighted ? t('tooltips.removeHighlight') : t('tooltips.highlight')">
+                <i :class="selectedRecording.is_highlighted ? 'fas fa-star' : 'far fa-star'" aria-hidden="true"></i><span v-text="t('tooltips.highlight')"></span>
+            </button>
+            <button type="button" data-phone-action="archive" @click="toggleArchive(selectedRecording)"
+                    :aria-pressed="selectedRecording.is_archived ? 'true' : 'false'"
+                    :title="selectedRecording.is_archived ? t('archive.unarchive') : t('archive.archive')">
+                <i class="fas fa-box-archive" aria-hidden="true"></i><span v-text="selectedRecording.is_archived ? t('archive.archived') : t('archive.archive')"></span>
+            </button>
+        </div>
+    </template>
+
+    <div v-if="!selectedRecording.incognito || selectedRecording.can_edit !== false" class="ph-group" v-text="t('phone.organize')"></div>
+    <button v-if="!selectedRecording.incognito && foldersEnabled && selectedRecording.can_edit !== false"
+            type="button" class="ph-row" data-phone-action="folder" @click="openPhoneSheet('folder')">
+        <i class="fas fa-folder" aria-hidden="true"></i><span class="ph-row__label" v-text="t('folderManagement.moveToFolder')"></span>
+        <span class="ph-row__val" v-text="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('folderManagement.noFolder')"></span>
+    </button>
+    <button v-if="!selectedRecording.incognito" type="button" class="ph-row" data-phone-action="tags"
+            @click="closePhoneSheet(); editRecordingTags(selectedRecording)">
+        <i class="fas fa-tags" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.editTags')"></span>
+    </button>
+    <button v-if="selectedRecording.can_edit !== false" type="button" class="ph-row" data-phone-action="rename" @click="phoneRename()">
+        <i class="fas fa-pen" aria-hidden="true"></i><span class="ph-row__label" v-text="t('common.rename')"></span>
+    </button>
+    <button v-if="selectedRecording.can_edit !== false && selectedRecording.status === 'COMPLETED'"
+            type="button" class="ph-row" data-phone-action="regenerate-title" :disabled="regeneratingTitle"
+            @click="closePhoneSheet(); regenerateTitle()">
+        <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ph-row__label" v-text="t('tooltips.regenerateTitle')"></span>
+    </button>
+
+    <div v-if="selectedRecording.transcription" class="ph-group" v-text="t('transcription.title')"></div>
+    <button v-if="!selectedRecording.incognito && processedTranscription.hasDialogue"
+            type="button" class="ph-row" data-phone-action="speakers" @click="closePhoneSheet(); openSpeakerModal()">
+        <i class="fas fa-user-tag" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.identifySpeakers')"></span>
+    </button>
+    <button v-if="viewingTranslation ? selectedRecording.transcription_translation : selectedRecording.transcription"
+            type="button" class="ph-row" data-phone-action="edit-transcript" @click="closePhoneSheet(); openTranscriptionEditor()">
+        <i class="fas fa-edit" aria-hidden="true"></i><span class="ph-row__label" v-text="viewingTranslation ? t('tooltips.editTranslation') : t('tooltips.editTranscript')"></span>
+    </button>
+    <button v-if="processedTranscription.hasDialogue" type="button" class="ph-row" data-phone-action="bubbles"
+            role="switch" :aria-checked="transcriptionViewMode === 'bubble' ? 'true' : 'false'"
+            @click="toggleTranscriptionViewMode()">
+        <i class="fas fa-comments" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.showAsBubbles')"></span>
+        <span class="ph-row__val" v-text="transcriptionViewMode === 'bubble' ? t('phone.on') : t('phone.off')"></span>
+    </button>
+    <button v-if="selectedRecording.transcription && !selectedRecording.incognito"
+            type="button" class="ph-row" data-phone-action="download-transcript" @click="closePhoneSheet(); downloadTranscript()">
+        <i class="fas fa-download" aria-hidden="true"></i><span class="ph-row__label" v-text="t('transcription.downloadTranscript')"></span>
+    </button>
+    <button v-if="selectedRecording.transcription && !selectedRecording.incognito"
+            type="button" class="ph-row" data-phone-action="translate" :disabled="translationJobActive"
+            @click="closePhoneSheet(); mobileTab = 'transcript'; viewingTranslation = true; generateTranslation()">
+        <i class="fas fa-language" aria-hidden="true"></i>
+        <span class="ph-row__label" v-text="selectedRecording.transcription_translation ? t('phone.translateAgain') : t('tooltips.translateTranscript')"></span>
+        <span v-if="selectedRecording.transcription_translation_language" class="ph-row__val" v-text="translationLanguageLabel(selectedRecording.transcription_translation_language)"></span>
+    </button>
+    <button v-if="selectedRecording.transcription && !selectedRecording.incognito"
+            type="button" class="ph-row" data-phone-action="translation-preferences" @click="closePhoneSheet(); openTranslationModal()">
+        <i class="fas fa-sliders-h" aria-hidden="true"></i><span class="ph-row__label" v-text="t('translation.preferences')"></span>
+    </button>
+
+    <template v-if="!selectedRecording.incognito">
+        <div v-if="(selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')) || ['PENDING', 'QUEUED', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+             class="ph-group" v-text="t('headerActions.reprocess')"></div>
+        <button v-if="selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED') && !selectedRecording.audio_deleted_at"
+                type="button" class="ph-row" data-phone-action="reprocess-transcription"
+                @click="closePhoneSheet(); confirmReprocess('transcription', selectedRecording)">
+            <i class="fas fa-redo-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="useAsrEndpoint ? t('tooltips.reprocessWithAsr') : t('tooltips.reprocessTranscription')"></span>
+        </button>
+        <button v-if="selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                type="button" class="ph-row" data-phone-action="regenerate-summary"
+                @click="closePhoneSheet(); openRegenerateSummaryModal(selectedRecording)">
+            <i class="fas fa-sync-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('summary.regenerateSummary')"></span>
+        </button>
+        <button v-if="['PENDING', 'QUEUED', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                type="button" class="ph-row ph-row--warn" data-phone-action="reset"
+                @click="closePhoneSheet(); confirmReset(selectedRecording)">
+            <i class="fas fa-undo" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.resetStuckProcessing')"></span>
+        </button>
+    </template>
+
+    <div class="ph-group" v-text="t('phone.about')"></div>
+    <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+            type="button" class="ph-row" data-phone-action="events" @click="openPhoneSheet('events')">
+        <i class="fas fa-calendar-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('events.title')"></span>
+        <span class="ph-row__val"><span class="ph-pill ph-pill--info" v-text="selectedRecording.events.length"></span></span>
+    </button>
+    <button v-if="hasRecordingStats" type="button" class="ph-row" data-phone-action="stats" @click="openPhoneSheet('stats')">
+        <i class="fas fa-chart-bar" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.speakerStats')"></span>
+    </button>
+    <button type="button" class="ph-row" data-phone-action="info" @click="openPhoneSheet('info')">
+        <i class="fas fa-circle-info" aria-hidden="true"></i><span class="ph-row__label" v-text="t('common.info')"></span>
+    </button>
+
+    <template v-if="!selectedRecording.incognito">
+        <div v-if="(!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)) || !selectedRecording.audio_deleted_at"
+             class="ph-group" v-text="t('phone.shareExport')"></div>
+        <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
+                type="button" class="ph-row" data-phone-action="share"
+                @click="closePhoneSheet(); openUnifiedShareModal(selectedRecording)">
+            <i class="fas fa-share-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.shareRecording')"></span>
+            <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="ph-row__val" v-text="selectedRecording.shared_with_count"></span>
+        </button>
+        <a v-if="!selectedRecording.audio_deleted_at" class="ph-row" data-phone-action="download-audio"
+           :href="'/audio/' + selectedRecording.id + '?download=true'" download @click="closePhoneSheet()">
+            <i class="fas fa-download" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.downloadAudio')"></span>
+        </a>
+
+        <template v-if="canDeleteRecordings && selectedRecording.can_delete !== false">
+            <div class="ph-group" v-text="t('common.delete')"></div>
+            <button v-if="!selectedRecording.audio_deleted_at && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                    type="button" class="ph-row ph-row--danger" data-phone-action="delete-audio"
+                    @click="closePhoneSheet(); confirmDeleteAudio(selectedRecording)">
+                <i class="fas fa-volume-xmark" aria-hidden="true"></i>
+                <span class="ph-row__label" v-text="((selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')) ? t('deleteAudio.actionVideo') : t('deleteAudio.action'))"></span>
+            </button>
+            <button type="button" class="ph-row ph-row--danger" data-phone-action="delete"
+                    @click="closePhoneSheet(); confirmDelete(selectedRecording)">
+                <i class="fas fa-trash" aria-hidden="true"></i><span class="ph-row__label" v-text="t('headerActions.deleteRecording')"></span>
+            </button>
+        </template>
+    </template>
+
+    <template v-else>
+        <div class="ph-group" v-text="t('incognito.mode')"></div>
+        <button type="button" class="ph-row ph-row--danger" data-phone-action="discard-incognito"
+                @click="closePhoneSheet(); clearIncognitoRecordingWithConfirm()">
+            <i class="fas fa-trash" aria-hidden="true"></i><span class="ph-row__label" v-text="t('tooltips.discardIncognito')"></span>
+        </button>
+    </template>
+{% endcall %}
+
+{% call phone_sheet('folder', "t('folderManagement.moveToFolder')") %}
+    <button type="button" class="ph-row" :class="{ 'is-on': !selectedRecording.folder_id }" data-phone-folder-option=""
+            @click="assignFolderToRecording(selectedRecording.id, null); closePhoneSheet()">
+        <i class="fas fa-ban" aria-hidden="true"></i><span class="ph-row__label" v-text="t('folderManagement.noFolder')"></span>
+        <span v-if="!selectedRecording.folder_id" class="ph-row__val"><i class="fas fa-check" aria-hidden="true"></i></span>
+    </button>
+    <button v-for="folder in availableFolders" :key="folder.id" type="button" class="ph-row"
+            :class="{ 'is-on': selectedRecording.folder_id == folder.id }" :data-phone-folder-option="folder.id"
+            @click="assignFolderToRecording(selectedRecording.id, folder.id); closePhoneSheet()">
+        <i class="fas fa-folder" aria-hidden="true" :style="[{ color: getFolderMarkColor(folder.id) }, folderIndentStyle(folder)]"></i>
+        <span class="ph-row__label" dir="auto" v-text="folder.name"></span>
+        <span v-if="selectedRecording.folder_id == folder.id" class="ph-row__val"><i class="fas fa-check" aria-hidden="true"></i></span>
+    </button>
+{% endcall %}
+
+{% call phone_sheet('info', "t('common.info')") %}
+    <dl class="ph-kv" data-phone-info>
+        <div><dt v-text="t('form.title')"></dt><dd dir="auto" v-text="selectedRecording.title || t('help.untitled')"></dd></div>
+        <div data-phone-info-meeting><dt v-text="t('metadata.meetingDate')"></dt><dd v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : t('help.noDateSet')"></dd></div>
+        <div v-if="selectedRecording.created_at" data-phone-info-uploaded><dt v-text="t('phone.uploadedLabel')"></dt><dd v-text="formatDisplayDate(selectedRecording.created_at)"></dd></div>
+        <div v-if="selectedRecording.audio_duration || selectedRecording.duration"><dt v-text="t('metadata.duration')"></dt><dd v-text="formatDuration(selectedRecording.audio_duration || selectedRecording.duration)"></dd></div>
+        <div v-if="selectedRecording.file_size"><dt v-text="t('metadata.fileSize')"></dt><dd v-text="formatFileSize(selectedRecording.file_size)"></dd></div>
+        <div v-if="selectedRecording.original_filename" data-phone-info-filename><dt v-text="t('metadata.fileName')"></dt><dd dir="auto" v-text="selectedRecording.original_filename"></dd></div>
+        <div v-if="selectedRecording.is_shared"><dt v-text="t('unifiedShareModal.owner')"></dt><dd dir="auto" v-text="selectedRecording.owner_username || t('sharing.unknown')"></dd></div>
+        <div><dt v-text="t('summary.participants')"></dt><dd dir="auto" v-text="selectedRecording.participants || t('help.noParticipants')"></dd></div>
+        <div v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"><dt v-text="t('phone.folder')"></dt><dd dir="auto" v-text="getFolderName(selectedRecording.folder_id)"></dd></div>
+        <div v-if="getRecordingTags(selectedRecording).length > 0"><dt v-text="t('sidebar.tags')"></dt><dd dir="auto" v-text="getRecordingTags(selectedRecording).map(tag => tag.name).join(', ')"></dd></div>
+        <div v-if="selectedRecording.status !== 'COMPLETED'"><dt v-text="t('metadata.status')"></dt><dd v-text="formatRecordingStatus(selectedRecording)"></dd></div>
+        <template v-for="(item, index) in (activeRecordingMetadata || [])" :key="'processing-' + index">
+            <div v-if="item.icon === 'fas fa-history' && item.fullText"><dt v-text="t('metadata.processingTime')"></dt><dd class="whitespace-pre-line" v-text="item.fullText"></dd></div>
+        </template>
+        <div v-if="selectedRecording.resolved_hotwords"><dt v-text="t('form.hotwords')"></dt><dd dir="auto" class="whitespace-pre-wrap" v-text="selectedRecording.resolved_hotwords"></dd></div>
+        <div v-if="selectedRecording.resolved_initial_prompt"><dt v-text="t('form.initialPrompt')"></dt><dd dir="auto" class="whitespace-pre-wrap" v-text="selectedRecording.resolved_initial_prompt"></dd></div>
+    </dl>
+    <button v-if="selectedRecording.duplicate_info" type="button" class="ph-row ph-row--warn" data-phone-action="duplicates"
+            @click="closePhoneSheet(); openDuplicatesModal(selectedRecording.duplicate_info)">
+        <i class="fas fa-copy" aria-hidden="true"></i>
+        <span class="ph-row__label">${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') }</span>
+    </button>
+    <button type="button" class="ph-row" data-phone-action="info-meeting-date" @click="closePhoneSheet(); openMeetingDatePicker()">
+        <i class="far fa-calendar" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.changeMeetingDate')"></span>
+    </button>
+    <button type="button" class="ph-row" data-phone-action="info-participants" @click="closePhoneSheet(); openParticipantsModal()">
+        <i class="fas fa-users" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.editParticipants')"></span>
+    </button>
+{% endcall %}
+
+{% call phone_sheet('events', "t('events.title')") %}
+    {% include 'components/detail/mobile-events-panel.html' %}
+    <div v-if="!(selectedRecording.events && selectedRecording.events.length > 0)" class="empty">
+        <div class="empty__title" v-text="t('events.noEvents')"></div>
+    </div>
+    <button v-if="selectedRecording.events && selectedRecording.events.length > 0" type="button" class="ph-row" data-phone-action="export-events"
+            @click="downloadICS()">
+        <i class="fas fa-calendar-plus" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.exportCalendar')"></span>
+    </button>
+{% endcall %}
+
+{% call phone_sheet('stats', "t('phone.speakerStats')") %}
+    {% include 'components/detail/mobile-stats-panel.html' %}
+{% endcall %}
+
+{% call phone_sheet('summary-download', "t('buttons.downloadSummary')") %}
+    <button type="button" class="ph-row" data-phone-action="summary-docx" @click="closePhoneSheet(); downloadSummary('docx')">
+        <i class="fas fa-file-word" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.formatWord')"></span>
+    </button>
+    <button type="button" class="ph-row" data-phone-action="summary-md" @click="closePhoneSheet(); downloadSummary('md')">
+        <i class="fab fa-markdown" aria-hidden="true"></i><span class="ph-row__label" v-text="t('buttons.formatMarkdown')"></span>
+    </button>
+{% endcall %}

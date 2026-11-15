@@ -4075,5 +4075,30 @@
   },
   "toast": {
     "dismiss": "Закрыть уведомление"
+  },
+  "phone": {
+    "about": "Подробнее об этой записи",
+    "back15": "Назад на 15 секунд",
+    "backToList": "Назад к записям",
+    "changeMeetingDate": "Изменить дату встречи",
+    "editParticipants": "Изменить участников",
+    "folder": "Папка",
+    "forward15": "Вперёд на 15 секунд",
+    "menu": "Меню",
+    "moreFilters": "Другие фильтры",
+    "off": "Выкл.",
+    "on": "Вкл.",
+    "openPlayer": "Открыть плеер",
+    "organize": "Упорядочить",
+    "position": "Позиция",
+    "sections": "Разделы записи",
+    "shareExport": "Поделиться и экспортировать",
+    "showAsBubbles": "Показывать как реплики",
+    "speakerStats": "Статистика спикеров",
+    "textShown": "Показанный текст",
+    "translateAgain": "Перевести снова",
+    "uploaded": "загружено {{date}}",
+    "uploadedLabel": "Загружено",
+    "uploadedOn": "Загружено {{date}}"
   }
 }

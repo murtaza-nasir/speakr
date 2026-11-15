@@ -1,17 +1,13 @@
-<!-- Mobile Summary Panel.
+<!-- The summary tab of a recording on a phone.
 
      Two modes:
-     (1) READING: small action toolbar (copy / download / edit) above
-         the prose. Toolbar hides when editing so the "edit pen
-         highlights when active" inconsistency from before is gone —
-         in edit mode there's no panel toolbar at all, only the
-         editor's own toolbar + a sticky Cancel/Save footer.
+     (1) READING: Copy, Download and Edit above the prose, in the one
+         scrolling area of the recording. In edit mode there is no such
+         row, only the editor's own toolbar and a Cancel/Save footer.
      (2) EDITING: editor fills the panel edge-to-edge with minimal
          outer padding so the typing area is as large as possible;
          Cancel and Save live in a sticky footer below the editor. -->
-<!-- Per-tab contextual toolbar moved into mobile-header.html so it
-     shares the chevron row instead of taking a separate row here. -->
-<div v-if="mobileTab === 'summary'" class="h-full flex flex-col">
+<div v-if="mobileTab === 'summary'" class="ph-pane" :class="{ 'ph-pane--fill': editingSummary }" data-phone-pane="summary">
 
     <!-- Editing-mode shell — editor goes edge-to-edge (no horizontal
          padding) since the surrounding mobile content area no longer
@@ -29,9 +25,21 @@
         </div>
     </div>
 
-    <!-- Reading-mode body — px-3 only for prose readability against
-         the screen edge; py-3 keeps the prose off the toolbar above. -->
-    <div v-else class="flex-grow overflow-y-auto px-3 py-3" tabindex="0" role="region" :aria-label="t('summary.title')">
+    <!-- Reading mode: Copy, Download and Edit above the text; Events and
+         Speaker stats as rows at its end (they open sheets). -->
+    <div v-else class="ph-pane__body">
+        <div class="ph-acts" data-phone-acts="summary">
+            <button v-if="selectedRecording.summary" type="button" class="ph-tbtn" @click="copySummary" :title="t('buttons.copySummary')">
+                <i class="fas fa-copy" aria-hidden="true"></i><span v-text="t('buttons.copy')"></span>
+            </button>
+            <button v-if="selectedRecording.summary && !selectedRecording.incognito" type="button" class="ph-tbtn" data-phone-download="summary"
+                    @click="openPhoneSheet('summary-download')" aria-haspopup="dialog" :title="t('buttons.downloadSummary')">
+                <i class="fas fa-download" aria-hidden="true"></i><span v-text="t('common.download')"></span>
+            </button>
+            <button type="button" class="ph-tbtn" @click="toggleEditSummary" :title="t('buttons.editSummary')">
+                <i class="fas fa-pen" aria-hidden="true"></i><span v-text="t('common.edit')"></span>
+            </button>
+        </div>
         <div>
             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
                 <div class="spinner spinner--lg"></div>
@@ -59,7 +67,18 @@
                     </button>
                 </div>
             </div>
-            <div v-else class="prose-flush h-full" v-html="summaryHtml"></div>
+            <div v-else class="prose-flush" v-html="summaryHtml"></div>
+        </div>
+        <div v-if="(selectedRecording.events && selectedRecording.events.length > 0) || hasRecordingStats" class="ph-also" data-phone-also>
+            <button v-if="selectedRecording.events && selectedRecording.events.length > 0" type="button" class="ph-row" data-phone-open="events"
+                    @click="openPhoneSheet('events')" aria-haspopup="dialog">
+                <i class="fas fa-calendar-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('events.title')"></span>
+                <span class="ph-row__val"><span class="ph-pill ph-pill--info" v-text="selectedRecording.events.length"></span><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+            </button>
+            <button v-if="hasRecordingStats" type="button" class="ph-row" data-phone-open="stats" @click="openPhoneSheet('stats')" aria-haspopup="dialog">
+                <i class="fas fa-chart-bar" aria-hidden="true"></i><span class="ph-row__label" v-text="t('phone.speakerStats')"></span>
+                <span class="ph-row__val"><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+            </button>
         </div>
     </div>
 </div>

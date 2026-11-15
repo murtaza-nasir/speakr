@@ -29,6 +29,7 @@ import { segmentRuns } from './modules/utils/transcript-window.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
+import { usePhoneLayout } from './modules/composables/phone-layout.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -388,7 +389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showColorSchemeModal = ref(false);
             const windowWidth = ref(window.innerWidth);
             const mobileTab = ref('summary');  // default landing tab post-transcription
-            const mobileMoreOpen = ref(false);  // bottom-nav More overflow sheet
             const isMetadataExpanded = ref(false);
             const expandedSection = ref('settings');  // 'notes' or 'settings' for recording view accordion
             const showSortOptions = ref(false);
@@ -1846,16 +1846,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hasRecordingStats = computed(() =>
                 !!recordingStats.value && recordingStats.value.speakerRows.length > 0
             );
-            // True when the mobile bottom nav needs a More overflow:
-            // either Events or Stats is available alongside Notes.
-            // Otherwise the bar keeps Notes as a direct 4th tab.
-            const hasMobileMoreOverflow = computed(() =>
-                hasRecordingStats.value
-                || (selectedRecording.value
-                    && Array.isArray(selectedRecording.value.events)
-                    && selectedRecording.value.events.length > 0)
-            );
-
             // Aggregate `{{name}}` variables across the currently selected
             // tags / folder / user / admin prompt chain. The pure helpers
             // live in modules/utils/prompt-variables.js so they can be unit
@@ -1974,10 +1964,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // UI
                 browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, showHeaderFolderMenu, showHeaderReprocessMenu, showHeaderMoreMenu, tokenBudget, isDarkMode,
-                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
+                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
-                summaryWordCount, notesWordCount, recordingStats, hasRecordingStats, hasMobileMoreOverflow,
+                summaryWordCount, notesWordCount, recordingStats, hasRecordingStats,
 
                 // Upload
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,
@@ -2948,6 +2938,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
             const speakerModalComposable = useSpeakerModal(state, utils);
 
+            // The phone layout: sheets, the list as a screen, the details line,
+            // the player strip and the composer (templates/components/phone/).
+            const phoneLayoutComposable = usePhoneLayout({
+                isMobile: uiComposable.isMobile, isSidebarCollapsed, currentView, selectedRecording, mobileTab,
+                processedTranscription, currentPlayingSegmentIndex, audioCurrentTime, audioDuration,
+                seekAudioTo: uiComposable.seekAudioTo,
+                editingSummary, editingNotes, editingTitle, toggleEditTitle: uiComposable.toggleEditTitle,
+                filterByTag: recordingsComposable.filterByTag,
+                filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterAudioRemoved,
+                filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
+                parseServerInstant,
+                composerText: () => chatComposable.assistant.input,
+                locale: () => window.i18n?.getIntlLocale?.(),
+            });
+            const { phoneListOpen } = phoneLayoutComposable;
+
             // Recording ids in the order the sidebar shows them, for
             // Shift-click span selection.
             const visibleRecordingIds = computed(() =>
@@ -3745,7 +3751,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             // The queue popup is on the page (themes/*/status-area.html)
             const queuePopupShown = computed(() =>
-                showProcessingPopup.value && !progressPopupClosed.value && !(isMobileScreen.value && !isSidebarCollapsed.value));
+                showProcessingPopup.value && !progressPopupClosed.value
+                && !(isMobileScreen.value && !uiComposable.isMobile.value && !isSidebarCollapsed.value));
 
             // The state of the queue popup and of the sidebar as classes on
             // <body>, for the stylesheets (primitives.css and the themes).
@@ -4068,25 +4075,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             // video). This replaces the old magic 60+56px offset that
             // overlapped the player once it grew taller.
             let _mobileInsetObserver = null;
+            // The player strip, the tab bar and, on the assistant's tab, the composer
+            const mobileBottomParts = () => ['[data-mobile-player]', '[data-mobile-bottom-nav]', '[data-phone-composer]']
+                .map((selector) => document.querySelector(selector)).filter(Boolean);
+            // Over the recording list of a phone (a screen of its own) the bar
+            // sits at the bottom edge: the player and the tabs are behind the list.
+            const mobileBottomHeight = (parts) =>
+                (phoneListOpen.value ? 0 : parts.reduce((sum, el) => sum + el.offsetHeight, 0));
             const updateMobileBottomInset = () => {
-                const player = document.querySelector('[data-mobile-player]');
-                const nav = document.querySelector('[data-mobile-bottom-nav]');
-                const h = (player ? player.offsetHeight : 0) + (nav ? nav.offsetHeight : 0);
-                document.documentElement.style.setProperty('--mobile-bottom-inset', h + 'px');
+                const parts = mobileBottomParts();
+                document.documentElement.style.setProperty('--mobile-bottom-inset', mobileBottomHeight(parts) + 'px');
                 // Re-observe the current elements so live height changes
-                // (e.g. toggling video in the player) keep the inset in sync.
+                // (e.g. toggling video in the player, the composer growing
+                // with its text) keep the inset in sync.
                 if (typeof ResizeObserver !== 'undefined') {
                     if (!_mobileInsetObserver) {
                         _mobileInsetObserver = new ResizeObserver(() => {
-                            const p = document.querySelector('[data-mobile-player]');
-                            const n = document.querySelector('[data-mobile-bottom-nav]');
-                            const hh = (p ? p.offsetHeight : 0) + (n ? n.offsetHeight : 0);
-                            document.documentElement.style.setProperty('--mobile-bottom-inset', hh + 'px');
+                            document.documentElement.style.setProperty('--mobile-bottom-inset', mobileBottomHeight(mobileBottomParts()) + 'px');
                         });
                     }
                     _mobileInsetObserver.disconnect();
-                    if (player) _mobileInsetObserver.observe(player);
-                    if (nav) _mobileInsetObserver.observe(nav);
+                    parts.forEach((el) => _mobileInsetObserver.observe(el));
                 }
             };
             // Re-measure whenever the bottom layout can change (view switch,
@@ -4094,7 +4103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // first appearing) — this also catches the player mounting /
             // unmounting, which the ResizeObserver alone can't.
             watch([currentView, () => selectedRecording.value?.id, mobileTab,
-                   videoCollapsed, audioPlayerPosition, showProcessingPopup],
+                   videoCollapsed, audioPlayerPosition, showProcessingPopup, phoneListOpen],
                   () => nextTick(updateMobileBottomInset));
 
             // =========================================================================
@@ -4835,6 +4844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...pwaComposable,
                 ...bulkSelectionComposable,
                 ...bulkOperationsComposable,
+                ...phoneLayoutComposable,
 
                 // Inline tag/folder creation (upload dialog)
                 createTagFromUploadSearch,

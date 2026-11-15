@@ -925,10 +925,6 @@ html[data-ui-theme="desk"] .floating-chat-fab { border-radius: var(--r-3); width
 
 /* ---- Player bar and phones -------------------------------------------------- */
 
-html[data-ui-theme="desk"] [data-mobile-player] { padding: 4px var(--sp-3); }
-html[data-ui-theme="desk"] [data-mobile-player] button[class*="w-14"],
-html[data-ui-theme="desk"] [data-mobile-player] button[class*="h-14"] { width: 36px; height: 36px; }
-html[data-ui-theme="desk"] [data-mobile-bottom-nav] { min-height: 48px; }
 html[data-ui-theme="desk"] .player-play-button { width: 32px; height: 32px; border-radius: var(--r-3); }
 @media (max-width: 640px) {
     html[data-ui-theme="desk"] .modal-footer { gap: var(--sp-2); }
@@ -1006,3 +1002,56 @@ html[data-ui-theme="desk"] :is(#app > header, #inquire-app > header, #global-hea
     border: 1px solid var(--line);
 }
 html[data-ui-theme="desk"] :is(#app > header, #inquire-app > header, #global-header) .btn.header-action[data-user-menu-toggle]:hover { background: var(--row-hover); color: var(--text-primary); }
+
+/* ============================================================================
+ * Phone layout (below 768px): the recording page and the recording list.
+ * The structure and its base are shared by every theme (static/css/phone.css,
+ * templates/components/phone/); this section sets its tokens and the few
+ * shapes that give it the Desk look: square corners, dense type, lines in place of fills.
+ * ========================================================================= */
+html[data-ui-theme="desk"] {
+    --ph-page: var(--bg-primary);
+    --ph-bar: var(--surface);
+    --ph-surface: var(--surface);
+    --ph-surface-2: var(--surface-dim);
+    --ph-surface-3: var(--surface-dim);
+    --ph-text-2: var(--text-2);
+    --ph-text-3: var(--text-3);
+    --ph-divider: var(--divider);
+    --ph-line: var(--line);
+    --ph-accent: var(--primary);
+    --ph-accent-c: var(--primary-container);
+    --ph-on-accent-c: var(--on-primary-container);
+    --ph-shadow: var(--shadow-lg);
+    --ph-shadow-1: none;
+    --ph-fs-title: 15px;
+    --ph-fs-read: 14px;
+    --ph-r-ctl: var(--r-2);
+    --ph-r-field: var(--r-2);
+    --ph-r-seg: var(--r-2);
+    --ph-r-chip: var(--r-1);
+    --ph-r-md: var(--r-2);
+    --ph-r-sheet: var(--r-3);
+    --ph-r-fab: var(--r-3);
+    --ph-r-composer: var(--r-2);
+    --ph-tab-pill: transparent;
+}
+/* Dense bars; every control keeps its 44px touch target */
+html[data-ui-theme="desk"] .ph-bar { min-height: 48px; padding-block: 2px; }
+html[data-ui-theme="desk"] .ph-bar__title { font-weight: 700; }
+html[data-ui-theme="desk"] .ph-details__line,
+html[data-ui-theme="desk"] .ph-details__people { font-size: 12px; }
+html[data-ui-theme="desk"] .ph-row { min-height: 44px; font-size: 14px; }
+html[data-ui-theme="desk"] .ph-group { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+html[data-ui-theme="desk"] .ph-seg { border: 1px solid var(--line); background: var(--surface-dim); }
+html[data-ui-theme="desk"] .ph-seg button[aria-pressed="true"] { background: var(--primary-container); color: var(--on-primary-container); }
+html[data-ui-theme="desk"] .ph-mp { height: 48px; }
+html[data-ui-theme="desk"] .ph-tabs button { height: 52px; font-size: 11px; }
+html[data-ui-theme="desk"] .ph-tabs__icon { height: 24px; }
+/* The active tab: a line on the bar's top edge, as the desktop tabs have */
+html[data-ui-theme="desk"] .ph-tabs button[aria-current="true"]::before { content: ""; position: absolute; top: -1px; left: 12px; right: 12px; height: 2px; background: var(--primary); }
+html[data-ui-theme="desk"] .ph-sheet__head::before { display: none; }
+html[data-ui-theme="desk"] .ph-sheet__head { padding-top: 6px; border-bottom: 1px solid var(--divider); }
+html[data-ui-theme="desk"] .ph-ps__play { border-radius: var(--r-3); }
+html[data-ui-theme="desk"] .ph-acct__avatar { border-radius: var(--r-3); }
+html[data-ui-theme="desk"] .ph-fab { height: 48px; }

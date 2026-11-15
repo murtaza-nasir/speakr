@@ -1,89 +1,27 @@
-<!-- Mobile Bottom Tab Navigation. The base nav always shows Summary,
-     Transcript, Chat and Notes (four direct tabs). When the recording
-     also has extracted Events the total would exceed 4, so we surface
-     Notes inside a More overflow with Events instead — at 4 or fewer
-     items there's no overflow menu so the user can reach every tab in
-     one tap (queue #9). 56px tall to accommodate icon + label + 44×44
-     touch target per HIG. -->
-<div data-mobile-bottom-nav class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px; padding-bottom: env(safe-area-inset-bottom);">
-    <button @click="mobileTab = 'summary'"
-            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
-            :class="mobileTab === 'summary' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-        <i class="fas fa-file-alt text-base"></i>
-        <span class="text-[10px] font-medium" v-text="t('summary.title')"></span>
+<!-- The tab bar of a recording on a phone: always Summary, Transcript, Notes
+     and the assistant. Events and Speaker stats are sheets, opened from the
+     end of the summary and from Actions. Each tab is 58px high, a touch
+     target of more than 44px. -->
+<nav data-mobile-bottom-nav class="ph-tabs flex-shrink-0" :aria-label="t('phone.sections')">
+    <button type="button" data-phone-tab="summary" @click="mobileTab = 'summary'"
+            :aria-current="mobileTab === 'summary' ? 'true' : 'false'">
+        <span class="ph-tabs__icon"><i class="fas fa-file-alt" aria-hidden="true"></i></span>
+        <span class="ph-tabs__label" v-text="t('summary.title')"></span>
     </button>
-    <button @click="mobileTab = 'transcript'"
-            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
-            :class="mobileTab === 'transcript' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-        <i class="fas fa-align-left text-base"></i>
-        <span class="text-[10px] font-medium" v-text="t('transcription.title')"></span>
+    <button type="button" data-phone-tab="transcript" @click="mobileTab = 'transcript'"
+            :aria-current="mobileTab === 'transcript' ? 'true' : 'false'">
+        <span class="ph-tabs__icon"><i class="fas fa-align-left" aria-hidden="true"></i></span>
+        <span class="ph-tabs__label" v-text="t('transcription.title')"></span>
     </button>
-    <button @click="mobileTab = 'chat'"
-            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
-            :class="mobileTab === 'chat' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-        {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
-        <span class="text-[10px] font-medium" v-text="assistantName"></span>
-        <span v-if="chatMessages && chatMessages.length > 0"
-              class="absolute top-1 right-3 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold rounded-full"
-              style="background: var(--text-accent); color: var(--bg-secondary);">
-            ${chatMessages.length}
-        </span>
+    <button type="button" data-phone-tab="notes" @click="mobileTab = 'notes'"
+            :aria-current="mobileTab === 'notes' ? 'true' : 'false'">
+        <span class="ph-tabs__icon"><i class="fas fa-sticky-note" aria-hidden="true"></i></span>
+        <span class="ph-tabs__label" v-text="t('notes.title')"></span>
     </button>
-    <!-- Notes appears DIRECTLY in the bar when there's nothing in the
-         More overflow (no events, no stats); otherwise Notes moves
-         into More alongside Events and Stats so the bar stays at 4
-         tabs and overflow content has a single home. -->
-    <button v-if="!hasMobileMoreOverflow"
-            @click="mobileTab = 'notes'"
-            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
-            :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-        <i class="fas fa-sticky-note text-base"></i>
-        <span class="text-[10px] font-medium" v-text="t('notes.title')"></span>
+    <button type="button" data-phone-tab="chat" @click="mobileTab = 'chat'"
+            :aria-current="mobileTab === 'chat' ? 'true' : 'false'">
+        <span class="ph-tabs__icon">{% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}</span>
+        <span class="ph-tabs__label" v-text="assistantName"></span>
+        <span v-if="chatMessages && chatMessages.length > 0" class="ph-tabs__count" v-text="chatMessages.length"></span>
     </button>
-    <button v-else
-            @click="mobileMoreOpen = !mobileMoreOpen"
-            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
-            :class="['notes','events','stats'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-        <i class="fas fa-ellipsis-h text-base"></i>
-        <span class="text-[10px] font-medium" v-text="t('detail.more')"></span>
-        <span v-if="['notes','events','stats'].includes(mobileTab)"
-              class="absolute top-1 right-3 inline-flex items-center justify-center w-1.5 h-1.5 rounded-full"
-              style="background: var(--text-accent);"></span>
-    </button>
-
-    <!-- More popup (slides up over the nav). Bottom-sheet feel. -->
-    <Teleport to="body">
-        <div v-if="mobileMoreOpen" class="fixed inset-0 z-[60] flex flex-col">
-            <div class="flex-1" style="background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(2px);" @click="mobileMoreOpen = false"></div>
-            <div class="surface-raised flex-shrink-0" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom);">
-                <div class="flex justify-center py-2">
-                    <span style="width: 36px; height: 4px; border-radius: 2px; background: var(--border-primary);"></span>
-                </div>
-                <div class="px-2 pb-3 space-y-1">
-                    <button @click="mobileTab = 'notes'; mobileMoreOpen = false"
-                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
-                            :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                        <i class="fas fa-sticky-note w-5 text-center"></i>
-                        <span class="font-medium" v-text="t('notes.title')"></span>
-                    </button>
-                    <button v-if="hasRecordingStats"
-                            @click="mobileTab = 'stats'; mobileMoreOpen = false"
-                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
-                            :class="mobileTab === 'stats' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                        <i class="fas fa-chart-bar w-5 text-center"></i>
-                        <span class="font-medium" v-text="t('stats.title')"></span>
-                        <span class="ml-auto pill-status pill-status--info">${ recordingStats.total.speakers }</span>
-                    </button>
-                    <button v-if="selectedRecording && selectedRecording.events && selectedRecording.events.length > 0"
-                            @click="mobileTab = 'events'; mobileMoreOpen = false"
-                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
-                            :class="mobileTab === 'events' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                        <i class="fas fa-calendar-alt w-5 text-center"></i>
-                        <span class="font-medium" v-text="t('events.title')"></span>
-                        <span class="ml-auto pill-status pill-status--info">${selectedRecording.events.length}</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </Teleport>
-</div>
+</nav>

@@ -1,13 +1,23 @@
 <!-- Mobile Sidebar Backdrop -->
-<div v-if="!isSidebarCollapsed && isMobileScreen"
+<div v-if="!isSidebarCollapsed && isMobileScreen && !isMobile"
      @click="toggleSidebar"
      class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
 </div>
 
-<!-- Sidebar -->
-<aside :class="['sidebar', isSidebarCollapsed ? 'collapsed' : '']">
+<!-- Sidebar. Below 768px (isMobile) it is the recording list as a screen
+     of its own: full width, shown whenever it was opened or no recording is
+     open (phoneListOpen, composables/phone-layout.js), with one shared top
+     bar, filter chips and a New recording button in place of the theme's
+     sidebar header. -->
+<aside :class="['sidebar', (isMobile ? !phoneListOpen : isSidebarCollapsed) ? 'collapsed' : '', isMobile ? 'ph-list' : '']"
+       :inert="isMobile && !phoneListOpen ? true : null">
     <div class="sidebar-content-wrapper">
+        <template v-if="isMobile">
+            {% include 'components/phone/list-head.html' %}
+        </template>
+        <template v-else>
         {% with ui_slot = 'sidebar-nav' %}{% include 'themes/slot.html' %}{% endwith %}
+        </template>
 
         <!-- Recordings List — full-bleed: no outer horizontal padding so
              every row, section header, and active-row band runs
@@ -24,6 +34,10 @@
                     loadMoreRecordings();
                 }
              }">
+
+            <template v-if="isMobile">
+                {% include 'components/phone/list-filters.html' %}
+            </template>
 
             <!-- Incognito Recording (styled like a regular recording item with a subtle indicator) -->
             <div v-if="enableIncognitoMode && incognitoRecording"
@@ -123,12 +137,22 @@
         </div>
 
     </div>
+
+    <!-- New recording (phones): opens the upload and record choices -->
+    <button v-if="isMobile && !selectionMode" type="button" class="ph-fab" data-phone-new @click="switchToUploadView">
+        <i class="fas fa-plus" aria-hidden="true"></i><span v-text="t('nav.newRecording')"></span>
+    </button>
 </aside>
+
+<template v-if="isMobile">
+    {% include 'components/phone/list-sheets.html' %}
+</template>
 
 <!-- Vertical Floating Bulk Action Bar - To the right of sidebar -->
 <transition name="slide-right">
-    <div v-if="selectionMode && selectedCount > 0 && !isSidebarCollapsed"
-         class="fixed top-1/2 -translate-y-1/2 left-80 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg">
+    <div v-if="selectionMode && selectedCount > 0 && (isMobile ? phoneListOpen : !isSidebarCollapsed)"
+         data-bulk-bar
+         class="bulk-bar fixed top-1/2 -translate-y-1/2 left-80 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg">
         <!-- Selection count badge -->
         <div class="text-center text-xs font-medium text-[var(--text-accent)] py-1 border-b border-[var(--border-primary)] mb-1">
             ${ selectedCount }

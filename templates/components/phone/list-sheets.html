@@ -1,0 +1,172 @@
+{#- The sheets of the recording list on a phone: the menu (account,
+    notifications, settings and the rest of the header's user menu, which a
+    recording's top bar no longer carries), the further filters, and the
+    folder filter. -#}
+{% from 'components/phone/_sheet.html' import phone_sheet %}
+
+{% call phone_sheet('menu', "t('phone.menu')", drawer=true) %}
+    <div class="ph-acct">
+        <span class="ph-acct__avatar" aria-hidden="true"><i class="fas fa-user"></i></span>
+        <span class="ph-acct__name" dir="auto">{% if current_user.is_authenticated %}{{ current_user.name or current_user.username }}{% else %}Speakr{% endif %}</span>
+        <button type="button" class="ph-ib" data-phone-sheet-close @click="closePhoneSheet()" :aria-label="t('buttons.close')" :title="t('buttons.close')">
+            <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+    </div>
+    {% if inquire_mode_enabled %}
+    <a href="/inquire" class="ph-row" data-phone-menu-item="ask">
+        {% with avatar_size = 'sm' %}{% include 'includes/assistant_avatar.html' %}{% endwith %}
+        <span class="ph-row__label" v-text="t('inquire.title', { name: assistantName })"></span>
+    </a>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+    <button type="button" class="ph-row" data-notifications-toggle data-phone-menu-item="notifications" @click="toggleNotifications"
+            :aria-expanded="isNotificationsOpen ? 'true' : 'false'">
+        <i class="fas fa-bell" aria-hidden="true"></i><span class="ph-row__label" v-text="t('nav.notifications')"></span>
+        <span v-if="unreadCount > 0" class="ph-row__val"><span class="ph-pill ph-pill--alert" v-text="unreadCount > 9 ? '9+' : unreadCount"></span></span>
+    </button>
+    <div v-if="isNotificationsOpen" data-notifications-panel class="ph-notes">
+        <p v-if="notifications.length === 0" class="ph-notes__empty" v-text="t('notifications.empty')"></p>
+        <div v-for="n in notifications" :key="n.id" class="ph-notes__item">
+            <i class="fas" aria-hidden="true"
+               :class="n.level === 'error' ? 'fa-circle-exclamation text-red-500' : (n.level === 'warning' ? 'fa-triangle-exclamation text-amber-500' : 'fa-circle-info text-[var(--text-accent)]')"></i>
+            <div class="flex-1 min-w-0">
+                <p class="break-words" v-text="notificationText(n)"></p>
+                <a v-if="n.link" :href="n.link" class="text-[var(--text-accent)]" v-text="t('notifications.view')"></a>
+            </div>
+            <button type="button" class="ph-ib" @click.stop="dismissNotification(n.id)" :aria-label="t('notifications.dismiss')" :title="t('notifications.dismiss')">
+                <i class="fas fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+    <button type="button" class="ph-row" data-phone-menu-item="shares" @click="closePhoneSheet(); openSharesList()">
+        <i class="fas fa-share-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('modal.sharedTranscripts')"></span>
+    </button>
+    <a href="/account" class="ph-row" data-phone-menu-item="settings">
+        <i class="fas fa-cog" aria-hidden="true"></i><span class="ph-row__label" v-text="t('nav.settings')"></span>
+    </a>
+    {% if current_user.is_admin %}
+    <a href="/admin" class="ph-row" data-phone-menu-item="admin">
+        <i class="fas fa-user-shield" aria-hidden="true"></i><span class="ph-row__label" v-text="t('admin.title')"></span>
+    </a>
+    {% elif is_group_admin or can_create_groups %}
+    <a href="/group-management" class="ph-row" data-phone-menu-item="groups">
+        <i class="fas fa-users-cog" aria-hidden="true"></i><span class="ph-row__label" v-text="t('nav.groupManagement')"></span>
+    </a>
+    {% endif %}
+    {% endif %}
+    <button v-if="showInstallButton && !isPWAInstalled" type="button" class="ph-row" data-phone-menu-item="install" @click="closePhoneSheet(); promptInstall()">
+        <i class="fas fa-download" aria-hidden="true"></i><span class="ph-row__label" v-text="t('pwa.installApp')"></span>
+    </button>
+    {% if help_center_url %}
+    <a href="{{ help_center_url }}" target="_blank" rel="noopener noreferrer" class="ph-row" data-phone-menu-item="help">
+        <i class="fas fa-question-circle" aria-hidden="true"></i>
+        {% if help_center_label %}<span class="ph-row__label">{{ help_center_label }}</span>{% else %}<span class="ph-row__label" v-text="t('nav.helpCenter')"></span>{% endif %}
+    </a>
+    {% endif %}
+    <div class="ph-rule"></div>
+    <button type="button" class="ph-row" data-phone-menu-item="scheme" @click="closePhoneSheet(); openColorSchemeModal()">
+        <i class="fas fa-palette" aria-hidden="true"></i><span class="ph-row__label" v-text="t('modal.colorScheme')"></span>
+    </button>
+    <button type="button" class="ph-row" data-phone-menu-item="dark" role="switch" :aria-checked="isDarkMode ? 'true' : 'false'" @click="toggleDarkMode">
+        <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'" aria-hidden="true"></i><span class="ph-row__label" v-text="t('nav.darkMode')"></span>
+        <span class="ph-row__val" v-text="isDarkMode ? t('phone.on') : t('phone.off')"></span>
+    </button>
+    {% if current_user.is_authenticated %}
+    <div class="ph-rule"></div>
+    <form method="POST" action="/logout" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="ph-row" data-phone-menu-item="signout">
+            <i class="fas fa-sign-out-alt" aria-hidden="true"></i><span class="ph-row__label" v-text="t('nav.signOut')"></span>
+        </button>
+    </form>
+    {% endif %}
+{% endcall %}
+
+{% call phone_sheet('list-folder', "t('phone.folder')") %}
+    <button type="button" class="ph-row" :class="{ 'is-on': !filterFolder }" data-phone-list-folder="" @click="filterFolder = ''; closePhoneSheet()">
+        <i class="far fa-folder" aria-hidden="true"></i><span class="ph-row__label" v-text="t('folderManagement.allFolders')"></span>
+        <span v-if="!filterFolder" class="ph-row__val"><i class="fas fa-check" aria-hidden="true"></i></span>
+    </button>
+    <button type="button" class="ph-row" :class="{ 'is-on': filterFolder === 'none' }" data-phone-list-folder="none" @click="filterFolder = 'none'; closePhoneSheet()">
+        <i class="far fa-folder" aria-hidden="true"></i><span class="ph-row__label" v-text="t('sidebar.unfiled')"></span>
+        <span v-if="filterFolder === 'none'" class="ph-row__val"><i class="fas fa-check" aria-hidden="true"></i></span>
+    </button>
+    <button v-for="folder in availableFolders" :key="folder.id" type="button" class="ph-row"
+            :class="{ 'is-on': filterFolder == folder.id }" :data-phone-list-folder="folder.id"
+            @click="filterFolder = folder.id; closePhoneSheet()">
+        <i class="fas fa-folder" aria-hidden="true" :style="[{ color: getFolderMarkColor(folder.id) }, folderIndentStyle(folder)]"></i>
+        <span class="ph-row__label" dir="auto" v-text="folder.name"></span>
+        <span v-if="filterFolder == folder.id" class="ph-row__val"><i class="fas fa-check" aria-hidden="true"></i></span>
+    </button>
+{% endcall %}
+
+{% call phone_sheet('filters', "t('sidebar.filters')") %}
+    <div class="ph-fsheet" data-phone-filter-sheet>
+        <div class="ph-fsheet__chips">
+            <button v-if="enableAudioRemovedFilter" type="button" class="ph-fc" @click="filterAudioRemoved = !filterAudioRemoved"
+                    :aria-pressed="filterAudioRemoved ? 'true' : 'false'" :title="t('audioRemoved.filterHint')">
+                <i class="fas fa-volume-xmark" aria-hidden="true"></i><span v-text="t('audioRemoved.label')"></span>
+            </button>
+            <button type="button" class="ph-fc" data-phone-needs="transcription" @click="filterNeedsTranscription = !filterNeedsTranscription"
+                    :aria-pressed="filterNeedsTranscription ? 'true' : 'false'">
+                <i class="fas fa-keyboard" aria-hidden="true"></i><span v-text="t('sidebar.needsTranscription')"></span>
+            </button>
+            <button type="button" class="ph-fc" data-phone-needs="summary" @click="filterNeedsSummary = !filterNeedsSummary"
+                    :aria-pressed="filterNeedsSummary ? 'true' : 'false'">
+                <i class="fas fa-list-alt" aria-hidden="true"></i><span v-text="t('sidebar.needsSummary')"></span>
+            </button>
+            <button type="button" class="ph-fc" data-phone-needs="speakers" @click="filterNeedsSpeakers = !filterNeedsSpeakers"
+                    :aria-pressed="filterNeedsSpeakers ? 'true' : 'false'">
+                <i class="fas fa-user-edit" aria-hidden="true"></i><span v-text="t('sidebar.needsSpeakers')"></span>
+            </button>
+        </div>
+
+        <div class="ph-group" v-text="t('tags.filterByTag')"></div>
+        <div v-if="availableTags.length > 5" class="ph-search ph-search--inline">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input v-model="filterTagSearch" type="search" autocomplete="off" :placeholder="t('tags.searchTags')" :aria-label="t('tags.searchTags')">
+        </div>
+        <div class="ph-fsheet__chips">
+            <button v-for="tag in filteredTagsForFilter" :key="tag.id" type="button" class="ph-fc" :data-phone-tag-filter="tag.id"
+                    @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                    :aria-pressed="filterTags.includes(tag.id) ? 'true' : 'false'">
+                <span class="ph-chip__dot" :style="{ background: folderMarkColor(tag.color || '#6B7280') }" aria-hidden="true"></span>
+                <span class="ph-fc__label" dir="auto" v-text="tag.name"></span>
+            </button>
+        </div>
+        <p v-if="availableTags.length === 0" class="ph-fsheet__hint" v-text="t('tags.noTags')"></p>
+        <p v-else-if="filteredTagsForFilter.length === 0" class="ph-fsheet__hint" v-text="t('tags.noMatchingTags')"></p>
+
+        <template v-if="availableSpeakers.length > 0">
+            <div class="ph-group" v-text="t('speakers.filterBySpeaker')"></div>
+            <div v-if="availableSpeakers.length > 5" class="ph-search ph-search--inline">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <input v-model="filterSpeakerSearch" type="search" autocomplete="off" :placeholder="t('speakers.searchSpeakers')" :aria-label="t('speakers.searchSpeakers')">
+            </div>
+            <div class="ph-fsheet__chips">
+                <button v-for="speaker in filteredSpeakersForFilter" :key="speaker.id" type="button" class="ph-fc"
+                        @click="filterSpeakers.includes(speaker.name) ? filterSpeakers = filterSpeakers.filter(n => n !== speaker.name) : filterSpeakers.push(speaker.name)"
+                        :aria-pressed="filterSpeakers.includes(speaker.name) ? 'true' : 'false'">
+                    <i class="fas fa-user" aria-hidden="true"></i><span class="ph-fc__label" dir="auto" v-text="speaker.name"></span>
+                </button>
+            </div>
+            <p v-if="filteredSpeakersForFilter.length === 0 && filterSpeakerSearch" class="ph-fsheet__hint" v-text="t('speakers.noMatchingSpeakers')"></p>
+        </template>
+
+        <div class="ph-group" v-text="t('sidebar.dateRange')"></div>
+        <div class="ph-fsheet__chips">
+            <button v-for="preset in datePresetOptions" :key="preset.value" type="button" class="ph-fc" :data-phone-date-preset="preset.value"
+                    @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                    :aria-pressed="filterDatePreset === preset.value ? 'true' : 'false'" v-text="preset.label"></button>
+        </div>
+        <div class="ph-fsheet__dates">
+            <input v-model="filterDateRange.start" @change="filterDatePreset = ''" type="date" class="field" :aria-label="t('form.dateFrom')">
+            <input v-model="filterDateRange.end" @change="filterDatePreset = ''" type="date" class="field" :aria-label="t('form.dateTo')">
+        </div>
+
+        <div class="ph-fsheet__foot">
+            <button type="button" class="btn btn--ghost" data-phone-filters-clear @click="clearAllFilters" v-text="t('buttons.clearAllFilters')"></button>
+            <button type="button" class="btn btn--primary" data-phone-filters-done @click="closePhoneSheet()" v-text="t('common.done')"></button>
+        </div>
+    </div>
+{% endcall %}

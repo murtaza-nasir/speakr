@@ -4075,5 +4075,30 @@
   },
   "toast": {
     "dismiss": "Dispensar notificação"
+  },
+  "phone": {
+    "about": "Mais sobre esta gravação",
+    "back15": "Voltar 15 segundos",
+    "backToList": "Voltar às gravações",
+    "changeMeetingDate": "Alterar a data da reunião",
+    "editParticipants": "Editar participantes",
+    "folder": "Pasta",
+    "forward15": "Avançar 15 segundos",
+    "menu": "Menu",
+    "moreFilters": "Mais filtros",
+    "off": "Não",
+    "on": "Sim",
+    "openPlayer": "Abrir o player",
+    "organize": "Organizar",
+    "position": "Posição",
+    "sections": "Seções da gravação",
+    "shareExport": "Compartilhar e exportar",
+    "showAsBubbles": "Mostrar como balões",
+    "speakerStats": "Estatísticas dos falantes",
+    "textShown": "Texto exibido",
+    "translateAgain": "Traduzir de novo",
+    "uploaded": "enviada {{date}}",
+    "uploadedLabel": "Enviada",
+    "uploadedOn": "Enviada {{date}}"
   }
 }
