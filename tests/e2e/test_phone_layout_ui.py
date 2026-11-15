@@ -116,6 +116,9 @@ STATE = """() => {
 
 OVERFLOW = "() => [document.documentElement.scrollWidth, window.innerWidth]"
 
+# The open recording is the full record, not the list's row of it
+FULL_RECORD = "() => { const el = document.querySelector('[data-phone-detail]'); return !!el && el.dataset.phoneRecord === 'full'; }"
+
 
 class Phone:
     """The signed-in admin on a phone-sized page."""
@@ -200,8 +203,12 @@ class Phone:
         self.page.goto(f"{BASE}/recordings/{recording_id}")
         self.page.locator(BAR).wait_for(state="visible", timeout=60000)
         self.page.locator("[data-phone-details]").wait_for(state="visible", timeout=WAIT)
-        # The record itself has arrived (the list's row has no participants field)
         self.page.wait_for_function("() => !!document.querySelector('[data-phone-duration], [data-phone-status]')", timeout=WAIT)
+        # The list's row is shown first; the full record (which a test may have
+        # changed) replaces it when its request has been answered. Only the full
+        # record has the transcript.
+        self.page.wait_for_function(FULL_RECORD, timeout=120000)
+        self.rendered()
         if tab:
             self.tab(tab)
 
@@ -225,6 +232,15 @@ class Phone:
         response = self.page.request.post(f"{BASE}/api/user/preferences", headers={"X-CSRFToken": self.csrf(), "Content-Type": "application/json"},
                                           data=json.dumps({"ui_theme": theme}))
         assert response.ok, f"could not save the theme {theme}: HTTP {response.status}"
+
+    def rendered(self):
+        """Two frames later: what the app was told is on the page."""
+        self.page.evaluate("() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 50))))")
+
+    def text_of(self, selector, pattern):
+        """Wait until the element's text matches, and return the text."""
+        self.wait("([selector, pattern]) => { const el = document.querySelector(selector); return !!el && new RegExp(pattern).test(el.innerText); }", [selector, pattern])
+        return self.page.locator(selector).inner_text().strip()
 
     def tab(self, name):
         self.page.locator(f'[data-phone-tab="{name}"]').click()
@@ -418,9 +434,9 @@ def test_both_dates_and_one_date_on_the_same_day(phone):
     # A meeting three days before the upload: both, the second one labeled
     phone.patches[recording_id] = {"meeting_date": "2026-03-02T10:02:00", "created_at": "2026-03-05T09:15:00"}
     phone.open(recording_id)
-    meeting = page.locator("[data-phone-meeting-date]").inner_text()
-    uploaded = page.locator("[data-phone-uploaded-date]").inner_text().strip()
-    assert "Mar 2" in meeting and "10:02" in meeting, meeting
+    meeting = phone.text_of("[data-phone-meeting-date]", "Mar 2")
+    uploaded = phone.text_of("[data-phone-uploaded-date]", "uploaded")
+    assert "10:02" in meeting, meeting
     assert page.locator("[data-phone-meeting-date]").get_attribute("title") == en("metadata.meetingDate")
     assert uploaded.startswith("uploaded Mar 5"), uploaded
     # One line: the facts sit beside each other
@@ -431,14 +447,14 @@ def test_both_dates_and_one_date_on_the_same_day(phone):
     # The same day at another hour is still one date
     phone.patches[recording_id] = {"meeting_date": "2026-03-05T08:00:00", "created_at": "2026-03-05T21:15:00"}
     phone.open(recording_id)
-    assert "Mar 5" in page.locator("[data-phone-meeting-date]").inner_text()
+    phone.text_of("[data-phone-meeting-date]", "Mar 5")
     assert page.locator("[data-phone-uploaded-date]").count() == 0
 
     # No meeting date: the upload date alone, labeled
     phone.patches[recording_id] = {"meeting_date": None, "created_at": "2026-03-05T21:15:00"}
     phone.open(recording_id)
+    assert phone.text_of("[data-phone-uploaded-date]", "^Uploaded Mar 5").startswith("Uploaded Mar 5")
     assert page.locator("[data-phone-meeting-date]").count() == 0
-    assert page.locator("[data-phone-uploaded-date]").inner_text().strip().startswith("Uploaded Mar 5")
     phone.check("the dates of the details line")
 
 
@@ -448,7 +464,7 @@ def test_details_fold_and_the_info_sheet(phone):
     phone.patches[recording_id] = {"meeting_date": "2026-03-02T10:02:00", "created_at": "2026-03-05T09:15:00",
                                    "participants": "Dana Whitlock, Marco Ibarra"}
     phone.open(recording_id)
-    assert page.locator("[data-phone-participants]").inner_text().strip() == "Dana Whitlock, Marco Ibarra"
+    assert phone.text_of("[data-phone-participants]", "Dana") == "Dana Whitlock, Marco Ibarra"
     toggle = page.locator("[data-phone-details-toggle]")
     toggle.click()
     page.locator("[data-phone-participants]").wait_for(state="detached", timeout=WAIT)
@@ -527,7 +543,7 @@ def test_actions_of_a_recording_shared_without_rights(phone):
     phone.patches[recording_id] = {"is_shared": True, "can_edit": False, "can_delete": False,
                                    "share_info": {"can_reshare": False}, "owner_username": "someone"}
     phone.open(recording_id)
-    assert phone.page.locator("[data-phone-shared-in]").is_visible()
+    phone.page.locator("[data-phone-shared-in]").wait_for(state="visible", timeout=WAIT)
     names = phone.actions()
     kept = {"inbox", "star", "archive", "tags", "speakers", "edit-transcript", "bubbles", "download-transcript",
             "translate", "translation-preferences", "stats", "info", "download-audio"}
@@ -543,7 +559,7 @@ def test_actions_of_a_failed_recording(phone):
     recording_id = phone.ids[MEETING_TITLE]
     phone.patches[recording_id] = {"status": "FAILED"}
     phone.open(recording_id)
-    assert phone.page.locator("[data-phone-status]").is_visible()
+    phone.page.locator("[data-phone-status]").wait_for(state="visible", timeout=WAIT)
     names = phone.actions()
     for name in ("reset", "reprocess-transcription", "regenerate-summary", "delete", "info"):
         assert name in names, (name, sorted(names))
@@ -640,6 +656,7 @@ def test_four_fixed_tabs_and_the_sheets_of_the_summary(phone):
                                                "start_datetime": "2026-03-10T14:00:00", "end_datetime": "2026-03-10T14:30:00",
                                                "location": "Room 2", "attendees": ["Dana", "Marco"]}]}
     phone.open(recording_id)
+    page.locator('[data-phone-open="events"]').wait_for(state="visible", timeout=WAIT)
     page.locator('[data-phone-open="events"]').scroll_into_view_if_needed()
     events = phone.open_sheet('[data-phone-open="events"]', "events")
     assert "Design review" in events.inner_text() and "Room 2" in events.inner_text()
@@ -1014,9 +1031,10 @@ def test_the_list_is_a_screen_with_search_filters_and_new_recording(phone):
     new.click()
     dialog = page.locator(".modal-overlay:visible").filter(has_text=en("upload.title"))
     dialog.first.wait_for(state="visible", timeout=WAIT)
-    # The dialog is over the list, not under it
-    top = dialog.first.locator(".modal-title").first
-    assert top.evaluate("(el) => { const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + 4, r.top + r.height / 2); return !!hit && !!hit.closest('.modal-overlay'); }")
+    # The dialog is over the list, not under it (once its sheet has slid up)
+    phone.wait("""() => { const el = [...document.querySelectorAll('.modal-overlay .modal-title')].find((e) => e.getClientRects().length);
+        if (!el) return false; const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + 4, r.top + r.height / 2); return !!hit && !!hit.closest('.modal-overlay'); }""")
     dialog.first.locator(".modal-close, button[aria-label='Close'], .modal-header button").last.click()
     dialog.first.wait_for(state="hidden", timeout=WAIT)
     phone.check("the list on a phone")
@@ -1041,6 +1059,7 @@ def test_no_sideways_scrolling(browser, phone, width):
             session.no_sideways_scroll(f"{width}: {name}")
             session.close_sheet()
         session.open(recording_id)
+        session.text_of("[data-phone-title]", "long title")
         title = page.locator("[data-phone-title]").bounding_box()
         assert title["height"] <= 2 * 16 * 1.25 * 1.4 + 6, f"{width}: the title is taller than two lines: {title}"
         for name in ("summary", "transcript", "notes", "chat"):

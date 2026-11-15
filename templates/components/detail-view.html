@@ -34,8 +34,11 @@
          is components/phone/recording-bar.html (in components/header.html);
          the sheets are components/phone/recording-sheets.html. The same
          structure serves every UI theme; a theme styles it in its
-         stylesheet (static/css/phone.css has the base). -->
-    <div v-if="isMobile" class="ph-detail" data-phone-detail>
+         stylesheet (static/css/phone.css has the base).
+         data-phone-record says whether the full record has arrived ('full')
+         or the page still shows the list's row of the recording ('row'). -->
+    <div v-if="isMobile" class="ph-detail" data-phone-detail
+         :data-phone-record="selectedRecording.transcription !== undefined ? 'full' : 'row'">
         <div class="ph-scroll" :class="{ 'ph-scroll--fill': phoneFill }" data-phone-scroll
              tabindex="0" role="region" :aria-label="selectedRecording.title || t('help.untitled')">
             {% include 'components/phone/details.html' %}
