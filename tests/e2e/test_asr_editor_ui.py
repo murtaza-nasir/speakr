@@ -9,7 +9,9 @@ the local draft, the phone layout, and saving. The timeline above the pane
 (a canvas: waveform, one lane per speaker) is driven with the mouse: a click
 seeks or selects, an edge is dragged to change a time, a block to another
 lane to change its speaker, empty lane space to add a segment, each as one
-undo step. A second part loads a transcript of 20,000 segments (about ten
+undo step. The lane headers beside it are DOM: the name of a lane opens the
+speaker picker for the whole speaker (rename or merge), and a button under
+the last lane adds a speaker. A second part loads a transcript of 20,000 segments (about ten
 hours) and checks that only the rows in view are in the DOM, that the end of
 the list can be reached, that an edit there is saved in reasonable time, and
 that the timeline redraws well inside a frame.
@@ -268,6 +270,42 @@ class Editor:
 
     def tl_segments(self):
         return self.tl("segments")
+
+    def lanes_are(self, expected):
+        """Wait until the timeline has exactly these lanes, as (name, segments) in order, canvas and headers alike."""
+        want = [[name, count] for name, count in expected]
+        try:
+            self.page.wait_for_function(
+                f"(want) => JSON.stringify({TL}.lanes.map(l => [l.name, l.count])) === JSON.stringify(want) && "
+                "JSON.stringify([...document.querySelectorAll('.asr-tl__lane .asr-tl__name-text')].map(e => e.textContent.trim())) === JSON.stringify(want.map(l => l[0]))",
+                arg=want, timeout=5000)
+        except Exception:
+            heads = self.page.eval_on_selector_all(".asr-tl__lane .asr-tl__name-text", "els => els.map(e => e.textContent.trim())")
+            raise AssertionError(f"the lanes are {self.tl('lanes')} with the headers {heads}, not {want}")
+
+    def speakers_are(self, expected):
+        """Wait until the rows show these speakers (the rows follow the model with the next render)."""
+        try:
+            self.page.wait_for_function(
+                f"(want) => JSON.stringify([...document.querySelectorAll(\"{ROW} .asr-seg__chip\")].map(e => e.textContent.trim())) === JSON.stringify(want)",
+                arg=list(expected), timeout=5000)
+        except Exception:
+            raise AssertionError(f"the rows show {self.speakers()}, not {list(expected)}")
+
+    def undo_depth(self, depth):
+        self.page.wait_for_function(f"(n) => {TL}.undoDepth === n", arg=depth, timeout=5000)
+
+    def lane_name(self, index):
+        """The name button of a lane header."""
+        return self.page.locator(f".asr-tl__lane[data-asr-lane='{index}'] [data-asr-action='lane-rename']")
+
+    def lane_picker(self, index, name):
+        """Open the speaker picker of a whole speaker from its lane header. Returns the picker."""
+        self.lane_name(index).click()
+        picker = self.page.locator("[data-asr-popover='picker'][data-asr-picker-scope='speaker']")
+        picker.wait_for(state="visible", timeout=5000)
+        assert picker.locator("[data-asr-picker-heading]").inner_text().strip() == en("asrEditor.renameSpeaker").replace("{{name}}", name)
+        return picker
 
     def shot(self, name):
         if SHOTS:
@@ -1236,6 +1274,309 @@ def test_dragging_on_empty_lane_space_adds_a_segment(meeting):
     assert len(editor.tl_segments()) == 12
     editor.check("editor timeline, new segment")
     editor.discard()
+
+
+def test_a_lane_name_renames_or_merges_the_whole_speaker(editor):
+    """The name in a lane header of the timeline is a button: it opens the speaker picker
+    for the whole speaker. The voice-match control beside it stays a control of its own."""
+    page = editor.page
+    recording_id = editor.ids[MEETING_TITLE]
+    seeded = meeting_segments()
+    labels = [s["speaker"] for s in seeded]
+    editor.store(recording_id, seeded)
+    answer = {"success": True, "recording_id": recording_id,
+              "suggestions": {"SPEAKER_00": [{"speaker_id": 0, "name": "Dana Lee", "similarity": 87.2, "confidence": 0.9}]}}
+    pattern = "**/speakers/suggestions/*"
+    page.route(pattern, lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(answer)))
+    picker = page.locator("[data-asr-popover='picker']")
+    merge_into = lambda name: en("asrEditor.suggestionMergeInto").replace("{{name}}", name)  # noqa: E731
+    try:
+        editor.open(recording_id)
+        editor.tl_ready(waveform=False)
+        editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
+        editor.lane_offers([en("asrEditor.suggestionAccept")])
+
+        # The name and the voice match are two targets with space between them,
+        # and the name button says what it does
+        name = editor.lane_name(0)
+        assert name.get_attribute("aria-label") == en("asrEditor.renameSpeaker").replace("{{name}}", "SPEAKER_00")
+        assert name.evaluate("el => el.tagName") == "BUTTON"
+        a, b = name.bounding_box(), page.locator("[data-asr-lane-suggestion]").bounding_box()
+        assert a["x"] + a["width"] + 4 <= b["x"], f"the lane name and the voice match touch: {a} {b}"
+
+        # The voice-match control still accepts, and a click on it opens no picker
+        editor.action("timeline-accept").click()
+        editor.speakers_are(["Dana Lee" if n == "SPEAKER_00" else n for n in labels])
+        editor.lanes_are([("Dana Lee", 6), ("SPEAKER_01", 6)])
+        assert picker.count() == 0, "accepting a voice match opened the speaker picker"
+        page.keyboard.press("Control+z")
+        editor.speakers_are(labels)
+        editor.lane_offers([en("asrEditor.suggestionAccept")])
+        # Its name part plays the speaker and opens no picker either
+        audio = "document.querySelector('[data-asr-editor-audio]')"
+        page.wait_for_function(f"{audio} && {audio}.readyState >= 1", timeout=15000)
+        page.locator("[data-asr-lane-suggestion] .asr-suggest__name").click()
+        page.wait_for_function(f"!{audio}.paused", timeout=10000)
+        page.evaluate(f"{audio}.pause()")
+        assert picker.count() == 0 and editor.tl("undoDepth") == 0
+
+        # A click on the name: the picker for the whole speaker. Its heading
+        # names the scope, there is no "All segments" checkbox, the speaker
+        # itself is no choice, another speaker of the recording is a merge and
+        # says so, and the voice match is the first of the saved speakers.
+        sheet = editor.lane_picker(0, "SPEAKER_00")
+        assert sheet.locator(".asr-pop__all").count() == 0
+        assert sheet.locator(".asr-suggest--picker").count() == 1
+        options = sheet.locator("[data-asr-option]")
+        listed = [options.nth(i).get_attribute("data-asr-option") for i in range(options.count())]
+        assert listed[:2] == ["SPEAKER_01", "Dana Lee"], f"the options of the lane picker: {listed}"
+        other = sheet.locator("[data-asr-option='SPEAKER_01']")
+        assert other.locator(".asr-pop__name").inner_text().strip() == merge_into("SPEAKER_01")
+        assert other.get_attribute("data-asr-merge") is not None and sheet.locator("[data-asr-merge]").count() == 1
+        assert sheet.locator(".asr-kbd").count() == 0, "a number key would merge two speakers"
+        editor.shot("asr-editor-test-lane-picker")
+
+        # A typed name renames the speaker in every segment, as one undo step,
+        # and the message has Undo in it
+        page.keyboard.type("Linus")
+        page.wait_for_function("() => document.querySelectorAll('[data-asr-popover=\"picker\"] [data-asr-option]').length === 1")
+        assert options.first.inner_text().strip() == en("asrEditor.pickerUseName").replace("{{name}}", "Linus")
+        page.keyboard.press("Enter")
+        picker.wait_for(state="detached", timeout=5000)
+        editor.speakers_are(["Linus" if n == "SPEAKER_00" else n for n in labels])
+        editor.lanes_are([("Linus", 6), ("SPEAKER_01", 6)])
+        editor.undo_depth(1)
+        editor.lane_offers([])
+        toast = page.locator("#toastContainer .toast-message").filter(has_text="Linus")
+        toast.wait_for(state="visible", timeout=5000)
+        toast.locator(".toast__action").click()
+        editor.speakers_are(labels)
+        editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
+        editor.undo_depth(0)
+        toast.wait_for(state="detached", timeout=5000)
+
+        # By keyboard: Enter on the name opens the picker, Esc closes it and
+        # the focus is back on the name, Space opens it again
+        second = editor.lane_name(1)
+        second.focus()
+        page.keyboard.press("Enter")
+        picker.wait_for(state="visible", timeout=5000)
+        assert picker.get_attribute("data-asr-picker-scope") == "speaker"
+        page.keyboard.press("Escape")
+        picker.wait_for(state="detached", timeout=5000)
+        assert second.evaluate("el => el === document.activeElement")
+        assert editor.tl("undoDepth") == 0
+        page.keyboard.press("Space")
+        picker.wait_for(state="visible", timeout=5000)
+        assert picker.locator("[data-asr-picker-heading]").inner_text().strip() == en("asrEditor.renameSpeaker").replace("{{name}}", "SPEAKER_01")
+        # A number key chooses nothing here
+        page.keyboard.press("1")
+        assert picker.locator("input").input_value() == "1" and editor.tl("undoDepth") == 0
+        page.keyboard.press("Backspace")
+
+        # Choosing a speaker of the recording merges the two: one speaker and
+        # one lane are left, and undo brings both back
+        target = picker.locator("[data-asr-option='SPEAKER_00']")
+        target.wait_for(state="visible", timeout=5000)
+        assert target.locator(".asr-pop__name").inner_text().strip() == merge_into("SPEAKER_00")
+        editor.shot("asr-editor-test-lane-picker-merge")
+        target.click()
+        picker.wait_for(state="detached", timeout=5000)
+        editor.speakers_are(["SPEAKER_00"] * len(seeded))
+        editor.lanes_are([("SPEAKER_00", 12)])
+        editor.undo_depth(1)
+        merged = page.locator("#toastContainer .toast-message").filter(
+            has_text=en("asrEditor.suggestionMerged").replace("{{label}}", "SPEAKER_01").replace("{{name}}", "SPEAKER_00"))
+        merged.wait_for(state="visible", timeout=5000)
+        editor.action("undo").click()
+        editor.speakers_are(labels)
+        editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
+        editor.action("redo").click()
+        editor.speakers_are(["SPEAKER_00"] * len(seeded))
+        editor.action("undo").click()
+        editor.speakers_are(labels)
+
+        # The row picker is as it was: its checkbox, the number keys, no heading
+        page.locator(f"{ROW}[data-index='0'] .asr-seg__chip").click()
+        picker.wait_for(state="visible", timeout=5000)
+        assert picker.get_attribute("data-asr-picker-scope") == "segments"
+        assert picker.locator("[data-asr-picker-heading]").count() == 0 and picker.locator(".asr-pop__all").count() == 1
+        assert picker.locator("[data-asr-merge]").count() == 0 and picker.locator(".asr-kbd").count() == 2
+        page.keyboard.press("Escape")
+        picker.wait_for(state="detached", timeout=5000)
+
+        # Renamed from the lane and saved: every segment of the speaker
+        sheet = editor.lane_picker(1, "SPEAKER_01")
+        page.keyboard.type("Linus")
+        page.keyboard.press("Enter")
+        picker.wait_for(state="detached", timeout=5000)
+        named = ["Linus" if n == "SPEAKER_01" else n for n in labels]
+        editor.speakers_are(named)
+        editor.save()
+        assert [s["speaker"] for s in editor.stored(recording_id)] == named
+        editor.check("editor, lane name")
+        editor.discard()
+    finally:
+        page.unroute(pattern)
+
+
+def test_a_speaker_is_added_and_saved_only_with_segments(meeting):
+    editor, recording_id = meeting
+    page = editor.page
+    editor.tl_ready()
+    seeded = meeting_segments()
+    labels = [s["speaker"] for s in seeded]
+    picker = page.locator("[data-asr-popover='picker']")
+    key_of = lambda lane: page.locator(f".asr-tl__lane[data-asr-lane='{lane}'] [data-asr-lane-swatch]").inner_text().strip()  # noqa: E731
+
+    # Under the last lane: a button with an icon and words. The new speaker is
+    # the next label, has an empty lane and a number key, and is no unsaved change.
+    add = editor.action("add-speaker")
+    assert add.inner_text().strip() == en("asrEditor.addSpeaker")
+    last = page.locator(".asr-tl__lane").last.bounding_box()
+    box = add.bounding_box()
+    assert box["y"] >= last["y"] + last["height"] - 1, f"the Add speaker button is not under the last lane: {box} {last}"
+    add.click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0)])
+    assert key_of(2) == "3"
+    assert not editor.dirty() and editor.tl("undoDepth") == 1
+    assert editor.tl_segments() == seeded
+    editor.shot("asr-editor-test-added-speaker")
+
+    # Undo and redo
+    add.click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    editor.action("undo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0)])
+    editor.action("undo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
+    assert editor.action("undo").is_disabled()
+    editor.action("redo").click()
+    editor.action("redo").click()
+    editor.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6), ("SPEAKER_02", 0), ("SPEAKER_03", 0)])
+    assert not editor.dirty()
+
+    # The row picker lists the added speakers with the recording's, and assigns one
+    page.locator(f"{ROW}[data-index='0'] .asr-seg__chip").click()
+    picker.wait_for(state="visible", timeout=5000)
+    options = picker.locator("[data-asr-option]")
+    assert [options.nth(i).get_attribute("data-asr-option") for i in range(4)] == ["SPEAKER_00", "SPEAKER_01", "SPEAKER_02", "SPEAKER_03"]
+    picker.locator("[data-asr-option='SPEAKER_02']").click()
+    picker.wait_for(state="detached", timeout=5000)
+    expected = list(labels)
+    expected[0] = "SPEAKER_02"
+    editor.speakers_are(expected)
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
+    page.wait_for_function("() => !!document.querySelector('[data-asr-dirty]')", timeout=5000)
+    # The added speakers keep their number keys when they get a segment
+    assert [key_of(2), key_of(3)] == ["3", "4"]
+
+    # Its number key assigns the selection
+    editor.select_row(1)
+    page.keyboard.press("4")
+    editor.speakers_are([expected[0], "SPEAKER_03"] + expected[2:])
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 5), ("SPEAKER_02", 1), ("SPEAKER_03", 1)])
+    page.keyboard.press("Control+z")
+    editor.speakers_are(expected)
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
+
+    # A block dragged to the empty lane gets that speaker
+    editor.tl_drag(editor.tl_point(14.5, lane=0), editor.tl_point(14.5, lane=3))
+    editor.speakers_are(expected[:2] + ["SPEAKER_03"] + expected[3:])
+    editor.lanes_are([("SPEAKER_00", 4), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 1)])
+    editor.action("undo").click()
+    editor.speakers_are(expected)
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
+
+    # A drag on the empty lane adds a segment of that speaker
+    editor.action("timeline-zoom-fit").click()
+    editor.tl_drag(editor.tl_point(76.0, lane=3), editor.tl_point(82.0, lane=3), keys=["Control"])
+    page.wait_for_function(f"() => {TL}.segments.length === 13")
+    assert editor.tl_segments()[-1]["speaker"] == "SPEAKER_03"
+    page.wait_for_function("() => document.activeElement && document.activeElement.tagName === 'TEXTAREA'")
+    page.keyboard.press("Escape")
+    editor.action("undo").click()
+    page.wait_for_function(f"() => {TL}.segments.length === 12")
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("SPEAKER_03", 0)])
+
+    # The empty speaker is renamed through its name
+    editor.lane_picker(3, "SPEAKER_03")
+    page.keyboard.type("Kim")
+    page.keyboard.press("Enter")
+    picker.wait_for(state="detached", timeout=5000)
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("Kim", 0)])
+    editor.speakers_are(expected)
+
+    # Saved: the speaker with a segment is kept, the one without is not written
+    editor.save()
+    stored = editor.stored(recording_id)
+    assert [s["speaker"] for s in stored] == expected
+    assert [s["sentence"] for s in stored] == [s["sentence"] for s in seeded]
+    assert all(set(s) == {"speaker", "sentence", "start_time", "end_time"} for s in stored), "the stored segments have another shape"
+    # The session keeps the lane until the editor closes
+    editor.lanes_are([("SPEAKER_00", 5), ("SPEAKER_01", 6), ("SPEAKER_02", 1), ("Kim", 0)])
+    editor.check("editor, added speaker")
+    editor.discard()
+
+    # Reopened: the unused speaker is gone, the used one is a speaker like the others
+    editor.open(recording_id)
+    editor.tl_ready(waveform=False)
+    editor.speakers_are(expected)
+    editor.lanes_are([("SPEAKER_02", 1), ("SPEAKER_01", 6), ("SPEAKER_00", 5)])
+    page.locator(f"{ROW}[data-index='1'] .asr-seg__chip").click()
+    picker.wait_for(state="visible", timeout=5000)
+    assert picker.locator("[data-asr-option='Kim']").count() == 0 and picker.locator("[data-asr-option='SPEAKER_03']").count() == 0
+    page.keyboard.press("Escape")
+    picker.wait_for(state="detached", timeout=5000)
+
+    # A speaker that was only added is nothing to save: the editor closes without asking
+    editor.action("add-speaker").click()
+    editor.lanes_are([("SPEAKER_02", 1), ("SPEAKER_01", 6), ("SPEAKER_00", 5), ("SPEAKER_03", 0)])
+    assert not editor.dirty()
+    page.locator(".asr-editor-modal .modal-close").click()
+    page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
+    assert editor.question().count() == 0
+    assert [s["speaker"] for s in editor.stored(recording_id)] == expected
+    editor.check("editor, added speaker, reopened")
+
+
+def test_lane_names_and_add_speaker_on_a_phone(browser):
+    phone = Editor(browser, {"width": 390, "height": 800})
+    try:
+        if set(phone.ids) != set(TITLES):
+            pytest.skip("no seeded recordings on this instance (tests/e2e/seed_recordings.py)")
+        recording_id = phone.ids[MEETING_TITLE]
+        seeded = meeting_segments()
+        phone.store(recording_id, seeded)
+        phone.open(recording_id)
+        page = phone.page
+        phone.tl_ready(waveform=False)
+        phone.lanes_are([("SPEAKER_00", 6), ("SPEAKER_01", 6)])
+        head = page.locator(".asr-tl__heads").bounding_box()
+        for target in (phone.lane_name(0), phone.action("add-speaker")):
+            box = target.bounding_box()
+            assert box["x"] >= head["x"] - 0.5 and box["x"] + box["width"] <= head["x"] + head["width"] + 0.5, f"does not fit the lane header: {box} in {head}"
+            assert box["height"] >= 27.5, f"a small touch target: {box}"
+
+        # The picker of the whole speaker is a sheet at the foot of the screen
+        sheet = phone.lane_picker(1, "SPEAKER_01")
+        assert "asr-pop--sheet" in sheet.get_attribute("class")
+        phone.shot("asr-editor-test-phone-lane-picker")
+        sheet.locator("input").click()
+        page.keyboard.type("Linus")
+        page.keyboard.press("Enter")
+        sheet.wait_for(state="detached", timeout=5000)
+        phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6)])
+
+        phone.action("add-speaker").click()
+        phone.lanes_are([("SPEAKER_00", 6), ("Linus", 6), ("SPEAKER_02", 0)])
+        widths = page.evaluate("() => [document.documentElement.scrollWidth, window.innerWidth]")
+        assert widths[0] <= widths[1], f"the editor is wider than the phone: {widths}"
+        phone.shot("asr-editor-test-phone-added-speaker")
+        check_common(page, phone.problems, "editor on a phone, lane names")
+        phone.discard()
+    finally:
+        phone.close()
 
 
 def test_phone_width(browser):
