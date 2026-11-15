@@ -20,6 +20,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -125,7 +126,7 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Whisper transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "Whisper transcription failed", e)
             raise TranscriptionError(f"Whisper transcription failed: {error_msg}") from e
 
     def list_models(self):

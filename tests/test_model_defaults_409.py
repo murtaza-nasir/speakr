@@ -130,9 +130,15 @@ def test_asr_endpoint_sends_a_real_model_stripped(ctx):
 
 
 def test_an_asr_failure_names_the_file_it_was_for(ctx, caplog):
-    with caplog.at_level(logging.ERROR):
+    """The filename and the service's message at DEBUG; the extension, the
+    status and the length of the body at ERROR (privacy review B1 and B2)."""
+    with caplog.at_level(logging.DEBUG):
         _send(_asr_connector(), None, status=500, body={"detail": "Invalid model size ''"})
-    assert any("'clip.wav'" in r.getMessage() and "Invalid model size" in r.getMessage() for r in caplog.records)
+    debug = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+    above = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
+    assert any("'clip.wav'" in m and "Invalid model size" in m for m in debug)
+    assert any("ASR request failed (file extension .wav): status=500 body=" in m for m in above)
+    assert not any("clip.wav" in m or "Invalid model size" in m for m in above)
 
 
 # ------------------------------------------------------------ the canary

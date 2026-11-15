@@ -203,7 +203,9 @@ JSON Response:
                 f"[Auto-Identify] LLM Raw Response (schema mode): {len(response_content or '')} characters")
             current_app.logger.debug(f"[Auto-Identify] LLM Raw Response (schema mode): {response_content}")
         except Exception as schema_err:
-            current_app.logger.warning(f"[Auto-Identify] json_schema mode failed, falling back to json_object: {schema_err}")
+            from src.utils.error_text import log_failure
+            log_failure(current_app.logger, 'warning',
+                        "[Auto-Identify] json_schema mode failed, falling back to json_object", schema_err)
             response_content = None
 
     if response_content is None:
@@ -356,9 +358,9 @@ def apply_contextual_auto_labels(recording, user):
             transcription_data, user.id, candidate_names=candidates
         )
     except Exception as error:
-        current_app.logger.warning(
-            "[Auto-Identify] Contextual identification failed for recording %s: %s", recording.id, error
-        )
+        from src.utils.error_text import log_failure
+        log_failure(current_app.logger, 'warning',
+                    f"[Auto-Identify] Contextual identification failed for recording {recording.id}", error)
         return {}
 
     speaker_map = {label: name for label, name in speaker_map.items() if name}

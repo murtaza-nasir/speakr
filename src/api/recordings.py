@@ -58,6 +58,7 @@ from src.services.recording_filters import (
 )
 from src.utils.localization import api_error, format_number, translate
 from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
+from src.utils.error_text import log_failure, user_error_text
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -747,8 +748,12 @@ def auto_identify_speakers(recording_id):
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 503
     except Exception as e:
-        current_app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
-        return jsonify(api_error('unexpected_error_detail', detail=str(e))), 500
+        # An LLM error can quote the transcript: metadata at ERROR, the text
+        # and the traceback at DEBUG; the answer has the provider's short message.
+        log_failure(current_app.logger, 'error',
+                    f"Error during auto speaker identification for recording {recording_id}", e, traceback=True)
+        return jsonify(api_error('unexpected_error_detail',
+                                 detail=user_error_text(e, db.session.get(Recording, recording_id)))), 500
 
 # --- Chat with Transcription ---
 
@@ -3189,6 +3194,16 @@ def chat_with_transcription():
             # Thinking tags split off; `source` events are added below.
             yield from process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app)
 
+        # Read here, in the request: the recording is not loaded while the
+        # answer streams.
+        _echo_sources = [value for value in (recording.transcription, recording.summary, recording.notes,
+                                             recording.title, recording.participants,
+                                             recording.original_filename, user_message)
+                         if isinstance(value, str)]
+
+        def chat_error_text(error):
+            return user_error_text(error, extra_sources=_echo_sources)
+
         def generate():
             # Push app context for entire generator execution
             # This is needed because call_chat_completion checks budget which requires db access
@@ -3212,24 +3227,30 @@ def chat_with_transcription():
                 app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")
                 yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
-                app.logger.error(f"Error during chat stream generation: {str(e)}")
+                log_failure(app.logger, 'error',
+                            f"Error during chat stream generation for recording {recording_id}", e)
                 # Provide more helpful error message for connection issues
                 error_msg = str(e).lower()
                 if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
                     yield f"data: {json.dumps(api_error('llm_connection_failed'))}\n\n"
                 else:
-                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    # The provider's short message, without what it repeats
+                    # of the transcript or the question.
+                    yield f"data: {json.dumps({'error': chat_error_text(e)})}\n\n"
             finally:
                 ctx.pop()
 
         return Response(generate(), mimetype='text/event-stream')
 
     except Exception as e:
-        current_app.logger.error(f"Error in chat endpoint: {str(e)}")
+        log_failure(current_app.logger, 'error', "Error in chat endpoint", e)
         error_msg = str(e).lower()
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
             return jsonify(api_error('llm_connection_failed')), 503
-        return jsonify({'error': str(e)}), 500
+        _data = request.get_json(silent=True) or {}
+        _recording = db.session.get(Recording, _data.get('recording_id')) if isinstance(_data.get('recording_id'), int) else None
+        return jsonify({'error': user_error_text(
+            e, _recording, extra_sources=[v for v in (_data.get('message'),) if isinstance(v, str)])}), 500
 
 
 # --- Tag Management for Recordings ---

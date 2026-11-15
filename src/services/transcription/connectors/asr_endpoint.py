@@ -31,6 +31,7 @@ from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
 from src.utils.error_body import summarize_error_body
 from src.utils.log_filters import loggable_params
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -274,7 +275,12 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             # looks like a credential is redacted: this text reaches the log,
             # the failure webhook and email, and the technical details (#593).
             body_excerpt = summarize_error_body(body, 800)
-            logger.error(
+            # The body can quote the prompt or the filename: its status and
+            # length at ERROR, its text at DEBUG.
+            _ext = os.path.splitext(request.filename or '')[1].lower() or 'none'
+            logger.error(f"ASR request failed (file extension {_ext}): "
+                         f"{describe_body(e.response.status_code, body)}")
+            logger.debug(
                 f"ASR request for {request.filename!r} failed with status "
                 f"{e.response.status_code}: {body_excerpt}"
             )
@@ -295,7 +301,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"ASR transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "ASR transcription failed", e)
             raise TranscriptionError(f"ASR transcription failed: {error_msg}") from e
 
     # -- Asynchronous jobs (WhisperX ASR service 0.5.0 and later) -----------
@@ -438,7 +444,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             logger.error(f"ASR job request timed out: {e}")
             raise TranscriptionError(f"ASR job request timed out after {self.timeout}s") from e
         except Exception as e:
-            logger.error(f"ASR transcription failed: {e}")
+            log_failure(logger, logging.ERROR, "ASR transcription failed", e)
             raise TranscriptionError(f"ASR transcription failed: {e}") from e
 
     def _upload_timeout(self) -> httpx.Timeout:
@@ -613,7 +619,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
 
     def _raise_for_status(self, response: httpx.Response, what: str) -> None:
         body_excerpt = summarize_error_body(response.text or '', 800)
-        logger.error(f"{what} failed with status {response.status_code}: {body_excerpt}")
+        logger.error(f"{what} failed: {describe_body(response.status_code, response.text)}")
+        logger.debug(f"{what} failed with status {response.status_code}: {body_excerpt}")
         detail = (f"{what} failed with status {response.status_code}: {body_excerpt}"
                   if body_excerpt else f"{what} failed with status {response.status_code}")
         raise ProviderError(detail, provider=self.PROVIDER_NAME, status_code=response.status_code)

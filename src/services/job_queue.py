@@ -21,6 +21,7 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 from src.services.error_classification import is_permanent_error, SummaryStepFailed
+from src.utils.error_text import describe_error, log_failure, user_error_text
 
 # Configuration
 TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
@@ -540,10 +541,28 @@ class FairJobQueue:
                     logger.error(f"Job {job_id} failed: {error_str}")
                     return
 
-                logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+                # The error text of a provider can quote the transcript, the
+                # prompt or the filename: metadata at ERROR, the text and the
+                # traceback at DEBUG.
+                log_failure(logger, logging.ERROR, f"Job {job_id} ({job_type}) for recording {recording_id} failed",
+                            e, traceback=True)
 
                 # Check if this is a permanent error that shouldn't be retried
                 is_permanent_error = getattr(e, 'permanent', False) or self._is_permanent_error(error_str)
+
+                # From here on error_str is what is stored, shown, and sent by
+                # webhook and email: the provider's short message, without
+                # what it repeats of the request (src/utils/error_text.py).
+                try:
+                    _params = params if isinstance(locals().get('params'), dict) else {}
+                    error_str = user_error_text(
+                        e, current,
+                        extra_sources=[v for v in (_params.get('hotwords'), _params.get('initial_prompt'),
+                                                   _params.get('custom_prompt')) if isinstance(v, str)],
+                        limit=1000)
+                except Exception as scrub_error:
+                    logger.warning(f"Job {job_id}: error text could not be shortened: {describe_error(scrub_error)}")
+                    error_str = f"{type(e).__name__} (the error text is in the log at DEBUG)"
 
                 # Re-fetch job to update it
                 job = db.session.get(ProcessingJob, job_id)
@@ -572,7 +591,7 @@ class FairJobQueue:
                         recording = db.session.get(Recording, recording_id)
 
                         if is_permanent_error:
-                            logger.info(f"Job {job_id} failed with permanent error (no retry): {error_str[:100]}")
+                            logger.info(f"Job {job_id} failed with permanent error (no retry): {describe_error(e)}")
 
                         # Always keep recordings with FAILED status so users can see the error
                         # and reprocess later (e.g., when ASR server recovers)

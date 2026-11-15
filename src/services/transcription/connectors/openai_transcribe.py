@@ -22,6 +22,7 @@ from ..base import (
 )
 from ..exceptions import TranscriptionError, ConfigurationError
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -242,7 +243,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"GPT-4o transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "GPT-4o transcription failed", e)
             raise TranscriptionError(f"GPT-4o transcription failed: {error_msg}") from e
 
     def _parse_text_response(self, response, model_used: Optional[str] = None) -> TranscriptionResponse:

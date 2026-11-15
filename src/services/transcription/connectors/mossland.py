@@ -18,6 +18,7 @@ from ..base import (
 from ..exceptions import ConfigurationError, ProviderError, TranscriptionError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = "https://api.mosi.cn"
@@ -334,7 +335,7 @@ class MosslandTranscriptionConnector(BaseTranscriptionConnector):
         except (ProviderError, TranscriptionError):
             raise
         except Exception as error:
-            logger.error("Mossland transcription failed: %s", error)
+            log_failure(logger, logging.ERROR, "Mossland transcription failed", error)
             raise TranscriptionError(f"Mossland transcription failed: {error}") from error
 
     def health_check(self) -> bool:

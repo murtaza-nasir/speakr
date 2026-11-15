@@ -11,6 +11,7 @@ These functions handle asynchronous processing tasks:
 import os
 import re
 import json
+import logging
 import time
 import tempfile
 import subprocess
@@ -28,6 +29,7 @@ from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, 
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError, AUDIO_DECODE_FAILED_MESSAGE
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage, sanitize_error_message
+from src.utils.error_text import log_failure, user_error_text
 from src.utils.transcript_render import resolve_timestamp_template_format
 from src.services.titling import user_title_instructions
 from src.utils.incognito_logging import incognito_log, describe_error, short_code
@@ -609,8 +611,10 @@ def _generate_ai_title(recording):
         # catch it and skip titling gracefully (see generate_title_task).
         raise
     except Exception as e:
-        current_app.logger.error(f"Error generating AI title for recording {recording.id}: {str(e)}")
-        current_app.logger.error(f"Exception details:", exc_info=True)
+        # The provider's error text can quote the transcript: metadata at
+        # ERROR, the text and the traceback at DEBUG.
+        log_failure(current_app.logger, logging.ERROR,
+                    f"Error generating AI title for recording {recording.id}", e, traceback=True)
         return None
 
 
@@ -859,9 +863,14 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         except Exception as e:
             if isinstance(e, EmptySummaryReply):
                 error_msg = f"[Summary generation failed: {e.user_message}]"
+                # Speakr's own diagnosis (finish reason, token counts): no content.
+                current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             else:
-                error_msg = format_api_error_message(str(e))
-            current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
+                # The provider's short message, without what it repeats of
+                # the transcript or the prompt (src/utils/error_text.py).
+                error_msg = format_api_error_message(user_error_text(e, recording))
+                log_failure(current_app.logger, logging.ERROR,
+                            f"Error generating summary for recording {recording_id}", e)
             recording.summary = error_msg
             recording.status = 'FAILED'
             recording.error_message = sanitize_error_message(error_msg)
@@ -1203,7 +1212,8 @@ You must respond with valid JSON format only."""
                 )
 
     except Exception as e:
-        current_app.logger.error(f"Error extracting events for recording {recording_id}: {str(e)}")
+        log_failure(current_app.logger, logging.ERROR,
+                    f"Error extracting events for recording {recording_id}", e)
         db.session.rollback()
 
 
@@ -1709,15 +1719,18 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
 
                         if retry_count < max_retries:
                             wait_time = 15 if "timeout" not in error_msg.lower() else 30
-                            current_app.logger.warning(f"Chunk {i+1} failed (attempt {retry_count}/{max_retries}): {chunk_error}. Retrying in {wait_time}s...")
+                            log_failure(current_app.logger, logging.WARNING,
+                                        f"Chunk {i+1} failed (attempt {retry_count}/{max_retries}), retrying in {wait_time}s",
+                                        chunk_error)
                             time.sleep(wait_time)
                         else:
-                            current_app.logger.error(f"Chunk {i+1} failed after {max_retries} attempts: {chunk_error}")
+                            log_failure(current_app.logger, logging.ERROR,
+                                        f"Chunk {i+1} failed after {max_retries} attempts", chunk_error)
                             chunk_result = {
                                 'index': chunk['index'],
                                 'start_time': chunk['start_time'],
                                 'end_time': chunk['end_time'],
-                                'transcription': f"[Chunk {i+1} transcription failed: {str(chunk_error)}]",
+                                'transcription': f"[Chunk {i+1} transcription failed: {user_error_text(chunk_error, extra_sources=(filename, initial_prompt, hotwords), limit=300)}]",
                                 'filename': chunk['filename']
                             }
                             chunk_results.append(chunk_result)
@@ -1762,7 +1775,8 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                 return merged_transcription
 
         except Exception as e:
-            current_app.logger.error(f"Chunking transcription failed for {filepath}: {e}")
+            log_failure(current_app.logger, logging.ERROR, "Chunking transcription failed", e)
+            current_app.logger.debug(f"Chunking transcription failed for {filepath}")
             if 'chunks' in locals():
                 chunking_service.cleanup_chunks(chunks)
             raise ChunkProcessingError(f"Chunked transcription failed: {str(e)}")
@@ -2229,7 +2243,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
 
                     # Only retry with MP3 conversion on first attempt for format errors
                     if attempt == 0 and is_format_error and not converted_filepath and not getattr(connector_specs, 'preserve_original_audio', False):
-                        current_app.logger.warning(f"Transcription failed with possible format error: {e}")
+                        log_failure(current_app.logger, logging.WARNING,
+                                    f"Transcription of recording {recording_id} failed with possible format error", e)
                         current_app.logger.info(f"Attempting MP3 conversion and retry...")
 
                         # Check if file is already MP3
@@ -2443,8 +2458,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     # The transcript is saved, so the transcription job still
                     # completes; the recording stays FAILED with the summary
                     # error, and a summary reprocess recovers it (#583).
-                    current_app.logger.error(
-                        f"Auto-summary failed for recording {recording_id}; transcript kept: {summary_err}")
+                    log_failure(current_app.logger, logging.ERROR,
+                                f"Auto-summary failed for recording {recording_id}; transcript kept", summary_err)
                     from src.services.webhook_dispatch import emit_summary_result
                     emit_summary_result(db.session.get(Recording, recording_id), ok=False,
                                         error=summary_err.stored_summary)
@@ -2492,7 +2507,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 raise
             error_msg = str(e)
             error_type = type(e).__name__
-            current_app.logger.error(f"Connector transcription FAILED for recording {recording_id}: [{error_type}] {error_msg}", exc_info=True)
+            log_failure(current_app.logger, logging.ERROR,
+                        f"Connector transcription FAILED for recording {recording_id}", e, traceback=True)
 
             # Handle timeout errors specifically - log the configured timeout for debugging
             if "timed out" in error_msg.lower() or "timeout" in error_msg.lower() or "Timeout" in error_type:

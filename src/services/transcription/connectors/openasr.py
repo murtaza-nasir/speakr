@@ -21,6 +21,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +137,8 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
             # Summarised, not copied: the text reaches the log, the failure
             # webhook and email, and the technical details (#593)
             body_excerpt = summarize_error_body(body, 800)
-            logger.error(f"OpenASR request failed: {e.response.status_code} {body_excerpt}")
+            logger.error(f"OpenASR request failed: {describe_body(e.response.status_code, body)}")
+            logger.debug(f"OpenASR request failed: {e.response.status_code} {body_excerpt}")
             raise TranscriptionError(
                 f"OpenASR request failed (status {e.response.status_code}): {body_excerpt}"
             ) from e
@@ -147,7 +149,7 @@ class OpenASRTranscriptionConnector(BaseTranscriptionConnector):
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"OpenASR transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "OpenASR transcription failed", e)
             raise TranscriptionError(f"OpenASR transcription failed: {error_msg}") from e
 
     def _parse_response(self, data: Dict[str, Any], model: str, diarize: bool) -> TranscriptionResponse:

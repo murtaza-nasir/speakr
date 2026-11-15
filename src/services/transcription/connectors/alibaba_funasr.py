@@ -8,6 +8,7 @@ Docs: https://help.aliyun.com/zh/model-studio/fun-asr-recorded-speech-recognitio
 import json
 import logging
 import os
+import re
 import time
 from typing import Any, Dict, Optional, Set
 from urllib.parse import urlsplit, urlunsplit
@@ -25,6 +26,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -157,7 +159,9 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                         error_msg = output.get('message', 'Task failed')
 
                         logger.debug(f"FunASR full response: {json.dumps(data, indent=2)}")
-                        logger.error(f"FunASR error code: {error_code}, message: {error_msg}")
+                        logger.error(f"FunASR task failed: code {error_code if re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', str(error_code)) else 'other'}, "
+                                     f"message of {len(str(error_msg))} characters")
+                        logger.debug(f"FunASR error code: {error_code}, message: {error_msg}")
 
                         if error_code == 'ASR_RESPONSE_HAVE_NO_WORDS':
                             raise TranscriptionError(
@@ -169,7 +173,8 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
                             )
 
                         if error_code == 'SUCCESS_WITH_NO_VALID_FRAGMENT':
-                            logger.warning(f"FunASR task succeeded but no valid audio fragments: {error_msg}")
+                            logger.warning("FunASR task succeeded but no valid audio fragments")
+                            logger.debug(f"FunASR task succeeded but no valid audio fragments: {error_msg}")
                             return {
                                 'output': {
                                     'task_status': 'SUCCEEDED',
@@ -325,7 +330,8 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
 
                 task_id = task_data.get('output', {}).get('task_id')
                 if not task_id:
-                    logger.error(f"No task_id in response: {task_data}")
+                    logger.error(f"No task_id in the FunASR response ({len(str(task_data))} characters)")
+                    logger.debug(f"No task_id in response: {task_data}")
                     raise ProviderError(
                         "FunASR did not return a task_id",
                         provider=self.PROVIDER_NAME,
@@ -382,7 +388,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
             raise
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"FunASR transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "FunASR transcription failed", e)
             raise TranscriptionError(f"FunASR transcription failed: {error_msg}") from e
 
     def _download_transcription_result(self, transcription_url: str) -> Dict[str, Any]:
@@ -419,7 +425,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
         except TranscriptionError:
             raise
         except Exception as e:
-            logger.error(f"Transcription result download error: {e}")
+            log_failure(logger, logging.ERROR, "FunASR transcription result download failed", e)
             raise TranscriptionError(f"Transcription result download failed: {e}") from e
 
     def _parse_transcription_data(self, data: Dict[str, Any]) -> TranscriptionResponse:
@@ -498,7 +504,7 @@ class AlibabaFunASRConnector(BaseTranscriptionConnector):
             )
 
         except Exception as e:
-            logger.error(f"Failed to parse FunASR response: {e}")
+            log_failure(logger, logging.ERROR, "Failed to parse the FunASR response", e)
             raise TranscriptionError(f"Failed to parse FunASR response: {e}") from e
 
     @classmethod

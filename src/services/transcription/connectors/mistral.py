@@ -23,6 +23,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -206,7 +207,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             raise TranscriptionError(f"Mistral API request timed out: {e}") from e
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Mistral transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "Mistral transcription failed", e)
             raise TranscriptionError(f"Mistral transcription failed: {error_msg}") from e
 
     def _parse_segments(self, raw_segments: List[Dict[str, Any]]) -> List[TranscriptionSegment]:

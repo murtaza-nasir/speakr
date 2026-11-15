@@ -48,6 +48,7 @@ from src.services.storage import get_storage_service
 from src.utils.mime import served_media_mime, sandbox_media_response
 from src.utils.token_auth import load_user_from_token_value
 from src.utils.localization import api_error, translate
+from src.utils.error_text import log_failure
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -3438,7 +3439,8 @@ def identify_speakers(recording_id):
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 503
     except Exception as e:
-        current_app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
+        log_failure(current_app.logger, 'error',
+                    f"Error during auto speaker identification for recording {recording_id}", e, traceback=True)
         return jsonify(api_error('unexpected_error')), 500
 
 
@@ -3560,7 +3562,7 @@ def chat_with_recording(recording_id):
         completion = call_chat_completion(messages, temperature=get_temperature('chat'), user_id=current_user.id)
         reply = completion.choices[0].message.content
     except Exception as e:
-        current_app.logger.error(f"Chat error: {e}")
+        log_failure(current_app.logger, 'error', f"Chat error for recording {recording.id}", e)
         return jsonify(api_error('chat_failed')), 500
 
     sources = []

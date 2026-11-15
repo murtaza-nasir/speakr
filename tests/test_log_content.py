@@ -241,3 +241,189 @@ def test_loggable_params_keeps_everything_but_user_text():
                                        "hotwords": f"<{len(HOTWORDS)} characters>", "initial_prompt": None}
     assert params["hotwords"] == HOTWORDS
     assert loggable_params(None) is None
+
+
+# --- provider error text (privacy review B1) ----------------------------------
+#
+# The error body of a transcription service or an LLM provider can quote what
+# was sent to it. At INFO and above the log has the class, the status and the
+# length; the text is at DEBUG. The text stored on the job and the recording,
+# and sent by webhook and email, has the provider's short message without
+# what it repeats of the request.
+
+ECHO_PROMPT = "Minutes of the heliotrope-prompt committee."
+ECHO_FILENAME = "ocelot-filename-marker intake.mp3"
+ECHO_TRANSCRIPT = "the ptarmigan-transcript-marker patient reported mild vertigo after lunch"
+PROVIDER_MESSAGE = "Invalid model size"
+ASR_BODY = {"detail": f"{PROVIDER_MESSAGE} for '{ECHO_FILENAME}' with prompt '{ECHO_PROMPT}'",
+            "request": {"initial_prompt": ECHO_PROMPT, "file": ECHO_FILENAME}}
+LLM_MESSAGE = (f"This model's maximum context length is 8192 tokens. Your input started with: "
+               f"'{ECHO_TRANSCRIPT}'")
+B1_MARKERS = ["heliotrope-prompt", "ocelot-filename-marker", "ptarmigan-transcript-marker", "patient reported"]
+
+
+def _failing_asr_connector():
+    import httpx
+    from src.services.transcription.connectors.asr_endpoint import ASREndpointConnector
+
+    def handle(request):
+        if request.url.path in ("/health", "/"):
+            return httpx.Response(200, json={"status": "ok"})
+        return httpx.Response(400, json=ASR_BODY)
+
+    connector = ASREndpointConnector({"base_url": "http://asr.test:9000"})
+    real = httpx.Client
+    connector._http_client = lambda **kw: real(transport=httpx.MockTransport(handle), **kw)
+    return connector
+
+
+def _failing_llm_client():
+    import httpx
+    from openai import OpenAI
+
+    def handle(request):
+        return httpx.Response(400, json={"error": {"message": LLM_MESSAGE, "type": "invalid_request_error",
+                                                   "code": "context_length_exceeded"}})
+    return OpenAI(api_key="test-key", base_url="http://llm.test/v1", max_retries=0,
+                  http_client=httpx.Client(transport=httpx.MockTransport(handle)))
+
+
+def _assert_markers_only_at_debug(log, markers=B1_MARKERS):
+    default_log = "\n".join(
+        logging.Formatter("%(message)s").format(r) for r in log.records if r.levelno >= logging.INFO)
+    debug_log = _messages(log, below=logging.INFO)
+    for marker in markers:
+        assert marker not in default_log, f"{marker!r} is in the log at INFO or above"
+    assert any(marker in debug_log for marker in markers), "the full error text is logged at DEBUG"
+    return default_log
+
+
+def test_transcription_service_error_body_is_not_logged_at_info(log):
+    import io
+    from src.services.transcription.base import TranscriptionRequest
+    from src.services.transcription.exceptions import ProviderError
+    from src.utils.error_text import user_error_text
+    connector = _failing_asr_connector()
+    with app.app_context(), pytest.raises(ProviderError) as raised:
+        connector.transcribe(TranscriptionRequest(audio_file=io.BytesIO(b"audio"), filename=ECHO_FILENAME,
+                                                  language="en", prompt=ECHO_PROMPT))
+    default_log = _assert_markers_only_at_debug(log)
+    assert "ASR request failed (file extension .mp3): status=400 body=" in default_log
+    # The exception keeps the summarized body for DEBUG and for the job queue,
+    # where it is shortened to the provider's message.
+    recording = SimpleNamespace(original_filename=ECHO_FILENAME, resolved_initial_prompt=ECHO_PROMPT)
+    shown = user_error_text(raised.value, recording)
+    assert "status 400" in shown and PROVIDER_MESSAGE in shown
+    for marker in B1_MARKERS:
+        assert marker not in shown
+
+
+def test_llm_error_body_is_not_logged_at_info(log):
+    import src.services.llm as llm
+    from openai import BadRequestError
+    with app.app_context(), patch.object(llm, "client", _failing_llm_client()), \
+         patch.object(llm, "TEXT_MODEL_NAME", "fake-model"), pytest.raises(BadRequestError):
+        llm.call_llm_completion([{"role": "user", "content": ECHO_TRANSCRIPT}], operation_type="summarization")
+    default_log = _assert_markers_only_at_debug(log)
+    assert ("LLM API call failed (operation=summarization): BadRequestError status=400 "
+            "code=context_length_exceeded length=") in default_log
+
+
+def test_failed_summary_stores_the_provider_message_without_the_transcript(world, log):
+    import src.services.llm as llm
+    from src.services.error_classification import SummaryStepFailed
+    with app.app_context():
+        rec = db.session.get(Recording, world.rec)
+        rec.transcription = json.dumps([{"speaker": "SPEAKER_00", "sentence": ECHO_TRANSCRIPT}])
+        db.session.commit()
+        c = _failing_llm_client()
+        with patch.object(llm, "client", c), patch.object(proc, "client", c), \
+             patch.object(llm, "TEXT_MODEL_NAME", "fake-model"), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+             patch("src.services.webhook_dispatch.emit_webhook_event"), \
+             pytest.raises(SummaryStepFailed):
+            proc.generate_summary_only_task(app.app_context(), world.rec)
+        db.session.expire_all()
+        rec = db.session.get(Recording, world.rec)
+        stored = f"{rec.summary}\n{rec.error_message}"
+    assert rec.status == "FAILED"
+    # A known kind of failure keeps its plain explanation.
+    assert "too long for AI processing" in stored
+    for marker in B1_MARKERS:
+        assert marker not in stored
+    default_log = _assert_markers_only_at_debug(log)
+    assert f"Error generating summary for recording {world.rec}: SummaryStepFailed" not in default_log
+    assert f"Error generating summary for recording {world.rec}: BadRequestError status=400" in default_log
+
+
+def test_failed_job_stores_and_sends_the_short_provider_message(world, log):
+    """processing_job.error_message, the recording, the webhook and the email."""
+    from src.services.job_queue import job_queue
+    from src.services.transcription.exceptions import ProviderError
+    job_queue.init_app(app)
+    error = ProviderError(
+        f"ASR request failed with status 400: {json.dumps(ASR_BODY)}", provider="asr_endpoint", status_code=400)
+    error.permanent = True
+    sent = {}
+    with app.app_context():
+        rec = db.session.get(Recording, world.rec)
+        rec.original_filename = ECHO_FILENAME
+        rec.resolved_initial_prompt = ECHO_PROMPT
+        db.session.commit()
+        job = ProcessingJob(user_id=world.user, recording_id=world.rec, job_type="transcribe",
+                            status="processing", params=json.dumps({"initial_prompt": ECHO_PROMPT}))
+        db.session.add(job)
+        db.session.commit()
+        job_id = job.id
+
+        def webhook(user_id, event_type, data):
+            sent["webhook"] = (event_type, dict(data))
+
+        def email(owner, recording, error_text):
+            sent["email"] = error_text
+            return True
+
+        with patch.object(job_queue, "_run_audio_job", side_effect=error), \
+             patch("src.services.webhook_dispatch.emit_webhook_event", side_effect=webhook), \
+             patch("src.services.email.send_transcription_failed_email", side_effect=email):
+            job_queue._process_job(job)
+        db.session.expire_all()
+        job = db.session.get(ProcessingJob, job_id)
+        rec = db.session.get(Recording, world.rec)
+        texts = {"job": job.error_message, "recording": rec.error_message, "transcript": rec.transcription,
+                 "webhook": sent["webhook"][1]["error"], "email": sent["email"]}
+        assert job.status == "failed" and rec.status == "FAILED"
+    assert sent["webhook"][0] == "recording.transcription.failed"
+    for name, text in texts.items():
+        assert "status 400" in text and PROVIDER_MESSAGE in text, name
+        for marker in B1_MARKERS:
+            assert marker not in text, f"{marker!r} is in the {name} text"
+    default_log = _assert_markers_only_at_debug(log)
+    assert (f"Job {job_id} (transcribe) for recording {world.rec} failed: "
+            "ProviderError provider=asr_endpoint status=400 length=") in default_log
+
+
+def test_user_error_text_keeps_the_message_and_removes_echoes():
+    from src.utils.error_text import REMOVED, provider_message, scrub_request_echo, user_error_text
+    # The provider's message field, its code and type; the other fields are dropped.
+    assert provider_message('X failed with status 422: {"detail": "bad language", "input": "secret"}') == \
+        "X failed with status 422: bad language"
+    openai_style = ("Error code: 400 - {'error': {'message': 'Unsupported value', 'type': "
+                    "'invalid_request_error', 'param': 'secret', 'code': 'unsupported_value'}}")
+    assert provider_message(openai_style) == \
+        "Error code: 400 - Unsupported value (code unsupported_value, type invalid_request_error)"
+    assert provider_message('X failed: {"detail": [{"loc": ["body"], "msg": "field required", "type": "missing"}]}') \
+        == "X failed: field required (type missing)"
+    # Text without a structured body is kept.
+    assert provider_message("RuntimeError: CUDA out of memory") == "RuntimeError: CUDA out of memory"
+    # A long run, a quoted string and a short whole source are removed.
+    sources = [json.dumps([{"speaker": "A", "sentence": ECHO_TRANSCRIPT}]), "Kestrel title", "okapi"]
+    text = scrub_request_echo(
+        f"could not parse {ECHO_TRANSCRIPT[:40]} near 'vertigo' in Kestrel title (hotword okapi)", sources)
+    assert "ptarmigan" not in text and "vertigo" not in text and "Kestrel" not in text and "okapi" not in text
+    assert text.count(REMOVED) >= 3 and text.startswith("could not parse")
+    # No sources: nothing is removed, and the text is bounded.
+    assert user_error_text("Connection refused") == "Connection refused"
+    assert len(user_error_text("x" * 5000)) <= 500
+    # The end of a traceback is kept.
+    assert user_error_text("Traceback " + "frame " * 400 + "RuntimeError: out of memory").endswith("out of memory")

@@ -27,6 +27,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.utils.error_body import summarize_error_body
 
+from src.utils.error_text import describe_body, log_failure
 logger = logging.getLogger(__name__)
 
 
@@ -230,7 +231,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
             raise TranscriptionError(f"VibeVoice API request timed out: {e}") from e
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"VibeVoice transcription failed: {error_msg}")
+            log_failure(logger, logging.ERROR, "VibeVoice transcription failed", e)
             raise TranscriptionError(f"VibeVoice transcription failed: {error_msg}") from e
 
     def _parse_json_segments(self, content: str) -> List[Dict[str, Any]]:
