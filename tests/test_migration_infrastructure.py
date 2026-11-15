@@ -178,6 +178,12 @@ class TestMigrationLock:
 class TestPostgreSQL:
     @pytest.fixture
     def pg_engine(self):
+        # One test at a time in this database: the suite runs in parallel
+        # in CI, and other migration tests empty it and build it again.
+        import fcntl
+        import tempfile
+        lock = open(os.path.join(tempfile.gettempdir(), "speakr-test-postgres.lock"), "w")
+        fcntl.flock(lock, fcntl.LOCK_EX)
         engine = create_engine(POSTGRES_URL)
         with engine.connect() as conn:
             conn.execute(text("DROP TABLE IF EXISTS schema_migrations"))
@@ -187,6 +193,7 @@ class TestPostgreSQL:
             conn.execute(text("DROP TABLE IF EXISTS schema_migrations"))
             conn.commit()
         engine.dispose()
+        lock.close()
 
     def test_run_once_runs_the_first_time_only(self, pg_engine):
         calls = []

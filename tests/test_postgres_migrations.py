@@ -52,12 +52,25 @@ class TestDatabaseMigrations(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # One test file at a time in this database: the suite runs in
+        # parallel in CI, and other migration tests empty it too.
+        import fcntl
+        import tempfile
+        cls._lock = open(os.path.join(tempfile.gettempdir(), "speakr-test-postgres.lock"), "w")
+        fcntl.flock(cls._lock, fcntl.LOCK_EX)
         cls.app = create_test_app()
         with cls.app.app_context():
             initialize_database(cls.app)
 
     @classmethod
     def tearDownClass(cls):
+        try:
+            cls._drop_tables()
+        finally:
+            cls._lock.close()
+
+    @classmethod
+    def _drop_tables(cls):
         with cls.app.app_context():
             # Use raw DROP to avoid circular FK dependency errors in SQLAlchemy's
             # drop_all() (user <-> naming_template have mutual foreign keys)

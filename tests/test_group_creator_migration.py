@@ -152,9 +152,23 @@ def _drop_everything(engine):
         conn.commit()
 
 
+@pytest.fixture
+def shared_postgres_database():
+    """One test at a time in the PostgreSQL test database.
+
+    The suite runs in parallel in CI, and several test files empty this
+    database and build it again.
+    """
+    import fcntl
+    import tempfile
+    with open(os.path.join(tempfile.gettempdir(), "speakr-test-postgres.lock"), "w") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+
 @pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
                     reason="needs TEST_DATABASE_URI pointing at an empty PostgreSQL database")
-def test_postgresql_upgrade_matches_a_fresh_database():
+def test_postgresql_upgrade_matches_a_fresh_database(shared_postgres_database):
     app = _app(os.environ["TEST_DATABASE_URI"])
     with app.app_context():
         engine = db.engine
