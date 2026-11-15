@@ -41,10 +41,11 @@ from src.database import db
 
 DEFAULT_MIN_AGE = timedelta(hours=48)
 
-# Top-level folders of UPLOAD_FOLDER the app writes in-progress work to. Only
+# Top-level folders of UPLOAD_FOLDER the app writes in-progress work to (and
+# _peaks, the waveform cache of src/services/waveform_peaks.py). Only
 # the prefix tree is walked, so these are never scanned; the names are listed
 # so that a prefix configured to one of them is refused.
-IN_PROGRESS_FOLDERS = ('_sessions', '_staging')
+IN_PROGRESS_FOLDERS = ('_sessions', '_staging', '_peaks')
 
 
 @dataclass

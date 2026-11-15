@@ -46,6 +46,9 @@ def delete_recording_completely(recording, storage=None, strict_media=False, rea
                 raise
             current_app.logger.error(f"Error deleting media {recording.audio_path}: {e}")
 
+    from src.services.waveform_peaks import remove_peaks
+    remove_peaks(current_app.config.get('UPLOAD_FOLDER') or '', recording_id)
+
     # Voice samples outlive the recording, as the averaged profile always
     # did; they only lose the reference (SQLite does not apply SET NULL).
     from src.models import SpeakerVoiceSample
