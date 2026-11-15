@@ -4493,7 +4493,7 @@ html.asr-editor-long body .modal-overlay {
     .asr-tl__add-text { display: none; }
     .asr-tl__remove { width: 28px; height: 28px; }
     /* Room for the remove button beside a whole label (SPEAKER_02) */
-    .asr-tl--empties { --tl-head: 148px; }
+    .asr-tl--empties { --tl-head: 160px; }
     .asr-tl__head-audio,
     .asr-tl__mini-label { padding: 0 6px; }
 }
