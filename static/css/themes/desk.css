@@ -587,6 +587,8 @@ html[data-ui-theme="desk"] .desk-row .col-tags .chip {
     max-width: min(100px, calc((100cqw - 30px - 4px * var(--desk-chips)) / var(--desk-chips)));
 }
 html[data-ui-theme="desk"] .desk-row .col-tags .chip:nth-child(n+2) { display: none; }
+/* In the narrow tags column the label keeps the room; the tooltip says a chip is shared. */
+html[data-ui-theme="desk"] .desk-row .col-tags .chip > .chip__shared { display: none; }
 html[data-ui-theme="desk"] .desk-row__more { display: none; font-size: 11px; color: var(--text-3); flex: none; }
 html[data-ui-theme="desk"] .desk-row__more--1 { display: inline; }
 @container (min-width: 150px) {
