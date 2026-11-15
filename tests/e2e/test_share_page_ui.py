@@ -70,7 +70,7 @@ FIND = "[data-transcript-find]"
 BOX = ".transcription-box"
 MEDIA = "document.querySelector('audio, video')"
 # What the page may receive (src/api/shares.py, view_shared_recording)
-DATA_KEYS = {"id", "public_id", "title", "participants", "transcript", "summary", "summary_raw", "notes", "notes_raw",
+DATA_KEYS = {"public_id", "title", "transcript", "summary", "summary_raw", "notes", "notes_raw",
              "meeting_date", "mime_type", "audio_deleted_at", "audio_duration"}
 NOTES = "Shared notes. A probe: ${ 7 * 7 } and ${ recording.public_id }."
 

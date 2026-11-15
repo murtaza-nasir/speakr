@@ -119,10 +119,8 @@ def view_shared_recording(public_id):
     # embeds it as JSON for static/js/share-page.js: nothing may be added here
     # that a person with only the link should not see.
     recording_data = {
-        'id': recording.id,
         'public_id': share.public_id,
         'title': recording.title,
-        'participants': recording.participants,
         'transcript': public_transcript(recording.transcription),
         'summary': md_to_html(recording.summary) if share.share_summary else None,
         'summary_raw': recording.summary if share.share_summary else None,
