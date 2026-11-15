@@ -2000,6 +2000,7 @@
   "incognito": {
     "audioNotStored": "El audio no se almacena en modo incógnito",
     "discardConfirm": "¿Descartar la grabación de incógnito? No se podrá recuperar.",
+    "lostIfTabCloses": "Se pierde si se cierra la pestaña o el navegador",
     "mode": "Modo incógnito",
     "notSavedToAccount": "No guardado en la cuenta",
     "oneFileAtATime": "Un archivo a la vez en modo incógnito",

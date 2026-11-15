@@ -2000,6 +2000,7 @@
   "incognito": {
     "audioNotStored": "隐身模式下不会保存音频",
     "discardConfirm": "丢弃隐身录音？丢弃后无法恢复。",
+    "lostIfTabCloses": "关闭标签页或浏览器后将丢失",
     "mode": "隐身模式",
     "notSavedToAccount": "不会保存到账号",
     "oneFileAtATime": "隐身模式下一次只能处理一个文件",

@@ -967,7 +967,8 @@ export function useAudio(state, utils) {
             // Incognito recordings never open a session: the whole point of
             // incognito is that audio does not touch server storage until the
             // explicit process-without-saving upload, so they stay on the
-            // in-browser path (RAM + IndexedDB, 200 MB cap) regardless of the
+            // in-browser path (RAM only, 200 MB cap; RecordingDB writes
+            // nothing for an incognito recording) regardless of the
             // streaming flag. The resume guard above already cleared the
             // toggle for resumed server sessions, so this cannot strand a
             // half-uploaded session.
@@ -1906,14 +1907,20 @@ export function useAudio(state, utils) {
         // Placeholder for future initialization if needed
     };
 
-    // Keep the crash-recovery session's incognito flag in sync with the
-    // toggle. It can be flipped in the review pane after recording stops
-    // (and the modal toggle can flip it with no session — then this is a
-    // harmless no-op), so a crash after the flip still recovers into the
-    // mode the user last chose.
+    // An incognito recording is not written to browser storage. The toggle
+    // can be turned on during a recording or in the review pane after it
+    // stops: from then on nothing more is written, and the copy saved so far
+    // for crash recovery is deleted. With no recording of this page (the
+    // toggle in the upload dialog), there is no session start time and a
+    // copy left by another recording is kept. Turning the toggle off again
+    // does not start writing: the recording stays in memory until it is
+    // uploaded or discarded.
     if (typeof Vue !== 'undefined' && Vue.watch && incognitoMode) {
         Vue.watch(incognitoMode, (v) => {
-            RecordingDB.updateRecordingMetadata({ incognito: !!v });
+            if (v && currentRecordingSessionStartTime) {
+                RecordingDB.makeSessionInMemoryOnly(currentRecordingSessionStartTime);
+                currentRecordingSessionStartTime = null;
+            }
         });
     }
 

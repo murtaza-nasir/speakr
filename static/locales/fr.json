@@ -2000,6 +2000,7 @@
   "incognito": {
     "audioNotStored": "Audio non stocké en mode incognito",
     "discardConfirm": "Abandonner l'enregistrement incognito ? Il ne pourra pas être récupéré.",
+    "lostIfTabCloses": "Perdu si l'onglet ou le navigateur se ferme",
     "mode": "Mode incognito",
     "notSavedToAccount": "Non enregistré sur le compte",
     "oneFileAtATime": "Un seul fichier à la fois en mode incognito",

@@ -42,6 +42,22 @@ const serializeSessionWrite = (task) => {
 };
 
 /**
+ * Incognito recordings are kept in memory only.
+ *
+ * While this flag is set, nothing of the recording in progress is written to
+ * IndexedDB: no session record, no chunk, no notes, no metadata. The flag is
+ * set when a recording starts in incognito mode, and when incognito is turned
+ * on for a recording already in progress or under review (its saved copy is
+ * then deleted). It stays set until the next recording starts, so turning
+ * incognito off again does not start writing a recording that was incognito.
+ * The price is that an incognito recording cannot be recovered after the tab
+ * or the browser closes.
+ */
+let inMemoryOnly = false;
+
+export const isInMemoryOnly = () => inMemoryOnly;
+
+/**
  * Initialize IndexedDB
  */
 export const initDB = () => {
@@ -80,7 +96,61 @@ export const initDB = () => {
 /**
  * Save recording metadata and initialize session
  */
-export const startRecordingSession = (recordingData) => serializeSessionWrite(async () => {
+export const startRecordingSession = (recordingData) => {
+    // Decided when the call is made, before any queued write runs, so a chunk
+    // that arrives while the database is still opening is not written.
+    inMemoryOnly = !!(recordingData && recordingData.incognito);
+    if (inMemoryOnly) {
+        // No session record. A copy left by an earlier recording is removed,
+        // as an ordinary start replaces it.
+        return serializeSessionWrite(async () => {
+            await deleteCurrentSession();
+            return null;
+        });
+    }
+    return startStoredSession(recordingData);
+};
+
+const deleteCurrentSession = async () => {
+    try {
+        const db = await initDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        await promisifyRequest(transaction.objectStore(STORE_NAME).delete('current'));
+    } catch (error) {
+        console.error('[RecordingDB] Failed to clear session:', error);
+    }
+};
+
+/**
+ * Stop writing the recording in progress and delete its saved copy.
+ *
+ * Called when incognito is turned on for a recording that started as an
+ * ordinary one (during the recording or in the review pane). `startTime` is
+ * the start time of that recording's session: the saved copy is deleted only
+ * when it belongs to it, so the crash-recovery copy of another recording is
+ * kept. Returns true when a copy was deleted.
+ */
+export const makeSessionInMemoryOnly = (startTime) => {
+    inMemoryOnly = true;
+    return serializeSessionWrite(async () => {
+        if (!startTime) return false;
+        try {
+            const db = await initDB();
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const objectStore = transaction.objectStore(STORE_NAME);
+            const session = await promisifyRequest(objectStore.get('current'));
+            if (!session || session.startTime !== startTime) return false;
+            await promisifyRequest(objectStore.delete('current'));
+            console.log('[RecordingDB] Saved copy deleted: the recording is incognito');
+            return true;
+        } catch (error) {
+            console.error('[RecordingDB] Failed to delete the saved copy:', error);
+            return false;
+        }
+    });
+};
+
+const startStoredSession = (recordingData) => serializeSessionWrite(async () => {
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -97,10 +167,9 @@ export const startRecordingSession = (recordingData) => serializeSessionWrite(as
             chunks: [],
             mimeType: recordingData.mimeType || 'audio/webm',
             duration: 0,
-            // Incognito state travels with the crash-recovery copy so a
-            // recovered recording reopens in the same mode instead of
-            // silently becoming a normal (permanently stored) one.
-            incognito: !!recordingData.incognito
+            // A stored session is never an incognito one (see inMemoryOnly).
+            // The field stays for copies saved by earlier releases.
+            incognito: false
         };
 
         await promisifyRequest(objectStore.put(session));
@@ -116,6 +185,7 @@ export const startRecordingSession = (recordingData) => serializeSessionWrite(as
  * Save a recording chunk to IndexedDB
  */
 export const saveChunk = (chunkBlob, chunkIndex) => serializeSessionWrite(async () => {
+    if (inMemoryOnly) return;
     try {
         // Do async prep work BEFORE creating transaction to avoid auto-close
         const db = await initDB();
@@ -124,6 +194,9 @@ export const saveChunk = (chunkBlob, chunkIndex) => serializeSessionWrite(async 
         // Now create transaction and do all DB operations quickly
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
+
+        // Incognito may have been turned on while the chunk was being read.
+        if (inMemoryOnly) return;
 
         // Get current session
         const session = await promisifyRequest(objectStore.get('current'));
@@ -154,6 +227,7 @@ export const saveChunk = (chunkBlob, chunkIndex) => serializeSessionWrite(async 
  * Update recording metadata (notes, duration, etc.)
  */
 export const updateRecordingMetadata = (updates) => serializeSessionWrite(async () => {
+    if (inMemoryOnly) return;
     try {
         const db = await initDB();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
