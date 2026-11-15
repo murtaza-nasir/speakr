@@ -64,7 +64,8 @@ def identify_speakers_from_transcript(transcription_data, user_id, candidate_nam
 
     speaker_labels = list(speaker_to_label.values())
 
-    current_app.logger.info(f"[Auto-Identify] Formatted transcript (first 500 chars): {formatted_transcription[:500]}")
+    current_app.logger.info(f"[Auto-Identify] Formatted transcript: {len(formatted_transcription)} characters")
+    current_app.logger.debug(f"[Auto-Identify] Formatted transcript (first 500 chars): {formatted_transcription[:500]}")
     current_app.logger.info(f"[Auto-Identify] Speaker labels: {speaker_labels}")
 
     # Apply configurable transcript length limit
@@ -198,7 +199,9 @@ JSON Response:
                 operation_type='speaker_identification'
             )
             response_content = completion.choices[0].message.content
-            current_app.logger.info(f"[Auto-Identify] LLM Raw Response (schema mode): {response_content}")
+            current_app.logger.info(
+                f"[Auto-Identify] LLM Raw Response (schema mode): {len(response_content or '')} characters")
+            current_app.logger.debug(f"[Auto-Identify] LLM Raw Response (schema mode): {response_content}")
         except Exception as schema_err:
             current_app.logger.warning(f"[Auto-Identify] json_schema mode failed, falling back to json_object: {schema_err}")
             response_content = None
@@ -215,7 +218,8 @@ JSON Response:
             operation_type='speaker_identification'
         )
         response_content = completion.choices[0].message.content
-        current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
+        current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {len(response_content or '')} characters")
+        current_app.logger.debug(f"[Auto-Identify] LLM Raw Response: {response_content}")
 
     identified_map = safe_json_loads(response_content, {})
     current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")

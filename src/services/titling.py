@@ -93,7 +93,8 @@ def compute_title(recording, *, raise_budget_errors=False):
         title = ai_title
     if not title and recording.original_filename:
         title = os.path.splitext(recording.original_filename)[0]
-        current_app.logger.info(f"Using filename as title for recording {recording.id}: '{title}'")
+        current_app.logger.info(f"Using filename as title for recording {recording.id}")
+        current_app.logger.debug(f"Filename title for recording {recording.id}: '{title}'")
     return title
 
 

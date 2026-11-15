@@ -1718,7 +1718,7 @@ def admin_process_recordings_for_inquire():
             if ok:
                 current_app.logger.info(
                     f"Admin API: {'Re-embedded' if force else 'Processed chunks for'} "
-                    f"recording ({attempt_label}): {recording.title} ({recording.id})"
+                    f"recording ({attempt_label}): {recording.id}"
                 )
                 return True, None
             return False, 'Processing returned false'

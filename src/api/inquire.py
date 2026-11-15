@@ -191,8 +191,10 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     from src.services.assistant_events import filters_from_request
     filters = filters_from_request(data)
     
-    # Debug logging
-    current_app.logger.info(f"Inquire chat - User: {user.username}, Query: '{user_message}', Filters: {filters}")
+    # The query text is user content: DEBUG only (discussion #603).
+    current_app.logger.info(
+        f"Inquire chat - User: {user.username}, Query: {len(user_message or '')} characters, Filters: {filters}")
+    current_app.logger.debug(f"Inquire chat query of user {user.id}: '{user_message}'")
     
     # Capture user context and app before generator to avoid context issues
     user_id = user.id
@@ -257,7 +259,10 @@ Examples:
                     raise ValueError("Empty router response")
 
                 route_decision = raw_decision.strip().upper()
-                app.logger.info(f"Router decision: {route_decision}")
+                # The model's raw answer: only the two known decisions at INFO.
+                app.logger.info(
+                    f"Router decision: {route_decision if route_decision in ('DIRECT', 'RAG') else 'other'}")
+                app.logger.debug(f"Router raw decision: {route_decision}")
 
                 if route_decision == "DIRECT":
                     # Direct response without RAG lookup
@@ -369,10 +374,12 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                     if match:
                         enriched_terms = json.loads(match.group())
                     else:
-                        app.logger.warning(f"Query enrichment response not JSON: {content[:200]}")
+                        app.logger.warning(f"Query enrichment response not JSON ({len(content)} characters)")
+                        app.logger.debug(f"Query enrichment response: {content[:200]}")
                         raise ValueError("No JSON array found in response")
 
-                app.logger.info(f"Enriched search terms: {enriched_terms}")
+                app.logger.info(f"Enriched search terms: {len(enriched_terms)}")
+                app.logger.debug(f"Enriched search terms: {enriched_terms}")
                 
                 # Combine original query with enriched terms for search
                 search_queries = [user_message] + enriched_terms[:3]  # Use original + top 3 enriched terms
@@ -390,7 +397,8 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
             for query in search_queries:
                 with app.app_context():
                     chunk_results = semantic_search_chunks(user_id, query, filters, 8)
-                    app.logger.info(f"Search query '{query}' returned {len(chunk_results)} chunks")
+                    app.logger.info(f"Search query ({len(query)} characters) returned {len(chunk_results)} chunks")
+                    app.logger.debug(f"Search query '{query}' returned {len(chunk_results)} chunks")
                 
                 for chunk, similarity in chunk_results:
                     if chunk and chunk.id not in seen_chunk_ids:
@@ -450,7 +458,8 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                     for query in search_queries:
                         with app.app_context():
                             auto_filtered_results = semantic_search_chunks(user_id, query, auto_filters, data.get('context_chunks', 8))
-                            app.logger.info(f"Auto-filtered search for '{query}' with speakers {mentioned_speakers} returned {len(auto_filtered_results)} chunks")
+                            app.logger.info(f"Auto-filtered search ({len(query)} characters) with speakers {mentioned_speakers} returned {len(auto_filtered_results)} chunks")
+                            app.logger.debug(f"Auto-filtered search for '{query}' returned {len(auto_filtered_results)} chunks")
                         
                         for chunk, similarity in auto_filtered_results:
                             if chunk and chunk.id not in auto_filtered_seen_ids:
@@ -747,7 +756,8 @@ Order your response with notes from the most recent meetings first. Always use p
                                         return
                                         
                             except (ValueError, IndexError):
-                                app.logger.warning(f"Invalid transcript request format: {request_line}")
+                                app.logger.warning(f"Invalid transcript request format ({len(request_line)} characters)")
+                                app.logger.debug(f"Invalid transcript request: {request_line}")
                                 # Continue with normal streaming
                                 pass
                     
