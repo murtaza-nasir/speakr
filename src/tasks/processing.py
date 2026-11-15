@@ -73,7 +73,8 @@ from src.services.transcription_tracking import transcription_tracker
 # its KV cache on the summary call, prefilling only the short trailing suffix.
 #
 # Default off so existing deployments and prompt-quality behaviour are unchanged
-# unless explicitly opted in. Scope is title + summary only.
+# unless explicitly opted in. Scope is the title, summary, translation and
+# contextual speaker-identification prompts.
 PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
     'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
 ).lower() == 'true'
@@ -87,21 +88,19 @@ TEXT_MODEL_CACHE_BREAKPOINTS = os.environ.get(
     'TEXT_MODEL_CACHE_BREAKPOINTS', 'false'
 ).lower() == 'true'
 
+
+def prefix_cache_flags():
+    """The prefix-cache pair, read at call time.
+
+    Callers that lay out prompts (and tests that patch the module attributes)
+    must see the current values, so the flags are read when a prompt is built,
+    not captured at import. Every prompt-building site reads them here.
+    """
+    return PREFIX_CACHE_OPTIMIZED_PROMPTS, TEXT_MODEL_CACHE_BREAKPOINTS
+
+
 # Longest notes text given to the summarizer (#440)
 SUMMARY_NOTES_LIMIT = 8000
-
-def _user_content(prompt_text, transcript_text):
-    """User-message content for a prompt that may start with the shared prefix.
-
-    Reads the module-level flags so tests and deployments can toggle them, and
-    delegates the layout decision to the prompt module.
-    """
-    return build_user_content(
-        prompt_text,
-        transcript_text,
-        PREFIX_CACHE_OPTIMIZED_PROMPTS,
-        TEXT_MODEL_CACHE_BREAKPOINTS,
-    )
 
 
 def resolve_hotwords(hotwords, admin_default):
@@ -532,7 +531,8 @@ def _generate_ai_title(recording):
     # here too; otherwise the title prefills a plain transcript and the summary's
     # timestamped transcript can't reuse it, defeating the optimization.
     _t_owner = recording.owner
-    if PREFIX_CACHE_OPTIMIZED_PROMPTS and _t_owner and _t_owner.summary_include_timestamps:
+    prefix_cache_optimized, cache_breakpoints = prefix_cache_flags()
+    if prefix_cache_optimized and _t_owner and _t_owner.summary_include_timestamps:
         formatted_transcription = format_transcription_for_llm(
             recording.transcription,
             include_timestamps=True,
@@ -557,7 +557,7 @@ def _generate_ai_title(recording):
         transcript_text,
         title_instructions,
         user_output_language,
-        PREFIX_CACHE_OPTIMIZED_PROMPTS,
+        prefix_cache_optimized,
     )
 
     try:
@@ -566,7 +566,9 @@ def _generate_ai_title(recording):
         completion = call_llm_completion(
             messages=[
                 {"role": "system", "content": system_message_content},
-                {"role": "user", "content": _user_content(prompt_text, transcript_text)}
+                {"role": "user", "content": build_user_content(
+                    prompt_text, transcript_text,
+                    prefix_cache_optimized, cache_breakpoints)},
             ],
             temperature=llm_temperature,
             # TITLE_MAX_TOKENS lets reasoning-model users (e.g. Kimi K2) raise
@@ -782,12 +784,13 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                     f'"""\n{owner_notes[:SUMMARY_NOTES_LIMIT]}\n"""'
                 )
 
+        prefix_cache_optimized, cache_breakpoints = prefix_cache_flags()
         system_message_content, prompt_text = build_summary_prompt(
             transcript_text,
             context_section,
             summarization_instructions,
             user_output_language,
-            PREFIX_CACHE_OPTIMIZED_PROMPTS,
+            prefix_cache_optimized,
         )
 
         # Debug logging: Log the complete prompt being sent to the LLM
@@ -804,7 +807,9 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             completion = call_llm_completion(
                 messages=[
                     {"role": "system", "content": system_message_content},
-                    {"role": "user", "content": _user_content(prompt_text, transcript_text)}
+                    {"role": "user", "content": build_user_content(
+                        prompt_text, transcript_text,
+                        prefix_cache_optimized, cache_breakpoints)},
                 ],
                 temperature=llm_temperature,
                 max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),

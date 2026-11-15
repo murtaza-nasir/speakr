@@ -1,0 +1,314 @@
+{
+ "breakpoints_without_prefix_cache": {
+  "speaker_identification_contextual": [
+   {
+    "content": "You assign speakers in a transcript to a fixed list of known people, using only contextual clues in the dialogue. Your response must be a single, valid JSON object and must only use names from the provided list.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\"\"\"\n\nGUIDANCE: use only clear contextual clues.\n\nKnown speaker profiles you may assign: Maha, Jane Smith\nSpeakers to identify: SPEAKER_00, SPEAKER_01\n\nRespond with a single JSON object whose keys are the speaker labels and whose values are the assigned profile name (copied exactly from the list above) or an empty string \"\" when no profile clearly matches.\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "speaker_identification_manual": [
+   {
+    "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications.",
+    "role": "system"
+   },
+   {
+    "content": "Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.\n\nThe speakers that need to be identified are: SPEAKER_00, SPEAKER_01\n\nLook for clues in the conversation such as:\n- Names mentioned by other speakers when addressing someone\n- Self-introductions or references to their own name\n- Context clues about roles, relationships, or positions\n- Any direct mentions of names in the dialogue\n\nHere is the complete conversation transcript:\n\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\nBased on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.\n\nRespond with a single JSON object where keys are the speaker labels (e.g., \"SPEAKER_01\") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string \"\".\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"Bob Johnson\",\n  \"SPEAKER_05\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "summary": [
+   {
+    "content": "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\nContext:\n- Current date: November 15, 2026\n- Recording title: Launch planning\n- Information about the user: Name: Dana Reyes, Job title: Analyst, Company: Example Co\n\nLanguage Requirement: You MUST generate the entire summary in French. This is mandatory.",
+    "role": "system"
+   },
+   {
+    "content": "Transcription:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\nSummarization Instructions:\nSummarize the decisions in three bullets.\n\nIMPORTANT: You MUST provide the summary in French. The entire response must be in French.",
+    "role": "user"
+   }
+  ],
+  "title": [
+   {
+    "content": "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title. Ensure your response is in French.",
+    "role": "system"
+   },
+   {
+    "content": "Create a short title for this conversation:\n\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\nRequirements:\n- Keep it under eight words\n- Output ONLY the title text, nothing else\n\nPlease provide the title in French.\n\nTitle:",
+    "role": "user"
+   }
+  ],
+  "translation_plain_text": [
+   [
+    {
+     "content": "You are a translation engine. Translate the values of the JSON object into the requested language. Return only a valid JSON object with the same keys.",
+     "role": "system"
+    },
+    {
+     "content": "Translate each value in the following JSON object into French. Return a JSON object with exactly the same keys.\n\n{\"0\": \"Alice: Let's lock the launch date.\", \"1\": \"Bob: I propose the 14th.\", \"2\": \"Alice: Agreed, the 14th it is. This is long enough to summarize.\"}",
+     "role": "user"
+    }
+   ]
+  ],
+  "translation_segments": [
+   [
+    {
+     "content": "You are a translation engine. Translate the values of the JSON object into the requested language. Return only a valid JSON object with the same keys.",
+     "role": "system"
+    },
+    {
+     "content": "Translate each value in the following JSON object into French. Return a JSON object with exactly the same keys.\n\n{\"1\": \"Maha, can you review the \\\"Q3\\\" budget? Ça va?\", \"2\": \"Yes, I will send it today.\", \"4\": \"The 14th works for the launch.\"}",
+     "role": "user"
+    }
+   ]
+  ]
+ },
+ "off": {
+  "speaker_identification_contextual": [
+   {
+    "content": "You assign speakers in a transcript to a fixed list of known people, using only contextual clues in the dialogue. Your response must be a single, valid JSON object and must only use names from the provided list.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\"\"\"\n\nGUIDANCE: use only clear contextual clues.\n\nKnown speaker profiles you may assign: Maha, Jane Smith\nSpeakers to identify: SPEAKER_00, SPEAKER_01\n\nRespond with a single JSON object whose keys are the speaker labels and whose values are the assigned profile name (copied exactly from the list above) or an empty string \"\" when no profile clearly matches.\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "speaker_identification_manual": [
+   {
+    "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications.",
+    "role": "system"
+   },
+   {
+    "content": "Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.\n\nThe speakers that need to be identified are: SPEAKER_00, SPEAKER_01\n\nLook for clues in the conversation such as:\n- Names mentioned by other speakers when addressing someone\n- Self-introductions or references to their own name\n- Context clues about roles, relationships, or positions\n- Any direct mentions of names in the dialogue\n\nHere is the complete conversation transcript:\n\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\nBased on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.\n\nRespond with a single JSON object where keys are the speaker labels (e.g., \"SPEAKER_01\") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string \"\".\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"Bob Johnson\",\n  \"SPEAKER_05\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "summary": [
+   {
+    "content": "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\nContext:\n- Current date: November 15, 2026\n- Recording title: Launch planning\n- Information about the user: Name: Dana Reyes, Job title: Analyst, Company: Example Co\n\nLanguage Requirement: You MUST generate the entire summary in French. This is mandatory.",
+    "role": "system"
+   },
+   {
+    "content": "Transcription:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\nSummarization Instructions:\nSummarize the decisions in three bullets.\n\nIMPORTANT: You MUST provide the summary in French. The entire response must be in French.",
+    "role": "user"
+   }
+  ],
+  "title": [
+   {
+    "content": "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title. Ensure your response is in French.",
+    "role": "system"
+   },
+   {
+    "content": "Create a short title for this conversation:\n\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\nRequirements:\n- Keep it under eight words\n- Output ONLY the title text, nothing else\n\nPlease provide the title in French.\n\nTitle:",
+    "role": "user"
+   }
+  ],
+  "translation_plain_text": [
+   [
+    {
+     "content": "You are a translation engine. Translate the values of the JSON object into the requested language. Return only a valid JSON object with the same keys.",
+     "role": "system"
+    },
+    {
+     "content": "Translate each value in the following JSON object into French. Return a JSON object with exactly the same keys.\n\n{\"0\": \"Alice: Let's lock the launch date.\", \"1\": \"Bob: I propose the 14th.\", \"2\": \"Alice: Agreed, the 14th it is. This is long enough to summarize.\"}",
+     "role": "user"
+    }
+   ]
+  ],
+  "translation_segments": [
+   [
+    {
+     "content": "You are a translation engine. Translate the values of the JSON object into the requested language. Return only a valid JSON object with the same keys.",
+     "role": "system"
+    },
+    {
+     "content": "Translate each value in the following JSON object into French. Return a JSON object with exactly the same keys.\n\n{\"1\": \"Maha, can you review the \\\"Q3\\\" budget? Ça va?\", \"2\": \"Yes, I will send it today.\", \"4\": \"The 14th works for the launch.\"}",
+     "role": "user"
+    }
+   ]
+  ]
+ },
+ "prefix_cache": {
+  "speaker_identification_contextual": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\"\"\"\n\nGUIDANCE: use only clear contextual clues.\n\nKnown speaker profiles you may assign: Maha, Jane Smith\nSpeakers to identify: SPEAKER_00, SPEAKER_01\n\nRespond with a single JSON object whose keys are the speaker labels and whose values are the assigned profile name (copied exactly from the list above) or an empty string \"\" when no profile clearly matches.\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "speaker_identification_manual": [
+   {
+    "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications.",
+    "role": "system"
+   },
+   {
+    "content": "Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.\n\nThe speakers that need to be identified are: SPEAKER_00, SPEAKER_01\n\nLook for clues in the conversation such as:\n- Names mentioned by other speakers when addressing someone\n- Self-introductions or references to their own name\n- Context clues about roles, relationships, or positions\n- Any direct mentions of names in the dialogue\n\nHere is the complete conversation transcript:\n\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\nBased on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.\n\nRespond with a single JSON object where keys are the speaker labels (e.g., \"SPEAKER_01\") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string \"\".\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"Bob Johnson\",\n  \"SPEAKER_05\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "summary": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\nTask: produce a comprehensive Markdown summary of the transcript above. Output raw Markdown only -- no code fences, no preamble, no commentary.\n\nContext:\n- Current date: November 15, 2026\n- Recording title: Launch planning\n- Information about the user: Name: Dana Reyes, Job title: Analyst, Company: Example Co\n\nSummarization Instructions:\nSummarize the decisions in three bullets.\n\nLanguage Requirement: You MUST write the entire summary in French. This is mandatory.",
+    "role": "user"
+   }
+  ],
+  "title": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\nTask: produce ONE title for the conversation above.\nRequirements:\n- Keep it under eight words\n- Output ONLY the title text, nothing else (no quotes, no prefix)\n- Respond in French\n\nTitle:",
+    "role": "user"
+   }
+  ],
+  "translation_plain_text": [
+   [
+    {
+     "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+     "role": "system"
+    },
+    {
+     "content": "Transcript:\n\"\"\"\n{\"0\": \"Alice: Let's lock the launch date.\", \"1\": \"Bob: I propose the 14th.\", \"2\": \"Alice: Agreed, the 14th it is. This is long enough to summarize.\"}\n\"\"\"\n\n\n\nTranslate each value in the JSON object above into French. Return a JSON object with exactly the same keys and translated values.\n",
+     "role": "user"
+    }
+   ]
+  ],
+  "translation_segments": [
+   [
+    {
+     "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+     "role": "system"
+    },
+    {
+     "content": "Transcript:\n\"\"\"\n{\"1\": \"Maha, can you review the \\\"Q3\\\" budget? Ça va?\", \"2\": \"Yes, I will send it today.\", \"4\": \"The 14th works for the launch.\"}\n\"\"\"\n\n\n\nTranslate each value in the JSON object above into French. Return a JSON object with exactly the same keys and translated values.\n",
+     "role": "user"
+    }
+   ]
+  ]
+ },
+ "prefix_cache_with_breakpoints": {
+  "speaker_identification_contextual": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": "Transcript:\n\"\"\"\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\"\"\"\n\nGUIDANCE: use only clear contextual clues.\n\nKnown speaker profiles you may assign: Maha, Jane Smith\nSpeakers to identify: SPEAKER_00, SPEAKER_01\n\nRespond with a single JSON object whose keys are the speaker labels and whose values are the assigned profile name (copied exactly from the list above) or an empty string \"\" when no profile clearly matches.\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "speaker_identification_manual": [
+   {
+    "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications.",
+    "role": "system"
+   },
+   {
+    "content": "Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.\n\nThe speakers that need to be identified are: SPEAKER_00, SPEAKER_01\n\nLook for clues in the conversation such as:\n- Names mentioned by other speakers when addressing someone\n- Self-introductions or references to their own name\n- Context clues about roles, relationships, or positions\n- Any direct mentions of names in the dialogue\n\nHere is the complete conversation transcript:\n\n[SPEAKER_00]: Maha, can you review the \"Q3\" budget? Ça va?\n[SPEAKER_01]: Yes, I will send it today.\n[SPEAKER_00]: \n[SPEAKER_01]: The 14th works for the launch.\n\nBased on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.\n\nRespond with a single JSON object where keys are the speaker labels (e.g., \"SPEAKER_01\") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string \"\".\n\nExample format:\n{\n  \"SPEAKER_01\": \"Jane Smith\",\n  \"SPEAKER_03\": \"Bob Johnson\",\n  \"SPEAKER_05\": \"\"\n}\n\nJSON Response:\n",
+    "role": "user"
+   }
+  ],
+  "summary": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "Transcript:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\n",
+      "type": "text"
+     },
+     {
+      "text": "Task: produce a comprehensive Markdown summary of the transcript above. Output raw Markdown only -- no code fences, no preamble, no commentary.\n\nContext:\n- Current date: November 15, 2026\n- Recording title: Launch planning\n- Information about the user: Name: Dana Reyes, Job title: Analyst, Company: Example Co\n\nSummarization Instructions:\nSummarize the decisions in three bullets.\n\nLanguage Requirement: You MUST write the entire summary in French. This is mandatory.",
+      "type": "text"
+     }
+    ],
+    "role": "user"
+   }
+  ],
+  "title": [
+   {
+    "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+    "role": "system"
+   },
+   {
+    "content": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "Transcript:\n\"\"\"\n[S01]: Maha, can you review the \"Q3\" budget? Ça va?\n[S02]: Yes, I will send it today.\n[S01]: \n[S02]: The 14th works for the launch.\n\"\"\"\n\n",
+      "type": "text"
+     },
+     {
+      "text": "Task: produce ONE title for the conversation above.\nRequirements:\n- Keep it under eight words\n- Output ONLY the title text, nothing else (no quotes, no prefix)\n- Respond in French\n\nTitle:",
+      "type": "text"
+     }
+    ],
+    "role": "user"
+   }
+  ],
+  "translation_plain_text": [
+   [
+    {
+     "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+     "role": "system"
+    },
+    {
+     "content": [
+      {
+       "cache_control": {
+        "type": "ephemeral"
+       },
+       "text": "Transcript:\n\"\"\"\n{\"0\": \"Alice: Let's lock the launch date.\", \"1\": \"Bob: I propose the 14th.\", \"2\": \"Alice: Agreed, the 14th it is. This is long enough to summarize.\"}\n\"\"\"\n\n",
+       "type": "text"
+      },
+      {
+       "text": "\n\nTranslate each value in the JSON object above into French. Return a JSON object with exactly the same keys and translated values.\n",
+       "type": "text"
+      }
+     ],
+     "role": "user"
+    }
+   ]
+  ],
+  "translation_segments": [
+   [
+    {
+     "content": "You assist with meeting transcripts. Follow the user's specific instruction precisely and output only what is requested.",
+     "role": "system"
+    },
+    {
+     "content": [
+      {
+       "cache_control": {
+        "type": "ephemeral"
+       },
+       "text": "Transcript:\n\"\"\"\n{\"1\": \"Maha, can you review the \\\"Q3\\\" budget? Ça va?\", \"2\": \"Yes, I will send it today.\", \"4\": \"The 14th works for the launch.\"}\n\"\"\"\n\n",
+       "type": "text"
+      },
+      {
+       "text": "\n\nTranslate each value in the JSON object above into French. Return a JSON object with exactly the same keys and translated values.\n",
+       "type": "text"
+      }
+     ],
+     "role": "user"
+    }
+   ]
+  ]
+ }
+}

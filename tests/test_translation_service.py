@@ -11,7 +11,7 @@ from src.api import auth as auth_mod
 from src.services import transcription_translation as tt
 
 
-def _fake_call_translating(messages, user_id, prefix_opt):
+def _fake_call_translating(messages, user_id):
     import json as _j
     content = messages[-1]['content']
     start = content.find('{')
@@ -40,7 +40,7 @@ def test_json_segments_alignment(monkeypatch):
 
 
 def test_reject_missing_keys(monkeypatch):
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         content = messages[-1]['content']
         import json as _j
         start = content.find('{')
@@ -57,7 +57,7 @@ def test_reject_missing_keys(monkeypatch):
 
 
 def test_reject_mismatched_keys(monkeypatch):
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         content = messages[-1]['content']
         import json as _j
         start = content.find('{')
@@ -74,13 +74,64 @@ def test_reject_mismatched_keys(monkeypatch):
         tt.translate_json_segments(text, user_id=None, target_language="Spanish")
 
 
+def test_prefix_cache_layout_reuses_the_shared_transcript_prefix(monkeypatch):
+    """With prefix caching enabled, translation sends the same system message
+    and transcript-first block as title/summary, with the JSON payload as the
+    transcript, so the backend can reuse the transcript KV cache."""
+    import src.transcription_prompts as prompts
+
+    calls = []
+
+    def fake_call(messages, user_id):
+        calls.append(messages)
+        return json.dumps({"1": "Hola"})
+
+    monkeypatch.setattr(tt, '_call_llm', fake_call)
+    with patch('src.tasks.processing.PREFIX_CACHE_OPTIMIZED_PROMPTS', True):
+        out = tt.translate_json_segments(
+            json.dumps([{"speaker": "A", "sentence": "Hello"}]),
+            user_id=None,
+            target_language="Spanish",
+        )
+
+    assert json.loads(out)[0]['sentence'] == 'Hola'
+    system, user = calls[0]
+    payload_json = json.dumps({"1": "Hello"}, ensure_ascii=False)
+    prefix = prompts.shared_user_prefix(payload_json)
+    assert system['content'] == prompts.SHARED_LLM_SYSTEM_MSG
+    assert user['content'].startswith(prefix)
+    assert "Translate each value" not in user['content'][:len(prefix)]
+
+
+def test_prefix_cache_breakpoints_mark_the_shared_translation_prefix(monkeypatch):
+    calls = []
+
+    def fake_call(messages, user_id):
+        calls.append(messages)
+        return json.dumps({"1": "Hola"})
+
+    monkeypatch.setattr(tt, '_call_llm', fake_call)
+    with patch('src.tasks.processing.PREFIX_CACHE_OPTIMIZED_PROMPTS', True), \
+         patch('src.tasks.processing.TEXT_MODEL_CACHE_BREAKPOINTS', True):
+        tt.translate_json_segments(
+            json.dumps([{"speaker": "A", "sentence": "Hello"}]),
+            user_id=None,
+            target_language="Spanish",
+        )
+
+    content = calls[0][1]['content']
+    assert isinstance(content, list) and len(content) == 2
+    assert content[0]['cache_control'] == {'type': 'ephemeral'}
+    assert content[1]['text'].startswith("\n\nTranslate each value")
+
+
 def test_malformed_segment_response_is_not_translated_as_plain_text(monkeypatch):
     """A bad model answer for a segment chunk must fail, not be retried as a
     plain-text translation of the raw JSON string (which would persist a
     mangled transcript and defeat the job retry loop)."""
     calls = []
 
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         calls.append(messages)
         return '{"1": "only one key"}'
 
@@ -100,7 +151,7 @@ def test_malformed_segment_response_is_not_translated_as_plain_text(monkeypatch)
 
 
 def test_invalid_json_array_falls_back_to_plain_text(monkeypatch):
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         return json.dumps({"0": "hola"})
 
     monkeypatch.setattr(tt, '_call_llm', fake_call)
@@ -110,7 +161,7 @@ def test_invalid_json_array_falls_back_to_plain_text(monkeypatch):
 
 
 def test_plain_text_paragraphs(monkeypatch):
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         content = messages[-1]['content']
         import json as _j
         start = content.find('{')
@@ -130,7 +181,7 @@ def test_chunking_no_truncation(monkeypatch):
     monkeypatch.setattr(tt, "_chunk_limit", lambda: 20)
     calls = []
 
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         content = messages[-1]['content']
         import json as _j
         start = content.find('{')
@@ -184,7 +235,7 @@ def test_language_code_and_display_name_compare_equal(monkeypatch):
 def test_auto_detect_source_still_uses_llm(monkeypatch):
     calls = []
 
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         calls.append(messages)
         content = messages[-1]['content']
         import json as _j
