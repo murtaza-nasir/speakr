@@ -25,6 +25,11 @@
  * Enter and Shift+Enter go through the matches, which are marked in the
  * rendered text with the CSS highlight API. Ctrl+F in the bar's own field
  * goes on to the browser's find.
+ *
+ * Printing a windowed transcript would print only the rendered part. For
+ * the time of the print, the whole transcript is written into a plain
+ * element (#transcript-print) that the print stylesheet shows in place of
+ * the page (styles.css).
  */
 
 import { bubbleUnits, charsPerLine, createTranscriptWindow, runUnits, segmentUnits } from '../utils/transcript-window.js';
@@ -36,13 +41,15 @@ const LIST = '[data-tv-list]';
 const FIND_BAR = '[data-transcript-find]';
 const HIGHLIGHT = 'transcript-find';
 const HIGHLIGHT_CURRENT = 'transcript-find-current';
+const PRINT_ID = 'transcript-print';
+const PRINT_CLASS = 'print-transcript';
 
 const scrollable = (el) => {
     const overflow = getComputedStyle(el).overflowY;
     return overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay';
 };
 
-export function useTranscriptView({ processedTranscription, transcriptionViewMode, recordingId, relayoutOn = [], scrollSegmentIntoView, t = (key) => key }) {
+export function useTranscriptView({ processedTranscription, transcriptionViewMode, recordingId, recordingTitle, relayoutOn = [], scrollSegmentIntoView, t = (key) => key }) {
     const { shallowReactive, reactive, computed, watch, nextTick } = Vue;
 
     const model = createTranscriptWindow();
@@ -178,7 +185,11 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
         const at = frameOf(list);
         if (rebase) {
             const unit = model.unitOf(rebase.segment);
-            if (unit >= 0) scrollBy(at.scroller, model.offset(unit) + rebase.within - at.y);
+            // By the unit's place on the page when it is rendered: the units
+            // above it in the window have their real heights, not the estimates
+            const el = unit >= 0 ? list.querySelector(`:scope > [data-tv-unit="${unit}"]`) : null;
+            if (el) scrollBy(at.scroller, el.getBoundingClientRect().top - (at.top - rebase.within));
+            else if (unit >= 0) scrollBy(at.scroller, model.offset(unit) + rebase.within - at.y);
             rebase = null;
             anchor = null;
         } else if (anchor) {
@@ -407,6 +418,40 @@ export function useTranscriptView({ processedTranscription, transcriptionViewMod
         event.preventDefault();
         openTranscriptFind();
     });
+
+    // ---- print -----------------------------------------------------------------
+
+    const endPrint = () => {
+        const el = document.getElementById(PRINT_ID);
+        if (el) el.remove();
+        document.documentElement.classList.remove(PRINT_CLASS);
+    };
+    const beginPrint = () => {
+        endPrint();
+        if (!view.windowed || !activeList()) return;
+        const transcript = processedTranscription.value || {};
+        const root = document.createElement('div');
+        root.id = PRINT_ID;
+        const add = (tag, text) => {
+            const el = document.createElement(tag);
+            el.textContent = text;
+            root.appendChild(el);
+        };
+        const title = recordingTitle ? recordingTitle() : '';
+        if (title) add('h1', title);
+        let speaker = null;
+        (transcript.simpleSegments || []).forEach((segment) => {
+            if (transcript.hasDialogue && segment.speaker !== speaker) {
+                speaker = segment.speaker;
+                add('h2', speaker || '');
+            }
+            add('p', segment.sentence || '');
+        });
+        document.body.appendChild(root);
+        document.documentElement.classList.add(PRINT_CLASS);
+    };
+    window.addEventListener('beforeprint', beginPrint);
+    window.addEventListener('afterprint', endPrint);
 
     return {
         transcriptView: view, revealSegment, refreshTranscriptView: schedule,

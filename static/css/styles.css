@@ -1724,6 +1724,43 @@ body {
     content-visibility: visible;
     contain-intrinsic-size: none;
 }
+/* Printing a transcript that is not rendered whole: for the time of the
+   print the whole text is in #transcript-print (composables/
+   transcript-view.js), shown in place of the page. */
+#transcript-print {
+    display: none;
+}
+@media print {
+    html.print-transcript,
+    html.print-transcript body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #ffffff !important;
+    }
+    html.print-transcript body > * {
+        display: none !important;
+    }
+    html.print-transcript body > #transcript-print {
+        display: block !important;
+        color: #000000;
+        font-size: 11pt;
+        line-height: 1.5;
+    }
+    #transcript-print h1 {
+        font-size: 16pt;
+        font-weight: 600;
+        margin: 0 0 12pt;
+    }
+    #transcript-print h2 {
+        font-size: 11pt;
+        font-weight: 700;
+        margin: 10pt 0 2pt;
+        break-after: avoid;
+    }
+    #transcript-print p {
+        margin: 0 0 4pt;
+    }
+}
 .tv-spacer {
     flex: none;
     width: 100%;

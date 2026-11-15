@@ -293,7 +293,7 @@ def test_find_goes_to_a_match_far_away(viewer, segments):
     viewer.shot("transcript-view-test-find")
 
     # A text in many segments: the matches are gone through in order, around the end
-    field.fill("a long meeting with a few more words in it so that some rows wrap")
+    field.fill("a long meeting with a few more words")
     page.wait_for_function("(el) => /^\\d+$/.test(el.textContent.trim()) && Number(el.textContent.trim()) > 1000", arg=count.element_handle(), timeout=5000)
     total = int(count.inner_text().strip())
     page.keyboard.press("Enter")
@@ -407,6 +407,34 @@ def test_the_editor_opens_over_a_page_that_is_still_there(viewer, segments):
     page.locator(".asr-editor-modal .modal-close").click()
     page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
     viewer.check("editor over the long transcript")
+
+
+def test_printing_prints_the_whole_transcript(viewer, segments):
+    """Only part of the transcript is rendered; for a print the whole text is put on the page."""
+    page = viewer.page
+    viewer.open(viewer.ids[LONG_TITLE])
+    try:
+        page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
+        page.emulate_media(media="print")
+        printed = page.evaluate("""() => {
+            const el = document.getElementById('transcript-print');
+            const texts = [...el.querySelectorAll('p')].map((p) => p.textContent);
+            return { shown: getComputedStyle(el).display, app: getComputedStyle(document.getElementById('app')).display,
+                     count: texts.length, first: texts[0], last: texts[texts.length - 1],
+                     speakers: el.querySelectorAll('h2').length, title: el.querySelector('h1').textContent,
+                     height: document.documentElement.scrollHeight }; }""")
+        assert printed["shown"] == "block" and printed["app"] == "none"
+        assert printed["count"] == LARGE_COUNT
+        assert printed["first"] == segments[0]["sentence"] and printed["last"] == segments[-1]["sentence"]
+        assert printed["speakers"] == LARGE_COUNT, "every turn has its speaker"
+        assert printed["title"] == LONG_TITLE
+        assert printed["height"] > 100000, f"the printed page is {printed['height']} px tall"
+    finally:
+        page.emulate_media(media="screen")
+        page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
+    assert page.locator("#transcript-print").count() == 0
+    assert viewer.segment(0).is_visible()
+    viewer.check("printing the transcript")
 
 
 def test_phone_width(browser, viewer, segments):

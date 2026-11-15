@@ -2927,6 +2927,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 processedTranscription,
                 transcriptionViewMode,
                 recordingId: () => (selectedRecording.value ? selectedRecording.value.id : null),
+                recordingTitle: () => (selectedRecording.value ? selectedRecording.value.title || '' : ''),
                 relayoutOn: [currentView, mobileTab, windowWidth, uiTheme, showTimestampsSimpleView, viewingTranslation, legendExpanded, leftColumnWidth],
                 scrollSegmentIntoView,
                 t,
