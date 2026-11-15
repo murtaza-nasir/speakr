@@ -34,7 +34,7 @@ All endpoints require authentication, except the API description and the interac
     curl "https://speakr.example.com/api/v1/stats?token=YOUR_TOKEN"
     ```
 
-A header is the preferred way to send a token. The `?token=` query parameter is deprecated and is accepted only on `GET` requests, and only with full-access tokens. A `POST`, `PUT`, `PATCH` or `DELETE` request that carries the token only in `?token=` gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`. A URL that contains a token can be recorded in proxy logs and browser history, so a header is the safer choice for every client.
+A header is the preferred way to send a token. The `?token=` query parameter is deprecated and is accepted only on `GET` requests, and only with full-access tokens. A `POST`, `PUT`, `PATCH` or `DELETE` request that carries the token only in `?token=` gets `401` with the code `query_token_read_only`. Every response to a request that uses `?token=` carries the header `Deprecation: true`. A URL that contains a token can be recorded in proxy logs and browser history, so a header is the safer choice for every client. The query parameter will be removed in a later release, and an administrator can turn it off now (`api_query_tokens_enabled`): every request that carries its token only in `?token=` then gets `401` with the code `query_token_disabled`.
 
 ### Scopes
 
@@ -1116,9 +1116,11 @@ Only the recording's owner can create a link. Without `force_new`, the newest li
   "existing": true,
   "flags_differ": false,
   "share": {"id": 31, "share_summary": true, "share_notes": false,
-            "created_at": "2026-10-02T09:00:00.000000Z", "expires_at": null}
+            "created_at": "2026-10-02T09:00:00.000000Z", "expires_at": null, "active": true}
 }
 ```
+
+`active` is `false` while the link is answered with `404`: public sharing is turned off, your account no longer has the permission to share publicly, or the link has expired. The link is kept, and it is served again when the administrator turns public sharing on again or returns the permission.
 
 `403` with `code` `feature_disabled` (public sharing is off), `not_permitted` (your account may not create public links) or `https_required` (the link would not be an HTTPS link: when `APP_BASE_URL` is set, its scheme decides and links use that address; otherwise the request must arrive over HTTPS, and behind a reverse proxy Speakr reads `X-Forwarded-Proto`, see `TRUSTED_PROXY_HOPS` and `TRUSTED_PROXIES`).
 
@@ -1130,7 +1132,7 @@ GET /api/v1/recordings/{id}/shares
 
 **Scope:** `share`
 
-Your links of the recording, newest first, each with its `share_url`.
+Your links of the recording, newest first, each with its `share_url` and its `active` state.
 
 ### Revoke a Share Link
 
@@ -1968,6 +1970,8 @@ These are the event types a webhook can subscribe to:
 | `recording.share.created` | A public share link is created |
 | `recording.share.revoked` | A public share link is revoked |
 | `webhook.test` | A manual test delivery (see Test Webhook below) |
+
+The `data` of most recording events holds the `title` of the recording, and `recording.created` also holds `original_filename`. An administrator can leave both fields out of every payload (`webhook_omit_titles`); a receiver then identifies the recording by `recording_id`. Delivery records are removed after `webhook_delivery_retention_days` (default 30 days), so an older delivery is no longer listed and cannot be replayed.
 
 ### List Webhooks
 

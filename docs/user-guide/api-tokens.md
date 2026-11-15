@@ -98,6 +98,8 @@ The `?token=` query parameter is deprecated. A header is the preferred way to se
 curl "https://your-speakr-instance.com/api/v1/recordings?token=YOUR_TOKEN_HERE"
 ```
 
+The query parameter will be removed in a later release. An administrator can already turn it off with the `api_query_tokens_enabled` setting. A request that carries its token only in `?token=` is then answered with `401` and the code `query_token_disabled`, on every method.
+
 ## ASR Voice Recorder Integration
 
 The Android **ASR Voice Recorder** app can automatically send each completed recording to Speakr through its webhook cloud service.

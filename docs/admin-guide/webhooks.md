@@ -293,6 +293,16 @@ payloads.
 | `WEBHOOK_INTRANET_HOST_ALLOWLIST` | empty | Regex of allowed private hosts. Empty = SSRF block always applies. |
 | `WEBHOOK_TRIAL_INTERVAL_SECONDS` | `3600` | Trial delivery interval for an auto-paused webhook; `0` disables trials. |
 | `WEBHOOK_SECRET_GRACE_HOURS` | `24` | How long the previous secret still signs `Speakr-Signature-V2` after a rotation; `0` ends it at once. |
+| `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | Days after which a delivery record is removed; `0` keeps the records without limit. Also a system setting (`webhook_delivery_retention_days`). |
+| `WEBHOOK_OMIT_TITLES` | `false` | With `true`, `title` and `original_filename` are left out of every payload. Also a system setting (`webhook_omit_titles`). |
+
+### Retention of delivery records
+
+A row in `webhook_delivery` holds the payload that was sent and the first 2,000 characters of the answer of the receiver. Every row older than `webhook_delivery_retention_days` (default 30) is removed by the hourly cleanup, whatever its state. With `0`, no row is removed. A removed delivery is no longer listed and cannot be replayed.
+
+### Payloads without titles
+
+By default, `title` is part of the `data` of most recording events, and `original_filename` is part of `recording.created`. With `webhook_omit_titles` set to `true`, both fields are left out of every payload from then on, for all webhooks of the instance. A receiver identifies the recording by `recording_id` and reads the title through the API when it has a token. Payloads already stored in `webhook_delivery` are not changed.
 
 ## API surface
 
@@ -318,10 +328,9 @@ or an API token. The OpenAPI schema documents every field.
   In multi-worker Gunicorn setups, every worker runs its own dispatcher;
   the dispatcher polls the database with a small batch limit so the
   total outbound throughput is naturally bounded.
-- `webhook_delivery` rows accumulate over time. There is no automatic
-  pruning yet — operators should run a periodic delete of rows older
-  than a month or two when the table grows large. A future release
-  will add a retention sweep similar to the recording-session cleanup.
+- `webhook_delivery` rows are removed after
+  `webhook_delivery_retention_days` (default 30). See
+  [Retention of delivery records](#retention-of-delivery-records).
 - Auto-paused webhooks stay in the database with `enabled=false`,
   `auto_paused=true`. The user re-enables manually after fixing their
   receiver; that also clears the `auto_paused` flag.
