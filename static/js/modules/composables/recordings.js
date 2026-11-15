@@ -216,6 +216,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         }
     };
 
+    let selectionCount = 0;
     const selectRecording = async (recording) => {
         if (hasUnsavedRecording()) {
             if (!(await confirmDialog({ message: t('confirms.discardUnsavedRecording'), confirmLabel: t('common.discard'), danger: true }))) {
@@ -258,6 +259,10 @@ export function useRecordings(state, utils, reprocessComposable) {
         // watcher, which fires on the next tick, sees the flag.
         if (recording && recording.id && utils) utils._hydratingSelectedRecording = true;
         selectedRecording.value = recording;
+        // A later selection may finish loading first (a long recording
+        // followed by a short one): only the latest selection may put its
+        // full record in view.
+        const selection = ++selectionCount;
 
         if (recording && recording.id) {
             localStorage.setItem('lastSelectedRecordingId', recording.id);
@@ -266,6 +271,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 const response = await fetch(`/api/recordings/${recording.id}`);
                 if (response.ok) {
                     const fullRecording = await response.json();
+                    if (selection !== selectionCount) return;
                     selectedRecording.value = fullRecording;
 
                     const index = recordings.value.findIndex(r => r.id === recording.id);
@@ -286,9 +292,10 @@ export function useRecordings(state, utils, reprocessComposable) {
             } catch (error) {
                 console.error('Error loading full recording:', error);
             } finally {
-                if (utils) utils._hydratingSelectedRecording = false;
+                if (utils && selection === selectionCount) utils._hydratingSelectedRecording = false;
             }
         }
+        if (selection !== selectionCount) return;
 
         if (isMobileScreen.value) {
             isSidebarCollapsed.value = true;
