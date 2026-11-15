@@ -3849,7 +3849,7 @@
     "subtitle": "Общая запись",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "Создано с помощью",
-    "followPlayer": "Следовать за воспроизведением"
+    "follow": "Следовать"
   },
   "datePicker": {
     "apply": "Применить",

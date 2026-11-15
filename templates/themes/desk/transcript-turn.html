@@ -14,8 +14,10 @@
                              :key="`seg-${segment.originalIndex}-${segment.startTime}`"
                              :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex, 'desk-segment--timed': showTimestampsSimpleView }]"
                              @click="seekAudioFromEvent"
+{%- if not transcript_read_only %}
                              @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
                              :title="t('tooltips.doubleClickToEditSegment')"
+{%- endif %}
                              :data-start-time="segment.startTime"
                              :data-segment-index="segment.originalIndex">
                             <span v-if="showTimestampsSimpleView" class="desk-ts">${ formatTimestamp(segment.startTime) }</span>

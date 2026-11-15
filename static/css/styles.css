@@ -1761,6 +1761,55 @@ body {
         margin: 0 0 4pt;
     }
 }
+/* The public share page (templates/share.html, static/js/share-page.js).
+   Its transcript is the recording page's; these are the row of controls
+   above it and what differs for a visitor: a line is a link to its place in
+   the audio. */
+.share-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2rem;
+    margin-bottom: 0.75rem;
+}
+.share-controls__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+.share-page .transcript-find {
+    margin-bottom: 0.75rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+}
+.share-page [data-start-time] {
+    cursor: pointer;
+}
+.share-page .transcript-segment:hover {
+    background-color: var(--bg-accent-hover);
+}
+/* A print of the summary, the notes or a transcript that is one text: the
+   page's fixed frame is let go, so the print does not stop at one screen.
+   (A transcript of segments prints through #transcript-print.) */
+@media print {
+    html:not(.print-transcript),
+    html:not(.print-transcript) body,
+    html:not(.print-transcript) .share-page,
+    html:not(.print-transcript) .share-page main,
+    html:not(.print-transcript) .share-page main div {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .share-page > header,
+    .share-page > footer,
+    .share-page .share-controls,
+    .share-page .share-print-hide {
+        display: none !important;
+    }
+}
 .tv-spacer {
     flex: none;
     width: 100%;
@@ -1902,59 +1951,6 @@ body {
     }
 }
 
-/* Follow Player Mode Checkbox Styling */
-.follow-player-control {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    user-select: none;
-}
-
-.follow-player-control:hover {
-    background-color: var(--bg-accent-hover);
-}
-
-.follow-player-control input[type="checkbox"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid var(--border-secondary);
-    border-radius: 0.25rem;
-    background-color: var(--bg-input);
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-}
-
-.follow-player-control input[type="checkbox"]:hover {
-    border-color: var(--border-accent);
-}
-
-.follow-player-control input[type="checkbox"]:checked {
-    background-color: var(--bg-button);
-    border-color: var(--bg-button);
-    animation: checkboxPop 0.2s ease-out;
-}
-
-.follow-player-control input[type="checkbox"]:checked::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 3.5px;
-    height: 7px;
-    border: solid var(--text-button);
-    border-width: 0 2px 2px 0;
-    transform: translate(-50%, -60%) rotate(45deg);
-    animation: checkmarkDraw 0.2s ease-out;
-}
-
 @keyframes checkboxPop {
     0% {
         transform: scale(0.8);
@@ -2037,16 +2033,6 @@ body {
 .slide-right-leave-to {
     transform: translateX(-100%) translateY(-50%);
     opacity: 0;
-}
-
-.follow-player-control .follow-icon {
-    font-size: 11px;
-    flex-shrink: 0;
-    opacity: 0.85;
-}
-
-.follow-player-control:hover .follow-icon {
-    opacity: 1;
 }
 
 .speaker-tablet {

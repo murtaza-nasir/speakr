@@ -24,7 +24,7 @@ import { createChatThreads, clearThreadsOnSignOut, threadKey } from './modules/c
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
-import { useTranscriptView } from './modules/composables/transcript-view.js';
+import { scrollSegmentIntoView, useTranscriptView } from './modules/composables/transcript-view.js';
 import { segmentRuns } from './modules/utils/transcript-window.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
@@ -2894,40 +2894,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // The main transcript panel renders only the units near the
             // viewport (composables/transcript-view.js); a segment outside
             // that window is rendered first, by revealTranscriptSegment.
-            // Robust scroll-to-element for the transcript. The speaker
-            // modal uses content-visibility:auto with an ESTIMATED 60px
-            // intrinsic size for off-screen segments (paint perf), and the
-            // main panel estimates the heights of units it has not rendered
-            // yet. A single scrollIntoView is inaccurate for a far jump: it
-            // targets the estimate, and the act of scrolling then renders the
-            // real (taller) heights, which shifts the target out from under the
-            // animation — the "moving target" — so it overshoots and only
-            // settles on a later change. This converges on the REAL measured
-            // position by re-centering INSTANTLY each frame until the target
-            // stops moving. A near target (normal playback advancing one
-            // segment) is already rendered, so a single smooth scroll is
-            // accurate and keeps the follow animation smooth.
-            const scrollSegmentIntoView = (el) => {
-                if (!el) return;
-                const r0 = el.getBoundingClientRect();
-                const near = r0.bottom > -50 && r0.top < window.innerHeight + 50;
-                if (near) {
-                    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    return;
-                }
-                let attempts = 0;
-                let lastTop = null;
-                const step = () => {
-                    if (!el.isConnected) return;
-                    el.scrollIntoView({ block: 'center', behavior: 'auto' });
-                    const top = el.getBoundingClientRect().top;
-                    attempts += 1;
-                    if ((lastTop !== null && Math.abs(top - lastTop) < 1) || attempts >= 8) return;
-                    lastTop = top;
-                    requestAnimationFrame(step);
-                };
-                requestAnimationFrame(step);
-            };
+            // scrollSegmentIntoView (composables/transcript-view.js) converges
+            // on the measured position of a far segment.
             utils.scrollSegmentIntoView = scrollSegmentIntoView;
 
             // The transcript views of the recording page, windowed.

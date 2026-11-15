@@ -64,83 +64,47 @@ def rate_limit(limit_string, **limit_options):
     return decorator
 
 
-def process_transcription_for_template(transcription_str):
-    """
-    Process transcription JSON into a format ready for server-side rendering.
+def public_transcript(transcription_str):
+    """The transcript as the public share page receives it.
 
-    Returns a dict with:
-    - is_json: bool - whether transcription is valid JSON
-    - has_speakers: bool - whether diarization data exists
-    - segments: list - processed segments with speaker info and colors
-    - speakers: list - unique speakers with colors
-    - plain_text: str - plain text version for non-JSON or fallback
+    A transcript stored as segments becomes
+    ``{'speakers': [name, ...], 'segments': [[speaker, start, end, text], ...]}``,
+    where ``speaker`` is an index into ``speakers`` (-1 for none) and the
+    times are seconds or None. Only these four values of a segment leave the
+    server, whatever else is stored with it. Any other transcript is
+    ``{'text': str}``.
+
+    One short row per segment keeps the page of a long recording small: the
+    stored JSON, embedded as a string, was more than twice the size.
     """
     if not transcription_str:
-        return {'is_json': False, 'has_speakers': False, 'segments': [], 'speakers': [], 'plain_text': ''}
-
+        return {'text': ''}
     try:
         data = json.loads(transcription_str)
     except (json.JSONDecodeError, TypeError):
-        # Plain text transcription
-        return {
-            'is_json': False,
-            'has_speakers': False,
-            'segments': [],
-            'speakers': [],
-            'plain_text': transcription_str
-        }
-
+        return {'text': transcription_str}
     if not isinstance(data, list):
-        return {
-            'is_json': False,
-            'has_speakers': False,
-            'segments': [],
-            'speakers': [],
-            'plain_text': transcription_str
-        }
+        return {'text': transcription_str}
 
-    # Check if diarized (has speaker info)
-    has_speakers = any(seg.get('speaker') for seg in data)
+    def seconds(value):
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
-    # Get unique speakers and assign colors
-    speakers = []
-    speaker_colors = {}
-    if has_speakers:
-        unique_speakers = list(dict.fromkeys(seg.get('speaker') for seg in data if seg.get('speaker')))
-        for i, speaker in enumerate(unique_speakers):
-            color = f'speaker-color-{(i % 8) + 1}'
-            speaker_colors[speaker] = color
-            speakers.append({'name': speaker, 'color': color})
-
-    # Process segments
+    speakers = {}
     segments = []
-    last_speaker = None
     for seg in data:
-        speaker = seg.get('speaker', '')
-        segment = {
-            'text': seg.get('sentence', ''),
-            'speaker': speaker,
-            'start_time': seg.get('start_time') or seg.get('startTime', ''),
-            'end_time': seg.get('end_time') or seg.get('endTime', ''),
-            'color': speaker_colors.get(speaker, 'speaker-color-1'),
-            'show_speaker': speaker != last_speaker
-        }
-        segments.append(segment)
-        last_speaker = speaker
-
-    # Build plain text version
-    if has_speakers:
-        plain_text = '\n'.join(f"[{seg['speaker']}]: {seg['text']}" for seg in segments)
-    else:
-        plain_text = '\n'.join(seg['text'] for seg in segments)
-
-    return {
-        'is_json': True,
-        'has_speakers': has_speakers,
-        'segments': segments,
-        'speakers': speakers,
-        'plain_text': plain_text
-    }
+        if not isinstance(seg, dict):
+            continue
+        name = seg.get('speaker')
+        name = name if isinstance(name, str) and name else None
+        start = seg.get('start_time', seg.get('startTime'))
+        end = seg.get('end_time', seg.get('endTime'))
+        sentence = seg.get('sentence')
+        segments.append([
+            speakers.setdefault(name, len(speakers)) if name else -1,
+            seconds(start), seconds(end),
+            sentence if isinstance(sentence, str) else '',
+        ])
+    return {'speakers': list(speakers), 'segments': segments}
 
 
 # --- Public Sharing Routes ---
@@ -151,18 +115,15 @@ def view_shared_recording(public_id):
     share = active_share_or_404(public_id)
     recording = share.recording
 
-    # Process transcription for server-side rendering (only if READABLE_PUBLIC_LINKS is enabled)
-    processed_transcript = None
-    if READABLE_PUBLIC_LINKS:
-        processed_transcript = process_transcription_for_template(recording.transcription)
-
-    # Create a limited dictionary for the public view
+    # Create a limited dictionary for the public view. templates/share.html
+    # embeds it as JSON for static/js/share-page.js: nothing may be added here
+    # that a person with only the link should not see.
     recording_data = {
         'id': recording.id,
         'public_id': share.public_id,
         'title': recording.title,
         'participants': recording.participants,
-        'transcription': recording.transcription,
+        'transcript': public_transcript(recording.transcription),
         'summary': md_to_html(recording.summary) if share.share_summary else None,
         'summary_raw': recording.summary if share.share_summary else None,
         'notes': md_to_html(recording.notes) if share.share_notes else None,
@@ -175,7 +136,9 @@ def view_shared_recording(public_id):
 
     # The viewer's language for the embedded translations: their interface
     # language when signed in, otherwise the browser's Accept-Language.
-    return render_template('share.html', recording=recording_data, transcript=processed_transcript,
+    # With READABLE_PUBLIC_LINKS the transcript is also in the page as plain
+    # HTML (in <noscript>), for readers that do not run the page's script.
+    return render_template('share.html', recording=recording_data,
                            readable_mode=READABLE_PUBLIC_LINKS, user_language=request_language())
 
 

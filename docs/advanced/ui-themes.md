@@ -14,7 +14,7 @@ A UI theme is a complete look for the interface: neutral surfaces, shapes, type 
 | Pre-paint script | `templates/includes/ui_theme.html` | `<html data-ui-theme="<id>">` and the theme stylesheet, set before the first paint; `window.speakrApplyUiTheme(id)` for switching |
 | Theme stylesheet | `static/css/themes/<id>.css` | The theme's CSS, scoped under `html[data-ui-theme="<id>"]`; none for the default |
 | Slots | `templates/themes/slot.html`, `templates/themes/<id>/<slot>.html` | Markup a theme replaces |
-| Reactive value | `uiTheme` in the main app (`static/js/modules/composables/ui-theme.js`) and in the Inquire app (`templates/inquire.html`) | The value the slot branches switch on, without a reload |
+| Reactive value | `uiTheme` in the main app (`static/js/modules/composables/ui-theme.js`), in the Inquire app (`templates/inquire.html`) and on the public share page (`static/js/share-page.js`) | The value the slot branches switch on, without a reload |
 | Picker | `templates/includes/ui_theme_picker.html` | Theme cards in Account > Preferences > Appearance and in the color scheme dialogs |
 | Previews | `static/img/themes/<id>.webp` | Card images |
 | Guard test | `tests/test_ui_theme_slots.py` | Check that overrides keep every behaviour of the default markup |
@@ -91,10 +91,12 @@ Only one branch is rendered at a time, so an id or a `ref` that appears in two b
 | `header-actions` | `components/header.html` | The recording's action buttons in the top header on desktop. In one design most of them were moved into an overflow menu, in another into a toolbar above the recording. |
 | `detail-meta` | `components/detail-view.html` | The folder, tag and metadata strip above a recording on desktop. The chips carry their color in inline styles, which were replaced in three designs; in one design the recording toolbar is added here. |
 | `mobile-detail-header` | `components/detail/mobile-header.html` (moved whole) | The recording header on phones: same chip styles, plus layout hooks and a separate row of tab actions in one design. |
-| `transcript-turn` | `components/detail/desktop-transcription-panel.html` | One speaker turn of the simple transcript on desktop. A timestamp and speaker column or an avatar is added in two designs. |
+| `transcript-turn` | `components/detail/desktop-transcription-panel.html` | One speaker turn of the simple transcript on desktop. A timestamp and speaker column or an avatar is added in two designs. Also rendered, read-only, by the public share page (see below). |
 | `transcript-turn-mobile` | `components/detail/mobile-transcript-panel.html` | The same on phones. |
 | `inquire-filters` | `inquire.html`, the filter column | The Inquire page's left column. Its groups were restyled in every design (disclosures, compact rows with counts, chips, the sidebar's navigation style). |
 | `status-area` | `components/progress-popup.html` (moved whole) | The processing queue popup of the main page. In one design a status bar is added beside it, with a button for the queue. |
+
+The public share page (`templates/share.html`) shows the transcript in the visitor's theme, so it includes the `transcript-turn` slot a second time, with `transcript_read_only` set. Its Vue app (`static/js/share-page.js`) is not the main app and provides only `transcriptView`, `currentPlayingSegmentIndex`, `seekAudioFromEvent`, `showTimestampsSimpleView` (always false), `formatTimestamp`, `t` and `uiTheme`. A `transcript-turn` partial therefore reads nothing else, and puts what belongs to the owner alone (the double click that opens the editor and its tooltip) inside `{% if not transcript_read_only %} ... {% endif %}`. The guard test checks both.
 
 Changes that only add a class or adjust an inline style on shared chrome (the header bar, the account tab strip, the sign-in body) are made in the theme's CSS against the existing selectors instead of in a slot. A JavaScript default that differs per theme (for example whether the queue popup starts minimized) is read from `uiTheme` in `static/js/app.modular.js`. A formatting helper needed by a theme partial is added to the main app's returned scope, where it is available to every theme.
 
@@ -124,7 +126,7 @@ In `tests/test_ui_theme_slots.py`, every override, `templates/themes/<id>/<slot>
 
 A justified difference goes into `ALLOWED` in the test, keyed by `(theme, slot)` and kind, with a comment that gives the reason. When a theme moves markup from one slot to another, `MOVED` lists the slots whose overrides together must keep what the default slot had; for example, a theme that moves the header actions into a toolbar in `detail-meta` declares `('<id>', 'header-actions'): ('detail-meta',)`.
 
-Further checks in the same file: every slot has a default partial and is placed exactly once, theme folders hold only registered themes and slots, every registered theme has a name and description in all seven locales, every available theme has a WebP preview, and every rule of `static/css/themes/<id>.css` is scoped under `html[data-ui-theme="<id>"]`. The setting, the endpoint, the pre-paint markup, the picker and the slot branches are tested in `tests/test_ui_themes.py`, and the pre-paint script is run against a stub browser in `static/js/modules/composables/ui-theme.test.js`.
+Further checks in the same file: every slot has a default partial and is placed exactly once (the transcript turn a second time on the public share page, whose names it is checked against), theme folders hold only registered themes and slots, every registered theme has a name and description in all seven locales, every available theme has a WebP preview, and every rule of `static/css/themes/<id>.css` is scoped under `html[data-ui-theme="<id>"]`. The setting, the endpoint, the pre-paint markup, the picker and the slot branches are tested in `tests/test_ui_themes.py`, and the pre-paint script is run against a stub browser in `static/js/modules/composables/ui-theme.test.js`.
 
 ## Adding a theme
 

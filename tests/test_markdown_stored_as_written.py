@@ -107,7 +107,8 @@ def test_share_page_renders_only_cleaned_html(world):
         public_id = share.public_id
     page = app.test_client().get(f"/share/{public_id}").get_data(as_text=True)
     assert "Summary" in page
-    # The raw text travels only JSON-escaped in data-recording, for the copy button
-    markup = re.sub(r"data-recording='[^']*'", "", page)
+    # The raw text travels only JSON-escaped in #share-data, for the copy button
+    markup = re.sub(r'<script type="application/json" id="share-data">.*?</script>', "", page, flags=re.S)
+    assert markup != page
     for bad in ("<details", "ontoggle", "<iframe", "srcdoc"):
         assert bad not in markup, bad

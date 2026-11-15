@@ -3849,7 +3849,7 @@
     "subtitle": "共享录音",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "构建于",
-    "followPlayer": "跟随音频播放"
+    "follow": "跟随"
   },
   "datePicker": {
     "apply": "应用",

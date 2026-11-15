@@ -85,6 +85,15 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
 
 With the seeded recordings on the instance, the smoke test's recording checks (the detail view, the chat panel layout) run as well instead of being skipped.
 
+## Share page browser test
+
+`test_share_page_ui.py` covers the public share page (`/share/<public_id>`) in a browser that is not signed in. The page shows the transcript the way the recording page does and renders only the part near the viewport (`static/js/share-page.js`, with `composables/transcript-view.js`). The test shares a recording with 20,000 segments and checks the size of the page at the top, in the middle and at the end, the wheel, the find bar (Ctrl+F and its button), a click on a line playing the audio from there, the playing line being followed until the reader scrolls and again after Follow, the bubble view, Copy, the print of the whole transcript, a phone width in light and dark, and the dark mode button. It also checks what the page receives (the fields of `#share-data`, no request beyond the page, its files and the audio, the `noindex` and content security policy headers, no service worker) and that text in shared notes that looks like a template expression is shown as text. A short transcript is rendered whole. The link is made through the app's own route with `X-Forwarded-Proto: https`, as a proxy would report it, since links are made only over https. The server side of the same page is in `tests/test_share_page_payload.py`.
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_share_page_ui.py -q --noconftest -rs -s
+```
+
 ## App dialog browser test
 
 The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static/js/app-dialog.js` shows the question in the app's own dialog (`window.confirmDialog`, `alertDialog`, `promptDialog`), in the Vue app and on the pages that are not part of it. `test_app_dialog_ui.py` covers one of those pages: on the account page a saved speaker is deleted from the Speakers tab. Cancel, Esc and a click beside the panel keep the speaker and the focus returns to the button; Tab stays in the dialog; the danger button that names the action deletes. The message and the input dialog are shown once each. The same question over the segment editor (discarding unsaved changes) is in `test_asr_editor_ui.py`. Both fail when a dialog of the browser appears. It runs with the same gate, instance and CI job as the smoke test:

@@ -326,7 +326,7 @@ When a password is changed, reset by email, or set by an administrator, the acco
 
 ### Public Share Page Rendering
 
-**READABLE_PUBLIC_LINKS**: When `true`, transcripts on public share pages are server-side rendered in HTML, making them accessible to LLMs, scrapers, and accessibility tools. When `false`, transcripts are rendered client-side via JavaScript. Default: `false`.
+**READABLE_PUBLIC_LINKS**: When `true`, a public share page also carries the whole transcript as plain HTML (in a `<noscript>` block: a heading per speaker turn, a paragraph per segment), so that LLMs, scrapers and other readers that do not run JavaScript can read it. A browser shows the interactive transcript either way. When `false`, the transcript is in the page only as data for that view. Default: `false`.
 
 ### Admin User Creation
 

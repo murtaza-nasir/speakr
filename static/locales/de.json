@@ -3849,7 +3849,7 @@
     "subtitle": "Geteilte Aufnahme",
     "pageTitle": "{{title}} · Speakr",
     "builtWith": "Erstellt mit",
-    "followPlayer": "Der Audiowiedergabe folgen"
+    "follow": "Folgen"
   },
   "datePicker": {
     "apply": "Übernehmen",
