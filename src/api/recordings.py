@@ -2917,6 +2917,68 @@ def get_status(recording_id):
         return jsonify(api_error('unexpected_error')), 500
 
 
+def _playable_recording(recording_id):
+    """The recording when the current user may play its audio, else None.
+
+    The one access rule of the audio routes: the owner, or a user the
+    recording is shared with while internal sharing is on.
+    """
+    recording = db.session.get(Recording, recording_id)
+    if not recording or not recording.audio_path:
+        return None
+
+    # Check if the recording belongs to the current user or has been shared with them
+    has_access = recording.user_id == current_user.id
+
+    # Check if recording has been shared with current user (if internal sharing is enabled)
+    if not has_access and _self.ENABLE_INTERNAL_SHARING:
+        share = InternalShare.query.filter_by(
+            recording_id=recording_id,
+            shared_with_user_id=current_user.id
+        ).first()
+        has_access = share is not None
+
+    return recording if has_access else None
+
+
+@recordings_bp.route('/audio/<int:recording_id>/peaks')
+@login_required
+def get_audio_peaks(recording_id):
+    """Waveform peaks of a recording's audio (src/services/waveform_peaks.py).
+
+    For the timeline of the segment editor. Whoever may play the audio may
+    read its peaks, and nobody else. Answers:
+        200  the peaks file (application/octet-stream)
+        202  it is being computed; ask again in `retry_after` seconds
+        204  there are none (no audio file, or it cannot be decoded)
+        404  no such recording for this user
+    """
+    try:
+        recording = _playable_recording(recording_id)
+        if recording is None:
+            return jsonify(api_error('recording_or_audio_not_found')), 404
+        if recording.audio_deleted_at:
+            return '', 204
+        from src.services.waveform_peaks import get_peaks
+        result = get_peaks(get_storage_service(), current_app.config['UPLOAD_FOLDER'], recording.id,
+                           recording.audio_path, log=current_app.logger)
+        if result.status == 'pending':
+            response = jsonify({'status': 'pending', 'retry_after': 2})
+            response.headers['Retry-After'] = '2'
+            response.headers['Cache-Control'] = 'no-store'
+            return response, 202
+        if result.status != 'ready':
+            return '', 204
+        response = send_file(result.path, mimetype='application/octet-stream', conditional=True,
+                             etag=result.etag, max_age=0)
+        response.headers['Cache-Control'] = 'private, no-cache'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        return response
+    except Exception as e:
+        current_app.logger.error(f"Error serving waveform peaks for recording {recording_id}: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+
+
 @recordings_bp.route('/audio/<int:recording_id>')
 @login_required
 def get_audio(recording_id):
@@ -2926,22 +2988,8 @@ def get_audio(recording_id):
         download: If 'true', serves file as attachment for download
     """
     try:
-        recording = db.session.get(Recording, recording_id)
-        if not recording or not recording.audio_path:
-            return jsonify(api_error('recording_or_audio_not_found')), 404
-
-        # Check if the recording belongs to the current user or has been shared with them
-        has_access = recording.user_id == current_user.id
-
-        # Check if recording has been shared with current user (if internal sharing is enabled)
-        if not has_access and _self.ENABLE_INTERNAL_SHARING:
-            share = InternalShare.query.filter_by(
-                recording_id=recording_id,
-                shared_with_user_id=current_user.id
-            ).first()
-            has_access = share is not None
-
-        if not has_access:
+        recording = _playable_recording(recording_id)
+        if recording is None:
             return jsonify(api_error('recording_or_audio_not_found')), 404
         storage = get_storage_service()
 

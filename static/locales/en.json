@@ -911,9 +911,39 @@
       "undo": "Undo",
       "redo": "Redo",
       "find": "Find and replace",
-      "save": "Save"
+      "save": "Save",
+      "drag": "drag",
+      "wheel": "wheel",
+      "dragBlock": "Timeline: move a block, drag an edge, or draw a new segment",
+      "dragAlone": "Timeline: move one edge alone and allow overlap",
+      "dragNoSnap": "Timeline: no snapping",
+      "zoom": "Zoom the timeline",
+      "seek": "Timeline: move the playhead 1 s (Shift: 5 s)"
     },
-    "suggestionOnChip": "{{speaker}}. Voice match: {{match}}"
+    "suggestionOnChip": "{{speaker}}. Voice match: {{match}}",
+    "timeline": {
+      "title": "Timeline",
+      "show": "Show the timeline",
+      "hide": "Hide the timeline",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "zoomFit": "Show the whole recording",
+      "audio": "Audio",
+      "overview": "Overview",
+      "canvasLabel": "Timeline with one lane per speaker. Drag a block to move it, an edge to change its start or end, and empty space to add a segment.",
+      "overviewLabel": "Overview of the whole recording. Drag to scroll.",
+      "waveformLoading": "Preparing the waveform",
+      "laneKey": "Press {{key}} to assign the selection",
+      "start": "Start",
+      "end": "End",
+      "newSegment": "New segment",
+      "neighborFollows": "neighbor follows",
+      "snap": {
+        "playhead": "playhead",
+        "edge": "segment edge",
+        "quiet": "quiet point"
+      }
+    }
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",

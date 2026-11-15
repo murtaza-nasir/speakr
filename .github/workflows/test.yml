@@ -229,6 +229,11 @@ jobs:
           python-version: '3.11'
           cache: pip
 
+      # The waveform of the segment editor's timeline is computed with ffmpeg
+      # (GET /audio/<id>/peaks); test_asr_editor_ui.py waits for it.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install dependencies
         run: pip install --require-hashes --no-deps -r requirements.lock -r requirements-dev.lock
 

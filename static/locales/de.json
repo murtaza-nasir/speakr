@@ -911,9 +911,39 @@
       "undo": "Rückgängig",
       "redo": "Wiederholen",
       "find": "Suchen und ersetzen",
-      "save": "Speichern"
+      "save": "Speichern",
+      "drag": "Ziehen",
+      "wheel": "Mausrad",
+      "dragBlock": "Zeitleiste: Block verschieben, Kante ziehen oder neues Segment zeichnen",
+      "dragAlone": "Zeitleiste: eine Kante allein bewegen, Überlappung zulassen",
+      "dragNoSnap": "Zeitleiste: ohne Einrasten",
+      "zoom": "Zeitleiste zoomen",
+      "seek": "Zeitleiste: Abspielposition um 1 s bewegen (Umschalt: 5 s)"
     },
-    "suggestionOnChip": "{{speaker}}. Stimmübereinstimmung: {{match}}"
+    "suggestionOnChip": "{{speaker}}. Stimmübereinstimmung: {{match}}",
+    "timeline": {
+      "title": "Zeitleiste",
+      "show": "Zeitleiste einblenden",
+      "hide": "Zeitleiste ausblenden",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "zoomFit": "Ganze Aufnahme zeigen",
+      "audio": "Audio",
+      "overview": "Übersicht",
+      "canvasLabel": "Zeitleiste mit einer Spur pro Sprecher. Block ziehen zum Verschieben, Kante ziehen für Anfang oder Ende, leere Fläche ziehen für ein neues Segment.",
+      "overviewLabel": "Übersicht der ganzen Aufnahme. Zum Blättern ziehen.",
+      "waveformLoading": "Wellenform wird vorbereitet",
+      "laneKey": "{{key}} drücken, um die Auswahl zuzuweisen",
+      "start": "Anfang",
+      "end": "Ende",
+      "newSegment": "Neues Segment",
+      "neighborFollows": "Nachbar folgt",
+      "snap": {
+        "playhead": "Abspielposition",
+        "edge": "Segmentkante",
+        "quiet": "Pause"
+      }
+    }
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",

@@ -521,6 +521,28 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
     };
 
     /**
+     * Set the times, and optionally the speaker, of several segments as one
+     * undo step: [{ id, start, end, speaker, speakerId }]. What a drag on the
+     * timeline commits: a moved edge with the neighbour that followed it, or
+     * a block moved in time and to another speaker's lane. Segments are
+     * addressed by id, since each change may move a segment in the order.
+     * Returns true when anything changed.
+     */
+    const retime = (changes, { label = 'time' } = {}) => {
+        const list = (changes || []).filter((c) => c && indexOfId(c.id) >= 0 && fin(c.start) && fin(c.end));
+        if (!list.length) return false;
+        return transact(label, () => {
+            for (const c of list) {
+                const i = indexOfId(c.id);
+                setField(i, 'start_time', cleanTime(c.start));
+                setField(i, 'end_time', cleanTime(c.end));
+                if (c.speaker != null && String(c.speaker).trim()) setField(i, 'speaker', asSpeaker(c.speaker, c.speakerId));
+                resort(i);
+            }
+        }).changed;
+    };
+
+    /**
      * Split segment i at a character offset. Returns the index of the new
      * second half, or -1. Options: `time` (the playhead) and `words` (word
      * timings), see splitTime.
@@ -822,7 +844,7 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         indexAtTime,
         toJSON: () => segs.map(segmentToJSON),
 
-        setText, setStart, setEnd, moveEdge, setTimes, move, split, merge, mergeWithPrevious, mergeWithNext,
+        setText, setStart, setEnd, moveEdge, setTimes, move, retime, split, merge, mergeWithPrevious, mergeWithNext,
         add, remove, setSpeaker, renameSpeaker, replaceText,
         undo, redo, endBurst,
 

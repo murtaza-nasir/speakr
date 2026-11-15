@@ -15,6 +15,7 @@ import { useTranscription } from './modules/composables/transcription.js';
 import { useFindReplace } from './modules/composables/find-replace.js';
 import { useAsrEditor } from './modules/composables/asr-editor.js';
 import { createAsrEditorPane } from './modules/asr-editor/pane.js';
+import { createAsrEditorTimeline } from './modules/asr-editor/timeline.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useSpeakerModal } from './modules/composables/speaker-modal.js';
 import { useChat } from './modules/composables/chat.js';
@@ -4868,6 +4869,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // The transcript pane of the segment editor (templates/components/asr-editor-pane.html).
     app.component('asr-editor-pane', createAsrEditorPane());
+    // Its timeline (templates/components/asr-editor-timeline.html).
+    app.component('asr-editor-timeline', createAsrEditorTimeline());
 
     app.mount('#app');
 });

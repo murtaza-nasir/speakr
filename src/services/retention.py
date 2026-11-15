@@ -237,6 +237,8 @@ def remove_recording_audio(recording):
         storage.delete(recording.audio_path, missing_ok=True)
         current_app.logger.info(f"Removed audio file for recording {recording.id}: {recording.audio_path}")
         deleted = True
+    from src.services.waveform_peaks import remove_peaks
+    remove_peaks(current_app.config.get('UPLOAD_FOLDER') or '', recording.id)
     if not recording.audio_deleted_at:
         recording.audio_deleted_at = datetime.utcnow()
     db.session.commit()
