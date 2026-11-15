@@ -97,6 +97,10 @@ On instances that ran an earlier release, the recordings of a deleted user could
 
 The recording count and storage columns reveal how users interact with your Speakr instance. High recording counts might indicate power users who rely heavily on the system, while low counts could suggest users who need training or might not need accounts at all.
 
+In the **Last active** column, the time since the last use of each account is shown, for example "3 hours ago". The full date and time are shown on hover. **Never** is shown for an account that has not been used since the column was introduced. The list can be sorted by this column and by username with a click on the column header. In ascending order, the accounts that were never used are listed first, followed by the accounts with the oldest use, so accounts unused for months are found at the top.
+
+A request from a signed-in browser session or with an API token is counted as use. Requests that are sent on a timer from an open tab are not counted: the notification count, the status of the job queue and of recordings in processing, the renewal of the CSRF token, and the files of the interface. An account with a tab left open is therefore not shown as active. Only the time of the last request is stored, updated at most once every five minutes per account, so the time shown can be up to five minutes behind. No history of requests is kept. The column is visible to site administrators only.
+
 Storage consumption tells another important story. Users with disproportionately high storage might be uploading very long recordings, keeping everything indefinitely, or possibly misusing the system. You can adjust [file size limits](system-settings.md#maximum-file-size) and review [chunking settings](../troubleshooting.md#files-over-25mb-fail-with-openai) if needed. This information helps you have informed conversations about resource usage and establish appropriate policies.
 
 Patterns often emerge when you regularly review this data. You might notice seasonal variations in academic settings, project-based spikes in corporate environments, or gradual growth that signals the need for infrastructure expansion.

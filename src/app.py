@@ -705,6 +705,26 @@ app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
 
 @app.before_request
+def record_last_active():
+    """Note the time of this use of the signed-in account (admin user list).
+
+    A request of an account counts, from a browser session or with an API
+    token, unless its route is one that an open tab requests on a timer
+    (src/services/last_active.py holds the list). This runs before the checks
+    below, so a request that one of them refuses (a CSRF rejection, a token
+    scope the route does not allow) still counts. The write is made outside
+    the session of the request, waits a fraction of a second at most and
+    swallows its errors, so it can neither delay nor fail the request.
+    """
+    from src.services.last_active import counts_as_activity, record_activity
+    if not counts_as_activity(request.endpoint):
+        return
+    if not current_user.is_authenticated:
+        return
+    record_activity(current_user)
+
+
+@app.before_request
 def refuse_query_token_writes():
     """?token= is deprecated and read-only (#500).
 

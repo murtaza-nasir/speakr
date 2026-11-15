@@ -151,6 +151,12 @@ class User(db.Model, UserMixin):
     # column existed stay valid until the password is next set.
     session_version = db.Column(db.Integer, nullable=True, default=0)
 
+    # Time of the last use of the account (browser session or API token), for
+    # the "Last active" column of the admin user list. NULL means never. Only
+    # this one time is kept, no history. Written at most once per five minutes,
+    # outside the session of the request; see src/services/last_active.py.
+    last_seen_at = db.Column(db.DateTime, nullable=True)
+
     def get_id(self):
         version = self.session_version or 0
         return f"{self.id}:{version}" if version else str(self.id)
