@@ -145,6 +145,14 @@ def resolve_request_token():
             # feature is on. Accepted only as Authorization: Bearer.
             api_token = sso_token_from_request()
         via_query = bool(api_token is not None and not header_value)
+        if via_query and not query_tokens_enabled():
+            # api_query_tokens_enabled is off: a token in the URL
+            # authenticates nothing on any method. Answered with 401
+            # query_token_disabled by refuse_query_token_writes.
+            env['_speakr_query_token_used'] = True
+            if request.method != 'OPTIONS':
+                env['_speakr_query_token_disabled'] = True
+            api_token, via_query = None, False
         if via_query:
             # Deprecated (#500): marked for the Deprecation header, and
             # accepted only on GET and HEAD. On any other method the token
@@ -190,6 +198,26 @@ def _warn_query_token(api_token):
         'API token %s (user %s) was sent as the deprecated ?token= query parameter '
         'on %s %s; send it in the Authorization header instead.',
         api_token.id, api_token.user_id, request.method, request.path)
+
+
+def query_tokens_enabled():
+    """api_query_tokens_enabled (API_QUERY_TOKENS_ENABLED); on unless turned off."""
+    from src.models import SystemSetting
+    from src.utils.system_settings import ENV_BACKED_SETTINGS, env_fallback
+    env_var, default = ENV_BACKED_SETTINGS['api_query_tokens_enabled'][:2]
+    fallback = env_fallback(env_var, default)
+    try:
+        value = SystemSetting.get_setting('api_query_tokens_enabled', fallback)
+    except Exception:
+        return bool(fallback)
+    return bool(fallback if value is None else value)
+
+
+def query_token_disabled():
+    """True when this request supplied a valid token only as ?token= while
+    api_query_tokens_enabled is off."""
+    resolve_request_token()
+    return bool(request.environ.get('_speakr_query_token_disabled'))
 
 
 def query_token_refused():
