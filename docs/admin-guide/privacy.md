@@ -24,8 +24,10 @@ All text is kept in the application database (SQLite by default, PostgreSQL as a
 | Webhook addresses, signing secrets in plain text, and every delivered payload | `webhook`, `webhook_delivery` |
 | Token and audio-minute counts per user and day | `token_usage`, `transcription_usage` |
 | API tokens as SHA-256 hashes, with name, scopes, expiry and time of last use | `api_token` |
-| Accounts: username, email address, bcrypt password hash, prompts and preferences | `user` |
+| Accounts: username, email address, bcrypt password hash, prompts and preferences, and the time of the last use of the account | `user` |
 | Failed sign-in counters per account and client address | `login_failure` |
+
+For the last use of an account, only the time of the last request is kept, in one column of the `user` table. The time is updated at most once every five minutes, and no history of requests, addresses or routes is stored for it. Requests that are sent on a timer from an open tab are not counted. The time is shown to site administrators in the [user list](user-management.md#monitoring-usage-patterns), and it is stored in the same way for requests in incognito mode.
 
 Service keys (LLM, transcription, embeddings, SMTP, SSO) are read from environment variables and are not written to the database.
 
@@ -123,7 +125,7 @@ Incognito mode is off by default and is enabled with `ENABLE_INCOGNITO_MODE=true
 5. Transcript, title and summary are returned in the response and are kept in the `sessionStorage` of the browser tab. They are gone when the tab is closed.
 6. Chat questions are sent to `/api/recordings/incognito/chat` together with the transcript, and a new summary is requested from `/api/recordings/incognito/summary` in the same way. Nothing from these requests is stored.
 
-No row is written to the database for an incognito request. The usage tables are included: the tokens and audio minutes of incognito requests are not counted, and monthly budgets are not applied to them.
+No row is added to the database for an incognito request, and no content of the request is stored. The usage tables are included: the tokens and audio minutes of incognito requests are not counted, and monthly budgets are not applied to them. One value of the account can change: the time of its last use, which is updated as for any other request and carries no mark of incognito mode (see [Database](#database)).
 
 No webhook, email or notification is produced. Only metadata is logged, as described under [Logs](#logs). Error responses contain a fixed message without the text of the provider.
 
