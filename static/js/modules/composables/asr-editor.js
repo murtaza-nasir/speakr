@@ -20,8 +20,8 @@ let pendingIndex = null;
 
 const DRAFT_DELAY = 800;
 const AUTOSAVE_DELAY = 2000;
-// From this many segments on, the page behind the editor is taken out of
-// rendering while the editor is open (see .asr-editor-long in styles.css).
+// From this many segments on, the dialog's backdrop blur is off while the
+// editor is open (see .asr-editor-long in styles.css).
 const LONG_TRANSCRIPT = 500;
 const LONG_CLASS = 'asr-editor-long';
 

@@ -1,0 +1,29 @@
+<!-- Find bar of the recording page's transcript (composables/transcript-view.js).
+     A long transcript renders only the part near the viewport, which is all
+     the browser's own find can see; this bar searches the whole transcript.
+     Included in the desktop and the phone transcript panels, above the
+     scrolling area. Its texts are those of the editors' find bar. -->
+<div v-if="transcriptFind.open" class="find-replace-bar transcript-find" data-transcript-find @click.stop>
+    <div class="find-replace-bar__fields">
+        <div class="find-replace-bar__field">
+            <i class="fas fa-search find-replace-bar__icon"></i>
+            <input type="text" class="field field--sm" v-model="transcriptFind.query"
+                   :placeholder="t('findReplace.find')" :aria-label="t('findReplace.find')"
+                   @keydown.enter.exact.prevent="goToTranscriptMatch(1)"
+                   @keydown.shift.enter.prevent="goToTranscriptMatch(-1)"
+                   @keydown.esc.stop.prevent="closeTranscriptFind">
+            <span class="find-replace-bar__count t-meta" aria-live="polite" v-text="transcriptFindLabel"></span>
+        </div>
+    </div>
+    <div class="find-replace-bar__actions">
+        <button type="button" class="btn btn--icon btn--sm" @click="goToTranscriptMatch(-1)" :disabled="!transcriptFind.total" :title="t('findReplace.previous')">
+            <i class="fas fa-chevron-up"></i>
+        </button>
+        <button type="button" class="btn btn--icon btn--sm" @click="goToTranscriptMatch(1)" :disabled="!transcriptFind.total" :title="t('findReplace.next')">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <button type="button" class="btn btn--icon btn--sm" @click="closeTranscriptFind" :title="t('buttons.close')">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>

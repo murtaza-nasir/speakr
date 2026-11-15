@@ -110,6 +110,7 @@
                         :title="transcriptionViewMode === 'simple' ? (t('tooltips.bubbleView') || 'Bubble view') : (t('tooltips.simpleView') || 'Simple view')">
                     <i :class="transcriptionViewMode === 'simple' ? 'fas fa-comments' : 'fas fa-list'"></i>
                 </button>
+                <button v-if="transcriptView.windowed" @click.stop="toggleTranscriptFind" class="btn btn--icon btn--sm" :title="t('findReplace.find')"><i class="fas fa-search"></i></button>
                 <button @click.stop="copyTranscription" class="btn btn--icon btn--sm" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
                 <button v-if="selectedRecording.transcription" @click.stop="downloadTranscript" class="btn btn--icon btn--sm" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
                 <button v-if="selectedRecording && (viewingTranslation ? selectedRecording.transcription_translation : selectedRecording.transcription)" @click.stop="openTranscriptionEditor" class="btn btn--icon btn--sm" :title="viewingTranslation ? t('tooltips.editTranslation') : t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>

@@ -2301,10 +2301,10 @@ details.disclosure-card[open] {
     .progress-popup:not(.minimized) .progress-popup__card > .p-2 {
         max-height: min(16rem, 25vh);
     }
-    body:has(.progress-popup:not(.minimized)) .sidebar-list {
+    body.queue-open.queue-open .sidebar-list {
         padding-bottom: calc(min(16rem, 25vh) + 7rem);
     }
-    body:has(.progress-popup.minimized) .sidebar-list {
+    body.queue-minimized.queue-minimized .sidebar-list {
         padding-bottom: 5rem;
     }
 }
@@ -2321,16 +2321,22 @@ details.disclosure-card[open] {
      keeps its header and summary line in view instead of sliding down over
      the player.
    The selectors are wrapped in :where() so a UI theme's own position for the
-   queue still wins; a theme can use the same variable. */
+   queue still wins; a theme can use the same variable.
+   The state of the queue and of the sidebar is read from classes on <body>
+   (queue-open, queue-minimized, app-sidebar-open, app-sidebar-closed; set in
+   app.modular.js), not with body:has(): a :has() on <body> made the browser
+   look at the whole page again whenever an element was added or removed
+   anywhere, which with a long transcript took a second per change. The
+   doubled class in some selectors keeps the weight the :has() form had. */
 @media (min-width: 641px) {
-    :where(body:has(.main-content.sidebar-open)) .progress-popup {
+    :where(body.app-sidebar-open) .progress-popup {
         width: 18rem;
         min-width: 0;
     }
-    :where(body:has(.main-content:not(.sidebar-open))) .progress-popup {
+    :where(body.app-sidebar-closed) .progress-popup {
         bottom: calc(var(--detail-bottom-inset, 0px) + 1rem);
     }
-    :where(body:has(.main-content:not(.sidebar-open))) .progress-popup.minimized {
+    :where(body.app-sidebar-closed) .progress-popup.minimized {
         transform: none;
     }
 }

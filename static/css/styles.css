@@ -1711,6 +1711,33 @@ body {
     contain-intrinsic-size: auto 60px;
 }
 
+/* The transcript of the recording page renders only the units near the
+   viewport (composables/transcript-view.js): the list ([data-tv-list]) holds
+   a spacer, the rendered units and a second spacer. Its segments are all
+   near the viewport, so they are laid out in full, and their real heights
+   are what the window measures. The page keeps a unit in place itself when
+   the units above it change, so the browser's scroll anchoring is off. */
+[data-tv-list] {
+    overflow-anchor: none;
+}
+[data-tv-list] .speaker-segment {
+    content-visibility: visible;
+    contain-intrinsic-size: none;
+}
+.tv-spacer {
+    flex: none;
+    width: 100%;
+    pointer-events: none;
+}
+/* In the bubble view the list is a flex column with a gap: the spacers take
+   no gap of their own. */
+.transcription-with-speakers > .tv-spacer--before {
+    margin-bottom: -0.25rem;
+}
+.transcription-with-speakers > .tv-spacer--after {
+    margin-top: -0.25rem;
+}
+
 /* Speaker run: wraps consecutive same-speaker segments so the sticky
  * speaker tablet at the top of the run sticks for the entire run.
  * Without this grouping, each segment was its own sticky scope and the
@@ -3497,20 +3524,12 @@ body {
 .asr-editor-modal {
     height: 88vh;
 }
-/* A long transcript: while its editor is open, the page behind the dialog
-   is not rendered (the class is set in composables/asr-editor.js). The
-   transcript view keeps every segment in the DOM; with thousands of them,
-   each change in the editor made the browser restyle them all, about a third
-   of a second per change at 20,000 segments. The page keeps its state and
-   comes back when the editor closes. */
-html.asr-editor-long .main-content {
-    content-visibility: hidden;
-}
-/* The dialog's backdrop blur is recomputed whenever anything inside the
-   dialog is repainted. With the page behind it hidden there is little left
-   to blur, and without it the timeline repaints in a third of the time
-   where the browser has no GPU. (`body` in the selector: a theme sets the
-   blur with the specificity of html[data-ui-theme] .modal-overlay.) */
+/* A long transcript (500 segments or more; the class is set in
+   composables/asr-editor.js while its editor is open). The dialog's backdrop
+   blur is recomputed whenever anything inside the dialog is repainted, and
+   without it the timeline repaints in a third of the time where the browser
+   has no GPU. (`body` in the selector: a theme sets the blur with the
+   specificity of html[data-ui-theme] .modal-overlay.) */
 html.asr-editor-long body .modal-overlay {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -4596,11 +4615,15 @@ html.asr-editor-long body .modal-overlay {
     padding-top: 0 !important; /* Reset padding - we'll handle this in the CodeMirror element */
 }
 
-/* Force hide speaker legend during any fullscreen mode - comprehensive approach */
+/* Force hide speaker legend during any fullscreen mode - comprehensive approach.
+   body.md-editor-fullscreen is set while a markdown editor is in fullscreen
+   (syncEditorFullscreen in composables/ui.js). It replaces
+   body:has(.editor-fullscreen) and body:has(.CodeMirror-fullscreen): with
+   the legend on the page, those made the browser look at the whole page
+   again whenever an element was added or removed anywhere. */
 .editor-fullscreen .speaker-legend,
 .CodeMirror-fullscreen .speaker-legend,
-body:has(.editor-fullscreen) .speaker-legend,
-body:has(.CodeMirror-fullscreen) .speaker-legend {
+body.md-editor-fullscreen .speaker-legend {
     display: none !important;
 }
 
@@ -6092,6 +6115,17 @@ select:disabled {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--sp-1);
+}
+/* The find bar of the recording page's transcript uses the same bar. Its
+   matches are marked in the rendered text with the CSS highlight API
+   (composables/transcript-view.js), so the text itself is not changed. */
+::highlight(transcript-find) {
+    background-color: #fde047;
+    color: #1f2937;
+}
+::highlight(transcript-find-current) {
+    background-color: #f97316;
+    color: #ffffff;
 }
 .find-replace-toggle[aria-pressed="true"] {
     background: var(--bg-accent);

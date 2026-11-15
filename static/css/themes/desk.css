@@ -352,7 +352,7 @@ html[data-ui-theme="desk"] .desk-statusbar__queue.is-busy .desk-statusbar__dot {
         min-width: 0;
         border-radius: var(--r-3);
     }
-    html[data-ui-theme="desk"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+    html[data-ui-theme="desk"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
         bottom: calc(var(--detail-bottom-inset, calc(var(--status-h) - 2px)) + 8px);
     }
     html[data-ui-theme="desk"] .progress-popup__card {
