@@ -103,6 +103,15 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
   pytest tests/e2e/test_speaker_dialog_ui.py -q --noconftest -rs -s
 ```
 
+## Share window browser test
+
+`test_share_window_ui.py` covers the `user_search_scope` setting where it is used (D#519): the select in Admin, System settings saves each of the three levels, and at each level the share window of a recording finds the right people and nobody else, shows its hints, and shares with a search result and with a full username or email address. The message for the search limit (HTTP 429) is checked with the response replaced in the browser. The person sharing is a user who is not a site admin (an admin may name every account) and who was given the recording with the right to share it on; setup and cleanup go through the app's HTTP API as the seeded admin, as in the group permission test.
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_share_window_ui.py -q --noconftest -rs
+```
+
 ## App dialog browser test
 
 The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static/js/app-dialog.js` shows the question in the app's own dialog (`window.confirmDialog`, `alertDialog`, `promptDialog`), in the Vue app and on the pages that are not part of it. `test_app_dialog_ui.py` covers one of those pages: on the account page a saved speaker is deleted from the Speakers tab. Cancel, Esc and a click beside the panel keep the speaker and the focus returns to the button; Tab stays in the dialog; the danger button that names the action deletes. The message and the input dialog are shown once each. The same question over the segment editor (discarding unsaved changes) is in `test_asr_editor_ui.py`. Both fail when a dialog of the browser appears. It runs with the same gate, instance and CI job as the smoke test:

@@ -266,7 +266,7 @@ jobs:
         env:
           SPEAKR_BROWSER_SMOKE: '1'
           SPEAKR_BASE_URL: http://127.0.0.1:8899
-        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py tests/e2e/test_asr_editor_ui.py tests/e2e/test_transcript_view_ui.py tests/e2e/test_app_dialog_ui.py tests/e2e/test_share_page_ui.py tests/e2e/test_speaker_dialog_ui.py -q -p no:cacheprovider --noconftest -rs
+        run: pytest tests/e2e/test_browser_smoke.py tests/e2e/test_group_permission_ui.py tests/e2e/test_asr_editor_ui.py tests/e2e/test_transcript_view_ui.py tests/e2e/test_app_dialog_ui.py tests/e2e/test_share_page_ui.py tests/e2e/test_speaker_dialog_ui.py tests/e2e/test_share_window_ui.py -q -p no:cacheprovider --noconftest -rs
 
       - name: Speakr log
         if: always()
