@@ -56,7 +56,7 @@ def _recording(uid, **extra):
 
 
 def _echo(calls):
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         content = messages[-1]['content']
         payload = json.loads(content[content.find('{'):content.rfind('}') + 1])
         calls.append(payload)
@@ -106,7 +106,7 @@ def test_a_dropped_key_splits_the_chunk_and_keeps_each_sentence_in_place(monkeyp
     the response is discarded and each half is sent again."""
     calls = []
 
-    def skipping_model(messages, user_id, prefix_opt):
+    def skipping_model(messages, user_id):
         content = messages[-1]['content']
         payload = json.loads(content[content.find('{'):content.rfind('}') + 1])
         calls.append(list(payload))

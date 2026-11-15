@@ -54,6 +54,35 @@ def build_user_content(prompt_text, transcript_text, prefix_cache_optimized, cac
     ]
 
 
+def build_transcript_prompt_parts(transcript_text, suffix, prefix_cache_optimized,
+                                  system_message=None, cache_breakpoints=False):
+    """Return (system_message_content, user_message_content) for a
+    transcript-first prompt whose task-specific part is a suffix.
+
+    Translation and speaker identification put the transcript first and keep
+    the variable instructions in a suffix; this helper gives them the same
+    layout the prefix-cached title/summary prompts use. With prefix caching on,
+    the system message and the user-message bytes through the closing
+    transcript fence are the shared ones, so a backend can reuse the
+    transcript KV cache; the caller supplies only the suffix. With it off, the
+    caller's own `system_message` is used and the prompt keeps the same
+    transcript block, so that argument is required in that mode.
+    `cache_breakpoints` sends the shared prefix as its own text part marked
+    with cache_control when both flags are on (#488).
+    """
+    if prefix_cache_optimized:
+        system_message_content = SHARED_LLM_SYSTEM_MSG
+    elif system_message is None:
+        raise ValueError("system_message is required when prefix caching is off")
+    else:
+        system_message_content = system_message
+    prompt_text = shared_user_prefix(transcript_text) + suffix
+    user_content = build_user_content(
+        prompt_text, transcript_text, prefix_cache_optimized, cache_breakpoints
+    )
+    return system_message_content, user_content
+
+
 def format_transcription_for_llm(transcription_text, include_timestamps=False, template_format=None):
     """Formats transcription for LLM. If it's our simplified JSON, convert it to plain text.
     Otherwise, return as is.

@@ -134,7 +134,7 @@ def test_same_language_job_copies_without_calling_llm(monkeypatch):
 def test_auto_detect_job_still_calls_llm(monkeypatch):
     calls = []
 
-    def fake_call(messages, user_id, prefix_opt):
+    def fake_call(messages, user_id):
         calls.append(messages)
         content = messages[-1]['content']
         import json as _j

@@ -133,6 +133,22 @@ def test_prefix_cache_layout_puts_transcript_first_and_guidance_last(monkeypatch
     assert user_msg.index("Known speaker profiles") > user_msg.index('"""')
 
 
+def test_candidates_without_prefix_caching_keep_the_upstream_layout(monkeypatch):
+    monkeypatch.delenv("AUTO_IDENTIFY_RESPONSE_SCHEMA", raising=False)
+    app = Flask(__name__)
+    with app.app_context(), patch(
+        "src.tasks.processing.PREFIX_CACHE_OPTIMIZED_PROMPTS", False
+    ), patch(
+        "src.services.llm.call_llm_completion",
+        return_value=_completion('{"SPEAKER_00":"Maha"}'),
+    ) as call_llm, patch("src.models.SystemSetting.get_setting", side_effect=_settings()):
+        identify_speakers_from_transcript(TRANSCRIPT, user_id=1, candidate_names=["Maha"])
+    messages = call_llm.call_args.kwargs["messages"]
+    assert messages[0]["content"].startswith("You assign speakers in a transcript")
+    assert messages[1]["content"].startswith('Transcript:\n"""\n')
+    assert "Known speaker profiles" in messages[1]["content"]
+
+
 # --- apply_contextual_auto_labels orchestration ---
 
 def test_apply_is_opt_in():

@@ -6,6 +6,8 @@ processing.py wires the flag and the cache breakpoints correctly) stays covered
 by tests/test_prefix_cache_prompts.py.
 """
 
+import pytest
+
 import src.transcription_prompts as prompts
 
 TRANSCRIPT = "Alice: Let's lock the launch date.\nBob: The 14th works."
@@ -77,6 +79,51 @@ def test_build_user_content_is_a_noop_without_both_flags():
 
     assert prompts.build_user_content(user, TRANSCRIPT, False, True) is user
     assert prompts.build_user_content(user, TRANSCRIPT, True, False) is user
+
+
+def test_transcript_prompt_shares_the_prefix_when_prefix_caching_is_on():
+    suffix = "Task: classify the exchange.\n"
+
+    system, user = prompts.build_transcript_prompt_parts(
+        TRANSCRIPT, suffix, True, system_message="caller system message"
+    )
+
+    assert system == prompts.SHARED_LLM_SYSTEM_MSG
+    assert user == prompts.shared_user_prefix(TRANSCRIPT) + suffix
+
+
+def test_transcript_prompt_keeps_the_callers_layout_when_prefix_caching_is_off():
+    suffix = "Task: classify the exchange.\n"
+
+    system, user = prompts.build_transcript_prompt_parts(
+        TRANSCRIPT, suffix, False, system_message="caller system message"
+    )
+
+    assert system == "caller system message"
+    assert user.startswith('Transcript:\n"""\n')
+    assert user.endswith(suffix)
+    assert user.index(TRANSCRIPT) < user.index(suffix)
+
+
+def test_transcript_prompt_requires_a_system_message_without_prefix_caching():
+    with pytest.raises(ValueError):
+        prompts.build_transcript_prompt_parts(TRANSCRIPT, "Task.\n", False)
+
+
+def test_transcript_prompt_marks_the_shared_prefix_for_cache_breakpoints():
+    suffix = "Task: classify the exchange.\n"
+
+    _, user = prompts.build_transcript_prompt_parts(
+        TRANSCRIPT, suffix, True, cache_breakpoints=True
+    )
+
+    assert isinstance(user, list)
+    assert len(user) == 2
+    assert user[0]["cache_control"] == {"type": "ephemeral"}
+    assert user[0]["text"] == prompts.shared_user_prefix(TRANSCRIPT)
+    assert "".join(part["text"] for part in user) == (
+        prompts.shared_user_prefix(TRANSCRIPT) + suffix
+    )
 
 
 def test_incognito_summary_keeps_the_upstream_layout():
