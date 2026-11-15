@@ -90,6 +90,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'enable_public_sharing': ('ENABLE_PUBLIC_SHARING', True, 'boolean', 'Whether public share links are allowed.'),
     'enable_internal_sharing': ('ENABLE_INTERNAL_SHARING', False, 'boolean', 'Whether internal sharing between users and groups is allowed.'),
     'show_usernames_in_ui': ('SHOW_USERNAMES_IN_UI', False, 'boolean', 'Whether usernames are visible in the UI.'),
+    'user_search_scope': ('USER_SEARCH_SCOPE', '', 'string', 'Who a user can find by part of a username when sharing: everyone, groups or exact. Unset: everyone when usernames are shown, else exact.'),
     'enable_incognito_mode': ('ENABLE_INCOGNITO_MODE', False, 'boolean', 'Whether incognito recording is enabled.'),
     'incognito_mode_default': ('INCOGNITO_MODE_DEFAULT', False, 'boolean', 'Default incognito state for new recordings.'),
     'enable_auto_deletion': ('ENABLE_AUTO_DELETION', False, 'boolean', 'Master switch for automatic deletion of old recordings.'),

@@ -10,6 +10,7 @@ import { useUI } from './modules/composables/ui.js';
 import { useUiTheme, currentUiTheme } from './modules/composables/ui-theme.js';
 import { useModals } from './modules/composables/modals.js';
 import { useSharing } from './modules/composables/sharing.js';
+import { resolveSearchScope } from './modules/utils/share-picker.js';
 import { useReprocess } from './modules/composables/reprocess.js';
 import { useTranscription } from './modules/composables/transcription.js';
 import { useFindReplace } from './modules/composables/find-replace.js';
@@ -1648,6 +1649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const enableInternalSharing = ref(false);
             const enableAudioRemovedFilter = ref(false);
             const showUsernamesInUI = ref(false);
+            const userSearchScope = ref('exact');             // user_search_scope: everyone, groups or exact
 
             // --- Internal Sharing State ---
             const showUnifiedShareModal = ref(false);
@@ -2054,7 +2056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Dropdown Positioning
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsExactSpeakerCount, speakerCountMode, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableAudioRemovedFilter, showUsernamesInUI, userSearchScope,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -4387,6 +4389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableInternalSharing.value = config.enable_internal_sharing === true;
                         enableAudioRemovedFilter.value = config.enable_audio_removed_filter === true;
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
+                        userSearchScope.value = resolveSearchScope(config.user_search_scope, showUsernamesInUI.value);
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
                         // What's new after an update: once per account. Every

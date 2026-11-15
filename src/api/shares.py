@@ -21,7 +21,6 @@ from src.utils import md_to_html
 from src.services.storage import get_storage_service
 from src.services.public_shares import active_share_or_404, link_is_https, public_url
 from src.utils.mime import served_media_mime, sandbox_media_response
-from src.utils.search import LIKE_ESCAPE, contains_pattern
 from src.utils.localization import api_error, translate, request_language
 
 # Configuration from environment
@@ -407,39 +406,20 @@ def delete_share(share_id):
 def search_users():
     """Find people to share a recording with (D#519).
 
-    With usernames shown, up to 10 accounts whose username or email contains
-    the query, ordered by username. With usernames hidden, only the account
-    with exactly that username. A query under 2 characters returns nothing in
-    both modes, so the list of accounts is never sent in one response.
+    Who is found follows the user_search_scope setting (see
+    src/services/user_lookup.py): part of a username finds every account,
+    only accounts in a shared group, or nobody. The full username or the full
+    email address always finds its account. Up to 10 accounts, never the
+    person searching; a query under 2 characters returns nothing, so the list
+    of accounts is never sent in one response. The email address is part of a
+    result only for a site admin.
     """
     if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
-    query = request.args.get('q', '').strip()
-    if len(query) < 2:
-        return jsonify([])
-
-    if _self.SHOW_USERNAMES_IN_UI:
-        pattern = contains_pattern(query)
-        users = User.query.filter(
-            User.id != current_user.id,
-            db.or_(
-                User.username.ilike(pattern, escape=LIKE_ESCAPE),
-                User.email.ilike(pattern, escape=LIKE_ESCAPE),
-            )
-        ).order_by(User.username, User.id).limit(10).all()
-    else:
-        # Privacy mode: exact match only
-        users = User.query.filter(
-            User.id != current_user.id,
-            User.username == query
-        ).all()
-
-    return jsonify([{
-        'id': user.id,
-        'username': user.username,
-        'email': user.email if _self.SHOW_USERNAMES_IN_UI else None
-    } for user in users])
+    from src.services import user_lookup
+    users = user_lookup.search_users(current_user, request.args.get('q', ''))
+    return jsonify([user_lookup.user_result(user, current_user) for user in users])
 
 
 # Most people one share request may name (D#519)

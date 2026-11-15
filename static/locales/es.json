@@ -530,7 +530,8 @@
       "ssoApiClientNamesDesc": "Nombres visibles para los ID de cliente OIDC, como pares client_id=Nombre separados por comas o saltos de línea. El nombre de la aplicación se muestra en la configuración de la cuenta para un token creado mediante el canje de tokens SSO. Los pares mal formados se ignoran.",
       "ssoApiClientScopesDesc": "Límites de ámbitos por aplicación, como pares client_id=ámbito1 ámbito2 separados por comas o saltos de línea. Los ámbitos de un par se separan con espacios, + o |. Una aplicación de la lista recibe esos ámbitos dentro de sso_api_scopes; una aplicación que no está en la lista recibe sso_api_scopes. Una aplicación de la lista sin ningún ámbito conocido se rechaza. Los pares mal formados se ignoran.",
       "ssoApiExchangeClientsDesc": "ID de cliente OIDC separados por comas cuyos tokens de acceso pueden canjearse por tokens de API. Cada uno debe figurar también en sso_api_allowed_clients. Vacío significa que no se permite ningún canje. Añada solo aplicaciones que sincronizan en segundo plano, nunca un servidor de herramientas como Open WebUI.",
-      "permissionCreateGroupsDesc": "Quién puede crear grupos. Quien crea un grupo pasa a ser su administrador."
+      "permissionCreateGroupsDesc": "Quién puede crear grupos. Quien crea un grupo pasa a ser su administrador.",
+      "userSearchScopeDesc": "A quién pueden encontrar los usuarios al compartir."
     },
     "storageUsed": "Almacenamiento usado",
     "summarizationInstructions": "Instrucciones de resumen",
@@ -781,7 +782,10 @@
     "canCreateGroupsHelp": "Se aplica cuando la creación de grupos está limitada a usuarios y grupos seleccionados.",
     "permissionModeAdmins": "Solo administradores",
     "permissionModeSelected": "Usuarios y grupos seleccionados",
-    "permissionModeEveryone": "Todos"
+    "permissionModeEveryone": "Todos",
+    "userSearchScopeEveryone": "Todos",
+    "userSearchScopeGroups": "Personas de mis grupos",
+    "userSearchScopeExact": "Nombre de usuario o correo exacto"
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",
@@ -2648,7 +2652,8 @@
     "changePermissionsFor": "Cambiar permisos de {{name}}",
     "permissionsChanged": "Permisos cambiados",
     "changePermissionsFailedWithError": "No se pudieron cambiar los permisos: {{error}}",
-    "searchMinChars": "Escriba al menos 2 caracteres de un nombre de usuario o correo electrónico",
+    "searchMinChars": "Escriba al menos 2 caracteres de un nombre de usuario",
+    "fullIdentifierHint": "Escriba el nombre de usuario o el correo completo.",
     "selectedPeople": "Seleccionados",
     "removeFromSelection": "Quitar a {{name}} de la selección",
     "selectionLimit": "Se pueden seleccionar hasta {{max}} personas a la vez",
@@ -3061,8 +3066,6 @@
     "createPublicLink": "Crear enlace público",
     "created": "Creado: {{date}}",
     "deleteLink": "Eliminar enlace compartido",
-    "enterExactUsername": "Introduzca el nombre de usuario exacto con quien compartir",
-    "exactUsernameHint": "El nombre de usuario debe coincidir exactamente.",
     "existingLinks": "Enlaces compartidos existentes ({{count}})",
     "loadingLinks": "Cargando enlaces compartidos…",
     "loadingShares": "Cargando elementos compartidos…",
@@ -3077,7 +3080,7 @@
     "selectUserHint": "Elija a alguien arriba",
     "shareWithUser": "Compartir con un usuario",
     "userNumber": "Usuario #{{id}}",
-    "usernamePlaceholder": "Nombre de usuario completo…",
+    "usernamePlaceholder": "Nombre de usuario o correo",
     "view": "Ver"
   },
   "upload": {
@@ -3472,6 +3475,7 @@
       "invalid_temperature_values": "values debe ser un objeto de temperaturas",
       "invalid_threshold": "Valor de umbral no válido",
       "invalid_deletion_mode_value": "El modo de eliminación debe ser audio_only o full_recording.",
+      "invalid_user_search_scope": "Ámbito de búsqueda de usuarios no válido. Debe ser uno de: {{scopes}}",
       "invalid_timezone_value": "El valor debe ser una zona horaria IANA válida, por ejemplo Europe/Berlin",
       "invalid_total_bytes": "total_bytes debe ser un número entero positivo",
       "invalid_transcript_data": "Se proporcionaron datos de transcripción no válidos",

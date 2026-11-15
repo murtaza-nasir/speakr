@@ -21,19 +21,24 @@ Add these settings to your `.env` file:
 # Enable internal sharing (required for groups)
 ENABLE_INTERNAL_SHARING=true
 
-# Control username visibility
-SHOW_USERNAMES_IN_UI=true   # Show usernames in UI
-# OR
-SHOW_USERNAMES_IN_UI=false  # Hide usernames (users type usernames manually to share)
+# Show the owner's username on shared recordings
+SHOW_USERNAMES_IN_UI=true
+
+# Who users can find by part of a username when sharing
+USER_SEARCH_SCOPE=groups    # everyone, groups or exact
 ```
 
 After modifying `.env`, restart your Speakr instance for changes to take effect. The Groups tab will appear in the admin dashboard once internal sharing is enabled.
 
 ### Privacy Considerations
 
-The `SHOW_USERNAMES_IN_UI` setting affects the entire instance. When enabled (`true`), users see actual usernames when searching for colleagues and viewing shared content. The share window searches usernames and email addresses once at least two characters are typed and lists up to ten matches, so the full list of accounts is never loaded. This improves usability in small, trusted groups where everyone knows each other.
+Two settings affect the entire instance. `SHOW_USERNAMES_IN_UI` controls whether the owner's username is displayed on recordings shared with a user. `USER_SEARCH_SCOPE` controls who a user can find in the share window by typing part of a username:
 
-When disabled (`false`), usernames are hidden from the interface. Users must know each other's usernames to share recordings - they type the username manually when creating shares. This privacy-focused approach suits organizations where username visibility should be restricted. Group functionality works identically in both modes - only the display changes.
+- `everyone`: any account. This suits small, trusted instances where everyone knows each other.
+- `groups`: only people who share a group with the user. Anyone else is found by full username or full email address.
+- `exact`: nobody. The user types the full username or the full email address of the person.
+
+At every level the search starts at two characters and lists up to ten matches, so the full list of accounts is never loaded. An email address is matched only when typed in full, and the results show usernames only. Without `USER_SEARCH_SCOPE`, the level is `everyone` when usernames are shown and `exact` when they are hidden. Group functionality works identically at every level. See [Who Users Can Find](system-settings.md#who-users-can-find).
 
 ## Creating and Managing Groups
 
@@ -69,7 +74,7 @@ Group names are unique across the instance, ignoring case. A name that is alread
 
 Click the users-cog icon next to any group to open the group management modal. This interface shows current members, their roles, and provides tools for adding or removing members.
 
-To add a member, search for a user and choose their role. A site admin searches all users by username or email address. A group admin who is not a site admin enters the exact username or the exact email address of the person to add; no list of users and no partial search is available to them, so the user directory is not exposed to group admins. The email address is compared without regard to case.
+To add a member, search for a user and choose their role. A site admin searches all users by username or email address. A group admin who is not a site admin enters the exact username or the exact email address of the person to add; no list of users and no partial search is available to them on this page at any level of `USER_SEARCH_SCOPE`, so the user directory is not exposed to group admins. The email address is compared without regard to case.
 
 The roles are:
 
@@ -245,6 +250,9 @@ ENABLE_INTERNAL_SHARING=true|false
 
 # Username Display
 SHOW_USERNAMES_IN_UI=true|false
+
+# Who users can find when sharing
+USER_SEARCH_SCOPE=everyone|groups|exact
 
 # Public Sharing Control (Affects group members' public sharing)
 ENABLE_PUBLIC_SHARING=true|false

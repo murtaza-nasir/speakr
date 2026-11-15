@@ -530,7 +530,8 @@
       "ssoApiClientNamesDesc": "OIDC 客户端 ID 的显示名称，格式为 client_id=名称，以逗号或换行分隔。对于通过 SSO 令牌换取创建的令牌，账户设置中会显示其应用名称。格式错误的条目会被忽略。",
       "ssoApiClientScopesDesc": "按应用限制范围，格式为 client_id=范围1 范围2，以逗号或换行分隔。同一条目中的范围以空格、+ 或 | 分隔。列出的应用在 sso_api_scopes 之内获得这些范围；未列出的应用获得 sso_api_scopes。列出的应用若没有任何已知范围则被拒绝。格式错误的条目会被忽略。",
       "ssoApiExchangeClientsDesc": "以逗号分隔的 OIDC 客户端 ID，其访问令牌可换取 API 令牌。每个 ID 也必须在 sso_api_allowed_clients 中。留空表示不允许任何换取。只添加在后台同步的应用，切勿添加 Open WebUI 等工具服务器。",
-      "permissionCreateGroupsDesc": "谁可以创建群组。创建者成为该群组的管理员。"
+      "permissionCreateGroupsDesc": "谁可以创建群组。创建者成为该群组的管理员。",
+      "userSearchScopeDesc": "用户在分享时可以找到哪些人。"
     },
     "storageUsed": "已用存储",
     "summarizationInstructions": "摘要说明",
@@ -781,7 +782,10 @@
     "canCreateGroupsHelp": "仅在群组创建限定为所选用户和群组时生效。",
     "permissionModeAdmins": "仅管理员",
     "permissionModeSelected": "所选用户和群组",
-    "permissionModeEveryone": "所有人"
+    "permissionModeEveryone": "所有人",
+    "userSearchScopeEveryone": "所有人",
+    "userSearchScopeGroups": "我的群组成员",
+    "userSearchScopeExact": "准确的用户名或邮箱"
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",
@@ -2648,7 +2652,8 @@
     "changePermissionsFor": "更改 {{name}} 的权限",
     "permissionsChanged": "权限已更改",
     "changePermissionsFailedWithError": "无法更改权限：{{error}}",
-    "searchMinChars": "请输入用户名或邮箱中的至少 2 个字符",
+    "searchMinChars": "请输入用户名中的至少 2 个字符",
+    "fullIdentifierHint": "请输入完整的用户名或邮箱。",
     "selectedPeople": "已选择",
     "removeFromSelection": "将 {{name}} 从选择中移除",
     "selectionLimit": "一次最多可选择 {{max}} 人",
@@ -3061,8 +3066,6 @@
     "createPublicLink": "创建公开链接",
     "created": "创建于：{{date}}",
     "deleteLink": "删除分享链接",
-    "enterExactUsername": "输入要分享对象的准确用户名",
-    "exactUsernameHint": "用户名必须完全匹配。",
     "existingLinks": "现有分享链接（{{count}}）",
     "loadingLinks": "正在加载分享链接…",
     "loadingShares": "正在加载分享…",
@@ -3077,7 +3080,7 @@
     "selectUserHint": "请在上方选择用户",
     "shareWithUser": "分享给用户",
     "userNumber": "用户 #{{id}}",
-    "usernamePlaceholder": "完整用户名…",
+    "usernamePlaceholder": "用户名或邮箱",
     "view": "查看"
   },
   "upload": {
@@ -3472,6 +3475,7 @@
       "invalid_temperature_values": "values 必须是温度对象",
       "invalid_threshold": "无效的阈值",
       "invalid_deletion_mode_value": "删除模式必须为 audio_only 或 full_recording。",
+      "invalid_user_search_scope": "无效的用户搜索范围。必须是以下之一：{{scopes}}",
       "invalid_timezone_value": "值必须是有效的 IANA 时区，例如 Europe/Berlin",
       "invalid_total_bytes": "total_bytes 必须是正整数",
       "invalid_transcript_data": "提供的转录数据无效",

@@ -996,6 +996,10 @@ def admin_get_settings():
                 # No value saved: the value from .env applies.
                 data['value'] = env_backed_display_value(setting.key)
                 data['source'] = 'env'
+                if setting.key == 'user_search_scope':
+                    # Unset in .env as well, it follows show_usernames_in_ui.
+                    from src.services import user_lookup
+                    data['value'] = user_lookup.default_search_scope()
         result.append(data)
     return jsonify(result)
 
@@ -1079,6 +1083,13 @@ def admin_update_setting():
     if key == 'deletion_mode':
         if value not in ('audio_only', 'full_recording'):
             return jsonify(api_error('invalid_deletion_mode_value')), 400
+
+    if key == 'user_search_scope':
+        from src.services import user_lookup
+        value = str(value).strip().lower()
+        if value not in user_lookup.SCOPES:
+            return jsonify(api_error('invalid_user_search_scope', scopes=', '.join(user_lookup.SCOPES))), 400
+        setting_type = 'string'
 
     from src.auth.permissions import MODES as PERMISSION_MODES, permission_for_setting
     if permission_for_setting(key):

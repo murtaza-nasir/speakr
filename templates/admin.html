@@ -725,6 +725,7 @@
                                 ${ Number(setting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')}
                             </span>
                                             <span v-else-if="isPermissionModeSetting(setting.key)" class="text-[var(--text-primary)]">${ permissionModeLabel(setting.value) }</span>
+                                            <span v-else-if="setting.key === 'user_search_scope'" class="text-[var(--text-primary)]">${ userSearchScopeLabel(setting.value) }</span>
                                             <span v-else-if="setting.value && setting.value.length > 80" class="text-[var(--text-muted)] italic">${ setting.value.substring(0, 80) }...</span>
                                             <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
                                         </div>
@@ -1558,6 +1559,7 @@ Summarization Instructions:
                             <span v-else-if="editingSetting.key === 'max_file_size_mb'">
                                 ${ Number(editingSetting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.megabytes')}
                             </span>
+                            <span v-else-if="editingSetting.key === 'user_search_scope'">${ userSearchScopeLabel(editingSetting.value) }</span>
                             <span v-else-if="editingSetting.key === 'asr_timeout_seconds'">
                                 ${ Number(editingSetting.value).toLocaleString(uiLocale()) } ${t('adminDashboard.seconds')} (${ Math.round(Number(editingSetting.value) / 60) } ${t('adminDashboard.minutes')})
                             </span>
@@ -1650,6 +1652,13 @@ Summarization Instructions:
                                 <span class="text-[var(--text-primary)]">${ t('adminDashboard.deletionModeFullRecording') }</span>
                             </label>
                         </div>
+
+                        <!-- Who users can find when sharing -->
+                        <select v-else-if="editingSetting.key === 'user_search_scope'" v-model="settingNewValue"
+                                :aria-label="t('adminDashboard.newValue')"
+                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option v-for="scope in userSearchScopes" :key="scope" :value="scope">${ userSearchScopeLabel(scope) }</option>
+                        </select>
 
                         <!-- Who holds a named permission (#576) -->
                         <div v-else-if="isPermissionModeSetting(editingSetting.key)" class="space-y-2">
@@ -2986,6 +2995,15 @@ Summarization Instructions:
                 const isPermissionModeSetting = (key) => key === 'permission_create_groups';
                 const permissionModeLabel = (mode) => permissionModeKeys[mode] ? t(permissionModeKeys[mode]) : (mode || '');
 
+                // Levels of user_search_scope: who users can find when sharing
+                const userSearchScopes = ['everyone', 'groups', 'exact'];
+                const userSearchScopeKeys = {
+                    everyone: 'adminDashboard.userSearchScopeEveryone',
+                    groups: 'adminDashboard.userSearchScopeGroups',
+                    exact: 'adminDashboard.userSearchScopeExact'
+                };
+                const userSearchScopeLabel = (scope) => userSearchScopeKeys[scope] ? t(userSearchScopeKeys[scope]) : (scope || '');
+
                 const getSettingDescription = (setting) => {
                     // Map setting keys to translation keys
                     const descriptionKeys = {
@@ -3009,7 +3027,8 @@ Summarization Instructions:
                         'sso_api_scopes': 'adminDashboard.settings.ssoApiScopesDesc',
                         'sso_api_client_names': 'adminDashboard.settings.ssoApiClientNamesDesc',
                         'sso_api_client_scopes': 'adminDashboard.settings.ssoApiClientScopesDesc',
-                        'permission_create_groups': 'adminDashboard.settings.permissionCreateGroupsDesc'
+                        'permission_create_groups': 'adminDashboard.settings.permissionCreateGroupsDesc',
+                        'user_search_scope': 'adminDashboard.settings.userSearchScopeDesc'
                     };
                     
                     const key = descriptionKeys[setting.key];
@@ -4361,6 +4380,8 @@ Summarization Instructions:
                     permissionModes,
                     isPermissionModeSetting,
                     permissionModeLabel,
+                    userSearchScopes,
+                    userSearchScopeLabel,
                     addUser,
                     editUser,
                     updateUser,

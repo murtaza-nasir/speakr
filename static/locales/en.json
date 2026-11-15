@@ -530,7 +530,8 @@
       "ssoApiClientNamesDesc": "Display names for OIDC client IDs, as client_id=Name pairs separated by commas or new lines. The name of the app is shown in Account settings for a token created through the SSO token exchange. Malformed pairs are ignored.",
       "ssoApiClientScopesDesc": "Per-app scope limits, as client_id=scope1 scope2 pairs separated by commas or new lines. Scopes within a pair are separated by spaces, + or |. A listed app gets those scopes within sso_api_scopes; an app not listed gets sso_api_scopes. A listed app left with no known scope is refused. Malformed pairs are ignored.",
       "ssoApiExchangeClientsDesc": "Comma-separated OIDC client IDs whose access tokens may be exchanged for API tokens. Each must also be in sso_api_allowed_clients. Empty means that no exchange is allowed. Add only apps that sync in the background, never a tool server such as Open WebUI.",
-      "permissionCreateGroupsDesc": "Who can create groups. A creator becomes the group's admin."
+      "permissionCreateGroupsDesc": "Who can create groups. A creator becomes the group's admin.",
+      "userSearchScopeDesc": "Who users can find when sharing."
     },
     "storageUsed": "Storage used",
     "summarizationInstructions": "Summarization instructions",
@@ -781,7 +782,10 @@
     "canCreateGroupsHelp": "Used when group creation is limited to selected users and groups.",
     "permissionModeAdmins": "Admins only",
     "permissionModeSelected": "Selected users and groups",
-    "permissionModeEveryone": "Everyone"
+    "permissionModeEveryone": "Everyone",
+    "userSearchScopeEveryone": "Everyone",
+    "userSearchScopeGroups": "People in my groups",
+    "userSearchScopeExact": "Exact username or email"
   },
   "apiTokens": {
     "activeTokens": "Active tokens",
@@ -2648,7 +2652,8 @@
     "changePermissionsFor": "Change permissions for {{name}}",
     "permissionsChanged": "Permissions changed",
     "changePermissionsFailedWithError": "Couldn't change permissions: {{error}}",
-    "searchMinChars": "Type at least 2 characters of a username or email",
+    "searchMinChars": "Type at least 2 characters of a username",
+    "fullIdentifierHint": "Type the full username or email.",
     "selectedPeople": "Selected",
     "removeFromSelection": "Remove {{name}} from the selection",
     "selectionLimit": "Up to {{max}} people can be selected at a time",
@@ -3061,8 +3066,6 @@
     "createPublicLink": "Create public link",
     "created": "Created: {{date}}",
     "deleteLink": "Delete share link",
-    "enterExactUsername": "Enter the exact username to share with",
-    "exactUsernameHint": "The username must match exactly.",
     "existingLinks": "Existing share links ({{count}})",
     "loadingLinks": "Loading share links…",
     "loadingShares": "Loading shares…",
@@ -3077,7 +3080,7 @@
     "selectUserHint": "Choose someone above",
     "shareWithUser": "Share with user",
     "userNumber": "User #{{id}}",
-    "usernamePlaceholder": "Full username…",
+    "usernamePlaceholder": "Username or email",
     "view": "View"
   },
   "upload": {
@@ -3472,6 +3475,7 @@
       "invalid_temperature_values": "values must be an object of temperatures",
       "invalid_threshold": "Invalid threshold value",
       "invalid_deletion_mode_value": "Deletion mode must be audio_only or full_recording.",
+      "invalid_user_search_scope": "Invalid user search scope. Must be one of: {{scopes}}",
       "invalid_timezone_value": "Value must be a valid IANA timezone, for example Europe/Berlin",
       "invalid_total_bytes": "total_bytes must be a positive integer",
       "invalid_transcript_data": "Invalid transcript data provided",

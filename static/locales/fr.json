@@ -530,7 +530,8 @@
       "ssoApiClientNamesDesc": "Noms d'affichage des identifiants de client OIDC, sous forme de paires client_id=Nom séparées par des virgules ou des retours à la ligne. Le nom de l'application est affiché dans les paramètres du compte pour un jeton créé par l'échange de jetons SSO. Les paires mal formées sont ignorées.",
       "ssoApiClientScopesDesc": "Limites de portées par application, sous forme de paires client_id=portée1 portée2 séparées par des virgules ou des retours à la ligne. Les portées d'une paire sont séparées par des espaces, + ou |. Une application listée reçoit ces portées dans la limite de sso_api_scopes ; une application non listée reçoit sso_api_scopes. Une application listée sans aucune portée connue est refusée. Les paires mal formées sont ignorées.",
       "ssoApiExchangeClientsDesc": "ID de clients OIDC séparés par des virgules dont les jetons d'accès peuvent être échangés contre des jetons d'API. Chacun doit aussi figurer dans sso_api_allowed_clients. Vide signifie qu'aucun échange n'est autorisé. N'ajoutez que des applications qui synchronisent en arrière-plan, jamais un serveur d'outils comme Open WebUI.",
-      "permissionCreateGroupsDesc": "Qui peut créer des groupes. La personne qui crée un groupe en devient l'administrateur."
+      "permissionCreateGroupsDesc": "Qui peut créer des groupes. La personne qui crée un groupe en devient l'administrateur.",
+      "userSearchScopeDesc": "Qui les utilisateurs peuvent trouver lors d’un partage."
     },
     "storageUsed": "Stockage utilisé",
     "summarizationInstructions": "Instructions de résumé",
@@ -781,7 +782,10 @@
     "canCreateGroupsHelp": "S'applique lorsque la création de groupes est limitée aux utilisateurs et groupes sélectionnés.",
     "permissionModeAdmins": "Administrateurs uniquement",
     "permissionModeSelected": "Utilisateurs et groupes sélectionnés",
-    "permissionModeEveryone": "Tout le monde"
+    "permissionModeEveryone": "Tout le monde",
+    "userSearchScopeEveryone": "Tout le monde",
+    "userSearchScopeGroups": "Personnes de mes groupes",
+    "userSearchScopeExact": "Nom d’utilisateur ou adresse e-mail exacts"
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",
@@ -2648,7 +2652,8 @@
     "changePermissionsFor": "Modifier les autorisations de {{name}}",
     "permissionsChanged": "Autorisations modifiées",
     "changePermissionsFailedWithError": "Impossible de modifier les autorisations : {{error}}",
-    "searchMinChars": "Saisissez au moins 2 caractères d'un nom d'utilisateur ou d'une adresse e-mail",
+    "searchMinChars": "Saisissez au moins 2 caractères d’un nom d’utilisateur",
+    "fullIdentifierHint": "Saisissez le nom d’utilisateur ou l’adresse e-mail en entier.",
     "selectedPeople": "Sélection",
     "removeFromSelection": "Retirer {{name}} de la sélection",
     "selectionLimit": "Vous pouvez sélectionner jusqu'à {{max}} personnes à la fois",
@@ -3061,8 +3066,6 @@
     "createPublicLink": "Créer un lien public",
     "created": "Créé : {{date}}",
     "deleteLink": "Supprimer le lien de partage",
-    "enterExactUsername": "Saisissez le nom d’utilisateur exact avec qui partager",
-    "exactUsernameHint": "Le nom d’utilisateur doit correspondre exactement.",
     "existingLinks": "Liens de partage existants ({{count}})",
     "loadingLinks": "Chargement des liens de partage…",
     "loadingShares": "Chargement des partages…",
@@ -3077,7 +3080,7 @@
     "selectUserHint": "Choisissez quelqu’un ci-dessus",
     "shareWithUser": "Partager avec un utilisateur",
     "userNumber": "Utilisateur n° {{id}}",
-    "usernamePlaceholder": "Nom d’utilisateur complet…",
+    "usernamePlaceholder": "Nom d’utilisateur ou adresse e-mail",
     "view": "Lecture"
   },
   "upload": {
@@ -3472,6 +3475,7 @@
       "invalid_temperature_values": "values doit être un objet de températures",
       "invalid_threshold": "Valeur de seuil invalide",
       "invalid_deletion_mode_value": "Le mode de suppression doit être audio_only ou full_recording.",
+      "invalid_user_search_scope": "Portée de recherche d’utilisateurs invalide. Valeurs possibles : {{scopes}}",
       "invalid_timezone_value": "La valeur doit être un fuseau horaire IANA valide, par exemple Europe/Berlin",
       "invalid_total_bytes": "total_bytes doit être un entier positif",
       "invalid_transcript_data": "Données de transcription fournies invalides",

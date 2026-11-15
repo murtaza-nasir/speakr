@@ -530,7 +530,8 @@
       "ssoApiClientNamesDesc": "Anzeigenamen für OIDC-Client-IDs als Paare client_id=Name, getrennt durch Kommas oder Zeilenumbrüche. Für ein über den SSO-Tokentausch erstelltes Token wird der Name der App in den Kontoeinstellungen angezeigt. Fehlerhafte Paare werden ignoriert.",
       "ssoApiClientScopesDesc": "Bereichsgrenzen je App als Paare client_id=bereich1 bereich2, getrennt durch Kommas oder Zeilenumbrüche. Die Bereiche eines Paares werden durch Leerzeichen, + oder | getrennt. Eine aufgeführte App erhält diese Bereiche innerhalb von sso_api_scopes; eine nicht aufgeführte App erhält sso_api_scopes. Eine aufgeführte App ohne bekannten Bereich wird abgewiesen. Fehlerhafte Paare werden ignoriert.",
       "ssoApiExchangeClientsDesc": "Kommagetrennte OIDC-Client-IDs, deren Zugriffstoken gegen API-Token getauscht werden dürfen. Jede muss auch in sso_api_allowed_clients stehen. Leer bedeutet, dass kein Tausch erlaubt ist. Tragen Sie nur Apps ein, die im Hintergrund synchronisieren, nie einen Tool-Server wie Open WebUI.",
-      "permissionCreateGroupsDesc": "Wer Gruppen erstellen kann. Wer eine Gruppe erstellt, wird ihr Administrator."
+      "permissionCreateGroupsDesc": "Wer Gruppen erstellen kann. Wer eine Gruppe erstellt, wird ihr Administrator.",
+      "userSearchScopeDesc": "Wen Benutzer beim Freigeben finden können."
     },
     "storageUsed": "Genutzter Speicher",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -781,7 +782,10 @@
     "canCreateGroupsHelp": "Gilt, wenn das Erstellen von Gruppen auf ausgewählte Benutzer und Gruppen beschränkt ist.",
     "permissionModeAdmins": "Nur Administratoren",
     "permissionModeSelected": "Ausgewählte Benutzer und Gruppen",
-    "permissionModeEveryone": "Alle"
+    "permissionModeEveryone": "Alle",
+    "userSearchScopeEveryone": "Alle",
+    "userSearchScopeGroups": "Personen in meinen Gruppen",
+    "userSearchScopeExact": "Genauer Benutzername oder E-Mail-Adresse"
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
@@ -2648,7 +2652,8 @@
     "changePermissionsFor": "Berechtigungen für {{name}} ändern",
     "permissionsChanged": "Berechtigungen geändert",
     "changePermissionsFailedWithError": "Berechtigungen konnten nicht geändert werden: {{error}}",
-    "searchMinChars": "Mindestens 2 Zeichen eines Benutzernamens oder einer E-Mail-Adresse eingeben",
+    "searchMinChars": "Mindestens 2 Zeichen eines Benutzernamens eingeben",
+    "fullIdentifierHint": "Vollständigen Benutzernamen oder E-Mail-Adresse eingeben.",
     "selectedPeople": "Ausgewählt",
     "removeFromSelection": "{{name}} aus der Auswahl entfernen",
     "selectionLimit": "Es können höchstens {{max}} Personen gleichzeitig ausgewählt werden",
@@ -3061,8 +3066,6 @@
     "createPublicLink": "Öffentlichen Link erstellen",
     "created": "Erstellt: {{date}}",
     "deleteLink": "Freigabelink löschen",
-    "enterExactUsername": "Geben Sie den genauen Benutzernamen ein, für den freigegeben werden soll",
-    "exactUsernameHint": "Der Benutzername muss genau übereinstimmen.",
     "existingLinks": "Vorhandene Freigabelinks ({{count}})",
     "loadingLinks": "Freigabelinks werden geladen…",
     "loadingShares": "Freigaben werden geladen…",
@@ -3077,7 +3080,7 @@
     "selectUserHint": "Wählen Sie oben eine Person aus",
     "shareWithUser": "Für Benutzer freigeben",
     "userNumber": "Benutzer #{{id}}",
-    "usernamePlaceholder": "Vollständiger Benutzername…",
+    "usernamePlaceholder": "Benutzername oder E-Mail-Adresse",
     "view": "Ansehen"
   },
   "upload": {
@@ -3472,6 +3475,7 @@
       "invalid_temperature_values": "values muss ein Objekt mit Temperaturen sein",
       "invalid_threshold": "Ungültiger Schwellenwert",
       "invalid_deletion_mode_value": "Der Löschmodus muss audio_only oder full_recording sein.",
+      "invalid_user_search_scope": "Ungültiger Bereich der Benutzersuche. Zulässig ist einer der folgenden: {{scopes}}",
       "invalid_timezone_value": "Der Wert muss eine gültige IANA-Zeitzone sein, zum Beispiel Europe/Berlin",
       "invalid_total_bytes": "total_bytes muss eine positive ganze Zahl sein",
       "invalid_transcript_data": "Ungültige Transkriptdaten übermittelt",

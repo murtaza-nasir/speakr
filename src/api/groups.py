@@ -86,13 +86,12 @@ def _find_user_exactly(identifier):
     """The account with exactly this username, or else this email address.
 
     The email comparison ignores case. No partial match, so a group admin who
-    is not a site admin can add only a person whose username or email they
-    already know (#576).
+    is not a site admin can add a person whose username or email they already
+    know (#576), at every level of the user_search_scope setting. The lookup
+    is the one the share window uses (src/services/user_lookup.py).
     """
-    user = User.query.filter(User.username == identifier).first()
-    if user is None and '@' in identifier:
-        user = User.query.filter(db.func.lower(User.email) == identifier.lower()).first()
-    return user
+    from src.services import user_lookup
+    return user_lookup.find_user_exactly(identifier)
 
 
 # --- Routes ---
