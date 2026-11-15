@@ -800,6 +800,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrEditorDirty = ref(false);
             const asrEditorRev = ref(0);
             const asrEditorSaving = ref(false);
+            // The footer's checkbox: regenerate the summary after the save (off when the editor opens)
+            const asrEditorRegenerateSummary = ref(false);
             // Regenerate summary dialog (#584). prompt is the textarea; base is
             // the start-from entry it began as; resolvedPrompt is the viewer's
             // resolved prompt, which an unchanged owner run leaves to the server.
@@ -1997,7 +1999,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, asrEditorRegenerateSummary, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
                 findReplace, availableSpeakers,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
                 recordingToShare, shareOptions,
@@ -4808,6 +4810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 asrEditorSession,
                 asrEditorDirty,
                 asrEditorSaving,
+                asrEditorRegenerateSummary,
                 transcriptView: transcriptViewComposable.transcriptView,
                 transcriptFind: transcriptViewComposable.transcriptFind,
                 transcriptFindLabel: transcriptViewComposable.transcriptFindLabel,

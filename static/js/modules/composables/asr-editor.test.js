@@ -21,10 +21,12 @@ function memoryStorage() {
     };
 }
 
-function setup({ segments = SEGMENTS, saveOk = true, confirm = true, autosave = false, translation = false, serverSegments = null } = {}) {
+function setup({ segments = SEGMENTS, saveOk = true, confirm = true, autosave = false, translation = false, serverSegments = null, incognito = false, status = ['COMPLETED'] } = {}) {
     const classes = new Set();
     const requests = [];
     const asked = [];
+    const toasts = [];
+    const statuses = [...status];
     // The app's own dialog (static/js/app-dialog.js): it resolves to the answer
     globalThis.window = { confirmDialog: async (options) => { asked.push(options); return confirm; }, addEventListener() {} };
     globalThis.document = {
@@ -34,13 +36,18 @@ function setup({ segments = SEGMENTS, saveOk = true, confirm = true, autosave = 
     globalThis.fetch = async (url, options = {}) => {
         requests.push({ url, body: options.body ? JSON.parse(options.body) : null });
         if (url.endsWith('/update_transcript')) {
-            const stored = serverSegments || JSON.parse(options.body).transcript_data;
-            return { ok: true, json: async () => ({ recording: { transcription: JSON.stringify(stored), participants: 'Dana Lee' } }) };
+            if (!saveOk) return { ok: false, json: async () => ({ error: 'No access' }) };
+            const body = JSON.parse(options.body);
+            const stored = serverSegments || body.transcript_data;
+            // As the server: a summarize job is queued when the save asks for it
+            return { ok: true, json: async () => ({ recording: { transcription: JSON.stringify(stored), participants: 'Dana Lee' }, summary_queued: !!body.regenerate_summary }) };
         }
+        if (url === '/recording/7/status') return { ok: true, json: async () => ({ status: statuses.length > 1 ? statuses.shift() : statuses[0] }) };
+        if (url === '/api/recordings/7') return { ok: true, json: async () => ({ id: 7, status: 'COMPLETED', summary: 'New summary', transcription: recording.transcription }) };
         return { ok: true, json: async () => (url === '/speakers' ? [] : { success: true, suggestions: {} }) };
     };
     const text = JSON.stringify(segments);
-    const recording = { id: 7, transcription: text, transcription_translation: translation ? text : null };
+    const recording = { id: 7, status: 'COMPLETED', summary: 'Old summary', transcription: text, transcription_translation: translation ? text : null, incognito };
     const saved = [];
     const errors = [];
     const state = {
@@ -53,15 +60,16 @@ function setup({ segments = SEGMENTS, saveOk = true, confirm = true, autosave = 
         asrEditorRev: ref(0),
         asrEditorSaveFlash: ref(false),
         asrEditorSaving: ref(false),
+        asrEditorRegenerateSummary: ref(false),
         editorAutosave: ref(autosave),
         speakerColorMap: ref({ SPEAKER_00: 'speaker-color-1', SPEAKER_01: 'speaker-color-2' }),
     };
-    const utils = { showToast() {}, setGlobalError: (m) => errors.push(m) };
+    const utils = { showToast: (message) => toasts.push(message), setGlobalError: (m) => errors.push(m) };
     const api = useAsrEditor(state, utils, {
         saveTranscriptionContent: async (content) => { saved.push(content); if (saveOk) recording.transcription = content; return saveOk; },
     });
     const drafts = createDraftStore(globalThis.localStorage);
-    return { state, api, saved, errors, requests, asked, classes, recording, drafts, model: () => state.asrEditorSession.value.model };
+    return { state, api, saved, errors, requests, asked, toasts, classes, recording, drafts, model: () => state.asrEditorSession.value.model };
 }
 
 describe('the segment editor session', () => {
@@ -173,6 +181,147 @@ describe('the segment editor session', () => {
         expect(request.body.transcript_data.some((s) => 'speaker_id' in s)).toBe(false);
         expect(model().toJSON().map((s) => [s.speaker, s.speaker_id])).toEqual(Array(3).fill(['Dana Lee', 4]));
         expect(model().acceptedMatches()).toEqual([]);
+    });
+
+    describe('regenerating the summary after a save', () => {
+        const summaryRequests = (requests) => requests.filter((r) => r.url === '/recording/7/update_transcript');
+
+        it('is off when the editor opens, and a save then leaves the summary alone', async () => {
+            const { state, api, saved, requests, toasts, model } = setup();
+            state.asrEditorRegenerateSummary.value = true;      // left on by an earlier session
+            await api.openAsrEditorModal();
+            expect(state.asrEditorRegenerateSummary.value).toBe(false);
+            expect(api.canRegenerateSummary()).toBe(true);
+            model().setText(0, 'Hello');
+            expect(await api.saveAsrTranscription(true)).toBe(true);
+            expect(saved.length).toBe(1);
+            expect(summaryRequests(requests)).toEqual([]);
+            expect(toasts).not.toContain('help.summaryRegenerationStarted');
+        });
+
+        it('saves through the route of the speaker dialog and follows the summary, for Save', async () => {
+            const { state, api, saved, requests, toasts, model } = setup({ status: ['SUMMARIZING', 'COMPLETED'] });
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().setText(0, 'Hello');
+            expect(await api.saveAsrTranscription(true)).toBe(true);
+            const [request] = summaryRequests(requests);
+            expect(request.body.regenerate_summary).toBe(true);
+            expect(request.body.speaker_map).toEqual({});
+            expect(request.body.transcript_data.map((s) => s.sentence)).toEqual(['Hello', 'Morning', 'Shall we start']);
+            expect(saved).toEqual([]);                           // not saved a second time by the plain route
+            // The recording is shown as summarizing at once, with the saved transcript
+            expect(state.selectedRecording.value.status).toBe('SUMMARIZING');
+            expect(state.recordings.value[0]).toBe(state.selectedRecording.value);
+            expect(JSON.parse(state.selectedRecording.value.transcription)[0].sentence).toBe('Hello');
+            expect(toasts).toContain('help.summaryRegenerationStarted');
+            expect(state.showAsrEditorModal.value).toBe(true);
+            expect(state.asrEditorDirty.value).toBe(false);
+            // Polled until the summary is there; the editor stays as it is
+            await vi.advanceTimersByTimeAsync(3100);
+            expect(state.selectedRecording.value.status).toBe('SUMMARIZING');
+            await vi.advanceTimersByTimeAsync(3100);
+            expect(state.selectedRecording.value.summary).toBe('New summary');
+            expect(toasts).toContain('help.summaryUpdated');
+            expect(state.showAsrEditorModal.value).toBe(true);
+            expect(model().toJSON()[0].sentence).toBe('Hello');
+            await vi.advanceTimersByTimeAsync(10000);
+            expect(requests.filter((r) => r.url === '/recording/7/status').length).toBe(2);
+        });
+
+        it('applies to Save and close as well', async () => {
+            const { state, api, requests, model } = setup();
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().setText(1, 'Morning all');
+            expect(await api.saveAsrTranscription(false)).toBe(true);
+            expect(summaryRequests(requests)[0].body.regenerate_summary).toBe(true);
+            expect(state.showAsrEditorModal.value).toBe(false);
+            expect(state.selectedRecording.value.status).toBe('SUMMARIZING');
+        });
+
+        it('does nothing when there are no changes to save', async () => {
+            const { state, api, requests, toasts } = setup();
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            expect(await api.saveAsrTranscription(true)).toBe(true);
+            expect(await api.saveAsrTranscription(false)).toBe(true);
+            expect(summaryRequests(requests)).toEqual([]);
+            expect(toasts).not.toContain('help.summaryRegenerationStarted');
+            expect(state.selectedRecording.value.status).toBe('COMPLETED');
+        });
+
+        it('is not triggered by a save that fails', async () => {
+            const { state, api, requests, toasts, errors, model } = setup({ saveOk: false });
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().setText(0, 'Hello');
+            expect(await api.saveAsrTranscription(false)).toBe(false);
+            expect(summaryRequests(requests).length).toBe(1);
+            expect(errors.length).toBe(1);
+            expect(toasts).not.toContain('help.summaryRegenerationStarted');
+            expect(state.selectedRecording.value.status).toBe('COMPLETED');
+            expect(state.showAsrEditorModal.value).toBe(true);
+            expect(state.asrEditorDirty.value).toBe(true);
+            await vi.advanceTimersByTimeAsync(7000);
+            expect(requests.some((r) => r.url === '/recording/7/status')).toBe(false);
+        });
+
+        it('is never triggered by autosave, and then follows the next Save of the user', async () => {
+            const { state, api, saved, requests, model } = setup({ autosave: true });
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().setText(0, 'Hello');
+            await vi.advanceTimersByTimeAsync(2100);
+            expect(saved.length).toBe(1);                        // autosaved by the plain route
+            expect(summaryRequests(requests)).toEqual([]);
+            expect(state.asrEditorDirty.value).toBe(false);
+            // Nothing is unsaved now, but this session's edits have no summary yet
+            expect(await api.saveAsrTranscription(false)).toBe(true);
+            const [request] = summaryRequests(requests);
+            expect(request.body.regenerate_summary).toBe(true);
+            expect(request.body.transcript_data[0].sentence).toBe('Hello');
+        });
+
+        it('queues one regeneration for edits, not one per save', async () => {
+            const { state, api, requests, model } = setup();
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().setText(0, 'Hello');
+            await api.saveAsrTranscription(true);
+            await api.saveAsrTranscription(true);                // nothing changed since
+            expect(summaryRequests(requests).length).toBe(1);
+        });
+
+        it('travels with accepted voice matches in the one request', async () => {
+            const { state, api, requests, model } = setup();
+            await api.openAsrEditorModal();
+            state.asrEditorRegenerateSummary.value = true;
+            model().renameSpeaker('SPEAKER_00', 'Dana Lee', { match: { label: 'SPEAKER_00', name: 'Dana Lee' } });
+            await api.saveAsrTranscription(true);
+            const all = summaryRequests(requests);
+            expect(all.length).toBe(1);
+            expect(all[0].body).toMatchObject({ regenerate_summary: true, speaker_map: { SPEAKER_00: { name: 'Dana Lee', isMe: false } } });
+        });
+
+        it('is not offered for a translation or an incognito recording', async () => {
+            const translated = setup({ translation: true });
+            await translated.api.openAsrEditorModal();
+            expect(translated.api.canRegenerateSummary()).toBe(false);
+            translated.state.asrEditorRegenerateSummary.value = true;
+            translated.model().setText(0, 'Hallo');
+            expect(await translated.api.saveAsrTranscription(true)).toBe(true);
+            expect(summaryRequests(translated.requests)).toEqual([]);
+            expect(translated.saved.length).toBe(1);
+
+            const incognito = setup({ incognito: true });
+            await incognito.api.openAsrEditorModal();
+            expect(incognito.api.canRegenerateSummary()).toBe(false);
+            incognito.state.asrEditorRegenerateSummary.value = true;
+            incognito.model().setText(0, 'Hello');
+            await incognito.api.saveAsrTranscription(true);
+            expect(summaryRequests(incognito.requests)).toEqual([]);
+        });
     });
 
     it('does not record voice matches when a translation is edited', async () => {

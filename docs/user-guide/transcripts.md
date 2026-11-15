@@ -96,6 +96,8 @@ The ASR editor includes several quality-of-life features for working through lon
 
 **Save Without Closing**: **Save** keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your place; **Save and close** saves and closes it.
 
+**Update the Summary**: Check **Update the summary with the new names** in the footer to have the summary regenerated after you save, as in the speaker identification dialog. It is off each time the editor opens, applies to **Save** and to **Save and close**, and does nothing when the editor has no changes of yours to save. Autosave never regenerates the summary; the next save you make yourself does, for the edits autosave stored. The checkbox is not shown for a translation or an incognito recording.
+
 **Ctrl+S**: Pressing `Ctrl+S` (or `Cmd+S` on macOS) anywhere in the editor saves without closing. Equivalent to clicking the save-without-closing button.
 
 **Scroll Memory**: The editor remembers your scroll position when you close it. Reopening the editor for the same recording returns you to where you were instead of jumping to the top.

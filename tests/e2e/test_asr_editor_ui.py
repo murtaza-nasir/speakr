@@ -45,7 +45,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SPEAKR_BROWSER_SMOKE") != "1",
 playwright_api = pytest.importorskip("playwright.sync_api") if os.environ.get("SPEAKR_BROWSER_SMOKE") == "1" else None
 
 from browser_checks import PageProblems, check_common, en, login, open_page  # noqa: E402
-from seed_recordings import TITLES, meeting_segments  # noqa: E402
+from seed_recordings import SENTENCES, TITLES, meeting_segments  # noqa: E402
 from smoke_env import read_example  # noqa: E402
 
 BASE = os.environ.get("SPEAKR_BASE_URL", "http://127.0.0.1:8899").rstrip("/")
@@ -137,7 +137,20 @@ class Editor:
         started = time.monotonic()
         button.click()
         self.page.locator(ROW).first.wait_for(state="visible", timeout=60000)
-        return time.monotonic() - started
+        seconds = time.monotonic() - started
+        self.opened()
+        return seconds
+
+    def opened(self):
+        """Wait until the dialog has finished opening. It opens with a short scale and
+        slide animation (a sheet that slides up on a phone); while it runs, nothing in it
+        is where it will be: a point computed on the timeline then misses an edge by a
+        few pixels, and a measured position is off by the rest of the slide."""
+        self.page.wait_for_function(
+            "() => { const m = document.querySelector('.asr-editor-modal'); if (!m) return false; "
+            "const o = m.closest('.modal-overlay'); "
+            "return [...m.getAnimations(), ...(o ? o.getAnimations() : [])].every(a => a.playState === 'finished'); }",
+            timeout=10000)
 
     def rows(self):
         return self.page.locator(ROW)
@@ -212,14 +225,7 @@ class Editor:
     def tl_ready(self, waveform=True):
         self.page.locator(CANVAS).wait_for(state="visible", timeout=10000)
         self.page.wait_for_function(f"() => {TL} && {TL}.width > 0 && {TL}.stats.frames > 0", timeout=10000)
-        # The dialog opens with a short scale and slide animation. While it
-        # runs, the canvas is not where it will be (a few pixels at the lane
-        # starts), and a point computed then misses an edge by that much.
-        self.page.wait_for_function(
-            "() => { const m = document.querySelector('.asr-editor-modal'); if (!m) return false; "
-            "const o = m.closest('.modal-overlay'); "
-            "return [...m.getAnimations(), ...(o ? o.getAnimations() : [])].every(a => a.playState === 'finished'); }",
-            timeout=10000)
+        self.opened()
         if waveform:
             self.page.wait_for_function(f"() => {TL}.waveform === 'ready'", timeout=30000)
 
@@ -610,6 +616,102 @@ def test_closing_asks_before_unsaved_changes_are_discarded(meeting):
     assert not editor.texts()[0].startswith("DRAFT ")
     editor.check("editor, discard and draft")
     editor.discard()
+
+
+def test_the_summary_is_regenerated_after_a_save_when_asked(meeting):
+    """The footer has the checkbox of the Identify Speakers dialog. The save that asks for
+    the summary is intercepted here: it reaches the server without that request (this
+    instance has no text model to ask), and the answer says a summary was queued."""
+    editor, recording_id = meeting
+    page = editor.page
+    label = page.locator("[data-asr-regenerate-summary]")
+    box = label.locator("input[type=checkbox]")
+    assert label.inner_text().strip() == en("help.regenerateSummaryAfterNames")
+    assert not box.is_checked(), "the checkbox is on when the editor opens"
+    footer = page.locator(".asr-editor-footer").bounding_box()
+    place = label.bounding_box()
+    assert place["x"] >= footer["x"] and place["x"] + place["width"] <= footer["x"] + footer["width"]
+
+    sent = []
+    statuses = ["SUMMARIZING", "COMPLETED"]
+    polled = []
+
+    def save(route):
+        body = route.request.post_data_json
+        sent.append(body)
+        response = route.fetch(post_data=json.dumps({**body, "regenerate_summary": False}))
+        answer = response.json()
+        answer["summary_queued"] = bool(body.get("regenerate_summary"))
+        route.fulfill(status=response.status, content_type="application/json", body=json.dumps(answer))
+
+    def status(route):
+        polled.append(1)
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps({"status": statuses.pop(0) if len(statuses) > 1 else statuses[0]}))
+
+    save_url = f"**/recording/{recording_id}/update_transcript"
+    status_url = f"**/recording/{recording_id}/status"
+    page.route(save_url, save)
+    page.route(status_url, status)
+    any_save = lambda r: r.method == "POST" and "/update_transcri" in r.url      # noqa: E731
+    started = page.locator("#toastContainer .toast-message").filter(has_text=en("help.summaryRegenerationStarted"))
+    try:
+        # On, but nothing was changed: nothing is asked for
+        box.check()
+        with page.expect_request(any_save) as plain:
+            editor.action("save").click()
+        assert plain.value.url.endswith("/update_transcription") and sent == []
+        assert started.count() == 0
+        page.wait_for_function("() => !document.querySelector(\"[data-asr-action='save']\").disabled", timeout=10000)
+
+        # Off: an edit is saved by the plain route and the summary is left alone
+        box.uncheck()
+        editor.caret_in(0, 0)
+        page.keyboard.type("One ")
+        with page.expect_request(any_save) as plain:
+            editor.save()
+        assert plain.value.url.endswith("/update_transcription") and sent == []
+        assert started.count() == 0
+
+        # On, with a change, Save: the route of the speaker dialog, asking for the summary
+        box.check()
+        editor.caret_in(1, 0)
+        page.keyboard.type("Two ")
+        with page.expect_request(any_save) as asked:
+            editor.save()
+        assert asked.value.url.endswith("/update_transcript")
+        assert sent[-1]["regenerate_summary"] is True and sent[-1]["speaker_map"] == {}
+        assert [s["sentence"] for s in sent[-1]["transcript_data"]][:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]]
+        started.wait_for(state="visible", timeout=5000)
+        editor.shot("asr-editor-test-regenerate-summary")
+        # The editor stays open while the summary is waited for, and afterwards
+        done = page.locator("#toastContainer .toast-message").filter(has_text=en("help.summaryUpdated"))
+        done.wait_for(state="visible", timeout=20000)
+        assert len(polled) == 2
+        assert page.locator(".asr-editor-modal").count() == 1 and box.is_checked()
+        assert editor.texts()[:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]] and not editor.dirty()
+        assert [s["sentence"] for s in editor.stored(recording_id)][:2] == ["One " + SENTENCES[0], "Two " + SENTENCES[1]]
+
+        # Save and close asks for it as well
+        statuses[:] = ["COMPLETED"]
+        editor.caret_in(2, 0)
+        page.keyboard.type("Three ")
+        with page.expect_request(any_save) as asked:
+            editor.action("save-close").click()
+        assert asked.value.url.endswith("/update_transcript") and sent[-1]["regenerate_summary"] is True
+        page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
+        assert len(sent) == 2
+        done.first.wait_for(state="visible", timeout=20000)
+        assert editor.stored(recording_id)[2]["sentence"] == "Three " + SENTENCES[2]
+
+        # Off again when the editor is opened the next time
+        editor.click_edit()
+        assert not box.is_checked()
+        editor.check("editor, summary after saving")
+        editor.discard()
+    finally:
+        page.unroute(save_url)
+        page.unroute(status_url)
 
 
 def test_playback_keys_and_the_playing_segment(meeting):
@@ -1154,6 +1256,11 @@ def test_phone_width(browser):
         assert menu.evaluate("el => getComputedStyle(el).opacity") == "1"
         box = menu.bounding_box()
         assert box["width"] >= 39.5 and box["height"] >= 39.5, f"the row menu is a small touch target: {box}"
+        # The footer: the summary checkbox on its own line, the three buttons under it, all within the screen
+        summary = page.locator("[data-asr-regenerate-summary]").bounding_box()
+        buttons = [b.bounding_box() for b in page.locator(".asr-editor-footer__actions button").all()]
+        assert len(buttons) == 3 and all(b["x"] >= 0 and b["x"] + b["width"] <= 390.5 for b in buttons), f"the footer buttons do not fit: {buttons}"
+        assert summary["x"] >= 0 and summary["x"] + summary["width"] <= 390.5 and summary["y"] + summary["height"] <= buttons[0]["y"] + 1, f"the summary checkbox: {summary}"
         phone.shot("asr-editor-test-phone")
 
         # The timeline fits the phone; its lanes are dragged with one finger
@@ -1185,7 +1292,10 @@ def test_phone_width(browser):
         phone.shot("asr-editor-test-phone-timeline-closed")
         phone.action("timeline-toggle").click()
 
-        # Split at the cursor and merge with previous, from the menu
+        # Split at the cursor and merge with previous, from the menu. (The list
+        # went to the added segment at the end; back to the top.)
+        page.evaluate("() => { document.querySelector('.asr-list').scrollTop = 0; }")
+        page.locator(f"{ROW}[data-index='1']").wait_for(state="visible", timeout=5000)
         phone.caret_in(1, len("Morning."))
         menu.click()
         sheet = page.locator("[data-asr-popover='menu']")

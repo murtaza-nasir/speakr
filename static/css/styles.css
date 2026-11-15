@@ -3594,6 +3594,28 @@ html.asr-editor-long body .modal-overlay {
     color: var(--text-muted);
     font-size: 0.75rem;
 }
+.asr-editor-footer__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    margin-left: auto;
+}
+/* Regenerate the summary after saving: beside the buttons, on its own line on a phone */
+.asr-editor-footer__summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    min-width: 0;
+    font-size: var(--fs-meta);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.asr-editor-footer__summary > input { flex: none; width: 1rem; height: 1rem; }
+.asr-editor-footer__summary + .asr-editor-footer__actions { margin-left: 0; }
+@media (hover: hover) {
+    .asr-editor-footer__summary:hover { color: var(--text-primary); }
+}
 
 .asr-pane {
     display: flex;
@@ -4399,8 +4421,9 @@ html.asr-editor-long body .modal-overlay {
 @media (max-width: 639px) {
     .asr-editor-modal { height: auto; }
     .asr-editor-player { padding: var(--sp-2) var(--sp-3); }
-    .asr-editor-footer { padding: var(--sp-2) var(--sp-3); }
+    .asr-editor-footer { padding: var(--sp-2) var(--sp-3); flex-wrap: wrap; row-gap: var(--sp-2); }
     .asr-editor-footer__status--hint { display: none; }
+    .asr-editor-footer__summary { order: -1; flex: 1 0 100%; margin-left: 0; min-height: 32px; font-size: 0.8125rem; }
     .asr-toolbar {
         padding: var(--sp-1) var(--sp-2);
         gap: var(--sp-1);

@@ -4,6 +4,7 @@
  */
 
 import { saveTranscriptWithSpeakers } from '../utils/speaker-save.js';
+import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
 
 export function useSpeakers(state, utils, processedTranscription) {
     const { nextTick } = Vue;
@@ -23,6 +24,11 @@ export function useSpeakers(state, utils, processedTranscription) {
     // i18n helper — falls back to the provided fallback string if i18n is not loaded
     const t = (key, params, fallback) => window.i18n ? window.i18n.t(key, params) : (fallback || key);
     const tc = (key, count, params) => window.i18n ? window.i18n.tc(key, count, params) : (params && params.count != null ? `${params.count}` : key);
+
+    // After a save that queued a summary regeneration (shared with the segment editor)
+    const summaryFollowUp = createSummaryFollowUp({
+        recordings, selectedRecording, showToast, t, nextTick, onDone: () => { if (onChatComplete) onChatComplete(); },
+    });
 
     // Snapshot of the recording's transcription taken when the modal opens.
     // Per-line speaker/text edits are now STAGED in memory (changeSpeaker /
@@ -234,21 +240,10 @@ export function useSpeakers(state, utils, processedTranscription) {
 
             // If summary regeneration was requested, update status immediately
             if (regenerateSummaryAfterSpeakerUpdate.value && data.summary_queued) {
-                // Update recording status to SUMMARIZING immediately for UI feedback
-                const summarizingRecording = { ...data.recording, status: 'SUMMARIZING' };
-
-                const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
-                if (index !== -1) {
-                    recordings.value[index] = summarizingRecording;
-                }
-                selectedRecording.value = summarizingRecording;
                 editedTranscriptData.value = null;
-
                 showToast(t('help.transcriptUpdated'), 'fa-check-circle');
-                showToast(t('help.summaryRegenerationStarted'), 'fa-sync-alt');
-
-                // Poll for summary completion
-                pollForSummaryCompletion(selectedRecording.value.id);
+                // Shown as summarizing at once, then polled until the summary is there
+                summaryFollowUp.started(selectedRecording.value.id, data.recording);
             } else {
                 const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
                 if (index !== -1) {
@@ -302,20 +297,9 @@ export function useSpeakers(state, utils, processedTranscription) {
 
             // If summary regeneration was requested, update status immediately
             if (regenerateSummaryAfterSpeakerUpdate.value && data.summary_queued) {
-                // Update recording status to SUMMARIZING immediately for UI feedback
-                const summarizingRecording = { ...data.recording, status: 'SUMMARIZING' };
-
-                const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
-                if (index !== -1) {
-                    recordings.value[index] = summarizingRecording;
-                }
-                selectedRecording.value = summarizingRecording;
-
                 showToast(t('help.speakerNamesUpdated'), 'fa-check-circle');
-                showToast(t('help.summaryRegenerationStarted'), 'fa-sync-alt');
-
-                // Poll for summary completion
-                pollForSummaryCompletion(selectedRecording.value.id);
+                // Shown as summarizing at once, then polled until the summary is there
+                summaryFollowUp.started(selectedRecording.value.id, data.recording);
             } else {
                 // The backend returns the fully updated recording object
                 const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
@@ -329,84 +313,6 @@ export function useSpeakers(state, utils, processedTranscription) {
         } catch (error) {
             setGlobalError(t('errors.saveSpeakerNamesFailedDetail', { error: error.message }));
         }
-    };
-
-    // Poll for summary completion after regeneration
-    const pollForSummaryCompletion = async (recordingId) => {
-        const maxAttempts = 40; // Poll for up to 2 minutes (40 * 3 seconds)
-        let attempts = 0;
-
-        const pollInterval = setInterval(async () => {
-            attempts++;
-
-            try {
-                // Use lightweight status-only endpoint for polling
-                const response = await fetch(`/recording/${recordingId}/status`);
-                if (!response.ok) {
-                    clearInterval(pollInterval);
-                    return;
-                }
-
-                const statusData = await response.json();
-
-                // Update status in recordings list
-                const index = recordings.value.findIndex(r => r.id === recordingId);
-                if (index !== -1) {
-                    // Create new object to ensure Vue reactivity
-                    recordings.value[index] = {
-                        ...recordings.value[index],
-                        status: statusData.status
-                    };
-                }
-
-                // Update selectedRecording with new object reference for reactivity
-                if (selectedRecording.value && selectedRecording.value.id === recordingId) {
-                    selectedRecording.value = {
-                        ...selectedRecording.value,
-                        status: statusData.status
-                    };
-                }
-
-                // Check if summarization is complete
-                if (statusData.status === 'COMPLETED') {
-                    clearInterval(pollInterval);
-
-                    // Now fetch the full recording with the new summary
-                    const fullResponse = await fetch(`/api/recordings/${recordingId}`);
-                    if (fullResponse.ok) {
-                        const fullData = await fullResponse.json();
-
-                        // Update in recordings list first
-                        const currentIndex = recordings.value.findIndex(r => r.id === recordingId);
-                        if (currentIndex !== -1) {
-                            recordings.value[currentIndex] = fullData;
-                        }
-
-                        // Always update selectedRecording if it's the current recording
-                        if (selectedRecording.value && selectedRecording.value.id === recordingId) {
-                            selectedRecording.value = fullData;
-                            // Force Vue to detect the change
-                            await nextTick();
-                        }
-                    }
-
-                    showToast(t('help.summaryUpdated'), 'fa-check-circle');
-                    // Refresh token budget after LLM operation
-                    if (onChatComplete) onChatComplete();
-                } else if (statusData.status === 'FAILED' || statusData.status === 'ERROR') {
-                    // Stop polling if it failed
-                    clearInterval(pollInterval);
-                    showToast(t('help.summaryGenerationFailed'), 'fa-exclamation-circle', 3000, 'error');
-                } else if (attempts >= maxAttempts) {
-                    // Stop polling after max attempts
-                    clearInterval(pollInterval);
-                    showToast(t('help.summaryGenerationTimedOut'), 'fa-clock', 3000, 'warning');
-                }
-            } catch (error) {
-                console.error('Error polling for summary:', error);
-                clearInterval(pollInterval);
-            }
-        }, 3000); // Poll every 3 seconds
     };
 
     // =========================================

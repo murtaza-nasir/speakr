@@ -12,6 +12,7 @@ import { createAsrModel } from '../asr-editor/model.js';
 import { createDraftStore, hashText } from '../asr-editor/draft.js';
 import { saveTranscriptWithSpeakers, withAcceptedMatches } from '../utils/speaker-save.js';
 import { confirmDialog } from '../utils/dialogs.js';
+import { createSummaryFollowUp } from '../utils/summary-follow-up.js';
 
 // Scroll position per recording, so reopening the editor in the same page
 // session returns to where it was.
@@ -54,9 +55,14 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
     const {
         showAsrEditorModal, selectedRecording, viewingTranslation, recordings,
         asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaveFlash, asrEditorSaving,
-        editorAutosave, speakerColorMap,
+        asrEditorRegenerateSummary, editorAutosave, speakerColorMap,
     } = state;
     const { showToast, setGlobalError } = utils;
+    const nextTick = (typeof Vue !== 'undefined' && Vue.nextTick) || null;
+    // After a save that queued a summary regeneration (shared with the Identify Speakers dialog)
+    const summaryFollowUp = createSummaryFollowUp({
+        recordings, selectedRecording, showToast, t, nextTick, onDone: () => { if (utils.onChatComplete) utils.onChatComplete(); },
+    });
     const shallowRef = (typeof Vue !== 'undefined' && Vue.shallowRef) || plain;
     const markRaw = (typeof Vue !== 'undefined' && Vue.markRaw) || ((x) => x);
 
@@ -192,6 +198,8 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             discardDraft,
             findStep: null,
             pane: null,
+            // Edits of this session were saved without regenerating the summary
+            unsummarized: false,
         });
 
         model.onChange((event) => {
@@ -210,13 +218,15 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
                 clearTimeout(autosaveTimer);
                 autosaveTimer = setTimeout(() => {
                     autosaveTimer = null;
-                    if (current() === session && model.dirty) saveAsrTranscription(true);
+                    if (current() === session && model.dirty) saveAsrTranscription(true, { auto: true });
                 }, AUTOSAVE_DELAY);
             }
         });
 
         asrEditorSession.value = session;
         if (asrEditorDirty) asrEditorDirty.value = false;
+        // Off whenever the editor opens: the Identify Speakers dialog keeps no preference to share
+        if (asrEditorRegenerateSummary) asrEditorRegenerateSummary.value = false;
         draftTooLargeTold = false;
         document.documentElement.classList.toggle(LONG_CLASS, model.length >= LONG_TRANSCRIPT);
         showAsrEditorModal.value = true;
@@ -292,12 +302,26 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
     };
 
     /**
-     * Save the transcript. The whole transcript is sent: the server stores it
-     * as one JSON text. When voice matches were accepted, it goes through the
-     * route of the Identify Speakers dialog, which also records the matches.
-     * Returns true when it was saved.
+     * True when the summary can be regenerated after a save from this
+     * session: the transcript itself is edited (not a translation) and the
+     * recording is stored on the server (not incognito). The footer shows
+     * its checkbox only then.
      */
-    const saveAsrTranscription = async (keepOpen = false) => {
+    const canRegenerateSummary = (session = current()) => !!session && session.field === 'transcription'
+        && !!selectedRecording.value && !selectedRecording.value.incognito;
+
+    /**
+     * Save the transcript. The whole transcript is sent: the server stores it
+     * as one JSON text. When voice matches were accepted, or the summary is
+     * to be regenerated, it goes through the route of the Identify Speakers
+     * dialog, which also records the matches and queues the summary.
+     *
+     * The summary is regenerated when its checkbox in the footer is on, the
+     * save is the user's (Save, Save and close, Ctrl+S; never autosave), and
+     * there are changes: unsaved ones, or ones this session saved earlier
+     * without regenerating. Returns true when it was saved.
+     */
+    const saveAsrTranscription = async (keepOpen = false, { auto = false } = {}) => {
         const session = current();
         if (!session || !selectedRecording.value) return false;
         if (asrEditorSaving && asrEditorSaving.value) return false;
@@ -307,19 +331,26 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
         const model = session.model;
         model.endBurst();
         const revAtSave = model.rev;
+        const wasDirty = model.dirty;
         const stored = model.toJSON();
         const withMatches = session.field === 'transcription' && !selectedRecording.value.incognito
             ? withAcceptedMatches(stored, model.segments.map((s) => s.id), model.acceptedMatches()) : null;
+        const regenerate = !auto && !!(asrEditorRegenerateSummary && asrEditorRegenerateSummary.value)
+            && canRegenerateSummary(session) && (wasDirty || session.unsummarized);
 
         if (asrEditorSaving) asrEditorSaving.value = true;
         let savedText = null;
         let serverSegments = null;
+        let summaryQueued = false;
         try {
             shareColors(session);
-            if (withMatches) {
+            if (withMatches || regenerate) {
                 const data = await saveTranscriptWithSpeakers(session.recordingId, {
-                    transcriptData: withMatches.transcriptData, speakerMap: withMatches.speakerMap, regenerateSummary: false,
+                    transcriptData: withMatches ? withMatches.transcriptData : stored,
+                    speakerMap: withMatches ? withMatches.speakerMap : {},
+                    regenerateSummary: regenerate,
                 }, { fallbackMessage: t('errors.updateTranscriptFailed') });
+                summaryQueued = regenerate && !!data.summary_queued;
                 const recording = data.recording || {};
                 savedText = typeof recording.transcription === 'string' ? recording.transcription : JSON.stringify(stored);
                 try { serverSegments = JSON.parse(savedText); } catch (e) { serverSegments = null; }
@@ -339,6 +370,15 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
             return false;
         } finally {
             if (asrEditorSaving) asrEditorSaving.value = false;
+        }
+
+        // A failed save returned above: nothing was queued. Here the transcript
+        // is stored; the summary follows it, or is still to be regenerated.
+        if (summaryQueued) {
+            session.unsummarized = false;
+            summaryFollowUp.started(session.recordingId);
+        } else if (wasDirty) {
+            session.unsummarized = true;
         }
 
         if (current() === session) {
@@ -388,5 +428,6 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
         openAsrEditorAtSegment,
         closeAsrEditorModal,
         saveAsrTranscription,
+        canRegenerateSummary,
     };
 }
