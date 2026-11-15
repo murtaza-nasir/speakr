@@ -135,7 +135,7 @@ Limits of incognito mode:
 
 - During a recording in the browser, the audio chunks are kept in IndexedDB for crash recovery until processing. After a browser crash they remain until the recovery dialog is answered.
 - A temporary file can remain in the container after a crash or a kill of the server process during the request.
-- A result whose deletion failed stays on the transcription service until its expiry there. A failed deletion is logged with the job id.
+- A result whose deletion failed stays on the transcription service until its expiry there. In the log, such a failure appears only as a replaced record without the job id.
 
 ## Access control
 
