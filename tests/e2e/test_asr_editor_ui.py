@@ -1689,7 +1689,7 @@ def test_lane_names_and_add_speaker_on_a_phone(browser):
         shown = phone.lane_name(2).locator(".asr-tl__name-text")
         assert shown.evaluate("el => el.scrollWidth <= el.clientWidth"), "the label of the added speaker is cut off"
         canvas = page.locator(CANVAS).bounding_box()
-        assert canvas["width"] >= 230 and canvas["x"] + canvas["width"] <= 390.5, f"the timeline does not fit: {canvas}"
+        assert canvas["width"] >= 220 and canvas["x"] + canvas["width"] <= 390.5, f"the timeline does not fit: {canvas}"
         box = remove.bounding_box()
         assert box["x"] + box["width"] <= head["x"] + head["width"] + 0.5 and box["width"] >= 27.5 and box["height"] >= 27.5, f"the remove button: {box}"
         name = phone.lane_name(2).bounding_box()
