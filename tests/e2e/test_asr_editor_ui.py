@@ -205,6 +205,14 @@ class Editor:
     def tl_ready(self, waveform=True):
         self.page.locator(CANVAS).wait_for(state="visible", timeout=10000)
         self.page.wait_for_function(f"() => {TL} && {TL}.width > 0 && {TL}.stats.frames > 0", timeout=10000)
+        # The dialog opens with a short scale and slide animation. While it
+        # runs, the canvas is not where it will be (a few pixels at the lane
+        # starts), and a point computed then misses an edge by that much.
+        self.page.wait_for_function(
+            "() => { const m = document.querySelector('.asr-editor-modal'); if (!m) return false; "
+            "const o = m.closest('.modal-overlay'); "
+            "return [...m.getAnimations(), ...(o ? o.getAnimations() : [])].every(a => a.playState === 'finished'); }",
+            timeout=10000)
         if waveform:
             self.page.wait_for_function(f"() => {TL}.waveform === 'ready'", timeout=30000)
 
