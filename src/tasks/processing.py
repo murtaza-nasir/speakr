@@ -2727,9 +2727,12 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
                 if conversion_result.was_converted:
                     current_app.logger.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
-                    out_path = conversion_result.output_path
-                    if out_path and out_path not in (filepath, actual_filepath):
-                        _incognito_derived_files.append(out_path)
+                # Every file the conversion wrote is removed afterwards: a
+                # converted one, and also a remuxed or a compressed one,
+                # which was_converted does not name.
+                out_path = conversion_result.output_path
+                if out_path and out_path not in (filepath, actual_filepath):
+                    _incognito_derived_files.append(out_path)
                 actual_filepath = conversion_result.output_path
                 actual_content_type = conversion_result.mime_type
                 actual_filename = os.path.basename(conversion_result.output_path)
