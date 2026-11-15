@@ -112,6 +112,19 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
   pytest tests/e2e/test_share_window_ui.py -q --noconftest -rs
 ```
 
+## Phone layout browser test
+
+`test_phone_layout_ui.py` covers the recording page and the recording list below 768 px (`templates/components/phone/`, `static/css/phone.css`, `composables/phone-layout.js`). At 390 px it checks the one top bar of a recording (back, title, star, More) and that the page header with the account menu is not drawn, renaming from Actions, the details line with both dates and with one date when the meeting and the upload fall on the same day, the Info sheet, the actions in the sheet behind More for a recording of one's own, one shared without rights, a failed one and an incognito one, the four fixed tabs with Events and Speaker stats as sheets, the pinned bar of the transcript (it stays under the top bar while 20,000 segments scroll, the page stays small, the switch shows the translation), find from the pinned bar on a long and on a short transcript, the player strip and the player sheet (play, skip, speed, the scrubber, no volume control), the composer on the assistant's tab only, one line high and growing, and above the keyboard when the visible height shrinks, and the list (search that keeps the list open, filter chips, the further filters, the menu, selection mode, New recording opening the upload dialog over the list). At 360 and 430 px it checks that nothing scrolls sideways and that icon buttons are 44 px targets. One pass per UI theme (the theme is saved in the admin's account for the pass and restored) checks the same structure, the pinned bar and the touch targets in all six. Two desktop tests check that the Transcription / Translation switch stays in view while a long transcript scrolls, and that an incognito recording has no download control.
+
+A recording's state (another meeting date, shared without rights, failed, events, a translation) is given to the page by changing the response of `GET /api/recordings/<id>` in the browser, and incognito mode by changing `GET /api/config` and putting a recording in `sessionStorage`, so the instance's data is not changed apart from the long transcript, which is replaced by the seeded one afterwards. The test signs in once and starts every further browser context from those cookies.
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_phone_layout_ui.py -q --noconftest -rs
+```
+
+The markup side of the same layout (every desktop action is also on the phone, the structure is shared by the themes, no download control for an incognito recording) is in `tests/test_phone_layout_markup.py`, which needs no browser.
+
 ## App dialog browser test
 
 The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static/js/app-dialog.js` shows the question in the app's own dialog (`window.confirmDialog`, `alertDialog`, `promptDialog`), in the Vue app and on the pages that are not part of it. `test_app_dialog_ui.py` covers one of those pages: on the account page a saved speaker is deleted from the Speakers tab. Cancel, Esc and a click beside the panel keep the speaker and the focus returns to the button; Tab stays in the dialog; the danger button that names the action deletes. The message and the input dialog are shown once each. The same question over the segment editor (discarding unsaved changes) is in `test_asr_editor_ui.py`. Both fail when a dialog of the browser appears. It runs with the same gate, instance and CI job as the smoke test:

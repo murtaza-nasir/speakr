@@ -150,14 +150,16 @@ class Dialog:
                 status=200, content_type="application/json", body=json.dumps({"success": True, "suggestions": suggestions})))
         page.goto(f"{BASE}/recordings/{recording_id}")
         if self.phone:
-            # On a phone the recording's actions are behind its strip of details
-            page.locator(".mh-row:visible").first.click(timeout=60000)
+            # On a phone the recording's actions are in the sheet behind More
+            page.locator("[data-phone-more]").click(timeout=60000)
+            page.locator('[data-phone-sheet="actions"] .ph-sheet').wait_for(state="visible", timeout=60000)
         else:
             # The recording of the address is the one shown, with its transcript
             page.wait_for_function(
                 "(text) => { const el = document.querySelector(\"[data-tv-list=''] [data-segment-index='0']\"); return !!el && el.innerText.trim() === text; }",
                 arg=first_sentence, timeout=60000)
-        button = page.locator(f"button[title='{en('buttons.identifySpeakers')}']:visible").first
+        button = (page.locator('[data-phone-action="speakers"]') if self.phone
+                  else page.locator(f"button[title='{en('buttons.identifySpeakers')}']:visible").first)
         button.wait_for(state="visible", timeout=60000)
         page.wait_for_timeout(1000)
         started = time.monotonic()

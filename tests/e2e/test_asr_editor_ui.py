@@ -132,10 +132,11 @@ class Editor:
 
     def click_edit(self):
         button = self.page.locator(f"button[title='{en('tooltips.editTranscript')}']:visible").first
-        if button.count() == 0:
-            # On a phone the transcript is a tab of the recording
-            tab = re.compile(rf"^\s*{re.escape(en('transcription.title'))}\s*$")
-            self.page.locator("button:visible").filter(has_text=tab).first.click()
+        more = self.page.locator("[data-phone-more]")
+        if more.count():
+            # On a phone the editor is opened from the sheet behind More
+            more.click()
+            button = self.page.locator('[data-phone-action="edit-transcript"]')
         button.wait_for(state="visible", timeout=30000)
         started = time.monotonic()
         button.click()
