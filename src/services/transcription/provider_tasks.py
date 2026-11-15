@@ -47,6 +47,23 @@ def _file_sha256(path):
     return digest.hexdigest()
 
 
+def audio_task_key(scope, audio_path, part=None):
+    """A task key for a transcription that has no saved provider task.
+
+    scope names who asks (a recording, an incognito user, the voice check),
+    part the chunk within it, and the digest the audio bytes. A retry of the
+    same audio in the same scope therefore gets the same key and attaches to
+    the job the service still holds; other audio never does. None when the
+    audio cannot be read.
+    """
+    try:
+        digest = _file_sha256(audio_path)[:16]
+    except OSError:
+        return None
+    middle = '' if part is None else f"-{part}"
+    return f"{scope}{middle}-{digest}"
+
+
 def provider_task_context(recording_id, provider, audio_path):
     """Return the ProviderTaskContext of the recording's running job.
 
