@@ -806,3 +806,386 @@ def test_processing_sends_the_job_key_saves_the_job_and_resumes_it(clock):
             assert 'Hello there.' in recording.transcription
     finally:
         os.remove(path)
+
+
+# --- a job that ends for good leaves the service ------------------------------------------
+#
+# Every final exit sends DELETE /jobs/<id>; an attempt that will be resumed
+# (a timeout, failed polls) keeps the job.
+
+def test_a_failed_job_is_deleted_on_the_service(clock):
+    fake = FakeWhisperX(script=_failing('out_of_memory', True))
+    store = []
+    with pytest.raises(RemoteJobFailed):
+        _connector(fake).transcribe(_request(store=store))
+    assert fake.deleted == ['job0001'] and 'job0001' not in fake.jobs
+    assert store == [{'job_id': 'job0001', 'base_url': BASE}, None]
+
+
+def test_a_job_cancelled_on_the_service_is_deleted_there(clock):
+    fake = FakeWhisperX(script=[('queued', None, 0.0), ('cancelled', None, None)])
+    with pytest.raises(RemoteJobFailed):
+        _connector(fake).transcribe(_request())
+    assert fake.deleted == ['job0001']
+
+
+def test_a_job_that_ended_without_a_result_is_deleted(clock):
+    fake = FakeWhisperX()
+    handle = fake.handle
+
+    def no_result(request):
+        if request.method == 'GET' and request.url.path.endswith('/result'):
+            fake.requests.append(request)
+            return httpx.Response(409, json={'status': 'error'})
+        return handle(request)
+
+    fake.handle = no_result
+    store = []
+    with pytest.raises(RemoteJobFailed) as exc:
+        _connector(fake).transcribe(_request(store=store))
+    assert exc.value.permanent is False
+    assert fake.deleted == ['job0001'] and store[-1] is None
+
+
+def test_a_failed_delete_does_not_hide_the_job_error(clock):
+    fake = FakeWhisperX(script=_failing('audio_too_long', False))
+    handle = fake.handle
+
+    def delete_fails(request):
+        if request.method == 'DELETE':
+            fake.requests.append(request)
+            raise httpx.ConnectError("refused", request=request)
+        return handle(request)
+
+    fake.handle = delete_fails
+    store = []
+    with pytest.raises(RemoteJobFailed) as exc:
+        _connector(fake).transcribe(_request(store=store))
+    assert exc.value.code == 'audio_too_long' and exc.value.permanent is True
+    assert len(fake.calls('DELETE')) == 1
+    assert store[-1] is None
+
+
+def test_a_delete_answered_with_an_error_does_not_hide_the_job_error(clock):
+    fake = FakeWhisperX(script=_failing('stage_failed', None))
+    handle = fake.handle
+
+    def delete_500(request):
+        if request.method == 'DELETE':
+            fake.requests.append(request)
+            return httpx.Response(500, json={'error': 'boom'})
+        return handle(request)
+
+    fake.handle = delete_500
+    with pytest.raises(RemoteJobFailed) as exc:
+        _connector(fake).transcribe(_request())
+    assert exc.value.code == 'stage_failed'
+
+
+def test_an_interrupted_job_is_deleted_before_the_new_submit(clock):
+    fake = FakeWhisperX()
+    job_id = fake.add_job(script=[('interrupted', None, None)])
+    store = []
+    response = _connector(fake).transcribe(_request({'job_id': job_id, 'base_url': BASE}, store))
+    assert response.segments
+    assert fake.deleted == [job_id, 'job0002']
+    order = [(r.method, r.url.path) for r in fake.requests if r.method in ('DELETE', 'POST')]
+    assert order[:2] == [('DELETE', f'/jobs/{job_id}'), ('POST', '/jobs')]
+
+
+def test_a_job_unknown_to_the_service_gets_no_delete(clock):
+    fake = FakeWhisperX()
+    _connector(fake).transcribe(_request({'job_id': 'gone0001', 'base_url': BASE}))
+    assert fake.deleted == ['job0001']
+
+
+def test_failed_polls_beyond_the_limit_send_no_delete(clock):
+    fake = FakeWhisperX()
+    fake.poll_answers = [(503, {}, {})] * 10
+    store = []
+    with pytest.raises(TranscriptionError):
+        _connector(fake).transcribe(_request(store=store))
+    assert fake.deleted == [] and store == [{'job_id': 'job0001', 'base_url': BASE}]
+
+
+def test_a_shutdown_while_polling_sends_no_delete(clock, monkeypatch):
+    fake = FakeWhisperX(script=[('running', 'whisper', 0.1)])
+
+    def stop(seconds):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(asr, '_sleep', stop)
+    store = []
+    with pytest.raises(KeyboardInterrupt):
+        _connector(fake).transcribe(_request(store=store))
+    assert fake.deleted == [] and store == [{'job_id': 'job0001', 'base_url': BASE}]
+
+
+def test_a_job_submitted_for_a_deleted_processing_job_is_removed(clock):
+    """The save reports False when the processing job no longer exists."""
+    fake = FakeWhisperX()
+    saves = []
+
+    def save(task):
+        saves.append(task)
+        return False
+
+    request = _request()
+    request.save_provider_task = save
+    with pytest.raises(TranscriptionError) as exc:
+        _connector(fake).transcribe(request)
+    assert 'no longer exists' in str(exc.value)
+    assert fake.deleted == ['job0001']
+    assert not fake.calls('GET', '/jobs/job0001')
+
+
+def test_a_job_cancelled_with_its_processing_job_is_not_submitted_again(clock):
+    """Deleting the recording cancels the job; the poller finds it gone and stops."""
+    fake = FakeWhisperX()
+    request = _request({'job_id': 'gone0001', 'base_url': BASE})
+    request.save_provider_task = lambda task: False
+    with pytest.raises(TranscriptionError) as exc:
+        _connector(fake).transcribe(request)
+    assert 'no longer exists' in str(exc.value)
+    assert not fake.calls('POST', '/jobs')
+
+
+def test_the_synchronous_fallback_removes_the_saved_job(clock, monkeypatch):
+    monkeypatch.setenv('ASR_ASYNC_JOBS', 'false')
+    fake = FakeWhisperX()
+    job_id = fake.add_job(script=[('running', 'whisper', 0.5)])
+    store = []
+    response = _connector(fake).transcribe(_request({'job_id': job_id, 'base_url': BASE}, store))
+    assert response.segments
+    assert fake.deleted == [job_id] and store == [None]
+
+
+def test_the_synchronous_fallback_keeps_a_saved_job_it_could_not_remove(clock, monkeypatch):
+    monkeypatch.setenv('ASR_ASYNC_JOBS', 'false')
+    fake = FakeWhisperX()
+    job_id = fake.add_job(script=[('running', 'whisper', 0.5)])
+    handle = fake.handle
+
+    def delete_fails(request):
+        if request.method == 'DELETE':
+            raise httpx.ConnectError("refused", request=request)
+        return handle(request)
+
+    fake.handle = delete_fails
+    store = []
+    response = _connector(fake).transcribe(_request({'job_id': job_id, 'base_url': BASE}, store))
+    assert response.segments
+    assert store == []
+
+
+def test_the_synchronous_fallback_leaves_a_job_of_another_service_url_alone(clock, monkeypatch):
+    monkeypatch.setenv('ASR_ASYNC_JOBS', 'false')
+    fake = FakeWhisperX()
+    store = []
+    _connector(fake).transcribe(_request({'job_id': 'elsewhere', 'base_url': 'http://other:9000'}, store))
+    assert not fake.calls('DELETE') and store == [None]
+
+
+# --- the processing job ends for good ------------------------------------------------------
+
+from src.services.job_queue import job_queue
+from src.services.transcription.provider_tasks import release_remote_task
+from src.tasks.processing import RecordingDeletedDuringJob
+
+
+@pytest.fixture
+def remote(monkeypatch):
+    """Records the cancels sent to the service; `remote.answer` is what the service confirms."""
+    class Remote:
+        answer = True
+        cancelled = []
+
+    state = Remote()
+    state.cancelled = []
+
+    def cancel(base_url, job_id):
+        state.cancelled.append(job_id)
+        return state.answer
+
+    monkeypatch.setattr(asr, 'cancel_remote_job', cancel)
+    return state
+
+
+def _saved_job(audio, remote_id, status='processing'):
+    recording = _recording()
+    job = _job(recording)
+    provider_task_context(recording.id, 'asr_endpoint', audio).save({'job_id': remote_id, 'base_url': BASE})
+    if status != 'processing':
+        job.status = status
+        db.session.commit()
+    db.session.expire_all()
+    return recording.id, job.id
+
+
+def _task(job_id):
+    db.session.expire_all()
+    return db.session.get(ProcessingJob, job_id).provider_task
+
+
+def test_the_save_reports_a_deleted_processing_job(audio):
+    with app.app_context():
+        recording = _recording()
+        job = _job(recording)
+        context = provider_task_context(recording.id, 'asr_endpoint', audio)
+        assert context.save({'job_id': 'job0020', 'base_url': BASE}) is True
+        db.session.delete(job)
+        db.session.commit()
+        assert context.save(None) is False
+        assert context.save({'job_id': 'job0021', 'base_url': BASE}) is False
+
+
+def test_release_clears_the_task_once_the_service_confirms(audio, remote):
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0022')
+        job = db.session.get(ProcessingJob, job_id)
+        remote.answer = False
+        assert release_remote_task(job) is False
+        db.session.commit()
+        assert json.loads(_task(job_id))['task']['job_id'] == 'job0022'
+        remote.answer = True
+        job = db.session.get(ProcessingJob, job_id)
+        assert release_remote_task(job) is True
+        db.session.commit()
+        assert _task(job_id) is None
+    assert remote.cancelled == ['job0022', 'job0022']
+
+
+def test_release_leaves_the_task_of_another_provider(audio, remote):
+    with app.app_context():
+        recording = _recording()
+        job = _job(recording)
+        job.provider_task = json.dumps({'provider': 'assemblyai', 'task': {'transcript_id': 'x'}})
+        db.session.commit()
+        assert release_remote_task(job) is False
+        assert job.provider_task is not None
+    assert remote.cancelled == []
+
+
+def test_release_never_raises(audio, monkeypatch):
+    def explode(base_url, job_id):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(asr, 'cancel_remote_job', explode)
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0023')
+        assert release_remote_task(db.session.get(ProcessingJob, job_id)) is False
+        assert _task(job_id) is not None
+
+
+def _process(job_id, error=None, retry_count=0):
+    """Run the queue's job handler with the transcription step replaced."""
+    job_queue.init_app(app)
+    with app.app_context():
+        job = db.session.get(ProcessingJob, job_id)
+        job.retry_count = retry_count
+        db.session.commit()
+        runner = Mock(side_effect=error) if error is not None else Mock(return_value=None)
+        with patch.object(job_queue, '_run_audio_job', runner), \
+             patch.object(job_queue, '_emit_failure_webhook'), \
+             patch.object(job_queue, '_emit_failure_email'), \
+             patch.object(job_queue, '_emit_completion_webhook'), \
+             patch.object(job_queue, '_emit_completion_email'):
+            job_queue._process_job(job)
+    with app.app_context():
+        job = db.session.get(ProcessingJob, job_id)
+        return job.status, job.provider_task, job.error_message
+
+
+def test_a_permanent_failure_removes_the_remote_job(audio, remote):
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0030')
+    error = RemoteJobFailed("ASR job failed: audio_too_long", permanent=True)
+    status, task, message = _process(job_id, error)
+    assert status == 'failed' and task is None
+    assert 'audio_too_long' in message
+    assert remote.cancelled == ['job0030']
+
+
+def test_a_failure_with_retries_left_keeps_the_remote_job(audio, remote):
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0031')
+    status, task, _ = _process(job_id, TranscriptionError("ASR job job0031 timed out after 600s (status running)"))
+    assert status == 'queued'
+    assert json.loads(task)['task']['job_id'] == 'job0031'
+    assert remote.cancelled == []
+
+
+def test_the_last_failed_retry_removes_the_remote_job(audio, remote):
+    from src.services.job_queue import MAX_RETRIES
+    with app.app_context():
+        recording_id, job_id = _saved_job(audio, 'job0032')
+    error = TranscriptionError("ASR job job0032 could not be polled: HTTP 503")
+    status, task, message = _process(job_id, error, retry_count=MAX_RETRIES - 1)
+    assert status == 'failed' and task is None
+    assert remote.cancelled == ['job0032']
+    # The original error is what the job and the recording report.
+    assert 'could not be polled' in message
+    with app.app_context():
+        assert db.session.get(Recording, recording_id).status == 'FAILED'
+
+
+def test_a_final_failure_keeps_the_task_while_the_service_is_unreachable(audio, remote):
+    remote.answer = False
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0033')
+    status, task, message = _process(job_id, RemoteJobFailed("ASR job failed", permanent=True))
+    assert status == 'failed' and 'ASR job failed' in message
+    assert json.loads(task)['task']['job_id'] == 'job0033'
+    assert remote.cancelled == ['job0033']
+
+
+def test_a_recording_deleted_while_the_job_ran_removes_the_remote_job(audio, remote):
+    with app.app_context():
+        recording_id, job_id = _saved_job(audio, 'job0034')
+    status, task, message = _process(job_id, RecordingDeletedDuringJob(recording_id))
+    assert status == 'failed' and task is None
+    assert message == 'Recording deleted while the job ran'
+    assert remote.cancelled == ['job0034']
+
+
+def test_a_completed_job_with_a_task_left_over_removes_the_remote_job(audio, remote):
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0035')
+    status, task, _ = _process(job_id)
+    assert status == 'completed' and task is None
+    assert remote.cancelled == ['job0035']
+
+
+def test_a_completed_job_without_a_task_sends_nothing(audio, remote):
+    with app.app_context():
+        recording = _recording()
+        job_id = _job(recording).id
+    status, task, _ = _process(job_id)
+    assert status == 'completed' and task is None and remote.cancelled == []
+
+
+def test_resetting_a_recording_clears_the_task_of_its_queued_job(audio, remote):
+    with app.app_context():
+        recording_id, job_id = _saved_job(audio, 'job0036', status='queued')
+        user_id = db.session.get(Recording, recording_id).user_id
+    client = app.test_client()
+    _login(client, user_id)
+    assert client.post(f'/recording/{recording_id}/reset_status').status_code == 200
+    with app.app_context():
+        job = db.session.get(ProcessingJob, job_id)
+        assert job.status == 'failed' and job.provider_task is None
+    assert remote.cancelled == ['job0036']
+
+
+def test_cleanup_of_old_jobs_tries_the_remote_job_once_more(audio, remote):
+    from datetime import datetime, timedelta
+    job_queue.init_app(app)
+    with app.app_context():
+        _, job_id = _saved_job(audio, 'job0037', status='failed')
+        job = db.session.get(ProcessingJob, job_id)
+        job.completed_at = datetime.utcnow() - timedelta(hours=48)
+        db.session.commit()
+    job_queue.cleanup_old_jobs(max_age_hours=24)
+    with app.app_context():
+        assert db.session.get(ProcessingJob, job_id) is None
+    assert 'job0037' in remote.cancelled

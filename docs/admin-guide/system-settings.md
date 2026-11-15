@@ -53,6 +53,7 @@ With the jobs API in use:
 - After a job error marked as not retryable, such as `audio_too_long` or `file_too_large`, the recording is marked failed without a retry. Other job errors are retried up to `JOB_MAX_RETRIES`.
 - The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
 - When a recording or its processing job is deleted, the remote job is cancelled on the service.
+- A remote job that has ended for good is deleted from the service: a job reported as failed, cancelled or interrupted, and a job still saved when the processing job fails without a retry left. A job kept for the next attempt is not deleted. If the service cannot be reached, the job id stays saved and the deletion is tried again when the processing job is retried, deleted or cleaned up.
 - The estimated progress of the job is stored on the processing job as `progress_done` out of a `progress_total` of 100, and is part of the job queue status.
 
 ## Login Lock

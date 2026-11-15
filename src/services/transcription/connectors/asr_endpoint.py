@@ -155,8 +155,11 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                     logger.info(f"ASR asynchronous jobs are unavailable ({e}); using the synchronous endpoint")
         if request.provider_task and request.save_provider_task:
             # A job saved while the jobs API was in use is not resumed by the
-            # synchronous path.
-            request.save_provider_task(None)
+            # synchronous path, so it is removed from the service. It stays
+            # saved while the service cannot confirm that, and is removed
+            # when the processing job ends.
+            if self._remove_saved_job(request.provider_task):
+                request.save_provider_task(None)
         _rewind(request)
         return self._transcribe_sync(request, params)
 
@@ -373,12 +376,20 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 while True:
                     if job_id is None:
                         job_id = self._submit_job(client, request, job_params, headers, deadline)
-                        save({'job_id': job_id, 'base_url': self.base_url})
+                        if save({'job_id': job_id, 'base_url': self.base_url}) is False:
+                            # Nothing would remove this job later.
+                            self._delete_job(client, job_id)
+                            raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=job_id))
                     try:
                         data = self._wait_for_result(client, job_id, request, deadline)
                         break
                     except _RemoteJobGone as gone:
-                        save(None)
+                        if gone.still_stored:
+                            self._delete_job(client, job_id)
+                        if save(None) is False:
+                            # The processing job was deleted (with its
+                            # recording, or on its own): nothing is submitted.
+                            raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=job_id)) from None
                         if resubmits_left <= 0:
                             raise ProviderError(
                                 f"ASR job {job_id} was lost on the service ({gone}) after a new submit",
@@ -388,7 +399,9 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                         job_id = None
                     except RemoteJobFailed:
                         # The service does not reuse a failed or cancelled
-                        # job, so a retry submits again.
+                        # job, so a retry submits again and this one is
+                        # removed from the service.
+                        self._delete_job(client, job_id)
                         save(None)
                         raise
 
@@ -490,7 +503,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                     raise RemoteJobFailed(f"ASR job {job_id} was cancelled on the service", permanent=True,
                                           provider=self.PROVIDER_NAME)
                 elif status == 'interrupted':
-                    raise _RemoteJobGone("the service restarted while the job ran")
+                    raise _RemoteJobGone("the service restarted while the job ran", still_stored=True)
                 elif status not in ('queued', 'running'):
                     raise ProviderError(f"ASR job {job_id} reported an unknown status {status!r}",
                                         provider=self.PROVIDER_NAME)
@@ -522,14 +535,34 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                                 provider=self.PROVIDER_NAME, status_code=response.status_code)
         return data
 
-    def _delete_job(self, client, job_id: str) -> None:
-        """DELETE /jobs/{id} once the result is fetched, so the transcript leaves the service."""
+    def _delete_job(self, client, job_id: str) -> bool:
+        """DELETE /jobs/{id}: the job and its transcript leave the service.
+
+        Sent once the result is fetched and when the job has ended for good
+        without one. Best effort: a failure is logged and never raised.
+        Returns whether the service confirmed it (200, or 404 for a job it no
+        longer knows).
+        """
         try:
             response = client.delete(f"{self.base_url}/jobs/{job_id}", timeout=CANCEL_TIMEOUT_SECONDS)
-            if response.status_code not in (200, 404):
-                logger.warning(f"ASR job {job_id}: DELETE answered {response.status_code}")
+            if response.status_code in (200, 404):
+                return True
+            logger.warning(f"ASR job {job_id}: DELETE answered {response.status_code}")
         except Exception as e:
-            logger.warning(f"ASR job {job_id}: the stored result could not be deleted: {e}")
+            logger.warning(f"ASR job {job_id} could not be deleted on the service: {e}")
+        return False
+
+    def _remove_saved_job(self, saved: Any) -> bool:
+        """Remove a saved job that will not be polled again; True when nothing is left to remove."""
+        if not isinstance(saved, dict) or saved.get('base_url') != self.base_url \
+                or not _valid_job_id(saved.get('job_id')):
+            return True
+        try:
+            with self._http_client(timeout=CANCEL_TIMEOUT_SECONDS) as client:
+                return self._delete_job(client, saved['job_id'])
+        except Exception as e:
+            logger.warning(f"ASR job {saved['job_id']} could not be deleted on the service: {e}")
+            return False
 
     @staticmethod
     def _note_progress(job_id: str, data: Dict[str, Any], request: TranscriptionRequest,
@@ -744,7 +777,18 @@ class _JobsUnavailable(Exception):
 
 
 class _RemoteJobGone(Exception):
-    """The job is unknown to the service, its result has expired, or the service restarted."""
+    """The job is unknown to the service, its result has expired, or the service restarted.
+
+    ``still_stored``: the service still lists the job (an interrupted one),
+    so it is deleted there before the audio is submitted again.
+    """
+
+    def __init__(self, message: str, still_stored: bool = False):
+        super().__init__(message)
+        self.still_stored = still_stored
+
+
+_PROCESSING_JOB_GONE = "ASR job {job_id} was removed from the service: its processing job no longer exists"
 
 
 def _valid_job_id(job_id: Any) -> bool:

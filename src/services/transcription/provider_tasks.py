@@ -12,7 +12,8 @@ The WhisperX ASR service's asynchronous jobs (asr_endpoint) are saved the
 same way, so a restart of Speakr resumes polling the remote job instead of
 running the audio through the GPU again. A remote job saved on a processing
 job is cancelled when that job or its recording is deleted
-(cancel_remote_tasks).
+(cancel_remote_tasks), and removed when the processing job ends for good
+(release_remote_task).
 """
 
 import hashlib
@@ -28,7 +29,8 @@ logger = logging.getLogger(__name__)
 TRANSCRIPTION_JOB_TYPES = ('transcribe', 'reprocess_transcription')
 
 # saved: the task saved for this service and audio, or None.
-# save: stores a task (None forgets it).
+# save: stores a task (None forgets it); False when the processing job no
+#       longer exists.
 # key: a stable name for this processing job and audio (see
 #      TranscriptionRequest.task_key).
 # report_progress: stores (done, total) on the running job.
@@ -77,7 +79,10 @@ def provider_task_context(recording_id, provider, audio_path):
         # while the service is still working on the task.
         table = ProcessingJob.__table__
         with db.engine.begin() as connection:
-            connection.execute(table.update().where(table.c.id == job_id).values(provider_task=value))
+            result = connection.execute(table.update().where(table.c.id == job_id).values(provider_task=value))
+        # False: the processing job was deleted while it ran, with its
+        # recording or on its own, so nothing was stored.
+        return result.rowcount > 0
 
     from src.services.job_queue import job_progress_writer
     key = f"speakr-{recording_id}-{job_id}-{audio_sha256[:16]}"
@@ -100,7 +105,11 @@ def cancel_remote_tasks(jobs):
     Called before processing jobs or their recording are deleted, so the
     service stops the run and drops the transcript. Best effort: a service
     that cannot be reached keeps the job until its result expires.
+
+    Returns the ids of the processing jobs whose ASR job the service
+    confirmed as removed.
     """
+    removed = []
     for job in jobs:
         try:
             stored = json.loads(job.provider_task) if job.provider_task else None
@@ -113,6 +122,28 @@ def cancel_remote_tasks(jobs):
             continue
         try:
             from src.services.transcription.connectors.asr_endpoint import cancel_remote_job
-            cancel_remote_job(task['base_url'], task['job_id'])
+            if cancel_remote_job(task['base_url'], task['job_id']) is True:
+                removed.append(job.id)
         except Exception as e:
             logger.warning(f"Could not cancel ASR job {task.get('job_id')} of processing job {job.id}: {e}")
+    return removed
+
+
+def release_remote_task(job):
+    """Remove the WhisperX ASR job saved on a processing job that will not poll it again.
+
+    For a processing job that has ended for good: failed without a retry
+    left, dropped because its recording was deleted, cancelled, or completed
+    by another path. The saved task is cleared once the service confirms the
+    job is gone; otherwise it stays, so a later retry, delete or cleanup of
+    the processing job tries again. Tasks of other providers are left alone.
+    Never raises and does not commit. Returns whether the task was cleared.
+    """
+    try:
+        if not job.provider_task or job.id not in cancel_remote_tasks([job]):
+            return False
+        job.provider_task = None
+        return True
+    except Exception as e:
+        logger.warning(f"Could not remove the ASR job of processing job {getattr(job, 'id', None)}: {e}")
+        return False
