@@ -2,8 +2,40 @@ import { describe, expect, it } from 'vitest';
 
 import {
     bestSuggestion, buildSpeakerOptions, formatClock, formatExact, isPlaceholderSpeaker, isTypingTarget,
-    longestSegments, nextSelection, parseTime, speakerColorClass,
+    longestSegments, nextSelection, nextSpeakerLabel, parseTime, speakerColorClass,
 } from './helpers.js';
+
+describe('the label of an added speaker', () => {
+    it('follows the highest SPEAKER_NN in use', () => {
+        expect(nextSpeakerLabel(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_03'])).toBe('SPEAKER_04');
+        expect(nextSpeakerLabel(['SPEAKER_00'])).toBe('SPEAKER_01');
+        // A gap is not filled: the label that is missing may have been renamed
+        expect(nextSpeakerLabel(['SPEAKER_00', 'SPEAKER_05'])).toBe('SPEAKER_06');
+        expect(nextSpeakerLabel(['Dana Lee', 'SPEAKER_01'])).toBe('SPEAKER_02');
+        expect(nextSpeakerLabel(['SPEAKER_09'])).toBe('SPEAKER_10');
+        expect(nextSpeakerLabel(['SPEAKER_99'])).toBe('SPEAKER_100');
+    });
+
+    it('reads the labels in any case and with any number of digits', () => {
+        expect(nextSpeakerLabel(['speaker_03', 'Speaker_1'])).toBe('SPEAKER_04');
+        expect(nextSpeakerLabel(['SPEAKER_7'])).toBe('SPEAKER_08');
+        expect(nextSpeakerLabel(['SPEAKER_007'])).toBe('SPEAKER_08');
+    });
+
+    it('is the number of speakers when no label is in use', () => {
+        expect(nextSpeakerLabel([])).toBe('SPEAKER_00');
+        expect(nextSpeakerLabel(['Alice', 'Bob'])).toBe('SPEAKER_02');
+        expect(nextSpeakerLabel(['Alice', 'Alice', '', null, ' Bob '])).toBe('SPEAKER_02');
+        // Names that only look like labels are not labels
+        expect(nextSpeakerLabel(['Speaker 1', 'SPEAKER_A'])).toBe('SPEAKER_02');
+    });
+
+    it('never takes a reserved label', () => {
+        expect(nextSpeakerLabel(['SPEAKER_00', 'Dana'], ['SPEAKER_01', 'SPEAKER_02'])).toBe('SPEAKER_03');
+        expect(nextSpeakerLabel(['Alice'], ['speaker_01'])).toBe('SPEAKER_02');
+        expect(nextSpeakerLabel(['Alice', 'Bob'], ['Carol'])).toBe('SPEAKER_02');
+    });
+});
 
 describe('times as text', () => {
     it('shows a compact time', () => {
