@@ -100,6 +100,7 @@ ENV_BACKED_SETTINGS: Dict[str, Tuple[str, Any, str, str]] = {
     'recording_tombstone_days': ('RECORDING_TOMBSTONE_DAYS', 90, 'integer', 'Days to keep changes-feed tombstones.'),
     'webhook_delivery_retention_days': ('WEBHOOK_DELIVERY_RETENTION_DAYS', 30, 'integer', 'Days to keep webhook delivery records (with their payloads) after they were created. 0 keeps them without limit.'),
     'webhook_omit_titles': ('WEBHOOK_OMIT_TITLES', False, 'boolean', 'Whether the recording title and the original filename are left out of webhook payloads.'),
+    'auto_export_delete_with_recording': ('AUTO_EXPORT_DELETE_WITH_RECORDING', False, 'boolean', 'Whether the automatically exported file of a recording is deleted with the recording. Off: the file is renamed with the [deleted]_ prefix and its content is kept.'),
     'video_retention': ('VIDEO_RETENTION', False, 'boolean', 'Whether to keep the original video stream.'),
     'video_passthrough_asr': ('VIDEO_PASSTHROUGH_ASR', False, 'boolean', 'Whether to send original video to ASR.'),
     'asr_async_jobs': ('ASR_ASYNC_JOBS', True, 'boolean', 'Whether the asynchronous jobs API of the WhisperX ASR service is used when the service advertises it. Off: every transcription is sent to the synchronous /asr endpoint.'),
