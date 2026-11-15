@@ -378,7 +378,7 @@
                 hideModal('tagModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert(tr('editTagModal.createFailed', 'Couldn\'t create tag: ' + error.message, { error: error.message }));
+                window.alertDialog(tr('editTagModal.createFailed', 'Couldn\'t create tag: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');
@@ -432,7 +432,7 @@
                 hideModal('folderModal');
                 if (opts.onSaved) opts.onSaved(saved);
             } catch (error) {
-                alert(tr('folderManagement.createFailed', 'Couldn\'t create folder: ' + error.message, { error: error.message }));
+                window.alertDialog(tr('folderManagement.createFailed', 'Couldn\'t create folder: ' + error.message, { error: error.message }));
             }
         });
         overlay.classList.remove('hidden');

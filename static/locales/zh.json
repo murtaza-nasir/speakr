@@ -1244,7 +1244,15 @@
     "untitled": "无标题",
     "upload": "上传",
     "warning": "警告",
-    "yes": "是"
+    "yes": "是",
+    "rename": "重命名",
+    "unlink": "解除关联",
+    "continue": "继续",
+    "remove": "移除",
+    "revoke": "撤销",
+    "rotate": "轮换",
+    "discard": "放弃",
+    "add": "添加"
   },
   "confirms": {
     "discardUnsavedRecording": "离开并丢弃未保存的录音？"

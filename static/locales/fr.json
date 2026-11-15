@@ -1244,7 +1244,15 @@
     "untitled": "Sans titre",
     "upload": "Télécharger",
     "warning": "Avertissement",
-    "yes": "Oui"
+    "yes": "Oui",
+    "rename": "Renommer",
+    "unlink": "Dissocier",
+    "continue": "Continuer",
+    "remove": "Retirer",
+    "revoke": "Retirer",
+    "rotate": "Renouveler",
+    "discard": "Abandonner",
+    "add": "Ajouter"
   },
   "confirms": {
     "discardUnsavedRecording": "Quitter et abandonner l'enregistrement non sauvegardé ?"

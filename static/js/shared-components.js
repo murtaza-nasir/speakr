@@ -183,7 +183,11 @@ function useSharesModal() {
     };
     
     const deleteShare = async (shareId) => {
-        if (!confirm(sharedT('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'))) return;
+        if (!(await window.confirmDialog({
+            message: sharedT('dialogs.deleteShare.message', 'Delete this share link? The link stops working.'),
+            confirmLabel: sharedT('common.delete', 'Delete'),
+            danger: true,
+        }))) return;
         
         try {
             const response = await fetch(`/api/shares/${shareId}`, {

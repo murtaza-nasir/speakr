@@ -1244,7 +1244,15 @@
     "untitled": "Unbenannt",
     "upload": "Hochladen",
     "warning": "Warnung",
-    "yes": "Ja"
+    "yes": "Ja",
+    "rename": "Umbenennen",
+    "unlink": "Trennen",
+    "continue": "Weiter",
+    "remove": "Entfernen",
+    "revoke": "Entziehen",
+    "rotate": "Erneuern",
+    "discard": "Verwerfen",
+    "add": "Hinzufügen"
   },
   "confirms": {
     "discardUnsavedRecording": "Seite verlassen und die nicht gespeicherte Aufnahme verwerfen?"

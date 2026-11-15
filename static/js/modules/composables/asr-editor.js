@@ -11,6 +11,7 @@
 import { createAsrModel } from '../asr-editor/model.js';
 import { createDraftStore, hashText } from '../asr-editor/draft.js';
 import { saveTranscriptWithSpeakers, withAcceptedMatches } from '../utils/speaker-save.js';
+import { confirmDialog } from '../utils/dialogs.js';
 
 // Scroll position per recording, so reopening the editor in the same page
 // session returns to where it was.
@@ -229,11 +230,30 @@ export function useAsrEditor(state, utils, { saveTranscriptionContent }) {
         return openAsrEditorModal();
     };
 
-    /** Close the editor. Unsaved changes are discarded only after the user agrees (unless `force`). */
-    const closeAsrEditorModal = ({ force = false } = {}) => {
+    let discardAsked = false;
+
+    /**
+     * Close the editor. Unsaved changes are discarded only after the user
+     * agrees (unless `force`): the question is the app's own dialog, so this
+     * resolves to true once the editor is closed and to false when it stays.
+     */
+    const closeAsrEditorModal = async ({ force = false } = {}) => {
         const session = current();
         if (session && !force && session.model.dirty) {
-            if (!window.confirm(t('asrEditor.discardConfirm'))) return false;
+            if (discardAsked) return false;
+            discardAsked = true;
+            let agreed = false;
+            try {
+                agreed = await confirmDialog({
+                    message: t('asrEditor.discardConfirm'),
+                    confirmLabel: t('common.discard'),
+                    danger: true,
+                });
+            } finally {
+                discardAsked = false;
+            }
+            // Saved or closed while the question was open: nothing to discard
+            if (!agreed || current() !== session) return false;
         }
         clearTimers();
         if (session) {

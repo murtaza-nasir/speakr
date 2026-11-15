@@ -1244,7 +1244,15 @@
     "untitled": "Untitled",
     "upload": "Upload",
     "warning": "Warning",
-    "yes": "Yes"
+    "yes": "Yes",
+    "rename": "Rename",
+    "unlink": "Unlink",
+    "continue": "Continue",
+    "remove": "Remove",
+    "revoke": "Revoke",
+    "rotate": "Rotate",
+    "discard": "Discard",
+    "add": "Add"
   },
   "confirms": {
     "discardUnsavedRecording": "Leave and discard the unsaved recording?"

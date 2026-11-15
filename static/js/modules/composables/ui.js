@@ -5,6 +5,7 @@
 
 import { savedColorScheme } from '../utils/theme-defaults.js';
 import { filenameFromContentDisposition } from '../utils/content-disposition.js';
+import { confirmDialog } from '../utils/dialogs.js';
 
 /**
  * Decide whether the sidebar should start collapsed.
@@ -184,7 +185,7 @@ export function useUI(state, utils, processedTranscription) {
     // Switch to upload view. Guarded against silently abandoning an unsaved
     // in-app recording (issue #287(a)): if a recording is in progress or
     // stopped-but-not-yet-uploaded, confirm before leaving the recording view.
-    const switchToUploadView = () => {
+    const switchToUploadView = async () => {
         const isRecording = state.isRecording;
         const audioBlobURL = state.audioBlobURL;
         const hasUnsaved = currentView.value === 'recording'
@@ -194,7 +195,7 @@ export function useUI(state, utils, processedTranscription) {
             const tFn = utils.t || ((key) => key);
             const message = tFn('confirms.discardUnsavedRecording')
                 || 'Leave and discard the unsaved recording?';
-            if (!window.confirm(message)) {
+            if (!(await confirmDialog({ message, confirmLabel: tFn('common.discard'), danger: true }))) {
                 return;
             }
         }
@@ -885,7 +886,11 @@ export function useUI(state, utils, processedTranscription) {
         }
 
         // Confirm deletion
-        if (!confirm(t('events.confirmDelete', { title: event.title }) || `Delete event "${event.title}"?`)) {
+        if (!(await confirmDialog({
+            message: t('events.confirmDelete', { title: event.title }) || `Delete event "${event.title}"?`,
+            confirmLabel: t('common.delete'),
+            danger: true,
+        }))) {
             return;
         }
 

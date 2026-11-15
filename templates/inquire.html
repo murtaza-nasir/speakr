@@ -207,6 +207,8 @@
     <script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
     {% include 'includes/i18n_bootstrap.html' %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
+    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
     {% include 'includes/loading_overlay.html' %}
     <script src="{{ url_for('static', filename='js/timezone-sync.js') }}" defer></script>
 </head>

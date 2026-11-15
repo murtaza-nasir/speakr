@@ -203,14 +203,22 @@
                 const wh = await fetchJson('/api/v1/webhooks/' + Number(id));
                 showModalFor(wh);
             } else if (action === 'delete') {
-                if (!confirm(tr('webhooks.confirmDelete', 'Delete this webhook? Past deliveries will be removed too.'))) return;
+                if (!(await window.confirmDialog({
+                    message: tr('webhooks.confirmDelete', 'Delete this webhook? Past deliveries will be removed too.'),
+                    confirmLabel: tr('common.delete', 'Delete'),
+                    danger: true,
+                }))) return;
                 await fetchJson('/api/v1/webhooks/' + Number(id), { method: 'DELETE' });
                 await loadWebhooks();
             } else if (action === 'test') {
                 await fetchJson('/api/v1/webhooks/' + Number(id) + '/test', { method: 'POST' });
-                alert(tr('webhooks.testQueued', 'Test event queued. Check Deliveries in a few seconds.'));
+                window.alertDialog(tr('webhooks.testQueued', 'Test event queued. Check Deliveries in a few seconds.'));
             } else if (action === 'rotate') {
-                if (!confirm(tr('webhooks.confirmRotate', 'Rotate the secret? Signature checks fail until each receiver has the new one.'))) return;
+                if (!(await window.confirmDialog({
+                    message: tr('webhooks.confirmRotate', 'Rotate the secret? Signature checks fail until each receiver has the new one.'),
+                    confirmLabel: tr('common.rotate', 'Rotate'),
+                    danger: true,
+                }))) return;
                 const body = await fetchJson('/api/v1/webhooks/' + Number(id) + '/rotate-secret', { method: 'POST' });
                 if (body && body.secret) showSecretBanner(body.secret);
                 await loadWebhooks();
@@ -255,13 +263,13 @@
                             panel.classList.add('hidden');
                             onCardAction(id, 'deliveries', card);
                         } catch (e2) {
-                            alert(tr('webhooks.replayFailed', 'Replay failed: ' + e2.message, { error: e2.message }));
+                            window.alertDialog(tr('webhooks.replayFailed', 'Replay failed: ' + e2.message, { error: e2.message }));
                         }
                     });
                 });
             }
         } catch (e) {
-            alert(tr('webhooks.actionFailed', 'Error: ' + e.message, { error: e.message }));
+            window.alertDialog(tr('webhooks.actionFailed', 'Error: ' + e.message, { error: e.message }));
         }
     }
 
@@ -273,7 +281,7 @@
     form?.addEventListener('submit', async function (e) {
         e.preventDefault();
         const events = Array.from(eventsContainer.querySelectorAll('input[type=checkbox]:checked')).map(function (cb) { return cb.value; });
-        if (events.length === 0) { alert(tr('webhooks.eventsRequired', 'Pick at least one event to subscribe to.')); return; }
+        if (events.length === 0) { window.alertDialog(tr('webhooks.eventsRequired', 'Pick at least one event to subscribe to.')); return; }
         const payload = {
             name: nameInput.value.trim(),
             url: urlInput.value.trim(),
@@ -294,7 +302,7 @@
                 await loadWebhooks();
             }
         } catch (e2) {
-            alert(tr('webhooks.saveFailed', 'Save failed: ' + e2.message, { error: e2.message }));
+            window.alertDialog(tr('webhooks.saveFailed', 'Save failed: ' + e2.message, { error: e2.message }));
         }
     });
 
@@ -304,7 +312,7 @@
             secretCopyBtn.textContent = tr('webhooks.copied', 'Copied');
             setTimeout(function () { secretCopyBtn.textContent = tr('webhooks.copy', 'Copy'); }, 1500);
         } catch (e) {
-            alert(tr('webhooks.copyFailed', 'Couldn\'t copy: ' + e.message, { error: e.message }));
+            window.alertDialog(tr('webhooks.copyFailed', 'Couldn\'t copy: ' + e.message, { error: e.message }));
         }
     });
     secretDismissBtn?.addEventListener('click', function () {

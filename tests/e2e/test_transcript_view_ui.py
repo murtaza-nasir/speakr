@@ -403,8 +403,9 @@ def test_the_editor_opens_over_a_page_that_is_still_there(viewer, segments):
     assert split < 100, f"splitting a segment cost {split:.0f} ms of style and layout"
     assert scrolled < 100, f"scrolling the editor cost {scrolled:.0f} ms of style and layout"
 
-    page.once("dialog", lambda dialog: dialog.accept())
+    # The edit is not saved: the app's own dialog asks before it is discarded
     page.locator(".asr-editor-modal .modal-close").click()
+    page.locator("[data-app-dialog] [data-app-dialog-confirm]").click()
     page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
     viewer.check("editor over the long transcript")
 

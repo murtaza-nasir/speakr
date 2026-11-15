@@ -63,6 +63,7 @@ MAX_ROWS_IN_DOM = 80
 ROW = ".asr-pane .asr-seg"
 TEXT = ".asr-pane .asr-seg textarea"
 CANVAS = "[data-asr-timeline-canvas]"
+DIALOG = "[data-app-dialog]"
 # The timeline's handle for tests and the console (static/js/modules/asr-editor/timeline.js)
 TL = f"document.querySelector('{CANVAS}').__tl"
 # A full redraw of the timeline must fit a frame with room to spare. The
@@ -78,8 +79,9 @@ class Editor:
         self.context = browser.new_context(viewport=viewport, locale="en-US")
         self.page = self.context.new_page()
         self.problems = PageProblems(self.page, BASE)
-        # Every confirm dialog is recorded and answered with `agree`
-        self.asked, self.agree = [], True
+        # The app asks in its own dialogs (static/js/app-dialog.js): a dialog
+        # of the browser is recorded here and fails the test's check
+        self.native = []
         self.page.on("dialog", self._dialog)
         login(self.page, BASE, ADMIN_EMAIL, ADMIN_PASSWORD)
         self.problems.reset()
@@ -91,11 +93,8 @@ class Editor:
         self.context.close()
 
     def _dialog(self, dialog):
-        self.asked.append(dialog.message)
-        if self.agree:
-            dialog.accept()
-        else:
-            dialog.dismiss()
+        self.native.append(f"{dialog.message} (during {os.environ.get('PYTEST_CURRENT_TEST', '?')})")
+        dialog.dismiss()
 
     # -- the stored transcript, through the app's own routes ---------------
 
@@ -187,14 +186,22 @@ class Editor:
         self.page.locator(".asr-editor-modal .pill-status--success").wait_for(state="visible", timeout=timeout)
         self.page.wait_for_function("() => !document.querySelector('[data-asr-dirty]')", timeout=timeout)
 
+    def question(self):
+        """The app's own dialog: the question it asks before something is discarded or deleted."""
+        return self.page.locator(DIALOG)
+
     def discard(self):
         """Close the editor, agreeing to discard when it asks."""
-        self.agree = True
         self.page.locator(".asr-editor-modal .modal-close").click()
+        self.page.wait_for_function(
+            f"() => !document.querySelector('.asr-editor-modal') || !!document.querySelector('{DIALOG}')", timeout=10000)
+        if self.question().count():
+            self.question().locator("[data-app-dialog-confirm]").click()
         self.page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
 
     def check(self, label):
         check_common(self.page, self.problems, label)
+        assert not self.native, f"{label}: a dialog of the browser was shown: {self.native}"
 
     # -- the timeline ------------------------------------------------------------
 
@@ -523,20 +530,61 @@ def test_find_and_replace_is_one_undo_step(meeting):
 
 
 def test_closing_asks_before_unsaved_changes_are_discarded(meeting):
+    """The question is the app's own dialog, over the editor: Cancel and Esc keep the
+    editor and the edit, Discard closes it."""
     editor, recording_id = meeting
     page = editor.page
     editor.caret_in(0, 0)
     page.keyboard.type("DRAFT ")
     assert editor.dirty()
+    question = editor.question()
+    cancel = question.locator("[data-app-dialog-cancel]")
+    discard = question.locator("[data-app-dialog-confirm]")
+    focused = "() => { const a = document.activeElement; return a.hasAttribute('data-app-dialog-confirm') ? 'confirm' : a.hasAttribute('data-app-dialog-cancel') ? 'cancel' : a.tagName; }"
 
-    # Saying no keeps the editor and the edit
-    editor.asked.clear()
-    editor.agree = False
-    page.locator(".asr-editor-footer").get_by_role("button", name=en("common.cancel"), exact=True).click()
-    page.wait_for_timeout(300)
-    editor.agree = True
-    assert editor.asked == [en("asrEditor.discardConfirm")]
-    assert editor.texts()[0].startswith("DRAFT ")
+    # Cancel in the footer asks; the dialog names the action on a danger button
+    footer_cancel = page.locator(".asr-editor-footer").get_by_role("button", name=en("common.cancel"), exact=True)
+    footer_cancel.click()
+    question.wait_for(state="visible", timeout=5000)
+    assert question.locator(".app-dialog__message").inner_text() == en("asrEditor.discardConfirm")
+    assert discard.inner_text().strip() == en("common.discard") and "btn--danger" in discard.get_attribute("class")
+    assert cancel.inner_text().strip() == en("common.cancel")
+    assert question.locator("[role='alertdialog'][aria-modal='true']").count() == 1
+    # It lies over the editor: the middle of its panel is the dialog, not the editor under it
+    assert page.evaluate("""() => { const r = document.querySelector('.app-dialog__panel').getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!top.closest('[data-app-dialog]'); }""")
+    assert page.evaluate("() => Number(getComputedStyle(document.querySelector('[data-app-dialog]')).zIndex) > Number(getComputedStyle(document.querySelector('.asr-editor-modal').closest('.modal-overlay')).zIndex)")
+    page.wait_for_timeout(300)      # the dialog fades in
+    editor.shot("asr-editor-test-discard-dialog")
+    # The focus is on the action and Tab stays in the dialog
+    assert page.evaluate(focused) == "confirm"
+    page.keyboard.press("Tab")
+    assert page.evaluate(focused) == "cancel"
+    page.keyboard.press("Tab")
+    assert page.evaluate(focused) == "confirm"
+    page.keyboard.press("Shift+Tab")
+    assert page.evaluate(focused) == "cancel"
+    # Keys do not reach the editor under it (Ctrl+Z would undo the edit)
+    page.keyboard.press("Control+z")
+    cancel.click()
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1
+    assert editor.texts()[0].startswith("DRAFT ") and editor.dirty()
+    # The focus is back where it was
+    assert page.evaluate("() => document.activeElement.textContent.trim()") == en("common.cancel")
+
+    # Esc cancels as well, and closes only the question
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.keyboard.press("Escape")
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1 and editor.texts()[0].startswith("DRAFT ")
+    # So does a click beside the panel
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.mouse.click(5, 5)
+    question.wait_for(state="detached", timeout=5000)
+    assert page.locator(".asr-editor-modal").count() == 1 and editor.texts()[0].startswith("DRAFT ")
 
     # The edit is kept as a local draft: after a reload it is offered and restored
     page.wait_for_timeout(1300)
@@ -550,8 +598,12 @@ def test_closing_asks_before_unsaved_changes_are_discarded(meeting):
     assert editor.texts()[0].startswith("DRAFT ")
     assert editor.dirty()
 
-    # Saying yes closes it; nothing was saved and the draft is gone
-    editor.discard()
+    # Discard closes it (Enter presses the focused action); nothing was saved and the draft is gone
+    page.locator(".asr-editor-modal .modal-close").click()
+    question.wait_for(state="visible", timeout=5000)
+    page.keyboard.press("Enter")
+    page.locator(".asr-editor-modal").wait_for(state="detached", timeout=10000)
+    assert question.count() == 0
     assert editor.stored(recording_id) == meeting_segments()
     editor.click_edit()
     assert page.locator("[data-asr-draft]").count() == 0

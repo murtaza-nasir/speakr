@@ -25,7 +25,8 @@ function setup({ segments = SEGMENTS, saveOk = true, confirm = true, autosave = 
     const classes = new Set();
     const requests = [];
     const asked = [];
-    globalThis.window = { confirm: (message) => { asked.push(message); return confirm; }, addEventListener() {} };
+    // The app's own dialog (static/js/app-dialog.js): it resolves to the answer
+    globalThis.window = { confirmDialog: async (options) => { asked.push(options); return confirm; }, addEventListener() {} };
     globalThis.document = {
         querySelector: () => null,
         documentElement: { classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)), remove: (name) => classes.delete(name) } },
@@ -82,7 +83,7 @@ describe('the segment editor session', () => {
         expect(model().length).toBe(3);
         expect(state.asrEditorSession.value.colorMap).toEqual({ SPEAKER_00: 'speaker-color-1', SPEAKER_01: 'speaker-color-2' });
         expect(state.asrEditorDirty.value).toBe(false);
-        expect(api.closeAsrEditorModal()).toBe(true);
+        expect(await api.closeAsrEditorModal()).toBe(true);
         expect(asked).toEqual([]);
         expect(state.showAsrEditorModal.value).toBe(false);
         expect(state.asrEditorSession.value).toBeNull();
@@ -101,12 +102,13 @@ describe('the segment editor session', () => {
         model().setText(0, 'Good morning all');
         expect(state.asrEditorDirty.value).toBe(true);
         expect(state.asrEditorRev.value).toBe(1);
-        expect(api.closeAsrEditorModal()).toBe(false);
-        expect(asked).toEqual(['asrEditor.discardConfirm']);
+        expect(await api.closeAsrEditorModal()).toBe(false);
+        // Asked in the app's dialog, with the action on a danger button
+        expect(asked).toEqual([{ message: 'asrEditor.discardConfirm', confirmLabel: 'common.discard', danger: true }]);
         expect(state.showAsrEditorModal.value).toBe(true);
         model().undo();
         expect(state.asrEditorDirty.value).toBe(false);
-        expect(api.closeAsrEditorModal()).toBe(true);
+        expect(await api.closeAsrEditorModal()).toBe(true);
     });
 
     it('saves the whole transcript and stays open or closes', async () => {
@@ -219,7 +221,7 @@ describe('the segment editor session', () => {
         model().setText(1, 'Morning everyone');
         vi.advanceTimersByTime(1000);
         expect(globalThis.localStorage.data.size).toBe(1);
-        expect(api.closeAsrEditorModal()).toBe(true);
+        expect(await api.closeAsrEditorModal()).toBe(true);
         expect(globalThis.localStorage.data.size).toBe(0);
     });
 
@@ -250,7 +252,7 @@ describe('the segment editor session', () => {
         const a = setup({ segments: long });
         await a.api.openAsrEditorModal();
         expect(a.classes.has('asr-editor-long')).toBe(true);
-        a.api.closeAsrEditorModal();
+        await a.api.closeAsrEditorModal();
         expect(a.classes.has('asr-editor-long')).toBe(false);
         const b = setup();
         await b.api.openAsrEditorModal();
@@ -261,7 +263,7 @@ describe('the segment editor session', () => {
         const { state, api } = setup();
         await api.openAsrEditorAtSegment(2);
         expect(state.asrEditorSession.value.initialIndex).toBe(2);
-        api.closeAsrEditorModal();
+        await api.closeAsrEditorModal();
         await api.openAsrEditorModal();
         expect(state.asrEditorSession.value.initialIndex).toBeNull();
     });

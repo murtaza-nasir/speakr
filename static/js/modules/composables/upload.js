@@ -10,6 +10,7 @@ import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
 import { shouldSliceUpload, uploadFileInSlices } from '../db/sliced-file-upload.js';
 import { computeUploadTimeout } from '../utils/upload-timeout.js';
 import { recorderInUse } from '../utils/recorder-state.js';
+import { confirmDialog } from '../utils/dialogs.js';
 import { getFriendlyError } from '../utils/upload-errors.js';
 import {
     sortQueuedForJoin, moveQueuedItem, placeQueuedItem, totalJoinDuration,
@@ -1238,9 +1239,9 @@ export function useUpload(state, utils) {
     /**
      * Clear the incognito recording with confirmation
      */
-    const clearIncognitoRecordingWithConfirm = () => {
+    const clearIncognitoRecordingWithConfirm = async () => {
         if (incognitoRecording && incognitoRecording.value) {
-            if (confirm(t('incognito.discardConfirm'))) {
+            if (await confirmDialog({ message: t('incognito.discardConfirm'), confirmLabel: t('common.discard'), danger: true })) {
                 IncognitoStorage.clearIncognitoRecording();
                 incognitoRecording.value = null;
                 // If the incognito recording was selected, clear selection
