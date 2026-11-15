@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.10.22-alpha: Scope limits per SSO app, themed notifications, tablet and phone layout"
-    Each app with the same single sign-on can be given its own scope limit, notifications follow the interface theme, and the tablet and phone layouts are fixed.
+!!! success "Latest Release: v0.10.23-alpha: Segment editor with a timeline, long transcripts, group creation"
+    The segment editor has a timeline with undo, long transcripts are shown quickly and can be searched with Ctrl+F, and admins can set who can create groups and who users can find when sharing.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.22-alpha) for details.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.23-alpha) for details.
 
 ## Quick Navigation
 
@@ -127,6 +127,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.10.23-alpha - Segment editor with a timeline, long transcripts, group creation"
+    No action is required. A security fix for public share pages is included. Read the Upgrading section of the release notes for the changes to WhisperX jobs, user search, sharing through the API and API v1.
+
+    - **Editing** - A timeline with the waveform, drag editing, undo and redo, and drafts in the segment editor.
+    - **Long transcripts** - Fast display on the recording page, on public share links and in Identify speakers, with a find bar on Ctrl+F.
+    - **Administration** - Settings for who can create groups and who users can find when sharing, and asynchronous WhisperX jobs.
+    - **Fixes** - Shared summaries and notes on public links, voice-match suggestions, and the recording shown after quick selection.
 
 !!! info "Version 0.10.22-alpha - Scope limits per SSO app, themed notifications, layout fixes"
     Two settings are added at startup without a value, so nothing changes until an admin sets them. Read the Upgrading section of the release notes for the changes to token exchange and webhooks.

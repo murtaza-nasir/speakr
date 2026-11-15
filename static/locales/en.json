@@ -4011,6 +4011,10 @@
       },
       "0_10_22": {
         "1": "Notifications are shown in the colors of your theme. Error messages are kept on screen until you close them, and every notification has a close button."
+      },
+      "0_10_23": {
+        "1": "The transcript editor has a timeline with the waveform. Segments can be moved or resized by clicking and dragging.",
+        "2": "Long transcripts can be searched using the Ctrl+F shortcut."
       }
     }
   },

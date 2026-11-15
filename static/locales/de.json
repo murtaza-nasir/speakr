@@ -4011,6 +4011,10 @@
       },
       "0_10_22": {
         "1": "Benachrichtigungen werden in den Farben Ihres Designs angezeigt. Fehlermeldungen bleiben sichtbar, bis Sie sie schließen, und jede Benachrichtigung hat eine Schaltfläche zum Schließen."
+      },
+      "0_10_23": {
+        "1": "Der Transkript-Editor hat eine Zeitleiste mit der Wellenform. Segmente lassen sich durch Klicken und Ziehen verschieben oder in der Länge ändern.",
+        "2": "Lange Transkripte lassen sich mit dem Tastenkürzel Strg+F durchsuchen."
       }
     }
   },

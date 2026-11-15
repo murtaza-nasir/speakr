@@ -4011,6 +4011,10 @@
       },
       "0_10_22": {
         "1": "Las notificaciones se muestran con los colores de su tema. Los mensajes de error se mantienen en pantalla hasta que los cierra, y cada notificación tiene un botón para cerrarla."
+      },
+      "0_10_23": {
+        "1": "El editor de transcripciones tiene una línea de tiempo con la forma de onda. Los segmentos se pueden mover o redimensionar haciendo clic y arrastrando.",
+        "2": "En las transcripciones largas se puede buscar con el atajo Ctrl+F."
       }
     }
   },

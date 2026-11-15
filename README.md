@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.22--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.23--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -237,7 +237,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.10.22-alpha)
+## Latest Release (v0.10.23-alpha)
+
+- The segment editor has a timeline with the waveform, undo and redo, and segments can be moved or resized by clicking and dragging.
+- Long transcripts are shown quickly on the recording page, on public share links and in Identify speakers, and can be searched with Ctrl+F.
+- Site admins can set who can create groups (#576) and who users can find when sharing.
+- With the WhisperX ASR service 0.5.0 or later, transcriptions are submitted as asynchronous jobs.
+- A security fix for shared summaries and notes on public share pages is included.
+
+### v0.10.22-alpha
 
 - Each app that uses the same single sign-on can be given its own scope limit, and tokens show the name of the app that created them.
 - Notifications follow the interface theme, errors stay until they are closed, and every notification can be closed.
@@ -253,15 +261,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - Job and upload fixes for merges, retries, failure notices, reused ids and repeated tags (#587, #592, #594 to #597, #601), and summaries cut off by reasoning models are reported as failed.
 - Error pages from transcription services are kept only as a short, redacted summary in logs, webhooks and emails (#593).
 
-### v0.10.20-alpha
 
-- Six interface themes, each with every color scheme and dark mode; new accounts start with Cards and Forest Emerald.
-- The recording chat and Inquire are one assistant, Ambrose, with cited answers you can play from and a chat kept per recording until the tab is closed.
-- Folders can be nested (PR #585), and the Regenerate summary dialog shows the prompt that will run and lets you edit it first (#584).
-- `.env` settings can be changed in System Settings (#567), and group shares last only while the group still gives a reason for them (#570, #582).
-- Translation progress in the processing queue, Markdown and Word downloads, and fixes for sharing permissions (#571, #578, #579, #581) and failed summaries (#583).
-
-[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.22-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
+[Full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.23-alpha) · [All releases](https://github.com/murtaza-nasir/speakr/releases)
 
 ## Screenshots
 
