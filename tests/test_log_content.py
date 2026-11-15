@@ -184,3 +184,60 @@ def test_inquire_query_is_not_logged_at_info(world, log):
     assert "xylophone" not in default_log and "Ottoline" not in default_log
     assert f"Query: {len(QUERY)} characters" in default_log
     assert "Router decision: RAG" in default_log
+
+
+# --- transcription request parameters ---------------------------------------
+
+HOTWORDS = "Ottoline, xylophone-hotword"
+INITIAL_PROMPT = "Minutes of the heliotrope-prompt committee."
+
+
+def _asr_connector(jobs):
+    import httpx
+    from src.services.transcription.connectors.asr_endpoint import ASREndpointConnector
+
+    def handle(request):
+        path = request.url.path
+        if path in ("/health", "/"):
+            capabilities = {"async_jobs": True, "jobs_api_version": 1} if jobs else None
+            return httpx.Response(200, json={"status": "ok", "capabilities": capabilities})
+        if path == "/jobs" and request.method == "POST":
+            return httpx.Response(202, json={"job_id": "job0001", "status": "queued"})
+        if path == "/jobs/job0001" and request.method == "GET":
+            return httpx.Response(200, json={"job_id": "job0001", "status": "done", "poll_after_seconds": 0})
+        return httpx.Response(200, json={"language": "en", "segments": [
+            {"start": 0.0, "end": 1.0, "text": "hello", "speaker": "SPEAKER_00"}]})
+
+    connector = ASREndpointConnector({"base_url": "http://asr.test:9000"})
+    real = httpx.Client
+    connector._http_client = lambda **kw: real(transport=httpx.MockTransport(handle), **kw)
+    return connector
+
+
+@pytest.mark.parametrize("jobs", [False, True], ids=["synchronous", "jobs"])
+def test_initial_prompt_and_hotwords_are_not_logged_at_info(log, jobs):
+    import io
+    from src.services.transcription.base import TranscriptionRequest
+    log.set_level(logging.DEBUG, logger="httpx")
+    connector = _asr_connector(jobs)
+    with app.app_context(), patch("src.services.transcription.connectors.asr_endpoint._sleep", lambda s: None):
+        connector.transcribe(TranscriptionRequest(audio_file=io.BytesIO(b"audio"), filename="a.mp3", language="en",
+                                                  prompt=INITIAL_PROMPT, hotwords=HOTWORDS))
+    _assert_only_at_debug(log, "xylophone-hotword", "heliotrope-prompt")
+    default_log = _messages(log, at_least=logging.INFO)
+    assert "xylophone" not in default_log and "heliotrope" not in default_log
+    assert f"'hotwords': '<{len(HOTWORDS)} characters>'" in default_log
+    assert f"'initial_prompt': '<{len(INITIAL_PROMPT)} characters>'" in default_log
+    # httpx names each request at INFO: the URL is there, its query string is not.
+    requests_logged = [r.getMessage() for r in log.records if r.name == "httpx"]
+    assert any("http://asr.test:9000/" in m for m in requests_logged)
+    assert not any("?" in m for m in requests_logged)
+
+
+def test_loggable_params_keeps_everything_but_user_text():
+    from src.utils.log_filters import loggable_params
+    params = {"language": "de", "min_speakers": 2, "hotwords": HOTWORDS, "initial_prompt": None}
+    assert loggable_params(params) == {"language": "de", "min_speakers": 2,
+                                       "hotwords": f"<{len(HOTWORDS)} characters>", "initial_prompt": None}
+    assert params["hotwords"] == HOTWORDS
+    assert loggable_params(None) is None
