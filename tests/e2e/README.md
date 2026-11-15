@@ -94,6 +94,15 @@ SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/t
   pytest tests/e2e/test_share_page_ui.py -q --noconftest -rs -s
 ```
 
+## Speaker dialog browser test
+
+`test_speaker_dialog_ui.py` covers the Identify speakers dialog with 20,000 segments. Its transcript pane renders only the rows near its viewport (`composables/speaker-modal.js`, the list named `speakers` of `composables/transcript-view.js`). The test checks the time to open and the size of the dialog, one speaker's rows alone and lit among all rows, previous and next turn, a typed name on that speaker's rows with the style and layout time of a keystroke read from the browser, a click on a row playing from there, the pane's find bar (Ctrl+F), a voice-match suggestion (the suggestions request is answered in the browser), a line given to another speaker, the summary checkbox and the save (intercepted so that no summary is asked of the instance), a phone width and a short transcript.
+
+```bash
+SPEAKR_BROWSER_SMOKE=1 SPEAKR_BASE_URL=http://127.0.0.1:8899 SPEAKR_E2E_SHOTS=/tmp/shots \
+  pytest tests/e2e/test_speaker_dialog_ui.py -q --noconftest -rs -s
+```
+
 ## App dialog browser test
 
 The app does not use the browser's `confirm()`, `alert()` or `prompt()`: `static/js/app-dialog.js` shows the question in the app's own dialog (`window.confirmDialog`, `alertDialog`, `promptDialog`), in the Vue app and on the pages that are not part of it. `test_app_dialog_ui.py` covers one of those pages: on the account page a saved speaker is deleted from the Speakers tab. Cancel, Esc and a click beside the panel keep the speaker and the focus returns to the button; Tab stays in the dialog; the danger button that names the action deletes. The message and the input dialog are shown once each. The same question over the segment editor (discarding unsaved changes) is in `test_asr_editor_ui.py`. Both fail when a dialog of the browser appears. It runs with the same gate, instance and CI job as the smoke test:

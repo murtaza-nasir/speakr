@@ -6054,6 +6054,10 @@ select:disabled {
     min-width: 0;
 }
 .spk-modal .spk-filter-actions { margin-left: auto; display: flex; align-items: center; gap: var(--sp-1); flex-shrink: 0; }
+/* The find button: at the right end, after the actions of a selected speaker */
+.spk-modal .spk-filter > .t-meta + .spk-find { margin-left: auto; }
+.spk-modal .spk-find { flex-shrink: 0; }
+.spk-modal .transcript-find { border-bottom: 0; padding: var(--sp-1) 0; background: transparent; }
 
 .spk-modal .spk-seg {
     display: grid;
@@ -6183,11 +6187,13 @@ select:disabled {
 /* The find bar of the recording page's transcript uses the same bar. Its
    matches are marked in the rendered text with the CSS highlight API
    (composables/transcript-view.js), so the text itself is not changed. */
-::highlight(transcript-find) {
+::highlight(transcript-find),
+::highlight(transcript-find-speakers) {
     background-color: #fde047;
     color: #1f2937;
 }
-::highlight(transcript-find-current) {
+::highlight(transcript-find-current),
+::highlight(transcript-find-speakers-current) {
     background-color: #f97316;
     color: #ffffff;
 }

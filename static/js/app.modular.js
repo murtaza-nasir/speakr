@@ -2911,16 +2911,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.revealTranscriptSegment = transcriptViewComposable.revealSegment;
 
             const scrollToSegmentIndex = (index) => {
-                let el = null;
+                // Both transcripts render only the rows near their viewport
                 if (showSpeakerModal.value) {
-                    const container = speakerModalTranscriptRef.value;
-                    if (!container) return;
-                    el = container.querySelector(`[data-segment-index="${index}"]`);
-                } else {
-                    transcriptViewComposable.revealSegment(index);
+                    if (utils.revealSpeakerModalSegment) utils.revealSpeakerModalSegment(index);
                     return;
                 }
-                if (el) scrollSegmentIntoView(el);
+                transcriptViewComposable.revealSegment(index);
             };
 
             // Add scrollToSegmentIndex to utils for composables that need it
