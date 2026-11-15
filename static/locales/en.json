@@ -951,7 +951,8 @@
     },
     "undoAction": "Undo",
     "suggestionMergeInto": "Merge into {{name}}",
-    "suggestionMerged": "{{label}} merged into {{name}}"
+    "suggestionMerged": "{{label}} merged into {{name}}",
+    "updateSummary": "Update the summary"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",

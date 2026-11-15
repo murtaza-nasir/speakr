@@ -951,7 +951,8 @@
     },
     "undoAction": "Отменить",
     "suggestionMergeInto": "Объединить с {{name}}",
-    "suggestionMerged": "{{label}} объединён с {{name}}"
+    "suggestionMerged": "{{label}} объединён с {{name}}",
+    "updateSummary": "Обновить резюме"
   },
   "findReplace": {
     "open": "Найти и заменить (Ctrl+F)",

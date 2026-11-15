@@ -951,7 +951,8 @@
     },
     "undoAction": "Desfazer",
     "suggestionMergeInto": "Mesclar com {{name}}",
-    "suggestionMerged": "{{label}} mesclado com {{name}}"
+    "suggestionMerged": "{{label}} mesclado com {{name}}",
+    "updateSummary": "Atualizar o resumo"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",

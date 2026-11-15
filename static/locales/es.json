@@ -951,7 +951,8 @@
     },
     "undoAction": "Deshacer",
     "suggestionMergeInto": "Combinar con {{name}}",
-    "suggestionMerged": "{{label}} combinado con {{name}}"
+    "suggestionMerged": "{{label}} combinado con {{name}}",
+    "updateSummary": "Actualizar el resumen"
   },
   "findReplace": {
     "open": "Buscar y reemplazar (Ctrl+F)",
