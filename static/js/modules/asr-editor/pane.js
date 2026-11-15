@@ -603,7 +603,9 @@ export function createAsrEditorPane() {
 
             // ---- popovers: speaker picker, times, segment menu, shortcuts ----
 
-            const popover = reactive({ kind: null, id: null, style: {}, sheet: false, speaker: '', targets: [] });
+            // scope 'speaker': the picker was opened from a lane header of the
+            // timeline and changes every segment of popover.speaker
+            const popover = reactive({ kind: null, id: null, style: {}, sheet: false, speaker: '', targets: [], scope: '' });
             const pickerQuery = ref('');
             const pickerIndex = ref(0);
             const pickerAll = ref(false);
@@ -644,7 +646,7 @@ export function createAsrEditorPane() {
 
             const openPopover = (kind, anchorEl, width, height, extra = {}) => {
                 popoverReturn = anchorEl || null;
-                Object.assign(popover, { kind, id: null, speaker: '', targets: [] }, extra);
+                Object.assign(popover, { kind, id: null, speaker: '', targets: [], scope: '' }, extra);
                 placePopover(anchorEl, width, height);
                 nextTick(() => {
                     const el = popEl.value;
@@ -704,23 +706,47 @@ export function createAsrEditorPane() {
                 });
             };
 
+            // The picker for a whole speaker, opened from its lane header in the
+            // timeline: the choice renames the speaker in every segment.
+            const openLanePicker = (name, anchorEl) => {
+                if (!model.speakers().includes(name) && !(name === '' && model.segments.some((seg) => !seg.speaker))) return;
+                pickerQuery.value = '';
+                pickerIndex.value = 0;
+                pickerAll.value = false;
+                openPopover('picker', anchorEl, 280, 360, { id: null, speaker: name, targets: [], scope: 'speaker' });
+            };
+
+            const pickerHeading = computed(() => {
+                if (popover.kind !== 'picker' || popover.scope !== 'speaker') return '';
+                return popover.speaker ? translate('asrEditor.renameSpeaker', { name: popover.speaker }) : translate('asrEditor.setSpeaker');
+            });
+
             const pickerOptions = computed(() => {
                 void tick.value;
                 if (popover.kind !== 'picker') return [];
+                const whole = popover.scope === 'speaker';
                 // Saved speakers whose voice matches the speaker being changed come first.
                 const voice = (popover.speaker && (session.voice.value || {})[popover.speaker]) || [];
                 const options = buildSpeakerOptions({
                     recording: model.speakers(), saved: session.savedSpeakers.value || [], voice, query: pickerQuery.value,
                 });
                 let last = null;
-                return options.map((option) => {
+                // For a whole speaker, its own name is no choice, another
+                // speaker of the recording is a merge and says so, and the
+                // number keys choose nothing (a merge takes a deliberate choice).
+                const offered = whole ? options.filter((option) => !(option.kind === 'recording' && option.name === popover.speaker)) : options;
+                return offered.map((option) => {
+                    const merge = whole && option.kind === 'recording';
                     const group = option.kind === 'recording' ? 'recording' : (option.kind === 'new' ? 'new' : 'saved');
                     const header = group !== last && group !== 'new' ? translate(group === 'recording' ? 'asrEditor.pickerRecording' : 'asrEditor.pickerSaved') : null;
                     last = group;
                     return {
                         ...option,
+                        key: whole ? null : option.key,
+                        merge,
                         header,
-                        label: option.kind === 'new' ? translate('asrEditor.pickerUseName', { name: option.name }) : option.name,
+                        label: option.kind === 'new' ? translate('asrEditor.pickerUseName', { name: option.name })
+                            : (merge ? translate('asrEditor.suggestionMergeInto', { name: option.name }) : option.name),
                         note: option.kind === 'voice' ? `${translate('speakerModal.voiceMatch')} ${percent(Math.round(option.similarity))}` : '',
                         color: option.kind === 'recording' ? colorOf(option.name) : '',
                         current: option.name === popover.speaker,
@@ -731,6 +757,31 @@ export function createAsrEditorPane() {
             const choosePickerOption = (option) => {
                 if (!option) return;
                 const options = option.id != null ? { speakerId: option.id } : {};
+                if (popover.scope === 'speaker') {
+                    const from = popover.speaker;
+                    // The offered voice match, chosen from the list: accepted
+                    // as with its Accept button, so that the match is recorded
+                    const best = option.kind === 'voice' ? suggestionOf(from) : null;
+                    if (best && best.name === option.name && best.speaker_id === option.id) {
+                        acceptSuggestion(from);
+                        return;
+                    }
+                    // Merged speakers share the link to a saved speaker too
+                    if (option.merge && model.speakerIdOf(option.name) != null) options.speakerId = model.speakerIdOf(option.name);
+                    const changed = model.renameSpeaker(from, option.name, options);
+                    closePopover();
+                    if (!changed) return;
+                    // As after an accepted voice match: the message takes the
+                    // change back with one click while it is the last edit.
+                    const rev = model.rev;
+                    session.toast(translate(option.merge ? 'asrEditor.suggestionMerged' : 'asrEditor.suggestionAccepted', {
+                        label: from || translate('asrEditor.noSpeaker'), name: option.name,
+                    }), {
+                        action: () => { if (model.rev === rev) undo(); },
+                        actionLabel: translate('asrEditor.undoAction'),
+                    });
+                    return;
+                }
                 if (pickerAll.value && popover.speaker) {
                     model.renameSpeaker(popover.speaker, option.name, options);
                 } else {
@@ -1231,6 +1282,7 @@ export function createAsrEditorPane() {
                 },
                 acceptSuggestion,
                 previewSpeaker,
+                openLanePicker,
             };
 
             onMounted(() => {
@@ -1285,7 +1337,7 @@ export function createAsrEditorPane() {
                 playFrom: (row) => { const i = model.indexOfId(row.id); if (i >= 0) { playFromTime(model.get(i).start_time); focusList(); } },
                 openPicker, openPickerForSelection, openMenu, openHelp, openTimesFor: (row, event) => openTimes(row.id, event.currentTarget),
                 popover, closePopover,
-                pickerQuery, pickerIndex, pickerAll, pickerOptions, pickerSuggestion, choosePickerOption, onPickerKeydown, onPickerInput,
+                pickerQuery, pickerIndex, pickerAll, pickerOptions, pickerHeading, pickerSuggestion, choosePickerOption, onPickerKeydown, onPickerInput,
                 timeStart, timeEnd, timeLinked, timeError, applyTimes, timesFromPlayhead,
                 menuItems, menuAction, onMenuKeydown, shortcutList,
                 previewSpeaker, acceptSuggestion,

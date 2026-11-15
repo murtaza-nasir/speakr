@@ -113,9 +113,12 @@
         <div v-if="popover.kind" class="asr-pop-layer" :class="{ 'asr-pop-layer--sheet': popover.sheet }" @mousedown.self="closePopover()">
             <div ref="popEl" class="asr-pop" :class="['asr-pop--' + popover.kind, { 'asr-pop--sheet': popover.sheet }]" :style="popover.style"
                  role="dialog" tabindex="-1" :data-asr-popover="popover.kind"
-                 :aria-label="popover.kind === 'picker' ? t('asrEditor.setSpeaker') : popover.kind === 'times' ? t('asrEditor.editTimes') : popover.kind === 'help' ? t('asrEditor.shortcuts') : t('help.actions')">
+                 :data-asr-picker-scope="popover.kind === 'picker' ? (popover.scope || 'segments') : null"
+                 :aria-label="popover.kind === 'picker' ? (pickerHeading || t('asrEditor.setSpeaker')) : popover.kind === 'times' ? t('asrEditor.editTimes') : popover.kind === 'help' ? t('asrEditor.shortcuts') : t('help.actions')">
 
                 <template v-if="popover.kind === 'picker'">
+                    <!-- Opened from a lane header of the timeline: the choice applies to the whole speaker -->
+                    <div v-if="pickerHeading" class="asr-pop__scope" data-asr-picker-heading v-text="pickerHeading"></div>
                     <input ref="pickerInput" type="text" class="field field--sm" data-autofocus v-model="pickerQuery"
                            :placeholder="t('asrEditor.pickerPlaceholder')" :aria-label="t('asrEditor.pickerPlaceholder')"
                            role="combobox" aria-expanded="true" aria-controls="asr-picker-list" autocomplete="off"
@@ -133,10 +136,11 @@
                         <template v-for="(option, i) in pickerOptions" :key="option.kind + ':' + option.name">
                             <li v-if="option.header" class="asr-pop__header" role="presentation" v-text="option.header"></li>
                             <li role="option" class="asr-pop__option" :class="{ 'is-active': i === pickerIndex, 'is-current': option.current }"
-                                :aria-selected="i === pickerIndex ? 'true' : 'false'" :data-asr-option="option.name"
+                                :aria-selected="i === pickerIndex ? 'true' : 'false'" :data-asr-option="option.name" :data-asr-merge="option.merge ? '' : null"
                                 @mousedown.prevent @mousemove="pickerIndex = i" @click="choosePickerOption(option)">
                                 <span v-if="option.color" class="asr-pop__dot" :class="option.color" aria-hidden="true"></span>
                                 <i v-else class="fas asr-pop__icon" :class="option.kind === 'new' ? 'fa-plus' : option.kind === 'voice' ? 'fa-wave-square' : 'fa-user'" aria-hidden="true"></i>
+                                <i v-if="option.merge" class="fas fa-code-merge asr-pop__icon" aria-hidden="true"></i>
                                 <span class="asr-pop__name" v-text="option.label"></span>
                                 <span v-if="option.note" class="asr-pop__note" v-text="option.note"></span>
                                 <kbd v-if="option.key" class="asr-kbd" v-text="option.key"></kbd>
@@ -144,7 +148,7 @@
                         </template>
                         <li v-if="!pickerOptions.length" class="asr-pop__none" v-text="t('asrEditor.pickerEmpty')"></li>
                     </ul>
-                    <label v-if="popover.speaker" class="asr-pop__all">
+                    <label v-if="popover.speaker && popover.scope !== 'speaker'" class="asr-pop__all">
                         <input type="checkbox" v-model="pickerAll">
                         <span v-text="t('asrEditor.pickerAll', { name: popover.speaker })"></span>
                     </label>
