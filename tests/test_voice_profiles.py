@@ -283,6 +283,58 @@ def test_merged_away_label_loses_its_sample(ctx):
     assert labels == {"SPEAKER_00"}
 
 
+def test_two_labels_named_as_one_person_in_one_save(ctx):
+    """The diarization split one person into two labels and the segment editor
+    merged them: both labels arrive mapped to the same name."""
+    user = _user()
+    ana = person()
+    rec = _recording(user, {"SPEAKER_00": near(ana, 0.05), "SPEAKER_01": near(ana, 0.05), "SPEAKER_02": person()})
+    data = json.loads(rec.transcription)
+    speaker_map = {"SPEAKER_00": {"name": "Ana", "isMe": False}, "SPEAKER_01": {"name": "Ana", "isMe": False}}
+    with patch("src.services.speaker_snippets.create_speaker_snippets", return_value=0):
+        r = _client(user).post(f"/recording/{rec.id}/update_transcript",
+                               json={"transcript_data": data, "speaker_map": speaker_map})
+    assert r.status_code == 200, r.get_data(as_text=True)
+    db.session.expire_all()
+    rec = db.session.get(Recording, rec.id)
+    stored = json.loads(rec.transcription)
+    # One person: one saved speaker, one name and one link on the segments of both labels
+    saved = Speaker.query.filter_by(user_id=user.id).all()
+    assert [s.name for s in saved] == ["Ana"]
+    assert [s["speaker"] for s in stored] == ["Ana", "Ana", "SPEAKER_02"]
+    assert stored[0]["speaker_id"] == stored[1]["speaker_id"] == saved[0].id and "speaker_id" not in stored[2]
+    assert rec.participants == "Ana"
+    # The voice of both labels trains that person, each as its own sample
+    samples = SpeakerVoiceSample.query.filter_by(recording_id=rec.id).all()
+    assert sorted((s.label, s.speaker_id) for s in samples) == [("SPEAKER_00", saved[0].id), ("SPEAKER_01", saved[0].id)]
+    assert rec.speaker_label_map == {"SPEAKER_00": "Ana", "SPEAKER_01": "Ana"}
+    assert saved[0].use_count == 1
+
+
+def test_a_label_merged_into_a_person_named_in_an_earlier_save(ctx):
+    user = _user()
+    ana = person()
+    rec = _recording(user, {"SPEAKER_00": near(ana, 0.05), "SPEAKER_01": near(ana, 0.05)})
+    _save_names(user, rec, {"SPEAKER_00": "Ana"})
+    rec = db.session.get(Recording, rec.id)
+    data = json.loads(rec.transcription)
+    assert [s["speaker"] for s in data] == ["Ana", "SPEAKER_01"]
+    body = {"transcript_data": data, "speaker_map": {"SPEAKER_01": {"name": "Ana", "isMe": False}}}
+    for _ in range(2):      # saving again changes nothing
+        with patch("src.services.speaker_snippets.create_speaker_snippets", return_value=0):
+            r = _client(user).post(f"/recording/{rec.id}/update_transcript", json=body)
+        assert r.status_code == 200, r.get_data(as_text=True)
+        db.session.expire_all()
+        rec = db.session.get(Recording, rec.id)
+        body = {"transcript_data": json.loads(rec.transcription), "speaker_map": {}}
+    ana_speaker = Speaker.query.filter_by(user_id=user.id).one()
+    stored = json.loads(rec.transcription)
+    assert [(s["speaker"], s["speaker_id"]) for s in stored] == [("Ana", ana_speaker.id)] * 2
+    samples = SpeakerVoiceSample.query.filter_by(recording_id=rec.id).all()
+    assert sorted((s.label, s.speaker_id) for s in samples) == [("SPEAKER_00", ana_speaker.id), ("SPEAKER_01", ana_speaker.id)]
+    assert rec.speaker_label_map == {"SPEAKER_00": "Ana", "SPEAKER_01": "Ana"}
+
+
 def test_sample_cap_drops_the_oldest(ctx):
     user = _user()
     ana = person()

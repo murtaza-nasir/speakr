@@ -81,11 +81,33 @@ describe('voice-match suggestions', () => {
         expect(bestSuggestion(suggestions, 'SPEAKER_00', ['SPEAKER_00', 'SPEAKER_01'])).toMatchObject({ name: 'Dana Lee', similarity: 87 });
     });
 
-    it('offers nothing for a named speaker, an unknown label, or a name already in the recording', () => {
+    it('offers nothing for a named speaker or an unknown label', () => {
         expect(bestSuggestion(suggestions, 'Dana', [])).toBeNull();
         expect(bestSuggestion(suggestions, 'SPEAKER_01', [])).toBeNull();
-        expect(bestSuggestion(suggestions, 'SPEAKER_00', ['dana lee'])).toBeNull();
         expect(bestSuggestion(null, 'SPEAKER_00', [])).toBeNull();
+    });
+
+    it('offers a match as a merge when the recording already has a speaker of that name', () => {
+        expect(bestSuggestion(suggestions, 'SPEAKER_00', ['SPEAKER_00', 'SPEAKER_01'])).toMatchObject({ merge: false, same: [] });
+        expect(bestSuggestion(suggestions, 'SPEAKER_00', ['Dana Lee', 'SPEAKER_00'])).toMatchObject({ name: 'Dana Lee', similarity: 87, merge: true, same: ['Dana Lee'] });
+        // Whatever the spelling in the recording
+        expect(bestSuggestion(suggestions, 'SPEAKER_00', ['dana lee', 'SPEAKER_00', 'DANA LEE'])).toMatchObject({ merge: true, same: ['dana lee', 'DANA LEE'] });
+    });
+
+    it('offers one person to two labels, and keeps the second offer after the first was accepted', () => {
+        const both = { SPEAKER_00: [{ speaker_id: 4, name: 'Dana Lee', similarity: 87 }], SPEAKER_01: [{ speaker_id: 4, name: 'Dana Lee', similarity: 83 }] };
+        expect(bestSuggestion(both, 'SPEAKER_00', ['SPEAKER_00', 'SPEAKER_01']).merge).toBe(false);
+        expect(bestSuggestion(both, 'SPEAKER_01', ['SPEAKER_00', 'SPEAKER_01']).merge).toBe(false);
+        // SPEAKER_00 was accepted: the recording now has Dana Lee and SPEAKER_01
+        expect(bestSuggestion(both, 'SPEAKER_01', ['Dana Lee', 'SPEAKER_01'])).toMatchObject({ name: 'Dana Lee', similarity: 83, merge: true });
+    });
+
+    it('does not list a merged speaker twice in the picker', () => {
+        const options = buildSpeakerOptions({
+            recording: ['Dana Lee', 'SPEAKER_01'], saved: [{ id: 4, name: 'Dana Lee' }],
+            voice: [{ speaker_id: 4, name: 'Dana Lee', similarity: 83 }],
+        });
+        expect(options.map((o) => [o.kind, o.name])).toEqual([['recording', 'Dana Lee'], ['recording', 'SPEAKER_01']]);
     });
 
     it('knows a diarization label', () => {

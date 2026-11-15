@@ -451,6 +451,49 @@ describe('speakers', () => {
         expect(m.acceptedMatches()).toEqual([]);
     });
 
+    it('merges two labels that are one person: one name, one id, one undo step each', () => {
+        const m = createAsrModel(sample());
+        m.renameSpeaker('A', 'Dana Lee', { speakerId: 4, match: { label: 'A', name: 'Dana Lee', speakerId: 4 } });
+        m.renameSpeaker('B', 'Dana Lee', { speakerId: 4, also: ['Dana Lee'], match: { label: 'B', name: 'Dana Lee', speakerId: 4 } });
+        expect(m.speakers()).toEqual(['Dana Lee']);
+        expect(m.toJSON().map((s) => [s.speaker, s.speaker_id])).toEqual(Array(4).fill(['Dana Lee', 4]));
+        expect(m.undoDepth).toBe(2);
+        // Each match keeps its own segments: both labels are recorded at the save
+        expect(m.acceptedMatches()).toEqual([
+            { label: 'A', name: 'Dana Lee', speakerId: 4, ids: [1, 3] },
+            { label: 'B', name: 'Dana Lee', speakerId: 4, ids: [2, 4] },
+        ]);
+        m.undo();
+        expect(m.segments.map((s) => s.speaker)).toEqual(['Dana Lee', 'B', 'Dana Lee', 'B']);
+        expect(m.acceptedMatches().map((x) => x.label)).toEqual(['A']);
+        m.undo();
+        expect(m.segments.map((s) => s.speaker)).toEqual(['A', 'B', 'A', 'B']);
+        expect(m.toJSON().every((s) => s.speaker_id === undefined)).toBe(true);
+        m.redo();
+        m.redo();
+        expect(m.speakers()).toEqual(['Dana Lee']);
+    });
+
+    it('merges into a speaker spelled or linked differently, and undoes it exactly', () => {
+        const m = createAsrModel([
+            { speaker: 'dana lee', sentence: 'a', start_time: 0, end_time: 1 },
+            { speaker: 'SPEAKER_01', sentence: 'b', start_time: 1, end_time: 2 },
+            { speaker: 'Dana Lee', sentence: 'c', start_time: 2, end_time: 3, speaker_id: 9 },
+            { speaker: 'Kim', sentence: 'd', start_time: 3, end_time: 4 },
+        ]);
+        const before = m.toJSON();
+        expect(m.renameSpeaker('SPEAKER_01', 'Dana Lee', {
+            speakerId: 4, also: ['dana lee', 'Dana Lee'], match: { label: 'SPEAKER_01', name: 'Dana Lee', speakerId: 4 },
+        })).toBe(true);
+        expect(m.speakers()).toEqual(['Dana Lee', 'Kim']);
+        expect(m.toJSON().slice(0, 3).map((s) => [s.speaker, s.speaker_id])).toEqual(Array(3).fill(['Dana Lee', 4]));
+        expect(m.undoDepth).toBe(1);
+        // Only the label's own segments are the voice match
+        expect(m.acceptedMatches()).toEqual([{ label: 'SPEAKER_01', name: 'Dana Lee', speakerId: 4, ids: [2] }]);
+        m.undo();
+        expect(m.toJSON()).toEqual(before);
+    });
+
     it('takes the names and links the server stored, outside the undo log', () => {
         const m = createAsrModel(sample());
         m.renameSpeaker('A', 'dana');

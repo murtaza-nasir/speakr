@@ -59,6 +59,24 @@ describe('withAcceptedMatches', () => {
         expect(out.transcriptData.map((s) => s.speaker)).toEqual(['Kim', 'SPEAKER_01', 'SPEAKER_00', 'Dana Lee']);
     });
 
+    it('sends two labels matched to one person under their own labels, both mapped to the name', () => {
+        const merged = segments.map((s) => ({ ...s, speaker: 'Dana Lee', speaker_id: 4 }));
+        const out = withAcceptedMatches(merged, ids, [
+            { label: 'SPEAKER_00', name: 'Dana Lee', speakerId: 4, ids: [1, 3] },
+            { label: 'SPEAKER_01', name: 'Dana Lee', speakerId: 4, ids: [2] },
+        ]);
+        expect(out.speakerMap).toEqual({ SPEAKER_00: { name: 'Dana Lee', isMe: false }, SPEAKER_01: { name: 'Dana Lee', isMe: false } });
+        expect(out.transcriptData.map((s) => s.speaker)).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_00', 'Dana Lee']);
+        expect(out.transcriptData.slice(0, 3).every((s) => !('speaker_id' in s))).toBe(true);
+    });
+
+    it('sends a label merged into a speaker named earlier under its label, the others as they are', () => {
+        const out = withAcceptedMatches(segments.map((s) => ({ ...s, speaker: 'Dana Lee', speaker_id: 4 })), ids,
+            [{ label: 'SPEAKER_01', name: 'Dana Lee', speakerId: 4, ids: [2] }]);
+        expect(out.speakerMap).toEqual({ SPEAKER_01: { name: 'Dana Lee', isMe: false } });
+        expect(out.transcriptData.map((s) => [s.speaker, s.speaker_id])).toEqual([['Dana Lee', 4], ['SPEAKER_01', undefined], ['Dana Lee', 4], ['Dana Lee', 4]]);
+    });
+
     it('returns null when no match still applies', () => {
         expect(withAcceptedMatches(segments, ids, [])).toBeNull();
         expect(withAcceptedMatches(segments, ids, [{ label: 'SPEAKER_00', name: 'Someone else', ids: [1] }])).toBeNull();

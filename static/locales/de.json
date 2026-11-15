@@ -949,7 +949,9 @@
         "quiet": "Pause"
       }
     },
-    "undoAction": "Rückgängig"
+    "undoAction": "Rückgängig",
+    "suggestionMergeInto": "Mit {{name}} zusammenführen",
+    "suggestionMerged": "{{label}} mit {{name}} zusammengeführt"
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",

@@ -157,6 +157,22 @@ describe('the segment editor session', () => {
         expect(saved.length).toBe(1);
     });
 
+    it('sends two labels merged into one person under their labels, both mapped to the name', async () => {
+        const stored = SEGMENTS.map((s) => ({ ...s, speaker: 'Dana Lee', speaker_id: 4 }));
+        const { api, requests, model } = setup({ serverSegments: stored });
+        await api.openAsrEditorModal();
+        model().renameSpeaker('SPEAKER_00', 'Dana Lee', { speakerId: 4, match: { label: 'SPEAKER_00', name: 'Dana Lee', speakerId: 4 } });
+        model().renameSpeaker('SPEAKER_01', 'Dana Lee', { speakerId: 4, also: ['Dana Lee'], match: { label: 'SPEAKER_01', name: 'Dana Lee', speakerId: 4 } });
+        expect(model().speakers()).toEqual(['Dana Lee']);
+        expect(await api.saveAsrTranscription(true)).toBe(true);
+        const request = requests.find((r) => r.url === '/recording/7/update_transcript');
+        expect(request.body.speaker_map).toEqual({ SPEAKER_00: { name: 'Dana Lee', isMe: false }, SPEAKER_01: { name: 'Dana Lee', isMe: false } });
+        expect(request.body.transcript_data.map((s) => s.speaker)).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_00']);
+        expect(request.body.transcript_data.some((s) => 'speaker_id' in s)).toBe(false);
+        expect(model().toJSON().map((s) => [s.speaker, s.speaker_id])).toEqual(Array(3).fill(['Dana Lee', 4]));
+        expect(model().acceptedMatches()).toEqual([]);
+    });
+
     it('does not record voice matches when a translation is edited', async () => {
         const { api, saved, requests, model } = setup({ translation: true });
         await api.openAsrEditorModal();

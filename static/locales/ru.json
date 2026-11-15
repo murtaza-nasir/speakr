@@ -949,7 +949,9 @@
         "quiet": "пауза"
       }
     },
-    "undoAction": "Отменить"
+    "undoAction": "Отменить",
+    "suggestionMergeInto": "Объединить с {{name}}",
+    "suggestionMerged": "{{label}} объединён с {{name}}"
   },
   "findReplace": {
     "open": "Найти и заменить (Ctrl+F)",

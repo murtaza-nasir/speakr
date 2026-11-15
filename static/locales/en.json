@@ -949,7 +949,9 @@
         "quiet": "quiet point"
       }
     },
-    "undoAction": "Undo"
+    "undoAction": "Undo",
+    "suggestionMergeInto": "Merge into {{name}}",
+    "suggestionMerged": "{{label}} merged into {{name}}"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",

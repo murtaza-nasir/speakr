@@ -949,7 +949,9 @@
         "quiet": "pausa"
       }
     },
-    "undoAction": "Desfazer"
+    "undoAction": "Desfazer",
+    "suggestionMergeInto": "Mesclar com {{name}}",
+    "suggestionMerged": "{{label}} mesclado com {{name}}"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",

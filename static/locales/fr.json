@@ -949,7 +949,9 @@
         "quiet": "pause"
       }
     },
-    "undoAction": "Annuler"
+    "undoAction": "Annuler",
+    "suggestionMergeInto": "Fusionner avec {{name}}",
+    "suggestionMerged": "{{label}} fusionné avec {{name}}"
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",

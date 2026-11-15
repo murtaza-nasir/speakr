@@ -238,6 +238,21 @@ class Editor:
             self.page.keyboard.up(key)
         self.page.wait_for_timeout(150)
 
+    def tl_lanes(self, count):
+        """The lanes, once the timeline has drawn the model's `count` speakers (it rebuilds them with its next frame)."""
+        self.page.wait_for_function(f"(n) => {TL}.lanes.length === n", arg=count, timeout=5000)
+        return self.tl("lanes")
+
+    def lane_offers(self, words):
+        """Wait until the lane headers offer exactly these voice-match buttons (they follow the model with the next frame)."""
+        try:
+            self.page.wait_for_function(
+                "(words) => JSON.stringify([...document.querySelectorAll(\"[data-asr-action='timeline-accept']\")].map(e => e.textContent.trim())) === JSON.stringify(words)",
+                arg=words, timeout=5000)
+        except Exception:
+            found = self.page.eval_on_selector_all("[data-asr-action='timeline-accept']", "els => els.map(e => e.textContent.trim())")
+            raise AssertionError(f"the lane headers offer {found}, not {words}")
+
     def tl_segments(self):
         return self.tl("segments")
 
@@ -636,14 +651,15 @@ def test_a_voice_match_is_accepted_and_saved_like_in_the_speaker_dialog(editor):
         # Accepting there renames the speaker and says so, with Undo in the message
         accept.click()
         assert editor.speakers() == ["Dana Lee" if s["speaker"] == "SPEAKER_00" else s["speaker"] for s in seeded]
-        assert lane_offer.count() == 0
+        editor.lane_offers([])
         toast = page.locator("#toastContainer .toast-message").filter(has_text="Dana Lee")
         toast.wait_for(state="visible", timeout=5000)
         assert toast.locator(".toast__action").inner_text().strip() == en("asrEditor.undoAction")
         toast.locator(".toast__action").click()
         assert editor.speakers() == [s["speaker"] for s in seeded]
         assert editor.action("undo").is_disabled() and not editor.dirty()
-        assert lane_offer.count() == 1 and offer.count() == 1
+        editor.lane_offers([en("asrEditor.suggestionAccept")])
+        assert offer.count() == 1
         toast.wait_for(state="detached", timeout=5000)
 
         # Accept renames the speaker in the whole recording, as one undo step
@@ -754,6 +770,104 @@ def test_the_timeline_shows_the_recording_and_follows_the_selection(meeting):
     assert page.evaluate("() => localStorage.getItem('speakr.asrEditor.timeline')") == "1"
     editor.check("editor timeline, reopened")
     editor.discard()
+
+
+def test_two_labels_matched_to_one_person_are_merged(editor):
+    """The diarization split one person into two labels and both match the same saved
+    speaker. Accepting one keeps the offer for the other, as a merge."""
+    page = editor.page
+    recording_id = editor.ids[MEETING_TITLE]
+    seeded = meeting_segments()
+    labels = [s["speaker"] for s in seeded]
+    editor.store(recording_id, seeded)
+    answer = {"success": True, "recording_id": recording_id, "suggestions": {
+        "SPEAKER_00": [{"speaker_id": 0, "name": "Dana Lee", "similarity": 87.2, "confidence": 0.9}],
+        "SPEAKER_01": [{"speaker_id": 0, "name": "Dana Lee", "similarity": 83.4, "confidence": 0.9}]}}
+    pattern = "**/speakers/suggestions/*"
+    page.route(pattern, lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(answer)))
+    accept_word, merge_word = en("asrEditor.suggestionAccept"), en("asrEditor.merge")
+    merge_into = en("asrEditor.suggestionMergeInto").replace("{{name}}", "Dana Lee")
+    try:
+        editor.open(recording_id)
+        editor.tl_ready(waveform=False)
+        offers = page.locator("[data-asr-suggestion]")
+        lane_offers = page.locator("[data-asr-lane-suggestion]")
+        offers.first.wait_for(state="visible", timeout=10000)
+        assert offers.count() == 2
+        editor.lane_offers([accept_word, accept_word])
+
+        # Accept the first: the second is still offered, now as a merge
+        page.locator(f"{ROW}[data-index='0'] [data-asr-action='accept-suggestion']").click()
+        one_named = ["Dana Lee" if label == "SPEAKER_00" else label for label in labels]
+        assert editor.speakers() == one_named
+        assert offers.count() == 1
+        editor.lane_offers([merge_word])
+        assert "83%" in lane_offers.inner_text() and "Dana Lee" in lane_offers.inner_text()
+        merge = editor.action("timeline-accept")
+        assert merge.inner_text().strip() == merge_word and merge.get_attribute("title") == merge_into
+        in_pane = page.locator(f"{ROW}[data-index='1'] [data-asr-action='accept-suggestion']")
+        assert in_pane.inner_text().strip() == merge_word and in_pane.get_attribute("title") == merge_into
+        editor.shot("asr-editor-test-lane-merge")
+        # The picker lists the person once
+        page.locator(f"{ROW}[data-index='1'] .asr-seg__chip").click()
+        page.locator("[data-asr-popover='picker']").wait_for(state="visible", timeout=5000)
+        options = page.eval_on_selector_all("[data-asr-option]", "els => els.map(e => e.dataset.asrOption)")
+        assert options.count("Dana Lee") == 1, options
+        page.keyboard.press("Escape")
+        page.locator("[data-asr-popover='picker']").wait_for(state="detached", timeout=5000)
+
+        # Merge: one speaker, one lane, one undo step
+        merge.click()
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+        assert editor.tl_lanes(1) == [{"name": "Dana Lee", "count": len(seeded)}]
+        assert offers.count() == 0
+        editor.lane_offers([])
+        toast = page.locator("#toastContainer .toast-message").filter(
+            has_text=en("asrEditor.suggestionMerged").replace("{{label}}", "SPEAKER_01").replace("{{name}}", "Dana Lee"))
+        toast.wait_for(state="visible", timeout=5000)
+        assert editor.tl("undoDepth") == 2
+        # Undo restores the label and the offer; once more, both labels
+        editor.action("undo").click()
+        assert editor.speakers() == one_named
+        assert [lane["name"] for lane in editor.tl_lanes(2)] == ["Dana Lee", "SPEAKER_01"]
+        editor.lane_offers([merge_word])
+        editor.action("undo").click()
+        assert editor.speakers() == labels
+        editor.lane_offers([accept_word, accept_word])
+        editor.action("redo").click()
+        editor.action("redo").click()
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+
+        # Saved: both labels go out under their own label, mapped to the one
+        # name, so the server names both and learns the voice from both
+        with page.expect_request(lambda r: r.method == "POST" and r.url.endswith(f"/recording/{recording_id}/update_transcript")) as sent:
+            editor.save()
+        body = sent.value.post_data_json
+        assert body["speaker_map"] == {"SPEAKER_00": {"name": "Dana Lee", "isMe": False}, "SPEAKER_01": {"name": "Dana Lee", "isMe": False}}
+        assert [s["speaker"] for s in body["transcript_data"]] == labels
+        stored = editor.stored(recording_id)
+        assert [s["speaker"] for s in stored] == ["Dana Lee"] * len(seeded)
+        assert len({s.get("speaker_id") for s in stored}) == 1 and stored[0].get("speaker_id") is not None
+        assert editor.speakers() == ["Dana Lee"] * len(seeded) and not editor.dirty()
+        editor.check("editor, merged voice matches")
+        editor.discard()
+
+        # After a reload the recording has one speaker, in the transcript and in the editor
+        page.unroute(pattern)
+        open_page(page, editor.problems, BASE, f"/recordings/{recording_id}", settle_ms=1500)
+        editor.click_edit()
+        editor.tl_ready(waveform=False)
+        assert editor.speakers() == ["Dana Lee"] * len(seeded)
+        assert editor.tl_lanes(1) == [{"name": "Dana Lee", "count": len(seeded)}]
+        assert page.locator("[data-asr-suggestion]").count() == 0
+        editor.check("editor, one speaker after the merge")
+        editor.discard()
+    finally:
+        page.unroute(pattern)
+        saved = page.request.get(f"{BASE}/speakers")
+        for speaker in (saved.json() if saved.ok else []):
+            if speaker.get("name") == "Dana Lee":
+                page.request.delete(f"{BASE}/speakers/{speaker['id']}", headers={"X-CSRFToken": editor.csrf()})
 
 
 def test_dragging_an_edge_changes_the_times_and_undo_restores_them(editor):

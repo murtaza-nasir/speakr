@@ -949,7 +949,9 @@
         "quiet": "停顿"
       }
     },
-    "undoAction": "撤销"
+    "undoAction": "撤销",
+    "suggestionMergeInto": "合并到 {{name}}",
+    "suggestionMerged": "{{label}} 已合并到 {{name}}"
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",

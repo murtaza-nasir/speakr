@@ -7,7 +7,8 @@
      rendered by Vue (one row per speaker). A voice match of an unnamed
      speaker is offered in its lane header as in the transcript pane: the
      name and percent (select to hear the speaker) and a button with a word
-     on it; the header column is wider while there is one. At phone width the
+     on it (Accept, or Merge when the recording already has a speaker of that
+     name); the header column is wider while there is one. At phone width the
      column has no room, and the matches are listed above the lanes.
      The canvas reads its colours from
      the --tl-* variables of .asr-tl and from the header swatches, which carry
@@ -43,7 +44,8 @@
                     <span v-text="lane.match"></span>
                     <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)" v-text="t('asrEditor.suggestionAccept')"></button>
+                <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)"
+                        :title="lane.merge || null" v-text="lane.merge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
             </span>
         </div>
     </div>
@@ -62,7 +64,8 @@
                             <span v-text="lane.match"></span>
                             <i class="fas fa-play asr-suggest__play" aria-hidden="true"></i>
                         </button>
-                        <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)" v-text="t('asrEditor.suggestionAccept')"></button>
+                        <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)"
+                        :title="lane.merge || null" v-text="lane.merge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
                     </span>
                 </div>
             </div>

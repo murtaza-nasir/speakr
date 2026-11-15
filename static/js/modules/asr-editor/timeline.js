@@ -252,9 +252,11 @@ export function createAsrEditorTimeline() {
                         color: speakerColorClass(session.colorMap, lane.name),
                         number: number >= 0 && number < 9 ? String(number + 1) : '',
                         match: match ? translate('asrEditor.suggestion', { name: match.name, percent: percent(Math.round(match.similarity)) }) : '',
+                        // The name is already in the recording: accepting merges the two speakers
+                        merge: match && match.merge ? translate('asrEditor.suggestionMergeInto', { name: match.name }) : '',
                     };
                 });
-                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}`).join('\u0002');
+                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}\u0001${l.merge}`).join('\u0002');
                 if (signature(next) !== signature(lanes.value)) {
                     lanes.value = next;
                     layout();
