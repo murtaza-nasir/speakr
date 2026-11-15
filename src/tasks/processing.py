@@ -399,7 +399,8 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         # recognised here and gets an AI title unless the user chose one.
         from src.utils.titles import title_is_user_chosen
         if title_is_user_chosen(recording):
-            current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
+            current_app.logger.info(f"Recording {recording_id} has user-provided title, skipping AI title generation")
+            current_app.logger.debug(f"User-provided title of recording {recording_id}: '{recording.title}'")
             db.session.commit()
             if not will_auto_summarize:
                 finish_processing(recording_id)
@@ -416,7 +417,8 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         if final_title:
             recording.title = final_title
             recording.title_source = 'auto'
-            current_app.logger.info(f"Title set for recording {recording_id}: {final_title}")
+            current_app.logger.info(f"Title set for recording {recording_id} ({len(final_title)} characters)")
+            current_app.logger.debug(f"Title of recording {recording_id}: {final_title}")
         else:
             current_app.logger.warning(f"Could not generate title for recording {recording_id}")
 
@@ -592,7 +594,8 @@ def _generate_ai_title(recording):
         title = clean_llm_response(raw_response) if raw_response else None
 
         if title:
-            current_app.logger.info(f"AI title generated for recording {recording.id}: {title}")
+            current_app.logger.info(f"AI title generated for recording {recording.id} ({len(title)} characters)")
+            current_app.logger.debug(f"AI title for recording {recording.id}: {title}")
         else:
             current_app.logger.warning(f"Empty AI title generated for recording {recording.id}")
 
@@ -815,7 +818,9 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             finish_reason, outcome = _completion_outcome(completion)
             current_app.logger.info(f"Summary LLM call for recording {recording_id}: {outcome}")
             raw_response = completion.choices[0].message.content
-            current_app.logger.info(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
+            current_app.logger.info(
+                f"Raw LLM response for recording {recording_id}: {len(raw_response or '')} characters")
+            current_app.logger.debug(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
 
             summary = clean_llm_response(raw_response) if raw_response else ""
             current_app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
@@ -1158,7 +1163,8 @@ You must respond with valid JSON format only."""
                 )
 
                 db.session.add(event)
-                current_app.logger.info(f"Added event '{event.title}' for recording {recording_id}")
+                current_app.logger.info(f"Added an event for recording {recording_id}")
+                current_app.logger.debug(f"Event added for recording {recording_id}: '{event.title}'")
 
             except Exception as e:
                 current_app.logger.error(f"Error saving event for recording {recording_id}: {str(e)}")

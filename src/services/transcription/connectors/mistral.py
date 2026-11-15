@@ -171,10 +171,11 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             result = response.json()
             logger.info(f"Mistral API response keys: {list(result.keys())}")
             if result.get('segments'):
-                logger.info(f"First segment sample: {result['segments'][0] if result['segments'] else 'none'}")
+                logger.debug(f"First segment sample: {result['segments'][0] if result['segments'] else 'none'}")
                 logger.info(f"Total segments: {len(result['segments'])}")
             else:
-                logger.warning(f"No segments in Mistral response. Full response (truncated): {str(result)[:500]}")
+                logger.warning(f"No segments in Mistral response ({len(str(result))} characters)")
+                logger.debug(f"Mistral response without segments (truncated): {str(result)[:500]}")
 
             # Parse segments if available
             segments = self._parse_segments(result.get('segments', []))

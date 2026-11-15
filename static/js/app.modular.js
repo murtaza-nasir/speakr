@@ -948,12 +948,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const entry = outputLanguages.value.find(([name, iso]) =>
                     String(name).toLowerCase() === needle || String(iso).toLowerCase() === needle);
                 if (!entry) return stored;
-                const key = `languages.${entry[1]}`;
-                const label = t(key);
-                // A key missing from the current locale renders as itself;
-                // the stored name is a better fallback than "languages.xx".
-                return label && label !== key ? label : stored;
+                return outputLanguageLabel(entry[0], entry[1]);
             };
+            // Locale key, then the browser's name of the language, then the
+            // English name (asr-languages.js), so the entries without a
+            // `languages.*` key are still shown in the interface language.
+            const outputLanguageLabel = (name, iso) => {
+                const locale = (window.i18n && window.i18n.currentLocale) || 'en';
+                if (window.SpeakrASRLanguages?.outputLabel) {
+                    return window.SpeakrASRLanguages.outputLabel(name, iso, locale);
+                }
+                const key = `languages.${iso}`;
+                const label = t(key);
+                return label && label !== key ? label : name;
+            };
+            // Options of the target-language select, sorted by label. A
+            // language already used for the recording that the list does not
+            // hold stays selectable.
+            const translationLanguageOptions = computed(() => {
+                const locale = (window.i18n && window.i18n.currentLocale) || 'en';
+                const options = outputLanguages.value.map(([name, iso]) => (
+                    { value: name, label: outputLanguageLabel(name, iso) }));
+                options.sort((a, b) => a.label.localeCompare(b.label, locale));
+                const current = translationTargetLanguage.value;
+                if (current && !options.some(o => o.value === current)) {
+                    options.push({ value: current, label: current });
+                }
+                return options;
+            });
             // Keep a re-run on the language already used for this recording;
             // otherwise offer the account's preferred language.
             const openTranslationModal = () => {
@@ -2033,7 +2055,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 transcriptDownloadFormat, showUploadSplitMenu,
                 currentPlayingSegmentIndex, followPlayerMode, processingIndicatorMinimized,
                 viewingTranslation, showTranslationModal, translationTargetLanguage,
-                openTranslationModal, translationLanguageLabel,
+                openTranslationModal, translationLanguageLabel, translationLanguageOptions,
 
                 // Chat
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef, chatThreads,

@@ -1520,7 +1520,7 @@ def _run_migrations(app, engine):
                                     success = process_recording_chunks(recording.id)
                                     if success:
                                         processed += 1
-                                        app.logger.info(f"Processed chunks for recording: {recording.title} ({recording.id})")
+                                        app.logger.info(f"Processed chunks for recording {recording.id}")
                                 except Exception as e:
                                     app.logger.warning(f"Failed to process chunks for recording {recording.id}: {e}")
                             

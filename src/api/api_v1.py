@@ -159,6 +159,11 @@ OPENAPI_SPEC = {
                     "transcription_duration_seconds": {"type": "integer", "description": "Wall-clock seconds spent transcribing"},
                     "summarization_duration_seconds": {"type": "integer", "description": "Wall-clock seconds spent summarizing"},
                     "translation_duration_seconds": {"type": "integer", "description": "Wall-clock seconds spent translating the transcription"},
+                    "has_transcription": {"type": "boolean", "description": "List entries only"},
+                    "has_summary": {"type": "boolean", "description": "List entries only"},
+                    "has_translation": {"type": "boolean", "description": "List entries only: a translation of the transcription is stored"},
+                    "transcription_translation_language": {"type": "string", "nullable": True, "description": "Detail endpoint only: language of the stored translation, null when there is none"},
+                    "transcription_translation": {"type": "string", "nullable": True, "description": "Detail endpoint only, and only when translation is named in include: the stored translation, formatted like transcription"},
                     "participants": {"type": "string"},
                     "is_inbox": {"type": "boolean"},
                     "is_highlighted": {"type": "boolean"},
@@ -417,7 +422,7 @@ OPENAPI_SPEC = {
                 "parameters": [
                     {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
                     {"name": "format", "in": "query", "schema": {"type": "string", "enum": ["full", "minimal"]}, "description": "minimal excludes large text fields"},
-                    {"name": "include", "in": "query", "schema": {"type": "string"}, "description": "Comma-separated: transcription,summary,notes"}
+                    {"name": "include", "in": "query", "schema": {"type": "string"}, "description": "Comma-separated: transcription,summary,notes,translation. Default: transcription,summary,notes. The translation text (transcription_translation) is returned only when translation is named here."}
                 ],
                 "responses": {"200": {"description": "Recording details"}, "404": {"description": "Not found"}}
             },
@@ -1362,6 +1367,7 @@ def _recording_list_item(r, refs=None, shared=None):
         'audio_duration': r.get_audio_duration(),
         'has_transcription': bool(r.transcription),
         'has_summary': bool(r.summary),
+        'has_translation': bool(r.transcription_translation),
         'processing_time_seconds': r.processing_time_seconds,
         'transcription_duration_seconds': r.transcription_duration_seconds,
         'summarization_duration_seconds': r.summarization_duration_seconds,
@@ -1908,8 +1914,10 @@ def get_recording(recording_id):
     Get full recording details.
 
     Query params:
-        include: Comma-separated fields to include (transcription, summary, notes)
-                 Default: all fields
+        include: Comma-separated fields to include (transcription, summary, notes,
+                 translation). Default: transcription,summary,notes. The translation
+                 text can be as large as the transcription, so it is returned only
+                 when translation is named.
         format: 'full' (default) or 'minimal' (excludes large text fields)
     """
     recording = db.session.get(Recording, recording_id)
@@ -1950,6 +1958,8 @@ def get_recording(recording_id):
         'transcription_duration_seconds': recording.transcription_duration_seconds,
         'summarization_duration_seconds': recording.summarization_duration_seconds,
         'translation_duration_seconds': recording.translation_duration_seconds,
+        'transcription_translation_language': (
+            recording.transcription_translation_language if recording.transcription_translation else None),
         'folder_id': folder['id'] if folder else None,
         'folder': folder,
         'deletion_exempt': recording.deletion_exempt,
@@ -1974,6 +1984,11 @@ def get_recording(recording_id):
             response['summary'] = recording.summary
         if 'notes' in include_fields:
             response['notes'] = recording.get_user_notes(current_user)
+        if 'translation' in include_fields:
+            # Same shape as transcription: the user's default template.
+            response['transcription_translation'] = format_transcription_with_template(
+                recording.transcription_translation, current_user
+            ) if recording.transcription_translation else None
 
     return jsonify(response)
 

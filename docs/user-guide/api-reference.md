@@ -614,6 +614,7 @@ GET /api/v1/recordings
       "audio_duration": 1830.5,
       "has_transcription": true,
       "has_summary": true,
+      "has_translation": false,
       "processing_time_seconds": 45.2,
       "transcription_duration_seconds": 38.1,
       "summarization_duration_seconds": 7.1,
@@ -785,7 +786,7 @@ GET /api/v1/recordings/{id}
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `format` | string | `full` | `full` or `minimal` (excludes large text fields) |
-| `include` | string | `transcription,summary,notes` | Comma-separated fields to include |
+| `include` | string | `transcription,summary,notes` | Comma-separated fields to include: `transcription`, `summary`, `notes`, `translation` |
 
 **Response:**
 
@@ -808,6 +809,8 @@ GET /api/v1/recordings/{id}
   "processing_time_seconds": 45.2,
   "transcription_duration_seconds": 38.1,
   "summarization_duration_seconds": 7.1,
+  "translation_duration_seconds": null,
+  "transcription_translation_language": null,
   "folder_id": 5,
   "folder": {"id": 5, "name": "Client Calls"},
   "deletion_exempt": false,
@@ -835,6 +838,9 @@ GET /api/v1/recordings/{id}
 
 !!! note "Transcript Formatting"
     The `transcription` field is automatically formatted using your default transcript template. Configure templates in Account Settings → Transcript Templates.
+
+!!! note "Translation"
+    `transcription_translation_language` is always returned and is `null` when the recording has no translation. The translation text is returned as `transcription_translation` only when `translation` is named in `include`, for example `?include=transcription,summary,notes,translation`. It is formatted with the same template as `transcription`, is `null` when the recording has no translation, and is omitted with `format=minimal`. In the list, `has_translation` reports whether a translation is stored. The segmented and subtitle forms of the translation are available from [Get Transcript](#get-transcript) with `translation=true`.
 
 ### Get Transcript
 

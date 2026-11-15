@@ -483,10 +483,14 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
             if not content:
                 logger.warning(f"LLM returned empty content. Model: {TEXT_MODEL_NAME}, finish_reason: {response.choices[0].finish_reason}")
                 # Log more details if available
-                if hasattr(response.choices[0].message, 'refusal'):
-                    logger.warning(f"Refusal: {response.choices[0].message.refusal}")
+                # The refusal text and the tool-call arguments are model output
+                # about user content: DEBUG only (discussion #603).
+                if getattr(response.choices[0].message, 'refusal', None):
+                    logger.warning(f"Refusal present ({len(str(response.choices[0].message.refusal))} characters)")
+                    logger.debug(f"Refusal: {response.choices[0].message.refusal}")
                 if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls:
-                    logger.warning(f"Tool calls present: {response.choices[0].message.tool_calls}")
+                    logger.warning(f"Tool calls present: {len(response.choices[0].message.tool_calls)}")
+                    logger.debug(f"Tool calls: {response.choices[0].message.tool_calls}")
 
         return response
 

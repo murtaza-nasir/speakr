@@ -3,9 +3,12 @@
  *
  * Single source of truth for the Whisper language set, used by:
  *  - the Vue app's transcription-language dropdowns (app.modular.js
- *    `languageOptions`), and
+ *    `languageOptions`),
  *  - the tag/folder editor modals' Default Language selects
- *    (organizer-modals.js), on both the account page and the main app.
+ *    (organizer-modals.js), on both the account page and the main app,
+ *  - the Transcription language select of the account page, and
+ *  - the labels of the output-language entries (account page and the
+ *    translation menu), through `outputLabel`.
  *
  * Labels come from Intl.DisplayNames so ~100 languages render localized
  * without translation keys; values stay the short codes the ASR backend
@@ -39,29 +42,57 @@
         bo: 'Tibetan',
     };
 
+    function currentLocale(locale) {
+        return locale || (window.i18n && window.i18n.currentLocale) || 'en';
+    }
+
+    function displayNamesFor(uiLocale) {
+        try {
+            return new Intl.DisplayNames([uiLocale, 'en'], { type: 'language' });
+        } catch (e) { /* very old browsers: fall back to raw codes */ }
+        return null;
+    }
+
+    /** The browser's name of one language code in uiLocale, or null. */
+    function intlLabel(displayNames, code, uiLocale) {
+        const lookup = LABEL_OVERRIDES[code] || code;
+        let label = null;
+        if (displayNames) {
+            try {
+                const name = displayNames.of(lookup);
+                // DisplayNames echoes back unknown codes; treat that as a miss
+                if (name && name !== lookup) label = name;
+            } catch (e) { /* invalid tag for this engine */ }
+        }
+        if (!label) label = FALLBACK_NAMES[code] || null;
+        if (!label) return null;
+        return label.charAt(0).toLocaleUpperCase(uiLocale) + label.slice(1);
+    }
+
     /** Localized {value, label} options, sorted by label. No empty entry. */
     function buildOptions(locale) {
-        const uiLocale = locale || (window.i18n && window.i18n.currentLocale) || 'en';
-        let displayNames = null;
-        try {
-            displayNames = new Intl.DisplayNames([uiLocale, 'en'], { type: 'language' });
-        } catch (e) { /* very old browsers: fall back to raw codes */ }
-        const options = CODES.map(code => {
-            const lookup = LABEL_OVERRIDES[code] || code;
-            let label = null;
-            if (displayNames) {
-                try {
-                    const name = displayNames.of(lookup);
-                    // DisplayNames echoes back unknown codes; treat that as a miss
-                    if (name && name !== lookup) label = name;
-                } catch (e) { /* invalid tag for this engine */ }
-            }
-            if (!label) label = FALLBACK_NAMES[code] || code;
-            label = label.charAt(0).toLocaleUpperCase(uiLocale) + label.slice(1);
-            return { value: code, label };
-        });
+        const uiLocale = currentLocale(locale);
+        const displayNames = displayNamesFor(uiLocale);
+        const options = CODES.map(code => (
+            { value: code, label: intlLabel(displayNames, code, uiLocale) || code }));
         options.sort((a, b) => a.label.localeCompare(b.label, uiLocale));
         return options;
+    }
+
+    /**
+     * Label of one output-language entry (English name, code) of
+     * OUTPUT_LANGUAGES in src/utils/language.py: the `languages.<code>`
+     * locale key when the current locale has it, then the browser's name of
+     * the language, then the English name.
+     */
+    function outputLabel(name, code, locale) {
+        const uiLocale = currentLocale(locale);
+        const i18n = window.i18n;
+        if (code && i18n && typeof i18n.getNestedTranslation === 'function') {
+            const translated = i18n.getNestedTranslation(uiLocale, 'languages.' + code);
+            if (translated && typeof translated === 'string') return translated;
+        }
+        return (code && intlLabel(displayNamesFor(uiLocale), code, uiLocale)) || name;
     }
 
     /**
@@ -111,5 +142,5 @@
         select.value = value;
     }
 
-    window.SpeakrASRLanguages = { CODES, buildOptions, populateSelect, setValue };
+    window.SpeakrASRLanguages = { CODES, buildOptions, populateSelect, setValue, outputLabel };
 })();

@@ -285,7 +285,8 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
             except json.JSONDecodeError:
                 continue
 
-        logger.error(f"Failed to parse VibeVoice response as JSON: {content[:500]}")
+        logger.error(f"Failed to parse VibeVoice response as JSON ({len(content)} characters)")
+        logger.debug(f"Unparseable VibeVoice response (truncated): {content[:500]}")
         raise TranscriptionError("VibeVoice returned unparseable JSON response")
 
     def _parse_segments(self, raw_segments: List[Dict[str, Any]]) -> List[TranscriptionSegment]:

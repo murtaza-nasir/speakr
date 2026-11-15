@@ -75,8 +75,34 @@
             }
         }
 
+        // Fill the Transcription language select from the shared list
+        // (asr-languages.js), with the names and the order of the upload
+        // options, and label the output languages in the current locale.
+        // The selected value is kept; a stored value outside the list stays
+        // as its own option, so a save never resets it.
+        function fillLanguageDropdowns(locale) {
+            const shared = window.SpeakrASRLanguages;
+            if (!shared) return;
+            const select = document.getElementById('transcription_language');
+            if (select) {
+                const stored = select.value;
+                Array.from(select.options).forEach(o => { if (o.dataset.sortPin !== 'top') o.remove(); });
+                for (const { value, label } of shared.buildOptions(locale)) {
+                    const opt = document.createElement('option');
+                    opt.value = value;
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                }
+                shared.setValue(select, stored);
+            }
+            document.querySelectorAll('#output_language option[data-lang-code]').forEach(opt => {
+                opt.textContent = shared.outputLabel(opt.value, opt.dataset.langCode, locale);
+            });
+        }
+
         function sortLanguageDropdowns() {
             const locale = (window.i18n && window.i18n.currentLocale) || 'en';
+            fillLanguageDropdowns(locale);
             ['ui_language', 'transcription_language', 'output_language'].forEach(id => {
                 sortSelectOptionsAlphabetically(document.getElementById(id), locale);
             });
@@ -1123,27 +1149,12 @@
                                         <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription language</label>
                                         <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                             <option value="" data-sort-pin="top" data-i18n="languages.autoDetect" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
-                                            <option value="en" data-i18n="languages.en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
-                                            <option value="es" data-i18n="languages.es" {% if current_user.transcription_language == 'es' %}selected{% endif %}>Spanish</option>
-                                            <option value="fr" data-i18n="languages.fr" {% if current_user.transcription_language == 'fr' %}selected{% endif %}>French</option>
-                                            <option value="de" data-i18n="languages.de" {% if current_user.transcription_language == 'de' %}selected{% endif %}>German</option>
-                                            <option value="it" data-i18n="languages.it" {% if current_user.transcription_language == 'it' %}selected{% endif %}>Italian</option>
-                                            <option value="pt" data-i18n="languages.pt" {% if current_user.transcription_language == 'pt' %}selected{% endif %}>Portuguese</option>
-                                            <option value="nl" data-i18n="languages.nl" {% if current_user.transcription_language == 'nl' %}selected{% endif %}>Dutch</option>
-                                            <option value="ru" data-i18n="languages.ru" {% if current_user.transcription_language == 'ru' %}selected{% endif %}>Russian</option>
-                                            <option value="zh" data-i18n="languages.zh" {% if current_user.transcription_language == 'zh' %}selected{% endif %}>Chinese</option>
-                                            <option value="ja" data-i18n="languages.ja" {% if current_user.transcription_language == 'ja' %}selected{% endif %}>Japanese</option>
-                                            <option value="ko" data-i18n="languages.ko" {% if current_user.transcription_language == 'ko' %}selected{% endif %}>Korean</option>
-                                            <option value="ar" data-i18n="languages.ar" {% if current_user.transcription_language == 'ar' %}selected{% endif %}>Arabic</option>
-                                            <option value="hi" data-i18n="languages.hi" {% if current_user.transcription_language == 'hi' %}selected{% endif %}>Hindi</option>
-                                            <option value="pl" data-i18n="languages.pl" {% if current_user.transcription_language == 'pl' %}selected{% endif %}>Polish</option>
-                                            <option value="uk" data-i18n="languages.uk" {% if current_user.transcription_language == 'uk' %}selected{% endif %}>Ukrainian</option>
-                                            <option value="vi" data-i18n="languages.vi" {% if current_user.transcription_language == 'vi' %}selected{% endif %}>Vietnamese</option>
-                                            <option value="th" data-i18n="languages.th" {% if current_user.transcription_language == 'th' %}selected{% endif %}>Thai</option>
-                                            <option value="tr" data-i18n="languages.tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
-                                            <option value="id" data-i18n="languages.id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
-                                            <option value="sv" data-i18n="languages.sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
-                                            <option value="pt-BR" data-i18n="languages.pt-BR" {% if current_user.transcription_language == 'pt-BR' %}selected{% endif %}>Portuguese (Brazilian)</option>
+                                            {# The languages are filled from the shared list in asr-languages.js
+                                               (fillLanguageDropdowns). The stored value is rendered here, so it is
+                                               selected before the script runs and is kept when it is outside the list. #}
+                                            {% if current_user.transcription_language %}
+                                            <option value="{{ current_user.transcription_language }}" selected>{{ current_user.transcription_language }}</option>
+                                            {% endif %}
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
                                     </div>
@@ -1152,8 +1163,12 @@
                                         <select name="output_language" id="output_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                             <option value="" data-sort-pin="top" data-i18n="languages.defaultModelDecides" {% if not current_user.output_language %}selected{% endif %}>Default (model decides)</option>
                                             {% for _lang_name, _lang_code in output_languages %}
-                                            <option value="{{ _lang_name }}" data-i18n="languages.{{ _lang_code }}" {% if current_user.output_language == _lang_name %}selected{% endif %}>{{ _lang_name }}</option>
+                                            <option value="{{ _lang_name }}" data-lang-code="{{ _lang_code }}" {% if current_user.output_language == _lang_name %}selected{% endif %}>{{ _lang_name }}</option>
                                             {% endfor %}
+                                            {# A stored value outside the list stays selected and is saved back unchanged. #}
+                                            {% if current_user.output_language and current_user.output_language not in output_languages|map('first') %}
+                                            <option value="{{ current_user.output_language }}" selected>{{ current_user.output_language }}</option>
+                                            {% endif %}
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, chat, and translation. Leave on Default to follow the model's own behaviour.</p>
                                     </div>

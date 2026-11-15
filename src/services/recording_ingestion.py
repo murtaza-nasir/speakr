@@ -1206,7 +1206,7 @@ def ingest(
                 prompt_variables = sanitize_variable_values(parsed_vars)
             except (TypeError, ValueError):
                 current_app.logger.warning(
-                    f"Could not parse prompt_variables form field as JSON: {raw_prompt_variables[:200]}"
+                    f"Could not parse prompt_variables form field as JSON ({len(raw_prompt_variables)} characters)"
                 )
 
         # Convert to int if provided

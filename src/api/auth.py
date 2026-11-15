@@ -890,7 +890,13 @@ def account():
             # Normalize transcription_language so legacy display-name values
             # ("Français", "Deutsch", ...) can't reach the ASR call (issue #256).
             from src.utils.language import normalize_language_code
-            current_user.transcription_language = normalize_language_code(transcription_lang)
+            normalized_lang = normalize_language_code(transcription_lang)
+            # A stored value outside the list is shown as its own option on
+            # the account page. Posted back unchanged, it is kept (#613);
+            # only a different choice replaces it.
+            if not (normalized_lang is None and transcription_lang
+                    and transcription_lang == current_user.transcription_language):
+                current_user.transcription_language = normalized_lang
             current_user.output_language = output_lang if output_lang else None
 
             # Timezone for generated titles (#412). Gated on the field being
