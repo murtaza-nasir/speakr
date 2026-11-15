@@ -1,0 +1,60 @@
+<!-- Timeline of the segment editor: the template of the asr-editor-timeline
+     component (static/js/modules/asr-editor/timeline.js). Included in
+     index.html outside #app, so the page's root template does not compile it.
+
+     The ruler, the waveform and the speaker lanes are one canvas and the
+     overview is another; the lane headers beside them are the only part
+     rendered by Vue (one row per speaker). The canvas reads its colours from
+     the --tl-* variables of .asr-tl and from the header swatches, which carry
+     the .speaker-color-N classes of the transcript. -->
+<script type="text/x-template" id="asr-editor-timeline-template">
+<section class="asr-tl" :class="{ 'asr-tl--closed': !open }" ref="root" data-asr-timeline :aria-label="t('asrEditor.timeline.title')">
+    <div class="asr-tl__bar">
+        <button type="button" class="asr-tl__toggle" data-asr-action="timeline-toggle" :aria-expanded="open ? 'true' : 'false'"
+                @click="toggleOpen" :title="open ? t('asrEditor.timeline.hide') : t('asrEditor.timeline.show')">
+            <i class="fas text-xs" :class="open ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
+            <span v-text="t('asrEditor.timeline.title')"></span>
+        </button>
+        <span v-if="open && waveState === 'loading'" class="asr-tl__status" role="status" data-asr-timeline-status>
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            <span v-text="t('asrEditor.timeline.waveformLoading')"></span>
+        </span>
+        <div v-if="open" class="asr-tl__zoom">
+            <button type="button" class="asr-tl__btn" data-asr-action="timeline-zoom-out" @click="zoomOut"
+                    :title="t('asrEditor.timeline.zoomOut')" :aria-label="t('asrEditor.timeline.zoomOut')"><i class="fas fa-magnifying-glass-minus"></i></button>
+            <button type="button" class="asr-tl__btn" data-asr-action="timeline-zoom-in" @click="zoomIn"
+                    :title="t('asrEditor.timeline.zoomIn')" :aria-label="t('asrEditor.timeline.zoomIn')"><i class="fas fa-magnifying-glass-plus"></i></button>
+            <button type="button" class="asr-tl__btn" data-asr-action="timeline-zoom-fit" @click="zoomFit"
+                    :title="t('asrEditor.timeline.zoomFit')" :aria-label="t('asrEditor.timeline.zoomFit')"><i class="fas fa-arrows-left-right"></i></button>
+        </div>
+    </div>
+    <div class="asr-tl__body" v-show="open">
+        <div class="asr-tl__grid">
+            <div class="asr-tl__heads" ref="heads">
+                <div class="asr-tl__head-ruler" :style="{ height: rulerHeight + 'px' }"></div>
+                <div class="asr-tl__head-audio" :style="{ height: waveHeight + 'px' }" v-text="t('asrEditor.timeline.audio')"></div>
+                <div v-for="lane in lanes" :key="lane.name" class="asr-tl__lane" :style="{ height: laneHeight + 'px' }" :data-asr-lane="lane.index">
+                    <span class="asr-tl__swatch" :class="lane.color" data-asr-lane-swatch
+                          :title="lane.number ? t('asrEditor.timeline.laneKey', { key: lane.number }) : null" v-text="lane.number"></span>
+                    <span class="asr-tl__name">
+                        <span class="asr-tl__name-1" :title="lane.label" v-text="lane.label"></span>
+                        <span v-if="lane.match && laneHeight >= 30" class="asr-tl__name-2" :title="lane.match" v-text="lane.match"></span>
+                    </span>
+                    <button v-if="lane.match" type="button" class="asr-tl__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)"
+                            :title="lane.match" :aria-label="t('asrEditor.suggestionAccept') + ': ' + lane.match">
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="asr-tl__box" ref="box">
+                <canvas ref="canvas" class="asr-tl__canvas" tabindex="0" data-asr-timeline-canvas :aria-label="t('asrEditor.timeline.canvasLabel')"></canvas>
+            </div>
+            <div class="asr-tl__mini-label" v-text="t('asrEditor.timeline.overview')"></div>
+            <div class="asr-tl__mini-box">
+                <canvas ref="mini" class="asr-tl__mini" data-asr-timeline-overview :style="{ height: overviewHeight + 'px' }" :aria-label="t('asrEditor.timeline.overviewLabel')"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="asr-tl__tip" ref="tip" hidden></div>
+</section>
+</script>

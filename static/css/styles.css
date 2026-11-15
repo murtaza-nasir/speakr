@@ -3506,6 +3506,15 @@ body {
 html.asr-editor-long .main-content {
     content-visibility: hidden;
 }
+/* The dialog's backdrop blur is recomputed whenever anything inside the
+   dialog is repainted. With the page behind it hidden there is little left
+   to blur, and without it the timeline repaints in a third of the time
+   where the browser has no GPU. (`body` in the selector: a theme sets the
+   blur with the specificity of html[data-ui-theme] .modal-overlay.) */
+html.asr-editor-long body .modal-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
 .asr-editor-player {
     padding: var(--sp-3) var(--sp-5);
 }
@@ -4095,6 +4104,220 @@ html.asr-editor-long .main-content {
 .asr-help__row dd {
     margin: 0;
     color: var(--text-secondary);
+}
+
+/* ---- Segment editor: timeline -----------------------------------------------
+   templates/components/asr-editor-timeline.html and
+   static/js/modules/asr-editor/timeline.js. A ruler, the waveform and one
+   lane per speaker on a canvas, an overview below, lane headers beside them.
+   The canvas takes its colours from the --tl-* variables set here (a theme
+   may override them) and the blocks take theirs from the header swatches,
+   which have the .speaker-color-N classes of the transcript. */
+
+.asr-tl {
+    --tl-bg: var(--bg-secondary);
+    --tl-lane: var(--bg-secondary);
+    --tl-lane-alt: var(--bg-tertiary);
+    --tl-ruler: var(--bg-tertiary);
+    --tl-line: var(--border-secondary);
+    --tl-text: var(--text-primary);
+    --tl-muted: var(--text-muted);
+    --tl-accent: var(--border-focus);
+    --tl-problem: var(--text-danger);
+    --tl-wave: var(--text-muted);
+    --tl-playhead: var(--text-warn-strong);
+    --tl-selection: var(--text-primary);
+    --tl-head: 190px;
+    position: relative;
+    flex-shrink: 0;
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-secondary);
+}
+.asr-tl__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: 32px;
+    padding: 0 var(--sp-4);
+}
+.asr-tl__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 6px;
+    margin-left: -6px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--fs-meta);
+    font-weight: 600;
+    cursor: pointer;
+}
+.asr-tl__toggle > i { width: 12px; color: var(--text-muted); }
+@media (hover: hover) {
+    .asr-tl__toggle:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+}
+.asr-tl__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.asr-tl__zoom {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+.asr-tl__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+@media (hover: hover) {
+    .asr-tl__btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+}
+.asr-tl__body {
+    max-height: 46vh;
+    overflow-y: auto;
+    border-top: var(--border-hairline) solid var(--border-primary);
+}
+.asr-tl__grid {
+    display: grid;
+    grid-template-columns: var(--tl-head) minmax(0, 1fr);
+}
+.asr-tl__heads {
+    min-width: 0;
+    border-right: var(--border-hairline) solid var(--tl-line);
+    background: var(--bg-tertiary);
+}
+.asr-tl__head-ruler,
+.asr-tl__head-audio,
+.asr-tl__lane { border-bottom: var(--border-hairline) solid var(--tl-line); box-sizing: border-box; }
+.asr-tl__head-audio,
+.asr-tl__mini-label {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-3);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+.asr-tl__lane {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 6px 0 var(--sp-3);
+}
+.asr-tl__lane:last-child { border-bottom: 0; }
+.asr-tl__lane.is-hot {
+    background: var(--bg-accent);
+    background: color-mix(in srgb, var(--border-focus) 16%, transparent);
+}
+.asr-tl__swatch {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1;
+}
+.asr-tl__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+.asr-tl__name-1,
+.asr-tl__name-2 {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.asr-tl__name-1 { font-size: 0.75rem; font-weight: 600; color: var(--text-primary); }
+.asr-tl__name-2 { font-size: 0.6875rem; color: var(--text-muted); }
+.asr-tl__accept {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: var(--border-hairline) solid var(--border-secondary);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--tint-info-fg, var(--text-accent));
+    font-size: 0.6875rem;
+    cursor: pointer;
+}
+@media (hover: hover) {
+    .asr-tl__accept:hover { background: var(--bg-accent); }
+}
+.asr-tl__box,
+.asr-tl__mini-box { min-width: 0; position: relative; }
+.asr-tl__mini-label,
+.asr-tl__mini-box { border-top: var(--border-hairline) solid var(--tl-line); }
+.asr-tl__mini-label {
+    border-right: var(--border-hairline) solid var(--tl-line);
+    background: var(--bg-tertiary);
+}
+.asr-tl__canvas,
+.asr-tl__mini {
+    display: block;
+    width: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.asr-tl__mini { cursor: pointer; }
+.asr-tl__canvas:focus { outline: none; }
+.asr-tl__canvas:focus-visible,
+.asr-tl__toggle:focus-visible,
+.asr-tl__btn:focus-visible,
+.asr-tl__accept:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+.asr-tl__tip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--text-primary);
+    color: var(--bg-secondary);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+    .asr-tl { --tl-head: 104px; }
+    .asr-tl__bar { padding: 0 var(--sp-2); min-height: 40px; }
+    .asr-tl__toggle { min-height: 36px; }
+    .asr-tl__btn { width: 40px; height: 40px; }
+    .asr-tl__status > span { display: none; }
+    .asr-tl__body { max-height: 38vh; }
+    .asr-tl__lane { gap: 4px; padding: 0 4px 0 6px; }
+    .asr-tl__head-audio,
+    .asr-tl__mini-label { padding: 0 6px; }
+    .asr-tl__accept { width: 28px; height: 28px; }
 }
 
 /* Phones: the same pane, stacked, with touch-sized controls and nothing that

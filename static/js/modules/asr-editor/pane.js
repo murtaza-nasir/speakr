@@ -82,6 +82,9 @@ export function createAsrEditorPane() {
             let destroyed = false;
 
             const bump = () => { tick.value++; };
+            // The timeline (timeline.js) shows the selection and the loop too
+            let selectingFromTimeline = false;
+            const tellTimeline = () => { if (session.timeline) session.timeline.selectionChanged(selectingFromTimeline); };
             const colorOf = (name) => speakerColorClass(session.colorMap, name);
 
             // ---- layout: heights, window, scroll position -------------------
@@ -281,6 +284,7 @@ export function createAsrEditorPane() {
                 selectionCount.value = selected.size;
                 model.endBurst();
                 bump();
+                tellTimeline();
             };
 
             const selectedIndices = () => [...selected].map((id) => model.indexOfId(id)).filter((i) => i >= 0).sort((a, b) => a - b);
@@ -300,6 +304,7 @@ export function createAsrEditorPane() {
                 selectionCount.value = selected.size;
                 model.endBurst();
                 bump();
+                tellTimeline();
             };
 
             // The single segment commands act on: the only selected one, else
@@ -379,6 +384,7 @@ export function createAsrEditorPane() {
             const stopLoop = () => {
                 loopRange = null;
                 looping.value = false;
+                if (session.timeline) session.timeline.refresh();
             };
 
             const playFromTime = (time) => {
@@ -406,6 +412,7 @@ export function createAsrEditorPane() {
                 queue = null;
                 loopRange = { start: seg.start_time, end: seg.end_time };
                 looping.value = true;
+                if (session.timeline) session.timeline.refresh();
                 a.currentTime = seg.start_time;
                 const p = a.play();
                 if (p && p.catch) p.catch(() => {});
@@ -863,6 +870,11 @@ export function createAsrEditorPane() {
                     row([']'], 'setEnd'),
                     row(['Alt', '←', '→'], 'nudgeStart'),
                     row(['Alt', 'Shift', '←', '→'], 'nudgeEnd'),
+                    row([translate('asrEditor.keys.drag')], 'dragBlock'),
+                    row(['Alt', translate('asrEditor.keys.drag')], 'dragAlone'),
+                    row([mod, translate('asrEditor.keys.drag')], 'dragNoSnap'),
+                    row([mod, translate('asrEditor.keys.wheel')], 'zoom'),
+                    row(['←', '→'], 'seek'),
                     row(['S'], 'splitPlayhead'),
                     row(['M'], 'merge'),
                     row(['T'], 'times'),
@@ -1173,6 +1185,37 @@ export function createAsrEditorPane() {
                 },
                 clearHighlight() { flashId = null; bump(); },
                 refresh: bump,
+
+                // For the timeline (timeline.js)
+                selection: () => selected,
+                anchor: () => (anchorId != null && selected.has(anchorId) ? anchorId : (selected.size ? selected.values().next().value : null)),
+                /** A click on a block: select it here as a click on its row would, and show the row. */
+                selectFromTimeline(index, { shift = false, toggle = false } = {}) {
+                    if (index < 0 || index >= model.length) return;
+                    selectingFromTimeline = true;
+                    try { selectIndex(index, { shift, toggle }); } finally { selectingFromTimeline = false; }
+                    reveal(index);
+                },
+                clearSelection,
+                loopRange: () => loopRange,
+                /** The playhead was moved by hand: a loop it left is over. */
+                leaveLoop(time) {
+                    queue = null;
+                    if (loopRange && (time < loopRange.start || time >= loopRange.end)) stopLoop();
+                },
+                following: () => follow.value,
+                /** Play one stretch of the audio and stop at its end. */
+                playRange(start, end) {
+                    const a = audio();
+                    if (!a || !Number.isFinite(start) || !(end > start)) return;
+                    stopLoop();
+                    queue = [{ start, end }];
+                    a.currentTime = start;
+                    const p = a.play();
+                    if (p && p.catch) p.catch(() => {});
+                    startMonitor();
+                },
+                acceptSuggestion,
             };
 
             onMounted(() => {

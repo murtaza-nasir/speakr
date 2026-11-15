@@ -911,9 +911,39 @@
       "undo": "Desfazer",
       "redo": "Refazer",
       "find": "Localizar e substituir",
-      "save": "Salvar"
+      "save": "Salvar",
+      "drag": "arrastar",
+      "wheel": "roda",
+      "dragBlock": "Linha do tempo: mover um bloco, arrastar uma borda ou desenhar um novo segmento",
+      "dragAlone": "Linha do tempo: mover só uma borda e permitir sobreposição",
+      "dragNoSnap": "Linha do tempo: sem encaixe",
+      "zoom": "Zoom da linha do tempo",
+      "seek": "Linha do tempo: mover o cursor de reprodução 1 s (Shift: 5 s)"
     },
-    "suggestionOnChip": "{{speaker}}. Correspondência de voz: {{match}}"
+    "suggestionOnChip": "{{speaker}}. Correspondência de voz: {{match}}",
+    "timeline": {
+      "title": "Linha do tempo",
+      "show": "Mostrar a linha do tempo",
+      "hide": "Ocultar a linha do tempo",
+      "zoomIn": "Aumentar o zoom",
+      "zoomOut": "Diminuir o zoom",
+      "zoomFit": "Mostrar a gravação inteira",
+      "audio": "Áudio",
+      "overview": "Visão geral",
+      "canvasLabel": "Linha do tempo com uma faixa por falante. Arraste um bloco para movê-lo, uma borda para mudar o início ou o fim, e o espaço vazio para adicionar um segmento.",
+      "overviewLabel": "Visão geral da gravação inteira. Arraste para rolar.",
+      "waveformLoading": "Preparando a forma de onda",
+      "laneKey": "Pressione {{key}} para atribuir a seleção",
+      "start": "Início",
+      "end": "Fim",
+      "newSegment": "Novo segmento",
+      "neighborFollows": "o vizinho acompanha",
+      "snap": {
+        "playhead": "cursor de reprodução",
+        "edge": "borda de segmento",
+        "quiet": "pausa"
+      }
+    }
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",

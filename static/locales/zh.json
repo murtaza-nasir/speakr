@@ -911,9 +911,39 @@
       "undo": "撤销",
       "redo": "重做",
       "find": "查找和替换",
-      "save": "保存"
+      "save": "保存",
+      "drag": "拖动",
+      "wheel": "滚轮",
+      "dragBlock": "时间轴：移动片段、拖动边缘或绘制新片段",
+      "dragAlone": "时间轴：只移动一个边缘，允许重叠",
+      "dragNoSnap": "时间轴：不吸附",
+      "zoom": "缩放时间轴",
+      "seek": "时间轴：将播放位置移动 1 秒（Shift：5 秒）"
     },
-    "suggestionOnChip": "{{speaker}}。声纹匹配：{{match}}"
+    "suggestionOnChip": "{{speaker}}。声纹匹配：{{match}}",
+    "timeline": {
+      "title": "时间轴",
+      "show": "显示时间轴",
+      "hide": "隐藏时间轴",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "zoomFit": "显示整个录音",
+      "audio": "音频",
+      "overview": "总览",
+      "canvasLabel": "时间轴，每位说话人一条轨道。拖动片段可移动，拖动边缘可更改开始或结束，在空白处拖动可添加片段。",
+      "overviewLabel": "整个录音的总览。拖动以滚动。",
+      "waveformLoading": "正在准备波形",
+      "laneKey": "按 {{key}} 分配所选片段",
+      "start": "开始",
+      "end": "结束",
+      "newSegment": "新片段",
+      "neighborFollows": "相邻片段跟随",
+      "snap": {
+        "playhead": "播放位置",
+        "edge": "片段边缘",
+        "quiet": "停顿"
+      }
+    }
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",

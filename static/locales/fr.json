@@ -911,9 +911,39 @@
       "undo": "Annuler",
       "redo": "Rétablir",
       "find": "Rechercher et remplacer",
-      "save": "Enregistrer"
+      "save": "Enregistrer",
+      "drag": "glisser",
+      "wheel": "molette",
+      "dragBlock": "Chronologie : déplacer un bloc, faire glisser un bord ou tracer un nouveau segment",
+      "dragAlone": "Chronologie : déplacer un seul bord et autoriser le chevauchement",
+      "dragNoSnap": "Chronologie : sans magnétisme",
+      "zoom": "Zoomer la chronologie",
+      "seek": "Chronologie : déplacer la tête de lecture de 1 s (Maj : 5 s)"
     },
-    "suggestionOnChip": "{{speaker}}. Correspondance vocale : {{match}}"
+    "suggestionOnChip": "{{speaker}}. Correspondance vocale : {{match}}",
+    "timeline": {
+      "title": "Chronologie",
+      "show": "Afficher la chronologie",
+      "hide": "Masquer la chronologie",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "zoomFit": "Afficher tout l'enregistrement",
+      "audio": "Audio",
+      "overview": "Vue d'ensemble",
+      "canvasLabel": "Chronologie avec une piste par intervenant. Faites glisser un bloc pour le déplacer, un bord pour changer son début ou sa fin, et l'espace vide pour ajouter un segment.",
+      "overviewLabel": "Vue d'ensemble de tout l'enregistrement. Faites glisser pour défiler.",
+      "waveformLoading": "Préparation de la forme d'onde",
+      "laneKey": "Appuyez sur {{key}} pour attribuer la sélection",
+      "start": "Début",
+      "end": "Fin",
+      "newSegment": "Nouveau segment",
+      "neighborFollows": "le voisin suit",
+      "snap": {
+        "playhead": "tête de lecture",
+        "edge": "bord de segment",
+        "quiet": "pause"
+      }
+    }
   },
   "findReplace": {
     "open": "Rechercher et remplacer (Ctrl+F)",

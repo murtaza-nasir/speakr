@@ -1,8 +1,9 @@
 <!-- Segment transcript editor.
      The transcript pane is the asr-editor-pane component
      (templates/components/asr-editor-pane.html, static/js/modules/asr-editor/):
-     it renders only the rows in view over an editing model with undo. The
-     player, the find and replace bar and the save buttons stay here. -->
+     it renders only the rows in view over an editing model with undo. Above
+     it, the asr-editor-timeline component draws the same model on a canvas.
+     The player, the find and replace bar and the save buttons stay here. -->
 <div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal()" class="modal-overlay">
     <div class="modal-panel modal-panel--xl modal-panel--phone-full asr-editor-modal">
         <div class="modal-header">
@@ -79,6 +80,11 @@
                 </button>
             </div>
         </div>
+
+        <!-- Timeline: waveform and one lane per speaker (static/js/modules/asr-editor/timeline.js) -->
+        <asr-editor-timeline v-if="asrEditorSession" :key="'timeline-' + asrEditorSession.key" :session="asrEditorSession"
+                             :duration="Number(selectedRecording.audio_duration_seconds) || 0"
+                             :has-audio="!selectedRecording.audio_deleted_at && !selectedRecording.incognito"></asr-editor-timeline>
 
         {% include 'components/find-replace-bar.html' %}
 
