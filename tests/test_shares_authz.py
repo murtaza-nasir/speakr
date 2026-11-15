@@ -37,6 +37,8 @@ import tempfile
 import uuid
 from contextlib import contextmanager
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # When run standalone (python tests/test_shares_authz.py), conftest.py is NOT
@@ -60,6 +62,25 @@ from src.models import User, Recording, Share, InternalShare, SharedRecordingSta
 app.config["WTF_CSRF_ENABLED"] = False
 
 HTTPS = {"wsgi.url_scheme": "https"}
+
+
+@pytest.fixture
+def search_level_everyone():
+    """The user search level everyone, at which a share may name any account
+    by its id alone. The other levels are covered in
+    tests/test_share_recipient_scope.py."""
+    from src.models import SystemSetting
+    with app.app_context():
+        row = SystemSetting.query.filter_by(key='user_search_scope').first()
+        saved = None if row is None else (row.value, row.setting_type)
+        SystemSetting.set_setting('user_search_scope', 'everyone', None, 'string')
+    yield
+    with app.app_context():
+        if saved is None:
+            db.session.delete(SystemSetting.query.filter_by(key='user_search_scope').first())
+            db.session.commit()
+        else:
+            SystemSetting.set_setting('user_search_scope', saved[0], None, saved[1])
 
 
 # --- DB / context helpers ---------------------------------------------------
@@ -565,6 +586,7 @@ def test_shared_with_me_403_when_feature_disabled():
 # Internal sharing: ownership / IDOR boundaries (feature forced on)
 # =============================================================================
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_internal_share_owner_can_share_and_recipient_sees_it():
     """Happy path + visibility: owner shares -> recipient appears in
     shares-internal AND the recording appears in the recipient's
@@ -1112,6 +1134,7 @@ def _rows(rec):
                 for s in InternalShare.query.filter_by(recording_id=rec).all()}
 
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_user_ids_batch():
     from src.models import ShareAuditLog
     with _db():
@@ -1138,6 +1161,7 @@ def test_share_internal_user_ids_batch():
         _cleanup_ids([owner, a, b], [rec])
 
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_user_ids_mixed_results():
     """Already shared, unknown, owner, self and duplicate ids are reported or
     collapsed, and do not block the others."""
@@ -1194,6 +1218,7 @@ def test_share_internal_user_ids_rejects_bad_requests_without_writing():
         _cleanup_ids([owner, a], [rec])
 
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_user_ids_access_and_ceiling():
     with _db():
         owner = _setup_user("pa_owner")
@@ -1222,6 +1247,7 @@ def test_share_internal_user_ids_access_and_ceiling():
         _cleanup_ids([owner, viewer, limited, outsider, target], [rec])
 
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_single_user_id_unchanged():
     """The one-person body keeps its responses: 201, 409, 404, 400."""
     with _db():
@@ -1288,6 +1314,7 @@ def test_share_internal_user_ids_true_stays_invalid():
         _cleanup_ids([owner, other], [rec])
 
 
+@pytest.mark.usefixtures('search_level_everyone')
 def test_share_internal_single_user_id_unchanged():
     with _db():
         owner = _setup_user("p600c_owner")

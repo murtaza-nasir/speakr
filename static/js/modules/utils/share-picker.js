@@ -64,6 +64,20 @@ export function toggleSelection(selected, user, max = MAX_SHARE_SELECTION) {
 }
 
 /**
+ * The recipients of a share request. The server accepts a user id only for
+ * an account the person sharing could find in the search
+ * (src/services/user_lookup.py), so each id goes with the username the search
+ * returned for it; the server looks that username up again.
+ */
+export function shareRecipients(selected) {
+    const people = (selected || []).filter(user => user && user.id);
+    return {
+        user_ids: people.map(user => user.id),
+        identifiers: people.map(user => user.username).filter(name => typeof name === 'string' && name.trim()),
+    };
+}
+
+/**
  * Sort the per-person results of a batch share. People who were shared with
  * or already had access leave the selection; the others stay selected so the
  * problem can be seen and corrected.

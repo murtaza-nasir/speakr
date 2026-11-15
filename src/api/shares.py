@@ -463,6 +463,12 @@ def search_users():
 # Most people one share request may name (D#519)
 MAX_SHARE_RECIPIENTS = 25
 _SHARE_FLAGS = ('can_edit', 'can_reshare')
+# Longest username or email address a share request may name a person by
+MAX_IDENTIFIER_LENGTH = 320
+
+
+def _valid_identifier(value):
+    return isinstance(value, str) and 0 < len(value.strip()) <= MAX_IDENTIFIER_LENGTH
 
 
 def _add_manual_share(recording_id, user_id, can_edit, can_reshare):
@@ -501,19 +507,36 @@ def _add_manual_share(recording_id, user_id, can_edit, can_reshare):
 def _share_with_many(recording_id, data):
     """Share one recording with several people at once (D#519).
 
-    The request is checked as a whole before anything is written: the list,
+    Recipients are named in `user_ids`, in `identifiers` (full usernames or
+    full email addresses), or in both. A user id is accepted only for an
+    account the requester could find in the user search
+    (user_lookup.nameable_user_ids): at the level everyone any account, at
+    groups an account in a shared group, and at every level an account that
+    one of the identifiers names. The share window sends the id and the
+    username of each person it selected.
+
+    The request is checked as a whole before anything is written: the lists,
     the flags, access to the recording and the permission ceiling. Each person
     then gets a result: shared, already_shared (that share is left as it is),
-    not_found, share_with_owner or share_with_self.
+    not_found, share_with_owner or share_with_self. not_found covers both an
+    account that does not exist and one the requester may not name by id.
     """
-    if 'user_id' in data:
+    if 'user_id' in data or 'identifier' in data:
         return jsonify(api_error('share_recipients_conflict')), 400
 
-    raw_ids = data.get('user_ids')
-    if (not isinstance(raw_ids, list) or not raw_ids or len(raw_ids) > MAX_SHARE_RECIPIENTS
+    invalid = jsonify(api_error('share_recipients_invalid', max=MAX_SHARE_RECIPIENTS)), 400
+    raw_ids = data.get('user_ids', [])
+    raw_names = data.get('identifiers', [])
+    if (not isinstance(raw_ids, list) or len(raw_ids) > MAX_SHARE_RECIPIENTS
             or any(isinstance(i, bool) or not isinstance(i, int) or i < 1 for i in raw_ids)):
-        return jsonify(api_error('share_recipients_invalid', max=MAX_SHARE_RECIPIENTS)), 400
+        return invalid
+    if (not isinstance(raw_names, list) or len(raw_names) > MAX_SHARE_RECIPIENTS
+            or any(not _valid_identifier(name) for name in raw_names)):
+        return invalid
+    if not raw_ids and not raw_names:
+        return invalid
     user_ids = list(dict.fromkeys(raw_ids))
+    identifiers = list(dict.fromkeys(name.strip() for name in raw_names))
 
     flags = {}
     for key in _SHARE_FLAGS:
@@ -533,15 +556,33 @@ def _share_with_many(recording_id, data):
         return jsonify(api_error(error_code)), 403
 
     actor_permissions = InternalShare.get_user_max_permissions(recording, current_user)
-    found = {user.id for user in User.query.filter(User.id.in_(user_ids)).all()}
+
+    from src.services import user_lookup
+    named = {identifier: user_lookup.find_user_exactly(identifier) for identifier in identifiers}
+    named_ids = {user.id for user in named.values() if user is not None}
+    # One row per person: an identifier of somebody already in user_ids adds none.
+    targets = [(user_id, None) for user_id in user_ids]
+    listed = set(user_ids)
+    for identifier, user in named.items():
+        if user is None:
+            targets.append((None, identifier))
+        elif user.id not in listed:
+            listed.add(user.id)
+            targets.append((user.id, identifier))
+    if len(targets) > MAX_SHARE_RECIPIENTS:
+        return invalid
+
+    found = user_lookup.nameable_user_ids(current_user, user_ids, named_ids) | named_ids
     existing = {share.shared_with_user_id for share in InternalShare.query.filter(
         InternalShare.recording_id == recording_id,
-        InternalShare.shared_with_user_id.in_(user_ids)
-    ).all()}
+        InternalShare.shared_with_user_id.in_(listed)
+    ).all()} if listed else set()
 
     results, created = [], []
-    for user_id in user_ids:
-        if user_id not in found:
+    for user_id, identifier in targets:
+        # Unknown and not allowed look the same, so an id tells nothing
+        # about an account the search would not show.
+        if user_id is None or user_id not in found:
             status = 'not_found'
         elif user_id == recording.user_id:
             status = 'share_with_owner'
@@ -552,7 +593,12 @@ def _share_with_many(recording_id, data):
         else:
             status = 'shared'
             created.append(_add_manual_share(recording_id, user_id, flags['can_edit'], flags['can_reshare']))
-        results.append({'user_id': user_id, 'status': status})
+        row = {'status': status}
+        if identifier is not None:
+            row['identifier'] = identifier
+        if user_id is not None and (identifier is None or status != 'not_found'):
+            row['user_id'] = user_id
+        results.append(row)
 
     if created:
         try:
@@ -580,7 +626,7 @@ def _share_with_many(recording_id, data):
 
     shares = {share.shared_with_user_id: share.to_dict() for share in created}
     for row in results:
-        if row['user_id'] in shares:
+        if row.get('user_id') in shares:
             row['share'] = shares[row['user_id']]
     return jsonify({'success': True, 'results': results, 'shared_count': len(created)}), 200
 
@@ -590,27 +636,42 @@ def _share_with_many(recording_id, data):
 def share_recording_internal(recording_id):
     """Share a recording with another user internally.
 
-    A body with `user_ids` shares with several people at once (D#519).
+    Body: `user_id`, `identifier` (the full username or the full email
+    address), or both, with `can_edit` and `can_reshare`. A `user_id` is
+    accepted only for an account the requester could find in the user search
+    (user_lookup.nameable_user_ids): at the level everyone any account, at
+    groups an account in a shared group, and at every level the account the
+    identifier names. A site admin is not restricted. An account that does
+    not exist and one that may not be named by id get the same 404.
+
+    A body with `user_ids` or `identifiers` shares with several people at
+    once (D#519).
     """
     if not _self.ENABLE_INTERNAL_SHARING:
         return jsonify(api_error('internal_sharing_disabled')), 403
 
     try:
         data = request.json
-        if isinstance(data, dict) and 'user_ids' in data:
+        if isinstance(data, dict) and ('user_ids' in data or 'identifiers' in data):
             return _share_with_many(recording_id, data)
 
         if not isinstance(data, dict):
             return jsonify(api_error('user_id_required')), 400
         shared_with_user_id = data.get('user_id')
+        identifier = data.get('identifier')
         can_edit = data.get('can_edit', False)
         can_reshare = data.get('can_reshare', False)
 
+        if shared_with_user_id is None and identifier is None:
+            return jsonify(api_error('user_id_required')), 400
         # A user id is a positive integer. JSON true is a Python bool, which
         # is an int equal to 1, and shared the recording with account 1 (#600);
         # the user_ids list refuses the same values.
-        if (isinstance(shared_with_user_id, bool) or not isinstance(shared_with_user_id, int)
+        if shared_with_user_id is not None and (
+                isinstance(shared_with_user_id, bool) or not isinstance(shared_with_user_id, int)
                 or shared_with_user_id < 1):
+            return jsonify(api_error('user_id_required')), 400
+        if identifier is not None and not _valid_identifier(identifier):
             return jsonify(api_error('user_id_required')), 400
 
         # Check recording exists and user has permission to share it
@@ -621,9 +682,16 @@ def share_recording_internal(recording_id):
         if not has_recording_access(recording, current_user, require_reshare=True):
             return jsonify(api_error('recording_share_denied')), 403
 
-        # Check target user exists
-        target_user = db.session.get(User, shared_with_user_id)
-        if not target_user:
+        # The target exists and the requester may name it: by the
+        # identifier, or by an id the user search would also show. Both
+        # failures get the same answer.
+        from src.services import user_lookup
+        named = user_lookup.find_user_exactly(identifier) if identifier is not None else None
+        named_ids = {named.id} if named is not None else set()
+        if shared_with_user_id is None:
+            shared_with_user_id = named.id if named is not None else None
+        if (shared_with_user_id is None or shared_with_user_id not in
+                user_lookup.nameable_user_ids(current_user, [shared_with_user_id], named_ids)):
             return jsonify(api_error('target_user_not_found')), 404
 
         # Prevent sharing back to owner (circular share)
