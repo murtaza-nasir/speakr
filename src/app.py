@@ -718,9 +718,7 @@ def refuse_query_token_writes():
     from src.utils.token_auth import query_token_disabled, query_token_refused
     if query_token_disabled():
         # api_query_tokens_enabled is off (privacy review A4).
-        resp = jsonify({'error': 'API tokens in the ?token= query parameter are turned off on this server; '
-                                 'send the token in the Authorization: Bearer header',
-                        'code': 'query_token_disabled'})
+        resp = jsonify(api_error('query_token_disabled'))
         resp.status_code = 401
         resp.headers['WWW-Authenticate'] = 'Bearer error="invalid_request"'
         return resp
