@@ -158,6 +158,11 @@ root_logger.handlers.clear()
 root_logger.setLevel(log_level)
 root_logger.addHandler(handler)
 
+# An incognito request logs metadata only, at every level: the record factory
+# replaces every other record created while such a request runs.
+from src.utils.incognito_logging import install as _install_incognito_logging
+_install_incognito_logging()
+
 # Silence noisy markdown extension debug logs
 markdown_logger = logging.getLogger('MARKDOWN')
 markdown_logger.setLevel(logging.WARNING)
