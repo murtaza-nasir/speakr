@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-    clockOffsetMs, elapsedSeconds, jobProgress, jobStage, parseServerInstant, queueFieldsFromJob,
+    cancelResult, clockOffsetMs, elapsedSeconds, jobProgress, jobStage, parseServerInstant, queueFieldsFromJob,
+    settledCancels,
 } from './queue-data.js';
 
 const running = (extra = {}) => ({
@@ -138,5 +139,51 @@ describe('queueFieldsFromJob', () => {
     });
     it('offers no cancel on an older server', () => {
         expect(queueFieldsFromJob(running()).canCancel).toBe(false);
+    });
+});
+
+describe('cancelResult', () => {
+    it('reads a removed waiting job', () => {
+        expect(cancelResult(200, { success: true, canceled: true, cancel_requested: false }))
+            .toEqual({ ok: true, canceled: true, cancelRequested: false });
+    });
+    it('reads a running job marked for cancel', () => {
+        expect(cancelResult(202, { success: true, canceled: false, cancel_requested: true }))
+            .toEqual({ ok: true, canceled: false, cancelRequested: true });
+    });
+    it('treats a second cancel of a removed job as done', () => {
+        expect(cancelResult(404, { code: 'job_not_found' })).toMatchObject({ ok: true, canceled: true });
+    });
+    it('shows no error when the job finished first', () => {
+        expect(cancelResult(409, { code: 'job_already_finished' }))
+            .toMatchObject({ ok: true, canceled: false, cancelRequested: false, finished: true });
+    });
+    it('reports a refusal', () => {
+        expect(cancelResult(409, { code: 'job_not_cancelable' }).ok).toBe(false);
+        expect(cancelResult(403, { code: 'access_denied' }).ok).toBe(false);
+        expect(cancelResult(500, null).ok).toBe(false);
+    });
+});
+
+describe('settledCancels', () => {
+    it('waits while the job is still in the queue answer', () => {
+        const pending = new Map([[5, 50]]);
+        expect(settledCancels(pending, [{ id: 5, job_status: 'processing', cancel_requested: true }])).toEqual([]);
+        expect(pending.size).toBe(1);
+    });
+    it('returns the recording once the row is gone', () => {
+        const pending = new Map([[5, 50], [6, 60]]);
+        expect(settledCancels(pending, [{ id: 6, job_status: 'processing' }])).toEqual([50]);
+        expect([...pending.keys()]).toEqual([6]);
+    });
+    it('settles a job that finished before the cancel took effect', () => {
+        const pending = new Map([[5, 50]]);
+        expect(settledCancels(pending, [{ id: 5, job_status: 'completed' }])).toEqual([50]);
+        expect(pending.size).toBe(0);
+    });
+    it('skips a cancel without a recording id', () => {
+        const pending = new Map([[5, null]]);
+        expect(settledCancels(pending, [])).toEqual([]);
+        expect(pending.size).toBe(0);
     });
 });

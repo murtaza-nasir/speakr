@@ -128,3 +128,48 @@ export function queueFieldsFromJob(job) {
         canRemove: ['completed', 'failed'].includes(job.job_status),
     };
 }
+
+/**
+ * What the answer to DELETE /api/recordings/jobs/<id> means for a job that
+ * waited or ran:
+ *   200 canceled          the job waited and is gone
+ *   202 cancel_requested  the job runs and stops at its next safe point
+ *   404                   the job is already gone (a second cancel)
+ *   409 job_already_finished  it ended first: nothing to cancel, no error to show
+ * Anything else is a refusal (`ok` false).
+ */
+export function cancelResult(status, data = {}) {
+    const body = data || {};
+    if (status === 202 || body.cancel_requested) {
+        return { ok: true, canceled: false, cancelRequested: true };
+    }
+    if (status === 200) {
+        return { ok: true, canceled: true, cancelRequested: false };
+    }
+    if (status === 404) {
+        return { ok: true, canceled: true, cancelRequested: false };
+    }
+    if (status === 409 && body.code === 'job_already_finished') {
+        return { ok: true, canceled: false, cancelRequested: false, finished: true };
+    }
+    return { ok: false, canceled: false, cancelRequested: false };
+}
+
+/**
+ * Of the running jobs whose cancel was accepted (`pending`: job id ->
+ * recording id), those the worker has stopped: their row has left the
+ * queue answer, or is there as finished because the cancel came too late.
+ * They are removed from `pending`; the ids of their recordings are returned
+ * so the caller reloads them.
+ */
+export function settledCancels(pending, jobs) {
+    const still = new Map((jobs || []).map(job => [job.id, job]));
+    const recordingIds = [];
+    for (const [jobId, recordingId] of [...pending]) {
+        const job = still.get(jobId);
+        if (job && ['queued', 'processing'].includes(job.job_status)) continue;
+        pending.delete(jobId);
+        if (recordingId !== null && recordingId !== undefined) recordingIds.push(recordingId);
+    }
+    return recordingIds;
+}

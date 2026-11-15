@@ -158,6 +158,11 @@ def convert_uploaded_recording(recording_id, params):
             f"{result.size_change_label}"
         )
 
+    # A safe point: the converted audio is stored, and a canceled conversion
+    # queues no transcription.
+    from src.services import job_control
+    job_control.current().check_cancel()
+
     job_queue.enqueue(
         user_id=recording.user_id,
         recording_id=recording.id,

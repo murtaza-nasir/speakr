@@ -327,7 +327,7 @@ def _connector_specs_log(specs):
     )
 
 
-def finish_processing(recording_id, events_transcript=None, events_summary=None):
+def finish_processing(recording_id, events_transcript=None, events_summary=None, extract_events=True):
     """The last step of every processing path (#412).
 
     Extracts events (when the owner has event extraction on), marks the
@@ -339,6 +339,9 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
     after COMPLETED are best-effort: a failure is logged and the recording
     stays COMPLETED. The Inquire chunks are built by the index workers, so the
     worker running this step is free for the next job.
+
+    extract_events=False leaves out the event extraction, an LLM call: a
+    canceled job whose transcript is kept finishes without one.
     """
     recording = db.session.get(Recording, recording_id)
     if not recording:
@@ -346,7 +349,7 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
     loaded_created_at = recording.created_at
     from src.utils.error_formatting import is_transcription_error
     owner = recording.owner
-    if (owner and owner.extract_events and client is not None and recording.transcription
+    if (extract_events and owner and owner.extract_events and client is not None and recording.transcription
             and len(recording.transcription.strip()) >= 10 and not is_transcription_error(recording.transcription)):
         transcript = events_transcript or format_transcription_for_llm(recording.transcription)
         extract_events_from_transcript(recording_id, transcript, events_summary or "")

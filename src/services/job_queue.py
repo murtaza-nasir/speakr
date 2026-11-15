@@ -268,7 +268,12 @@ class FairJobQueue:
                 else:
                     # No jobs available, sleep briefly
                     time.sleep(POLL_INTERVAL)
-            except Exception as e:
+            except BaseException as e:
+                # JobCanceled is a BaseException and is handled inside
+                # _process_job; one that still arrives here must not end
+                # the worker thread.
+                if not isinstance(e, Exception) and type(e).__name__ != 'JobCanceled':
+                    raise
                 logger.error(f"{queue_name.capitalize()} worker error: {e}", exc_info=True)
                 time.sleep(POLL_INTERVAL)
 
@@ -402,7 +407,21 @@ class FairJobQueue:
         return is_permanent_error(error_str)
 
     def _process_job(self, job):
-        """Process a single job by dispatching to the appropriate task function."""
+        """Process a single job by dispatching to the appropriate task function.
+
+        The job's control is bound to this thread while it runs, so the code
+        of the job reports progress and sees a cancel without extra
+        arguments (src/services/job_control.py).
+        """
+        from src.services import job_control
+
+        control = job_control.JobControl(job.id)
+        with job_control.running(control):
+            self._run_claimed_job(job, control)
+
+    def _run_claimed_job(self, job, control):
+        from src.services import job_control
+
         job_id = job.id
         job_type = job.job_type
         recording_id = job.recording_id
@@ -444,6 +463,8 @@ class FairJobQueue:
                 runner_name = JOB_RUNNERS.get(job_type)
                 if runner_name is None:
                     raise ValueError(f"Unknown job type: {job_type}")
+                # A cancel that arrived between the claim and this point.
+                control.check_cancel()
                 runner_outcome = getattr(self, runner_name)(job, recording, params, job_type=job_type)
 
                 # Mark as completed - re-fetch to ensure we have latest state
@@ -455,6 +476,11 @@ class FairJobQueue:
                     return
                 job.status = 'completed'
                 job.completed_at = datetime.utcnow()
+                # A cancel that arrived after the last safe point came too
+                # late: the job is complete. The state kept for a cancel is
+                # a copy of the old transcript and is not kept any longer.
+                job.cancel_requested_at = None
+                job.restore_state = None
                 # Normally cleared by the connector with the result; a task
                 # still saved here belongs to an attempt that was abandoned.
                 self._release_remote_task(job)
@@ -498,6 +524,11 @@ class FairJobQueue:
                     except Exception as e:
                         logger.warning(f"Completion email for job {job_id} failed: {e}")
 
+            except job_control.JobCanceled:
+                # The owner canceled the job and its code stopped at a safe
+                # point. Not a failure: no retry, no webhook, no email.
+                self._finish_canceled(job_id, recording_id, loaded_created_at)
+
             except Exception as e:
                 error_str = str(e)
                 # A failed flush (for example on a recording deleted while
@@ -524,6 +555,12 @@ class FairJobQueue:
                         job.completed_at = datetime.utcnow()
                         self._release_remote_task(job)
                         db.session.commit()
+                    return
+
+                if control.cancel_requested():
+                    # The job failed while a cancel was waiting for its next
+                    # safe point: the cancel decides, and no failure is reported.
+                    self._finish_canceled(job_id, recording_id, loaded_created_at)
                     return
 
                 if isinstance(e, StitchTargetMismatch):
@@ -582,6 +619,7 @@ class FairJobQueue:
                     else:
                         job.status = 'failed'
                         job.completed_at = datetime.utcnow()
+                        job.restore_state = None
                         # No attempt is left to poll a job still saved from
                         # this one, so it is removed from the ASR service.
                         self._release_remote_task(job)
@@ -640,6 +678,20 @@ class FairJobQueue:
                                 logger.warning(f"Failure email for job {job_id} failed: {e}")
 
                     db.session.commit()
+
+    @staticmethod
+    def _finish_canceled(job_id, recording_id, loaded_created_at=None):
+        """Remove a canceled job and settle its recording (src/services/job_cancel.py)."""
+        try:
+            from src.services.job_cancel import finish_canceled_job
+            finish_canceled_job(job_id, recording_id, loaded_created_at)
+        except Exception as e:
+            logger.error(f"Could not finish the cancel of job {job_id}: {describe_error(e)}", exc_info=True)
+            try:
+                from src.database import db
+                db.session.rollback()
+            except Exception:
+                pass
 
     @staticmethod
     def _release_remote_task(job):
@@ -812,8 +864,21 @@ class FairJobQueue:
             user_id=params.get('user_id', job.user_id),
             target_language=params.get('target_language'),
             params=params,
-            progress=job_progress_writer(job.id),
+            progress=self._translation_progress(job.id),
         )
+
+    @staticmethod
+    def _translation_progress(job_id):
+        """Chunks finished of chunks in total; between two chunks is a safe point for a cancel."""
+        from src.services import job_control
+
+        write = job_progress_writer(job_id)
+
+        def progress(done, total):
+            write(done, total)
+            job_control.current().check_cancel()
+
+        return progress
 
     def _run_convert(self, job, recording, params, job_type=None):
         """Convert an upload, then queue its transcription (convert worker pool)."""
@@ -860,7 +925,8 @@ class FairJobQueue:
         recording_id: int,
         job_type: str,
         params: Dict[str, Any] = None,
-        is_new_upload: bool = False
+        is_new_upload: bool = False,
+        restore_state: Dict[str, Any] = None
     ) -> int:
         """
         Add a job to the database queue.
@@ -871,6 +937,8 @@ class FairJobQueue:
             job_type: Type of job (transcribe, summarize, reprocess_transcription, reprocess_summary)
             params: Optional parameters for the job
             is_new_upload: True if this is a new file upload (for cleanup on failure)
+            restore_state: What a reprocess cleared before it queued this job
+                (job_cancel.snapshot_for_reprocess), put back by a cancel
 
         Returns:
             The created job ID
@@ -905,7 +973,8 @@ class FairJobQueue:
                     recording_id=recording_id,
                     job_type=job_type,
                     params=json.dumps(params) if params else None,
-                    is_new_upload=is_new_upload
+                    is_new_upload=is_new_upload,
+                    restore_state=json.dumps(restore_state) if restore_state else None
                 )
                 db.session.add(job)
 
@@ -958,6 +1027,15 @@ class FairJobQueue:
         with self._app_context():
             from src.database import db
             from src.models import ProcessingJob
+
+            # Canceled, and the worker stopped with the process before its
+            # next safe point: the cancel is finished here, not run again.
+            canceled = [(job.id, job.recording_id) for job in ProcessingJob.query.filter(
+                ProcessingJob.status == 'processing',
+                ProcessingJob.cancel_requested_at.isnot(None)
+            ).all()]
+            for job_id, recording_id in canceled:
+                self._finish_canceled(job_id, recording_id)
 
             orphaned = ProcessingJob.query.filter(
                 ProcessingJob.status == 'processing'

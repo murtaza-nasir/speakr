@@ -2933,7 +2933,25 @@ def retry_failed_job(job_id):
 @recordings_bp.route('/api/recordings/jobs/<int:job_id>', methods=['DELETE'])
 @login_required
 def delete_job(job_id):
-    """Delete a job (clear from queue or history)."""
+    """Cancel a waiting or running job, or remove a finished one from the list.
+
+    By the state of the job:
+
+    - queued: the job is removed and its recording is settled (200,
+      ``canceled: true``).
+    - processing: the job is marked for cancel and its worker stops at the
+      next safe point (202, ``cancel_requested: true``). The row stays in
+      the queue status, with ``cancel_requested``, until the worker has
+      stopped. A second request gives the same answer.
+    - completed: the row is removed; the recording is untouched (200).
+    - failed: the row is removed. For a failed new upload the recording and
+      its audio are deleted with it, as before (200).
+
+    A stitch or merge job that waits or runs is not canceled (409,
+    job_not_cancelable). The owner of the job may do all of this; an
+    administrator may cancel another user's waiting or running job.
+    The recording after a cancel: src/services/job_cancel.py.
+    """
     try:
         from src.models import ProcessingJob
         import os
@@ -2942,8 +2960,29 @@ def delete_job(job_id):
         if not job:
             return jsonify(api_error('job_not_found')), 404
 
-        if job.user_id != current_user.id:
+        active = job.status in ('queued', 'processing')
+        if job.user_id != current_user.id and not (active and current_user.is_admin):
             return jsonify(api_error('access_denied')), 403
+
+        if active:
+            from src.services.job_cancel import cancel_job, NotCancelable
+            try:
+                outcome = cancel_job(job_id)
+            except NotCancelable:
+                return jsonify(api_error('job_not_cancelable')), 409
+            if outcome == 'removed':
+                current_app.logger.info(f"Job {job_id} canceled by user {current_user.id}")
+                return jsonify({'success': True, 'canceled': True, 'cancel_requested': False,
+                                'message': translate('server.apiMessage.jobCanceled')})
+            if outcome == 'cancel_requested':
+                current_app.logger.info(f"Cancel of job {job_id} requested by user {current_user.id}")
+                return jsonify({'success': True, 'canceled': False, 'cancel_requested': True,
+                                'message': translate('server.apiMessage.jobCancelRequested')}), 202
+            if outcome == 'gone':
+                return jsonify(api_error('job_not_found')), 404
+            # The job ended while the cancel was on its way: nothing was
+            # canceled, and the row stays for the list of finished jobs.
+            return jsonify(api_error('job_already_finished')), 409
 
         # A transcription still running on the WhisperX ASR service is
         # cancelled there, and a finished one has its stored transcript removed.
@@ -2962,6 +3001,8 @@ def delete_job(job_id):
                 # Delete ALL processing jobs for this recording first
                 ProcessingJob.query.filter_by(recording_id=recording.id).delete()
                 db.session.delete(recording)
+            else:
+                db.session.delete(job)
         else:
             # Just delete this job
             db.session.delete(job)
@@ -2971,6 +3012,7 @@ def delete_job(job_id):
         return jsonify({'success': True, 'message': translate('server.apiMessage.jobDeleted')})
 
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f"Error deleting job {job_id}: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
 

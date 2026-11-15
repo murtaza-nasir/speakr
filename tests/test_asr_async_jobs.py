@@ -739,7 +739,8 @@ def test_deleting_a_job_cancels_its_remote_job(audio, monkeypatch):
         job_id, user_id = job.id, recording.user_id
     client = app.test_client()
     _login(client, user_id)
-    assert client.delete(f'/api/recordings/jobs/{job_id}').status_code == 200
+    # The job is running: it is marked for cancel (202) and the service is told at once.
+    assert client.delete(f'/api/recordings/jobs/{job_id}').status_code == 202
     assert cancelled == ['job0009']
 
 

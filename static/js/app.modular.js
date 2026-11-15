@@ -40,7 +40,7 @@ import {
     promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
-import { clockOffsetMs, queueFieldsFromJob } from './modules/utils/queue-data.js';
+import { cancelResult, clockOffsetMs, queueFieldsFromJob, settledCancels } from './modules/utils/queue-data.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
@@ -3465,6 +3465,60 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Reload one recording after its job was canceled: the server
+            // settled it (completed, put back as it was, or canceled).
+            const refreshRecordingAfterCancel = async (recordingId) => {
+                if (!recordingId) return;
+                try {
+                    const response = await fetch(`/api/recordings/${recordingId}`);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    const idx = recordings.value.findIndex(r => r.id === recordingId);
+                    if (idx !== -1) recordings.value[idx] = data;
+                    if (selectedRecording.value?.id === recordingId) selectedRecording.value = data;
+                } catch (error) {
+                    console.error(`Error reloading recording ${recordingId} after a cancel:`, error);
+                }
+            };
+
+            // Running jobs whose cancel was accepted: job id -> recording id.
+            // The worker stops at its next safe point; the row then leaves
+            // the queue answer and the recording is reloaded.
+            const pendingCancels = new Map();
+            watch(allJobs, (jobs) => {
+                for (const recordingId of settledCancels(pendingCancels, jobs)) {
+                    refreshRecordingAfterCancel(recordingId);
+                }
+            });
+
+            // Cancel a waiting or running job. Resolves to
+            // { ok, canceled, cancelRequested }: canceled for a job that was
+            // removed at once, cancelRequested for a running job that stops
+            // at its next safe point (its row stays, marked, until then).
+            const cancelJob = async (jobId, recordingId = null) => {
+                try {
+                    const response = await fetch(`/api/recordings/jobs/${jobId}`, { method: 'DELETE' });
+                    const data = await response.json().catch(() => ({}));
+                    const result = cancelResult(response.status, data);
+                    if (result.cancelRequested) pendingCancels.set(jobId, recordingId);
+                    if (!result.ok) {
+                        showToast(data.error || safeT('messages.failedToDeleteJob'), 'error');
+                    }
+                    await fetchJobQueueStatus(true);
+                    if (result.canceled) await refreshRecordingAfterCancel(recordingId);
+                    return result;
+                } catch (error) {
+                    console.error('Error canceling job:', error);
+                    return { ok: false, canceled: false, cancelRequested: false };
+                }
+            };
+
+            // Cancel the job of a queue item that waits or runs.
+            const cancelProgressItem = async (item) => {
+                if (!item || !item.jobId || !item.canCancel) return { ok: false, canceled: false, cancelRequested: false };
+                return cancelJob(item.jobId, item.recordingId);
+            };
+
             // Clear all completed jobs
             const clearCompletedJobs = async () => {
                 try {
@@ -4738,6 +4792,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 deleteJob,
                 clearCompletedJobs,
                 jobQueueClockOffset,
+                cancelJob,
+                cancelProgressItem,
                 recentlyCompletedBackend,
                 clearAllCompleted,
                 allCompletedCount,
