@@ -192,6 +192,58 @@ def test_rendered_pages_embed_the_users_language_before_i18n(german_client, path
     assert "</" not in m.group(1), path
 
 
+# Scripts and stylesheets are linked as <path>?v=<app version>. The service
+# worker (static/sw.js) caches the app shell by full URL, so a worker left over
+# from the release before cannot answer the new page's requests with its own
+# copies; without the version, new HTML ran once against the old
+# app.modular.js after an upgrade.
+STATIC_ASSET_URL = re.compile(r"url_for\('static',\s*filename='[^']+\.(?:js|css)'[^)]*\)")
+
+
+def test_templates_version_every_script_and_stylesheet_url():
+    offenders = []
+    for dirpath, _, files in os.walk(TEMPLATES):
+        for name in files:
+            if not name.endswith(".html"):
+                continue
+            path = os.path.join(dirpath, name)
+            text = open(path, encoding="utf-8").read()
+            offenders += [f"{os.path.relpath(path, ROOT)}: {m.group(0)}"
+                          for m in STATIC_ASSET_URL.finditer(text) if "v=app_version" not in m.group(0)]
+    assert not offenders, "add v=app_version:\n" + "\n".join(offenders)
+
+
+def _version_query():
+    from urllib.parse import quote
+    from src.app import _app_version
+    assert _app_version
+    return "?v=" + quote(_app_version, safe="")
+
+
+def test_rendered_index_has_versioned_entry_asset_urls(german_client):
+    html = german_client.get("/").get_data(as_text=True)
+    query = _version_query()
+    for asset in ("js/app.modular.js", "css/styles.css", "css/tailwind.css", "js/i18n.js", "js/csrf-refresh.js",
+                  "vendor/js/vue.global.js"):
+        assert f'/static/{asset}{query}"' in html, asset
+    assert '/static/js/app.modular.js"' not in html
+
+
+@pytest.mark.parametrize("path", ["/account", "/admin"])
+def test_other_pages_version_the_shared_assets(german_client, path):
+    html = german_client.get(path).get_data(as_text=True)
+    query = _version_query()
+    for asset in ("css/styles.css", "css/tailwind.css", "js/i18n.js"):
+        assert f'/static/{asset}{query}"' in html, (path, asset)
+
+
+def test_every_precached_script_and_stylesheet_is_versioned_by_the_worker():
+    """The worker precaches the same URLs the templates link."""
+    text = open(os.path.join(ROOT, "static", "sw.js"), encoding="utf-8").read()
+    assert "cache.addAll(PRECACHE_URLS.map(" in text
+    assert "const PRECACHE_URLS = ASSETS_TO_CACHE.map(versionedUrl);" in text
+
+
 THEME_INCLUDE = "{% include 'includes/theme_bootstrap.html' %}"
 
 

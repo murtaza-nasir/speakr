@@ -251,6 +251,19 @@ def remove_peaks(upload_folder, recording_id, keep=None):
         logger.warning('Could not remove the peaks of recording %s: %s', recording_id, error)
 
 
+# Cache folders already reported as unwritable by this process, so that the
+# warning is logged once and not on every request for peaks.
+_unwritable_reported = set()
+
+
+def _report_unwritable(folder, error, log):
+    if folder in _unwritable_reported:
+        return
+    _unwritable_reported.add(folder)
+    log.warning('Waveform peaks are unavailable: the cache folder %s cannot be written (%s). '
+                'The segment editor is shown without a waveform.', folder, error)
+
+
 def _failed_recently(target):
     try:
         return time.time() - os.path.getmtime(f'{target}.failed') < FAILED_RETRY_SECONDS
@@ -302,7 +315,9 @@ def get_peaks(storage, upload_folder, recording_id, audio_path, log=logger, wait
 
     Returns a PeaksResult: 'ready' with the file's path, 'pending' while it
     is computed (ask again), or 'unavailable' when the audio is missing or
-    cannot be decoded.
+    cannot be decoded, or when the cache folder cannot be written (a
+    read-only UPLOAD_FOLDER). A peaks file that is already there is served
+    from a read-only folder as well.
     """
     if not audio_path:
         return PeaksResult('unavailable')
@@ -321,17 +336,27 @@ def get_peaks(storage, upload_folder, recording_id, audio_path, log=logger, wait
     if _failed_recently(target):
         return PeaksResult('unavailable')
 
-    os.makedirs(folder, exist_ok=True)
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError as error:
+        _report_unwritable(folder, error, log)
+        return PeaksResult('unavailable')
     if not _slots.acquire(blocking=False):
         return PeaksResult('pending')
-    handle = None
     try:
         handle = open(f'{target}.lock', 'a')
+    except OSError as error:
+        # The folder is there but cannot be written (read-only storage, or
+        # another owner). Checked before any audio is decoded.
+        _slots.release()
+        _report_unwritable(folder, error, log)
+        return PeaksResult('unavailable')
+    _unwritable_reported.discard(folder)
+    try:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         # Another worker is computing this file
-        if handle is not None:
-            handle.close()
+        handle.close()
         _slots.release()
         return PeaksResult('pending')
     worker = threading.Thread(

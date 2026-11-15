@@ -110,12 +110,22 @@ S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
 ```
 
+## Waveform cache
+
+The timeline of the segment editor shows a waveform of the recording. The waveform is computed from the audio the first time the editor of a recording is opened, and it is cached as a peaks file in `UPLOAD_FOLDER/_peaks`.
+
+- **Size.** About 1 MB per hour of audio, and at most about 4 MB for one recording.
+- **Location.** The folder is always on the local filesystem of the app, also with `FILE_STORAGE_BACKEND=s3`. In S3 mode, the audio is downloaded once to a temporary file for the computation.
+- **Backups.** The folder can be left out of backups. A missing peaks file is computed again the next time the editor is opened.
+- **Cleanup.** A peaks file is deleted with its recording or its audio, and it is replaced when the audio changes. The folder is skipped by `scripts/clean_unreferenced_files.py`.
+- **Read-only storage.** When `UPLOAD_FOLDER` cannot be written, no peaks are computed. The editor opens without a waveform, the speaker lanes and all editing still work, and one warning per app process is written to the log. Peaks files that already exist are still served.
+
 ## Operational notes
 
 - **Mixed storage.** Speakr reads from both backends at once. After switching to `s3`, existing local recordings continue to be served from local storage and only new uploads go to the bucket. This allows a gradual transition.
 - **Reprocessing and transcription.** Workers materialize an object to a temporary local file for transcription, then remove the temporary file. Large files therefore incur a download on each processing run.
 - **Retention and deletion.** Retention policies and manual deletion remove the underlying object from the bucket, the same as they remove local files.
-- **Backups.** With `local`, back up the `uploads` directory along with the database and `.env`. With `s3`, audio durability is handled by your provider and the `uploads` directory no longer holds recording audio. The database and `.env` still require backup.
+- **Backups.** With `local`, back up the `uploads` directory along with the database and `.env`. With `s3`, audio durability is handled by your provider and the `uploads` directory no longer holds recording audio. The database and `.env` still require backup. The `_peaks` folder inside `uploads` can be left out with either backend (see [Waveform cache](#waveform-cache)).
 
 ## Migrating existing recordings
 

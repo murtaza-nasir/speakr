@@ -291,6 +291,53 @@ def test_the_search_needs_a_sign_in(world):
     assert resp.status_code in (302, 401)
 
 
+# --- the search limit ------------------------------------------------------------
+
+def test_searches_are_limited_per_person(world):
+    """30 a minute for each signed-in person; then 429 with Retry-After.
+
+    RATELIMIT_ENABLED is false under test, so an enabled limiter that counts
+    in memory stands in for the app's own (as in test_api_token_scopes.py).
+    One test only: the route keeps the limiter it was first called with.
+    """
+    from unittest.mock import patch
+    from flask import Flask
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    assert shares_module.USER_SEARCH_RATE_LIMIT == '30 per minute'
+    assert shares_module.limiter is app_module.limiter      # injected by the app
+    live = Limiter(get_remote_address, storage_uri='memory://', enabled=True)
+    live.init_app(Flask('limiter-host'))
+    _save('user_search_scope', 'exact')
+    with patch.object(app_module, 'limiter', live), patch.object(shares_module, 'limiter', live), \
+         _internal_sharing():
+        me = _client(world.me)
+        codes = [me.get('/api/users/search', query_string={'q': f"{world.tok}{i}@corp.local.test"}).status_code
+                 for i in range(30)]
+        assert codes == [200] * 30
+        refused = me.get('/api/users/search', query_string={'q': f"{world.tok}mate@corp.local.test"})
+        assert refused.status_code == 429
+        assert int(refused.headers['Retry-After']) >= 1
+        assert world.tok not in refused.get_data(as_text=True)
+        # The limit is counted per person, not per address: a colleague on
+        # the same address still searches.
+        other = _client(world.mate).get('/api/users/search', query_string={'q': f"{world.tok}me"})
+        assert other.status_code == 200 and [u['id'] for u in other.get_json()] == [world.me]
+        # No sign-in: refused before the limit is counted.
+        assert app.test_client().get('/api/users/search', query_string={'q': 'xx'}).status_code in (302, 401)
+
+
+def test_the_share_window_has_a_message_for_the_search_limit():
+    import json
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script = open(os.path.join(root, 'static', 'js', 'modules', 'composables', 'sharing.js'), encoding='utf-8').read()
+    assert script.count("t('sharing.searchRateLimited')") == 2      # the search and Share by name
+    assert script.count('status === 429') == 2
+    for lang in ('en', 'de', 'es', 'fr', 'pt-BR', 'ru', 'zh'):
+        data = json.load(open(os.path.join(root, 'static', 'locales', f'{lang}.json'), encoding='utf-8'))
+        assert data['sharing']['searchRateLimited'].strip(), lang
+
+
 # --- the level in force ----------------------------------------------------------
 
 def _scope():

@@ -784,7 +784,7 @@
     "permissionModeSelected": "Selected users and groups",
     "permissionModeEveryone": "Everyone",
     "userSearchScopeEveryone": "Everyone",
-    "userSearchScopeGroups": "People in my groups",
+    "userSearchScopeGroups": "People in their groups",
     "userSearchScopeExact": "Exact username or email"
   },
   "apiTokens": {
@@ -2671,7 +2671,8 @@
     "addSelected": "Share with selected ({{count}})",
     "sharedWithCount": "Recording shared. People added: {{count}}",
     "alreadySharedCount": "Already had access: {{count}}",
-    "notSharedCount": "Couldn't add: {{count}}"
+    "notSharedCount": "Couldn't add: {{count}}",
+    "searchRateLimited": "Too many searches. Wait a minute and try again."
   },
   "sidebar": {
     "advancedSearch": "Advanced search",
@@ -3686,8 +3687,8 @@
       "webhook_url_private_address": "URL resolves to a private/loopback address ({{ip}}); set WEBHOOK_INTRANET_HOST_ALLOWLIST to permit this host explicitly, or use a public URL. The allowlist regex should be anchored (e.g. r\"^(localhost|.*\\.intra)$\") so it cannot be tricked by lookalike hostnames.",
       "webhook_url_unparseable": "URL couldn't be parsed",
       "word_document_failed": "Couldn't generate Word document",
-      "share_recipients_conflict": "Send either user_id or user_ids, not both",
-      "share_recipients_invalid": "user_ids must be a list of 1 to {{max}} user ids",
+      "share_recipients_conflict": "Send one person (user_id, identifier) or a list (user_ids, identifiers), not both",
+      "share_recipients_invalid": "user_ids and identifiers must be lists that name 1 to {{max}} people in total",
       "share_permissions_invalid": "can_edit and can_reshare must be true or false",
       "share_permissions_required": "Send can_edit, can_reshare or both",
       "share_update_denied": "Only the person who shared this recording can change these permissions",

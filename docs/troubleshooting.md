@@ -64,6 +64,31 @@ If you're getting "405 Method Not Allowed" or "404 Not Found" errors with the Wh
 
 When using Docker Compose, always use container names rather than IP addresses for service communication. Instead of `http://192.168.1.132:9000`, use `http://whisper-asr-webservice:9000` where `whisper-asr-webservice` is your container name.
 
+### WhisperX Asynchronous Jobs
+
+With a WhisperX ASR service of version 0.5.0 or later, the audio is submitted as an asynchronous job by default (see [Asynchronous WhisperX Jobs](admin-guide/system-settings.md#asynchronous-whisperx-jobs)). To tell which path a transcription took, read the Speakr log (`docker compose logs app`):
+
+| Log line | Path |
+|---|---|
+| `Submitting ASR job to <url>/jobs`, then `ASR job <id> accepted` | Asynchronous job |
+| `ASR job <id>: resuming the saved job` | Asynchronous job, polled again after a retry or a restart |
+| `Sending ASR request to <url>/asr` | Synchronous request |
+| `ASR asynchronous jobs are unavailable (...); using the synchronous endpoint` | The jobs API was advertised but refused the submit, and the synchronous request was used |
+
+While a job runs, its status and stage are logged as `ASR job <id>: running ...`. A job that outlasts the ASR timeout fails with `ASR job <id> timed out`; raise the timeout as described under [ASR Timeout on Long Recordings](#asr-timeout-on-long-recordings).
+
+If transcriptions fail or stall only on the asynchronous path, return to the synchronous request: set `ASR_ASYNC_JOBS=false` in `.env` and restart the container, or turn off `asr_async_jobs` in Admin > System Settings. A job that was saved while the asynchronous path was in use is deleted from the service at the next attempt.
+
+### No Waveform in the Segment Editor
+
+The waveform of the timeline is computed from the audio the first time the editor of a recording is opened. A recording of several hours takes a few seconds, and the speaker lanes work in the meantime. When the waveform stays empty, check these causes:
+
+- **The audio is gone or cannot be decoded.** A recording whose audio was deleted, for example by an audio-only retention policy, has no waveform. A failed computation is logged as `No waveform peaks for recording <id>` and is tried again after ten minutes.
+- **The uploads folder cannot be written.** The waveform is cached in `UPLOAD_FOLDER/_peaks`. On read-only storage the log holds the line `Waveform peaks are unavailable: the cache folder ... cannot be written`. Make the folder writable for the app user. See [Waveform cache](admin-guide/storage.md#waveform-cache).
+- **ffmpeg is missing.** This applies to installations without Docker only.
+
+Editing is not affected: segments, speakers and times can be changed without the waveform.
+
 ### Poor Transcription Quality
 
 Transcription accuracy depends heavily on audio quality. Background noise, multiple overlapping speakers, or poor microphone placement all degrade results. The AI models work best with clear, single-speaker audio or well-separated multiple speakers.

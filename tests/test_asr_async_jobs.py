@@ -1189,3 +1189,197 @@ def test_cleanup_of_old_jobs_tries_the_remote_job_once_more(audio, remote):
     with app.app_context():
         assert db.session.get(ProcessingJob, job_id) is None
     assert 'job0037' in remote.cancelled
+
+
+# --- a job nothing saved (chunks, incognito mode, the voice check) --------------
+#
+# Without save_provider_task no retry can resume the job and no processing
+# job removes it later, so the connector deletes it on every failure. The
+# callers give each request a task key, so a retry attaches to a job the
+# service still holds.
+
+def test_a_timeout_without_a_saved_task_deletes_the_job(clock):
+    fake = FakeWhisperX(script=[('running', 'whisper', 0.1)], poll_after=60)
+    with pytest.raises(TranscriptionError) as exc:
+        _connector(fake).transcribe(_request(task_key=None))
+    assert 'timed out' in str(exc.value) and 'resumes' not in str(exc.value)
+    assert fake.deleted == ['job0001'] and fake.jobs == {}
+
+
+def test_failed_polls_without_a_saved_task_delete_the_job(clock):
+    fake = FakeWhisperX()
+    fake.poll_answers = [(503, {}, {})] * 10
+    with pytest.raises(TranscriptionError):
+        _connector(fake).transcribe(_request())
+    assert fake.deleted == ['job0001'] and fake.jobs == {}
+
+
+def test_a_shutdown_without_a_saved_task_deletes_the_job(clock, monkeypatch):
+    fake = FakeWhisperX(script=[('running', 'whisper', 0.1)])
+
+    def stop(seconds):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(asr, '_sleep', stop)
+    with pytest.raises(KeyboardInterrupt):
+        _connector(fake).transcribe(_request())
+    assert fake.deleted == ['job0001']
+
+
+def test_an_unreadable_result_without_a_saved_task_deletes_the_job(clock, monkeypatch):
+    fake = FakeWhisperX()
+    connector = _connector(fake)
+    monkeypatch.setattr(connector, '_parse_response', Mock(side_effect=ValueError('bad result')))
+    with pytest.raises(TranscriptionError):
+        connector.transcribe(_request())
+    assert fake.deleted == ['job0001']
+
+
+def test_a_failed_job_without_a_saved_task_is_deleted_once(clock):
+    fake = FakeWhisperX(script=_failing('stage_failed', True))
+    with pytest.raises(RemoteJobFailed):
+        _connector(fake).transcribe(_request())
+    assert fake.deleted == ['job0001']
+
+
+def test_a_lost_job_without_a_saved_task_gets_no_delete(clock):
+    fake = FakeWhisperX()
+    handle = fake.handle
+
+    def forgets(request):
+        # The service loses every job right after it accepts it.
+        response = handle(request)
+        if request.method == 'POST' and request.url.path == '/jobs':
+            fake.jobs.clear()
+        return response
+
+    fake.handle = forgets
+    with pytest.raises(TranscriptionError):
+        _connector(fake).transcribe(_request())
+    assert len(fake.calls('POST', '/jobs')) == 2 and fake.deleted == []
+
+
+def test_a_failed_delete_does_not_hide_the_timeout(clock):
+    fake = FakeWhisperX(script=[('running', 'whisper', 0.1)], poll_after=60)
+    handle = fake.handle
+
+    def delete_fails(request):
+        if request.method == 'DELETE':
+            fake.requests.append(request)
+            raise httpx.ConnectError("refused", request=request)
+        return handle(request)
+
+    fake.handle = delete_fails
+    with pytest.raises(TranscriptionError) as exc:
+        _connector(fake).transcribe(_request())
+    assert 'timed out' in str(exc.value) and len(fake.calls('DELETE')) == 1
+
+
+def test_the_audio_task_key_follows_the_scope_the_part_and_the_bytes(tmp_path):
+    from src.services.transcription.provider_tasks import audio_task_key
+    one, same, other = (tmp_path / n for n in ('one.mp3', 'same.mp3', 'other.mp3'))
+    one.write_bytes(b'first audio')
+    same.write_bytes(b'first audio')
+    other.write_bytes(b'second audio')
+    key = audio_task_key('speakr-7', str(one), part='chunk0')
+    assert key.startswith('speakr-7-chunk0-')
+    assert key == audio_task_key('speakr-7', str(same), part='chunk0')
+    assert key != audio_task_key('speakr-7', str(other), part='chunk0')
+    assert key != audio_task_key('speakr-7', str(one), part='chunk1')
+    assert key != audio_task_key('speakr-8', str(one), part='chunk0')
+    assert audio_task_key('speakr-7', str(tmp_path / 'missing.mp3')) is None
+
+
+def _chunked(fake, tmp_path, monkeypatch, contents, **kwargs):
+    """Run transcribe_chunks_with_connector over chunk files with these bytes."""
+    chunks = []
+    for i, content in enumerate(contents):
+        path = tmp_path / f"chunk{i}.mp3"
+        path.write_bytes(content)
+        chunks.append({'index': i, 'path': str(path), 'filename': path.name, 'size_mb': 0.1,
+                       'start_time': i * 10.0, 'end_time': (i + 1) * 10.0, 'duration': 10.0})
+    chunker = MagicMock()
+    chunker.create_chunks.return_value = chunks
+    chunker.merge_transcriptions.side_effect = lambda results: ' '.join(r['transcription'] for r in results)
+    monkeypatch.setattr(proc, 'chunking_service', chunker)
+    monkeypatch.setattr(proc.time, 'sleep', lambda seconds: None)
+    with app.app_context():
+        return proc.transcribe_chunks_with_connector(
+            _connector(fake), str(tmp_path / 'long.mp3'), 'long.mp3', 'audio/mpeg', 'en', **kwargs)
+
+
+def _submit_keys(fake):
+    return [r.headers.get('Idempotency-Key') for r in fake.calls('POST', '/jobs')]
+
+
+def test_a_chunk_that_times_out_three_times_leaves_no_job_on_the_service(clock, tmp_path, monkeypatch):
+    fake = FakeWhisperX(script=[('running', 'whisper', 0.1)], poll_after=60)
+    merged = _chunked(fake, tmp_path, monkeypatch, [b'chunk audio'], task_scope='speakr-41')
+    assert 'transcription failed' in merged
+    assert fake.deleted == ['job0001', 'job0002', 'job0003'] and fake.jobs == {}
+    keys = _submit_keys(fake)
+    assert len(keys) == 3 and len(set(keys)) == 1 and keys[0].startswith('speakr-41-chunk0-')
+
+
+def test_a_chunk_retry_after_a_dropped_submit_attaches_to_the_same_job(clock, tmp_path, monkeypatch):
+    fake = FakeWhisperX()
+    fake.drop_submit_response = True
+    merged = _chunked(fake, tmp_path, monkeypatch, [b'chunk audio'], task_scope='speakr-42')
+    assert 'Hello there.' in merged
+    assert len(fake.calls('POST', '/jobs')) == 2 and fake._ids == 1
+    assert fake.deleted == ['job0001'] and fake.jobs == {}
+
+
+def test_chunks_get_different_keys_even_with_the_same_bytes(clock, tmp_path, monkeypatch):
+    fake = FakeWhisperX()
+    _chunked(fake, tmp_path, monkeypatch, [b'same bytes', b'same bytes', b'other bytes'], task_scope='speakr-43')
+    keys = _submit_keys(fake)
+    assert len(keys) == 3 and len(set(keys)) == 3
+    assert fake._ids == 3 and fake.jobs == {}
+
+
+def test_chunked_calls_without_a_scope_do_not_share_keys(clock, tmp_path, monkeypatch):
+    fake = FakeWhisperX()
+    _chunked(fake, tmp_path, monkeypatch, [b'same bytes'])
+    _chunked(fake, tmp_path, monkeypatch, [b'same bytes'])
+    keys = _submit_keys(fake)
+    assert all(keys) and keys[0] != keys[1]
+
+
+def test_incognito_mode_sends_a_key_for_the_user_and_the_audio(clock, tmp_path, monkeypatch):
+    fake = FakeWhisperX()
+    path = tmp_path / 'incognito.wav'
+    path.write_bytes(b'incognito audio')
+
+    def passthrough(filepath, **kwargs):
+        return Mock(output_path=filepath, mime_type='audio/wav', was_converted=False, was_compressed=False)
+
+    chunker = MagicMock()
+    chunker.needs_chunking.return_value = False
+    chunker.get_audio_duration.return_value = 1
+    monkeypatch.setattr(proc, 'chunking_service', chunker)
+    monkeypatch.setattr(proc, 'convert_if_needed', passthrough)
+    monkeypatch.setattr(proc, 'is_video_file', lambda *a, **k: False)
+    user = Mock(id=77, transcription_language=None)
+    with app.app_context(), patch('src.services.transcription.get_registry') as registry:
+        registry.return_value.get_active_connector.return_value = _connector(fake)
+        for _ in range(2):
+            result = proc.transcribe_incognito(str(path), 'incognito.wav', language='en', user=user)
+            assert not result.get('error'), result
+    keys = _submit_keys(fake)
+    assert len(keys) == 2 and keys[0] == keys[1] and keys[0].startswith('speakr-incognito-77-')
+    assert fake.jobs == {}
+
+
+def test_the_voice_check_sends_a_key(clock):
+    import src.services.voice_embedding_check as check
+    fake = FakeWhisperX()
+    with app.app_context(), patch('src.services.transcription.registry.get_registry') as registry:
+        registry.return_value.get_active_connector.return_value = _connector(fake)
+        try:
+            check.probe_backend()
+        except check.CanaryUnavailable:
+            pass   # the fake result carries no embedding
+    keys = _submit_keys(fake)
+    assert len(keys) == 1 and keys[0].startswith('speakr-voice-check-')
+    assert fake.jobs == {}

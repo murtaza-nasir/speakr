@@ -222,7 +222,7 @@ def _legacy_rows(viewer_id, ids):
             rec_dict['can_delete'] = is_owner and (rec_module.USERS_CAN_DELETE or current_user.is_admin)
             if not is_owner:
                 owner = db.session.get(User, recording.user_id)
-                rec_dict['owner_username'] = owner.username if owner else "Unknown"
+                rec_dict['owner_username'] = _legacy_owner_username(owner)
                 rec_dict['is_shared'] = True
                 rec_dict['shared_with_count'] = 0
                 rec_dict['public_share_count'] = 0
@@ -230,7 +230,7 @@ def _legacy_rows(viewer_id, ids):
                 if share:
                     rec_dict['share_info'] = {
                         'share_id': share.id,
-                        'owner_username': owner.username if owner else "Unknown",
+                        'owner_username': _legacy_owner_username(owner),
                         'can_edit': share.can_edit,
                         'can_reshare': share.can_reshare,
                         'shared_at': share.created_at.isoformat()
@@ -254,6 +254,13 @@ def _legacy_plain_rows(viewer_id, ids):
         current_user = db.session.get(User, viewer_id)
         return json.loads(json.dumps([db.session.get(Recording, rid).to_list_dict(viewer_user=current_user)
                                       for rid in ids]))
+
+
+def _legacy_owner_username(owner):
+    """The owner's name follows show_usernames_in_ui, as in the shared-with-me list."""
+    if not rec_module.SHOW_USERNAMES_IN_UI:
+        return None
+    return owner.username if owner else "Unknown"
 
 
 def _legacy_shared_with_me(viewer_id, ids):
@@ -415,19 +422,27 @@ VIEWS = [
 ]
 
 
+@pytest.mark.parametrize("show_usernames", [True, False])
 @pytest.mark.parametrize("params", VIEWS)
-def test_payload_matches_the_per_row_path(world, params):
+def test_payload_matches_the_per_row_path(world, params, show_usernames):
     params = {k: (world["marker"] if v == "MARKER" else v) for k, v in params.items()}
-    body = _page(world["viewer"], **params)
-    rows = body["recordings"]
-    assert rows, "every view of the fixture lists something"
-    assert rows == _legacy_rows(world["viewer"], [r["id"] for r in rows])
+    with patch.object(rec_module, "SHOW_USERNAMES_IN_UI", show_usernames):
+        body = _page(world["viewer"], **params)
+        rows = body["recordings"]
+        assert rows, "every view of the fixture lists something"
+        assert rows == _legacy_rows(world["viewer"], [r["id"] for r in rows])
+    shared = [r for r in rows if not r["is_owner"]]
+    if not show_usernames:
+        assert all(r["owner_username"] is None and r["share_info"]["owner_username"] is None for r in shared)
+    else:
+        assert all(r["owner_username"].startswith(_PREFIX) for r in shared)
 
 
 def test_fixture_covers_every_kind_of_row(world):
     """Guards the parity test against a fixture that stopped exercising a case."""
     w = world
-    rows = {r["id"]: r for r in _page(w["viewer"], q=w["marker"])["recordings"]}
+    with patch.object(rec_module, "SHOW_USERNAMES_IN_UI", True):
+        rows = {r["id"]: r for r in _page(w["viewer"], q=w["marker"])["recordings"]}
     assert set(rows) == {w[k] for k in ("a", "b", "c", "d", "e", "v1", "v2", "s1", "s2", "s3", "s4", "s5", "s6")}
     default_ids = {r["id"] for r in _page(w["viewer"])["recordings"]}
     assert default_ids == set(rows) - {w["b"], w["s5"]}           # archived by owner / by recipient

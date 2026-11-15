@@ -50,6 +50,9 @@ With the jobs API in use:
 - The remote job id is saved on the processing job. A retry after a failed attempt or a restart of Speakr polls the same job. The audio is submitted again only when the service no longer knows the job or its result has expired.
 - Each submit has an `Idempotency-Key` header built from the recording, the processing job, the audio and the transcription parameters, so a repeated submit is attached to the job already running.
 - After a busy answer (503, or 413 with `Retry-After`), the submit is repeated once the `Retry-After` time has passed, within the ASR timeout.
+- A transcription that has no processing job to save the job id on cannot be resumed: a chunk of a chunked transcription, incognito mode and the voice check. Its job is deleted from the service when the attempt fails, and its `Idempotency-Key` is built from the recording or the user, the chunk number and the audio.
+
+To find out which path a transcription took, see [WhisperX Asynchronous Jobs](../troubleshooting.md#whisperx-asynchronous-jobs). The technical details are in [Job Queue System](../advanced/job-queue-system.md#5-asynchronous-jobs-of-the-whisperx-asr-service).
 - After a job error marked as not retryable, such as `audio_too_long` or `file_too_large`, the recording is marked failed without a retry. Other job errors are retried up to `JOB_MAX_RETRIES`.
 - The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
 - When a recording or its processing job is deleted, the remote job is cancelled on the service.
@@ -173,10 +176,14 @@ The **user_search_scope** setting (`USER_SEARCH_SCOPE` in `.env`) decides who a 
 | Value | Shown as | Part of a username finds |
 |---|---|---|
 | `everyone` | Everyone | Any account |
-| `groups` | People in my groups | Only accounts that share a group with the user |
+| `groups` | People in their groups | Only accounts that share a group with the user |
 | `exact` | Exact username or email | Nobody |
 
 At every level, the full username or the full email address finds its account, at least two characters are needed, and at most ten accounts are listed. An email address is matched only when it is typed in full, without regard to case, so no search tells whether part of an address exists. The results show usernames only; a site admin also gets the email address. Any other value is refused on this page.
+
+The level also applies to the share request itself, so the search cannot be bypassed with a user id. A recording is shared with an account only when the person sharing could find that account in the search: at `everyone` any account, at `groups` an account in one of their groups, and at every level an account named by its full username or full email address. A request that names an account by its numeric id alone is refused at `exact`, and at `groups` for an account outside the person's groups, with the same answer as for an account that does not exist. Site admins are not restricted.
+
+A script that calls `POST /api/recordings/<id>/share-internal` with `user_id` or `user_ids` needs `identifier` or `identifiers` as well at these two levels: the full username or the full email address of each person. Either field can also be sent without the ids.
 
 Without a saved value and without `USER_SEARCH_SCOPE`, the level follows `show_usernames_in_ui`: `everyone` when usernames are shown, `exact` when they are hidden. A group admin who is not a site admin adds members by full username or full email address at every level. The user search of the admin pages is not affected.
 

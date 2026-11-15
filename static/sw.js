@@ -2,7 +2,8 @@
 // app.modular.js). Deriving the cache name from it gives every release its
 // own cache namespace, so the activate handler below clears the previous
 // release's app shell instead of serving it forever (issue #357).
-const APP_VERSION = new URLSearchParams(self.location.search).get('v') || 'v5';
+const VERSION_PARAM = new URLSearchParams(self.location.search).get('v');
+const APP_VERSION = VERSION_PARAM || 'v5';
 const CACHE_NAME = `Speakr-cache-${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
   '/',
@@ -24,6 +25,26 @@ const ASSETS_TO_CACHE = [
   '/static/vendor/css/fontawesome.min.css',
   '/static/vendor/css/easymde.min.css'
 ];
+
+// The templates link every script and stylesheet as <path>?v=<app version>,
+// so the URL of an entry asset changes with each release. A worker from an
+// earlier release looks its cache up by full URL, misses, and fetches the
+// asset from the network: new HTML can never be paired with the entry script
+// or stylesheet of the release before it. The app shell is precached under
+// the same versioned URLs so that an offline start finds it.
+const versionedUrl = (path) => (
+  VERSION_PARAM && /\.(js|css)$/.test(path)
+    ? `${path}?v=${encodeURIComponent(VERSION_PARAM)}`
+    : path
+);
+const PRECACHE_URLS = ASSETS_TO_CACHE.map(versionedUrl);
+
+// True when a request belongs to the release this worker was installed for:
+// it carries this worker's ?v=, or none at all.
+const isThisRelease = (url) => {
+  const v = url.searchParams.get('v');
+  return v === null || v === VERSION_PARAM;
+};
 
 // Function to update shortcuts (structure from your example)
 // The actual `lists` data would need to be sent from your client-side app.js
@@ -125,6 +146,41 @@ const staleWhileRevalidate = async (request) => {
   return (await cachedResponsePromise) || networkResponsePromise;
 };
 
+// App shell strategy for the assets in ASSETS_TO_CACHE. A request for this
+// release is answered from the cache (exact URL first, then the same path
+// with any query string) and refreshed in the background. A request that
+// carries another release's ?v= always goes to the network and is not stored;
+// the cached copy of the same path is used only when the network fails.
+const appShellAsset = async (request) => {
+  const cache = await caches.open(CACHE_NAME);
+  const sameRelease = isThisRelease(new URL(request.url));
+  const cached = sameRelease
+    ? (await cache.match(request)) || (await cache.match(request, { ignoreSearch: true }))
+    : undefined;
+  const network = fetch(request).then((networkResponse) => {
+    if (sameRelease && networkResponse && networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  });
+  if (cached) {
+    network.catch((error) => {
+      console.warn('AppShell: background refresh failed for:', request.url, error);
+    });
+    return cached;
+  }
+  try {
+    return await network;
+  } catch (error) {
+    console.error('AppShell: network request failed for:', request.url, error);
+    const fallback = await cache.match(request, { ignoreSearch: true });
+    return fallback || new Response('Network error and no cache available.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
+};
+
 // Network first strategy: Try to fetch from network first.
 // If network fails, fall back to cache. If cache also fails, serve offline page for navigation.
 const networkFirst = async (request) => {
@@ -159,11 +215,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('Service Worker: Caching app shell');
-      return cache.addAll(ASSETS_TO_CACHE.map(url => new Request(url, { cache: 'reload' }))) // Force reload from network for app shell
+      return cache.addAll(PRECACHE_URLS.map(url => new Request(url, { cache: 'reload' }))) // Force reload from network for app shell
         .catch(error => {
           console.error('Failed to cache app shell during install:', error);
           // You might want to log which specific asset failed
-          ASSETS_TO_CACHE.forEach(url => {
+          PRECACHE_URLS.forEach(url => {
             cache.add(new Request(url, { cache: 'reload' })).catch(err => console.warn(`Failed to cache: ${url}`, err));
           });
         });
@@ -265,9 +321,11 @@ self.addEventListener('fetch', (event) => {
   // the cached copy keeps loads fast (and works offline), while the
   // background refetch means a stale shell self-heals on the next load
   // instead of being pinned until the service worker itself changes.
+  // Assets are listed by path; the ?v= of the request decides whether the
+  // cached copy may answer it (see appShellAsset).
   const requestPath = url.origin === self.origin ? url.pathname : request.url;
   if (ASSETS_TO_CACHE.includes(requestPath)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(appShellAsset(request));
     return;
   }
 

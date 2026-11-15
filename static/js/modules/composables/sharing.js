@@ -11,6 +11,7 @@ import {
     isSearchableQuery,
     needsFullIdentifierHint,
     searchesWhileTyping,
+    shareRecipients,
     summarizeBatchResults,
     toggleSelection,
 } from '../utils/share-picker.js';
@@ -436,6 +437,13 @@ export function useSharing(state, utils) {
             isSearchingUsers.value = true;
             try {
                 const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+                if (response.status === 429) {
+                    // The per-person search limit; the answer has no JSON body.
+                    if (seq !== userSearchSeq) return;
+                    setGlobalError(t('sharing.searchRateLimited'));
+                    internalShareSearchResults.value = [];
+                    return;
+                }
                 if (!response.ok) {
                     if (response.status === 403) {
                         throw new Error(t('sharing.internalSharingDisabled'));
@@ -483,7 +491,7 @@ export function useSharing(state, utils) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_ids: selectedShareUsers.value.map(user => user.id),
+                    ...shareRecipients(selectedShareUsers.value),
                     can_edit: Boolean(internalSharePermissions.value.can_edit),
                     can_reshare: Boolean(internalSharePermissions.value.can_reshare)
                 })
@@ -688,6 +696,9 @@ export function useSharing(state, utils) {
                 if (searchResponse.status === 403) {
                     throw new Error(t('sharing.internalSharingDisabled'));
                 }
+                if (searchResponse.status === 429) {
+                    throw new Error(t('sharing.searchRateLimited'));
+                }
                 throw new Error(t('sharing.findUserFailed'));
             }
 
@@ -718,8 +729,11 @@ export function useSharing(state, utils) {
             const response = await fetch(`/api/recordings/${internalShareRecording.value.id}/share-internal`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // The id with the username the search returned for it
+                // (see shareRecipients in utils/share-picker.js).
                 body: JSON.stringify({
                     user_id: userId,
+                    identifier: username,
                     can_edit: internalSharePermissions.value.can_edit,
                     can_reshare: internalSharePermissions.value.can_reshare
                 })

@@ -29,7 +29,7 @@ app.config["WTF_CSRF_ENABLED"] = False
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES = os.path.join(ROOT, "templates")
-TW_LINK = "<link rel=\"stylesheet\" href=\"{{ url_for('static', filename='css/tailwind.css') }}\">"
+TW_LINK = "<link rel=\"stylesheet\" href=\"{{ url_for('static', filename='css/tailwind.css', v=app_version) }}\">"
 UI_INCLUDE = "{% include 'includes/ui_theme.html' %}"
 
 

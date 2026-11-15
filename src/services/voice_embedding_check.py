@@ -139,6 +139,7 @@ def probe_backend():
     never be reported as a changed model.
     """
     from src.services.transcription.base import TranscriptionRequest
+    from src.services.transcription.provider_tasks import audio_task_key
     from src.services.transcription.registry import get_registry
 
     if not os.path.exists(CANARY_PATH):
@@ -160,6 +161,7 @@ def probe_backend():
                 min_speakers=1,
                 max_speakers=1,
                 model=default_transcription_model(),
+                task_key=audio_task_key('speakr-voice-check', CANARY_PATH),
             ))
     except Exception as e:
         raise CanaryUnavailable(f'transcription of the canary failed: {e}')

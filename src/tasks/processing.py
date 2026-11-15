@@ -1543,7 +1543,7 @@ def merge_diarized_chunks(chunk_results):
     return merged_text, merged_segments, sorted(list(all_speakers))
 
 
-def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language, diarize=False, hotwords=None, initial_prompt=None, transcription_model=None):
+def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language, diarize=False, hotwords=None, initial_prompt=None, transcription_model=None, task_scope=None):
     """
     Transcribe a large audio file using chunking with the connector architecture.
 
@@ -1565,12 +1565,19 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
         diarize: Whether diarization was requested (for connectors that support it)
         hotwords: Optional comma-separated hotwords to bias recognition
         initial_prompt: Optional initial prompt to steer transcription
+        task_scope: Names the caller (a recording, an incognito user) in each
+            chunk's TranscriptionRequest.task_key. A scope for this call
+            alone is used when it is empty.
 
     Returns:
         Merged transcription text (with speaker labels if diarization enabled)
     """
     import tempfile
+    import uuid
     from src.services.transcription import TranscriptionRequest
+    from src.services.transcription.provider_tasks import audio_task_key
+
+    task_scope = task_scope or f"speakr-call-{uuid.uuid4().hex[:16]}"
     from src.audio_chunking import extract_speaker_samples, samples_to_data_urls
 
     # Get connector specs for proper chunking (respects hard limits like max_duration_seconds)
@@ -1605,6 +1612,9 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                 max_retries = 3
                 retry_count = 0
                 success = False
+                # The same key on each retry of this chunk: a service with
+                # an idempotency key attaches the retry to the job it holds.
+                chunk_task_key = audio_task_key(task_scope, chunk['path'], part=f"chunk{i}")
 
                 while retry_count < max_retries and not success:
                     try:
@@ -1627,6 +1637,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     prompt=initial_prompt,
                                     hotwords=hotwords,
                                     model=transcription_model,
+                                    task_key=chunk_task_key,
                                 )
                             else:
                                 request = TranscriptionRequest(
@@ -1638,6 +1649,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     prompt=initial_prompt,
                                     hotwords=hotwords,
                                     model=transcription_model,
+                                    task_key=chunk_task_key,
                                 )
 
                             response = connector.transcribe(request)
@@ -2075,6 +2087,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             hotwords=hotwords,
                             initial_prompt=initial_prompt,
                             transcription_model=transcription_model,
+                            task_scope=f"speakr-{recording.id}" if recording else None,
                         )
 
                         recording.transcription_language = normalize_language_code(
@@ -2764,12 +2777,18 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # model works in incognito mode too (#409).
         current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
 
+        # Names the user in the task key, so the same audio sent again by the
+        # same user attaches to a job the service still holds.
+        from src.services.transcription.provider_tasks import audio_task_key
+        incognito_scope = f"speakr-incognito-{getattr(user, 'id', None) or 'anon'}"
+
         if should_chunk:
             # Use chunking for large files
             chunk_result = transcribe_chunks_with_connector(
                 connector, actual_filepath, actual_filename, actual_content_type, language,
                 diarize=should_diarize, hotwords=hotwords, initial_prompt=initial_prompt,
-                transcription_model=transcription_model
+                transcription_model=transcription_model,
+                task_scope=incognito_scope,
             )
 
             if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
@@ -2789,7 +2808,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                     max_speakers=max_speakers,
                     prompt=initial_prompt,
                     hotwords=hotwords,
-                    model=transcription_model
+                    model=transcription_model,
+                    task_key=audio_task_key(incognito_scope, actual_filepath),
                 )
 
                 response = connector.transcribe(request)

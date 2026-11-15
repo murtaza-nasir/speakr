@@ -1,7 +1,8 @@
 """Finding other accounts: the user_search_scope setting.
 
 One place decides who a signed-in person can find, for the share window
-(GET /api/users/search) and for adding a member to a group. The setting has
+(GET /api/users/search), for the people a share request names
+(nameable_user_ids) and for adding a member to a group. The setting has
 three levels:
 
 - everyone: part of a username finds any account.
@@ -109,6 +110,43 @@ def search_users(requester, query, scope=None):
     if found:
         partial = partial.filter(User.id.notin_([user.id for user in found]))
     return found + partial.order_by(User.username, User.id).limit(MAX_RESULTS - len(found)).all()
+
+
+def nameable_user_ids(requester, user_ids, named_ids=(), scope=None):
+    """The accounts among user_ids that the requester may name as a recipient.
+
+    A numeric id alone must not reach an account the search would not show,
+    or a recording owner could run through the ids and read the usernames
+    from the list of shares. An id is accepted when the search would find
+    its account:
+
+    - everyone: every existing account;
+    - groups:   an account that shares a group with the requester;
+    - at every level, an account in named_ids: the caller resolved it from
+      the full username or the full email address (find_user_exactly), which
+      always finds its account.
+
+    A site admin may name every existing account. An unknown id and an id
+    that is not accepted are both left out, so the caller answers them the
+    same way.
+    """
+    wanted = {user_id for user_id in user_ids if isinstance(user_id, int) and not isinstance(user_id, bool)}
+    if not wanted:
+        return set()
+    existing = {row[0] for row in db.session.query(User.id).filter(User.id.in_(wanted)).all()}
+    if getattr(requester, 'is_admin', False):
+        return existing
+    scope = _valid_scope(scope) or search_scope()
+    if scope == SCOPE_EVERYONE:
+        return existing
+    allowed = existing & set(named_ids)
+    if scope == SCOPE_GROUPS and existing - allowed:
+        own_groups = db.session.query(GroupMembership.group_id).filter(
+            GroupMembership.user_id == requester.id)
+        allowed |= {row[0] for row in db.session.query(GroupMembership.user_id).filter(
+            GroupMembership.group_id.in_(own_groups),
+            GroupMembership.user_id.in_(existing - allowed)).all()}
+    return allowed
 
 
 def user_result(user, requester):

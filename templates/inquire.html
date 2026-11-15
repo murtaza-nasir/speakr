@@ -25,9 +25,9 @@
         <!-- All dependencies bundled locally for offline support -->
         <!-- All dependencies bundled locally for offline support -->
         <!-- All dependencies bundled locally for offline support -->
-<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css', v=app_version) }}">
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
 
@@ -197,20 +197,20 @@
     <!-- Tailwind utilities, compiled at build time (scripts/build_css.sh). Last in
          <head> so that, as with the former runtime build, they follow the page's
          own stylesheets in the cascade. -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css', v=app_version) }}">
     {% include 'includes/ui_theme.html' %}
     <!-- Scripts after every stylesheet, so that no page is painted while a
          script blocks the parser before the stylesheets are known. -->
-    <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
-    <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/vue.global.js', v=app_version) }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/marked.min.js', v=app_version) }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/purify.min.js', v=app_version) }}"></script>
+    <script src="{{ url_for('static', filename='js/markdown-safe.js', v=app_version) }}"></script>
     {% include 'includes/i18n_bootstrap.html' %}
-    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/i18n.js', v=app_version) }}"></script>
     <!-- The app's own confirm, message and input dialogs (window.confirmDialog, alertDialog, promptDialog) -->
-    <script src="{{ url_for('static', filename='js/app-dialog.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app-dialog.js', v=app_version) }}"></script>
     {% include 'includes/loading_overlay.html' %}
-    <script src="{{ url_for('static', filename='js/timezone-sync.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/timezone-sync.js', v=app_version) }}" defer></script>
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     {% from 'components/assistant/chat.html' import assistant_chat with context %}
@@ -415,10 +415,10 @@
     </div>
 
     <!-- CSRF Token Management -->
-    <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/csrf-refresh.js', v=app_version) }}"></script>
     
     <!-- Shared Components -->
-    <script src="{{ url_for('static', filename='js/shared-components.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/shared-components.js', v=app_version) }}"></script>
     
     <!-- Inquire Mode Vue App -->
     <script>

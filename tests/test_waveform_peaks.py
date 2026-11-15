@@ -13,7 +13,8 @@ Covered here:
   - invalidation: another audio file is computed again and the old peaks
     file is removed;
   - a long computation: 202 until the file is there, computed once;
-  - audio that cannot be decoded, removed audio, and a deleted recording.
+  - audio that cannot be decoded, removed audio, and a deleted recording;
+  - an UPLOAD_FOLDER that cannot be written: 204, one warning, no decoding.
 """
 
 import math
@@ -339,3 +340,58 @@ def test_deleting_the_recording_removes_its_peaks(scene):
         delete_recording_completely(db.session.get(Recording, scene["id"]))
     assert _cache_files(scene["id"]) == []
     assert not os.path.exists(scene["audio"])
+
+
+# ---- a cache folder that cannot be written --------------------------------------
+
+def _peaks_warnings(caplog):
+    return [r for r in caplog.records if "cache folder" in r.getMessage()]
+
+
+def test_a_cache_folder_that_cannot_be_created_answers_204_and_warns_once(scene, tmp_path, caplog):
+    import logging
+    blocker = tmp_path / "not-a-folder"
+    blocker.write_text("x")
+    client = _client(scene["owner"])
+    peaks._unwritable_reported.clear()
+    with patch.dict(app.config, {"UPLOAD_FOLDER": str(blocker / "uploads")}), \
+         patch.object(peaks, "compute_peaks", side_effect=AssertionError("decoded")), \
+         caplog.at_level(logging.WARNING):
+        for _ in range(3):
+            response = client.get(scene["url"])
+            assert response.status_code == 204 and response.data == b""
+    warnings = _peaks_warnings(caplog)
+    assert len(warnings) == 1 and warnings[0].levelno == logging.WARNING
+    assert warnings[0].exc_info is None
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+
+@needs_ffmpeg
+def test_a_cache_folder_that_cannot_be_written_answers_204_and_recovers(scene, caplog):
+    import builtins
+    import logging
+    client = _client(scene["owner"])
+    peaks._unwritable_reported.clear()
+
+    def read_only(path, mode="r", *args, **kwargs):
+        if str(path).endswith(".lock"):
+            raise PermissionError(13, "Read-only file system", path)
+        return builtins.open(path, mode, *args, **kwargs)
+
+    with patch.object(peaks, "open", read_only, create=True), \
+         patch.object(peaks, "compute_peaks", side_effect=AssertionError("decoded")), \
+         caplog.at_level(logging.WARNING):
+        for _ in range(peaks.MAX_CONCURRENT + 2):       # no computation slot is kept
+            assert client.get(scene["url"]).status_code == 204
+    assert len(_peaks_warnings(caplog)) == 1
+    # Writable again: the peaks are computed as usual.
+    assert _wait_for_ready(client, scene["url"]).status_code == 200
+
+
+@needs_ffmpeg
+def test_existing_peaks_are_served_from_a_folder_that_cannot_be_written(scene):
+    client = _client(scene["owner"])
+    assert _wait_for_ready(client, scene["url"]).status_code == 200
+    with patch.object(peaks.os, "makedirs", side_effect=PermissionError(30, "Read-only file system")), \
+         patch.object(peaks, "open", side_effect=PermissionError(30, "Read-only file system"), create=True):
+        assert client.get(scene["url"]).status_code == 200

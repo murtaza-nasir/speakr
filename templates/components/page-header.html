@@ -42,7 +42,7 @@
        invisible, so raw template markup never shows. */
     #global-header:not([data-v-app]) .global-header-controls { visibility: hidden; }
 </style>
-<script type="module" src="{{ url_for('static', filename='js/global-header.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/global-header.js', v=app_version) }}"></script>
 
 <script>
 // Tabs scroller — attaches to any element marked [data-tabs-scroller]

@@ -24,6 +24,15 @@ The speaker identification modal shows each detected speaker with a sample of th
 
 **Identify from conversation** works differently: names mentioned in the conversation, for example when people introduce or address each other, are found with the text model and filled in for review. By default, only the speakers that are still unnamed are named; with **Re-identify all from conversation** in its menu, every speaker is identified again. A text model is required and voice profiles are not used, so voice matches appear as suggestions whether or not you use it. Without a configured text model the button is disabled.
 
+### Renaming Speakers
+
+Speakers are renamed in two places:
+
+- In the **speaker identification dialog**, you name each speaker of the recording, with the voice and conversation suggestions described above.
+- In the [segment editor](#advanced-asr-segment-editing), you click a speaker chip and type or choose a name in the speaker picker. Check **All segments of …** to rename that speaker in the whole recording.
+
+The same names and voice matches are saved from both places. There is no separate dialog for editing speakers.
+
 ### Managing Saved Speakers
 
 All speakers you identify are automatically saved to your speaker database. You can manage these saved speakers through the dedicated [Speakers Management tab](settings.md#speakers-management-tab) in your [account settings](settings.md). Navigate to Account > Speakers Management to view all your saved speakers.
@@ -121,6 +130,17 @@ The bubble view formats the transcription like a chat conversation, with each sp
 ### Sticky Speaker Pills
 
 In both simple view and on mobile, consecutive segments from the same speaker are grouped into a **speaker run**, and the speaker's name + timestamp pill at the top of the run **pins to the top of the scroll area** for the entire run. As you scroll through a long monologue, the speaker pill stays visible until a different speaker takes over, so you always know who's talking even mid-paragraph. This eliminates the previous behaviour where the pill would scroll away with its first segment.
+
+### Finding Text in a Long Transcript
+
+A transcript of more than 300 segments is drawn only around the part you are reading, so that a recording of several hours stays fast. The browser's own search sees only that part. On the recording page of such a transcript, press **Ctrl+F** (Cmd+F on a Mac) to open a find bar above the transcript. The whole transcript is searched.
+
+- The number of matches is shown as you type.
+- **Enter** moves to the next match and **Shift+Enter** to the previous one. The transcript scrolls to each match.
+- **Esc** or the x closes the bar.
+- Press Ctrl+F again while the cursor is in the bar to reach the browser's own search.
+
+On a shorter transcript, Ctrl+F opens the browser's search as usual, because the whole transcript is on the page. To replace text, use the find and replace bar of the [editor](#advanced-asr-segment-editing).
 
 ## Recording Stats
 
@@ -317,6 +337,12 @@ The Copy button in the transcription toolbar copies the entire transcription to 
 Next to the Copy button, you'll find the Download button that offers flexible export options through customizable templates. When you click Download, a popup appears allowing you to select from your saved [transcript templates](transcript-templates.md) or export the raw transcript without formatting. Templates let you control exactly how your transcript is formatted, whether you need timestamps for subtitles, speaker-focused formats for interviews, or screenplay-style formatting. You can create and manage these templates in your account settings.
 
 If your recording was processed with ASR and speaker diarization, the exported text will include speaker identifiers (either the generic labels like SPEAKER_01 or the actual names if you've identified them). For recordings without speaker diarization, the transcription is exported as continuous text. The format remains consistent regardless of whether you're viewing the transcription in simple or bubble view - the exported text uses the structured format from the underlying data, formatted according to your chosen template.
+
+### Printing a Transcript
+
+Use the print command of your browser (**Ctrl+P**, or Cmd+P on a Mac) on the recording page. A transcript of more than 300 segments is printed in full, not only the part on the screen: the title of the recording, then the text under a heading for each speaker. Timestamps are not printed. A shorter transcript is printed as the page shows it.
+
+For a document with timestamps or your own layout, download the transcript with a [template](transcript-templates.md).
 
 ## Next Steps
 

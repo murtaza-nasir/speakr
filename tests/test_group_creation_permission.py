@@ -445,6 +445,34 @@ def test_rename_to_a_taken_name_is_refused(ctx):
     assert resp.status_code == 200
 
 
+def test_groups_that_already_differ_only_by_case_can_still_be_edited(ctx):
+    """An install from before the case-insensitive rule may hold both."""
+    admin = _user("site", is_admin=True)
+    stem = uuid.uuid4().hex[:6]
+    upper, lower = _group(name=f"Sales_{stem}"), _group(name=f"sales_{stem}")
+    other = _group(name=f"Other_{stem}")
+    client = _client(admin)
+    for group in (upper, lower):
+        # The edit window sends the unchanged name with the new description.
+        resp = client.put(f"/api/admin/groups/{group.id}", json={"name": group.name, "description": "edited"})
+        assert resp.status_code == 200, resp.get_json()
+        assert resp.get_json()["description"] == "edited"
+        resp = client.put(f"/api/admin/groups/{group.id}", json={"name": f"  {group.name}  "})
+        assert resp.status_code == 200, resp.get_json()
+    assert db.session.get(Group, upper.id).name == f"Sales_{stem}"
+    assert db.session.get(Group, lower.id).name == f"sales_{stem}"
+    # Another case of its own name passes the check too (SALES_x is free).
+    assert client.put(f"/api/admin/groups/{lower.id}", json={"name": f"SALES_{stem}"}).status_code == 200
+    # A rename to a different, taken name is still refused, as is the exact
+    # name of the twin (the unique index).
+    for taken in (other.name.lower(), f"Sales_{stem}"):
+        resp = client.put(f"/api/admin/groups/{lower.id}", json={"name": taken})
+        assert resp.status_code == 400 and resp.get_json()["code"] == "group_name_exists", taken
+    # Creating a third one stays refused.
+    resp = client.post("/api/admin/groups", json={"name": f"sAlEs_{stem}"})
+    assert resp.status_code == 400 and resp.get_json()["code"] == "group_name_exists"
+
+
 # --------------------------------------------------------------------------
 # Admin endpoints for grants and the mode
 # --------------------------------------------------------------------------

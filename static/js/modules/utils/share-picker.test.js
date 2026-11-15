@@ -8,6 +8,7 @@ import {
     needsFullIdentifierHint,
     resolveSearchScope,
     searchesWhileTyping,
+    shareRecipients,
     summarizeBatchResults,
     toggleSelection,
 } from './share-picker.js';
@@ -85,6 +86,21 @@ describe('summarizeBatchResults', () => {
             { user_id: 5, status: 'share_with_owner' },
         ]);
         expect(summary).toEqual({ shared: 1, alreadyShared: 1, failed: 2, keepIds: [4, 5] });
+    });
+});
+
+describe('shareRecipients', () => {
+    it('names each selected person by id and by username', () => {
+        expect(shareRecipients([ann, bob])).toEqual({ user_ids: [2, 3], identifiers: ['ann', 'bob'] });
+    });
+
+    it('is empty for an empty selection', () => {
+        expect(shareRecipients([])).toEqual({ user_ids: [], identifiers: [] });
+        expect(shareRecipients(null)).toEqual({ user_ids: [], identifiers: [] });
+    });
+
+    it('leaves out a missing username and keeps the id', () => {
+        expect(shareRecipients([{ id: 4 }, ann])).toEqual({ user_ids: [4, 2], identifiers: ['ann'] });
     });
 });
 

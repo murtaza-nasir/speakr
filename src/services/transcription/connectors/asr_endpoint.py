@@ -344,9 +344,10 @@ class ASREndpointConnector(BaseTranscriptionConnector):
     def _idempotency_key(request: TranscriptionRequest, params: Dict[str, Any]) -> Optional[str]:
         """Idempotency-Key for POST /jobs: the processing job, the audio and the parameters.
 
-        The task key names the recording, the processing job and the audio
-        bytes, and is the same on every retry of that job; the digest of the
-        parameters changes the key when the parameters change.
+        The task key names what is transcribed (a processing job and its
+        audio bytes, or a chunk, an incognito upload or the voice check and
+        its audio bytes) and is the same on every retry of it; the digest of
+        the parameters changes the key when the parameters change.
         """
         if not request.task_key:
             return None
@@ -355,7 +356,13 @@ class ASREndpointConnector(BaseTranscriptionConnector):
 
     def _transcribe_async(self, request: TranscriptionRequest, params: Dict[str, Any],
                           capabilities: Dict[str, Any]) -> TranscriptionResponse:
-        """Submit a job (or resume the saved one), poll it and fetch the result."""
+        """Submit a job (or resume the saved one), poll it and fetch the result.
+
+        A request without save_provider_task (a chunk, incognito mode, the
+        voice check) has nothing that could resume its job or remove it
+        later, so the job is deleted on the service on every failure.
+        """
+        resumable = request.save_provider_task is not None
         save = request.save_provider_task or (lambda task: None)
         job_params = {k: v for k, v in params.items() if k not in ('output', 'encode')}
         headers = {}
@@ -373,39 +380,52 @@ class ASREndpointConnector(BaseTranscriptionConnector):
 
         try:
             with self._http_client() as client:
-                while True:
-                    if job_id is None:
-                        job_id = self._submit_job(client, request, job_params, headers, deadline)
-                        if save({'job_id': job_id, 'base_url': self.base_url}) is False:
-                            # Nothing would remove this job later.
-                            self._delete_job(client, job_id)
-                            raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=job_id))
-                    try:
-                        data = self._wait_for_result(client, job_id, request, deadline)
-                        break
-                    except _RemoteJobGone as gone:
-                        if gone.still_stored:
-                            self._delete_job(client, job_id)
-                        if save(None) is False:
-                            # The processing job was deleted (with its
-                            # recording, or on its own): nothing is submitted.
-                            raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=job_id)) from None
-                        if resubmits_left <= 0:
-                            raise ProviderError(
-                                f"ASR job {job_id} was lost on the service ({gone}) after a new submit",
-                                provider=self.PROVIDER_NAME) from None
-                        resubmits_left -= 1
-                        logger.warning(f"ASR job {job_id}: {gone}; the audio is submitted again")
-                        job_id = None
-                    except RemoteJobFailed:
-                        # The service does not reuse a failed or cancelled
-                        # job, so a retry submits again and this one is
-                        # removed from the service.
-                        self._delete_job(client, job_id)
-                        save(None)
-                        raise
+                try:
+                    while True:
+                        if job_id is None:
+                            job_id = self._submit_job(client, request, job_params, headers, deadline)
+                            if save({'job_id': job_id, 'base_url': self.base_url}) is False:
+                                # Nothing would remove this job later.
+                                gone_id, job_id = job_id, None
+                                self._delete_job(client, gone_id)
+                                raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=gone_id))
+                        try:
+                            data = self._wait_for_result(client, job_id, request, deadline)
+                            break
+                        except _RemoteJobGone as gone:
+                            # From here the job is either unknown to the
+                            # service or deleted below.
+                            gone_id, job_id = job_id, None
+                            if gone.still_stored:
+                                self._delete_job(client, gone_id)
+                            if save(None) is False:
+                                # The processing job was deleted (with its
+                                # recording, or on its own): nothing is submitted.
+                                raise TranscriptionError(_PROCESSING_JOB_GONE.format(job_id=gone_id)) from None
+                            if resubmits_left <= 0:
+                                raise ProviderError(
+                                    f"ASR job {gone_id} was lost on the service ({gone}) after a new submit",
+                                    provider=self.PROVIDER_NAME) from None
+                            resubmits_left -= 1
+                            logger.warning(f"ASR job {gone_id}: {gone}; the audio is submitted again")
+                        except RemoteJobFailed:
+                            # The service does not reuse a failed or cancelled
+                            # job, so a retry submits again and this one is
+                            # removed from the service.
+                            failed_id, job_id = job_id, None
+                            self._delete_job(client, failed_id)
+                            save(None)
+                            raise
 
-                response = self._parse_response(data)
+                    response = self._parse_response(data)
+                except BaseException:
+                    # A timeout, failed polls, an unreadable result or a
+                    # shutdown: a saved job is left for the retry that
+                    # resumes it. A job nothing saved is removed now.
+                    if not resumable and job_id is not None:
+                        logger.info(f"ASR job {job_id}: deleted on the service, nothing can resume it")
+                        self._delete_job(client, job_id)
+                    raise
                 self._delete_job(client, job_id)
                 save(None)
                 return response
@@ -510,9 +530,10 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 wait = _poll_wait(data, response)
 
             if _now() + wait > deadline:
+                outlook = ("a retry resumes the same job" if request.save_provider_task is not None
+                           else "the job is deleted on the service")
                 raise TranscriptionError(
-                    f"ASR job {job_id} timed out after {self.timeout}s (status {status}); "
-                    f"a retry resumes the same job")
+                    f"ASR job {job_id} timed out after {self.timeout}s (status {status}); {outlook}")
             _sleep(wait)
 
     def _fetch_result(self, client, job_id: str) -> Optional[Dict[str, Any]]:
