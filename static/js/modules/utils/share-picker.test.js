@@ -5,12 +5,43 @@ import {
     canGrantPermission,
     changedPermissions,
     isSearchableQuery,
+    needsFullIdentifierHint,
+    resolveSearchScope,
+    searchesWhileTyping,
     summarizeBatchResults,
     toggleSelection,
 } from './share-picker.js';
 
 const ann = { id: 2, username: 'ann', email: 'ann@example.com' };
 const bob = { id: 3, username: 'bob', email: 'bob@example.com' };
+
+describe('user search scope', () => {
+    it('keeps a level the server sent', () => {
+        expect(resolveSearchScope('everyone', false)).toBe('everyone');
+        expect(resolveSearchScope('groups', false)).toBe('groups');
+        expect(resolveSearchScope('exact', true)).toBe('exact');
+    });
+
+    it('follows the username setting when the server sent no level', () => {
+        expect(resolveSearchScope(undefined, true)).toBe('everyone');
+        expect(resolveSearchScope(undefined, false)).toBe('exact');
+        expect(resolveSearchScope('all', true)).toBe('everyone');
+        expect(resolveSearchScope(null, undefined)).toBe('exact');
+    });
+
+    it('searches while typing at every level but exact', () => {
+        expect(searchesWhileTyping('everyone')).toBe(true);
+        expect(searchesWhileTyping('groups')).toBe(true);
+        expect(searchesWhileTyping('exact')).toBe(false);
+        expect(searchesWhileTyping(undefined)).toBe(false);
+    });
+
+    it('asks for the full username or email unless everyone is searched', () => {
+        expect(needsFullIdentifierHint('everyone')).toBe(false);
+        expect(needsFullIdentifierHint('groups')).toBe(true);
+        expect(needsFullIdentifierHint('exact')).toBe(true);
+    });
+});
 
 describe('isSearchableQuery', () => {
     it('needs two characters after trimming', () => {

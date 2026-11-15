@@ -8,6 +8,31 @@ export const MIN_SHARE_SEARCH_CHARS = 2;
 // Same cap as MAX_SHARE_RECIPIENTS in src/api/shares.py
 export const MAX_SHARE_SELECTION = 25;
 
+// Levels of the user_search_scope setting (src/services/user_lookup.py)
+export const USER_SEARCH_SCOPES = ['everyone', 'groups', 'exact'];
+
+/**
+ * The search scope from /api/config. A server that does not send one (an
+ * older version) searched everyone with usernames shown, else exact names.
+ */
+export function resolveSearchScope(scope, showUsernames) {
+    if (USER_SEARCH_SCOPES.includes(scope)) return scope;
+    return showUsernames === true ? 'everyone' : 'exact';
+}
+
+/** Whether the share window searches while typing (not at the exact level). */
+export function searchesWhileTyping(scope) {
+    return scope === 'everyone' || scope === 'groups';
+}
+
+/**
+ * Whether an empty result needs the hint to type the full username or email:
+ * at every level but everyone, part of a name does not find every account.
+ */
+export function needsFullIdentifierHint(scope) {
+    return scope !== 'everyone';
+}
+
 /** Whether a query is long enough to be sent. */
 export function isSearchableQuery(query) {
     return typeof query === 'string' && query.trim().length >= MIN_SHARE_SEARCH_CHARS;

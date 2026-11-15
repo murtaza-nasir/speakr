@@ -457,6 +457,9 @@ class FairJobQueue:
                     return
                 job.status = 'completed'
                 job.completed_at = datetime.utcnow()
+                # Normally cleared by the connector with the result; a task
+                # still saved here belongs to an attempt that was abandoned.
+                self._release_remote_task(job)
                 db.session.commit()
                 logger.info(f"Job {job_id} completed successfully")
 
@@ -521,6 +524,7 @@ class FairJobQueue:
                         job.status = 'failed'
                         job.error_message = 'Recording deleted while the job ran'
                         job.completed_at = datetime.utcnow()
+                        self._release_remote_task(job)
                         db.session.commit()
                     return
 
@@ -562,6 +566,9 @@ class FairJobQueue:
                     else:
                         job.status = 'failed'
                         job.completed_at = datetime.utcnow()
+                        # No attempt is left to poll a job still saved from
+                        # this one, so it is removed from the ASR service.
+                        self._release_remote_task(job)
                         recording = db.session.get(Recording, recording_id)
 
                         if is_permanent_error:
@@ -617,6 +624,17 @@ class FairJobQueue:
                                 logger.warning(f"Failure email for job {job_id} failed: {e}")
 
                     db.session.commit()
+
+    @staticmethod
+    def _release_remote_task(job):
+        """Best-effort removal of the ASR service job saved on a job that has ended."""
+        if not job.provider_task:
+            return
+        try:
+            from src.services.transcription.provider_tasks import release_remote_task
+            release_remote_task(job)
+        except Exception as e:
+            logger.warning(f"Removing the ASR service job of job {job.id} failed: {e}")
 
     def _run_audio_job(self, job, recording, params, job_type='transcribe'):
         """Run a transcription (fresh or reprocess) task. Status updates handled by task function.
@@ -1057,6 +1075,14 @@ class FairJobQueue:
             from datetime import timedelta
 
             cutoff = datetime.utcnow() - timedelta(hours=max_age_hours)
+
+            # An ASR service job that could not be removed when its
+            # processing job ended gets a last attempt before the row goes.
+            for job in ProcessingJob.query.filter(
+                    ProcessingJob.status.in_(['completed', 'failed']),
+                    ProcessingJob.completed_at < cutoff,
+                    ProcessingJob.provider_task.isnot(None)).all():
+                self._release_remote_task(job)
 
             deleted = ProcessingJob.query.filter(
                 ProcessingJob.status.in_(['completed', 'failed']),

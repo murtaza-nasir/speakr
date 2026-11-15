@@ -953,10 +953,15 @@ def regenerate_title(recording_id):
 
 
 def _cancel_remote_asr_jobs(jobs):
-    """Best-effort cancel of the WhisperX ASR jobs saved on these processing jobs."""
+    """Best-effort cancel of the WhisperX ASR jobs saved on these processing jobs.
+
+    The saved task of a job is cleared once the service confirms the cancel.
+    """
     try:
-        from src.services.transcription.provider_tasks import cancel_remote_tasks
-        cancel_remote_tasks([job for job in jobs if job.provider_task])
+        from src.services.transcription.provider_tasks import release_remote_task
+        for job in jobs:
+            if job.provider_task:
+                release_remote_task(job)
     except Exception as e:
         current_app.logger.warning(f"Cancelling ASR service jobs failed: {e}")
 

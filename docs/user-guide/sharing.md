@@ -27,7 +27,7 @@ Your Speakr administrator must enable internal sharing before this feature becom
 
 When viewing any recording you own, look for the blue users icon button in the toolbar. Clicking this opens the share modal where you can search for colleagues and configure access permissions.
 
-Type at least two characters of a username or email address to search. Up to ten matching people are listed. People who already have access to the recording are left out, and so is your own account. When usernames are hidden on your instance, you type the exact username instead.
+Type at least two characters of a username to search. Up to ten matching people are listed, by username. People who already have access to the recording are left out, and so is your own account. Your administrator decides who the search finds: everyone, only people in your groups, or nobody. A person the search does not find is found by their full username or full email address. When the search is turned off, the window has one field for the full username or email address.
 
 Before sharing, consider what level of access makes sense for this collaboration. Speakr offers three permission levels that build on each other, letting you grant exactly the access needed without oversharing control.
 
@@ -39,7 +39,7 @@ Before sharing, consider what level of access makes sense for this collaboration
 
 Click a person in the results to select them. Up to 25 people can be selected at a time, and the selected names appear under the search box; the x beside a name removes it from the selection. Check **Allow editing** or **Allow re-sharing** as needed, then click **Share with selected**. Everyone selected receives the same permissions, and nobody is shared with until that button is clicked. The checkboxes keep their state until the share window is closed, so a second group of people can be added with the same permissions. A person who already has access keeps their current permissions. The share takes effect immediately, and the recipient gains access to the recording in their main interface.
 
-When usernames are hidden, type one exact username and click **Add**.
+When the search is turned off, type one full username or email address and click **Add**.
 
 ### Managing Your Shares
 

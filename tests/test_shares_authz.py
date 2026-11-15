@@ -489,7 +489,7 @@ def test_users_search_403_when_internal_sharing_disabled():
 
 
 def test_users_search_matches_underscore_literally():
-    """#485: with usernames shown, '_' and '%' in the query are literal."""
+    """#485: in a search by part of a username, '_' and '%' are literal."""
     tok = uuid.uuid4().hex[:8]
     with _db():
         searcher = _setup_user("srch_lit")
@@ -500,7 +500,7 @@ def test_users_search_matches_underscore_literally():
             db.session.commit()
             ids.append(u.id)
     try:
-        with _internal_enabled(), _flag("SHOW_USERNAMES_IN_UI", True, shares_module):
+        with _internal_enabled(), _usernames_shown():
             client = _client_for(searcher)
             names = lambda q: {u["username"] for u in
                                client.get("/api/users/search", query_string={"q": q}).get_json()}
@@ -1020,7 +1020,12 @@ def test_share_lists_mark_which_shares_can_be_changed():
 # =============================================================================
 
 def _usernames_shown(value=True):
-    return _flag("SHOW_USERNAMES_IN_UI", value, shares_module)
+    """The search scope that follows show_usernames_in_ui: everyone when shown, else exact.
+
+    The levels themselves are covered in tests/test_user_search_scope.py.
+    """
+    import src.services.user_lookup as user_lookup
+    return _flag("search_scope", lambda: "everyone" if value else "exact", user_lookup)
 
 
 def _search(user_id, q):
@@ -1062,7 +1067,7 @@ def test_users_search_limits_and_orders_matches():
         _cleanup_ids(ids, [])
 
 
-def test_users_search_matches_email_when_usernames_shown():
+def test_users_search_matches_only_a_full_email():
     tok = uuid.uuid4().hex[:8]
     with _db():
         searcher = _setup_user("ps_mail")
@@ -1071,12 +1076,12 @@ def test_users_search_matches_email_when_usernames_shown():
         db.session.commit()
         target = u.id
     try:
-        with _internal_enabled(), _usernames_shown():
-            found = _search(searcher, f"z{tok}x@corp")
-        assert [(r["id"], r["email"]) for r in found] == [(target, f"z{tok}x@corp.local.test")]
-        with _internal_enabled(), _usernames_shown(False):
-            # Privacy mode never matches on email
-            assert _search(searcher, f"z{tok}x@corp.local.test") == []
+        for shown in (True, False):
+            with _internal_enabled(), _usernames_shown(shown):
+                # Part of an address finds nobody, the full address its account
+                assert _search(searcher, f"z{tok}x@corp") == []
+                found = _search(searcher, f"Z{tok}X@corp.local.test")
+                assert found == [{"id": target, "username": f"plain_{tok}"}]
     finally:
         _cleanup_ids([searcher, target], [])
 
@@ -1092,7 +1097,7 @@ def test_users_search_hidden_usernames_still_exact():
     try:
         with _internal_enabled(), _usernames_shown(False):
             assert _search(searcher, f"exact_{tok[:4]}") == []
-            assert _search(searcher, f"exact_{tok}") == [{"id": target, "username": f"exact_{tok}", "email": None}]
+            assert _search(searcher, f"exact_{tok}") == [{"id": target, "username": f"exact_{tok}"}]
     finally:
         _cleanup_ids([searcher, target], [])
 

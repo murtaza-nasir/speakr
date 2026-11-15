@@ -53,6 +53,7 @@ With the jobs API in use:
 - After a job error marked as not retryable, such as `audio_too_long` or `file_too_large`, the recording is marked failed without a retry. Other job errors are retried up to `JOB_MAX_RETRIES`.
 - The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
 - When a recording or its processing job is deleted, the remote job is cancelled on the service.
+- A remote job that has ended for good is deleted from the service: a job reported as failed, cancelled or interrupted, and a job still saved when the processing job fails without a retry left. A job kept for the next attempt is not deleted. If the service cannot be reached, the job id stays saved and the deletion is tried again when the processing job is retried, deleted or cleaned up.
 - The estimated progress of the job is stored on the processing job as `progress_done` out of a `progress_total` of 100, and is part of the job queue status.
 
 ## Login Lock
@@ -165,6 +166,20 @@ Existing accounts keep their position. Users who never picked a position keep th
 
 The **permission_create_groups** setting decides who can create groups: `admins` (site admins only, the default), `selected` (site admins, users with **Can create groups** and members of groups with **Members can create groups**) or `everyone`. Any other value is refused on this page. A user who is not a site admin and creates a group becomes its group admin. See [Who Can Create Groups](group-management.md#who-can-create-groups).
 
+## Who Users Can Find
+
+The **user_search_scope** setting (`USER_SEARCH_SCOPE` in `.env`) decides who a user can find in the share window by typing part of a username:
+
+| Value | Shown as | Part of a username finds |
+|---|---|---|
+| `everyone` | Everyone | Any account |
+| `groups` | People in my groups | Only accounts that share a group with the user |
+| `exact` | Exact username or email | Nobody |
+
+At every level, the full username or the full email address finds its account, at least two characters are needed, and at most ten accounts are listed. An email address is matched only when it is typed in full, without regard to case, so no search tells whether part of an address exists. The results show usernames only; a site admin also gets the email address. Any other value is refused on this page.
+
+Without a saved value and without `USER_SEARCH_SCOPE`, the level follows `show_usernames_in_ui`: `everyone` when usernames are shown, `exact` when they are hidden. A group admin who is not a site admin adds members by full username or full email address at every level. The user search of the admin pages is not affected.
+
 ## What's New After Updates
 
 After an update, each user sees a short list of the release's new features once, the next time they open Speakr. The list is closed with **Got it** and is not shown again on any of the user's devices. Accounts created after the update do not see it for that release.
@@ -221,6 +236,7 @@ The settings below can be set on this page or in `.env`. Until an admin saves a 
 | `sso_api_exchange_clients` | `SSO_API_EXCHANGE_CLIENTS` |
 | `sso_api_scopes` | `SSO_API_SCOPES` |
 | `sso_api_tokens_enabled` | `SSO_API_TOKENS_ENABLED` |
+| `user_search_scope` | `USER_SEARCH_SCOPE` |
 | `users_can_delete` | `USERS_CAN_DELETE` |
 | `video_passthrough_asr` | `VIDEO_PASSTHROUGH_ASR` |
 | `video_retention` | `VIDEO_RETENTION` |
@@ -245,7 +261,9 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 **ENABLE_INTERNAL_SHARING**: Controls user-to-user sharing capabilities. Set to `true` to enable internal sharing features, allowing users to share recordings with specific colleagues. Required for group functionality. Default: `false`.
 
-**SHOW_USERNAMES_IN_UI**: Controls username visibility in the interface. When `true`, usernames are displayed throughout the UI when sharing and collaborating, and the share window searches usernames and email addresses (at least two characters, up to ten matches). When `false`, usernames are hidden - users must know each other's usernames to share recordings (they type the username manually). Default: `false`.
+**SHOW_USERNAMES_IN_UI**: Controls whether the owner's username is displayed on recordings shared with a user. Default: `false`. While `USER_SEARCH_SCOPE` is not set, it also sets who users can find when sharing: `everyone` when `true`, `exact` when `false`.
+
+**USER_SEARCH_SCOPE**: Who a user can find in the share window by typing part of a username. One of `everyone`, `groups` (only people in one of the user's groups) or `exact` (the full username or the full email address is needed). Default: follows `SHOW_USERNAMES_IN_UI`. See [Who Users Can Find](#who-users-can-find).
 
 **ENABLE_PUBLIC_SHARING**: Controls whether public share links can be created. When `true`, authorized users can generate secure links for external sharing. When `false`, only internal sharing is available. Default: `true`.
 

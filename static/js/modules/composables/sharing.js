@@ -9,6 +9,8 @@ import {
     canGrantPermission,
     changedPermissions,
     isSearchableQuery,
+    needsFullIdentifierHint,
+    searchesWhileTyping,
     summarizeBatchResults,
     toggleSelection,
 } from '../utils/share-picker.js';
@@ -25,7 +27,7 @@ export function useSharing(state, utils) {
         internalShareRecording, internalSharePermissions, internalShareMaxPermissions,
         recordingInternalShares, isLoadingInternalShares,
         isSearchingUsers,
-        enableInternalSharing, showUsernamesInUI
+        enableInternalSharing, showUsernamesInUI, userSearchScope
     } = state;
 
     const { showToast, setGlobalError } = utils;
@@ -413,8 +415,12 @@ export function useSharing(state, utils) {
     // =========================================
 
     // The share modal searches the server once at least two characters are
-    // typed and never loads every account (D#519). With usernames hidden, the
-    // exact-username field uses shareWithUsername instead.
+    // typed and never loads every account (D#519). Who is found follows the
+    // user_search_scope setting. At the exact level, the field for the full
+    // username or email uses shareWithUsername instead.
+    const shareSearchesWhileTyping = () => searchesWhileTyping(userSearchScope ? userSearchScope.value : 'exact');
+    const shareNeedsFullIdentifierHint = () => needsFullIdentifierHint(userSearchScope ? userSearchScope.value : 'exact');
+
     const searchInternalShareUsers = () => {
         const query = internalShareUserSearch.value.trim();
         clearTimeout(userSearchTimeout);
@@ -676,7 +682,7 @@ export function useSharing(state, utils) {
 
         isSearchingUsers.value = true;
         try {
-            // Search for the exact username
+            // The full username or the full email address
             const searchResponse = await fetch(`/api/users/search?q=${encodeURIComponent(username)}`);
             if (!searchResponse.ok) {
                 if (searchResponse.status === 403) {
@@ -765,6 +771,8 @@ export function useSharing(state, utils) {
         // Utilities
         formatShareDate,
         getUserColorClass,
+        shareSearchesWhileTyping,
+        shareNeedsFullIdentifierHint,
 
         // Public sharing
         openShareModal,

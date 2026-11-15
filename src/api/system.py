@@ -54,6 +54,12 @@ def init_system_helpers(**kwargs):
 from src.config.ui_themes import COLOR_SCHEMES as THEME_COLOR_SCHEMES
 
 
+def _user_search_scope():
+    """The user_search_scope level in force, for the share window."""
+    from src.services import user_lookup
+    return user_lookup.search_scope()
+
+
 # --- Routes ---
 
 @system_bp.route('/api/user/preferences', methods=['POST'])
@@ -376,6 +382,7 @@ def get_config():
             'enable_internal_sharing': _self.ENABLE_INTERNAL_SHARING,
             'enable_audio_removed_filter': enable_audio_removed_filter,
             'show_usernames_in_ui': _self.SHOW_USERNAMES_IN_UI,
+            'user_search_scope': _user_search_scope(),
             'can_delete_recordings': can_delete,
             'users_can_delete_enabled': _self.USERS_CAN_DELETE,
             'enable_incognito_mode': _self.ENABLE_INCOGNITO_MODE,
