@@ -13,6 +13,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
+from src.utils.log_filters import loggable_error, loggable_path
 
 # Configuration from environment
 ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
@@ -282,7 +283,7 @@ def mark_export_as_deleted(recording_id):
                     if old_filepath.exists():
                         new_filepath = user_dir / f"[deleted]_{name}.md"
                         old_filepath.rename(new_filepath)
-                        logger.info(f"Marked export as deleted: {new_filepath}")
+                        logger.info(f"Marked export as deleted: {loggable_path(new_filepath)}")
                         return str(new_filepath)
 
             return None
@@ -723,7 +724,8 @@ def export_recording(recording_id):
             # Write to file (overwrites if exists)
             filepath.write_text(content, encoding='utf-8')
 
-            logger.info(f"Exported recording {recording_id} to {filepath}")
+            logger.info(f"Exported recording {recording_id} to {loggable_path(filepath)}")
+            logger.debug(f"Exported recording {recording_id} to {filepath}")
             return str(filepath)
 
         except Exception as e:

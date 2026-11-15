@@ -3325,7 +3325,7 @@ def add_tag_to_recording(recording_id):
         from src.services.tag_sharing import apply_tag_shares
         shares_created = apply_tag_shares(recording, tag, sharing_enabled=_self.ENABLE_INTERNAL_SHARING)
         if shares_created > 0:
-            current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag '{tag.name}'")
+            current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} via group tag {tag.id}")
 
         db.session.commit()
 

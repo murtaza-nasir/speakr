@@ -78,6 +78,7 @@ from src.services.job_queue import CONVERT_WORKERS, job_queue
 from src.services.transcription_defaults import resolve_transcription_params
 from src.utils.audio_conversion import convert_if_needed
 from src.utils.dates import to_utc_naive
+from src.utils.log_filters import loggable_error, loggable_path
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError, FFmpegTimeoutError
 from src.utils.ffprobe import (
     FFProbeError, get_codec_info, get_creation_date, get_duration, has_audio_stream,
@@ -410,12 +411,12 @@ def probe_upload(*, filepath, original_filename):
     try:
         codec_info = get_codec_info(filepath, timeout=probe_timeout)
         current_app.logger.info(
-            f"Detected codec for {original_filename}: "
+            f"Detected codec for {loggable_path(filepath)}: "
             f"audio_codec={codec_info.get('audio_codec')}, "
             f"has_video={codec_info.get('has_video', False)}"
         )
     except FFProbeError as e:
-        current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
+        current_app.logger.warning(f"Failed to probe {loggable_path(filepath)} (timeout={probe_timeout}s): {loggable_error(e, filepath)}. Will attempt conversion.")
         codec_info = None
         probe_error = e
         # #340: a browser MediaRecorder can produce a .webm whose EBML header
@@ -427,7 +428,7 @@ def probe_upload(*, filepath, original_filename):
             if repaired_info is not None:
                 codec_info = repaired_info
                 probe_error = None
-                current_app.logger.info(f"Recovered malformed WebM header for {original_filename}; probe succeeded after trim")
+                current_app.logger.info(f"Recovered malformed WebM header for {loggable_path(filepath)}; probe succeeded after trim")
 
     # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
     has_video = codec_info.get('has_video', False) if codec_info else False
@@ -533,10 +534,10 @@ def decide_conversion(*, codec_info, has_video, keep_audio_only_flag, join, orig
     if keep_video_for_this_upload:
         current_app.logger.info(f"Video {'passthrough' if _self.VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
     elif skip_conversion_for_join:
-        current_app.logger.info(f"Join part {original_filename}: skipping conversion, the merge re-encodes it")
+        current_app.logger.info(f"Join part {loggable_path(original_filename)}: skipping conversion, the merge re-encodes it")
     elif can_defer_conversion:
         conversion_deferred = True
-        current_app.logger.info(f"Upload {original_filename}: converting after the upload is answered")
+        current_app.logger.info(f"Upload {loggable_path(original_filename)}: converting after the upload is answered")
     else:
         convert_in_request = True
     return ConversionDecision(
@@ -593,14 +594,14 @@ def convert_upload_in_request(filepath, *, original_filename, codec_info,
         return ConvertedUpload(None, (jsonify(api_error('audio_converter_missing')), 500))
     except FFmpegTimeoutError as e:
         # A timeout is the server's limit, not proof the file is bad.
-        current_app.logger.error(f"FFmpeg conversion timed out for {filepath}: {e}")
+        current_app.logger.error(f"FFmpeg conversion timed out for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
         _discard_staging(filepath)
         return ConvertedUpload(None, (jsonify({'error': translate('server.apiError.audio_conversion_timeout'),
                                                'code': 'audio_conversion_timeout'}), 500))
     except FFmpegError as e:
         # The probe is allowed to fail, so a payload that is not audio
         # at all is first refused here, as the client's error.
-        current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+        current_app.logger.error(f"FFmpeg conversion failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
         _discard_staging(filepath)
         return ConvertedUpload(None, (jsonify(api_error('audio_decode_failed')), 400))
 
@@ -1017,7 +1018,8 @@ def ingest(
                 return quota_error.response()
 
         file.save(filepath)
-        current_app.logger.info(f"File saved to {filepath}")
+        current_app.logger.info(f"File saved to {loggable_path(filepath)} for user {owner.id}")
+        current_app.logger.debug(f"File saved to {filepath} (original filename {original_filename!r})")
 
         # An empty part has nothing to decode: refuse it before the probe and
         # the conversion (#482).
@@ -1139,7 +1141,7 @@ def ingest(
             from src.utils.mime import resolve_media_mime
             corrected = resolve_media_mime(filepath, codec_info=codec_info, has_video=True)
             if corrected != mime_type:
-                current_app.logger.info(f"Resolved video mime {mime_type!r} -> {corrected!r} from container for {filepath}")
+                current_app.logger.info(f"Resolved video mime {mime_type!r} -> {corrected!r} from container for {loggable_path(filepath)}")
             mime_type = corrected
 
         # The extension is the uploader's choice: an audio file named .html
@@ -1149,7 +1151,7 @@ def ingest(
             from src.utils.mime import resolve_media_mime
             mime_type = served_media_mime(resolve_media_mime(filepath, codec_info=codec_info))
 
-        current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
+        current_app.logger.info(f"Final MIME type: {mime_type} for file {loggable_path(filepath)}")
 
         # Cache media duration while the upload is still available locally.
         # This avoids later S3 materialization just to serialize API responses.
@@ -1159,7 +1161,7 @@ def ingest(
             if detected_duration is not None and detected_duration > 0:
                 audio_duration_seconds = float(detected_duration)
         except Exception as e:
-            current_app.logger.warning(f"Could not determine duration for upload {original_filename}: {e}")
+            current_app.logger.warning(f"Could not determine duration for upload {loggable_path(filepath)}: {loggable_error(e, filepath)}")
 
         # Get notes from the form
         notes = form.get('notes')

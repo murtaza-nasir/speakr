@@ -138,8 +138,9 @@ def test_a_skipped_extension_is_logged_once_at_info(watch, caplog):
         assert scan() == []
     lines = _skip_lines(caplog)
     assert sorted(r.getMessage() for r in lines) == sorted([
-        f"Skipping {folder / 'meeting.xyz'} in the watch folder: the extension '.xyz' is not a supported audio or video type",
-        f"Skipping {folder / 'noextension'} in the watch folder: the extension '(none)' is not a supported audio or video type",
+        # The file is named by its extension at INFO, by its path at DEBUG (privacy review B2).
+        "Skipping <file .xyz> in the watch folder: the extension '.xyz' is not a supported audio or video type",
+        "Skipping <file> in the watch folder: the extension '(none)' is not a supported audio or video type",
     ])
     assert all(r.levelno == logging.INFO for r in lines)
 

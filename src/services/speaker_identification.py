@@ -224,11 +224,12 @@ JSON Response:
         current_app.logger.debug(f"[Auto-Identify] LLM Raw Response: {response_content}")
 
     identified_map = safe_json_loads(response_content, {})
-    current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
+    current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {len(identified_map or {})} entries")
+    current_app.logger.debug(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
     # --- Sanitize identified_map ---
     identified_map = _sanitize_identified_map(identified_map, speaker_labels, candidate_names=candidates)
-    current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
+    current_app.logger.debug(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
 
     # Map back to original speaker labels
     final_speaker_map = {}
@@ -236,7 +237,10 @@ JSON Response:
         if temp_label in identified_map:
             final_speaker_map[original_speaker] = identified_map[temp_label]
 
-    current_app.logger.info(f"[Auto-Identify] Final speaker_map: {final_speaker_map}")
+    current_app.logger.info(
+        f"[Auto-Identify] Final speaker_map: {sum(1 for v in final_speaker_map.values() if v)} of "
+        f"{len(final_speaker_map)} speakers named")
+    current_app.logger.debug(f"[Auto-Identify] Final speaker_map: {final_speaker_map}")
     return final_speaker_map
 
 
@@ -383,6 +387,9 @@ def apply_contextual_auto_labels(recording, user):
         )
 
     current_app.logger.info(
-        "[Auto-Identify] Applied contextual speaker matches to recording %s: %s", recording.id, speaker_map
+        "[Auto-Identify] Applied %s contextual speaker matches to recording %s", len(speaker_map), recording.id
+    )
+    current_app.logger.debug(
+        "[Auto-Identify] Contextual speaker matches of recording %s: %s", recording.id, speaker_map
     )
     return speaker_map

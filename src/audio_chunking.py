@@ -19,6 +19,7 @@ from datetime import datetime
 import mimetypes
 
 from src.utils.ffmpeg_utils import convert_to_mp3, decode_ffmpeg_output, FFmpegError, FFmpegNotFoundError
+from src.utils.log_filters import loggable_error, loggable_path
 
 if TYPE_CHECKING:
     from src.services.transcription.base import ConnectorSpecifications
@@ -309,7 +310,7 @@ class AudioChunkingService:
                 return False
 
         except OSError:
-            logger.error(f"Could not get file size for {file_path}")
+            logger.error(f"Could not get file size for {loggable_path(file_path)}")
             return False
 
     def needs_chunking_with_config(
@@ -357,7 +358,7 @@ class AudioChunkingService:
                 '-of', 'default=noprint_wrappers=1:nokey=1', file_path
             ], capture_output=True, check=True, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
-            logger.error(f"Error getting audio duration for {file_path}: {e}")
+            logger.error(f"Error getting audio duration for {loggable_path(file_path)}: {loggable_error(e, file_path)}")
             return None
 
         raw = decode_ffmpeg_output(result.stdout).strip()
@@ -368,10 +369,10 @@ class AudioChunkingService:
         from src.utils.ffprobe import _get_duration_from_packets
         duration = _get_duration_from_packets(file_path, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
         if duration and duration > 0:
-            logger.info(f"No container duration for {file_path} ({raw or 'empty'}); "
+            logger.info(f"No container duration for {loggable_path(file_path)} ({raw or 'empty'}); "
                         f"measured {duration:.2f}s from packet timestamps")
             return duration
-        logger.info(f"No duration available for {file_path} (container reports {raw or 'nothing'})")
+        logger.info(f"No duration available for {loggable_path(file_path)} (container reports {raw or 'nothing'})")
         return None
     
     def convert_to_mp3_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
@@ -398,10 +399,10 @@ class AudioChunkingService:
             # Check if input is already MP3 - skip conversion
             file_ext = os.path.splitext(file_path)[1].lower()
             if file_ext == '.mp3':
-                logger.info(f"Input {file_path} is already MP3, skipping conversion")
+                logger.info(f"Input {loggable_path(file_path)} is already MP3, skipping conversion")
                 shutil.copy2(file_path, mp3_path)
             else:
-                logger.info(f"Converting {file_path} to 128kbps MP3 format for chunking...")
+                logger.info(f"Converting {loggable_path(file_path)} to 128kbps MP3 format for chunking...")
                 # Use centralized FFmpeg utility for conversion
                 convert_to_mp3(file_path, mp3_path)
 
@@ -603,7 +604,7 @@ class AudioChunkingService:
             current_start = 0
             chunk_index = 0
             
-            logger.info(f"Splitting {file_path} into {num_chunks} chunks of ~{chunk_duration:.1f}s with {self.overlap_seconds}s overlap")
+            logger.info(f"Splitting {loggable_path(file_path)} into {num_chunks} chunks of ~{chunk_duration:.1f}s with {self.overlap_seconds}s overlap")
             
             for chunk_index in range(num_chunks):
                 # Calculate start position for this chunk
@@ -678,11 +679,11 @@ class AudioChunkingService:
                 else:
                     logger.error(f"Chunk file not created: {chunk_path}")
             
-            logger.info(f"Created {len(chunks)} chunks for {file_path}")
+            logger.info(f"Created {len(chunks)} chunks for {loggable_path(file_path)}")
             return chunks
             
         except Exception as e:
-            logger.error(f"Error creating chunks for {file_path}: {e}")
+            logger.error(f"Error creating chunks for {loggable_path(file_path)}: {loggable_error(e, file_path)}")
             # Clean up any partial chunks
             for chunk in chunks:
                 try:

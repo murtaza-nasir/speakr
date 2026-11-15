@@ -53,6 +53,7 @@ from src.config.app_config import (
 )
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
+from src.utils.log_filters import loggable_error, loggable_path
 
 # Configuration for internal sharing
 
@@ -1299,7 +1300,7 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
 
         if AUDIO_COMPRESS_UPLOADS:
             # Re-encode to configured codec
-            current_app.logger.info(f"Extracting and compressing audio from video: {video_filepath} (codec: {AUDIO_CODEC})")
+            current_app.logger.info(f"Extracting and compressing audio from video: {loggable_path(video_filepath)} (codec: {AUDIO_CODEC})")
             audio_filepath, mime_type = ffmpeg_extract_audio(
                 video_filepath,
                 output_format=AUDIO_CODEC,
@@ -1310,7 +1311,7 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
             )
         elif can_copy_stream:
             # Copy audio stream without re-encoding (fast, preserves quality)
-            current_app.logger.info(f"Extracting audio from video (stream copy, no re-encoding): {video_filepath}")
+            current_app.logger.info(f"Extracting audio from video (stream copy, no re-encoding): {loggable_path(video_filepath)}")
             audio_filepath, mime_type = ffmpeg_extract_audio(
                 video_filepath,
                 output_format='copy',
@@ -1320,7 +1321,7 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
             )
         else:
             # Codec not supported - must re-encode for compatibility
-            current_app.logger.info(f"Extracting and converting audio from video: {video_filepath} (codec: {AUDIO_CODEC})")
+            current_app.logger.info(f"Extracting and converting audio from video: {loggable_path(video_filepath)} (codec: {AUDIO_CODEC})")
             audio_filepath, mime_type = ffmpeg_extract_audio(
                 video_filepath,
                 output_format=AUDIO_CODEC,
@@ -1330,17 +1331,17 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 allow_debug_copy=allow_debug_copy,
             )
 
-        current_app.logger.info(f"Successfully extracted audio to {audio_filepath}")
+        current_app.logger.info(f"Successfully extracted audio to {loggable_path(audio_filepath)}")
         return audio_filepath, mime_type
 
     except FFmpegNotFoundError as e:
         current_app.logger.error(str(e))
         raise Exception("Audio conversion tool (FFmpeg) not found on server.") from e
     except FFmpegError as e:
-        current_app.logger.error(f"FFmpeg audio extraction failed for {video_filepath}: {str(e)}")
+        current_app.logger.error(f"FFmpeg audio extraction failed for {loggable_path(video_filepath)}: {loggable_error(e, video_filepath)}")
         raise Exception(f"Audio extraction failed: {str(e)}") from e
     except Exception as e:
-        current_app.logger.error(f"Error extracting audio from {video_filepath}: {str(e)}")
+        current_app.logger.error(f"Error extracting audio from {loggable_path(video_filepath)}: {loggable_error(e, video_filepath)}")
         raise
 
 
@@ -1378,7 +1379,7 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
             return filepath, None
 
     except FFProbeError as e:
-        current_app.logger.warning(f"Failed to probe {filepath} for compression: {e}. Skipping compression.")
+        current_app.logger.warning(f"Failed to probe {loggable_path(filepath)} for compression: {loggable_error(e, filepath)}. Skipping compression.")
         return filepath, None
 
     # Determine output extension and MIME type
@@ -1403,7 +1404,7 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
         # Get original file size for logging
         original_size = os.path.getsize(filepath)
 
-        current_app.logger.info(f"Compressing {filepath} to {codec.upper()}...")
+        current_app.logger.info(f"Compressing {loggable_path(filepath)} to {codec.upper()}...")
 
         # Use centralized compression utility
         final_filepath, output_mime, _ = compress_audio(
@@ -1420,10 +1421,10 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
         current_app.logger.error(str(e))
         raise Exception("Audio conversion tool (FFmpeg) not found on server.")
     except FFmpegError as e:
-        current_app.logger.error(f"FFmpeg compression failed for {filepath}: {str(e)}")
+        current_app.logger.error(f"FFmpeg compression failed for {loggable_path(filepath)}: {loggable_error(e, filepath)}")
         raise Exception(f"Audio compression failed: {str(e)}")
     except Exception as e:
-        current_app.logger.error(f"Error compressing audio {filepath}: {str(e)}")
+        current_app.logger.error(f"Error compressing audio {loggable_path(filepath)}: {loggable_error(e, filepath)}")
         raise
 
 
@@ -1612,7 +1613,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             # Create chunks (passes connector_specs for duration-based chunking if needed)
-            current_app.logger.info(f"Creating chunks for large file: {filepath}")
+            current_app.logger.info(f"Creating chunks for large file: {loggable_path(filepath)}")
             chunks = chunking_service.create_chunks(filepath, temp_dir, connector_specs)
 
             if not chunks:
@@ -1693,7 +1694,8 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                 # Convert to data URLs for the API
                                 known_speaker_refs = samples_to_data_urls(speaker_samples)
                                 known_speaker_names = list(known_speaker_refs.keys())
-                                current_app.logger.info(f"Extracted speaker references for {len(known_speaker_names)} speakers: {known_speaker_names}")
+                                current_app.logger.info(f"Extracted speaker references for {len(known_speaker_names)} speakers")
+                                current_app.logger.debug(f"Speaker references: {known_speaker_names}")
                             else:
                                 current_app.logger.warning("Could not extract speaker samples from first chunk")
 
@@ -1896,9 +1898,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             try:
                 is_video = is_video_file(filepath, timeout=10)
                 if is_video:
-                    current_app.logger.info(f"Video detected for {original_filename}")
+                    current_app.logger.info(f"Video detected for recording {recording_id} ({loggable_path(original_filename)})")
             except FFProbeError as e:
-                current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Falling back to MIME type detection.")
+                current_app.logger.warning(f"Failed to probe the file of recording {recording_id} ({loggable_path(original_filename)}): {loggable_error(e, original_filename, filepath)}. Falling back to MIME type detection.")
                 video_mime_types = [
                     'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
                     'video/avi', 'video/x-ms-wmv', 'video/3gpp'
@@ -1949,7 +1951,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         except Exception as duration_err:
                             current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
                         db.session.commit()
-                        current_app.logger.info(f"Video retained (media path unchanged), temp audio extracted: {audio_filepath}")
+                        current_app.logger.info(f"Video retained (media path unchanged), temp audio extracted: {loggable_path(audio_filepath)}")
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
@@ -2007,7 +2009,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 "Failed to persist extracted audio via storage layer; keeping previous recording.audio_path and continuing with temporary local file",
                                 exc_info=True,
                             )
-                        current_app.logger.info(f"Audio extracted: {audio_filepath}")
+                        current_app.logger.info(f"Audio extracted: {loggable_path(audio_filepath)}")
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
@@ -2100,7 +2102,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     if should_chunk:
                         # Use chunking for large files
                         file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
-                        current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
+                        current_app.logger.info(f"File {loggable_path(actual_filepath)} is large ({file_size_mb:.1f}MB), using chunking for transcription")
                         _end_transaction_before_external_call(recording)
                         chunk_result = transcribe_chunks_with_connector(
                             connector, actual_filepath, actual_filename, actual_content_type, language,
@@ -2258,7 +2260,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         if needs_conversion:
                             try:
                                 converted_filepath = convert_to_mp3(actual_filepath)
-                                current_app.logger.info(f"Successfully converted to MP3: {converted_filepath}")
+                                current_app.logger.info(f"Successfully converted to MP3: {loggable_path(converted_filepath)}")
                                 actual_filepath = converted_filepath
                                 actual_content_type = 'audio/mpeg'
                                 actual_filename = os.path.basename(converted_filepath)
@@ -2326,7 +2328,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 try:
                     if os.path.exists(audio_filepath):
                         os.remove(audio_filepath)
-                        current_app.logger.info(f"Cleaned up temp audio extracted from video: {audio_filepath}")
+                        current_app.logger.info(f"Cleaned up temp audio extracted from video: {loggable_path(audio_filepath)}")
                 except OSError:
                     pass  # Best effort cleanup
 
@@ -2402,7 +2404,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         speaker_map = apply_auto_speaker_labels(recording, label_user)
 
                         if speaker_map:
-                            current_app.logger.info(f"Auto-matched speakers: {speaker_map}")
+                            current_app.logger.info(
+                                f"Auto-matched {len(speaker_map)} speakers of recording {recording_id}")
+                            current_app.logger.debug(f"Auto-matched speakers: {speaker_map}")
                             if apply_speaker_names_to_transcription(recording, speaker_map):
                                 current_app.logger.info(f"Applied speaker names to transcription")
                                 updated_count = update_speaker_profiles_from_recording(recording, speaker_map, label_user)

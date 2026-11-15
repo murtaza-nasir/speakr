@@ -282,10 +282,12 @@ def create_tag():
         success, path_or_error = _ensure_auto_process_folder(tag, current_user)
         if success:
             response['auto_process_folder_path'] = path_or_error
-            current_app.logger.info(f"Created auto-process folder for tag '{tag.name}': {path_or_error}")
+            current_app.logger.info(f"Created auto-process folder for tag {tag.id} of user {current_user.id}")
+            current_app.logger.debug(f"Created auto-process folder for tag '{tag.name}': {path_or_error}")
         else:
             response['auto_process_folder_warning'] = f'Could not create watch folder: {path_or_error}'
-            current_app.logger.warning(f"Failed to create auto-process folder for tag '{tag.name}': {path_or_error}")
+            current_app.logger.warning(f"Failed to create auto-process folder for tag {tag.id} of user {current_user.id}")
+            current_app.logger.debug(f"Failed to create auto-process folder for tag '{tag.name}': {path_or_error}")
 
     return jsonify(response), 201
 

@@ -221,7 +221,8 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                                 "known_speaker_names": speaker_names,
                                 "known_speaker_references": speaker_refs
                             }
-                            logger.info(f"Using known speaker references for {len(speaker_names)} speakers: {speaker_names}")
+                            logger.info(f"Using known speaker references for {len(speaker_names)} speakers")
+                            logger.debug(f"Known speaker names: {speaker_names}")
             else:
                 # Non-diarization models - combine initial prompt and hotwords
                 prompt_parts = []

@@ -194,7 +194,8 @@ def inquire_stream(user, data, mode='auto', tool_names=None):
     
     # The query text is user content: DEBUG only (discussion #603).
     current_app.logger.info(
-        f"Inquire chat - User: {user.username}, Query: {len(user_message or '')} characters, Filters: {filters}")
+        f"Inquire chat - User: {user.id}, Query: {len(user_message or '')} characters, "
+        f"Filters: {dict(filters, speaker_names=len(filters['speaker_names'])) if isinstance(filters, dict) and filters.get('speaker_names') else filters}")
     current_app.logger.debug(f"Inquire chat query of user {user.id}: '{user_message}'")
     
     # Capture user context and app before generator to avoid context issues
