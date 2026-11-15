@@ -4300,6 +4300,7 @@ html.asr-editor-long body .modal-overlay {
     min-width: 0;
     padding: 0 6px 0 var(--sp-3);
 }
+.asr-tl__lane:last-child { border-bottom: 0; }
 .asr-tl__lane.is-hot {
     background: var(--bg-accent);
     background: color-mix(in srgb, var(--border-focus) 16%, transparent);
@@ -4357,33 +4358,48 @@ html.asr-editor-long body .modal-overlay {
     .asr-tl__name:hover .asr-tl__name-edit { opacity: 1; }
 }
 .asr-tl__lane > .asr-suggest--lane { margin-left: auto; }
-/* Under the last lane: a speaker without segments is added */
-.asr-tl__add {
-    display: flex;
-    align-items: center;
-    height: 30px;
-    min-width: 0;
-    padding: 0 6px 0 var(--sp-3);
-}
-.asr-tl__add-btn {
+/* A lane without segments: its speaker can be removed. At the end of the
+   header, away from the name. */
+.asr-tl__remove {
+    flex: none;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-width: 0;
-    max-width: 100%;
+    justify-content: center;
+    width: 24px;
     height: 24px;
-    margin-left: -6px;
-    padding: 0 8px 0 6px;
+    max-height: 100%;
+    margin-left: auto;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    cursor: pointer;
+}
+@media (hover: hover) {
+    .asr-tl__remove:hover { background: var(--bg-secondary); color: var(--text-danger); }
+}
+/* In the header cell of the overview: a speaker without segments is added */
+.asr-tl__mini-label { gap: 6px; min-width: 0; }
+.asr-tl__mini-text { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.asr-tl__add-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    margin-left: auto;
+    padding: 0 7px 0 5px;
     border: 0;
     border-radius: 6px;
     background: none;
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
 }
-.asr-tl__add-btn > i { flex: none; width: 18px; font-size: 0.625rem; text-align: center; color: var(--text-muted); }
-.asr-tl__add-btn > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.asr-tl__add-btn > i { flex: none; font-size: 0.625rem; color: var(--text-muted); }
 @media (hover: hover) {
     .asr-tl__add-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
 }
@@ -4442,6 +4458,7 @@ html.asr-editor-long body .modal-overlay {
 .asr-tl__canvas:focus-visible,
 .asr-tl__name:focus-visible,
 .asr-tl__add-btn:focus-visible,
+.asr-tl__remove:focus-visible,
 .asr-tl__toggle:focus-visible,
 .asr-tl__btn:focus-visible {
     outline: 2px solid var(--border-focus);
@@ -4470,8 +4487,13 @@ html.asr-editor-long body .modal-overlay {
     .asr-tl__lane { gap: 4px; padding: 0 4px 0 6px; }
     .asr-tl__name { min-width: 0; height: 28px; margin-left: -3px; padding: 0 3px; }
     .asr-tl__name-edit { display: none; }
-    .asr-tl__add { height: 36px; padding: 0 4px 0 6px; }
-    .asr-tl__add-btn { gap: 4px; height: 32px; margin-left: 0; padding: 0 4px 0 0; }
+    /* No room for the words beside "Overview": the plus alone, as tall as the row */
+    .asr-tl__add-btn { justify-content: center; width: 36px; height: 26px; padding: 0; }
+    .asr-tl__add-btn > i { font-size: 0.75rem; }
+    .asr-tl__add-text { display: none; }
+    .asr-tl__remove { width: 28px; height: 28px; }
+    /* Room for the remove button beside a whole label (SPEAKER_02) */
+    .asr-tl--empties { --tl-head: 148px; }
     .asr-tl__head-audio,
     .asr-tl__mini-label { padding: 0 6px; }
 }

@@ -875,6 +875,7 @@
     "pickerAll": "Todos os segmentos de {{name}}",
     "renameSpeaker": "Renomear {{name}}",
     "addSpeaker": "Adicionar falante",
+    "removeSpeaker": "Remover falante",
     "editTimes": "Editar tempos",
     "timeFormat": "Minutos:segundos, por exemplo 1:02,5",
     "timeLinked": "Mover também o segmento vizinho",

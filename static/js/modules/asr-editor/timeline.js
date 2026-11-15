@@ -233,6 +233,15 @@ export function createAsrEditorTimeline() {
                 const present = model.speakers().slice();
                 if (model.segments.some((seg) => !seg.speaker)) present.push('');
                 laneOrder = nextLaneOrder(laneOrder, present);
+                // The speakers added in the editor keep their order among
+                // themselves, so that a removed one returns to its place on undo
+                const addedNames = model.addedSpeakers();
+                if (addedNames.length > 1) {
+                    const slots = [];
+                    for (let i = 0; i < laneOrder.length; i++) if (addedNames.includes(laneOrder[i])) slots.push(i);
+                    const inOrder = addedNames.filter((name) => laneOrder.includes(name));
+                    for (let k = 0; k < slots.length; k++) laneOrder[slots[k]] = inOrder[k];
+                }
                 data = buildLanes(model.segments, laneOrder, model.problemAt);
                 env.lanes = data.lanes;
                 env.maxLength = data.maxLength;
@@ -242,6 +251,7 @@ export function createAsrEditorTimeline() {
 
                 // The headers change only when the speakers do
                 const numbered = model.speakers();
+                const empty = new Set(model.emptySpeakers());
                 const next = data.lanes.map((lane, index) => {
                     const match = lane.name ? suggestionOf(lane.name) : null;
                     const number = numbered.indexOf(lane.name);
@@ -252,13 +262,15 @@ export function createAsrEditorTimeline() {
                         color: speakerColorClass(session.colorMap, lane.name),
                         number: number >= 0 && number < 9 ? String(number + 1) : '',
                         // What the name button does, for assistive technology and the tooltip
+                        // No segments: the header offers to remove the speaker
+                        empty: empty.has(lane.name),
                         rename: lane.name ? translate('asrEditor.renameSpeaker', { name: lane.name }) : translate('asrEditor.setSpeaker'),
                         match: match ? translate('asrEditor.suggestion', { name: match.name, percent: percent(Math.round(match.similarity)) }) : '',
                         // The name is already in the recording: accepting merges the two speakers
                         merge: match && match.merge ? translate('asrEditor.suggestionMergeInto', { name: match.name }) : '',
                     };
                 });
-                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}\u0001${l.merge}`).join('\u0002');
+                const signature = (list) => list.map((l) => `${l.name}\u0001${l.color}\u0001${l.number}\u0001${l.match}\u0001${l.merge}\u0001${l.empty ? 1 : 0}`).join('\u0002');
                 if (signature(next) !== signature(lanes.value)) {
                     lanes.value = next;
                     layout();
@@ -1134,12 +1146,21 @@ export function createAsrEditorTimeline() {
             const renameSpeaker = (name, event) => { if (session.pane) session.pane.openLanePicker(name, event.currentTarget); };
             // A speaker without segments: the next free SPEAKER_NN, never a
             // label a voice match is known for
+            // A speaker without segments is removed without a question: one undo step
+            const removeSpeaker = (name) => {
+                if (!model.removeSpeaker(name)) return;
+                // Its button is gone with the lane: the focus goes to Add speaker
+                requestAnimationFrame(() => nextTick(() => {
+                    const button = !destroyed && root.value ? root.value.querySelector('[data-asr-action="add-speaker"]') : null;
+                    if (button && document.activeElement === document.body) button.focus({ preventScroll: true });
+                }));
+            };
             const addSpeaker = () => {
                 const name = model.addSpeaker(null, { reserved: Object.keys(session.voice.value || {}) });
                 if (name == null) return;
                 // The lanes follow with the next frame; then the new one is shown
                 requestAnimationFrame(() => nextTick(() => {
-                    const button = !destroyed && heads.value ? heads.value.querySelector('[data-asr-action="add-speaker"]') : null;
+                    const button = !destroyed && root.value ? root.value.querySelector('[data-asr-action="add-speaker"]') : null;
                     if (button && button.scrollIntoView) button.scrollIntoView({ block: 'nearest' });
                 }));
             };
@@ -1326,7 +1347,7 @@ export function createAsrEditorTimeline() {
             return {
                 root, box, canvas, mini, heads, tip,
                 open, lanes, laneHeight, waveHeight, waveState, narrow,
-                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker, renameSpeaker, addSpeaker,
+                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker, renameSpeaker, addSpeaker, removeSpeaker,
                 rulerHeight: RULER, overviewHeight: OVERVIEW,
             };
         },
