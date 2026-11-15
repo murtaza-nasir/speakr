@@ -285,8 +285,8 @@ def test_a_rejected_tool_call_is_retried_once_without_tools(world, agent_on):
 def test_any_agent_failure_before_an_answer_falls_back_once(world, agent_on):
     fake = FakeLLM(_call('search_transcripts', {'query': 'freeze'}), ValueError('boom'),
                    _text('Transcript-only answer.'))
-    with patch('src.services.inquire_agent.semantic_search_chunks', return_value=[]), \
-            patch('src.services.inquire_agent.basic_text_search_chunks', return_value=[]):
+    with patch('src.services.inquire_tools.semantic_search_chunks', return_value=[]), \
+            patch('src.services.inquire_tools.basic_text_search_chunks', return_value=[]):
         _, events = _panel(world, fake)
     assert len(fake.calls) == 3 and fake.calls[2]['tools'] is None
     assert _answer(events) == 'Transcript-only answer.'
