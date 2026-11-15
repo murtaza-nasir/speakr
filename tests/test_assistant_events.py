@@ -67,6 +67,12 @@ def test_a_marker_split_across_chunks_arrives_whole_after_its_source():
     assert kinds[-1] == 'end_of_stream'
 
 
+def test_both_engines_use_the_shared_citation_grammar():
+    from src.services import assistant_events, citations, recording_chat
+    assert assistant_events.SegmentCitations is citations.SegmentCitations
+    assert recording_chat.parse_sources is citations.parse_sources
+
+
 def test_numbering_and_quote_checks_follow_parse_sources():
     from src.services.recording_chat import parse_sources
     reply = 'Travel [S1 "budget freeze applies to travel"], hiring [S1 "freeze on hiring"] [S9 "x"], again [S1  "budget freeze applies to travel"].'

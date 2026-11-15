@@ -27,9 +27,9 @@ tools, the Ask page all of them.
 """
 
 import json
-import re
 
 from src.services.assistant_present import RAG_ICONS, rag_step_label
+from src.services.citations import SegmentCitations
 
 LIBRARY_TOOLS = ('search_transcripts', 'search_text', 'list_recordings', 'find_similar_recordings',
                  'find_people', 'get_transcript', 'get_recording_metadata', 'get_summary', 'get_notes')
@@ -131,90 +131,9 @@ def parse_sse(chunk):
 # ---------------------------------------------------------------------------
 # Segment citations in a stream
 # ---------------------------------------------------------------------------
-
-_CITE = re.compile(r'\[S(\d+)(?:\s+"([^"\]]*)")?\]')
-# What the start of an unfinished citation can look like: "[", "[S", "[S12",
-# "[S12 ", '[S12 "some wor', '[S12 "some words"'.
-_PARTIAL = re.compile(r'\[(?:S(?:\d+(?:\s+(?:"[^"\]]*"?)?)?)?)?\Z')
-_MAX_HELD = 400
-
-
-def _norm(text):
-    return re.sub(r'\s+', ' ', (text or '')).strip().lower()
-
-
-class SegmentCitations:
-    """Watches streamed answer text for [S12 "quote"] citations.
-
-    feed() returns the payloads to send for a piece of text: a `source` event
-    for each new citation, then the text itself as a `delta`. The text keeps
-    the model's own markers, so the history the browser sends back is what
-    the model wrote; the browser shows each marker as its number. A marker
-    split across chunks is held back until it is complete.
-
-    Numbering and quote checks follow recording_chat.parse_sources.
-    """
-
-    def __init__(self, segments):
-        self.by_index = {seg['index']: seg for seg in segments or []}
-        self.numbers = {}
-        self.count = 0
-        self.markers = set()
-        self.held = ''
-
-    def _source(self, match):
-        index, quote = int(match.group(1)), match.group(2)
-        key = (index, _norm(quote))
-        seg = self.by_index.get(index)
-        if key not in self.numbers:
-            self.count += 1
-            self.numbers[key] = self.count
-        return {
-            'n': self.numbers[key],
-            'marker': match.group(0),
-            'segment_index': index if seg else None,
-            'start_time': seg['start_time'] if seg else None,
-            'end_time': seg['end_time'] if seg else None,
-            'speaker': seg['speaker'] if seg else None,
-            'quote': quote,
-            'verified': bool(seg and quote and _norm(quote) in _norm(seg['text'])),
-        }
-
-    def feed(self, text):
-        buf = self.held + (text or '')
-        self.held = ''
-        out, events = [], []
-        while buf:
-            i = buf.find('[')
-            if i == -1:
-                out.append(buf)
-                break
-            out.append(buf[:i])
-            rest = buf[i:]
-            match = _CITE.match(rest)
-            if match:
-                if match.group(0) not in self.markers:
-                    self.markers.add(match.group(0))
-                    if out and ''.join(out):
-                        events.append({'delta': ''.join(out)})
-                        out = []
-                    events.append({'source': self._source(match)})
-                out.append(match.group(0))
-                buf = rest[match.end():]
-                continue
-            if _PARTIAL.match(rest) and len(rest) < _MAX_HELD:
-                self.held = rest
-                break
-            out.append('[')
-            buf = rest[1:]
-        text_out = ''.join(out)
-        if text_out:
-            events.append({'delta': text_out})
-        return events
-
-    def flush(self):
-        held, self.held = self.held, ''
-        return [{'delta': held}] if held else []
+# The grammar itself (the regex, quote normalization, numbering and the
+# batch parse_sources) lives in src/services/citations.py, so this stream
+# and the API's batch reply cannot disagree about what a citation is.
 
 
 def recording_events(raw_events, segments=None):
