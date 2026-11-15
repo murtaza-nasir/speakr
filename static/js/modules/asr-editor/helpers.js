@@ -10,6 +10,28 @@ export const isPlaceholderSpeaker = (name) => PLACEHOLDER.test(String(name || ''
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+/**
+ * The label of a speaker added to a recording: SPEAKER_NN with the number
+ * after the highest one among `names` (the speakers of the recording) and
+ * `reserved` (labels that must not be taken although no speaker has them
+ * now). Without any SPEAKER_NN it is the number of speakers, as the labels
+ * count from 00: beside Alice and Bob the third speaker is SPEAKER_02. A
+ * name that exists in any case is never returned.
+ */
+export function nextSpeakerLabel(names = [], reserved = []) {
+    const own = [...new Set((names || []).map((name) => String(name || '').trim()).filter(Boolean))];
+    const all = own.concat((reserved || []).map((name) => String(name || '').trim()).filter(Boolean));
+    const taken = new Set(all.map((name) => name.toLowerCase()));
+    let highest = -1;
+    for (const name of all) {
+        const found = /^SPEAKER_(\d+)$/i.exec(name);
+        if (found) highest = Math.max(highest, Number(found[1]));
+    }
+    let number = highest >= 0 ? highest + 1 : own.length;
+    while (taken.has(`speaker_${pad2(number)}`)) number++;
+    return `SPEAKER_${pad2(number)}`;
+}
+
 /** Compact time for a row: 0:38, 12:05, 1:02:03. */
 export function formatClock(seconds) {
     if (!Number.isFinite(seconds)) return '–:––';

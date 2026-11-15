@@ -873,6 +873,8 @@
     "pickerUseName": "Use \"{{name}}\"",
     "pickerEmpty": "Type a name",
     "pickerAll": "All segments of {{name}}",
+    "renameSpeaker": "Rename {{name}}",
+    "addSpeaker": "Add speaker",
     "editTimes": "Edit times",
     "timeFormat": "Minutes:seconds, for example 1:02.5",
     "timeLinked": "Move the touching neighbor too",

@@ -7,11 +7,17 @@
  * backwards, so the undo log holds operations and never copies of the
  * transcript. The log is also what the local draft stores.
  *
+ * A speaker added in the editor has no segments at first. Such speakers are
+ * kept beside the segments (the stored transcript has speakers only on its
+ * segments), and adding or renaming one is a step of the same log.
+ *
  * A segment is { id, speaker, sid, sentence, start_time, end_time, x }:
  * `id` is a number that stays with the segment for the editing session,
  * `sid` is the saved speaker the name is linked to (speaker_id in the stored
  * transcript) and `x` holds any other stored field unchanged.
  */
+
+import { nextSpeakerLabel } from './helpers.js';
 
 export const PROBLEM = { OVERLAP: 1, DURATION: 2, ORDER: 4 };
 
@@ -103,6 +109,7 @@ const clone = (seg) => ({ ...seg });
 export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
     let nextId = 1;
     let segs = [];
+    const added = [];            // speakers added in the editor, in the order they were added
     const log = [];              // applied entries are log[0 .. pointer)
     let pointer = 0;
     let savedPointer = 0;        // -1 once the saved state can no longer be reached by undo/redo
@@ -225,6 +232,10 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
 
     recheckAll();
 
+    // Names the transcript was loaded with: an added speaker never takes one,
+    // also after its speaker was renamed (a voice match belongs to the label).
+    const loadedNames = [...new Set(segs.map((seg) => seg.speaker).filter(Boolean))];
+
     // ---- primitive steps ---------------------------------------------------
 
     const applyStep = (st, forward) => {
@@ -252,6 +263,15 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
                 orderRev++;
                 break;
             }
+            case 'spk': {
+                // An added speaker: a null name on one side adds or removes it
+                const from = forward ? st.a : st.b;
+                const to = forward ? st.b : st.a;
+                if (from == null) added.splice(st.i, 0, to);
+                else if (to == null) added.splice(st.i, 1);
+                else added[st.i] = to;
+                break;
+            }
             default:
                 throw new Error(`unknown step ${st.k}`);
         }
@@ -266,6 +286,12 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         if (st.k === 'ins' && !(inRange(st.i, 1) && st.seg)) throw new Error('step out of range');
         if (st.k === 'del' && !inRange(st.i)) throw new Error('step out of range');
         if (st.k === 'mov' && !(inRange(st.i) && inRange(st.j))) throw new Error('step out of range');
+        if (st.k === 'spk') {
+            const name = (value) => value == null || (typeof value === 'string' && value.trim() !== '');
+            const at = Number.isInteger(st.i) && st.i >= 0 && st.i < added.length + (st.a == null ? 1 : 0);
+            if (!at || !name(st.a) || !name(st.b) || (st.a == null && st.b == null)) throw new Error('step out of range');
+            if (st.a != null && added[st.i] !== st.a) throw new Error('step does not fit');
+        }
     };
 
     // ---- transactions ------------------------------------------------------
@@ -295,7 +321,7 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         applyStep(st, true);
         if (st.k === 'ins') touch(segs[st.i]);
         if (st.k === 'del') spot(st.i);
-        if (st.k !== 'set' && st.k !== 'mset') tx.structural = true;
+        if (st.k !== 'set' && st.k !== 'mset' && st.k !== 'spk') tx.structural = true;
         tx.steps.push(st);
     };
 
@@ -412,7 +438,7 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         return spots;
     };
 
-    const isStructural = (entry) => entry.steps.some((st) => st.k !== 'set' && st.k !== 'mset');
+    const isStructural = (entry) => entry.steps.some((st) => st.k !== 'set' && st.k !== 'mset' && st.k !== 'spk');
 
     const undo = () => {
         if (pointer === 0) return null;
@@ -650,7 +676,8 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
      */
     const renameSpeaker = (from, to, { speakerId, match = null, also = [] } = {}) => {
         const value = asSpeaker(to, speakerId);
-        if (!speakerName(value).trim()) return false;
+        const target = speakerName(value);
+        if (!target.trim()) return false;
         const others = new Set((also || []).filter((name) => name !== from));
         const list = [];         // the segments of `from`
         const rest = [];         // the segments of `also` that differ from the target
@@ -659,13 +686,34 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
             if (segs[i].speaker === from) list.push(i);
             else if (others.has(segs[i].speaker)) rest.push(i);
         }
-        if (!list.length) return false;
+        // An added speaker takes the new name with its segments, or without
+        // any. When the recording has the name already, the two are merged
+        // and the added one is gone.
+        const at = target === from ? -1 : added.indexOf(from);
+        if (!list.length && at < 0) return false;
+        const taken = at >= 0 && speakers().includes(target);
         const idx = rest.length ? [...list, ...rest].sort((a, b) => a - b) : list;
         // The match covers the segments of `from` only
-        const meta = match ? { match: rest.length ? { ...match, ids: list.map((i) => segs[i].id) } : match } : null;
-        return transact('rename', () => exec({
-            k: 'mset', f: 'speaker', idx, a: idx.map((i) => speakerValue(segs[i])), am: true, b: value, bm: false,
-        }), { meta }).changed;
+        const meta = match && list.length ? { match: rest.length ? { ...match, ids: list.map((i) => segs[i].id) } : match } : null;
+        return transact('rename', () => {
+            if (idx.length) {
+                exec({ k: 'mset', f: 'speaker', idx, a: idx.map((i) => speakerValue(segs[i])), am: true, b: value, bm: false });
+            }
+            if (at >= 0) exec({ k: 'spk', i: at, a: from, b: taken ? null : target });
+        }, { meta }).changed;
+    };
+
+    /**
+     * Add a speaker that has no segments yet, as one undo step. Without a
+     * name it is the next free SPEAKER_NN (see nextSpeakerLabel); `reserved`
+     * lists further names it must not take. Returns the name, or null when
+     * the recording has that speaker already.
+     */
+    const addSpeaker = (name = null, { reserved = [] } = {}) => {
+        const label = name == null ? nextSpeakerLabel(speakers(), [...loadedNames, ...reserved]) : String(name).trim();
+        if (!label || speakers().includes(label)) return null;
+        transact('add-speaker', () => exec({ k: 'spk', i: added.length, a: null, b: label }));
+        return label;
     };
 
     /** Replace the text of several segments as one undo step: [{ index, text }]. */
@@ -707,14 +755,25 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         if (speakerCacheRev !== rev || !speakerCache) {
             speakerCache = new Map();
             for (const seg of segs) if (seg.speaker && !speakerCache.has(seg.speaker)) speakerCache.set(seg.speaker, seg.id);
-            speakerNames = [...speakerCache.keys()];
+            // Added speakers come last and keep their place (and their number
+            // key) when they get their first segment
+            speakerNames = added.length ? [...speakerCache.keys()].filter((name) => !added.includes(name)).concat(added) : [...speakerCache.keys()];
             speakerCacheRev = rev;
         }
     };
-    /** Speaker names in order of first appearance. */
+    /** Speaker names in order of first appearance, then the speakers added in the editor. */
     const speakers = () => {
         scanSpeakers();
         return speakerNames;
+    };
+    /** The speakers added in the editor, with or without segments. */
+    const addedSpeakers = () => added.slice();
+    /** The saved speaker a name is linked to on its first segment, or undefined. */
+    const speakerIdOf = (name) => {
+        scanSpeakers();
+        const id = speakerCache.get(name);
+        const i = id === undefined ? -1 : indexOfId(id);
+        return i >= 0 ? segs[i].sid : undefined;
     };
     /** Id of the first segment of a speaker, or null. */
     const firstIdOfSpeaker = (name) => {
@@ -736,7 +795,17 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
 
     // ---- saving, changes, draft -------------------------------------------
 
-    const isDirty = () => pointer !== savedPointer;
+    // A step that only adds or renames a speaker without segments changes
+    // nothing that is saved.
+    const unsavable = (entry) => entry.steps.every((st) => st.k === 'spk');
+    const isDirty = () => {
+        if (pointer === savedPointer) return false;
+        if (savedPointer < 0) return true;
+        for (let k = Math.min(pointer, savedPointer); k < Math.max(pointer, savedPointer); k++) {
+            if (!unsavable(log[k])) return true;
+        }
+        return false;
+    };
 
     /** What changed since the last save: the changed segments and the ids removed. */
     const changes = () => {
@@ -860,10 +929,10 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         toJSON: () => segs.map(segmentToJSON),
 
         setText, setStart, setEnd, moveEdge, setTimes, move, retime, split, merge, mergeWithPrevious, mergeWithNext,
-        add, remove, setSpeaker, renameSpeaker, replaceText,
+        add, remove, setSpeaker, renameSpeaker, addSpeaker, replaceText,
         undo, redo, endBurst,
 
-        problemAt, nextProblem, speakers, firstIdOfSpeaker,
+        problemAt, nextProblem, speakers, addedSpeakers, speakerIdOf, firstIdOfSpeaker,
         changes, markSaved, acceptedMatches, adoptSaved, exportLog, importLog,
         onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     };

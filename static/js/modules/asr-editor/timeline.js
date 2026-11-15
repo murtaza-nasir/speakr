@@ -251,6 +251,8 @@ export function createAsrEditorTimeline() {
                         label: lane.name || translate('asrEditor.noSpeaker'),
                         color: speakerColorClass(session.colorMap, lane.name),
                         number: number >= 0 && number < 9 ? String(number + 1) : '',
+                        // What the name button does, for assistive technology and the tooltip
+                        rename: lane.name ? translate('asrEditor.renameSpeaker', { name: lane.name }) : translate('asrEditor.setSpeaker'),
                         match: match ? translate('asrEditor.suggestion', { name: match.name, percent: percent(Math.round(match.similarity)) }) : '',
                         // The name is already in the recording: accepting merges the two speakers
                         merge: match && match.merge ? translate('asrEditor.suggestionMergeInto', { name: match.name }) : '',
@@ -1128,6 +1130,19 @@ export function createAsrEditorTimeline() {
 
             const acceptSuggestion = (name) => { if (session.pane) session.pane.acceptSuggestion(name); };
             const previewSpeaker = (name) => { if (session.pane) session.pane.previewSpeaker(name); };
+            // The lane's name opens the speaker picker of the pane for the whole speaker
+            const renameSpeaker = (name, event) => { if (session.pane) session.pane.openLanePicker(name, event.currentTarget); };
+            // A speaker without segments: the next free SPEAKER_NN, never a
+            // label a voice match is known for
+            const addSpeaker = () => {
+                const name = model.addSpeaker(null, { reserved: Object.keys(session.voice.value || {}) });
+                if (name == null) return;
+                // The lanes follow with the next frame; then the new one is shown
+                requestAnimationFrame(() => nextTick(() => {
+                    const button = !destroyed && heads.value ? heads.value.querySelector('[data-asr-action="add-speaker"]') : null;
+                    if (button && button.scrollIntoView) button.scrollIntoView({ block: 'nearest' });
+                }));
+            };
 
             // ---- the session's way in ---------------------------------------
 
@@ -1311,7 +1326,7 @@ export function createAsrEditorTimeline() {
             return {
                 root, box, canvas, mini, heads, tip,
                 open, lanes, laneHeight, waveHeight, waveState, narrow,
-                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker,
+                toggleOpen, zoomIn, zoomOut, zoomFit, acceptSuggestion, previewSpeaker, renameSpeaker, addSpeaker,
                 rulerHeight: RULER, overviewHeight: OVERVIEW,
             };
         },

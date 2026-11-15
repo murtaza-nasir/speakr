@@ -881,3 +881,212 @@ describe('a 10-hour recording (20,000 segments)', () => {
         expect(m.get(0).speaker).toBe('SPEAKER_00');
     });
 });
+
+describe('a speaker added in the editor', () => {
+    const labeled = () => [seg('SPEAKER_00', 0, 2), seg('SPEAKER_01', 2, 5), seg('SPEAKER_00', 5, 9), seg('SPEAKER_01', 9, 12)];
+    const names = (m) => m.segments.map((s) => s.speaker);
+
+    it('is the next label, has no segments, and is one undo step', () => {
+        const m = createAsrModel(labeled());
+        const before = state(m);
+        const events = [];
+        m.onChange((e) => events.push(`${e.source}:${e.type}:${e.structural}`));
+        expect(m.addSpeaker()).toBe('SPEAKER_02');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+        expect(m.addedSpeakers()).toEqual(['SPEAKER_02']);
+        expect(m.firstIdOfSpeaker('SPEAKER_02')).toBeNull();
+        expect(state(m)).toBe(before);
+        expect(m.undoDepth).toBe(1);
+        expect(m.addSpeaker()).toBe('SPEAKER_03');
+        expect(m.undo()).not.toBeNull();
+        expect(m.undo()).not.toBeNull();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01']);
+        expect(m.canUndo).toBe(false);
+        expect(m.redo()).not.toBeNull();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+        expect(m.redo()).not.toBeNull();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_03']);
+        expect(state(m)).toBe(before);
+        expect(events).toEqual([
+            'do:add-speaker:false', 'do:add-speaker:false', 'undo:add-speaker:false', 'undo:add-speaker:false',
+            'redo:add-speaker:false', 'redo:add-speaker:false',
+        ]);
+    });
+
+    it('does not take a label the transcript was loaded with or a reserved one', () => {
+        const m = createAsrModel(labeled());
+        m.renameSpeaker('SPEAKER_01', 'Dana');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'Dana']);
+        // SPEAKER_01 is free, but a voice match may belong to that label
+        expect(m.addSpeaker()).toBe('SPEAKER_02');
+        expect(m.addSpeaker(null, { reserved: ['SPEAKER_07'] })).toBe('SPEAKER_08');
+        expect(m.addSpeaker('Dana')).toBeNull();
+        expect(m.addSpeaker('  ')).toBeNull();
+        expect(m.addSpeaker('Kim')).toBe('Kim');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'Dana', 'SPEAKER_02', 'SPEAKER_08', 'Kim']);
+    });
+
+    it('is not saved and is no unsaved change while it has no segments', () => {
+        const m = createAsrModel(labeled());
+        m.addSpeaker();
+        expect(m.dirty).toBe(false);
+        expect(m.changes()).toEqual({ dirty: false, changed: [], removedIds: [] });
+        expect(m.toJSON().map((s) => s.speaker)).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_00', 'SPEAKER_01']);
+        // Renamed while empty: still nothing to save
+        expect(m.renameSpeaker('SPEAKER_02', 'Kim')).toBe(true);
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'Kim']);
+        expect(m.dirty).toBe(false);
+        // With a segment it is a change like any other
+        m.setSpeaker([3], 'Kim');
+        expect(m.dirty).toBe(true);
+        expect(m.toJSON()[3].speaker).toBe('Kim');
+        m.markSaved();
+        expect(m.dirty).toBe(false);
+        m.addSpeaker();
+        expect(m.dirty).toBe(false);
+        m.undo();
+        m.undo();
+        expect(m.dirty).toBe(true);
+    });
+
+    it('stays last and keeps its place when it gets segments and when it loses them', () => {
+        const m = createAsrModel(labeled());
+        m.addSpeaker();
+        m.addSpeaker();
+        roundTrip(m, () => m.setSpeaker([0], 'SPEAKER_03'));
+        // The other speakers are in order of first appearance, as before
+        expect(m.speakers()).toEqual(['SPEAKER_01', 'SPEAKER_00', 'SPEAKER_02', 'SPEAKER_03']);
+        expect(m.firstIdOfSpeaker('SPEAKER_03')).toBe(m.get(0).id);
+        m.setSpeaker([0], 'SPEAKER_00');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_03']);
+        // A segment can be added and retimed into it as into any speaker
+        const at = m.add(20, 22, 'SPEAKER_02');
+        expect(m.get(at).speaker).toBe('SPEAKER_02');
+        m.retime([{ id: m.get(1).id, start: 2, end: 5, speaker: 'SPEAKER_03' }], { label: 'speaker' });
+        expect(names(m)).toEqual(['SPEAKER_00', 'SPEAKER_03', 'SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+    });
+
+    it('is renamed with its segments, and undo brings the name back', () => {
+        const m = createAsrModel(labeled());
+        m.addSpeaker();
+        m.setSpeaker([1, 3], 'SPEAKER_02');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_02']);
+        roundTrip(m, () => m.renameSpeaker('SPEAKER_02', 'Kim', { speakerId: 5 }));
+        expect(names(m)).toEqual(['SPEAKER_00', 'Kim', 'SPEAKER_00', 'Kim']);
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'Kim']);
+        expect(m.speakerIdOf('Kim')).toBe(5);
+        expect(m.speakerIdOf('SPEAKER_00')).toBeUndefined();
+        m.undo();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_02']);
+        m.undo();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+        // No empty speaker of the old name is left behind after the rename
+        m.redo();
+        m.redo();
+        m.setSpeaker([1, 3], 'SPEAKER_00');
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'Kim']);
+    });
+
+    it('is gone when it is renamed into a speaker the recording has (a merge)', () => {
+        const m = createAsrModel(labeled());
+        m.addSpeaker();
+        // Empty: nothing moves, the added speaker goes
+        expect(m.renameSpeaker('SPEAKER_02', 'SPEAKER_00')).toBe(true);
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01']);
+        expect(m.dirty).toBe(false);
+        m.undo();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+        // With segments: they move, and one speaker is left
+        m.setSpeaker([0], 'SPEAKER_02');
+        roundTrip(m, () => m.renameSpeaker('SPEAKER_02', 'SPEAKER_01'));
+        expect(names(m)).toEqual(['SPEAKER_01', 'SPEAKER_01', 'SPEAKER_00', 'SPEAKER_01']);
+        expect(m.speakers()).toEqual(['SPEAKER_01', 'SPEAKER_00']);
+        m.undo();
+        expect(m.speakers()).toEqual(['SPEAKER_01', 'SPEAKER_00', 'SPEAKER_02']);
+        // Another speaker merged into the added one: the added one stays
+        roundTrip(m, () => m.renameSpeaker('SPEAKER_01', 'SPEAKER_02'));
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_02']);
+        expect(m.renameSpeaker('SPEAKER_02', 'SPEAKER_02')).toBe(false);
+    });
+
+    it('renaming or merging a lane is one step that undo restores exactly', () => {
+        const m = createAsrModel([
+            { ...seg('Dana', 0, 2), speaker_id: 3 }, seg('SPEAKER_01', 2, 5), { ...seg('Dana', 5, 9), speaker_id: 3 }, seg('SPEAKER_01', 9, 12),
+        ]);
+        // What the lane picker does for "Merge into Dana": the name and the link of the target
+        roundTrip(m, () => m.renameSpeaker('SPEAKER_01', 'Dana', { speakerId: m.speakerIdOf('Dana') }));
+        expect(m.toJSON().map((s) => [s.speaker, s.speaker_id])).toEqual([['Dana', 3], ['Dana', 3], ['Dana', 3], ['Dana', 3]]);
+        expect(m.speakers()).toEqual(['Dana']);
+        expect(m.undoDepth).toBe(1);
+        m.undo();
+        expect(m.toJSON().map((s) => [s.speaker, s.speaker_id])).toEqual([['Dana', 3], ['SPEAKER_01', undefined], ['Dana', 3], ['SPEAKER_01', undefined]]);
+        // A typed new name for the lane
+        roundTrip(m, () => m.renameSpeaker('SPEAKER_01', 'Linus'));
+        expect(m.speakers()).toEqual(['Dana', 'Linus']);
+    });
+
+    it('is kept by a draft that has other edits', () => {
+        const m = createAsrModel(labeled(), { now: () => 0 });
+        m.addSpeaker();
+        m.addSpeaker();
+        m.renameSpeaker('SPEAKER_03', 'Kim');
+        m.setSpeaker([2], 'Kim');
+        m.renameSpeaker('SPEAKER_02', 'SPEAKER_01');
+        const stored = JSON.parse(JSON.stringify(m.exportLog()));
+        const fresh = createAsrModel(labeled());
+        fresh.importLog(stored);
+        expect(state(fresh)).toBe(state(m));
+        expect(fresh.speakers()).toEqual(m.speakers());
+        expect(fresh.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'Kim']);
+        expect(fresh.dirty).toBe(true);
+        while (fresh.canUndo) fresh.undo();
+        expect(fresh.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01']);
+        expect(fresh.addedSpeakers()).toEqual([]);
+    });
+
+    it('refuses a stored step that does not fit', () => {
+        const m = createAsrModel(labeled());
+        expect(() => m.importLog([{ label: 'x', steps: [{ k: 'spk', i: 1, a: null, b: 'Kim' }] }])).toThrow();
+        expect(() => m.importLog([{ label: 'x', steps: [{ k: 'spk', i: 0, a: 'Lee', b: 'Kim' }] }])).toThrow();
+        expect(() => m.importLog([{ label: 'x', steps: [{ k: 'spk', i: 0, a: null, b: '' }] }])).toThrow();
+        expect(() => m.importLog([{ label: 'x', steps: [{ k: 'spk', i: 0, a: null, b: 'Kim' }, { k: 'set', i: 99, f: 'sentence', a: '', b: 'x' }] }])).toThrow();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01']);
+    });
+
+    it('survives a random sequence with the other speaker edits: undo is exact', () => {
+        let seed = 4242;
+        const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+        const raw = [];
+        for (let i = 0; i < 30; i++) raw.push(seg(['SPEAKER_00', 'SPEAKER_01', 'Dana'][rnd(3)], i * 2, i * 2 + 1.5, `text ${i}`));
+        const m = createAsrModel(raw, { now: () => 0 });
+        const full = () => `${state(m)}|${m.speakers().join(',')}|${m.addedSpeakers().join(',')}`;
+        const history = [full()];
+        for (let step = 0; step < 300; step++) {
+            const all = m.speakers();
+            const pick = () => all[rnd(all.length)];
+            const before = m.undoDepth;
+            switch (rnd(5)) {
+                case 0: m.addSpeaker(); break;
+                case 1: m.setSpeaker([rnd(m.length), rnd(m.length)], pick()); break;
+                case 2: m.renameSpeaker(pick(), rnd(3) ? pick() : `Name ${step}`); break;
+                case 3: m.add(rnd(60), rnd(60) + 61, pick()); break;
+                default: if (m.length > 10) m.remove([rnd(m.length)]);
+            }
+            expect(new Set(m.speakers()).size).toBe(m.speakers().length);
+            for (const s of m.segments) expect(m.speakers()).toContain(s.speaker);
+            expect(problemsNow(m)).toEqual(problemsFromScratch(m));
+            if (m.undoDepth > before) history.push(full());
+            if (rnd(5) === 0 && m.canUndo) {
+                m.undo();
+                history.pop();
+                expect(full()).toBe(history[history.length - 1]);
+            }
+        }
+        while (m.canUndo) {
+            m.undo();
+            history.pop();
+            expect(full()).toBe(history[history.length - 1]);
+        }
+        expect(history.length).toBe(1);
+    });
+});

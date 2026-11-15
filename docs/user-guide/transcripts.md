@@ -81,6 +81,10 @@ The ASR editor shows your transcription the way the transcript reads: each segme
 
 While you drag, the edge snaps to the edges of other segments, to the playhead and to pauses in the audio; hold **Ctrl** (Cmd) to turn snapping off, and press **Esc** to cancel the drag. Each drag is one undo step. On a phone, scroll with the waveform or the overview and drag in a lane with one finger. The waveform is prepared the first time the editor of a recording opens, which takes a few seconds for a recording of several hours; the lanes work in the meantime. **Timeline** at the top left of it folds the timeline away, and the editor remembers that.
 
+**Speakers in the Timeline**: A speaker can be renamed in the whole recording by clicking its name in the timeline. The speaker picker is then shown for all segments of that speaker, and a saved speaker, another speaker of the recording or a typed name can be chosen. When a choice labeled **Merge into …** is selected, the segments are given to a speaker the recording already has, and one speaker and one lane are left. The change can be reversed with **Undo** in the message that follows. A voice match beside the name is accepted with its own **Accept** or **Merge** button, as before.
+
+A speaker can be added with **Add speaker** under the last lane. The new speaker is named with the next label (`SPEAKER_04` after `SPEAKER_03`) and has an empty lane and, among the first nine speakers, a number key. Segments are given to it with the speaker picker, with its number key, or by dragging a block or empty space in its lane, and it can be renamed through its name. A speaker without segments is not saved.
+
 **Problems**: The toolbar counts segments whose end is not after their start and segments that overlap the previous segment of the same speaker. Click the count to step through them.
 
 **Undo and Redo**: **Ctrl+Z** undoes and **Ctrl+Shift+Z** or **Ctrl+Y** redoes (Cmd on a Mac), also with the toolbar buttons. A burst of typing is one step, and so are a rename of a speaker in the whole recording and a Replace all.

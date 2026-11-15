@@ -873,6 +873,8 @@
     "pickerUseName": "„{{name}}“ verwenden",
     "pickerEmpty": "Namen eingeben",
     "pickerAll": "Alle Segmente von {{name}}",
+    "renameSpeaker": "{{name}} umbenennen",
+    "addSpeaker": "Sprecher hinzufügen",
     "editTimes": "Zeiten bearbeiten",
     "timeFormat": "Minuten:Sekunden, zum Beispiel 1:02,5",
     "timeLinked": "Angrenzendes Segment mitverschieben",

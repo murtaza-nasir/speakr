@@ -10,6 +10,9 @@
      on it (Accept, or Merge when the recording already has a speaker of that
      name); the header column is wider while there is one. At phone width the
      column has no room, and the matches are listed above the lanes.
+     The name of a lane is a button of its own: it opens the speaker picker
+     of the pane for the whole speaker (rename, or merge into another one).
+     Under the last lane a button adds a speaker without segments.
      The canvas reads its colours from
      the --tl-* variables of .asr-tl and from the header swatches, which carry
      the .speaker-color-N classes of the transcript. -->
@@ -57,7 +60,11 @@
                 <div v-for="lane in lanes" :key="lane.name" class="asr-tl__lane" :style="{ height: laneHeight + 'px' }" :data-asr-lane="lane.index">
                     <span class="asr-tl__swatch" :class="lane.color" data-asr-lane-swatch
                           :title="lane.number ? t('asrEditor.timeline.laneKey', { key: lane.number }) : null" v-text="lane.number"></span>
-                    <span class="asr-tl__name" :title="lane.label" v-text="lane.label"></span>
+                    <button type="button" class="asr-tl__name" data-asr-action="lane-rename" aria-haspopup="dialog"
+                            :title="lane.rename" :aria-label="lane.rename" @click="renameSpeaker(lane.name, $event)">
+                        <span class="asr-tl__name-text" v-text="lane.label"></span>
+                        <i class="fas fa-pen asr-tl__name-edit" aria-hidden="true"></i>
+                    </button>
                     <span v-if="lane.match && !narrow" class="asr-suggest asr-suggest--lane" data-asr-lane-suggestion>
                         <button type="button" class="asr-suggest__name" @click="previewSpeaker(lane.name)" :title="t('asrEditor.suggestionPlay')">
                             <i class="fas fa-wave-square" aria-hidden="true"></i>
@@ -67,6 +74,12 @@
                         <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)"
                         :title="lane.merge || null" v-text="lane.merge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
                     </span>
+                </div>
+                <div class="asr-tl__add">
+                    <button type="button" class="asr-tl__add-btn" data-asr-action="add-speaker" @click="addSpeaker">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        <span v-text="t('asrEditor.addSpeaker')"></span>
+                    </button>
                 </div>
             </div>
             <div class="asr-tl__box" ref="box">
