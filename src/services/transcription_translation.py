@@ -9,6 +9,15 @@ import json
 import re
 import time
 
+from src.transcription_prompts import build_transcript_prompt_parts, clean_llm_response
+
+# System message for the plain (no prefix caching) translation call.
+TRANSLATION_SYSTEM_MESSAGE = (
+    'You are a translation engine. Translate the values of the JSON object '
+    'into the requested language. Return only a valid JSON object with the '
+    'same keys.'
+)
+
 
 # Each chunk has to come back from the model as one complete JSON object, so
 # its size is bounded by the model's output limit. transcript_length_limit
@@ -62,32 +71,15 @@ def _resolve_target_language(user_id, target_language):
     return target_language
 
 
-def _prefix_cache_parts():
-    from src.tasks.processing import (
-        PREFIX_CACHE_OPTIMIZED_PROMPTS,
-        _SHARED_LLM_SYSTEM_MSG,
-        _shared_user_prefix,
-    )
-
-    return bool(PREFIX_CACHE_OPTIMIZED_PROMPTS), _SHARED_LLM_SYSTEM_MSG, _shared_user_prefix
-
-
-def _clean_llm_response(text):
-    from src.tasks.processing import clean_llm_response
-
-    return clean_llm_response(text)
-
-
 def _safe_json_loads(text, fallback=None):
     from src.utils import safe_json_loads
 
     return safe_json_loads(text, fallback)
 
 
-def _call_llm(messages, user_id, prefix_opt):
+def _call_llm(messages, user_id):
     from src.services.llm import call_translation_completion
 
-    flag, _system, _prefix = prefix_opt
     completion = call_translation_completion(
         messages=messages,
         temperature=0.2,
@@ -96,45 +88,36 @@ def _call_llm(messages, user_id, prefix_opt):
         operation_type='translation',
     )
     content = completion.choices[0].message.content
-    return _clean_llm_response(content)
+    return clean_llm_response(content)
 
 
-def _llm_translate_payload(payload, user_id, target_language, prefix_opt):
+def _llm_translate_payload(payload, user_id, target_language,
+                           prefix_cache_optimized, cache_breakpoints):
     """Send a numbered JSON object of sentences/text and return the parsed dict."""
     import json as _json
 
     source_json = _json.dumps(payload, ensure_ascii=False)
-    flag, shared_system, shared_prefix = prefix_opt
 
-    if flag and shared_system and shared_prefix:
-        try:
-            from src.tasks.processing import _user_content
-
-            user_content = _user_content(
-                shared_prefix(source_json)
-                + f'\n\nTranslate each value in the JSON object above into {target_language}. '
-                f'Return a JSON object with exactly the same keys and translated values.\n',
-                source_json,
-            )
-        except Exception:
-            user_content = (
-                shared_prefix(source_json)
-                + f'\n\nTranslate each value in the JSON object above into {target_language}. '
-                f'Return a JSON object with exactly the same keys and translated values.\n'
-            )
+    if prefix_cache_optimized:
+        suffix = (
+            f'\n\nTranslate each value in the JSON object above into {target_language}. '
+            f'Return a JSON object with exactly the same keys and translated values.\n'
+        )
+        system_content, user_content = build_transcript_prompt_parts(
+            source_json,
+            suffix,
+            prefix_cache_optimized,
+            cache_breakpoints=cache_breakpoints,
+        )
         messages = [
-            {'role': 'system', 'content': shared_system},
+            {'role': 'system', 'content': system_content},
             {'role': 'user', 'content': user_content},
         ]
     else:
         messages = [
             {
                 'role': 'system',
-                'content': (
-                    'You are a translation engine. Translate the values of the JSON object '
-                    'into the requested language. Return only a valid JSON object with the '
-                    'same keys.'
-                ),
+                'content': TRANSLATION_SYSTEM_MESSAGE,
             },
             {
                 'role': 'user',
@@ -145,7 +128,7 @@ def _llm_translate_payload(payload, user_id, target_language, prefix_opt):
             },
         ]
 
-    content = _call_llm(messages, user_id, prefix_opt)
+    content = _call_llm(messages, user_id)
     parsed = _safe_json_loads(content, None)
     if not isinstance(parsed, dict):
         raise ValueError('Malformed translation response: expected a JSON object')
@@ -157,14 +140,17 @@ def _llm_translate_payload(payload, user_id, target_language, prefix_opt):
     return parsed
 
 
-def _translate_payload_split(payload, user_id, target_language, prefix_opt):
+def _translate_payload_split(payload, user_id, target_language,
+                             prefix_cache_optimized, cache_breakpoints):
     """Translate a payload, halving it when the model drops or shifts keys.
 
     After a missing key, every later translation may sit one key too early,
     so the whole response is discarded and each half is sent again.
     """
     try:
-        return _llm_translate_payload(payload, user_id, target_language, prefix_opt)
+        return _llm_translate_payload(
+            payload, user_id, target_language, prefix_cache_optimized, cache_breakpoints
+        )
     except ValueError as e:
         if 'mismatched keys' not in str(e) or len(payload) < 2:
             raise
@@ -173,7 +159,10 @@ def _translate_payload_split(payload, user_id, target_language, prefix_opt):
     result = {}
     for part in (keys[:half], keys[half:]):
         result.update(
-            _translate_payload_split({k: payload[k] for k in part}, user_id, target_language, prefix_opt)
+            _translate_payload_split(
+                {k: payload[k] for k in part}, user_id, target_language,
+                prefix_cache_optimized, cache_breakpoints,
+            )
         )
     return result
 
@@ -208,13 +197,17 @@ def translate_json_segments(text, user_id, target_language, progress=None):
     if current:
         chunks.append(current)
 
-    prefix_opt = _prefix_cache_parts()
+    from src.tasks.processing import prefix_cache_flags
+
+    prefix_cache_optimized, cache_breakpoints = prefix_cache_flags()
     translated_all = []
     _report(progress, 0, len(chunks))
     for chunk_number, chunk in enumerate(chunks, 1):
         non_empty = [i for i, s in enumerate(chunk) if (s or '').strip()]
         payload = {str(i + 1): (chunk[i] if chunk[i] is not None else '') for i in non_empty}
-        parsed = _translate_payload_split(payload, user_id, target_language, prefix_opt) if payload else {}
+        parsed = _translate_payload_split(
+            payload, user_id, target_language, prefix_cache_optimized, cache_breakpoints
+        ) if payload else {}
         for i in range(len(chunk)):
             if i in non_empty:
                 value = parsed.get(str(i + 1)) if isinstance(parsed, dict) else None
@@ -272,7 +265,9 @@ def translate_plain_text(text, user_id, target_language, progress=None):
     if current:
         chunks.append(current)
 
-    prefix_opt = _prefix_cache_parts()
+    from src.tasks.processing import prefix_cache_flags
+
+    prefix_cache_optimized, cache_breakpoints = prefix_cache_flags()
     translated_chunks = []
     _report(progress, 0, len(chunks))
     for chunk_number, chunk in enumerate(chunks, 1):
@@ -289,7 +284,9 @@ def translate_plain_text(text, user_id, target_language, progress=None):
         # model that omits an empty key cannot fail an otherwise valid chunk.
         non_empty = [i for i, p in enumerate(paras) if (p or '').strip()]
         payload = {str(i): paras[i] for i in non_empty}
-        parsed = _translate_payload_split(payload, user_id, target_language, prefix_opt) if payload else {}
+        parsed = _translate_payload_split(
+            payload, user_id, target_language, prefix_cache_optimized, cache_breakpoints
+        ) if payload else {}
         translated_paras = []
         for i in range(len(paras)):
             if i in non_empty:
