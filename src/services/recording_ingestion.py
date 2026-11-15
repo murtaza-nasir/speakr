@@ -107,7 +107,7 @@ def _discard_staging(path):
         if os.path.exists(path):
             os.remove(path)
     except OSError as e:
-        current_app.logger.warning(f"Could not remove staging file {path}: {e}")
+        current_app.logger.warning(f"Could not remove staging file {loggable_path(path)}: {loggable_error(e, path)}")
 
 
 class DuplicateLookup(NamedTuple):

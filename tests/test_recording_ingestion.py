@@ -1139,7 +1139,7 @@ def test_discard_staging_logs_a_failed_removal(staged):
     with app.app_context(), patch.object(app.logger, "warning") as warning, \
             patch("os.remove", side_effect=OSError("busy")):
         recording_ingestion._discard_staging(staged)
-    warning.assert_called_once_with(f"Could not remove staging file {staged}: busy")
+    warning.assert_called_once_with(f"Could not remove staging file {loggable_path(staged)}: busy")
 
 
 @pytest.mark.parametrize("ext", sorted(recording_ingestion.VIDEO_EXTENSIONS))
