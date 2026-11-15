@@ -466,7 +466,7 @@ OPENAPI_SPEC = {
             "post": {"tags": ["Recordings"], "summary": "Delete audio, keep transcript", "description": "Deletes the media file and keeps the transcript, summary and notes. Same permission as deleting the recording. 409 if the audio is already removed or the recording is still processing.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Audio removed"}, "403": {"description": "Permission denied"}, "404": {"description": "Recording not found"}, "409": {"description": "Already removed or still processing"}}}
         },
         "/recordings/{id}/status": {
-            "get": {"tags": ["Recordings"], "summary": "Get processing status", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position"}}}
+            "get": {"tags": ["Recordings"], "summary": "Get processing status", "description": "status, queue_position and stage as before. For the recording's waiting or running job: processing_stage (queued, converting, assembling, joining, transcribing, titling, summarizing), stage_detail (what the transcription service reports: waiting, preparing, transcribing, aligning, diarizing; or null), progress ({done, total} in chunks, or {fraction} from 0 to 1, or null when no measured number exists), progress_kind (chunks, fraction or null), job_started_at (UTC with a Z, null while the job waits) and cancel_requested. No estimate is reported.", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position, stage and progress"}}}
         },
         "/recordings/{id}/transcribe": {
             "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}, "hotwords": {"type": "string", "description": "Connectors that accept hotword biasing route this to their native parameter (WhisperX hotwords, Mistral context_bias, OpenAI prompt, etc.). Connectors that ignore it drop it silently."}, "initial_prompt": {"type": "string", "description": "Free-text context hint. Same per-connector behaviour as hotwords."}, "transcription_model": {"type": "string", "description": "Per-request model override. Validated against the admin-curated visible-models list. Falls back to the configured default if absent or invalid."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
@@ -2396,12 +2396,22 @@ def get_recording_status(recording_id):
     from src.services.job_queue import job_queue
     queue_position = job_queue.get_position_in_queue(recording_id)
     stage = job_queue.get_stage(recording_id)
+    # The job itself: a finer stage code, and a real progress number where
+    # one exists (chunks finished of a total, or a measured fraction).
+    job = job_queue.get_active_job(recording_id)
+    from src.utils.dates import utc_iso
 
     return jsonify({
         'id': recording.id,
         'status': recording.status,
         'queue_position': queue_position,
         'stage': stage,
+        'processing_stage': job.job_stage() if job else None,
+        'stage_detail': job.stage_detail if job and job.status == 'processing' else None,
+        'progress': job.progress() if job else None,
+        'progress_kind': job.progress_kind_or_default() if job else None,
+        'job_started_at': utc_iso(job.started_at) if job else None,
+        'cancel_requested': bool(job and job.cancel_requested_at is not None),
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
         'completed_at': recording.completed_at.isoformat() if recording.completed_at else None
     })

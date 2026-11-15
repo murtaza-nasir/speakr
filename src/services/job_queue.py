@@ -1141,15 +1141,21 @@ class FairJobQueue:
         Background jobs (translation, Inquire chunks) are not the recording's
         stage.
         """
+        job = self.get_active_job(recording_id)
+        return self.STAGES.get(queue_name_for(job.job_type)) if job else None
+
+    def get_active_job(self, recording_id: int):
+        """The recording's waiting or running job, the newest when it has
+        several; None when it has none. Background jobs (translation,
+        Inquire chunks) are not counted."""
         with self._app_context():
             from src.models import ProcessingJob
 
-            job = ProcessingJob.query.filter(
+            return ProcessingJob.query.filter(
                 ProcessingJob.recording_id == recording_id,
                 ProcessingJob.status.in_(['queued', 'processing']),
                 ProcessingJob.job_type.notin_(BACKGROUND_JOBS)
             ).order_by(ProcessingJob.id.desc()).first()
-            return self.STAGES.get(queue_name_for(job.job_type)) if job else None
 
     def get_job_for_recording(self, recording_id: int):
         """Get the active job for a recording."""
