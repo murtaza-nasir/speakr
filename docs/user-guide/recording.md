@@ -25,6 +25,27 @@ Speakr supports a [wide range of audio and video formats](../faq.md#what-audio-f
 
 When you upload a file, it immediately appears in the upload queue with a progress bar showing the upload status. Once uploaded, you can add [tags](settings.md#tag-management-tab), set a custom title, and configure processing options before starting transcription. Tags can include [custom AI prompts](../admin-guide/prompts.md) for specialized processing.
 
+### Processing Queue
+
+Every file that is uploaded, converted, transcribed, summarized or translated has a row in the processing queue. The following is given for each row:
+
+- **Stage**: uploading, waiting, converting, transcribing, generating the title, summarizing or translating. For a waiting file, the place in its queue is given.
+- **Progress**: a number is given only where a measured one exists. These are the uploaded share of a file, the finished parts of a long recording that is transcribed in parts, the finished parts of a translation, and the share reported by a transcription service that measures it. In every other case a moving bar is shown with the time since the step started. Remaining time is never estimated.
+- **Result**: finished files stay in the list for an hour, failed files with the reason.
+
+Processing can be canceled while a file waits or is processed:
+
+- A file that waits is removed from the queue at once.
+- A file in processing is stopped at the next safe point: between two parts of a long recording, at the next status check of the transcription service, or before the next request to the language model. A request that is already under way is finished first and its result is discarded, so the row can stay marked as canceling for a short time.
+- A recording that already had a transcript returns to its previous state: when a reprocess is canceled, the previous transcript, summary and events are restored.
+- When the transcript of the current run is already stored and the cancel arrives during the title or the summary, the transcript is kept and the recording is completed without the missing step.
+- After the cancel of a first transcription, the recording has the status Failed and the message "Processing was canceled." The audio is kept. To start the transcription again, use [Reprocess](first-steps.md#reprocessing-options).
+- No failure email and no webhook is sent for a canceled file.
+
+An upload can be canceled while the file is sent. The request is aborted and nothing of the file is kept on the server. The upload of a recording made in Speakr is not canceled, because the audio exists only in the browser until the upload has finished.
+
+Finished rows and failed rows can each be cleared in one step. Cleared failed rows are removed from the list only; the recordings stay in the library, where each can be reprocessed or deleted.
+
 ## Recording Live Audio
 
 The upload modal includes three recording buttons under the drag-and-drop file area. **Microphone** sits as the full-width primary button (the everyday case); **System audio** and **Mic + System** sit on a secondary tier with smaller buttons and coloured icon accents. A small amber dot appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the platform Speakr detected (more on this in the [platform matrix](#platform-support-matrix) below) — clicking the button still works for tab audio in that case, with a help-modal link explaining the workaround.
