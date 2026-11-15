@@ -11,11 +11,11 @@ const EN = { nav: { account: 'Account', admin: 'Admin' }, only: { english: 'Engl
 const DE = { nav: { account: 'Konto' } };
 const FR = { nav: { account: 'Compte' } };
 
-function load({ bootstrap, saved = null, files = { en: EN, de: DE, fr: FR } } = {}) {
+function load({ bootstrap, saved = null, files = { en: EN, de: DE, fr: FR }, version, vue = false, elements = [] } = {}) {
     const events = [];
     const store = new Map(saved ? [['preferredLanguage', saved]] : []);
     const fetch = vi.fn(async (url) => {
-        const code = url.match(/locales\/(.+)\.json$/)[1];
+        const code = url.match(/locales\/(.+)\.json(\?v=.*)?$/)[1];
         return files[code]
             ? { ok: true, json: async () => files[code] }
             : { ok: false, json: async () => ({}) };
@@ -24,8 +24,28 @@ function load({ bootstrap, saved = null, files = { en: EN, de: DE, fr: FR } } = 
         dispatchEvent: (e) => events.push({ type: e.type, detail: e.detail }),
     };
     if (bootstrap !== undefined) window.__I18N_BOOTSTRAP = bootstrap;
+    if (version !== undefined) window.__I18N_ASSET_VERSION = version;
+    // A stand-in for Vue's ref: reads and writes are counted.
+    const refs = [];
+    if (vue) {
+        window.Vue = {
+            ref: (initial) => {
+                const state = { value: initial, reads: 0 };
+                const ref = { get value() { state.reads++; return state.value; }, set value(v) { state.value = v; } };
+                refs.push({ ref, state });
+                return ref;
+            },
+        };
+    }
+    const document = {
+        querySelectorAll: (selector) => {
+            const attr = selector.slice(1, -1);
+            return elements.filter((el) => el.attrs[attr] !== undefined);
+        },
+    };
     const context = vm.createContext({
         window,
+        document,
         fetch,
         CustomEvent,
         console: { log() {}, warn() {}, error() {} },
@@ -36,7 +56,7 @@ function load({ bootstrap, saved = null, files = { en: EN, de: DE, fr: FR } } = 
         },
     });
     vm.runInContext(SOURCE, context);
-    return { i18n: window.i18n, fetch, events, store };
+    return { i18n: window.i18n, fetch, events, store, refs, window };
 }
 
 describe('i18n bootstrap', () => {
@@ -74,11 +94,12 @@ describe('i18n bootstrap', () => {
         expect(i18n.t('nav.account')).toBe('Konto');
     });
 
-    it('works as before without a bootstrap', async () => {
+    it('loads only the language without a bootstrap; English is not fetched with it', async () => {
         const { i18n, fetch, events } = load();
         expect(i18n.isReady).toBe(false);
         await i18n.init('de');
-        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/de.json', '/static/locales/en.json']);
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/de.json']);
+        expect(fetch.mock.calls[0][1]).toEqual({ cache: 'no-cache' });
         expect(i18n.t('nav.account')).toBe('Konto');
         expect(events.map(e => e.type)).toEqual(['i18nReady']);
     });
@@ -92,12 +113,13 @@ describe('i18n bootstrap', () => {
         }
     });
 
-    it('waits for English when only the locale is embedded', async () => {
-        const { i18n, fetch } = load({ bootstrap: { locale: 'de', translations: { de: DE } } });
-        expect(i18n.isReady).toBe(false);
-        await i18n.init('de');
-        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/en.json']);
+    it('is ready with only the language embedded, without English', async () => {
+        const { i18n, fetch, events } = load({ bootstrap: { locale: 'de', translations: { de: DE }, fallback: {} } });
         expect(i18n.isReady).toBe(true);
+        expect(i18n.t('nav.account')).toBe('Konto');
+        expect(events.map(e => e.type)).toEqual(['i18nReady']);
+        await i18n.init('de');
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     it('changes language with setLocale as before', async () => {
@@ -106,6 +128,166 @@ describe('i18n bootstrap', () => {
         expect(i18n.t('nav.account')).toBe('Compte');
         expect(store.get('preferredLanguage')).toBe('fr');
         expect(events.map(e => e.type)).toEqual(['i18nReady', 'localeChanged']);
+    });
+});
+
+describe('English fallback without the English table in the page', () => {
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const element = (attrs, textContent = '') => ({
+        attrs: { ...attrs },
+        textContent,
+        getAttribute(name) { return this.attrs[name] === undefined ? null : this.attrs[name]; },
+        setAttribute(name, value) { this.attrs[name] = value; },
+    });
+
+    it('answers a key the language lacks from the embedded English strings, with no fetch', async () => {
+        const { i18n, fetch } = load({
+            bootstrap: { locale: 'de', translations: { de: DE }, fallback: { only: { english: 'English only' } } },
+        });
+        expect(i18n.t('only.english')).toBe('English only');
+        expect(i18n.t('nav.account')).toBe('Konto');
+        await flush();
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns the key at once for a key that English lacks too, with no fetch', async () => {
+        // The server compared the language with English, so English has
+        // nothing more to give: helpers that test t(key) === key work as before.
+        const { i18n, fetch } = load({ bootstrap: { locale: 'de', translations: { de: DE }, fallback: {} } });
+        expect(i18n.t('no.such.key')).toBe('no.such.key');
+        expect(i18n.items('no.such.list')).toEqual([]);
+        await flush();
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('fetches English once on the first missing key of a fetched language and never shows the key', async () => {
+        const { i18n, fetch, events } = load({ saved: 'de', version: '1.2.3' });
+        await i18n.init('en');
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/de.json?v=1.2.3']);
+        expect(fetch.mock.calls[0][1]).toBeUndefined(); // the browser's copy may be used
+        expect(i18n.t('nav.account')).toBe('Konto');
+        expect(fetch).toHaveBeenCalledTimes(1);
+
+        expect(i18n.t('only.english')).toBe(''); // not the key
+        expect(i18n.t('nav.admin')).toBe('');
+        expect(i18n.t('only.english')).toBe('');
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(
+            ['/static/locales/de.json?v=1.2.3', '/static/locales/en.json?v=1.2.3']);
+        await flush();
+        expect(i18n.t('only.english')).toBe('English only');
+        expect(i18n.t('nav.admin')).toBe('Admin');
+        expect(i18n.t('nav.account')).toBe('Konto');
+        expect(i18n.t('no.such.key')).toBe('no.such.key'); // English is known now
+        expect(fetch).toHaveBeenCalledTimes(2);
+        const loaded = events.filter(e => e.type === 'i18nFallbackLoaded');
+        expect(loaded).toHaveLength(1);
+        expect(loaded[0].detail.keys.sort()).toEqual(['nav.admin', 'only.english']);
+    });
+
+    it('fetches nothing before the language itself has arrived', async () => {
+        // A saved language that the page did not embed: init() fetches it.
+        const { i18n, fetch } = load({
+            bootstrap: { locale: 'de', translations: { de: DE }, fallback: {} },
+            saved: 'fr',
+        });
+        expect(i18n.isReady).toBe(false);
+        expect(i18n.t('nav.account')).toBe(''); // neither the key nor German
+        expect(fetch).not.toHaveBeenCalled();
+        await i18n.init('de');
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/fr.json']);
+        expect(i18n.t('nav.account')).toBe('Compte');
+    });
+
+    it('renders Vue text again when English arrives', async () => {
+        const { i18n, refs } = load({ saved: 'de', vue: true });
+        await i18n.init('en');
+        expect(i18n.t('only.english')).toBe('');
+        expect(refs).toHaveLength(1);
+        const { state } = refs[0];
+        expect(state.reads).toBeGreaterThan(0); // the render that called t() depends on it
+        const before = state.value;
+        await flush();
+        expect(state.value).toBeGreaterThan(before); // changed, so that render runs again
+        expect(i18n.t('only.english')).toBe('English only');
+    });
+
+    it('fills data-i18n text and attributes that waited for English', async () => {
+        const text = element({ 'data-i18n': 'only.english' }, 'Server text');
+        const greeting = element({ 'data-i18n': 'greet.hello', 'data-i18n-params': '{"name":"Ada"}' }, 'Hi');
+        const placeholder = element({ 'data-i18n-placeholder': 'only.english', placeholder: 'e.g.' });
+        const title = element({ 'data-i18n-title': 'nav.admin', title: 'Admin (server)' });
+        const label = element({ 'data-i18n-aria-label': 'nav.admin' });
+        const german = element({ 'data-i18n': 'nav.account' }, 'Konto');
+        const unknown = element({ 'data-i18n': 'no.such.key' }, 'Kept');
+        const { i18n } = load({
+            saved: 'de',
+            files: { en: { ...EN, greet: { hello: 'Hello {{name}}' } }, de: DE },
+            elements: [text, greeting, placeholder, title, label, german, unknown],
+        });
+        await i18n.init('en');
+        // What the pages do: the text is left alone while t() answers ''.
+        for (const el of [text, greeting, german, unknown]) {
+            const params = JSON.parse(el.getAttribute('data-i18n-params') || '{}');
+            el.textContent = i18n.t(el.getAttribute('data-i18n'), params) || el.textContent;
+        }
+        i18n.t('nav.admin');
+        expect(text.textContent).toBe('Server text');
+        expect(unknown.textContent).toBe('Kept');
+        await flush();
+        expect(text.textContent).toBe('English only');
+        expect(greeting.textContent).toBe('Hello Ada');
+        expect(placeholder.attrs.placeholder).toBe('English only');
+        expect(title.attrs.title).toBe('Admin');
+        expect(label.attrs['aria-label']).toBe('Admin');
+        expect(german.textContent).toBe('Konto');
+        expect(unknown.textContent).toBe('Kept'); // never the raw key
+    });
+
+    it('tries English again after a failed fetch, not on every call', async () => {
+        const files = { de: DE };
+        const { i18n, fetch } = load({ saved: 'de', files });
+        await i18n.init('en');
+        expect(i18n.t('only.english')).toBe('');
+        await flush();
+        expect(i18n.t('only.english')).toBe(''); // still not the key
+        expect(i18n.t('nav.admin')).toBe('');
+        expect(fetch).toHaveBeenCalledTimes(2); // de, then one attempt for en
+        files.en = EN;
+        i18n._fallbackRetryAt = 0; // the ten seconds have passed
+        expect(i18n.t('only.english')).toBe('');
+        await flush();
+        expect(i18n.t('only.english')).toBe('English only');
+        expect(fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('falls back to English when the language file cannot be loaded', async () => {
+        const { i18n, fetch } = load({ saved: 'xx' });
+        await i18n.init('en');
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/xx.json', '/static/locales/en.json']);
+        expect(i18n.isReady).toBe(true);
+        expect(i18n.t('nav.account')).toBe('Account');
+    });
+
+    it('fetches the full English table when English is chosen on a page in another language', async () => {
+        const { i18n, fetch } = load({
+            bootstrap: { locale: 'de', translations: { de: DE }, fallback: { only: { english: 'English only' } } },
+        });
+        await i18n.setLocale('en');
+        expect(fetch.mock.calls.map(c => c[0])).toEqual(['/static/locales/en.json']);
+        expect(i18n.t('nav.account')).toBe('Account');
+    });
+
+    it('lists items and keys from the embedded English strings', () => {
+        const { i18n } = load({
+            bootstrap: {
+                locale: 'de',
+                translations: { de: { notes: { a: { 1: 'Eins' } } } },
+                fallback: { notes: { b: { 1: 'One', 2: 'Two' } } },
+            },
+        });
+        expect(i18n.items('notes.a')).toEqual(['Eins']);
+        expect(i18n.items('notes.b')).toEqual(['One', 'Two']);
+        expect(i18n.keys('notes').sort()).toEqual(['a', 'b']);
     });
 });
 

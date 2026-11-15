@@ -1,9 +1,15 @@
 """Translations embedded in the page for the client-side i18n (static/js/i18n.js).
 
 Pages that load i18n.js include templates/includes/i18n_bootstrap.html first.
-In that include, ``window.__I18N_BOOTSTRAP = {locale, translations}`` is set
-to the user's interface language and English, so the first render is already
+In that include, ``window.__I18N_BOOTSTRAP = {locale, translations, fallback}``
+is set to the user's interface language, so the first render is already
 translated and no locale file has to be fetched before it.
+
+English, the fallback language, is embedded only on English pages. On a page
+in another language, ``fallback`` holds the English strings of the keys that
+the language's file lacks (none while tests/test_localization.py passes), so
+a key missing there still shows English text and the English file
+(about 190 KB) is not part of the page.
 
 Locale files are read from static/locales/ and cached per process; a file
 is read again when its modification time changes.
@@ -49,11 +55,44 @@ def _load(locale):
         return data
 
 
+def _gaps(table, fallback):
+    """The entries of ``fallback`` that ``table`` lacks, in the same nesting."""
+    out = {}
+    for key, value in fallback.items():
+        mine = table.get(key) if isinstance(table, dict) else None
+        if isinstance(value, dict):
+            inner = _gaps(mine if isinstance(mine, dict) else {}, value)
+            if inner:
+                out[key] = inner
+        elif not isinstance(mine, str) or not mine:
+            out[key] = value
+    return out
+
+
+_gap_cache = {}
+
+
+def _fallback_gaps(locale):
+    """English strings for the keys missing in ``locale``; None without English."""
+    table, fallback = _load(locale), _load(FALLBACK_LOCALE)
+    if table is None or fallback is None:
+        return None
+    stamp = (_cache[locale][0], _cache[FALLBACK_LOCALE][0])
+    cached = _gap_cache.get(locale)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    gaps = _gaps(table, fallback)
+    _gap_cache[locale] = (stamp, gaps)
+    return gaps
+
+
 def i18n_bootstrap(locale=None):
     """Return ``{'locale': ..., 'translations': {code: dict}}`` for the page.
 
-    ``locale`` defaults to the signed-in user's interface language. English
-    is always included as the fallback; for an unknown locale, only English is returned.
+    ``locale`` defaults to the signed-in user's interface language. Only that
+    language is included. For another language than English, ``fallback``
+    is added: the English strings of the keys the language lacks (see the
+    module text). For an unknown locale, English is returned.
     """
     if not locale:
         try:
@@ -64,14 +103,12 @@ def i18n_bootstrap(locale=None):
             locale = None
     locale = locale or FALLBACK_LOCALE
 
-    translations = {}
     data = _load(locale)
     if data is None:
-        locale = FALLBACK_LOCALE
-    else:
-        translations[locale] = data
-    if FALLBACK_LOCALE not in translations:
-        fallback = _load(FALLBACK_LOCALE)
-        if fallback is not None:
-            translations[FALLBACK_LOCALE] = fallback
-    return {'locale': locale, 'translations': translations}
+        locale, data = FALLBACK_LOCALE, _load(FALLBACK_LOCALE)
+    result = {'locale': locale, 'translations': {locale: data} if data is not None else {}}
+    if locale != FALLBACK_LOCALE and data is not None:
+        gaps = _fallback_gaps(locale)
+        if gaps is not None:
+            result['fallback'] = gaps
+    return result

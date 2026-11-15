@@ -159,13 +159,13 @@
                     const key = el.getAttribute('data-i18n');
                     const paramsAttr = el.getAttribute('data-i18n-params');
                     const params = paramsAttr ? JSON.parse(paramsAttr) : {};
-                    el.textContent = t(key, params);
+                    el.textContent = t(key, params) || el.textContent; // empty while English is fetched (i18n.js)
                 });
 
                 // Update all elements with data-i18n-placeholder attribute
                 document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                     const key = el.getAttribute('data-i18n-placeholder');
-                    el.placeholder = t(key);
+                    el.placeholder = t(key) || el.placeholder;
                 });
 
                 applyI18nAttributes();
@@ -192,13 +192,13 @@
                 const key = el.getAttribute('data-i18n');
                 const paramsAttr = el.getAttribute('data-i18n-params');
                 const params = paramsAttr ? JSON.parse(paramsAttr) : {};
-                el.textContent = t(key, params);
+                el.textContent = t(key, params) || el.textContent; // empty while English is fetched (i18n.js)
             });
 
             // Update all elements with data-i18n-placeholder attribute
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
-                el.placeholder = t(key);
+                el.placeholder = t(key) || el.placeholder;
             });
 
             applyI18nAttributes();

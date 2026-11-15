@@ -11,6 +11,7 @@ not translation keys.
 SHARED-DB: the test users are removed afterwards.
 """
 
+import contextlib
 import os
 import re
 import sys
@@ -131,16 +132,59 @@ def test_pages_with_primitive_classes_link_primitives_css():
 
 # --- i18n_bootstrap() --------------------------------------------------------
 
-def test_bootstrap_has_the_locale_and_english():
+def test_bootstrap_for_another_language_has_that_language_only():
+    """English is not embedded beside the viewer's language (discussion #611)."""
     data = i18n_bootstrap("de")
     assert data["locale"] == "de"
-    assert set(data["translations"]) == {"de", "en"}
-    assert data["translations"]["de"]["nav"]["account"] != data["translations"]["en"]["nav"]["account"]
+    assert list(data["translations"]) == ["de"]
+    english = i18n_bootstrap("en")["translations"]["en"]
+    assert data["translations"]["de"]["nav"]["account"] != english["nav"]["account"]
+    # Every locale is complete (tests/test_localization.py), so no English
+    # string has to be embedded for a missing key.
+    assert data["fallback"] == {}
+
+
+@pytest.mark.parametrize("locale", ["de", "es", "fr", "pt-BR", "ru", "zh"])
+def test_bootstrap_of_each_language_is_smaller_than_english_beside_it(locale):
+    import json
+    data = i18n_bootstrap(locale)
+    assert set(data) == {"locale", "translations", "fallback"} and list(data["translations"]) == [locale]
+    english = len(json.dumps(i18n_bootstrap("en")["translations"]["en"]))
+    assert len(json.dumps(data)) < len(json.dumps(data["translations"][locale])) + english // 100
+
+
+def test_bootstrap_embeds_the_english_string_of_a_missing_key(tmp_path, monkeypatch):
+    """A key the language lacks arrives as its English string, nested as in
+    the locale file, so it never shows as a raw key and English stays out."""
+    import json
+    from src.utils import i18n_bootstrap as module
+    (tmp_path / "en.json").write_text(json.dumps(
+        {"nav": {"account": "Account", "admin": "Admin"}, "only": {"english": "English only"},
+         "list": {"1": "One", "2": "Two"}, "empty": "Filled"}), encoding="utf-8")
+    (tmp_path / "de.json").write_text(json.dumps(
+        {"nav": {"account": "Konto", "admin": "Verwaltung"}, "list": {"1": "Eins"}, "empty": ""}), encoding="utf-8")
+    monkeypatch.setattr(module, "_LOCALES_DIR", str(tmp_path))
+    monkeypatch.setattr(module, "_cache", {})
+    monkeypatch.setattr(module, "_gap_cache", {})
+    data = module.i18n_bootstrap("de")
+    assert list(data["translations"]) == ["de"]
+    assert data["fallback"] == {"only": {"english": "English only"}, "list": {"2": "Two"}, "empty": "Filled"}
+    # English itself has no fallback table.
+    assert "fallback" not in module.i18n_bootstrap("en")
+    # A changed locale file is read again.
+    import os
+    (tmp_path / "de.json").write_text(json.dumps(
+        {"nav": {"account": "Konto", "admin": "Verwaltung"}, "only": {"english": "Nur Englisch"},
+         "list": {"1": "Eins", "2": "Zwei"}, "empty": "Voll"}), encoding="utf-8")
+    stat = os.stat(tmp_path / "de.json")
+    os.utime(tmp_path / "de.json", (stat.st_atime, stat.st_mtime + 5))
+    assert module.i18n_bootstrap("de")["fallback"] == {}
 
 
 def test_bootstrap_for_english_has_one_table():
     data = i18n_bootstrap("en")
     assert data == {"locale": "en", "translations": {"en": data["translations"]["en"]}}
+    assert data["translations"]["en"]["nav"]["account"] == "Account"
 
 
 @pytest.mark.parametrize("locale", ["xx", "../en", "en/../de", "", None])
@@ -159,11 +203,12 @@ class _Client(FlaskClient):
         return super().open(*args, **kwargs)
 
 
-@pytest.fixture
-def german_client():
+@contextlib.contextmanager
+def _signed_in_client(language):
     with app.app_context():
         s = uuid.uuid4().hex[:8]
-        user = User(username=f"pa_{s}", email=f"pa_{s}@local.test", password="x", is_admin=True, ui_language="de")
+        user = User(username=f"pa_{s}", email=f"pa_{s}@local.test", password="x", is_admin=True,
+                    ui_language=language)
         db.session.add(user)
         db.session.commit()
         client = _Client(app, app.response_class)
@@ -173,6 +218,18 @@ def german_client():
         yield client
         db.session.delete(db.session.get(User, user.id))
         db.session.commit()
+
+
+@pytest.fixture
+def german_client():
+    with _signed_in_client("de") as client:
+        yield client
+
+
+@pytest.fixture
+def english_client():
+    with _signed_in_client("en") as client:
+        yield client
 
 
 @pytest.mark.parametrize("path", ["/", "/account", "/admin", "/inquire"])
@@ -187,7 +244,10 @@ def test_rendered_pages_embed_the_users_language_before_i18n(german_client, path
     assert html.index("window.__I18N_BOOTSTRAP") < html.index("/static/js/i18n.js"), path
     import json
     data = json.loads(m.group(1))
-    assert data["locale"] == "de" and set(data["translations"]) == {"de", "en"}, path
+    assert data["locale"] == "de" and list(data["translations"]) == ["de"], path
+    assert data["fallback"] == {}, path
+    # A locale file fetched later carries the app version.
+    assert f"window.__I18N_ASSET_VERSION = {json.dumps(_app_version_value())};" in html, path
     # |tojson escapes markup characters, so no translation can end the script.
     assert "</" not in m.group(1), path
 
@@ -211,6 +271,29 @@ def test_templates_version_every_script_and_stylesheet_url():
             offenders += [f"{os.path.relpath(path, ROOT)}: {m.group(0)}"
                           for m in STATIC_ASSET_URL.finditer(text) if "v=app_version" not in m.group(0)]
     assert not offenders, "add v=app_version:\n" + "\n".join(offenders)
+
+
+def _app_version_value():
+    from src.app import _app_version
+    return _app_version
+
+
+def test_an_english_page_embeds_english_as_before(english_client):
+    import json
+    html = english_client.get("/").get_data(as_text=True)
+    data = json.loads(re.search(r"window\.__I18N_BOOTSTRAP = (\{.*?\});</script>", html, re.S).group(1))
+    assert data == {"locale": "en", "translations": {"en": i18n_bootstrap("en")["translations"]["en"]}}
+
+
+def test_the_page_in_another_language_is_smaller_by_the_english_table(german_client):
+    """The German main page no longer carries the English table (about 190 KB)."""
+    import json
+    html = german_client.get("/").get_data(as_text=True)
+    english = json.dumps(i18n_bootstrap("en")["translations"]["en"])
+    german = json.dumps(i18n_bootstrap("de")["translations"]["de"])
+    data = re.search(r"window\.__I18N_BOOTSTRAP = (\{.*?\});</script>", html, re.S).group(1)
+    assert len(data) < len(german) * 1.2
+    assert len(data) < len(german) + len(english) // 2
 
 
 def _version_query():
@@ -341,14 +424,14 @@ def test_public_share_page_follows_the_visitors_browser_language(shared_recordin
     response = app.test_client().get(f"/share/{shared_recording[2]}", headers=headers)
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert _bootstrap_locale(html) == (locale, {locale, "en"})
+    assert _bootstrap_locale(html) == (locale, {locale})
     assert f'<html lang="{locale}"' in html
 
 
 def test_public_share_page_uses_a_signed_in_viewers_language(german_client, shared_recording):
     response = german_client.get(f"/share/{shared_recording[2]}", headers={"Accept-Language": "fr"})
     assert response.status_code == 200
-    assert _bootstrap_locale(response.get_data(as_text=True)) == ("de", {"de", "en"})
+    assert _bootstrap_locale(response.get_data(as_text=True)) == ("de", {"de"})
 
 
 # --- Sign-in pages (server-side text) ----------------------------------------

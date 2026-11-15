@@ -9,6 +9,15 @@ class I18n {
         this.currentLocale = 'en';
         this.fallbackLocale = 'en';
         this.loadedLocales = new Set();
+        // English strings for the keys a language lacks, per language, as
+        // embedded by the server (see applyBootstrap). A language listed here
+        // needs no English file.
+        this.fallbackGaps = {};
+        // Keys asked for while the English file was still on its way.
+        this._pendingKeys = new Set();
+        this._fallbackLoad = null;
+        this._fallbackRetryAt = 0;
+        this._version = null;
         // Resolved once init() has loaded the translations, so code that
         // renders before then (the shared page header) can wait for them.
         this.isReady = false;
@@ -26,13 +35,10 @@ class I18n {
         
         this.currentLocale = savedLocale || locale || browserLocale || 'en';
         
-        // Load the initial locale
+        // Load the initial locale. English, the fallback, is not loaded with
+        // it: it is fetched when a key is missing (see t() and loadFallback()),
+        // or here when the locale itself cannot be loaded.
         await this.loadLocale(this.currentLocale);
-        
-        // Load fallback locale if different
-        if (this.currentLocale !== this.fallbackLocale) {
-            await this.loadLocale(this.fallbackLocale);
-        }
 
         this._markReady();
     }
@@ -50,7 +56,11 @@ class I18n {
      * translated and no locale file is fetched for it. The locale is chosen as
      * in init(). When the chosen locale is not among the embedded ones, ready
      * stays pending and the locale is fetched by init() as before.
-     * @param {{locale: string, translations: Object<string, Object>}} data
+     *
+     * English is embedded on English pages only. On a page in another
+     * language, data.fallback holds the English strings of the keys that
+     * language lacks (normally none), so the page is ready without English.
+     * @param {{locale: string, translations: Object<string, Object>, fallback?: Object}} data
      * @returns {boolean} true when the translations are ready
      */
     applyBootstrap(data) {
@@ -63,6 +73,9 @@ class I18n {
                 this.loadedLocales.add(code);
             }
         }
+        if (data.locale && data.fallback && typeof data.fallback === 'object' && this.loadedLocales.has(data.locale)) {
+            this.fallbackGaps[data.locale] = data.fallback;
+        }
         let savedLocale = null;
         try {
             savedLocale = localStorage.getItem('preferredLanguage');
@@ -70,11 +83,45 @@ class I18n {
             savedLocale = null;
         }
         this.currentLocale = savedLocale || data.locale || this.fallbackLocale;
-        if (!this.loadedLocales.has(this.currentLocale) || !this.loadedLocales.has(this.fallbackLocale)) {
+        if (!this.loadedLocales.has(this.currentLocale)) {
             return false;
         }
         this._markReady();
         return true;
+    }
+
+    /**
+     * Fetch a locale file. With the app version known (window.__I18N_ASSET_VERSION,
+     * set beside the bootstrap), the URL carries it as the other static files
+     * do, so the browser's copy is used until the next release.
+     * @param {string} locale
+     * @returns {Promise<boolean>} true when the table is loaded
+     */
+    async _fetchLocale(locale) {
+        try {
+            const version = typeof window !== 'undefined' ? window.__I18N_ASSET_VERSION : '';
+            // Without a version, 'no-cache' forces a conditional revalidation
+            // so a browser (or proxy) heuristic cache can never serve a
+            // previous release's locale file against newer templates — the
+            // "Translation not found" spam after upgrades (issue #357).
+            const response = version
+                ? await fetch(`/static/locales/${locale}.json?v=${encodeURIComponent(version)}`)
+                : await fetch(`/static/locales/${locale}.json`, { cache: 'no-cache' });
+            if (!response.ok) {
+                throw new Error(`Failed to load locale: ${locale}`);
+            }
+
+            const translations = await response.json();
+            this.translations[locale] = translations;
+            this.loadedLocales.add(locale);
+
+            console.log(`Loaded locale: ${locale}`);
+            this._touch();
+            return true;
+        } catch (error) {
+            console.error(`Error loading locale ${locale}:`, error);
+            return false;
+        }
     }
 
     /**
@@ -85,33 +132,97 @@ class I18n {
         if (this.loadedLocales.has(locale)) {
             return; // Already loaded
         }
-
-        try {
-            // 'no-cache' forces a conditional revalidation so a browser (or
-            // proxy) heuristic cache can never serve a previous release's
-            // locale file against newer templates — the "Translation not
-            // found" spam after upgrades (issue #357).
-            const response = await fetch(`/static/locales/${locale}.json`, { cache: 'no-cache' });
-            if (!response.ok) {
-                throw new Error(`Failed to load locale: ${locale}`);
-            }
-            
-            const translations = await response.json();
-            this.translations[locale] = translations;
-            this.loadedLocales.add(locale);
-            
-            console.log(`Loaded locale: ${locale}`);
-        } catch (error) {
-            console.error(`Error loading locale ${locale}:`, error);
-            
-            // If failed to load requested locale and it's not the fallback, try fallback
-            if (locale !== this.fallbackLocale) {
-                console.log(`Failed to load ${locale}, will use ${this.fallbackLocale} as fallback`);
-                // Don't change currentLocale - keep user's preference
-                // Just ensure fallback translations are available
-                await this.loadLocale(this.fallbackLocale);
-            }
+        if (locale === this.fallbackLocale) {
+            await this.loadFallback();
+            return;
         }
+        const loaded = await this._fetchLocale(locale);
+        if (!loaded) {
+            console.log(`Failed to load ${locale}, will use ${this.fallbackLocale} as fallback`);
+            // Don't change currentLocale - keep user's preference
+            // Just ensure fallback translations are available
+            await this.loadFallback();
+        }
+    }
+
+    /**
+     * Fetch the English file once, for a language whose missing keys the
+     * server did not embed (a language chosen in the browser and fetched
+     * here). Called by t() on the first missing key; a failed fetch is tried
+     * again on a later miss, at most every ten seconds. When the file
+     * arrives, text that was waiting for it is updated (see _fallbackArrived).
+     * @returns {Promise<boolean>} true when English is loaded
+     */
+    loadFallback() {
+        if (this.loadedLocales.has(this.fallbackLocale)) return Promise.resolve(true);
+        if (this._fallbackLoad) return this._fallbackLoad;
+        if (Date.now() < this._fallbackRetryAt) return Promise.resolve(false);
+        this._fallbackLoad = this._fetchLocale(this.fallbackLocale).then((loaded) => {
+            this._fallbackLoad = null;
+            if (loaded) this._fallbackArrived();
+            else this._fallbackRetryAt = Date.now() + 10000;
+            return loaded;
+        });
+        return this._fallbackLoad;
+    }
+
+    /** True while English could still fill a key that `locale` lacks. */
+    _fallbackOutstanding(locale) {
+        return locale !== this.fallbackLocale
+            && !this.loadedLocales.has(this.fallbackLocale)
+            && !(locale in this.fallbackGaps);
+    }
+
+    /**
+     * English has arrived after t() answered '' for some keys. Vue-rendered
+     * text follows through _version (see _track); elements with data-i18n
+     * attributes for those keys are filled here; other code can listen for
+     * the i18nFallbackLoaded event.
+     */
+    _fallbackArrived() {
+        const keys = this._pendingKeys;
+        this._pendingKeys = new Set();
+        if (!keys.size) return;
+        this._applyToDocument(keys);
+        window.dispatchEvent(new CustomEvent('i18nFallbackLoaded', { detail: { keys: [...keys] } }));
+    }
+
+    _applyToDocument(keys) {
+        if (typeof document === 'undefined' || !document.querySelectorAll) return;
+        const targets = [['data-i18n', null], ['data-i18n-placeholder', 'placeholder'],
+            ['data-i18n-title', 'title'], ['data-i18n-aria-label', 'aria-label']];
+        for (const [attr, target] of targets) {
+            document.querySelectorAll(`[${attr}]`).forEach((el) => {
+                const key = el.getAttribute(attr);
+                if (!keys.has(key)) return;
+                let params = {};
+                if (!target) {
+                    try { params = JSON.parse(el.getAttribute('data-i18n-params') || '{}'); } catch (e) { params = {}; }
+                }
+                const value = this.t(key, params);
+                if (!value || value === key) return;
+                if (target) el.setAttribute(target, value);
+                else el.textContent = value;
+            });
+        }
+    }
+
+    /**
+     * Vue-rendered text is rendered again when a table arrives: t(), items()
+     * and keys() read a Vue ref (when the page has Vue), and a loaded table
+     * changes it.
+     */
+    _track() {
+        if (!this._version) {
+            const vue = typeof window !== 'undefined' ? window.Vue : null;
+            if (!vue || typeof vue.ref !== 'function') return;
+            this._version = vue.ref(0);
+        }
+        this._version.value; // dependency of the render that called t()
+    }
+
+    _touch() {
+        if (this._version) this._version.value++;
     }
 
     /**
@@ -174,15 +285,26 @@ class I18n {
      */
     t(key, params = {}, locale = null) {
         const targetLocale = locale || this.currentLocale;
+        this._track();
         
         // Get translation from current locale or fallback
         let translation = this.getNestedTranslation(targetLocale, key);
         
         if (!translation && targetLocale !== this.fallbackLocale) {
-            translation = this.getNestedTranslation(this.fallbackLocale, key);
+            translation = this.getNestedTranslation(this.fallbackLocale, key)
+                || I18n.lookup(this.fallbackGaps[targetLocale], key);
         }
         
         if (!translation) {
+            // English may still have the key: it is fetched now, and the
+            // answer is empty until it arrives, never the key itself. The
+            // text is updated then (see _fallbackArrived). Before init() has
+            // finished, nothing is fetched: the language itself is on its way.
+            if (this._fallbackOutstanding(targetLocale)) {
+                this._pendingKeys.add(key);
+                if (this.isReady) this.loadFallback();
+                return '';
+            }
             // Warn ONCE per missing key. Without this, a missing key used in a
             // component that re-renders rapidly (e.g. the chat modal during a
             // drag) floods the console with the same warning every frame.
@@ -199,6 +321,24 @@ class I18n {
     }
 
     /**
+     * The string at a dot-separated key of a table, or null.
+     * @param {Object} table
+     * @param {string} key
+     * @returns {string|null}
+     */
+    static lookup(table, key) {
+        let value = table;
+        for (const k of key.split('.')) {
+            if (value && typeof value === 'object' && k in value) {
+                value = value[k];
+            } else {
+                return null;
+            }
+        }
+        return typeof value === 'string' ? value : null;
+    }
+
+    /**
      * Get nested translation value from object
      * @param {string} locale - Locale to search in
      * @param {string} key - Dot-separated key path
@@ -208,19 +348,7 @@ class I18n {
         if (!this.translations[locale]) {
             return null;
         }
-        
-        const keys = key.split('.');
-        let value = this.translations[locale];
-        
-        for (const k of keys) {
-            if (value && typeof value === 'object' && k in value) {
-                value = value[k];
-            } else {
-                return null;
-            }
-        }
-        
-        return typeof value === 'string' ? value : null;
+        return I18n.lookup(this.translations[locale], key);
     }
 
     /**
@@ -231,8 +359,9 @@ class I18n {
      * @returns {string[]} The strings, or an empty list
      */
     items(key) {
-        const pick = (locale) => {
-            let value = this.translations[locale];
+        this._track();
+        const pick = (table) => {
+            let value = table;
             for (const k of key.split('.')) {
                 if (value && typeof value === 'object' && k in value) value = value[k];
                 else return null;
@@ -244,7 +373,11 @@ class I18n {
             const strings = list.filter((v) => typeof v === 'string' && v.trim());
             return strings.length ? strings : null;
         };
-        return pick(this.currentLocale) || pick(this.fallbackLocale) || [];
+        const found = pick(this.translations[this.currentLocale])
+            || pick(this.translations[this.fallbackLocale])
+            || pick(this.fallbackGaps[this.currentLocale]);
+        if (!found && this.isReady && this._fallbackOutstanding(this.currentLocale)) this.loadFallback();
+        return found || [];
     }
 
     /**
@@ -254,15 +387,18 @@ class I18n {
      * @returns {string[]} The keys, or an empty list
      */
     keys(key) {
-        const at = (locale) => {
-            let value = this.translations[locale];
+        this._track();
+        const at = (table) => {
+            let value = table;
             for (const k of key.split('.')) {
                 if (value && typeof value === 'object' && k in value) value = value[k];
                 else return [];
             }
             return value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [];
         };
-        return [...new Set([...at(this.currentLocale), ...at(this.fallbackLocale)])];
+        return [...new Set([...at(this.translations[this.currentLocale]),
+            ...at(this.translations[this.fallbackLocale]),
+            ...at(this.fallbackGaps[this.currentLocale])])];
     }
 
     /**
