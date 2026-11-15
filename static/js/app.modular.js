@@ -41,6 +41,7 @@ import {
     promptsDiffer, runVariables, saveLabel, sourceLabel,
 } from './modules/utils/regenerate-summary.js';
 import { errorTextMatches } from './modules/utils/error-patterns.js';
+import { cancelResult, clockOffsetMs, queueFieldsFromJob, settledCancels } from './modules/utils/queue-data.js';
 import { installCloseOutside } from './modules/utils/close-outside.js';
 import { installTabsBarFit } from './modules/utils/tabs-bar-fit.js';
 import {
@@ -3237,6 +3238,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return detailsMap;
             });
 
+            // Added to Date.now() before an elapsed time is computed from a
+            // job's started_at (queue-data.js elapsedSeconds).
+            const jobQueueClockOffset = ref(0);
+
             // Fetch job queue status from backend (with debounce protection)
             const fetchJobQueueStatus = async (force = false) => {
                 const now = Date.now();
@@ -3251,6 +3256,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (response.ok) {
                         const data = await response.json();
                         allJobs.value = data.jobs || [];
+                        // Server clock minus this browser's, for elapsed times.
+                        jobQueueClockOffset.value = clockOffsetMs(data.server_time);
                     } else if (response.status === 429) {
                         console.warn('Job queue polling rate limited');
                     }
@@ -3464,6 +3471,60 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Reload one recording after its job was canceled: the server
+            // settled it (completed, put back as it was, or canceled).
+            const refreshRecordingAfterCancel = async (recordingId) => {
+                if (!recordingId) return;
+                try {
+                    const response = await fetch(`/api/recordings/${recordingId}`);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    const idx = recordings.value.findIndex(r => r.id === recordingId);
+                    if (idx !== -1) recordings.value[idx] = data;
+                    if (selectedRecording.value?.id === recordingId) selectedRecording.value = data;
+                } catch (error) {
+                    console.error(`Error reloading recording ${recordingId} after a cancel:`, error);
+                }
+            };
+
+            // Running jobs whose cancel was accepted: job id -> recording id.
+            // The worker stops at its next safe point; the row then leaves
+            // the queue answer and the recording is reloaded.
+            const pendingCancels = new Map();
+            watch(allJobs, (jobs) => {
+                for (const recordingId of settledCancels(pendingCancels, jobs)) {
+                    refreshRecordingAfterCancel(recordingId);
+                }
+            });
+
+            // Cancel a waiting or running job. Resolves to
+            // { ok, canceled, cancelRequested }: canceled for a job that was
+            // removed at once, cancelRequested for a running job that stops
+            // at its next safe point (its row stays, marked, until then).
+            const cancelJob = async (jobId, recordingId = null) => {
+                try {
+                    const response = await fetch(`/api/recordings/jobs/${jobId}`, { method: 'DELETE' });
+                    const data = await response.json().catch(() => ({}));
+                    const result = cancelResult(response.status, data);
+                    if (result.cancelRequested) pendingCancels.set(jobId, recordingId);
+                    if (!result.ok) {
+                        showToast(data.error || safeT('messages.failedToDeleteJob'), 'error');
+                    }
+                    await fetchJobQueueStatus(true);
+                    if (result.canceled) await refreshRecordingAfterCancel(recordingId);
+                    return result;
+                } catch (error) {
+                    console.error('Error canceling job:', error);
+                    return { ok: false, canceled: false, cancelRequested: false };
+                }
+            };
+
+            // Cancel the job of a queue item that waits or runs.
+            const cancelProgressItem = async (item) => {
+                if (!item || !item.jobId || !item.canCancel) return { ok: false, canceled: false, cancelRequested: false };
+                return cancelJob(item.jobId, item.recordingId);
+            };
+
             // Clear all completed jobs
             const clearCompletedJobs = async () => {
                 try {
@@ -3482,6 +3543,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (error) {
                     console.error('Error clearing completed jobs:', error);
                 }
+            };
+
+            // Clear all failed jobs in one step. The rows leave the queue;
+            // the recordings stay in the library as failed.
+            const clearFailedJobs = async () => {
+                try {
+                    const response = await fetch('/api/recordings/jobs/clear-failed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        // Uploads that failed before a job existed are rows too.
+                        uploadQueue.value = uploadQueue.value.filter(item =>
+                            !['failed', 'FAILED'].includes(item.status)
+                        );
+                        await fetchJobQueueStatus(true);
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Error clearing failed jobs:', error);
+                }
+                return false;
             };
 
             // Combined clear function for backward compatibility
@@ -3508,6 +3591,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (items.has(key) && !['queued', 'translating'].includes(status)) continue;
                         const percent = translationProgressPercent(job);
                         items.set(key, {
+                            // Stage code, real progress, times and actions
+                            // (queue-data.js); the fields below keep their
+                            // meaning for the current popup.
+                            ...queueFieldsFromJob(job),
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
@@ -3555,7 +3642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : job.job_type === 'convert' ? t('status.queuedConversion')
                         : job.queue_type === 'transcription' ? t('status.queuedTranscription') : null;
                     if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
+                        const queueFields = queueFieldsFromJob(job);
                         items.set(key, {
+                            ...queueFields,
                             id: key,
                             recordingId: job.recording_id,
                             jobId: job.id,
@@ -3564,7 +3653,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             status: unifiedStatus,
                             stage,
                             statusLabel: isJoining ? t('progressQueue.joining') : (isConverting ? t('progressQueue.converting') : queuedLabel),
-                            progress: stage ? 25 : (unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null)),
+                            // A percent only where the server holds a real
+                            // number (chunks, a measured fraction); null
+                            // means a moving bar with the elapsed time.
+                            progress: queueFields.progress,
                             progressMessage: unifiedStatus === 'queued' ? t('progressQueue.positionInQueue', { position: job.position || '?' }) :
                                              isJoining ? t('progressQueue.joiningMessage') :
                                              isConverting ? t('progressQueue.convertingMessage') :
@@ -4730,6 +4822,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 retryJob,
                 deleteJob,
                 clearCompletedJobs,
+                jobQueueClockOffset,
+                cancelJob,
+                cancelProgressItem,
+                clearFailedJobs,
                 recentlyCompletedBackend,
                 clearAllCompleted,
                 allCompletedCount,

@@ -165,10 +165,11 @@ if is_new_upload and recording:
 #### Get Job Queue Status
 `GET /api/recordings/job-queue-status`
 
-Returns all jobs for the current user (active + completed/failed from last hour):
+The jobs of the current user are returned: every waiting or running job, and the jobs completed or failed within the last hour. Inquire chunk jobs are not listed.
 
 ```json
 {
+  "server_time": "2026-11-15T09:31:10Z",
   "jobs": [
     {
       "id": 123,
@@ -177,36 +178,91 @@ Returns all jobs for the current user (active + completed/failed from last hour)
       "job_status": "processing",
       "job_type": "transcribe",
       "queue_type": "transcription",
-      "position": null,
       "is_new_upload": true,
       "error_message": null,
-      "created_at": "2025-11-27T01:00:00",
-      "started_at": "2025-11-27T01:00:05",
-      "completed_at": null
+      "stage": "transcribing",
+      "stage_detail": null,
+      "progress": {"done": 3, "total": 8},
+      "progress_kind": "chunks",
+      "progress_done": 3,
+      "progress_total": 8,
+      "position": null,
+      "queue_position": null,
+      "queue": null,
+      "cancel_requested": false,
+      "can_cancel": true,
+      "created_at": "2026-11-15T09:30:00Z",
+      "started_at": "2026-11-15T09:30:05Z",
+      "completed_at": null,
+      "finished_at": null
     }
   ]
 }
 ```
 
-**Queue Types:**
+| Field | Meaning |
+|---|---|
+| `stage` | A stable code: `queued`, `converting`, `assembling` (stitch), `joining` (merge), `transcribing`, `titling`, `summarizing`, `translating`, `completed` or `failed`. See [Progress and Stage](#6-progress-and-stage). |
+| `stage_detail` | The step reported by the transcription service inside `transcribing`: `waiting`, `preparing`, `transcribing`, `aligning` or `diarizing`; `null` when nothing is reported. |
+| `progress` | `{"done", "total"}` or `{"fraction"}` for a running job with a measured number; `null` otherwise. |
+| `progress_kind` | The unit of `progress`: `chunks` or `fraction`; `null` without a number. |
+| `progress_done`, `progress_total` | The stored values, kept for clients of earlier releases. |
+| `queue_position` | For a waiting job, its place in the queue named in `queue`, counting the running jobs of that queue; `null` otherwise. `position` holds the same value. |
+| `queue` | For a waiting job: `convert`, `transcription` or `summary`. `queue_type` is set for every job. |
+| `cancel_requested` | `true` for a running job between the cancel request and the stop of its worker. |
+| `can_cancel` | `true` when `DELETE` on the job cancels it. |
+| `created_at`, `started_at`, `completed_at` | UTC, with a trailing `Z`. |
+| `finished_at` | The end time of a completed or failed job; `null` for a waiting or running job. |
+| `server_time` | The time of the server, for an elapsed time that does not depend on the clock of the browser. |
 
-- `transcription`: transcribe, reprocess_transcription
-- `summary`: summarize, reprocess_summary
+Timestamps in this answer have a trailing `Z`. In earlier releases the same instants were sent without it. The naive UTC form is kept in `ProcessingJob.to_dict()` and in the other answers of the application.
 
 #### Retry Failed Job
 `POST /api/recordings/jobs/<id>/retry`
 
-Resets job status to `queued` for another attempt.
+The job status is reset to `queued` for another attempt. Progress, stage and a cancel mark of the failed attempt are cleared.
 
-#### Delete Job
+#### Cancel or Remove a Job
 `DELETE /api/recordings/jobs/<id>`
 
-Deletes a job. If it's a failed new upload, also deletes the recording and audio file.
+The result depends on the state of the job:
+
+| Job state | Result | Answer |
+|---|---|---|
+| `queued` | The job is removed and the recording is settled as described under [Cancel](#7-cancel). | `200`, `canceled: true` |
+| `processing` | The job is marked for cancel and is stopped at the next safe point. The row stays in the queue status, with `cancel_requested: true`, until then. A repeated request gets the same answer. | `202`, `cancel_requested: true` |
+| `completed` | The row is removed. The recording is not changed. | `200` |
+| `failed` | The row is removed. For a failed new upload (`is_new_upload`), the recording and its audio are deleted with it. | `200` |
+| `queued` or `processing`, type `stitch` or `merge` | Nothing is changed: the audio of the recording is not assembled yet. | `409`, `job_not_cancelable` |
+| Ended between the request and the cancel | Nothing is canceled; the row stays in the list. | `409`, `job_already_finished` |
+| Unknown id, or a second request for a removed job | | `404`, `job_not_found` |
+
+The request is accepted from the owner of the job. An administrator can cancel a waiting or running job of another user; every other request for a job of another user is answered with `403`.
 
 #### Clear Completed Jobs
 `POST /api/recordings/jobs/clear-completed`
 
 Removes all completed jobs for the current user.
+
+#### Clear Failed Jobs
+`POST /api/recordings/jobs/clear-failed`
+
+All failed jobs of the current user are removed in one step. The answer is `{"success": true, "deleted": <count>}`. Only the job rows are removed. The recordings stay in the library with the status `FAILED`, where each can be reprocessed or deleted. To delete the recording of a failed new upload together with its job, use `DELETE` on that job.
+
+#### Cancel an Upload
+`POST /upload/cancel` with `{"client_upload_id": "<id>"}`
+
+A `client_upload_id` (8 to 80 characters: letters, digits, `-` and `_`) can be sent with an upload form. In the web client, the id of the queue item is used. After the browser has aborted the upload request, the id is sent to this endpoint, and what the upload has left on the server is removed:
+
+| Moment of the abort | What is left, and how it is removed |
+|---|---|
+| While the request body arrives | Only the temporary file of the multipart parser, which is removed with the request. No staging file and no recording exist yet. |
+| After the body has arrived, before the recording is stored | The abort is not noticed by the server. The cancel mark is read before the file is probed and again before the first job is queued: the staging file or the new recording is discarded, no job is queued and no webhook is sent. The aborted request is answered with `409`, `upload_canceled`. |
+| After the recording is stored | The recording is deleted by the cancel call (`recording_deleted: true`), as long as it was stored less than 15 minutes ago and is not `COMPLETED`. Otherwise it is kept (`recording_kept: true`). |
+| Sliced upload, before finalize | The session and its slices are removed with `DELETE /upload/session/<id>`. |
+| Join of several files | The stored parts are removed with `DELETE /upload/join/<group>`. |
+
+Rows of the `client_upload` table are removed after 24 hours. Uploads without a `client_upload_id` are processed as before.
 
 ### 4. Recording Deletion Cascade
 
@@ -244,6 +300,7 @@ A remote job and its transcript are removed from the service at these points:
 
 | When | Where |
 |---|---|
+| The processing job was canceled | the cancel request, and the connector at its next poll |
 | The result was fetched | the connector |
 | The remote job failed or was cancelled on the service | the connector |
 | The processing job ended for good: a permanent error, or the last retry failed | `release_remote_task()` from the job queue |
@@ -265,6 +322,73 @@ Three kinds of request have no processing job to save a task on: the chunks of a
 | Voice check | `speakr-voice-check-<audio hash>` |
 
 A retry of the same chunk therefore attaches to a job the service still holds, and different audio never shares a key.
+
+### 6. Progress and Stage
+
+A progress number is stored for a job only where a measured number exists. No estimate is stored or shown. For a job without a number, the client shows a moving bar with the time since `started_at`.
+
+| Job | `progress` | `progress_kind` |
+|---|---|---|
+| Chunked transcription, on any service | Chunks finished of chunks in total | `chunks` |
+| Transcription through the asynchronous jobs of the WhisperX ASR service | The fraction reported by the service, unless it is marked as estimated (`fraction_estimated`) | `fraction` |
+| Translation | Chunks finished of chunks in total | `chunks` |
+| Summary, title, conversion, stitch, merge, and transcription by a service without progress reports | None | `null` |
+
+A fraction marked as estimated by the WhisperX ASR service is written to the log and is not stored. The stage reported by the service is stored in both cases, as `stage_detail`.
+
+The values are held in `ProcessingJob.progress_done`, `progress_total` and `progress_kind`; a fraction is stored as a whole number out of 100. The step reported by the worker (`titling`, `summarizing`) is stored in `ProcessingJob.stage`; without one, the stage is derived from the job type. The title and the first summary of an upload are generated inside the transcription job, so `titling` and `summarizing` are stages of that job.
+
+Progress is written through `src/services/job_control.py`:
+
+- At most one write per job every 3 seconds (`PROGRESS_WRITE_INTERVAL`). A value that arrives earlier is kept and written with the next report after the interval. A change of stage is written at once.
+- Each write is one `UPDATE` on a connection of its own, committed at once. The session of the job is not used, so no transaction is left open on it during a long call to a transcription service or an LLM (see the PostgreSQL `idle_in_transaction_session_timeout` note in `src/tasks/processing.py`).
+- A failed write is logged and ignored.
+- All values are cleared when the job is claimed by a worker, so the numbers of the previous attempt are not shown for a retry.
+
+### 7. Cancel
+
+A cancel is requested with `DELETE /api/recordings/jobs/<id>`. A waiting job is removed in the request. For a running job, `ProcessingJob.cancel_requested_at` is set; the mark is stored in the database because the request can be served by a process without workers. The mark is read by the job at these safe points:
+
+| Step | Safe points |
+|---|---|
+| Any job | Before the job starts |
+| Transcription | Before the audio is sent; between two chunks; at each poll of a WhisperX asynchronous job; when the service has answered, before anything of the answer is stored |
+| Title | Before and after the LLM call |
+| Summary | Before the LLM call; when the LLM has answered, before the summary is stored |
+| Translation | Between two chunks |
+| Conversion | After the converted audio is stored, before the transcription is queued |
+
+A synchronous request to a transcription service and a running LLM call are not interrupted. The cancel is applied when the call has returned, and the result of the call is discarded.
+
+When a job is stopped by a cancel:
+
+- The remote job is deleted on the WhisperX ASR service, by the cancel request and again at the next poll.
+- Converted or extracted temporary files and the chunk files are removed.
+- The job row is deleted. No retry is queued.
+- The summary and translation jobs of the same recording are canceled with a canceled conversion or transcription: waiting ones are removed, running ones are marked.
+- No webhook and no email is sent. There is no webhook event for a cancel; `recording.transcription.failed` and `recording.summary.failed` are not sent for a canceled job.
+
+The recording after a cancel:
+
+| Situation | Recording |
+|---|---|
+| A transcript is stored. This includes a cancel during the title or the summary of a transcription, where the transcript of that run is complete, and a canceled summary job without a stored copy. | `COMPLETED`. The transcript is kept. Shares, the export and the Inquire chunks are updated; events are not extracted. |
+| No transcript is stored and the job was a reprocess. | The transcript, summary, events and status from before the reprocess are restored. |
+| A canceled summary reprocess. | The summary, events and status from before the reprocess are restored. |
+| No transcript is stored and nothing was cleared (a first transcription or a conversion). | `FAILED` with the error message `Processing was canceled.` The audio is kept, and the transcription is started again with Reprocess. |
+
+A partial transcript is never stored: the transcript is written in one step after the answer of the transcription service has arrived.
+
+The transcript, summary and events are cleared when a reprocess is queued. A copy of the cleared values is kept in `ProcessingJob.restore_state` while the job waits or runs, and is removed when the job is completed or has failed.
+
+Race conditions:
+
+- A cancel and a claim of the same waiting job at the same moment: the removal is limited to a job in status `queued` and the mark to a job in status `processing`, so exactly one of the two statements is applied.
+- A cancel after the last safe point: the job is completed, the mark is cleared, and the completion notices are sent as usual.
+- A failure while a cancel is pending: the job is treated as canceled. No retry is queued and no failure notice is sent.
+- A restart of Speakr before the safe point is reached: the cancel is finished at startup, and the job is not put back in the queue.
+
+`stitch` and `merge` jobs are not canceled. To discard such a recording, delete the recording.
 
 ## Frontend Components
 
@@ -308,6 +432,12 @@ const unifiedProgressItems = computed(() => {
     return Array.from(items.values()).sort(byStatusPriority);
 });
 ```
+
+#### Queue Data Layer
+
+The functions that read one job of the queue status answer are in `static/js/modules/utils/queue-data.js`: `jobStage`, `jobProgress`, `elapsedSeconds`, `clockOffsetMs`, `queueFieldsFromJob`, `cancelResult` and `settledCancels`. The following fields are set on each unified item of a job: `stageCode`, `stageDetail`, `progressInfo`, `progress` (a percent, or `null` for a moving bar), `indeterminate`, `startedAt`, `finishedAt`, `queuePosition`, `queueName`, `canCancel`, `cancelRequested`, `canRetry` and `canRemove`. The values 25, 50 and 80 that earlier releases set as `progress` for converting, transcribing and summarizing items were never sent by the server and are no longer set.
+
+`cancelJob(jobId, recordingId)`, `cancelProgressItem(item)`, `clearFailedJobs()` and `jobQueueClockOffset` are returned from the setup function of `app.modular.js`, and `cancelUpload(clientId)` from the upload composable. The meaning of a cancel for an upload item is defined by `uploadCancelPlan` in `static/js/modules/utils/upload-cancel.js`. The upload of a recording made in the app is not canceled, because its audio exists only in the browser until the upload has finished.
 
 #### Unified Status States
 | Status | Description | Icon | Color |
@@ -423,6 +553,8 @@ Displays unified progress items in a single list:
 
 ## Database Migrations
 
+For the queue redesign, five nullable columns were added to `processing_job` (`progress_kind`, `stage`, `stage_detail`, `cancel_requested_at`, `restore_state`) with `add_column_if_not_exists`. The `client_upload` table is created by `create_all()`. Existing rows need no change.
+
 The `is_new_upload` column was added via auto-migration in `src/init_db.py`:
 
 ```python
@@ -450,14 +582,14 @@ if add_column_if_not_exists(engine, 'processing_job', 'is_new_upload', 'BOOLEAN 
 |----------|--------|-------------|
 | `/api/recordings/job-queue-status` | GET | Get all jobs for current user |
 | `/api/recordings/jobs/<id>/retry` | POST | Retry a failed job |
-| `/api/recordings/jobs/<id>` | DELETE | Delete a job (and recording if failed new upload) |
+| `/api/recordings/jobs/<id>` | DELETE | Cancel a waiting or running job; remove a finished job (and the recording of a failed new upload) |
 | `/api/recordings/jobs/clear-completed` | POST | Clear all completed jobs |
+| `/api/recordings/jobs/clear-failed` | POST | Clear all failed jobs; the recordings are kept |
+| `/upload/cancel` | POST | Discard what an aborted upload has left on the server |
 
 ## Future Improvements
 
 1. **WebSocket Support**: Replace polling with WebSocket for real-time updates
 2. **Job Priority**: Add priority levels for urgent jobs
 3. **Batch Operations**: Support batch retry/delete operations
-4. **Progress Estimation**: More accurate progress based on file size/duration
-5. **Distributed Workers**: Support for multiple worker processes/servers
-6. **Job Cancellation**: Allow canceling in-progress jobs
+4. **Distributed Workers**: Support for multiple worker processes/servers

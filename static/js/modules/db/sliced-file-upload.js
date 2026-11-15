@@ -290,6 +290,8 @@ async function sendSlice(sessionId, index, blob, tokenRef, options) {
                 onXhr: options.onXhr,
             });
         } catch (transportError) {
+            // The user canceled: the abort is not a failure to recover from.
+            if (options.isCanceled?.()) throw transportError;
             // A transport failure does not mean the slice was lost. The
             // common case is the opposite: the server took it and answered,
             // and the answer never arrived. That includes a 409 the server
@@ -425,6 +427,8 @@ async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, 
     let finalizeAttempts = 1;
 
     while (Date.now() < deadline) {
+        // The user canceled while the finalize was under way: no waiting.
+        if (options.isCanceled?.()) throw firstError;
         let status;
         try {
             status = await readSessionStatus(sessionId, tokenRef.token);
@@ -469,6 +473,8 @@ async function settleUnfinishedFinalize(sessionId, formData, tokenRef, options, 
  *
  * `onProgress` is called with a 0..1 fraction of bytes accepted by the
  * server. `onXhr` receives each in-flight XHR so a caller can cancel.
+ * `isCanceled` returns true once the user canceled: the caller aborts the
+ * XHR, and the upload then stops without a retry and removes its session.
  */
 export async function uploadFileInSlices(file, formData, options = {}) {
     const tokenRef = { token: await getUploadCsrfToken() };
@@ -490,10 +496,12 @@ export async function uploadFileInSlices(file, formData, options = {}) {
         let stalledResyncs = 0;
         onProgress(Math.min(1, ((index - 1) * sliceBytes) / file.size));
         while ((index - 1) * sliceBytes < file.size) {
+            if (options.isCanceled?.()) throw new Error('Upload cancelled');
             const start = (index - 1) * sliceBytes;
             const end = Math.min(start + sliceBytes, file.size);
             index = await sendSlice(sessionId, index, file.slice(start, end), tokenRef, {
                 onXhr: options.onXhr,
+                isCanceled: options.isCanceled,
                 onSliceProgress: (loaded) => onProgress(Math.min(1, (start + loaded) / file.size)),
             });
             if (index > highWaterMark) {
@@ -509,6 +517,7 @@ export async function uploadFileInSlices(file, formData, options = {}) {
         const finalizeOptions = {
             finalizeTimeoutMs: computeUploadTimeout(file.size),
             onXhr: options.onXhr,
+            isCanceled: options.isCanceled,
         };
         let recording;
         try {
@@ -521,7 +530,10 @@ export async function uploadFileInSlices(file, formData, options = {}) {
         forgetSession(file);
         return recording;
     } catch (error) {
-        if (error.resumable) throw error;
+        // A canceled upload is not resumed: its session and slices go. A
+        // session that is being finalized refuses the delete; the server
+        // then discards the recording through the upload's cancel mark.
+        if (error.resumable && !options.isCanceled?.()) throw error;
         await deleteFileSession(sessionId, tokenRef.token);
         forgetSession(file);
         throw error;

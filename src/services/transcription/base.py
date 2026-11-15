@@ -104,6 +104,13 @@ class TranscriptionRequest:
     # Stores (done, total) as the progress of the running processing job.
     # None outside a processing job.
     report_progress: Optional[Callable[[int, int], None]] = None
+    # Stores what the service says it is doing (a Speakr stage word, or None)
+    # on the running processing job. None outside a processing job.
+    report_stage: Optional[Callable[[Optional[str]], None]] = None
+    # True once the owner canceled the processing job. A connector that polls
+    # asks at each poll and raises JobCanceled (src/services/job_control.py)
+    # after removing its remote job. None outside a processing job.
+    should_cancel: Optional[Callable[[], bool]] = None
 
 
 @dataclass

@@ -2158,6 +2158,32 @@ def discard_upload_join(group):
     return jsonify({'success': True, 'removed': removed})
 
 
+@recordings_bp.route('/upload/cancel', methods=['POST'])
+@login_required
+def cancel_upload_route():
+    """Discard what an aborted upload leaves on the server.
+
+    Body: {"client_upload_id": "<the id sent with the upload form>"}. The
+    browser aborts its request first and then calls this. An ingestion that
+    is still running discards its file or its recording when it reads the
+    mark; a recording it has already stored is deleted here
+    (recording_deleted), unless it is COMPLETED or older than 15 minutes
+    (recording_kept). An id the server has never seen is marked as well: its
+    upload may still arrive.
+    """
+    from src.services.upload_cancel import cancel_upload, client_upload_id_from
+    client_upload_id = client_upload_id_from(request.get_json(silent=True) or {})
+    if not client_upload_id:
+        return jsonify(api_error('invalid_client_upload_id')), 400
+    try:
+        result = cancel_upload(current_user, client_upload_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error canceling an upload of user {current_user.id}: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+    return jsonify({'success': True, **result})
+
+
 @recordings_bp.route('/api/recordings/incognito', methods=['POST'])
 @login_required
 @incognito_route
@@ -2828,6 +2854,8 @@ def get_job_queue_status():
             for place, queued in enumerate(order, 1):
                 places[queued.id] = place + currently_processing
 
+        from src.utils.dates import utc_iso
+
         job_details = []
         for job in all_jobs:
             recording = db.session.get(Recording, job.recording_id)
@@ -2837,6 +2865,7 @@ def get_job_queue_status():
 
             queue_type = queue_name_for(job.job_type)
             position = places.get(job.id)
+            finished = job.completed_at if job.status in ('completed', 'failed') else None
 
             job_details.append({
                 'id': job.id,
@@ -2850,12 +2879,24 @@ def get_job_queue_status():
                 'error_message': job.error_message,
                 'progress_done': job.progress_done,
                 'progress_total': job.progress_total,
-                'created_at': job.created_at.isoformat() if job.created_at else None,
-                'started_at': job.started_at.isoformat() if job.started_at else None,
-                'completed_at': job.completed_at.isoformat() if job.completed_at else None
+                # A real number or nothing: {'done', 'total'} in chunks, or
+                # {'fraction'} a service measured. Never an estimate.
+                'progress': job.progress(),
+                'progress_kind': job.progress_kind_or_default(),
+                'stage': job.job_stage(),
+                'stage_detail': job.stage_detail if job.status == 'processing' else None,
+                'queue_position': position,
+                'queue': queue_type if job.status == 'queued' else None,
+                'cancel_requested': job.cancel_requested_at is not None,
+                'can_cancel': job.can_cancel(),
+                # UTC, with the Z marker.
+                'created_at': utc_iso(job.created_at),
+                'started_at': utc_iso(job.started_at),
+                'completed_at': utc_iso(job.completed_at),
+                'finished_at': utc_iso(finished),
             })
 
-        return jsonify({'jobs': job_details})
+        return jsonify({'jobs': job_details, 'server_time': utc_iso(datetime.utcnow())})
     except Exception as e:
         current_app.logger.error(f"Error fetching job queue status: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
@@ -2896,6 +2937,10 @@ def retry_failed_job(job_id):
         job.completed_at = None
         job.progress_done = None
         job.progress_total = None
+        job.progress_kind = None
+        job.stage = None
+        job.stage_detail = None
+        job.cancel_requested_at = None
         db.session.commit()
 
         current_app.logger.info(f"Job {job_id} queued for retry by user {current_user.id}")
@@ -2914,7 +2959,25 @@ def retry_failed_job(job_id):
 @recordings_bp.route('/api/recordings/jobs/<int:job_id>', methods=['DELETE'])
 @login_required
 def delete_job(job_id):
-    """Delete a job (clear from queue or history)."""
+    """Cancel a waiting or running job, or remove a finished one from the list.
+
+    By the state of the job:
+
+    - queued: the job is removed and its recording is settled (200,
+      ``canceled: true``).
+    - processing: the job is marked for cancel and its worker stops at the
+      next safe point (202, ``cancel_requested: true``). The row stays in
+      the queue status, with ``cancel_requested``, until the worker has
+      stopped. A second request gives the same answer.
+    - completed: the row is removed; the recording is untouched (200).
+    - failed: the row is removed. For a failed new upload the recording and
+      its audio are deleted with it, as before (200).
+
+    A stitch or merge job that waits or runs is not canceled (409,
+    job_not_cancelable). The owner of the job may do all of this; an
+    administrator may cancel another user's waiting or running job.
+    The recording after a cancel: src/services/job_cancel.py.
+    """
     try:
         from src.models import ProcessingJob
         import os
@@ -2923,8 +2986,29 @@ def delete_job(job_id):
         if not job:
             return jsonify(api_error('job_not_found')), 404
 
-        if job.user_id != current_user.id:
+        active = job.status in ('queued', 'processing')
+        if job.user_id != current_user.id and not (active and current_user.is_admin):
             return jsonify(api_error('access_denied')), 403
+
+        if active:
+            from src.services.job_cancel import cancel_job, NotCancelable
+            try:
+                outcome = cancel_job(job_id)
+            except NotCancelable:
+                return jsonify(api_error('job_not_cancelable')), 409
+            if outcome == 'removed':
+                current_app.logger.info(f"Job {job_id} canceled by user {current_user.id}")
+                return jsonify({'success': True, 'canceled': True, 'cancel_requested': False,
+                                'message': translate('server.apiMessage.jobCanceled')})
+            if outcome == 'cancel_requested':
+                current_app.logger.info(f"Cancel of job {job_id} requested by user {current_user.id}")
+                return jsonify({'success': True, 'canceled': False, 'cancel_requested': True,
+                                'message': translate('server.apiMessage.jobCancelRequested')}), 202
+            if outcome == 'gone':
+                return jsonify(api_error('job_not_found')), 404
+            # The job ended while the cancel was on its way: nothing was
+            # canceled, and the row stays for the list of finished jobs.
+            return jsonify(api_error('job_already_finished')), 409
 
         # A transcription still running on the WhisperX ASR service is
         # cancelled there, and a finished one has its stored transcript removed.
@@ -2943,6 +3027,8 @@ def delete_job(job_id):
                 # Delete ALL processing jobs for this recording first
                 ProcessingJob.query.filter_by(recording_id=recording.id).delete()
                 db.session.delete(recording)
+            else:
+                db.session.delete(job)
         else:
             # Just delete this job
             db.session.delete(job)
@@ -2952,6 +3038,7 @@ def delete_job(job_id):
         return jsonify({'success': True, 'message': translate('server.apiMessage.jobDeleted')})
 
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f"Error deleting job {job_id}: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
 
@@ -2974,6 +3061,37 @@ def clear_completed_jobs():
 
     except Exception as e:
         current_app.logger.error(f"Error clearing completed jobs: {e}", exc_info=True)
+        return jsonify(api_error('unexpected_error')), 500
+
+
+@recordings_bp.route('/api/recordings/jobs/clear-failed', methods=['POST'])
+@login_required
+def clear_failed_jobs():
+    """Remove all failed jobs of the current user from the queue list.
+
+    Only the job rows go. The recordings stay in the library as FAILED, where
+    each can be reprocessed or deleted; DELETE on one failed job of a new
+    upload is the call that deletes its recording as well.
+    """
+    try:
+        from src.models import ProcessingJob
+
+        failed = ProcessingJob.query.filter(
+            ProcessingJob.user_id == current_user.id,
+            ProcessingJob.status == 'failed'
+        )
+        # An ASR service job that could not be removed when its processing
+        # job failed gets one more attempt before the row goes.
+        _cancel_remote_asr_jobs(failed.filter(ProcessingJob.provider_task.isnot(None)).all())
+        deleted = failed.delete(synchronize_session=False)
+
+        db.session.commit()
+        current_app.logger.info(f"Cleared {deleted} failed jobs for user {current_user.id}")
+        return jsonify({'success': True, 'deleted': deleted})
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error clearing failed jobs: {e}", exc_info=True)
         return jsonify(api_error('unexpected_error')), 500
 
 

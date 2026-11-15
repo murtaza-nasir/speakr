@@ -488,6 +488,13 @@ def _run_migrations(app, engine):
             app.logger.info("Added progress_done column to processing_job table")
         if add_column_if_not_exists(engine, 'processing_job', 'progress_total', 'INTEGER'):
             app.logger.info("Added progress_total column to processing_job table")
+        # Progress unit, pipeline step, cancel mark and the state a cancel
+        # puts back (the processing queue redesign).
+        for column, column_type in (('progress_kind', 'VARCHAR(20)'), ('stage', 'VARCHAR(30)'),
+                                    ('stage_detail', 'VARCHAR(30)'),
+                                    ('cancel_requested_at', 'DATETIME'), ('restore_state', 'TEXT')):
+            if add_column_if_not_exists(engine, 'processing_job', column, column_type):
+                app.logger.info(f"Added {column} column to processing_job table")
 
         if add_column_if_not_exists(engine, 'tag', 'group_id', 'INTEGER'):
             app.logger.info("Added group_id column to tag table")

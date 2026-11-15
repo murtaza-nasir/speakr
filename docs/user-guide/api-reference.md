@@ -964,6 +964,12 @@ GET /api/v1/recordings/{id}/status
   "status": "QUEUED",
   "queue_position": 2,
   "stage": "transcription",
+  "processing_stage": "queued",
+  "stage_detail": null,
+  "progress": null,
+  "progress_kind": null,
+  "job_started_at": null,
+  "cancel_requested": false,
   "error_message": null,
   "completed_at": null
 }
@@ -983,6 +989,19 @@ GET /api/v1/recordings/{id}/status
 `stage` is the step the recording's waiting or running job belongs to: `conversion`, `transcription` or `summary`, or `null` when it has none. A recording stays `QUEUED` while its upload is converted and until its transcription starts; with `stage` set to `conversion`, a `queue_position` of `null` means the conversion is running.
 
 `queue_position` is the recording's place among the waiting jobs of its queue, where `1` is the next job to start. Users take turns, so a recording can be ahead of files that were uploaded earlier by someone else. The value is `null` when none of the recording's jobs is waiting.
+
+The remaining fields refer to the recording's waiting or running job and are `null` (`cancel_requested`: `false`) when it has none. A translation or an Inquire index job is not counted.
+
+| Field | Meaning |
+|-------|---------|
+| `processing_stage` | `queued`, `converting`, `assembling`, `joining`, `transcribing`, `titling` or `summarizing`. The title and the first summary of an upload are generated inside the transcription job, so `stage` can be `transcription` while `processing_stage` is `summarizing`. |
+| `stage_detail` | The step reported by the transcription service: `waiting`, `preparing`, `transcribing`, `aligning` or `diarizing`; `null` when nothing is reported. |
+| `progress` | `{"done": 3, "total": 8}` for a chunked transcription, `{"fraction": 0.42}` for a fraction measured by the transcription service, `null` when no measured number exists. No estimate is reported. |
+| `progress_kind` | `chunks`, `fraction` or `null`. |
+| `job_started_at` | Start of the running job in UTC with a trailing `Z`, for example `2026-11-15T09:30:05Z`; `null` while the job waits. |
+| `cancel_requested` | `true` when a cancel of the running job was requested in the web interface and the job has not stopped yet. |
+
+A job is canceled in the web interface. API v1 has no call for it. After the cancel of a first transcription, `status` is `FAILED` and `error_message` is `Processing was canceled.`; the transcription is started again with `POST /api/v1/recordings/{id}/transcribe`.
 
 ### Update Recording
 

@@ -56,6 +56,10 @@ def queue_transcription_reprocess(recording, user, overrides=None):
     params = resolve_transcription_params(recording, overrides or {})
     params['user_id'] = user.id
 
+    # What is cleared below, for a cancel of the job (src/services/job_cancel.py).
+    from src.services.job_cancel import snapshot_for_reprocess
+    restore_state = snapshot_for_reprocess(recording, 'transcription')
+
     recording.transcription = None
     recording.summary = None
     recording.status = 'QUEUED'
@@ -64,7 +68,8 @@ def queue_transcription_reprocess(recording, user, overrides=None):
 
     try:
         return job_queue.enqueue(user_id=user.id, recording_id=recording.id,
-                                 job_type='reprocess_transcription', params=params)
+                                 job_type='reprocess_transcription', params=params,
+                                 restore_state=restore_state)
     except Exception as e:
         # Same trap from the other side: the results are gone, so leave the
         # recording FAILED, which the reprocess and reset routes accept.
@@ -151,6 +156,9 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
     if prompt_variables is not None:
         recording.prompt_variables = sanitize_variable_values(prompt_variables)
 
+    from src.services.job_cancel import snapshot_for_reprocess
+    restore_state = snapshot_for_reprocess(recording, 'summary')
+
     recording.summary = None
     Event.query.filter_by(recording_id=recording.id).delete()
     db.session.commit()
@@ -160,4 +168,5 @@ def queue_summary_reprocess(recording, user, custom_prompt=None, prompt_mode='re
         'custom_prompt_append': append,
         'user_id': user.id,
     }
-    return job_queue.enqueue(user_id=user.id, recording_id=recording.id, job_type=job_type, params=params)
+    return job_queue.enqueue(user_id=user.id, recording_id=recording.id, job_type=job_type, params=params,
+                             restore_state=restore_state)

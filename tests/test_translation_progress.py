@@ -23,6 +23,14 @@ def _disable_csrf():
     app.config['WTF_CSRF_ENABLED'] = prev
 
 
+@pytest.fixture(autouse=True)
+def _every_progress_write(monkeypatch):
+    # These tests read the count after each chunk; the throttle that spaces
+    # the writes of a real job is covered in test_queue_progress.py.
+    from src.services import job_control
+    monkeypatch.setattr(job_control, 'PROGRESS_WRITE_INTERVAL', 0)
+
+
 @pytest.fixture
 def ctx():
     with app.app_context():

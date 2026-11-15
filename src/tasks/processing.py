@@ -54,6 +54,7 @@ from src.config.app_config import (
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 from src.services.transcription_tracking import transcription_tracker
 from src.utils.log_filters import loggable_error, loggable_path
+from src.services import job_control
 
 # Configuration for internal sharing
 
@@ -326,7 +327,7 @@ def _connector_specs_log(specs):
     )
 
 
-def finish_processing(recording_id, events_transcript=None, events_summary=None):
+def finish_processing(recording_id, events_transcript=None, events_summary=None, extract_events=True):
     """The last step of every processing path (#412).
 
     Extracts events (when the owner has event extraction on), marks the
@@ -338,6 +339,9 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
     after COMPLETED are best-effort: a failure is logged and the recording
     stays COMPLETED. The Inquire chunks are built by the index workers, so the
     worker running this step is free for the next job.
+
+    extract_events=False leaves out the event extraction, an LLM call: a
+    canceled job whose transcript is kept finishes without one.
     """
     recording = db.session.get(Recording, recording_id)
     if not recording:
@@ -345,7 +349,7 @@ def finish_processing(recording_id, events_transcript=None, events_summary=None)
     loaded_created_at = recording.created_at
     from src.utils.error_formatting import is_transcription_error
     owner = recording.owner
-    if (owner and owner.extract_events and client is not None and recording.transcription
+    if (extract_events and owner and owner.extract_events and client is not None and recording.transcription
             and len(recording.transcription.strip()) >= 10 and not is_transcription_error(recording.transcription)):
         transcript = events_transcript or format_transcription_for_llm(recording.transcription)
         extract_events_from_transcript(recording_id, transcript, events_summary or "")
@@ -412,7 +416,9 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
         # The title step (naming template, AI title, fallbacks) is shared with the
         # regenerate-title endpoint so both produce the same title (#412).
         from src.services.titling import compute_title
+        job_control.current().check_cancel()  # before the LLM call
         final_title = compute_title(recording)
+        job_control.current().check_cancel()  # the title is dropped
         # The AI title is an LLM call: the recording may be gone, or its id
         # given to a new upload, by the time it returns (#597).
         _stop_if_recording_replaced(recording_id, loaded_created_at)
@@ -656,6 +662,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         recording.status = 'SUMMARIZING'
         summarization_start_time = time.time()
         db.session.commit()
+        job_control.current().stage('summarizing')
 
         current_app.logger.info(f"Requesting summary from OpenRouter for recording {recording_id} using model {TEXT_MODEL_NAME}...")
 
@@ -808,6 +815,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         owner_language = recording.owner.ui_language if recording.owner else None
         try:
             llm_temperature = get_temperature('summary')  # read before the transaction ends
+            job_control.current().check_cancel()  # a safe point before the LLM call
             _end_transaction_before_external_call(recording)
             completion = call_llm_completion(
                 messages=[
@@ -825,6 +833,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             # The recording may be gone, or its id given to a new upload,
             # by the time the LLM answers (#597).
             _stop_if_recording_replaced(recording_id, loaded_created_at)
+            job_control.current().check_cancel()  # the reply is dropped
 
             finish_reason, outcome = _completion_outcome(completion)
             current_app.logger.info(f"Summary LLM call for recording {recording_id}: {outcome}")
@@ -1633,7 +1642,14 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
             known_speaker_names = None
             known_speaker_refs = None  # Dict of speaker label -> data URL
 
+            # Chunks finished of chunks in total: a real number for the queue.
+            job = job_control.current()
+            job.report(0, len(chunks), job_control.KIND_CHUNKS)
+            chunk_cancel = job.cancel_requested if job.job_id else None
+
             for i, chunk in enumerate(chunks):
+                # A safe point between chunks: nothing of this run is stored yet.
+                job.check_cancel()
                 max_retries = 3
                 retry_count = 0
                 success = False
@@ -1663,6 +1679,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     hotwords=hotwords,
                                     model=transcription_model,
                                     task_key=chunk_task_key,
+                                    should_cancel=chunk_cancel,
                                 )
                             else:
                                 request = TranscriptionRequest(
@@ -1675,6 +1692,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     hotwords=hotwords,
                                     model=transcription_model,
                                     task_key=chunk_task_key,
+                                    should_cancel=chunk_cancel,
                                 )
 
                             response = connector.transcribe(request)
@@ -1727,6 +1745,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                         error_msg = str(chunk_error)
 
                         if retry_count < max_retries:
+                            job.check_cancel()
                             wait_time = 15 if "timeout" not in error_msg.lower() else 30
                             log_failure(current_app.logger, logging.WARNING,
                                         f"Chunk {i+1} failed (attempt {retry_count}/{max_retries}), retrying in {wait_time}s",
@@ -1743,6 +1762,8 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                 'filename': chunk['filename']
                             }
                             chunk_results.append(chunk_result)
+
+                job.report(i + 1, len(chunks), job_control.KIND_CHUNKS)
 
                 # Small delay between chunks
                 if i < len(chunks) - 1:
@@ -1789,6 +1810,18 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
             if 'chunks' in locals():
                 chunking_service.cleanup_chunks(chunks)
             raise ChunkProcessingError(f"Chunked transcription failed: {str(e)}")
+
+
+def _remove_derived_temp_files(filepath, *derived):
+    """Remove the converted or extracted copies a transcription made of ``filepath``."""
+    for path in derived:
+        if path and path != filepath:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    current_app.logger.debug(f"Cleaned up temp file of a stopped transcription: {path}")
+            except OSError:
+                pass
 
 
 def transcribe_with_connector(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=None, min_speakers=None, max_speakers=None, tag_id=None, hotwords=None, initial_prompt=None, transcription_model=None):
@@ -2104,8 +2137,13 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             max_attempts = 2
             last_error = None
 
+            # 'transcribing' is the stage of a transcription job until its
+            # worker reports another one, so nothing is written here.
+            job = job_control.current()
             for attempt in range(max_attempts):
                 try:
+                    # A safe point: nothing was sent to the service yet.
+                    job.check_cancel()
                     if should_chunk:
                         # Use chunking for large files
                         file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
@@ -2119,6 +2157,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             transcription_model=transcription_model,
                             task_scope=f"speakr-{recording.id}" if recording else None,
                         )
+                        # A safe point: the result is dropped, nothing of it is stored.
+                        job.check_cancel()
 
                         recording.transcription_language = normalize_language_code(
                             getattr(chunk_result, 'language', None))
@@ -2173,6 +2213,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 save_provider_task=save_provider_task,
                                 task_key=task_key,
                                 report_progress=report_progress,
+                                report_stage=job.detail if job.job_id else None,
+                                should_cancel=job.cancel_requested if job.job_id else None,
                             )
 
                             current_app.logger.info(
@@ -2189,6 +2231,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 # soon as the run finishes, success or failure.
                                 if funasr_active:
                                     cleanup_funasr_staging(recording)
+
+                        # A safe point: the result is dropped, nothing of it is stored.
+                        job.check_cancel()
 
                         # Record the language the service reported for this
                         # audio. Normalised because backends differ on whether
@@ -2449,8 +2494,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             no_client = client is None
             will_auto_summarize = not admin_disabled and not user_disabled and not no_client
 
-            # Generate title immediately
+            # Generate title immediately. A cancel from here on keeps the
+            # transcript, which is complete, and skips the title and the summary.
             _stop_if_recording_replaced(recording_id, loaded_created_at)
+            job.check_cancel()
+            # The speaker labels above are written before the stage is: the
+            # stage goes through another connection, which on SQLite would
+            # wait for this session's open write.
+            db.session.commit()
+            job.stage('titling')
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
             if not will_auto_summarize:
@@ -2463,6 +2515,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 current_app.logger.info(f"Auto-generating summary for recording {recording_id}")
                 from src.services.error_classification import SummaryStepFailed
                 _stop_if_recording_replaced(recording_id, loaded_created_at)
+                job.check_cancel()
                 try:
                     generate_summary_only_task(app_context, recording_id)
                 except SummaryStepFailed as summary_err:
@@ -2510,6 +2563,13 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             except Exception as auto_translate_err:
                 current_app.logger.warning(f"Auto-translation trigger failed for recording {recording_id}: {auto_translate_err}")
 
+        except job_control.JobCanceled:
+            # Not a failure: nothing pending is written, the derived temp
+            # files go, and the job queue puts the recording back.
+            db.session.rollback()
+            _remove_derived_temp_files(filepath, locals().get('converted_filepath'), locals().get('audio_filepath'))
+            current_app.logger.info(f"Transcription of recording {recording_id} stopped: its job was canceled")
+            raise
         except Exception as e:
             db.session.rollback()
             if isinstance(e, RecordingDeletedDuringJob) or _recording_deleted(recording_id, loaded_created_at):
@@ -2542,14 +2602,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # error skips straight here — previously orphaning the converted MP3
             # and the retained-video extracted audio (up to one per retry) in
             # UPLOAD_FOLDER on the local backend.
-            for _tmp in (locals().get('converted_filepath'), locals().get('audio_filepath')):
-                if _tmp and _tmp != filepath:
-                    try:
-                        if os.path.exists(_tmp):
-                            os.remove(_tmp)
-                            current_app.logger.debug(f"Cleaned up temp file on failure path: {_tmp}")
-                    except OSError:
-                        pass
+            _remove_derived_temp_files(filepath, locals().get('converted_filepath'), locals().get('audio_filepath'))
 
             # Don't set recording.status = 'FAILED' here - let the job queue handle it
             # The job queue will decide whether to retry or permanently fail,

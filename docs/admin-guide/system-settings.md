@@ -57,7 +57,8 @@ To find out which path a transcription took, see [WhisperX Asynchronous Jobs](..
 - The ASR timeout applies to each attempt. A job still running at the timeout is kept on the service, and the next attempt resumes it.
 - When a recording or its processing job is deleted, the remote job is cancelled on the service.
 - A remote job that has ended for good is deleted from the service: a job reported as failed, cancelled or interrupted, and a job still saved when the processing job fails without a retry left. A job kept for the next attempt is not deleted. If the service cannot be reached, the job id stays saved and the deletion is tried again when the processing job is retried, deleted or cleaned up.
-- The estimated progress of the job is stored on the processing job as `progress_done` out of a `progress_total` of 100, and is part of the job queue status.
+- The stage reported by the service is part of the job queue status. A progress fraction is stored on the processing job, as `progress_done` out of a `progress_total` of 100, only when the service does not mark it as estimated (`fraction_estimated`). An estimated fraction is written to the log and is not shown. See [Progress and Stage](../advanced/job-queue-system.md#6-progress-and-stage).
+- When a running transcription is canceled in the processing queue, the remote job is deleted from the service.
 
 ## Login Lock
 

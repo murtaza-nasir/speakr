@@ -44,6 +44,26 @@ class ProcessingJob(db.Model):
     # worker claims the job, so a retry starts again from 0.
     progress_done = db.Column(db.Integer, nullable=True)
     progress_total = db.Column(db.Integer, nullable=True)
+    # The unit of progress_done / progress_total: 'chunks' (parts finished of
+    # parts in total: audio chunks, translation chunks) or 'fraction' (a
+    # measured share of the work, stored as done out of 100). NULL with a
+    # total set is a row written before this column existed: chunks.
+    progress_kind = db.Column(db.String(20), nullable=True)
+    # The step of the pipeline the running job has reached, when its worker
+    # reported one (titling, summarizing); NULL otherwise, and
+    # the step then follows from the job type. See job_stage().
+    stage = db.Column(db.String(30), nullable=True)
+    # What the transcription service says it is doing inside that step
+    # (preparing, transcribing, aligning, diarizing); NULL when it says nothing.
+    stage_detail = db.Column(db.String(30), nullable=True)
+
+    # Set when the owner cancels a running job. The worker stops at its next
+    # safe point (src/services/job_control.py, src/services/job_cancel.py).
+    cancel_requested_at = db.Column(db.DateTime, nullable=True)
+    # JSON: what a reprocess cleared when it was queued (transcript, summary,
+    # events, status), so a cancel puts the recording back as it was. Emptied
+    # as soon as the job ends.
+    restore_state = db.Column(db.Text, nullable=True)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
@@ -73,4 +93,58 @@ class ProcessingJob(db.Model):
             'error_message': self.error_message,
             'progress_done': self.progress_done,
             'progress_total': self.progress_total,
+            'progress': self.progress(),
+            'progress_kind': self.progress_kind_or_default(),
+            'stage': self.job_stage(),
+            'stage_detail': self.stage_detail if self.status == 'processing' else None,
+            'cancel_requested': self.cancel_requested_at is not None,
         }
+
+    # Job types a cancel is refused for: the audio of the recording does not
+    # exist until the job has assembled it.
+    NOT_CANCELABLE = ('stitch', 'merge')
+
+    # The step a running job of each type is in when its worker reported none.
+    _DEFAULT_STAGES = {
+        'convert': 'converting',
+        'stitch': 'assembling',
+        'merge': 'joining',
+        'transcribe': 'transcribing',
+        'reprocess_transcription': 'transcribing',
+        'summarize': 'summarizing',
+        'reprocess_summary': 'summarizing',
+        'translate_transcription': 'translating',
+        'index_chunks': 'indexing',
+    }
+
+    def job_stage(self):
+        """A stable code for where the job is.
+
+        queued, completed and failed for a job in that status. For a running
+        job: the step its worker reported (titling,
+        summarizing), else the step of its type (converting, assembling,
+        joining, transcribing, summarizing, translating, indexing).
+        """
+        if self.status != 'processing':
+            return self.status
+        return self.stage or self._DEFAULT_STAGES.get(self.job_type, 'processing')
+
+    def progress_kind_or_default(self):
+        """'chunks' or 'fraction' for a running job with a number, else None."""
+        if self.status != 'processing' or not self.progress_total or self.progress_total <= 0:
+            return None
+        return self.progress_kind or 'chunks'
+
+    def progress(self):
+        """{'done', 'total'} or {'fraction'} for a running job with a real number, else None."""
+        kind = self.progress_kind_or_default()
+        if kind is None:
+            return None
+        done = max(0, min(self.progress_done or 0, self.progress_total))
+        if kind == 'fraction':
+            return {'fraction': round(done / self.progress_total, 4)}
+        return {'done': done, 'total': self.progress_total}
+
+    def can_cancel(self):
+        """Whether DELETE on this job cancels it (a waiting or running job of a cancelable type)."""
+        return self.status in ('queued', 'processing') and self.job_type not in self.NOT_CANCELABLE

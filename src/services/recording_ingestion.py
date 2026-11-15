@@ -1021,6 +1021,15 @@ def ingest(
         current_app.logger.info(f"File saved to {loggable_path(filepath)} for user {owner.id}")
         current_app.logger.debug(f"File saved to {filepath} (original filename {original_filename!r})")
 
+        # The browser aborted this upload and said so (POST /upload/cancel)
+        # while the body was still arriving: nothing is probed or converted.
+        from src.services.upload_cancel import client_upload_id_from, is_canceled, register_recording
+        client_upload_id = None if join else client_upload_id_from(form)
+        if client_upload_id and is_canceled(owner.id, client_upload_id):
+            current_app.logger.info(f"Upload of user {owner.id} was canceled; the file is discarded")
+            _discard_staging(filepath)
+            return jsonify(api_error('upload_canceled')), 409
+
         # An empty part has nothing to decode: refuse it before the probe and
         # the conversion (#482).
         if os.path.getsize(filepath) == 0:
@@ -1343,6 +1352,13 @@ def ingest(
         if stored.error_response is not None:
             return stored.error_response
         recording = stored.recording
+
+        # A cancel that arrived while the file was converted and stored: the
+        # recording goes before a job is queued or a webhook is sent.
+        if client_upload_id and register_recording(owner.id, client_upload_id, recording):
+            from src.services.upload_cancel import discard_unannounced_recording
+            discard_unannounced_recording(recording, storage)
+            return jsonify(api_error('upload_canceled')), 409
 
         enqueue_ingestion_jobs(
             recording,

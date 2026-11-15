@@ -674,3 +674,66 @@ describe('resuming an interrupted upload', () => {
         expect(slicePosts()[0].body.start).toBe(0);
     });
 });
+
+describe('canceling an upload', () => {
+    beforeEach(() => { _installMocks(); });
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+        delete global.fetch;
+        delete global.XMLHttpRequest;
+        delete global.window;
+        delete global.document;
+        delete global.localStorage;
+    });
+
+    const statusReads = () => fetchCalls.filter((call) => !call.options.method);
+
+    it('stops between two slices and removes the session', async () => {
+        const file = fakeFile(40 * MB);
+        const upload = uploadFileInSlices(file, new Map(), { isCanceled: () => slicePosts().length >= 1 });
+        await expect(upload).rejects.toThrow('Upload cancelled');
+        expect(slicePosts()).toHaveLength(1);
+        expect(finalizePosts()).toHaveLength(0);
+        expect(deleteCalls()).toHaveLength(1);
+        expect(deleteCalls()[0].url).toContain('sess-1');
+        expect(rememberedSessions()).toEqual({});
+    });
+
+    it('does not retry the slice whose request was aborted', async () => {
+        const file = fakeFile(40 * MB);
+        defaultSliceResponse = { networkError: true };       // what an aborted request looks like here
+        const upload = uploadFileInSlices(file, new Map(), { isCanceled: () => sent.length >= 1 });
+        await expect(upload).rejects.toThrow('Network error');
+        expect(slicePosts()).toHaveLength(1);                // no second attempt, no waiting
+        expect(statusReads()).toHaveLength(0);
+        expect(deleteCalls()).toHaveLength(1);
+        expect(rememberedSessions()).toEqual({});
+    });
+
+    it('does not wait for an ingest whose finalize was aborted', async () => {
+        const file = fakeFile(20 * MB);
+        finalizeResponse = { networkError: true };
+        const upload = uploadFileInSlices(file, new Map(), { isCanceled: () => finalizePosts().length >= 1 });
+        await expect(upload).rejects.toThrow('Network error');
+        expect(finalizePosts()).toHaveLength(1);
+        expect(statusReads()).toHaveLength(0);               // the session is not polled
+        // The delete is tried; a session that is finalizing refuses it and
+        // the server discards the recording through the cancel mark.
+        expect(deleteCalls()).toHaveLength(1);
+        expect(rememberedSessions()).toEqual({});
+    });
+
+    it('still keeps the session of an upload that failed without a cancel', async () => {
+        vi.useFakeTimers();
+        const file = fakeFile(40 * MB);
+        sliceResponses = [{ status: 204, text: '' }];
+        defaultSliceResponse = { networkError: true };
+        const upload = uploadFileInSlices(file, new Map(), { isCanceled: () => false });
+        const assertion = expect(upload).rejects.toThrow('Network error');
+        await vi.advanceTimersByTimeAsync(120000);
+        await assertion;
+        expect(deleteCalls()).toHaveLength(0);
+        expect(Object.keys(rememberedSessions())).toHaveLength(1);
+    });
+});
