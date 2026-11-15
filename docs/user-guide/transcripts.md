@@ -64,6 +64,14 @@ The ASR editor shows your transcription the way the transcript reads: each segme
 
 **Playback**: **Space** plays and pauses while the cursor is not in a text field, **L** loops the selected segment, and **S** splits it at the playhead. The segment being played is highlighted; the crosshair button in the toolbar turns following it on and off.
 
+**Timeline**: Above the transcript, the timeline shows the waveform of the audio and one lane per speaker, with every segment as a block in the color of its speaker chip. The bar at its foot is an overview of the whole recording; drag its window to scroll. Click the ruler to move the playhead, drag the waveform to scroll, scroll with the wheel, and zoom with Ctrl+wheel (Cmd on a Mac), a pinch, or the magnifier buttons. A click on a block selects its segment in the transcript and a segment selected in the transcript is brought into view on the timeline; a double-click plays the segment.
+
+- Drag an **edge** of a block to change the start or end. The edge of a neighbor that touches it moves with it; hold **Alt** to move one edge alone.
+- Drag a **block** to move it in time, or up or down to another lane to give it that speaker.
+- Drag on **empty lane space** to add a segment there, then type its text.
+
+While you drag, the edge snaps to the edges of other segments, to the playhead and to pauses in the audio; hold **Ctrl** (Cmd) to turn snapping off, and press **Esc** to cancel the drag. Each drag is one undo step. On a phone, scroll with the waveform or the overview and drag in a lane with one finger. The waveform is prepared the first time the editor of a recording opens, which takes a few seconds for a recording of several hours; the lanes work in the meantime. **Timeline** at the top left of it folds the timeline away, and the editor remembers that.
+
 **Problems**: The toolbar counts segments whose end is not after their start and segments that overlap the previous segment of the same speaker. Click the count to step through them.
 
 **Undo and Redo**: **Ctrl+Z** undoes and **Ctrl+Shift+Z** or **Ctrl+Y** redoes (Cmd on a Mac), also with the toolbar buttons. A burst of typing is one step, and so are a rename of a speaker in the whole recording and a Replace all.
