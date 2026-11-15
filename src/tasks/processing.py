@@ -2137,8 +2137,9 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             max_attempts = 2
             last_error = None
 
+            # 'transcribing' is the stage of a transcription job until its
+            # worker reports another one, so nothing is written here.
             job = job_control.current()
-            job.stage('transcribing')
             for attempt in range(max_attempts):
                 try:
                     # A safe point: nothing was sent to the service yet.
@@ -2497,6 +2498,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # transcript, which is complete, and skips the title and the summary.
             _stop_if_recording_replaced(recording_id, loaded_created_at)
             job.check_cancel()
+            # The speaker labels above are written before the stage is: the
+            # stage goes through another connection, which on SQLite would
+            # wait for this session's open write.
+            db.session.commit()
             job.stage('titling')
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 

@@ -50,7 +50,7 @@ class ProcessingJob(db.Model):
     # total set is a row written before this column existed: chunks.
     progress_kind = db.Column(db.String(20), nullable=True)
     # The step of the pipeline the running job has reached, when its worker
-    # reported one (transcribing, titling, summarizing); NULL otherwise, and
+    # reported one (titling, summarizing); NULL otherwise, and
     # the step then follows from the job type. See job_stage().
     stage = db.Column(db.String(30), nullable=True)
     # What the transcription service says it is doing inside that step
@@ -121,7 +121,7 @@ class ProcessingJob(db.Model):
         """A stable code for where the job is.
 
         queued, completed and failed for a job in that status. For a running
-        job: the step its worker reported (transcribing, titling,
+        job: the step its worker reported (titling,
         summarizing), else the step of its type (converting, assembling,
         joining, transcribing, summarizing, translating, indexing).
         """

@@ -347,10 +347,17 @@ def test_an_administrator_may_cancel_an_active_job_but_not_remove_a_finished_one
     done = _job(_recording(db.session.get(User, recording.user_id), status='COMPLETED'),
                 status='completed', completed_at=datetime.utcnow())
     admin = _user(admin=True)
-    assert _cancel(admin.id, running.id).status_code == 202
-    assert _fresh(ProcessingJob, running.id).cancel_requested_at is not None
-    assert _cancel(admin.id, done.id).status_code == 403
-    assert _exists(done.id) is not None
+    admin_id = admin.id
+    try:
+        assert _cancel(admin_id, running.id).status_code == 202
+        assert _fresh(ProcessingJob, running.id).cancel_requested_at is not None
+        assert _cancel(admin_id, done.id).status_code == 403
+        assert _exists(done.id) is not None
+    finally:
+        # SHARED-DB: other files count the administrators.
+        db.session.rollback()
+        db.session.delete(db.session.get(User, admin_id))
+        db.session.commit()
 
 
 # --- a running job: the request -------------------------------------------------

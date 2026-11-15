@@ -336,7 +336,7 @@ A progress number is stored for a job only where a measured number exists. No es
 
 A fraction marked as estimated by the WhisperX ASR service is written to the log and is not stored. The stage reported by the service is stored in both cases, as `stage_detail`.
 
-The values are held in `ProcessingJob.progress_done`, `progress_total` and `progress_kind`; a fraction is stored as a whole number out of 100. The step reported by the worker (`transcribing`, `titling`, `summarizing`) is stored in `ProcessingJob.stage`; without one, the stage is derived from the job type. The title and the first summary of an upload are generated inside the transcription job, so `titling` and `summarizing` are stages of that job.
+The values are held in `ProcessingJob.progress_done`, `progress_total` and `progress_kind`; a fraction is stored as a whole number out of 100. The step reported by the worker (`titling`, `summarizing`) is stored in `ProcessingJob.stage`; without one, the stage is derived from the job type. The title and the first summary of an upload are generated inside the transcription job, so `titling` and `summarizing` are stages of that job.
 
 Progress is written through `src/services/job_control.py`:
 
