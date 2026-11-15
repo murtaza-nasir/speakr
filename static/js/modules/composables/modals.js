@@ -11,7 +11,7 @@ export function useModals(state, utils) {
         showEditModal, showDeleteModal, showEditTagsModal,
         showReprocessModal, showResetModal, showShareModal,
         showSharesListModal, showTextEditorModal, showAsrEditorModal,
-        showEditSpeakersModal, showAddSpeakerModal, showEditTextModal,
+        showAddSpeakerModal, showEditTextModal,
         showShareDeleteModal, showUnifiedShareModal, showColorSchemeModal,
         showSystemAudioHelpModal, editingRecording, recordingToDelete, recordingToReset,
         selectedRecording, recordings, selectedNewTagId, tagSearchFilter,

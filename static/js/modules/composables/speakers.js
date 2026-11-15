@@ -8,14 +8,13 @@ import { saveTranscriptWithSpeakers } from '../utils/speaker-save.js';
 export function useSpeakers(state, utils, processedTranscription) {
     const { nextTick } = Vue;
     const {
-        showSpeakerModal, speakerModalTab, showAddSpeakerModal, showEditSpeakersModal,
+        showSpeakerModal, speakerModalTab, showAddSpeakerModal,
         showEditTextModal, selectedRecording, recordings,
         speakerMap, speakerColorMap, modalSpeakers, regenerateSummaryAfterSpeakerUpdate,
-        editingSpeakersList, databaseSpeakers, editingSpeakerSuggestions,
-        editSpeakerDropdownPositions, newSpeakerName, newSpeakerIsMe,
+        newSpeakerName, newSpeakerIsMe,
         newSpeakerSuggestions, loadingNewSpeakerSuggestions, showNewSpeakerSuggestions,
         editingSegmentIndex, editingSpeakerIndex, editedText, editedTranscriptData,
-        isAutoIdentifying, availableSpeakers, editingSegments, currentUserName,
+        isAutoIdentifying, currentUserName,
         voiceSuggestions, loadingVoiceSuggestions
     } = state;
 
@@ -685,134 +684,6 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     // =========================================
-    // Edit Speakers Modal
-    // =========================================
-
-    const openEditSpeakersModal = async () => {
-        // Close any open suggestions
-        editingSegments.value.forEach(seg => seg.showSuggestions = false);
-        // Copy current speakers to editing list with original and current properties
-        editingSpeakersList.value = availableSpeakers.value.map(s => ({
-            original: s,
-            current: s
-        }));
-        // Fetch speakers from database for autocomplete
-        try {
-            const response = await fetch('/speakers');
-            const speakers = await response.json();
-            // Keep full objects with id and name for autocomplete dropdown
-            databaseSpeakers.value = speakers;
-        } catch (e) {
-            console.error('Failed to fetch speakers:', e);
-            databaseSpeakers.value = [];
-        }
-        editingSpeakerSuggestions.value = {};
-        showEditSpeakersModal.value = true;
-    };
-
-    const closeEditSpeakersModal = () => {
-        showEditSpeakersModal.value = false;
-        editingSpeakersList.value = [];
-    };
-
-    const addEditingSpeaker = () => {
-        editingSpeakersList.value.push({ original: '', current: '' });
-    };
-
-    const removeEditingSpeaker = (index) => {
-        editingSpeakersList.value.splice(index, 1);
-    };
-
-    const filterEditingSpeakerSuggestions = (index) => {
-        const query = editingSpeakersList.value[index]?.current?.toLowerCase().trim() || '';
-        if (query === '') {
-            // Show all speakers when field is empty/focused
-            editingSpeakerSuggestions.value[index] = [...databaseSpeakers.value];
-        } else {
-            editingSpeakerSuggestions.value[index] = databaseSpeakers.value.filter(
-                s => s.name.toLowerCase().includes(query)
-            );
-        }
-    };
-
-    const selectEditingSpeakerSuggestion = (index, name) => {
-        editingSpeakersList.value[index].current = name;
-        editingSpeakerSuggestions.value[index] = [];
-    };
-
-    const closeEditingSpeakerSuggestions = (index) => {
-        editingSpeakerSuggestions.value[index] = [];
-    };
-
-    const onEditSpeakerBlur = (index) => {
-        // Delay closing to allow clicking on suggestions
-        setTimeout(() => {
-            closeEditingSpeakerSuggestions(index);
-        }, 200);
-    };
-
-    const getEditSpeakerDropdownPosition = (index) => {
-        // Find the input element for this index and calculate position
-        const inputs = document.querySelectorAll('input.edit-speaker-name-input');
-        if (inputs[index]) {
-            const rect = inputs[index].getBoundingClientRect();
-            return {
-                top: rect.bottom + 2 + 'px',
-                left: rect.left + 'px',
-                width: rect.width + 'px'
-            };
-        }
-        return { top: '0px', left: '0px', width: '200px' };
-    };
-
-    const saveEditingSpeakers = async () => {
-        const map = {};
-        editingSpeakersList.value.forEach(item => {
-            if (item.original && item.current) {
-                map[item.original] = item.current;
-            }
-        });
-
-        // Update ASR editor state if it's open
-        if (editingSegments.value.length > 0) {
-            // Build new list of available speakers
-            const newSpeakers = new Set();
-
-            // Apply renames to all segments
-            editingSegments.value.forEach(segment => {
-                if (map[segment.speaker]) {
-                    segment.speaker = map[segment.speaker];
-                }
-                newSpeakers.add(segment.speaker);
-            });
-
-            // Add any newly added speakers from the modal
-            editingSpeakersList.value.forEach(item => {
-                if (!item.original && item.current) {
-                    // This is a new speaker (no original)
-                    newSpeakers.add(item.current);
-                }
-            });
-
-            // Update available speakers list
-            availableSpeakers.value = [...newSpeakers].sort();
-
-            // Update filtered speakers for all segments
-            editingSegments.value.forEach(segment => {
-                segment.filteredSpeakers = [...availableSpeakers.value];
-            });
-
-            closeEditSpeakersModal();
-            showToast(t('help.speakersUpdatedSaveToApply'), 'fa-check-circle');
-        } else {
-            // Regular flow for non-ASR editor context
-            speakerMap.value = map;
-            closeEditSpeakersModal();
-            await saveSpeakerNames();
-        }
-    };
-
-    // =========================================
     // Edit Text Modal
     // =========================================
 
@@ -925,18 +796,6 @@ export function useSpeakers(state, utils, processedTranscription) {
         searchNewSpeaker,
         selectNewSpeakerSuggestion,
         hideNewSpeakerSuggestionsDelayed,
-
-        // Edit speakers modal
-        openEditSpeakersModal,
-        closeEditSpeakersModal,
-        addEditingSpeaker,
-        removeEditingSpeaker,
-        filterEditingSpeakerSuggestions,
-        selectEditingSpeakerSuggestion,
-        closeEditingSpeakerSuggestions,
-        onEditSpeakerBlur,
-        getEditSpeakerDropdownPosition,
-        saveEditingSpeakers,
 
         // Edit text
         openEditTextModal,
