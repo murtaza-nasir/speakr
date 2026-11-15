@@ -75,7 +75,11 @@ def _group_payload(group):
 
 
 def _group_name_taken(name, exclude_id=None):
-    """Group names are unique instance-wide, ignoring case (#576)."""
+    """Group names are unique instance-wide, ignoring case (#576).
+
+    Checked when a group is created or renamed to a different name
+    (update_team), never for a group keeping its own name.
+    """
     query = Group.query.filter(db.func.lower(Group.name) == name.lower())
     if exclude_id is not None:
         query = query.filter(Group.id != exclude_id)
@@ -316,8 +320,12 @@ def update_team(group_id):
         set_group_grant(CREATE_GROUPS, group.id, bool(data['members_create_groups_granted']))
 
     if name:
-        # Check if new name conflicts with another group
-        if _group_name_taken(name, exclude_id=group_id):
+        # Only a rename to a different name is checked against the other
+        # groups. An install from before names were compared without case
+        # can hold "Sales" and "sales"; an edit that sends such a group's
+        # own name back (a new description, another case) must still pass.
+        renamed = name.lower() != (group.name or '').strip().lower()
+        if renamed and _group_name_taken(name, exclude_id=group_id):
             return jsonify(api_error('group_name_exists')), 400
         group.name = name
 
