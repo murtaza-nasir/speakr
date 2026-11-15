@@ -246,7 +246,8 @@ def docx_attachment_response(doc, filename, fallback_filename):
         try:
             encoded_value = encode_rfc2231(filename, charset='utf-8')
             header_value = f'attachment; filename*={encoded_value}'
-            current_app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+            # The file name is made from the recording title: DEBUG only.
+            current_app.logger.debug(f"RFC2231 file name: Original='{filename}', Header='{header_value}'")
             response.headers['Content-Disposition'] = header_value
         except Exception as e:
             current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")

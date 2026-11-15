@@ -904,7 +904,9 @@ def enqueue_ingestion_jobs(recording, *, owner, resolved_params, conversion_defe
         )
         current_app.logger.info(f"Conversion job queued for recording ID: {recording_id}")
     else:
-        current_app.logger.info(f"Queueing transcription for recording {recording_id} with params: {job_params}")
+        from src.utils.log_filters import loggable_params
+        current_app.logger.info(f"Queueing transcription for recording {recording_id} with params: {loggable_params(job_params)}")
+        current_app.logger.debug(f"Transcription params in full for recording {recording_id}: {job_params}")
         job_queue.enqueue(
             user_id=owner_id,
             recording_id=recording_id,

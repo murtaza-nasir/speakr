@@ -509,7 +509,8 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
                     for speaker_name in filters['speaker_names']
                 ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
-                current_app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
+                current_app.logger.info(f"Applied speaker filter for {len(filters['speaker_names'])} speakers")
+                current_app.logger.debug(f"Speaker filter names: {filters['speaker_names']}")
 
             if filters.get('recording_ids'):
                 chunks_query = chunks_query.filter(
@@ -682,7 +683,8 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
                     for speaker_name in filters['speaker_names']
                 ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
-                current_app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
+                current_app.logger.info(f"Applied speaker filter for {len(filters['speaker_names'])} speakers")
+                current_app.logger.debug(f"Speaker filter names: {filters['speaker_names']}")
 
             if filters.get('recording_ids'):
                 chunks_query = chunks_query.filter(

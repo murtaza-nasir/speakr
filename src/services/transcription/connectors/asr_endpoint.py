@@ -29,6 +29,7 @@ from ..base import (
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
 from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
 from src.utils.error_body import summarize_error_body
+from src.utils.log_filters import loggable_params
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +231,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 pool=None
             )
 
-            logger.info(f"Sending ASR request to {url} with params: {params} (timeout: {self.timeout}s)")
+            logger.info(f"Sending ASR request to {url} with params: {loggable_params(params)} (timeout: {self.timeout}s)")
+            logger.debug(f"ASR request params in full: {params}")
 
             with self._http_client() as client:
                 response = client.post(url, params=params, files=files, timeout=timeout)
@@ -449,7 +451,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         while True:
             _rewind(request)
             files = {'audio_file': (request.filename, request.audio_file, content_type)}
-            logger.info(f"Submitting ASR job to {self.base_url}/jobs with params: {params}")
+            logger.info(f"Submitting ASR job to {self.base_url}/jobs with params: {loggable_params(params)}")
+            logger.debug(f"ASR job params in full: {params}")
             response = client.post(f"{self.base_url}/jobs", params=params, files=files,
                                    headers=headers, timeout=self._upload_timeout())
             status = response.status_code

@@ -30,6 +30,7 @@ from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage, sanitize_error_message
 from src.utils.transcript_render import resolve_timestamp_template_format
 from src.services.titling import user_title_instructions
+from src.utils.incognito_logging import incognito_log, describe_error, short_code
 from src.utils.mime import guess_media_type
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
 import src.config.app_config as _app_config
@@ -2647,7 +2648,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
         connector_specs = connector.specifications
         connector_name = type(connector).__name__
-        current_app.logger.info(f"[Incognito] Using transcription connector: {connector_name}")
+        incognito_log.info(f"[Incognito] Using transcription connector: {connector_name}")
 
         # Determine mime type from the real filename, but use an anonymized
         # name (extension only) everywhere downstream: the shared conversion
@@ -2673,7 +2674,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             _codec_info = get_codec_info(filepath, timeout=10)
             is_video = bool(_codec_info.get('has_video')) and has_audio_stream(_codec_info)
         except FFProbeError as e:
-            current_app.logger.warning(f"[Incognito] Failed to probe file: {e}")
+            incognito_log.warning(f"[Incognito] Failed to probe file: {describe_error(e)}")
             if not probe_rejected_input(e):
                 video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
                 is_video = any(original_filename.lower().endswith(ext) for ext in video_extensions)
@@ -2682,9 +2683,9 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
         if is_video:
             if _self.VIDEO_PASSTHROUGH_ASR:
-                current_app.logger.info(f"[Incognito] Video passthrough: sending original video to ASR (no audio extraction)")
+                incognito_log.info(f"[Incognito] Video passthrough: sending original video to ASR (no audio extraction)")
             else:
-                current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
+                incognito_log.info(f"[Incognito] Video detected, extracting audio...")
                 try:
                     # allow_debug_copy=False: the PRESERVE_TEMP_AUDIO debug copy
                     # is untracked by incognito cleanup and would retain audio.
@@ -2696,7 +2697,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                     if audio_filepath and audio_filepath != filepath:
                         _incognito_derived_files.append(audio_filepath)
                 except Exception as e:
-                    current_app.logger.error(f"[Incognito] Failed to extract audio from video: {e}")
+                    incognito_log.error(f"[Incognito] Failed to extract audio from video: {describe_error(e)}")
                     # The message carries FFmpeg's output (its build and the
                     # temp path): answer from the FFmpeg error it wraps, or
                     # with a fixed message (#482).
@@ -2708,7 +2709,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
         # Convert audio format if needed
         if video_passthrough_active:
-            current_app.logger.info(f"[Incognito] Video passthrough: skipping codec conversion")
+            incognito_log.info(f"[Incognito] Video passthrough: skipping codec conversion")
         else:
             try:
                 needs_chunking_check = (
@@ -2726,10 +2727,13 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 )
 
                 if conversion_result.was_converted:
-                    current_app.logger.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
-                    out_path = conversion_result.output_path
-                    if out_path and out_path not in (filepath, actual_filepath):
-                        _incognito_derived_files.append(out_path)
+                    incognito_log.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
+                # Every file the conversion wrote is removed afterwards: a
+                # converted one, and also a remuxed or a compressed one,
+                # which was_converted does not name.
+                out_path = conversion_result.output_path
+                if out_path and out_path not in (filepath, actual_filepath):
+                    _incognito_derived_files.append(out_path)
                 actual_filepath = conversion_result.output_path
                 actual_content_type = conversion_result.mime_type
                 actual_filename = os.path.basename(conversion_result.output_path)
@@ -2738,14 +2742,14 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 # not sent to the transcription service as it is.
                 raise
             except Exception as e:
-                current_app.logger.warning(f"[Incognito] Audio conversion check failed: {e}, proceeding with original")
+                incognito_log.warning(f"[Incognito] Audio conversion check failed: {describe_error(e)}, proceeding with original")
 
         # Get audio duration if chunking service is available
         if chunking_service:
             try:
                 result['audio_duration_seconds'] = int(chunking_service.get_audio_duration(actual_filepath))
             except Exception as e:
-                current_app.logger.warning(f"[Incognito] Could not get audio duration: {e}")
+                incognito_log.warning(f"[Incognito] Could not get audio duration: {describe_error(e)}")
 
         # Determine diarization settings (respects ASR_DIARIZE env var)
         should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
@@ -2774,14 +2778,14 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # Check if chunking is needed
         if video_passthrough_active:
             should_chunk = False
-            current_app.logger.info(f"[Incognito] Video passthrough: chunking skipped (ASR backend handles internally)")
+            incognito_log.info(f"[Incognito] Video passthrough: chunking skipped (ASR backend handles internally)")
         else:
             should_chunk = (chunking_service and
                            chunking_service.needs_chunking(actual_filepath, False, connector_specs))
 
         # Same model an upload would get, so a service without its own default
         # model works in incognito mode too (#409).
-        current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
+        incognito_log.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={short_code(language)}, chunking={should_chunk}")
 
         # Names the user in the task key, so the same audio sent again by the
         # same user attaches to a job the service still holds.
@@ -2830,7 +2834,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             result['transcription'] = None
             result['error'] = EMPTY_TRANSCRIPT_MESSAGE
             return result
-        current_app.logger.info(f"[Incognito] Transcription completed in {result['processing_time_seconds']}s")
+        incognito_log.info(f"[Incognito] Transcription completed in {result['processing_time_seconds']}s")
 
         # Generate a title if we have transcription
         if result['transcription'] and len(result['transcription']) > 10:
@@ -2839,7 +2843,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         return result
 
     except Exception as e:
-        current_app.logger.error(f"[Incognito] Transcription failed: {str(e)}", exc_info=True)
+        incognito_log.error(f"[Incognito] Transcription failed: {describe_error(e)}")
         # FFmpeg's output names its build and the temp path (#482): the
         # response gets a fixed message instead.
         if isinstance(e, FFmpegNotFoundError):
@@ -2872,9 +2876,9 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 try:
                     if os.path.exists(_tmp):
                         os.remove(_tmp)
-                        current_app.logger.info(f"[Incognito] Derived temp file deleted: {_tmp}")
+                        incognito_log.info(f"[Incognito] Derived temp file deleted: {_tmp}")
                 except OSError as _e:
-                    current_app.logger.error(f"[Incognito] Failed to delete derived temp file {_tmp}: {_e}")
+                    incognito_log.error(f"[Incognito] Failed to delete derived temp file {_tmp}: {describe_error(_e)}")
 
 
 def _generate_incognito_title(transcription_text, user=None):
@@ -2922,7 +2926,7 @@ def _generate_incognito_title(transcription_text, user=None):
             return title.strip()
 
     except Exception as e:
-        current_app.logger.warning(f"[Incognito] Title generation failed: {e}")
+        incognito_log.warning(f"[Incognito] Title generation failed: {describe_error(e)}")
 
     return "Incognito Recording"
 
@@ -2964,7 +2968,7 @@ def generate_incognito_summary(transcription_text, user=None):
             user_output_language,
         )
 
-        current_app.logger.info(f"[Incognito] Generating summary...")
+        incognito_log.info(f"[Incognito] Generating summary...")
 
         # No user_id, so nothing is tracked for incognito
         completion = call_llm_completion(
@@ -2980,11 +2984,11 @@ def generate_incognito_summary(transcription_text, user=None):
         summary = clean_llm_response(raw_response) if raw_response else None
 
         if summary:
-            current_app.logger.info(f"[Incognito] Summary generated: {len(summary)} characters")
+            incognito_log.info(f"[Incognito] Summary generated: {len(summary)} characters")
             return summary
 
     except Exception as e:
-        current_app.logger.warning(f"[Incognito] Summary generation failed: {e}")
+        incognito_log.warning(f"[Incognito] Summary generation failed: {describe_error(e)}")
 
     return None
 

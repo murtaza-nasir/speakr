@@ -265,12 +265,15 @@ def test_chat_links_are_absolute_hyperlinks(recordings):
 
 
 @pytest.mark.parametrize("kind", ["summary", "notes", "chat"])
-def test_non_ascii_filename_logs_rfc2231_header(recordings, kind, caplog):
+def test_non_ascii_filename_logs_rfc2231_header_at_debug_only(recordings, kind, caplog):
+    """The file name is made from the recording title, so it is not in the default log."""
     user_id, ids, _ = recordings
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         resp = _download(user_id, ids["japanese"], kind)
     header = resp.headers["Content-Disposition"]
-    assert f"DEBUG CHINESE FILENAME (RFC2231): Original='{kind}-週次会議.docx', Header='{header}'" in caplog.text
+    line = f"RFC2231 file name: Original='{kind}-週次会議.docx', Header='{header}'"
+    assert [r.levelno for r in caplog.records if r.getMessage() == line] == [logging.DEBUG]
+    assert not any("週次会議" in r.getMessage() for r in caplog.records if r.levelno >= logging.INFO)
 
 
 @pytest.mark.parametrize("kind", ["summary", "notes", "chat"])

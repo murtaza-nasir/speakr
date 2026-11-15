@@ -57,6 +57,7 @@ from src.services.recording_filters import (
     needs_speakers_condition,
 )
 from src.utils.localization import api_error, format_number, translate
+from src.utils.incognito_logging import incognito_route, incognito_log, describe_error, short_code
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -2154,6 +2155,7 @@ def discard_upload_join(group):
 
 @recordings_bp.route('/api/recordings/incognito', methods=['POST'])
 @login_required
+@incognito_route
 def upload_incognito():
     """
     Process audio in incognito mode - no database storage.
@@ -2217,7 +2219,7 @@ def upload_incognito():
         with tempfile.NamedTemporaryFile(delete=False, suffix=_ext) as tmp:
             temp_filepath = tmp.name
             file.save(temp_filepath)
-            current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
+            incognito_log.info(f"[Incognito] Temp file saved: {temp_filepath}")
 
         # Get optional parameters
         # An empty language falls through to the user's default, as on upload;
@@ -2249,9 +2251,9 @@ def upload_incognito():
         # Log only metadata - NEVER log content for HIPAA compliance. The
         # user's filename is deliberately excluded too (extension only):
         # filenames routinely contain names/dates and count as PHI.
-        current_app.logger.info(f"[Incognito] Processing request from user {current_user.id}: "
-                               f"ext={_ext}, size={file_size/1024/1024:.2f}MB, "
-                               f"language={language}, auto_summarize={auto_summarize}")
+        incognito_log.info(f"[Incognito] Processing request from user {current_user.id}: "
+                           f"ext={_ext}, size={file_size/1024/1024:.2f}MB, "
+                           f"language={short_code(language)}, auto_summarize={auto_summarize}")
 
         # Perform transcription synchronously (no database operations)
         result = transcribe_incognito(
@@ -2267,7 +2269,8 @@ def upload_incognito():
         )
 
         if result.get('error'):
-            current_app.logger.error(f"[Incognito] Transcription failed: {result['error']}")
+            incognito_log.error(f"[Incognito] Transcription failed: type={result.get('error_type')}, "
+                                f"code={result.get('error_code')}")
             # result['error'] is English; a known kind of failure carries
             # error_code and is answered in the interface language (#477).
             if result.get('error_code') == 'audio_decode_failed':
@@ -2287,7 +2290,7 @@ def upload_incognito():
         # Optionally generate summary
         summary = None
         if auto_summarize and result.get('transcription'):
-            current_app.logger.info(f"[Incognito] Auto-summarize requested, generating summary...")
+            incognito_log.info("[Incognito] Auto-summarize requested, generating summary...")
             summary = generate_incognito_summary(result['transcription'], current_user)
 
         # Build response
@@ -2309,13 +2312,13 @@ def upload_incognito():
             'file_size': file_size
         }
 
-        current_app.logger.info(f"[Incognito] Request completed successfully for user {current_user.id}")
+        incognito_log.info(f"[Incognito] Request completed successfully for user {current_user.id}")
 
         return jsonify(response_data), 200
 
     except RequestEntityTooLarge:
         max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
-        current_app.logger.warning(f"[Incognito] Upload failed: File too large (>{max_size_mb}MB)")
+        incognito_log.warning(f"[Incognito] Upload failed: File too large (>{max_size_mb}MB)")
         return jsonify({
             'incognito': True,
             **api_error('file_too_large_max', maxSize=format_number(max_size_mb)),
@@ -2323,7 +2326,7 @@ def upload_incognito():
         }), 413
 
     except Exception as e:
-        current_app.logger.error(f"[Incognito] Error during processing: {e}", exc_info=True)
+        incognito_log.error(f"[Incognito] Error during processing: {describe_error(e)}")
         return jsonify({
             'incognito': True,
             **api_error('unexpected_error_processing')
@@ -2334,13 +2337,15 @@ def upload_incognito():
         if temp_filepath and os.path.exists(temp_filepath):
             try:
                 os.remove(temp_filepath)
-                current_app.logger.info(f"[Incognito] Temp file deleted: {temp_filepath}")
+                incognito_log.info(f"[Incognito] Temp file deleted: {temp_filepath}")
             except Exception as cleanup_error:
-                current_app.logger.error(f"[Incognito] Failed to delete temp file {temp_filepath}: {cleanup_error}")
+                incognito_log.error(f"[Incognito] Failed to delete temp file {temp_filepath}: "
+                                    f"{describe_error(cleanup_error)}")
 
 
 @recordings_bp.route('/api/recordings/incognito/chat', methods=['POST'])
 @login_required
+@incognito_route
 def chat_incognito():
     """
     Chat with an incognito recording's transcription.
@@ -2384,7 +2389,9 @@ def chat_incognito():
 
         user_id = current_user.id
 
-        current_app.logger.info(f"[Incognito Chat] User {user_id} sending message")
+        incognito_log.info(f"[Incognito Chat] User {user_id} sending message "
+                           f"({len(user_message)} characters, transcript {len(transcription)} characters, "
+                           f"{len(message_history)} earlier messages)")
 
         # Resolved here, in the request context, before the response streams.
         chat_temperature = get_temperature('chat')
@@ -2402,18 +2409,20 @@ def chat_incognito():
                 yield "data: [DONE]\n\n"
 
             except Exception as e:
-                current_app.logger.error(f"[Incognito Chat] Error during streaming: {e}")
+                incognito_log.error(f"[Incognito Chat] Error during streaming: {describe_error(e)}")
                 # Provide more helpful error message for connection issues
                 error_msg = str(e).lower()
                 if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
                     yield f"data: {json.dumps(api_error('llm_connection_failed'))}\n\n"
                 else:
-                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    # The provider's text can quote the transcript or the
+                    # message: the answer is a fixed message.
+                    yield f"data: {json.dumps(api_error('chat_error'))}\n\n"
 
         return Response(generate(), mimetype='text/event-stream')
 
     except Exception as e:
-        current_app.logger.error(f"[Incognito Chat] Error: {e}", exc_info=True)
+        incognito_log.error(f"[Incognito Chat] Error: {describe_error(e)}")
         # Provide more helpful error message for connection issues
         error_msg = str(e).lower()
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
@@ -2423,6 +2432,7 @@ def chat_incognito():
 
 @recordings_bp.route('/api/recordings/incognito/summary', methods=['POST'])
 @login_required
+@incognito_route
 def generate_incognito_summary_endpoint():
     """
     Generate summary for an incognito recording on demand.
@@ -2449,7 +2459,8 @@ def generate_incognito_summary_endpoint():
         if client is None:
             return jsonify(api_error('summary_llm_not_configured')), 503
 
-        current_app.logger.info(f"[Incognito Summary] User {current_user.id} requesting summary generation")
+        incognito_log.info(f"[Incognito Summary] User {current_user.id} requesting summary generation "
+                           f"(transcript {len(transcription)} characters)")
 
         # Generate summary using existing function
         summary = generate_incognito_summary(transcription, current_user)
@@ -2464,12 +2475,13 @@ def generate_incognito_summary_endpoint():
             return jsonify(api_error('summary_generation_failed')), 503
 
     except Exception as e:
-        current_app.logger.error(f"[Incognito Summary] Error: {e}", exc_info=True)
+        incognito_log.error(f"[Incognito Summary] Error: {describe_error(e)}")
         # Provide more helpful error message for connection issues
         error_msg = str(e).lower()
         if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
             return jsonify(api_error('llm_connection_failed')), 503
-        return jsonify(api_error('summary_generation_failed_detail', detail=str(e))), 500
+        # The exception text can quote the transcript: the answer is a fixed message.
+        return jsonify(api_error('summary_generation_failed')), 500
 
 
 # Status Endpoint

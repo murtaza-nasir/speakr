@@ -458,7 +458,8 @@ Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                     for query in search_queries:
                         with app.app_context():
                             auto_filtered_results = semantic_search_chunks(user_id, query, auto_filters, data.get('context_chunks', 8))
-                            app.logger.info(f"Auto-filtered search ({len(query)} characters) with speakers {mentioned_speakers} returned {len(auto_filtered_results)} chunks")
+                            app.logger.info(f"Auto-filtered search ({len(query)} characters) with {len(mentioned_speakers)} speakers returned {len(auto_filtered_results)} chunks")
+                            app.logger.debug(f"Auto-filtered search speakers: {mentioned_speakers}")
                             app.logger.debug(f"Auto-filtered search for '{query}' returned {len(auto_filtered_results)} chunks")
                         
                         for chunk, similarity in auto_filtered_results:
