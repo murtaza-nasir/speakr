@@ -25,6 +25,7 @@ import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
 import { useTranscriptView } from './modules/composables/transcript-view.js';
+import { segmentRuns } from './modules/utils/transcript-window.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
@@ -2639,6 +2640,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         isJson: false,
                         segments: segments,
                         simpleSegments: simpleSegments,
+                        // The simple view renders the turns, also for a
+                        // plain-text transcript with [Speaker]: lines
+                        simpleSegmentRuns: segmentRuns(simpleSegments),
                         bubbleRows: bubbleRows,
                         speakers: speakerList.map(speaker => ({
                             name: speaker,

@@ -22,6 +22,32 @@ export const RENDER_ALL_SEGMENTS = 300;
 
 const lengthOf = (item) => (item && typeof item.sentence === 'string' ? item.sentence.length : 0);
 
+/**
+ * The speaker turns of a transcript: consecutive segments of one speaker as
+ * one run, { speaker, color, speakerId, startTime, runOffset, segments },
+ * each segment with its index in the transcript as originalIndex. What the
+ * simple view renders (processedTranscription.simpleSegmentRuns).
+ */
+export function segmentRuns(segments) {
+    const runs = [];
+    let last;
+    (segments || []).forEach((segment, index) => {
+        if (!runs.length || segment.speakerId !== last) {
+            runs.push({
+                speaker: segment.speaker,
+                color: segment.color,
+                speakerId: segment.speakerId,
+                startTime: segment.startTime,
+                runOffset: index,
+                segments: [],
+            });
+        }
+        runs[runs.length - 1].segments.push({ ...segment, originalIndex: index });
+        last = segment.speakerId;
+    });
+    return runs;
+}
+
 /** Units of the simple view with speakers, from processedTranscription.simpleSegmentRuns. */
 export function runUnits(runs, max = MAX_UNIT_SEGMENTS) {
     const units = [];
