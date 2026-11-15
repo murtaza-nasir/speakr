@@ -173,7 +173,7 @@ The **user_search_scope** setting (`USER_SEARCH_SCOPE` in `.env`) decides who a 
 | Value | Shown as | Part of a username finds |
 |---|---|---|
 | `everyone` | Everyone | Any account |
-| `groups` | People in my groups | Only accounts that share a group with the user |
+| `groups` | People in their groups | Only accounts that share a group with the user |
 | `exact` | Exact username or email | Nobody |
 
 At every level, the full username or the full email address finds its account, at least two characters are needed, and at most ten accounts are listed. An email address is matched only when it is typed in full, without regard to case, so no search tells whether part of an address exists. The results show usernames only; a site admin also gets the email address. Any other value is refused on this page.

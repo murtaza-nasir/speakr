@@ -784,7 +784,7 @@
     "permissionModeSelected": "所选用户和群组",
     "permissionModeEveryone": "所有人",
     "userSearchScopeEveryone": "所有人",
-    "userSearchScopeGroups": "我的群组成员",
+    "userSearchScopeGroups": "其所在群组的成员",
     "userSearchScopeExact": "准确的用户名或邮箱"
   },
   "apiTokens": {

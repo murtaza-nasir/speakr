@@ -784,7 +784,7 @@
     "permissionModeSelected": "Utilisateurs et groupes sélectionnés",
     "permissionModeEveryone": "Tout le monde",
     "userSearchScopeEveryone": "Tout le monde",
-    "userSearchScopeGroups": "Personnes de mes groupes",
+    "userSearchScopeGroups": "Personnes de leurs groupes",
     "userSearchScopeExact": "Nom d’utilisateur ou adresse e-mail exacts"
   },
   "apiTokens": {

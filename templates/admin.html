@@ -1798,10 +1798,7 @@ Summarization Instructions:
                              class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
                             <div class="flex items-center space-x-3">
                                 <i class="fas fa-user text-[var(--text-muted)]"></i>
-                                <div>
-                                    <div class="text-sm font-medium text-[var(--text-primary)]">${ member.username }</div>
-                                    <div class="text-xs text-[var(--text-muted)]">${ member.email }</div>
-                                </div>
+                                <div class="text-sm font-medium text-[var(--text-primary)]">${ member.username }</div>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <select v-model="member.role" @change="updateMemberRole(member)"

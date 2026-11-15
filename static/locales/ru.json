@@ -784,7 +784,7 @@
     "permissionModeSelected": "Выбранные пользователи и группы",
     "permissionModeEveryone": "Все",
     "userSearchScopeEveryone": "Все",
-    "userSearchScopeGroups": "Участники моих групп",
+    "userSearchScopeGroups": "Участники их групп",
     "userSearchScopeExact": "Точное имя пользователя или адрес эл. почты"
   },
   "apiTokens": {
