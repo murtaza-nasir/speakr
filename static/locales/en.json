@@ -875,6 +875,7 @@
     "pickerAll": "All segments of {{name}}",
     "renameSpeaker": "Rename {{name}}",
     "addSpeaker": "Add speaker",
+    "removeSpeaker": "Remove speaker",
     "editTimes": "Edit times",
     "timeFormat": "Minutes:seconds, for example 1:02.5",
     "timeLinked": "Move the touching neighbor too",

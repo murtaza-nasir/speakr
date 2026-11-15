@@ -875,6 +875,7 @@
     "pickerAll": "{{name}} 的所有片段",
     "renameSpeaker": "重命名 {{name}}",
     "addSpeaker": "添加说话人",
+    "removeSpeaker": "移除说话人",
     "editTimes": "编辑时间",
     "timeFormat": "分:秒，例如 1:02.5",
     "timeLinked": "同时移动相邻片段",

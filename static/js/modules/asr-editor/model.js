@@ -733,6 +733,18 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         }).changed;
     };
 
+    /**
+     * Remove a speaker that was added in the editor and has no segments (it
+     * never had any, or they all went to other speakers or were deleted), as
+     * one undo step. Returns true when it was removed. A speaker with
+     * segments is not removed, and neither is a name that is no speaker.
+     */
+    const removeSpeaker = (name) => {
+        const at = added.indexOf(name);
+        if (at < 0 || firstIdOfSpeaker(name) != null) return false;
+        return transact('remove-speaker', () => exec({ k: 'spk', i: at, a: name, b: null })).changed;
+    };
+
     // ---- problems, speakers, lookups --------------------------------------
 
     const problemAt = (i) => (valid(i) ? problems.get(segs[i].id) || 0 : 0);
@@ -768,6 +780,11 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
     };
     /** The speakers added in the editor, with or without segments. */
     const addedSpeakers = () => added.slice();
+    /** The speakers without segments, which can be removed: added in the editor and empty now. */
+    const emptySpeakers = () => {
+        scanSpeakers();
+        return added.filter((name) => !speakerCache.has(name));
+    };
     /** The saved speaker a name is linked to on its first segment, or undefined. */
     const speakerIdOf = (name) => {
         scanSpeakers();
@@ -929,10 +946,10 @@ export function createAsrModel(rawSegments, { now = () => Date.now() } = {}) {
         toJSON: () => segs.map(segmentToJSON),
 
         setText, setStart, setEnd, moveEdge, setTimes, move, retime, split, merge, mergeWithPrevious, mergeWithNext,
-        add, remove, setSpeaker, renameSpeaker, addSpeaker, replaceText,
+        add, remove, setSpeaker, renameSpeaker, addSpeaker, removeSpeaker, replaceText,
         undo, redo, endBurst,
 
-        problemAt, nextProblem, speakers, addedSpeakers, speakerIdOf, firstIdOfSpeaker,
+        problemAt, nextProblem, speakers, addedSpeakers, emptySpeakers, speakerIdOf, firstIdOfSpeaker,
         changes, markSaved, acceptedMatches, adoptSaved, exportLog, importLog,
         onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     };

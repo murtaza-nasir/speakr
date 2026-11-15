@@ -1025,6 +1025,82 @@ describe('a speaker added in the editor', () => {
         expect(m.speakers()).toEqual(['Dana', 'Linus']);
     });
 
+    it('is removed while it has no segments, as one undo step', () => {
+        const m = createAsrModel(labeled());
+        const before = state(m);
+        m.addSpeaker();
+        m.addSpeaker();
+        m.addSpeaker();
+        expect(m.emptySpeakers()).toEqual(['SPEAKER_02', 'SPEAKER_03', 'SPEAKER_04']);
+        const events = [];
+        m.onChange((e) => events.push(`${e.source}:${e.type}:${e.structural}`));
+        expect(m.removeSpeaker('SPEAKER_03')).toBe(true);
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_04']);
+        expect(m.undoDepth).toBe(4);
+        expect(m.dirty).toBe(false);
+        expect(state(m)).toBe(before);
+        // Undo puts it back where it was
+        m.undo();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_03', 'SPEAKER_04']);
+        m.redo();
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02', 'SPEAKER_04']);
+        expect(events).toEqual(['do:remove-speaker:false', 'undo:remove-speaker:false', 'redo:remove-speaker:false']);
+        // Not a speaker, or gone already
+        expect(m.removeSpeaker('SPEAKER_03')).toBe(false);
+        expect(m.removeSpeaker('nobody')).toBe(false);
+        expect(m.undoDepth).toBe(4);
+    });
+
+    it('is not removed while it has segments, and a speaker of the recording never is', () => {
+        const m = createAsrModel(labeled());
+        m.addSpeaker();
+        m.setSpeaker([1], 'SPEAKER_02');
+        expect(m.emptySpeakers()).toEqual([]);
+        expect(m.removeSpeaker('SPEAKER_02')).toBe(false);
+        expect(m.removeSpeaker('SPEAKER_00')).toBe(false);
+        // A segment without times is a segment too
+        m.setSpeaker([1], 'SPEAKER_01');
+        m.add(null, null, 'SPEAKER_02');
+        expect(m.removeSpeaker('SPEAKER_02')).toBe(false);
+        m.undo();
+        // It lost its segments again: empty, and removable
+        expect(m.emptySpeakers()).toEqual(['SPEAKER_02']);
+        expect(m.removeSpeaker('SPEAKER_02')).toBe(true);
+        expect(m.speakers()).toEqual(['SPEAKER_00', 'SPEAKER_01']);
+        // A speaker of the recording that loses all its segments is gone by itself
+        m.setSpeaker([1, 3], 'SPEAKER_00');
+        expect(m.speakers()).toEqual(['SPEAKER_00']);
+        expect(m.emptySpeakers()).toEqual([]);
+        expect(m.removeSpeaker('SPEAKER_01')).toBe(false);
+    });
+
+    it('gives the label of a removed speaker out again, but never a loaded or reserved one', () => {
+        const m = createAsrModel(labeled());
+        expect(m.addSpeaker()).toBe('SPEAKER_02');
+        m.removeSpeaker('SPEAKER_02');
+        expect(m.addSpeaker()).toBe('SPEAKER_02');
+        m.removeSpeaker('SPEAKER_02');
+        // A label a voice match is known for stays reserved
+        expect(m.addSpeaker(null, { reserved: ['SPEAKER_02'] })).toBe('SPEAKER_03');
+        // SPEAKER_01 was loaded: renamed away, it is still not handed out
+        m.renameSpeaker('SPEAKER_01', 'Dana');
+        m.removeSpeaker('SPEAKER_03');
+        expect(m.addSpeaker()).toBe('SPEAKER_02');
+    });
+
+    it('a removal is kept by a draft that has other edits', () => {
+        const m = createAsrModel(labeled(), { now: () => 0 });
+        m.addSpeaker();
+        m.addSpeaker();
+        m.removeSpeaker('SPEAKER_02');
+        m.setSpeaker([0], 'SPEAKER_03');
+        const fresh = createAsrModel(labeled());
+        fresh.importLog(JSON.parse(JSON.stringify(m.exportLog())));
+        expect(state(fresh)).toBe(state(m));
+        expect(fresh.speakers()).toEqual(['SPEAKER_01', 'SPEAKER_00', 'SPEAKER_03']);
+        expect(fresh.addedSpeakers()).toEqual(['SPEAKER_03']);
+    });
+
     it('is kept by a draft that has other edits', () => {
         const m = createAsrModel(labeled(), { now: () => 0 });
         m.addSpeaker();
@@ -1065,7 +1141,8 @@ describe('a speaker added in the editor', () => {
             const all = m.speakers();
             const pick = () => all[rnd(all.length)];
             const before = m.undoDepth;
-            switch (rnd(5)) {
+            switch (rnd(6)) {
+                case 5: { const empty = m.emptySpeakers(); if (empty.length) m.removeSpeaker(empty[rnd(empty.length)]); break; }
                 case 0: m.addSpeaker(); break;
                 case 1: m.setSpeaker([rnd(m.length), rnd(m.length)], pick()); break;
                 case 2: m.renameSpeaker(pick(), rnd(3) ? pick() : `Name ${step}`); break;

@@ -12,12 +12,14 @@
      column has no room, and the matches are listed above the lanes.
      The name of a lane is a button of its own: it opens the speaker picker
      of the pane for the whole speaker (rename, or merge into another one).
-     Under the last lane a button adds a speaker without segments.
+     The header cell of the overview has the button that adds a speaker
+     without segments (its words are hidden at phone width), and the lane of
+     a speaker without segments has a button that removes it.
      The canvas reads its colours from
      the --tl-* variables of .asr-tl and from the header swatches, which carry
      the .speaker-color-N classes of the transcript. -->
 <script type="text/x-template" id="asr-editor-timeline-template">
-<section class="asr-tl" :class="{ 'asr-tl--closed': !open, 'asr-tl--matches': !narrow && lanes.some((lane) => lane.match) }" ref="root" data-asr-timeline :aria-label="t('asrEditor.timeline.title')">
+<section class="asr-tl" :class="{ 'asr-tl--closed': !open, 'asr-tl--matches': !narrow && lanes.some((lane) => lane.match), 'asr-tl--empties': lanes.some((lane) => lane.empty) }" ref="root" data-asr-timeline :aria-label="t('asrEditor.timeline.title')">
     <div class="asr-tl__bar">
         <button type="button" class="asr-tl__toggle" data-asr-action="timeline-toggle" :aria-expanded="open ? 'true' : 'false'"
                 @click="toggleOpen" :title="open ? t('asrEditor.timeline.hide') : t('asrEditor.timeline.show')">
@@ -74,18 +76,23 @@
                         <button type="button" class="asr-suggest__accept" data-asr-action="timeline-accept" @click="acceptSuggestion(lane.name)"
                         :title="lane.merge || null" v-text="lane.merge ? t('asrEditor.merge') : t('asrEditor.suggestionAccept')"></button>
                     </span>
-                </div>
-                <div class="asr-tl__add">
-                    <button type="button" class="asr-tl__add-btn" data-asr-action="add-speaker" @click="addSpeaker">
-                        <i class="fas fa-plus" aria-hidden="true"></i>
-                        <span v-text="t('asrEditor.addSpeaker')"></span>
+                    <button v-if="lane.empty" type="button" class="asr-tl__remove" data-asr-action="lane-remove"
+                            :title="t('asrEditor.removeSpeaker')" :aria-label="t('asrEditor.removeSpeaker')" @click="removeSpeaker(lane.name)">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
             <div class="asr-tl__box" ref="box">
                 <canvas ref="canvas" class="asr-tl__canvas" tabindex="0" data-asr-timeline-canvas :aria-label="t('asrEditor.timeline.canvasLabel')"></canvas>
             </div>
-            <div class="asr-tl__mini-label" v-text="t('asrEditor.timeline.overview')"></div>
+            <div class="asr-tl__mini-label">
+                <span class="asr-tl__mini-text" v-text="t('asrEditor.timeline.overview')"></span>
+                <button type="button" class="asr-tl__add-btn" data-asr-action="add-speaker" @click="addSpeaker"
+                        :title="t('asrEditor.addSpeaker')" :aria-label="t('asrEditor.addSpeaker')">
+                    <i class="fas fa-plus" aria-hidden="true"></i>
+                    <span class="asr-tl__add-text" v-text="t('asrEditor.addSpeaker')"></span>
+                </button>
+            </div>
             <div class="asr-tl__mini-box">
                 <canvas ref="mini" class="asr-tl__mini" data-asr-timeline-overview :style="{ height: overviewHeight + 'px' }" :aria-label="t('asrEditor.timeline.overviewLabel')"></canvas>
             </div>

@@ -875,6 +875,7 @@
     "pickerAll": "Tous les segments de {{name}}",
     "renameSpeaker": "Renommer {{name}}",
     "addSpeaker": "Ajouter un intervenant",
+    "removeSpeaker": "Supprimer l'intervenant",
     "editTimes": "Modifier les temps",
     "timeFormat": "Minutes:secondes, par exemple 1:02,5",
     "timeLinked": "Déplacer aussi le segment contigu",
