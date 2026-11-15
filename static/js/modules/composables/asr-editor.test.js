@@ -229,7 +229,7 @@ describe('the segment editor session', () => {
         expect(JSON.parse(saved[0])[0].sentence).toBe('Hello there');
     });
 
-    it('takes the page behind out of rendering only for a long transcript', async () => {
+    it('marks the page only for a long transcript', async () => {
         const long = Array.from({ length: 600 }, (_, i) => ({ speaker: 'A', sentence: `s${i}`, start_time: i, end_time: i + 1 }));
         const a = setup({ segments: long });
         await a.api.openAsrEditorModal();

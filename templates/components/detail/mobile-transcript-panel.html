@@ -2,6 +2,7 @@
      copy / download / edit) now lives in the chevron row of
      mobile-header.html instead of taking a whole separate row here. -->
 <div v-if="mobileTab === 'transcript'" class="h-full flex flex-col">
+    {% include 'components/detail/_transcript-find.html' %}
     <div class="flex-grow overflow-y-auto px-3 py-3 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
         <!-- Floating Processing Indicator (Mobile) -->
         <div v-if="selectedRecording.status === 'PROCESSING'"
@@ -92,17 +93,21 @@
                  the pill disappeared as soon as the first segment
                  scrolled past — the "sticky pills don't work" symptom. -->
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
-                <div v-if="processedTranscription.hasDialogue">
+                <div v-if="processedTranscription.hasDialogue" data-tv-list>
+                    <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
                     {% with ui_slot = 'transcript-turn-mobile' %}{% include 'themes/slot.html' %}{% endwith %}
+                    <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                 </div>
                 <div v-else>
-                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" @dblclick.stop="openAsrEditorAtSegment(index)" :data-start-time="segment.startTime" :data-segment-index="index"><span v-if="showTimestampsSimpleView" class="speaker-segment-timestamp speaker-segment-timestamp--inline">${ formatTimestamp(segment.startTime) }</span>${segment.sentence}</div>
+                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0" data-tv-list>
+                        <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                        <div v-for="unit in transcriptView.segments" :key="unit.key" :data-tv-unit="unit.unit" :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === unit.first }]" @click="seekAudioFromEvent" @dblclick.stop="openAsrEditorAtSegment(unit.first)" :data-start-time="unit.segment.startTime" :data-segment-index="unit.first"><span v-if="showTimestampsSimpleView" class="speaker-segment-timestamp speaker-segment-timestamp--inline">${ formatTimestamp(unit.segment.startTime) }</span>${unit.segment.sentence}</div>
+                        <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                     </div>
                     <div v-else class="whitespace-pre-wrap bidi-auto">${processedTranscription.content}</div>
                 </div>
             </div>
-            <div v-else-if="transcriptionViewMode === 'bubble'" class="transcription-with-speakers">
+            <div v-else-if="transcriptionViewMode === 'bubble'" class="transcription-with-speakers" data-tv-list>
                 <!-- Speaker legend (bubble view) — same collapsible legend
                      as desktop; was missing on mobile so users couldn't see
                      who the bubble colours map to. -->
@@ -124,13 +129,13 @@
                         </div>
                     </div>
                 </div>
-                <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
-                    <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                        <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
-                            <div class="speaker-bubble-content">${bubble.sentence}</div>
-                        </div>
+                <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                <div v-for="row in transcriptView.rows" :key="`${selectedRecording.id}-${row.key}`" :data-tv-unit="row.unit" :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
+                    <div v-for="bubble in row.bubbles" :key="`bubble-${bubble.index}-${bubble.startTime}`" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === bubble.index }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="bubble.index">
+                        <div class="speaker-bubble-content">${bubble.sentence}</div>
                     </div>
-                </template>
+                </div>
+                <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
             </div>
         </div>
     </div>

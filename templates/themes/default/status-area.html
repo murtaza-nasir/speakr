@@ -12,7 +12,7 @@
        widget on a phone. When minimized on mobile the sheet
        collapses to just its header strip, still sitting above the
        player / nav — never obscures content. -->
-<div v-if="showProcessingPopup && !progressPopupClosed && !(isMobileScreen && !isSidebarCollapsed)"
+<div v-if="queuePopupShown"
      :class="[
          {# z-50 ties with the sidebar and the modal overlays; DOM order
             settles the ties (sidebar < this popup < modals, per the include

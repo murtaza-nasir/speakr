@@ -31,6 +31,13 @@ export function resolveSidebarCollapsed(saved, isMobileScreen) {
     return saved === 'true';
 }
 
+// Whether a markdown editor is in fullscreen, as a class on <body> for the
+// stylesheet (styles.css hides the speaker legend under it). Called when an
+// editor enters or leaves fullscreen and after one is removed.
+const syncEditorFullscreen = () => {
+    document.body.classList.toggle('md-editor-fullscreen', !!document.querySelector('.editor-fullscreen, .CodeMirror-fullscreen'));
+};
+
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
@@ -534,6 +541,7 @@ export function useUI(state, utils, processedTranscription) {
     const cancelEditSummary = () => {
         if (summaryMarkdownEditorInstance.value) {
             summaryMarkdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             summaryMarkdownEditorInstance.value = null;
         }
         editingSummary.value = false;
@@ -547,6 +555,7 @@ export function useUI(state, utils, processedTranscription) {
         if (summaryMarkdownEditorInstance.value) {
             selectedRecording.value.summary = summaryMarkdownEditorInstance.value.value();
             summaryMarkdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             summaryMarkdownEditorInstance.value = null;
         }
         editingSummary.value = false;
@@ -558,6 +567,7 @@ export function useUI(state, utils, processedTranscription) {
 
         try {
             summaryMarkdownEditorInstance.value = new EasyMDE({
+                onToggleFullScreen: syncEditorFullscreen,
                 element: summaryMarkdownEditor.value,
                 spellChecker: false,
                 // The vendored bundle otherwise injects a Font Awesome stylesheet
@@ -652,6 +662,7 @@ export function useUI(state, utils, processedTranscription) {
     const cancelEditNotes = () => {
         if (markdownEditorInstance.value) {
             markdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             markdownEditorInstance.value = null;
         }
         editingNotes.value = false;
@@ -666,6 +677,7 @@ export function useUI(state, utils, processedTranscription) {
             // Get the markdown content from the editor
             selectedRecording.value.notes = markdownEditorInstance.value.value();
             markdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             markdownEditorInstance.value = null;
         }
         editingNotes.value = false;
@@ -677,6 +689,7 @@ export function useUI(state, utils, processedTranscription) {
 
         try {
             markdownEditorInstance.value = new EasyMDE({
+                onToggleFullScreen: syncEditorFullscreen,
                 element: notesMarkdownEditor.value,
                 spellChecker: false,
                 // The vendored bundle otherwise injects a Font Awesome stylesheet
@@ -1429,6 +1442,14 @@ export function useUI(state, utils, processedTranscription) {
     const scrollToActiveSegment = (segmentIndex) => {
         if (segmentIndex === null || segmentIndex === undefined) return;
 
+        // The transcript renders only the units near the viewport
+        // (composables/transcript-view.js): a segment outside that window
+        // has no element until it is revealed.
+        if (utils.revealTranscriptSegment) {
+            utils.revealTranscriptSegment(segmentIndex);
+            return;
+        }
+
         // Select the element BY its data-segment-index (not by NodeList
         // position). Positional indexing breaks in bubble view, where
         // consecutive same-speaker segments are merged into fewer elements, so
@@ -2033,11 +2054,13 @@ export function useUI(state, utils, processedTranscription) {
         // Destroy existing instance if any
         if (recordingMarkdownEditorInstance.value) {
             recordingMarkdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             recordingMarkdownEditorInstance.value = null;
         }
 
         try {
             recordingMarkdownEditorInstance.value = new EasyMDE({
+                onToggleFullScreen: syncEditorFullscreen,
                 element: recordingNotesEditor.value,
                 spellChecker: false,
                 // The vendored bundle otherwise injects a Font Awesome stylesheet
@@ -2078,6 +2101,7 @@ export function useUI(state, utils, processedTranscription) {
             // Save current value before destroying
             recordingNotes.value = recordingMarkdownEditorInstance.value.value();
             recordingMarkdownEditorInstance.value.toTextArea();
+            syncEditorFullscreen();
             recordingMarkdownEditorInstance.value = null;
         }
     };

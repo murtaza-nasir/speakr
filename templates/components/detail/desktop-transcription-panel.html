@@ -41,6 +41,15 @@
                 <span v-text="t('transcription.bubble')" data-i18n="transcription.bubble"></span>
             </button>
 
+            <!-- Find, for a transcript that is not rendered whole (the
+                 browser's own find sees only the rendered part) -->
+            <button v-if="transcriptView.windowed"
+                    @click="toggleTranscriptFind"
+                    class="btn btn--icon"
+                    :title="t('findReplace.find')">
+                <i class="fas fa-search"></i>
+            </button>
+
             <!-- Copy -->
             <button @click="copyTranscription"
                     class="btn btn--icon"
@@ -93,6 +102,8 @@
             </button>
         </div>
     </div>
+
+    {% include 'components/detail/_transcript-find.html' %}
 
     <!-- Transcription Content -->
     <div class="flex-1 overflow-y-auto p-4 relative" tabindex="0" role="region" :aria-label="t('transcription.title')">
@@ -199,25 +210,33 @@
                 <!-- Speaker runs (consecutive same-speaker segments
                      grouped into one container) so the sticky speaker
                      tablet at the top of each run sticks for the WHOLE
-                     run, not just the first segment. -->
-                <div v-if="processedTranscription.hasDialogue">
+                     run, not just the first segment.
+                     Only the runs near the viewport are rendered
+                     (composables/transcript-view.js): the two spacers
+                     stand for the rest of the transcript. -->
+                <div v-if="processedTranscription.hasDialogue" data-tv-list>
+                    <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
                     {% with ui_slot = 'transcript-turn' %}{% include 'themes/slot.html' %}{% endwith %}
+                    <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                 </div>
                 <div v-else>
-                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                             :key="`seg-${index}-${segment.startTime}`"
-                             :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
+                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0" data-tv-list>
+                        <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                        <div v-for="unit in transcriptView.segments"
+                             :key="unit.key"
+                             :data-tv-unit="unit.unit"
+                             :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === unit.first }]"
                              @click="seekAudioFromEvent"
-                             @dblclick.stop="openAsrEditorAtSegment(index)"
+                             @dblclick.stop="openAsrEditorAtSegment(unit.first)"
                              :title="t('tooltips.doubleClickToEditSegment')"
-                             :data-start-time="segment.startTime"
-                             :data-segment-index="index">
+                             :data-start-time="unit.segment.startTime"
+                             :data-segment-index="unit.first">
                             <span v-if="showTimestampsSimpleView"
                                   class="speaker-segment-timestamp speaker-segment-timestamp--inline">
-                                ${ formatTimestamp(segment.startTime) }
-                            </span>${segment.sentence}
+                                ${ formatTimestamp(unit.segment.startTime) }
+                            </span>${unit.segment.sentence}
                         </div>
+                        <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
                     </div>
                     <div v-else class="whitespace-pre-wrap bidi-auto">
                         ${processedTranscription.content}
@@ -227,21 +246,24 @@
 
             <!-- Bubble View -->
             <div v-else-if="transcriptionViewMode === 'bubble'"
-                 class="transcription-with-speakers">
-                <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
-                    <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                        <div v-for="(bubble, bubbleIndex) in row.bubbles"
-                             :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`"
-                             :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]"
-                             @click="seekAudioFromEvent"
-                             :data-start-time="bubble.startTime"
-                             :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
-                            <div class="speaker-bubble-content">
-                                ${bubble.sentence}
-                            </div>
+                 class="transcription-with-speakers" data-tv-list>
+                <div class="tv-spacer tv-spacer--before" data-tv-before :style="{ height: transcriptView.before + 'px' }"></div>
+                <div v-for="row in transcriptView.rows"
+                     :key="`${selectedRecording.id}-${row.key}`"
+                     :data-tv-unit="row.unit"
+                     :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
+                    <div v-for="bubble in row.bubbles"
+                         :key="`bubble-${bubble.index}-${bubble.startTime}`"
+                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === bubble.index }]"
+                         @click="seekAudioFromEvent"
+                         :data-start-time="bubble.startTime"
+                         :data-segment-index="bubble.index">
+                        <div class="speaker-bubble-content">
+                            ${bubble.sentence}
                         </div>
                     </div>
-                </template>
+                </div>
+                <div class="tv-spacer tv-spacer--after" data-tv-after :style="{ height: transcriptView.after + 'px' }"></div>
             </div>
         </div>
     </div>

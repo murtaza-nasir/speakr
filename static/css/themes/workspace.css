@@ -1571,10 +1571,10 @@ html[data-ui-theme="workspace"] [data-mobile-bottom-nav] {
         width: 340px;
         max-height: 60vh;
     }
-    html[data-ui-theme="workspace"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+    html[data-ui-theme="workspace"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
         bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
     }
-    html[data-ui-theme="workspace"] body:has(.main-content:not(.sidebar-open)) .progress-popup.minimized { transform: none; }
+    html[data-ui-theme="workspace"] body.app-sidebar-closed.app-sidebar-closed .progress-popup.minimized { transform: none; }
 }
 html[data-ui-theme="workspace"] .progress-popup { border-radius: var(--radius-lg); }
 

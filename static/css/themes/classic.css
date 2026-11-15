@@ -951,7 +951,7 @@ html[data-ui-theme="classic"] .share-card { max-width: 760px; margin-inline: aut
 
 /* One new-recording action: the rail's. The header's returns when the rail is hidden. */
 @media (min-width: 1024px) {
-    html[data-ui-theme="classic"] #app:has(aside.sidebar:not(.collapsed)) > header .btn--primary.header-action { display: none; }
+    html[data-ui-theme="classic"] body.app-rail-open.app-rail-open #app > header .btn--primary.header-action { display: none; }
 }
 html[data-ui-theme="classic"] .sidebar .sb-new { height: 48px; }
 

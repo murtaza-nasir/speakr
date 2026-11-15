@@ -1,5 +1,6 @@
-                    <div v-for="(run, runIndex) in processedTranscription.simpleSegmentRuns"
-                         :key="`run-${runIndex}-${run.startTime}`"
+                    <div v-for="run in transcriptView.runs"
+                         :key="run.key"
+                         :data-tv-unit="run.unit"
                          class="speaker-run">
                         <div v-if="showTimestampsSimpleView"
                              :class="['speaker-tablet-group', run.color]">

@@ -1307,7 +1307,7 @@ Summarization Instructions:
                                         <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-[var(--text-secondary)]">
                                                 <i class="fas fa-users mr-1"></i>
-                                                ${ group.member_count || 0 } ${t('adminDashboard.membersCount')}
+                                                <span v-text="t((group.member_count || 0) === 1 ? 'adminDashboard.memberCount' : 'adminDashboard.memberCountPlural', { count: group.member_count || 0 })"></span>
                                             </div>
                                         </td>
                                         <td class="hidden lg:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">

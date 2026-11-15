@@ -23,7 +23,7 @@ import { createChatThreads, clearThreadsOnSignOut, threadKey } from './modules/c
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useNotifications } from './modules/composables/notifications.js';
-import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtualScroll.js';
+import { useTranscriptView } from './modules/composables/transcript-view.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
 import { useFolders } from './modules/composables/folders.js';
@@ -809,14 +809,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const editingRecording = ref(null);
             const editingTranscriptionContent = ref('');
-            const editingSegments = ref([]);
             // Find and replace bar of the transcript editors (#440)
             const findReplace = reactive({ open: false, find: '', replace: '', matchCase: false, wholeWord: false, current: -1 });
             const availableSpeakers = ref([]);
-            const showEditSpeakersModal = ref(false);
-            const editingSpeakersList = ref([]);
-            const databaseSpeakers = ref([]);
-            const editingSpeakerSuggestions = ref({});
             const showEditParticipantsModal = ref(false);
             const editingParticipantsList = ref([]);
             const editingParticipantSuggestions = ref({});
@@ -2000,8 +1995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
                 showTextEditorModal, showAsrEditorModal, asrEditorSession, asrEditorDirty, asrEditorRev, asrEditorSaving, showRegenerateSummaryModal, regenSummary, userSummaryPrompt, editingRecording, editingTranscriptionContent,
-                editingSegments, findReplace, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
-                databaseSpeakers, editingSpeakerSuggestions,
+                findReplace, availableSpeakers,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
                 recordingToShare, shareOptions,
                 generatedShareLink, existingShareDetected, recordingPublicShares, isLoadingPublicShares,
@@ -2104,18 +2098,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (error) {
                     console.error('Error loading token budget:', error);
                 }
-            };
-
-            // Helper function to calculate global segment index in bubble view
-            const getBubbleGlobalIndex = (rowIndex, bubbleIndex) => {
-                if (!processedTranscription.value.bubbleRows) return 0;
-
-                let globalIndex = 0;
-                for (let i = 0; i < rowIndex; i++) {
-                    globalIndex += processedTranscription.value.bubbleRows[i].bubbles.length;
-                }
-                globalIndex += bubbleIndex;
-                return globalIndex;
             };
 
             // Modal audio handlers (independent from main player)
@@ -2888,20 +2870,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.openMergeForRecording = bulkOperationsComposable.openMergeForRecording;
 
             // =========================================================================
-            // VIRTUAL SCROLL SETUP (for performance with long transcriptions)
+            // TRANSCRIPT SCROLLING
             // Must be before speakers composable since it uses scrollToSegmentIndex
             // =========================================================================
-            // Create a computed ref for the segments array
-            const transcriptSegments = computed(() => processedTranscription.value.simpleSegments || []);
-
-            // Virtual scroll for main transcription panel
-            const mainTranscriptVirtualScroll = useVirtualScroll({
-                items: transcriptSegments,
-                itemHeight: 48,
-                containerRef: mainTranscriptRef,
-                overscan: 5
-            });
-
             // Scroll a transcript segment into view by index.
             //
             // The speaker modal no longer uses virtual scrolling — see the
@@ -2912,13 +2883,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // variable segment heights, smooth animation works because
             // nothing is fighting it, scrollbar is stable.
             //
-            // The main transcript panel STILL uses virtual scrolling
-            // (smaller panel, different perf characteristics, no Prev/Next
-            // nav buttons to expose the variable-height inaccuracy).
-            // Robust scroll-to-element for the transcript. Both the main panel
-            // and the speaker modal use content-visibility:auto with an
-            // ESTIMATED 60px intrinsic size for off-screen segments (paint
-            // perf). A single scrollIntoView is inaccurate for a far jump: it
+            // The main transcript panel renders only the units near the
+            // viewport (composables/transcript-view.js); a segment outside
+            // that window is rendered first, by revealTranscriptSegment.
+            // Robust scroll-to-element for the transcript. The speaker
+            // modal uses content-visibility:auto with an ESTIMATED 60px
+            // intrinsic size for off-screen segments (paint perf), and the
+            // main panel estimates the heights of units it has not rendered
+            // yet. A single scrollIntoView is inaccurate for a far jump: it
             // targets the estimate, and the act of scrolling then renders the
             // real (taller) heights, which shifts the target out from under the
             // animation — the "moving target" — so it overshoots and only
@@ -2950,6 +2922,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             utils.scrollSegmentIntoView = scrollSegmentIntoView;
 
+            // The transcript views of the recording page, windowed.
+            const transcriptViewComposable = useTranscriptView({
+                processedTranscription,
+                transcriptionViewMode,
+                recordingId: () => (selectedRecording.value ? selectedRecording.value.id : null),
+                recordingTitle: () => (selectedRecording.value ? selectedRecording.value.title || '' : ''),
+                relayoutOn: [currentView, mobileTab, windowWidth, uiTheme, showTimestampsSimpleView, viewingTranslation, legendExpanded, leftColumnWidth],
+                scrollSegmentIntoView,
+                t,
+            });
+            utils.revealTranscriptSegment = transcriptViewComposable.revealSegment;
+
             const scrollToSegmentIndex = (index) => {
                 let el = null;
                 if (showSpeakerModal.value) {
@@ -2957,7 +2941,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!container) return;
                     el = container.querySelector(`[data-segment-index="${index}"]`);
                 } else {
-                    el = document.querySelector(`.transcript-segment[data-segment-index="${index}"], .speaker-segment[data-segment-index="${index}"], .speaker-bubble[data-segment-index="${index}"]`);
+                    transcriptViewComposable.revealSegment(index);
+                    return;
                 }
                 if (el) scrollSegmentIntoView(el);
             };
@@ -3764,6 +3749,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showProcessingPopup = computed(() => {
                 return unifiedProgressItems.value.length > 0;
             });
+            // The queue popup is on the page (themes/*/status-area.html)
+            const queuePopupShown = computed(() =>
+                showProcessingPopup.value && !progressPopupClosed.value && !(isMobileScreen.value && !isSidebarCollapsed.value));
+
+            // The state of the queue popup and of the sidebar as classes on
+            // <body>, for the stylesheets (primitives.css and the themes).
+            // They used body:has(...) for this, which made the browser look
+            // at the whole page again whenever an element was added or
+            // removed anywhere.
+            watch([queuePopupShown, progressPopupMinimized, isSidebarCollapsed, isMobileScreen], () => {
+                const classes = document.body.classList;
+                const sidebarOpen = !isSidebarCollapsed.value && !isMobileScreen.value;
+                classes.toggle('queue-open', queuePopupShown.value && !progressPopupMinimized.value);
+                classes.toggle('queue-minimized', queuePopupShown.value && progressPopupMinimized.value);
+                classes.toggle('app-sidebar-open', sidebarOpen);
+                classes.toggle('app-sidebar-closed', !sidebarOpen);
+                classes.toggle('app-rail-open', !isSidebarCollapsed.value);
+            }, { immediate: true });
 
             // On phones the queue shows as a compact top-right pill by
             // default — auto-minimize it when it first appears so it doesn't
@@ -4713,6 +4716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 backendProcessingRecordings,
                 totalProcessingCount,
                 showProcessingPopup,
+                queuePopupShown,
                 jobQueueDetails,
                 getJobDetails,
                 allJobs,
@@ -4778,7 +4782,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast,
                 loadTokenBudget,
                 getContrastTextColor,
-                getBubbleGlobalIndex,
                 formatRecordingMode,
 
                 // Modal audio (independent from main player)
@@ -4798,12 +4801,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 asrEditorSession,
                 asrEditorDirty,
                 asrEditorSaving,
-                mainTranscriptVisibleSegments: mainTranscriptVirtualScroll.visibleItems,
-                mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
-                mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
-                onMainTranscriptScroll: mainTranscriptVirtualScroll.onScroll,
+                transcriptView: transcriptViewComposable.transcriptView,
+                transcriptFind: transcriptViewComposable.transcriptFind,
+                transcriptFindLabel: transcriptViewComposable.transcriptFindLabel,
+                toggleTranscriptFind: transcriptViewComposable.toggleTranscriptFind,
+                closeTranscriptFind: transcriptViewComposable.closeTranscriptFind,
+                goToTranscriptMatch: transcriptViewComposable.goToTranscriptMatch,
                 scrollToSegmentIndex,
-                getVirtualItemKey,
 
                 // Recording recovery
                 showRecoveryModal,

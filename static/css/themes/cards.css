@@ -939,13 +939,13 @@ html[data-ui-theme="cards"] [data-header-reprocess-menu] [role="menuitem"]:hover
    --detail-bottom-inset from primitives.css). Collapsed it keeps its header in
    view instead of sliding down over the player. */
 @media (min-width: 641px) {
-    html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup {
+    html[data-ui-theme="cards"] body.app-sidebar-closed.app-sidebar-closed .progress-popup {
         left: 32px;
         right: auto;
         bottom: calc(var(--detail-bottom-inset, 0px) + 16px);
         width: 300px;
     }
-    html[data-ui-theme="cards"] body:has(.main-content:not(.sidebar-open)) .progress-popup.minimized { transform: none; }
+    html[data-ui-theme="cards"] body.app-sidebar-closed.app-sidebar-closed .progress-popup.minimized { transform: none; }
 }
 html[data-ui-theme="cards"] .progress-popup__card {
     background: var(--c-surface);
