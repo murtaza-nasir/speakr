@@ -5,10 +5,14 @@ model; this test covers the editor a user sees: the transcript pane with its
 speaker chips and times, typing, Enter to split and Backspace to merge,
 speakers from the picker and from the number keys, undo and redo, find and
 replace as one undo step, the question before unsaved changes are discarded,
-the local draft, the phone layout, and saving. A second part loads a
-transcript of 20,000 segments (about ten hours) and checks that only the
-rows in view are in the DOM, that the end of the list can be reached, and
-that an edit there is saved in reasonable time.
+the local draft, the phone layout, and saving. The timeline above the pane
+(a canvas: waveform, one lane per speaker) is driven with the mouse: a click
+seeks or selects, an edge is dragged to change a time, a block to another
+lane to change its speaker, empty lane space to add a segment, each as one
+undo step. A second part loads a transcript of 20,000 segments (about ten
+hours) and checks that only the rows in view are in the DOM, that the end of
+the list can be reached, that an edit there is saved in reasonable time, and
+that the timeline redraws well inside a frame.
 
 The recordings come from seed_recordings.py, which run_speakr.py runs when it
 starts the instance; on an instance without them (the published image in
@@ -58,6 +62,13 @@ MAX_ROWS_IN_DOM = 80
 
 ROW = ".asr-pane .asr-seg"
 TEXT = ".asr-pane .asr-seg textarea"
+CANVAS = "[data-asr-timeline-canvas]"
+# The timeline's handle for tests and the console (static/js/modules/asr-editor/timeline.js)
+TL = f"document.querySelector('{CANVAS}').__tl"
+# A full redraw of the timeline must fit a frame with room to spare. The
+# machine of the CI job is slow and shared, so the bound is a frame (16 ms),
+# not the 4 ms the timeline is built for; the measured time is printed.
+FRAME_MS = 16
 
 
 class Editor:
@@ -184,6 +195,43 @@ class Editor:
 
     def check(self, label):
         check_common(self.page, self.problems, label)
+
+    # -- the timeline ------------------------------------------------------------
+
+    def tl(self, expression):
+        """A value of the timeline's handle, e.g. tl('view.pps')."""
+        return self.page.evaluate(f"() => {TL}.{expression}")
+
+    def tl_ready(self, waveform=True):
+        self.page.locator(CANVAS).wait_for(state="visible", timeout=10000)
+        self.page.wait_for_function(f"() => {TL} && {TL}.width > 0 && {TL}.stats.frames > 0", timeout=10000)
+        if waveform:
+            self.page.wait_for_function(f"() => {TL}.waveform === 'ready'", timeout=30000)
+
+    def tl_point(self, seconds, lane=None, dx=0):
+        """Page coordinates of a time on the timeline: in a lane, or on the ruler (lane None)."""
+        y = "h.laneY(lane)" if lane is not None else "10"
+        return self.page.evaluate(
+            f"([t, lane, dx]) => {{ const c = document.querySelector('{CANVAS}'); const r = c.getBoundingClientRect(); "
+            f"const h = c.__tl; return [r.left + h.xOf(t) + dx, r.top + {y}]; }}", [seconds, lane, dx])
+
+    def tl_drag(self, start, end, keys=(), steps=8, before_release=None):
+        """Drag with the mouse from one page point to another, with modifier keys held while moving."""
+        mouse = self.page.mouse
+        mouse.move(*start)
+        mouse.down()
+        for key in keys:
+            self.page.keyboard.down(key)
+        mouse.move(*end, steps=steps)
+        if before_release:
+            before_release()
+        mouse.up()
+        for key in keys:
+            self.page.keyboard.up(key)
+        self.page.wait_for_timeout(150)
+
+    def tl_segments(self):
+        return self.tl("segments")
 
     def shot(self, name):
         if SHOTS:
@@ -600,6 +648,233 @@ def test_a_voice_match_is_accepted_and_saved_like_in_the_speaker_dialog(editor):
                 page.request.delete(f"{BASE}/speakers/{speaker['id']}", headers={"X-CSRFToken": editor.csrf()})
 
 
+def test_the_timeline_shows_the_recording_and_follows_the_selection(meeting):
+    editor, _ = meeting
+    page = editor.page
+    editor.tl_ready()
+    seeded = meeting_segments()
+
+    # One lane per speaker, in the colours of the speaker chips, and the waveform of the audio
+    assert editor.tl("lanes") == [{"name": "SPEAKER_00", "count": 6}, {"name": "SPEAKER_01", "count": 6}]
+    heads = page.eval_on_selector_all(".asr-tl__lane .asr-tl__name-1", "els => els.map(e => e.textContent.trim())")
+    assert heads == ["SPEAKER_00", "SPEAKER_01"]
+    swatch = page.locator("[data-asr-lane-swatch]").first.evaluate("el => getComputedStyle(el).backgroundColor")
+    chip = page.locator(f"{ROW} .asr-seg__chip").first.evaluate("el => getComputedStyle(el).backgroundColor")
+    assert swatch == chip
+    assert editor.tl("duration") == pytest.approx(90, abs=1)
+    editor.shot("asr-editor-test-timeline")
+
+    # A click on the ruler moves the playhead
+    page.mouse.click(*editor.tl_point(9.0))
+    page.wait_for_function("() => Math.abs(document.querySelector('[data-asr-editor-audio]').currentTime - 9) < 0.2")
+    assert editor.tl("playhead") == pytest.approx(9.0, abs=0.2)
+
+    # A click on a block selects its row; Ctrl adds another
+    page.mouse.click(*editor.tl_point(14.0, lane=0))
+    assert editor.selected() == [2]
+    page.keyboard.down("Control")
+    page.mouse.click(*editor.tl_point(20.0, lane=1))
+    page.keyboard.up("Control")
+    assert editor.selected() == [2, 3]
+
+    # A row selected in the pane is brought into view on the timeline
+    assert editor.tl("xOf(67)") > editor.tl("width"), "the last segment should start out of view"
+    page.evaluate("() => { const l = document.querySelector('.asr-list'); l.scrollTop = l.scrollHeight; }")
+    page.wait_for_timeout(300)
+    editor.select_row(11)
+    page.wait_for_function(f"() => {TL}.xOf(66) >= 0 && {TL}.xOf(71.5) <= {TL}.width", timeout=5000)
+
+    # Zoom, and the whole recording at once
+    pps = editor.tl("view.pps")
+    editor.action("timeline-zoom-in").click()
+    assert editor.tl("view.pps") > pps
+    editor.action("timeline-zoom-fit").click()
+    assert editor.tl("view.t0") == 0 and editor.tl("xOf(90)") == pytest.approx(editor.tl("width"), abs=1)
+    # Ctrl+wheel zooms around the pointer: the time under it stays there
+    x, y = editor.tl_point(30.0, lane=0)
+    page.mouse.move(x, y)
+    page.keyboard.down("Control")
+    page.mouse.wheel(0, -300)
+    page.keyboard.up("Control")
+    page.wait_for_timeout(200)
+    assert editor.tl("view.pps") > 90 / editor.tl("width") * 1.5
+    assert editor.tl_point(30.0, lane=0)[0] == pytest.approx(x, abs=1.5)
+
+    # Collapsed, it stays collapsed for the next recording; nothing was edited
+    editor.action("timeline-toggle").click()
+    assert not page.locator(CANVAS).is_visible()
+    assert page.evaluate("() => localStorage.getItem('speakr.asrEditor.timeline')") == "0"
+    assert not editor.dirty()
+    editor.check("editor timeline")
+    editor.discard()
+    editor.click_edit()
+    assert not page.locator(CANVAS).is_visible()
+    editor.action("timeline-toggle").click()
+    editor.tl_ready()
+    assert page.evaluate("() => localStorage.getItem('speakr.asrEditor.timeline')") == "1"
+    editor.check("editor timeline, reopened")
+    editor.discard()
+
+
+def test_dragging_an_edge_changes_the_times_and_undo_restores_them(editor):
+    page = editor.page
+    recording_id = editor.ids[MEETING_TITLE]
+    # The first two segments of one speaker touch, the third follows after a gap
+    segments = meeting_segments()
+    segments[0] = {**segments[0], "start_time": 0.0, "end_time": 3.0}
+    segments[1] = {**segments[1], "speaker": "SPEAKER_00", "start_time": 3.0, "end_time": 5.5}
+    editor.store(recording_id, segments)
+    editor.open(recording_id)
+    editor.tl_ready()
+
+    def times(index):
+        seg = editor.tl_segments()[index]
+        return seg["start_time"], seg["end_time"]
+
+    # The edge two touching blocks share: both move, as one undo step (Ctrl: no snapping)
+    grab = editor.tl_point(3.0, lane=0, dx=-2)
+    editor.tl_drag(grab, editor.tl_point(4.0, lane=0, dx=-2), keys=["Control"],
+                   before_release=lambda: editor.shot("asr-editor-test-timeline-drag"))
+    assert times(0) == (0.0, pytest.approx(4.0, abs=0.05))
+    assert times(1) == (pytest.approx(4.0, abs=0.05), 5.5)
+    assert times(0)[1] == times(1)[0], "the neighbour's edge did not follow"
+    assert editor.tl("undoDepth") == 1 and editor.dirty()
+    assert editor.selected() == [0]
+
+    # Saved as dragged
+    editor.save()
+    stored = editor.stored(recording_id)
+    assert stored[0]["end_time"] == stored[1]["start_time"] == times(0)[1]
+    assert [s["sentence"] for s in stored] == [s["sentence"] for s in segments]
+
+    # One undo puts both back
+    editor.action("undo").click()
+    assert times(0) == (0.0, 3.0) and times(1) == (3.0, 5.5)
+    assert editor.tl("undoDepth") == 0
+
+    # With Alt the edge moves alone and may overlap its neighbour, which is then marked as a problem
+    editor.tl_drag(editor.tl_point(3.0, lane=0, dx=-2), editor.tl_point(4.0, lane=0, dx=-2), keys=["Alt", "Control"])
+    assert times(0) == (0.0, pytest.approx(4.0, abs=0.05)) and times(1) == (3.0, 5.5)
+    assert editor.action("next-problem").is_visible()
+    editor.action("undo").click()
+    assert not editor.action("next-problem").is_visible()
+
+    # Without a touching neighbour the edge stops at the next block of the lane
+    editor.tl_drag(editor.tl_point(5.5, lane=0, dx=-2), editor.tl_point(15.0, lane=0), keys=["Control"])
+    assert times(1) == (3.0, 12.0)
+    editor.action("undo").click()
+
+    # Snapping: to the playhead, and to the edge of a block in another lane
+    page.mouse.click(*editor.tl_point(4.6))
+    page.wait_for_function(f"() => Math.abs({TL}.playhead - 4.6) < 0.05")
+    playhead = editor.tl("playhead")
+    snaps = []
+    editor.tl_drag(editor.tl_point(5.5, lane=0, dx=-2), editor.tl_point(playhead, lane=0, dx=1),
+                   before_release=lambda: snaps.append(editor.tl("snap")))
+    assert snaps == ["playhead"] and times(1)[1] == pytest.approx(playhead, abs=0.002)
+    editor.action("undo").click()
+    editor.tl_drag(editor.tl_point(18.0, lane=1, dx=2), editor.tl_point(17.52, lane=1),
+                   before_release=lambda: snaps.append(editor.tl("snap")))
+    assert snaps[-1] == "edge" and times(3)[0] == 17.5        # the end of the block above
+    editor.action("undo").click()
+
+    # Esc cancels a drag: nothing changes
+    depth = editor.tl("undoDepth")
+    page.mouse.move(*editor.tl_point(3.0, lane=0, dx=-2))
+    page.mouse.down()
+    page.mouse.move(*editor.tl_point(4.2, lane=0), steps=5)
+    assert editor.tl("dragging")
+    page.keyboard.press("Escape")
+    assert not editor.tl("dragging")
+    page.mouse.up()
+    assert times(0) == (0.0, 3.0) and editor.tl("undoDepth") == depth
+    assert page.locator(".asr-editor-modal").count() == 1, "Esc closed the editor instead of cancelling the drag"
+    editor.check("editor timeline, edge drags")
+    editor.discard()
+
+
+def test_dragging_a_block_moves_it_or_changes_its_speaker(meeting):
+    editor, recording_id = meeting
+    page = editor.page
+    editor.tl_ready()
+    seeded = meeting_segments()
+
+    # To the other lane: the speaker changes, the times stay, one undo step
+    start = editor.tl_point(14.5, lane=0)
+    target = editor.tl_point(14.5, lane=1)
+    editor.tl_drag(start, target)
+    assert editor.speakers()[:4] == ["SPEAKER_00", "SPEAKER_01", "SPEAKER_01", "SPEAKER_01"]
+    moved = editor.tl_segments()[2]
+    assert (moved["speaker"], moved["start_time"], moved["end_time"]) == ("SPEAKER_01", 12.0, 17.5)
+    assert editor.tl("undoDepth") == 1 and editor.selected() == [2]
+    assert editor.tl("lanes") == [{"name": "SPEAKER_00", "count": 5}, {"name": "SPEAKER_01", "count": 7}]
+    editor.action("undo").click()
+    assert editor.speakers()[:4] == ["SPEAKER_00", "SPEAKER_01", "SPEAKER_00", "SPEAKER_01"]
+    assert editor.tl_segments() == seeded
+
+    # Along its lane: the block keeps its length and stops at the next block of the lane
+    editor.tl_drag(editor.tl_point(14.5, lane=0), editor.tl_point(16.5, lane=0), keys=["Control"])
+    moved = editor.tl_segments()[2]
+    assert moved["start_time"] == pytest.approx(14.0, abs=0.05)
+    assert moved["end_time"] - moved["start_time"] == pytest.approx(5.5, abs=0.001)
+    editor.tl_drag(editor.tl_point(16.0, lane=0), editor.tl_point(28.0, lane=0), keys=["Control"])
+    # It now starts after the fourth segment (18 s), so it is the fourth itself
+    moved = editor.tl_segments()[3]
+    assert moved["sentence"] == seeded[2]["sentence"]
+    assert (moved["start_time"], moved["end_time"]) == (18.5, 24.0)      # the next block of the lane starts at 24
+    assert editor.texts()[2:4] == [seeded[3]["sentence"], seeded[2]["sentence"]]
+    assert editor.clocks()[2:4] == ["0:18", "0:18"] and editor.selected() == [3]
+    assert editor.tl("undoDepth") == 2
+
+    # Saved, and undone after the save
+    editor.save()
+    assert editor.stored(recording_id)[3]["start_time"] == 18.5
+    editor.action("undo").click()
+    editor.action("undo").click()
+    assert editor.tl_segments() == seeded
+    editor.check("editor timeline, block drags")
+    editor.discard()
+
+
+def test_dragging_on_empty_lane_space_adds_a_segment(meeting):
+    editor, recording_id = meeting
+    page = editor.page
+    editor.tl_ready()
+    editor.action("timeline-zoom-fit").click()
+    count = editor.rows().count()
+
+    # After the last segment (71.5 s) the lanes are empty
+    editor.tl_drag(editor.tl_point(76.0, lane=1), editor.tl_point(82.0, lane=1), keys=["Control"])
+    page.wait_for_function(f"() => {TL}.segments.length === 13")
+    added = editor.tl_segments()[-1]
+    assert added["speaker"] == "SPEAKER_01" and added["sentence"] == ""
+    assert added["start_time"] == pytest.approx(76.0, abs=0.2) and added["end_time"] == pytest.approx(82.0, abs=0.2)
+    assert editor.tl("undoDepth") == 1
+    # Its row is selected and its text has the cursor
+    page.wait_for_function("() => document.activeElement && document.activeElement.tagName === 'TEXTAREA'")
+    assert editor.focused() == (12, 0) or editor.focused() == [12, 0]
+    page.keyboard.type("Thanks, see you next week.")
+    editor.save()
+    stored = editor.stored(recording_id)
+    assert len(stored) == 13 and stored[12]["sentence"] == "Thanks, see you next week."
+    assert stored[12]["speaker"] == "SPEAKER_01"
+
+    # A drag shorter than a tenth of a second creates nothing, and a click on empty space moves the playhead
+    page.keyboard.press("Escape")
+    editor.tl("setView(84, 400)")
+    editor.tl_drag(editor.tl_point(85.0, lane=0), editor.tl_point(85.0, lane=0, dx=12), keys=["Control"])
+    assert len(editor.tl_segments()) == 13
+    page.mouse.click(*editor.tl_point(85.5, lane=0))
+    page.wait_for_function(f"() => Math.abs({TL}.playhead - 85.5) < 0.3")
+
+    # Typing and the new segment are two undo steps
+    editor.action("undo").click()
+    editor.action("undo").click()
+    assert len(editor.tl_segments()) == 12
+    editor.check("editor timeline, new segment")
+    editor.discard()
+
+
 def test_phone_width(browser):
     phone = Editor(browser, {"width": 390, "height": 800})
     try:
@@ -619,6 +894,35 @@ def test_phone_width(browser):
         box = menu.bounding_box()
         assert box["width"] >= 39.5 and box["height"] >= 39.5, f"the row menu is a small touch target: {box}"
         phone.shot("asr-editor-test-phone")
+
+        # The timeline fits the phone; its lanes are dragged with one finger
+        phone.tl_ready()
+        box = page.locator(CANVAS).bounding_box()
+        assert box["width"] >= 240 and box["x"] + box["width"] <= 390.5, f"the timeline does not fit: {box}"
+        toggle = page.locator("[data-asr-action='timeline-toggle']").bounding_box()
+        assert toggle["height"] >= 35.5, f"the timeline toggle is a small touch target: {toggle}"
+        zoom = page.locator("[data-asr-action='timeline-zoom-in']").bounding_box()
+        assert zoom["width"] >= 39.5 and zoom["height"] >= 39.5, f"the zoom button is a small touch target: {zoom}"
+        phone.action("timeline-zoom-fit").click()
+        a, b = phone.tl_point(76.0, lane=0), phone.tl_point(84.0, lane=0)
+        page.evaluate("""([sel, a, b]) => {
+            const canvas = document.querySelector(sel);
+            const fire = (type, [x, y]) => canvas.dispatchEvent(new PointerEvent(type, {
+                pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: 1 }));
+            fire('pointerdown', a);
+            for (let i = 1; i <= 6; i++) fire('pointermove', [a[0] + (b[0] - a[0]) * i / 6, a[1]]);
+            fire('pointerup', b);
+        }""", [CANVAS, a, b])
+        page.wait_for_function(f"() => {TL}.segments.length === 13")
+        added = phone.tl_segments()[-1]
+        assert added["speaker"] == "SPEAKER_00" and 5 < added["end_time"] - added["start_time"] < 11
+        phone.action("undo").click()
+        assert len(phone.tl_segments()) == 12
+        page.keyboard.press("Escape")
+        phone.action("timeline-toggle").click()
+        assert not page.locator(CANVAS).is_visible()
+        phone.shot("asr-editor-test-phone-timeline-closed")
+        phone.action("timeline-toggle").click()
 
         # Split at the cursor and merge with previous, from the menu
         phone.caret_in(1, len("Morning."))
@@ -660,6 +964,63 @@ def test_a_ten_hour_transcript(editor):
         in_dom = editor.rows().count()
         assert 5 <= in_dom <= MAX_ROWS_IN_DOM, f"{in_dom} rows in the DOM"
         assert editor.texts()[0] == segments[0]["sentence"]
+
+        # The timeline: a full redraw fits a frame, zoomed in (blocks with text)
+        # and zoomed all the way out (20,000 blocks as merged runs)
+        editor.tl_ready(waveform=False)
+        assert sum(lane["count"] for lane in editor.tl("lanes")) == LARGE_COUNT
+        near = editor.tl("benchmark(120)")
+        editor.action("timeline-zoom-fit").click()
+        page.wait_for_timeout(200)
+        far = page.evaluate(f"""() => {{
+            const h = {TL};
+            const pps = h.view.pps;
+            const times = [];
+            for (let i = 0; i < 60; i++) {{
+                const started = performance.now();
+                h.setView(0, pps * (1 + (i % 5) * 0.02));
+                document.querySelector('{CANVAS}').getContext('2d').getImageData(0, 0, 1, 1);
+                times.push(performance.now() - started);
+            }}
+            h.setView(0, pps);
+            times.sort((a, b) => a - b);
+            return {{ median: times[30], p95: times[57], max: times[59], drawn: h.stats.drawn, visible: h.stats.visible }};
+        }}""")
+        assert far["visible"] == LARGE_COUNT, f"zoomed out, {far['visible']} of {LARGE_COUNT} blocks were looked at"
+        assert far["drawn"] < 4000, f"zoomed out, {far['drawn']} rectangles were drawn"
+        editor.shot("asr-editor-test-20000-segments-timeline")
+        # Frames the browser really presented while the view scrolls through the recording
+        presented = page.evaluate(f"""() => new Promise((resolve) => {{
+            const h = {TL};
+            const times = [];
+            let last = 0, n = 0;
+            const step = (now) => {{
+                if (last) times.push(now - last);
+                last = now;
+                h.setView((h.duration * n) / 90, 30);
+                if (++n <= 90) requestAnimationFrame(step); else {{ times.sort((a, b) => a - b); resolve({{ median: times[45], p95: times[85] }}); }}
+            }};
+            requestAnimationFrame(step);
+        }})""")
+        print(f"\n[asr timeline, {LARGE_COUNT} segments] redraw while scrolling and zooming: median {near['median']:.2f} ms, "
+              f"p95 {near['p95']:.2f} ms, max {near['max']:.2f} ms ({near['visible']} blocks in view); zoomed out on all of it: "
+              f"median {far['median']:.2f} ms, p95 {far['p95']:.2f} ms ({far['drawn']} rectangles for {far['visible']} blocks); "
+              f"presented frames while scrolling: median {presented['median']:.1f} ms, p95 {presented['p95']:.1f} ms apart")
+        assert near["median"] < FRAME_MS, f"a timeline frame took {near['median']:.1f} ms (median)"
+        assert presented["median"] < 100, f"frames were presented {presented['median']:.0f} ms apart while the timeline scrolled"
+        assert far["median"] < FRAME_MS, f"a zoomed-out timeline frame took {far['median']:.1f} ms (median)"
+
+        # A drag at this size: one edge, one undo step
+        editor.tl("setView(0, 30)")
+        before = editor.tl("segments.slice(0, 2)")
+        started = time.monotonic()
+        editor.tl_drag(editor.tl_point(1.7, lane=0, dx=-2), editor.tl_point(1.2, lane=0, dx=-2), keys=["Control"])
+        dragged_in = time.monotonic() - started
+        after = editor.tl("segments.slice(0, 2)")
+        assert after[0]["end_time"] == pytest.approx(1.2, abs=0.05) and after[1] == before[1]
+        assert editor.tl("undoDepth") == 1 and dragged_in < 5, f"an edge drag took {dragged_in:.1f} s"
+        editor.action("undo").click()
+        assert editor.tl("segments.slice(0, 2)") == before
 
         # Typing in a row touches no other row: the other rows are the same DOM nodes with the same text
         page.evaluate(f"() => document.querySelectorAll('{ROW}').forEach((el, i) => {{ el.dataset.mark = String(i); }})")

@@ -5,8 +5,8 @@
 run_speakr.py runs this after it has created the database and the admin, so
 an instance started for the browser tests has recordings to open: without an
 ASR service nothing uploaded there would ever get a transcript. Each
-recording gets a short WAV file (a quiet tone) in UPLOAD_FOLDER and a
-transcript with two unnamed speakers. Running it again adds nothing.
+recording gets a short WAV file (a tone in bursts where the transcript has
+speech) in UPLOAD_FOLDER and a transcript with two unnamed speakers. Running it again adds nothing.
 
 test_asr_editor_ui.py finds them by title (TITLES below); the smoke test's
 recording checks use them as well.
@@ -52,10 +52,19 @@ def meeting_segments():
 
 
 def write_tone(path, seconds=AUDIO_SECONDS, rate=8000):
-    """A mono 16-bit WAV with a quiet 220 Hz tone."""
+    """A mono 16-bit WAV shaped like the meeting: a 220 Hz tone in word-length
+    bursts while a segment of meeting_segments() lasts, silence between the
+    segments and after the last one. The waveform of the editor's timeline
+    then shows the segments, and has pauses to snap to."""
+    spoken = len(SENTENCES) * 6.0
     frames = bytearray()
     for n in range(seconds * rate):
-        frames += struct.pack("<h", int(1200 * math.sin(2 * math.pi * 220 * n / rate)))
+        t = n / rate
+        in_segment = t < spoken and t % 6.0 < 5.5
+        word = int((t % 6.0) / 0.45)
+        in_word = (t % 6.0) % 0.45 < 0.35
+        level = 3000 + 900 * ((word * 7) % 5) if in_segment and in_word else 0
+        frames += struct.pack("<h", int(level * math.sin(2 * math.pi * 220 * n / rate)))
     with wave.open(path, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
