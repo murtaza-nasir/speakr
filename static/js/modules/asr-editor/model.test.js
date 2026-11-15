@@ -297,6 +297,82 @@ describe('merge', () => {
     });
 });
 
+describe('retime (what a drag on the timeline commits)', () => {
+    it('moves an edge and the neighbour that followed it in one step', () => {
+        const m = createAsrModel(sample());
+        const [a, b] = [m.get(0).id, m.get(2).id];
+        const ok = roundTrip(m, () => m.retime([{ id: a, start: 0, end: 3.5 }, { id: b, start: 3.5, end: 9 }]));
+        expect(ok).toBe(true);
+        expect(m.undoDepth).toBe(1);
+        expect([m.get(0).end_time, m.get(2).start_time]).toEqual([3.5, 3.5]);
+        m.undo();
+        expect([m.get(0).end_time, m.get(2).start_time]).toEqual([2, 5]);
+        expect(m.dirty).toBe(false);
+    });
+
+    it('moves a segment in time and to another speaker, keeping the order sorted', () => {
+        const m = createAsrModel(sample());
+        const id = m.get(0).id;
+        const before = state(m);
+        expect(m.retime([{ id, start: 9.5, end: 11.5, speaker: 'B' }], { label: 'speaker' })).toBe(true);
+        expect(isSorted(m)).toBe(true);
+        expect(m.indexOfId(id)).toBe(3);
+        expect(m.get(3)).toMatchObject({ speaker: 'B', start_time: 9.5, end_time: 11.5, sentence: 'Good morning everyone' });
+        // B 9-12 and B 9.5-11.5 overlap now
+        expect(problemsNow(m)).toEqual(problemsFromScratch(m));
+        expect(m.problemAt(3) & PROBLEM.OVERLAP).toBeTruthy();
+        expect(m.undoDepth).toBe(1);
+        m.undo();
+        expect(state(m)).toBe(before);
+        expect(m.problemCount).toBe(0);
+        m.redo();
+        expect(m.get(3).speaker).toBe('B');
+    });
+
+    it('keeps or sets the link to a saved speaker', () => {
+        const m = createAsrModel([{ ...seg('Dana', 0, 2), speaker_id: 7 }, seg('SPEAKER_01', 2, 4)]);
+        const [a, b] = [m.get(0).id, m.get(1).id];
+        m.retime([{ id: a, start: 0.5, end: 2 }]);
+        expect(m.toJSON()[0].speaker_id).toBe(7);                // times only: the link stays
+        m.retime([{ id: b, start: 2, end: 4, speaker: 'Dana', speakerId: 7 }]);
+        expect(m.toJSON()[1]).toMatchObject({ speaker: 'Dana', speaker_id: 7 });
+        m.retime([{ id: a, start: 0.5, end: 2, speaker: 'SPEAKER_01' }]);
+        expect(m.toJSON()[0].speaker_id).toBeUndefined();
+        m.undo();
+        expect(m.toJSON()[0].speaker_id).toBe(7);
+    });
+
+    it('rounds to milliseconds, never goes below zero, and reports the change once', () => {
+        const m = createAsrModel(sample());
+        const events = [];
+        m.onChange((event) => events.push(event));
+        const id = m.get(1).id;
+        m.retime([{ id, start: -1, end: 4.00049 }]);
+        expect(m.get(m.indexOfId(id))).toMatchObject({ start_time: 0, end_time: 4 });
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({ type: 'time', source: 'do' });
+        expect(events[0].ids).toContain(id);
+    });
+
+    it('does nothing for unknown ids, missing times and unchanged values', () => {
+        const m = createAsrModel(sample());
+        const id = m.get(0).id;
+        expect(m.retime([{ id: 999, start: 1, end: 2 }])).toBe(false);
+        expect(m.retime([{ id, start: NaN, end: 2 }])).toBe(false);
+        expect(m.retime([{ id, start: 0, end: 2, speaker: 'A' }])).toBe(false);
+        expect(m.retime([])).toBe(false);
+        expect(m.canUndo).toBe(false);
+    });
+
+    it('is replayed from a draft', () => {
+        const m = createAsrModel(sample());
+        m.retime([{ id: m.get(0).id, start: 5.5, end: 7, speaker: 'B' }]);
+        const fresh = createAsrModel(sample());
+        fresh.importLog(JSON.parse(JSON.stringify(m.exportLog())));
+        expect(state(fresh)).toBe(state(m));
+    });
+});
+
 describe('add and remove', () => {
     it('adds a segment at its place', () => {
         const m = createAsrModel(sample());
