@@ -948,7 +948,8 @@
         "edge": "borda de segmento",
         "quiet": "pausa"
       }
-    }
+    },
+    "undoAction": "Desfazer"
   },
   "findReplace": {
     "open": "Localizar e substituir (Ctrl+F)",

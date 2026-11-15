@@ -948,7 +948,8 @@
         "edge": "Segmentkante",
         "quiet": "Pause"
       }
-    }
+    },
+    "undoAction": "Rückgängig"
   },
   "findReplace": {
     "open": "Suchen und ersetzen (Strg+F)",

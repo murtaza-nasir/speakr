@@ -948,7 +948,8 @@
         "edge": "segment edge",
         "quiet": "quiet point"
       }
-    }
+    },
+    "undoAction": "Undo"
   },
   "findReplace": {
     "open": "Find and replace (Ctrl+F)",

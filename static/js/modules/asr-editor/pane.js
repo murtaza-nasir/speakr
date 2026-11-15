@@ -661,12 +661,19 @@ export function createAsrEditorPane() {
             const acceptSuggestion = (label) => {
                 const match = suggestionOf(label);
                 if (!match) return;
-                model.renameSpeaker(label, match.name, {
+                const changed = model.renameSpeaker(label, match.name, {
                     speakerId: match.speaker_id,
                     match: { label, name: match.name, speakerId: match.speaker_id },
                 });
                 if (popover.kind === 'picker') closePopover();
-                session.toast(translate('asrEditor.suggestionAccepted', { label, name: match.name }));
+                if (!changed) return;
+                // The toast takes the rename back with one click, as long as
+                // it is still the last edit.
+                const rev = model.rev;
+                session.toast(translate('asrEditor.suggestionAccepted', { label, name: match.name }), {
+                    action: () => { if (model.rev === rev) undo(); },
+                    actionLabel: translate('asrEditor.undoAction'),
+                });
             };
 
             const openPicker = (row, event) => {
@@ -1216,6 +1223,7 @@ export function createAsrEditorPane() {
                     startMonitor();
                 },
                 acceptSuggestion,
+                previewSpeaker,
             };
 
             onMounted(() => {

@@ -948,7 +948,8 @@
         "edge": "片段边缘",
         "quiet": "停顿"
       }
-    }
+    },
+    "undoAction": "撤销"
   },
   "findReplace": {
     "open": "查找和替换 (Ctrl+F)",

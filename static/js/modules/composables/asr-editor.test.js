@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAsrEditor } from './asr-editor.js';
+import { editorToast, useAsrEditor } from './asr-editor.js';
 import { createDraftStore, hashText } from '../asr-editor/draft.js';
 
 const ref = (value) => ({ value });
@@ -248,5 +248,22 @@ describe('the segment editor session', () => {
         api.closeAsrEditorModal();
         await api.openAsrEditorModal();
         expect(state.asrEditorSession.value.initialIndex).toBeNull();
+    });
+});
+
+describe('an editor toast', () => {
+    it('is plain text without an action, with user text escaped', () => {
+        expect(editorToast('SPEAKER_00 renamed to <b>Dana</b> & Co')).toEqual({
+            html: 'SPEAKER_00 renamed to &lt;b&gt;Dana&lt;/b&gt; &amp; Co', duration: undefined, onClick: null,
+        });
+    });
+
+    it('names its action, stays longer and runs it on a click', () => {
+        const action = vi.fn();
+        const toast = editorToast('SPEAKER_00 renamed to Dana Lee', { action, actionLabel: 'Undo' });
+        expect(toast.html).toBe('SPEAKER_00 renamed to Dana Lee <span class="toast__action">Undo</span>');
+        expect(toast.duration).toBeGreaterThan(3000);
+        toast.onClick();
+        expect(action).toHaveBeenCalledTimes(1);
     });
 });

@@ -614,6 +614,38 @@ def test_a_voice_match_is_accepted_and_saved_like_in_the_speaker_dialog(editor):
         page.wait_for_function(f"!{audio}.paused", timeout=10000)
         page.evaluate(f"{audio}.pause()")
 
+        # The lane header of the timeline offers the same match the same way:
+        # the name and percent, which play the speaker, and a button with a
+        # word on it. Nothing in a lane header is a button with only an icon.
+        editor.tl_ready(waveform=False)
+        lane_offer = page.locator("[data-asr-lane-suggestion]")
+        assert lane_offer.count() == 1
+        assert page.locator(".asr-tl__lane").first.locator("[data-asr-lane-suggestion]").count() == 1
+        assert en("asrEditor.suggestion").replace("{{name}}", "Dana Lee").replace("{{percent}}", "87%") in lane_offer.inner_text()
+        accept = editor.action("timeline-accept")
+        assert accept.inner_text().strip() == en("asrEditor.suggestionAccept")
+        wordless = page.eval_on_selector_all(".asr-tl__heads button", "els => els.filter(e => !e.textContent.trim()).length")
+        assert wordless == 0, "a lane header has a button without a word on it"
+        head = page.locator(".asr-tl__heads").bounding_box()
+        pill = lane_offer.bounding_box()
+        assert pill["x"] >= head["x"] and pill["x"] + pill["width"] <= head["x"] + head["width"] + 0.5, f"the match does not fit its lane header: {pill} in {head}"
+        editor.shot("asr-editor-test-lane-match")
+        lane_offer.locator(".asr-suggest__name").click()
+        page.wait_for_function(f"!{audio}.paused", timeout=10000)
+        page.evaluate(f"{audio}.pause()")
+        # Accepting there renames the speaker and says so, with Undo in the message
+        accept.click()
+        assert editor.speakers() == ["Dana Lee" if s["speaker"] == "SPEAKER_00" else s["speaker"] for s in seeded]
+        assert lane_offer.count() == 0
+        toast = page.locator("#toastContainer .toast-message").filter(has_text="Dana Lee")
+        toast.wait_for(state="visible", timeout=5000)
+        assert toast.locator(".toast__action").inner_text().strip() == en("asrEditor.undoAction")
+        toast.locator(".toast__action").click()
+        assert editor.speakers() == [s["speaker"] for s in seeded]
+        assert editor.action("undo").is_disabled() and not editor.dirty()
+        assert lane_offer.count() == 1 and offer.count() == 1
+        toast.wait_for(state="detached", timeout=5000)
+
         # Accept renames the speaker in the whole recording, as one undo step
         editor.action("accept-suggestion").click()
         named = ["Dana Lee" if s["speaker"] == "SPEAKER_00" else s["speaker"] for s in seeded]
@@ -664,7 +696,7 @@ def test_the_timeline_shows_the_recording_and_follows_the_selection(meeting):
 
     # One lane per speaker, in the colours of the speaker chips, and the waveform of the audio
     assert editor.tl("lanes") == [{"name": "SPEAKER_00", "count": 6}, {"name": "SPEAKER_01", "count": 6}]
-    heads = page.eval_on_selector_all(".asr-tl__lane .asr-tl__name-1", "els => els.map(e => e.textContent.trim())")
+    heads = page.eval_on_selector_all(".asr-tl__lane .asr-tl__name", "els => els.map(e => e.textContent.trim())")
     assert heads == ["SPEAKER_00", "SPEAKER_01"]
     swatch = page.locator("[data-asr-lane-swatch]").first.evaluate("el => getComputedStyle(el).backgroundColor")
     chip = page.locator(f"{ROW} .asr-seg__chip").first.evaluate("el => getComputedStyle(el).backgroundColor")
@@ -841,6 +873,61 @@ def test_dragging_a_block_moves_it_or_changes_its_speaker(meeting):
     editor.action("undo").click()
     assert editor.tl_segments() == seeded
     editor.check("editor timeline, block drags")
+    editor.discard()
+
+
+def test_a_click_on_a_block_selects_it_and_changes_nothing(meeting):
+    """A press that barely moves is a click. The speaker changes only when a block
+    is dragged more than half a lane up or down."""
+    editor, recording_id = meeting
+    page = editor.page
+    editor.tl_ready()
+    seeded = meeting_segments()
+    x, y = editor.tl_point(14.5, lane=0)
+    lane = editor.tl("laneY(1)") - editor.tl("laneY(0)")
+
+    def press(dx, dy):
+        page.mouse.move(x, y)
+        page.mouse.down()
+        if dx or dy:
+            page.mouse.move(x + dx, y + dy, steps=3)
+        page.mouse.up()
+        page.wait_for_timeout(100)
+
+    def unchanged(what):
+        assert editor.tl_segments() == seeded, f"{what} changed the transcript"
+        assert editor.tl("undoDepth") == 0 and not editor.dirty(), f"{what} left an edit"
+        assert editor.selected() == [2]
+
+    # No movement, and movement under the threshold in either direction
+    for dx, dy in [(0, 0), (3, 0), (0, 3), (-3, -3), (3, 3)]:
+        press(dx, dy)
+        unchanged(f"a click that moved by {dx}, {dy}")
+    # A drag, but less than half a lane up or down and not sideways
+    for dy in (round(lane * 0.45), -round(lane * 0.45)):
+        press(0, dy)
+        unchanged(f"a drag of {dy} px up or down")
+    # A tap with an unsteady finger
+    page.evaluate("""([sel, x, y]) => {
+        const canvas = document.querySelector(sel);
+        const fire = (type, dx, dy) => canvas.dispatchEvent(new PointerEvent(type, {
+            pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x + dx, clientY: y + dy, button: 0, buttons: 1 }));
+        fire('pointerdown', 0, 0);
+        fire('pointermove', 4, 3);
+        fire('pointermove', 7, 6);
+        fire('pointerup', 7, 6);
+    }""", [CANVAS, x, y])
+    page.wait_for_timeout(100)
+    unchanged("a tap that moved by 7, 6")
+
+    # More than half a lane down: now the speaker changes, and only the speaker
+    press(0, round(lane * 0.6))
+    moved = editor.tl_segments()[2]
+    assert (moved["speaker"], moved["start_time"], moved["end_time"]) == ("SPEAKER_01", 12.0, 17.5)
+    assert editor.tl("undoDepth") == 1
+    editor.action("undo").click()
+    assert editor.tl_segments() == seeded
+    editor.check("editor timeline, clicks")
     editor.discard()
 
 
