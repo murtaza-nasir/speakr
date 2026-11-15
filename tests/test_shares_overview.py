@@ -110,3 +110,44 @@ def test_owner_names_follow_the_username_setting(world, monkeypatch):
     monkeypatch.setattr(shares_api, "SHOW_USERNAMES_IN_UI", False)
     body, _ = _overview(world["me"])
     assert body["shared_with_me"][0]["owner_username"] is None
+
+
+# The recording detail and the main recording list gave the owner's username
+# of a shared recording whatever the setting said; they follow it now, like
+# the shared-with-me list above.
+
+def _shared_views(world, monkeypatch, show):
+    """The shared recording as the detail and the main list return it to me."""
+    import src.api.recordings as recordings_api
+    import src.app as app_module
+    for module in (recordings_api, app_module):
+        monkeypatch.setattr(module, "ENABLE_INTERNAL_SHARING", True)
+    monkeypatch.setattr(recordings_api, "SHOW_USERNAMES_IN_UI", show)
+    client = app.test_client()
+    with app.app_context():
+        _login(client, db.session.get(User, world["me"]))
+    detail = client.get(f"/api/recordings/{world['theirs']}")
+    assert detail.status_code == 200, detail.get_json()
+    listing = client.get("/api/recordings", query_string={"shared": "true", "per_page": 100})
+    assert listing.status_code == 200
+    [row] = [r for r in listing.get_json()["recordings"] if r["id"] == world["theirs"]]
+    return detail, row
+
+
+def test_the_detail_and_the_list_hide_the_owner_name_with_usernames_hidden(world, monkeypatch):
+    detail, row = _shared_views(world, monkeypatch, show=False)
+    for view in (detail.get_json(), row):
+        assert view["is_shared"] is True and view["is_owner"] is False
+        assert view["owner_username"] is None
+        assert view["share_info"]["owner_username"] is None
+        assert view["share_info"]["can_edit"] is False
+    with app.app_context():
+        owner_name = db.session.get(User, world["ana"]).username
+    assert owner_name not in detail.get_data(as_text=True)
+
+
+def test_the_detail_and_the_list_give_the_owner_name_with_usernames_shown(world, monkeypatch):
+    detail, row = _shared_views(world, monkeypatch, show=True)
+    for view in (detail.get_json(), row):
+        assert view["owner_username"].startswith("ana_")
+        assert view["share_info"]["owner_username"].startswith("ana_")

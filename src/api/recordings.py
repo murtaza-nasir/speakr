@@ -1546,7 +1546,7 @@ def get_recordings_paginated():
             if not is_owner:
                 # This is a shared recording - get owner info and share permissions
                 owner = batch.owners.get(recording.user_id)
-                rec_dict['owner_username'] = owner.username if owner else "Unknown"
+                rec_dict['owner_username'] = _owner_username_for_recipient(owner)
                 rec_dict['is_shared'] = True
                 # Don't show outgoing share count for recordings you don't own
                 rec_dict['shared_with_count'] = 0
@@ -1558,7 +1558,7 @@ def get_recordings_paginated():
                 if share:
                     rec_dict['share_info'] = {
                         'share_id': share.id,
-                        'owner_username': owner.username if owner else "Unknown",
+                        'owner_username': _owner_username_for_recipient(owner),
                         'can_edit': share.can_edit,
                         'can_reshare': share.can_reshare,
                         'shared_at': share.created_at.isoformat()
@@ -2562,6 +2562,17 @@ def get_archived_recordings():
         return jsonify({'error': str(e)}), 500
 
 
+def _owner_username_for_recipient(owner):
+    """The owner's username as a person the recording is shared with gets it.
+
+    Follows show_usernames_in_ui, as the shared-with-me list does
+    (src/api/shares.py): None while usernames are hidden.
+    """
+    if not _self.SHOW_USERNAMES_IN_UI:
+        return None
+    return owner.username if owner else "Unknown"
+
+
 # --- Recording Detail and Audio Endpoints ---
 
 @recordings_bp.route('/api/recordings/<int:recording_id>', methods=['GET'])
@@ -2605,7 +2616,7 @@ def get_recording_detail(recording_id):
         if not is_owner:
             # This is a shared recording - get owner info and share permissions
             owner = db.session.get(User, recording.user_id)
-            rec_dict['owner_username'] = owner.username if owner else "Unknown"
+            rec_dict['owner_username'] = _owner_username_for_recipient(owner)
             rec_dict['is_shared'] = True
             # Don't show outgoing share count for recordings you don't own
             rec_dict['shared_with_count'] = 0
@@ -2620,7 +2631,7 @@ def get_recording_detail(recording_id):
             if share:
                 rec_dict['share_info'] = {
                     'share_id': share.id,
-                    'owner_username': owner.username if owner else "Unknown",
+                    'owner_username': _owner_username_for_recipient(owner),
                     'can_edit': share.can_edit,
                     'can_reshare': share.can_reshare,
                     'shared_at': share.created_at.isoformat()
@@ -3751,5 +3762,6 @@ _SYSTEM_SETTING_MAP = {
     "USERS_CAN_DELETE": ("users_can_delete", "USERS_CAN_DELETE", True),
     "ENABLE_INTERNAL_SHARING": ("enable_internal_sharing", "ENABLE_INTERNAL_SHARING", False),
     "ENABLE_INCOGNITO_MODE": ("enable_incognito_mode", "ENABLE_INCOGNITO_MODE", False),
+    "SHOW_USERNAMES_IN_UI": ("show_usernames_in_ui", "SHOW_USERNAMES_IN_UI", False),
 }
 _self, __getattr__ = apply_hot_settings(__name__, _SYSTEM_SETTING_MAP)
