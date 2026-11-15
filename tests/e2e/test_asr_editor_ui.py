@@ -1405,6 +1405,22 @@ def test_a_lane_name_renames_or_merges_the_whole_speaker(editor):
         page.keyboard.press("Escape")
         picker.wait_for(state="detached", timeout=5000)
 
+        # The voice match chosen from the list of the lane picker is accepted
+        # like with its Accept button: the same message, one undo step
+        sheet = editor.lane_picker(0, "SPEAKER_00")
+        sheet.locator("[data-asr-option='Dana Lee']").click()
+        picker.wait_for(state="detached", timeout=5000)
+        editor.speakers_are(["Dana Lee" if n == "SPEAKER_00" else n for n in labels])
+        editor.lanes_are([("Dana Lee", 6), ("SPEAKER_01", 6)])
+        editor.lane_offers([])
+        accepted = page.locator("#toastContainer .toast-message").filter(
+            has_text=en("asrEditor.suggestionAccepted").replace("{{label}}", "SPEAKER_00").replace("{{name}}", "Dana Lee"))
+        accepted.wait_for(state="visible", timeout=5000)
+        editor.action("undo").click()
+        editor.speakers_are(labels)
+        editor.lane_offers([en("asrEditor.suggestionAccept")])
+        editor.undo_depth(0)
+
         # Renamed from the lane and saved: every segment of the speaker
         sheet = editor.lane_picker(1, "SPEAKER_01")
         page.keyboard.type("Linus")
