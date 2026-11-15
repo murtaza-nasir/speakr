@@ -108,7 +108,7 @@ Push subscriptions of browsers can be stored, but no push message is sent by the
 | `sessionStorage` | Chat threads of the open recordings, and the result of an incognito recording | Until the tab is closed |
 | IndexedDB `SpeakrRecordings` | Audio chunks and notes of a recording in progress, for recovery after a crash. Incognito recordings are included. | Until the recording is uploaded or discarded |
 | IndexedDB `SpeakrFailedUploads` | The file of an upload that failed, for a later retry | Until the retry succeeds or the entry is removed |
-| Cache Storage of the service worker (`Speakr-cache-<version>`) | The application files, visited pages, and the responses of `GET` requests under `/api/`, which include recording lists, transcripts and summaries | Until the cache is replaced with the next release, or until the site data is cleared. The cache is not cleared at sign-out. |
+| Cache Storage of the service worker (`Speakr-cache-<version>`) | The application files under `/static/`. In this release the service worker is registered for `/static/` only, so pages and the responses of `/api/` requests are not cached. | Until the cache is replaced with the next release, or until the site data is cleared |
 
 On a shared computer, site data must be cleared after use, or a separate browser profile must be used for each person.
 
@@ -129,7 +129,7 @@ No webhook, email or notification is produced. Only metadata is logged, as descr
 
 The audio and the text are still sent to the transcription service and the LLM. The data on those services is not protected by incognito mode, so regulated data requires local services or services under a suitable agreement.
 
-A person who copies or downloads text from an incognito result is responsible for the place where that text is kept afterwards.
+A person who copies text from an incognito result is responsible for the place where that text is kept afterwards.
 
 Limits of incognito mode:
 
@@ -171,7 +171,7 @@ Limits of incognito mode:
 
 - **No access audit log.** No record is kept of who viewed, played, downloaded or exported a recording, of sign-ins and failed sign-ins, or of actions by administrators. The only records are the share audit table for internal shares (its rows are deleted together with the recording), the time of last use of each API token, and the temporary counters of failed sign-ins. An access record required by a regulation must come from the reverse proxy or another system.
 - **No encryption at rest in the application.** Database content, media files, webhook signing secrets and exported files are stored as plain data.
-- **Content in the browser.** API responses are kept in the cache of the service worker and are not removed at sign-out.
+- **Content in the browser.** Audio of a recording in progress and files of failed uploads are kept in IndexedDB, and chat threads in `sessionStorage`, as listed under [Browser storage](#browser-storage). They are not removed at sign-out.
 - **Public links after the switch-off.** Existing links are served until they are revoked or expire.
 - **Titles and file names after deletion.** They are kept in the webhook delivery rows.
 - **Identifiers and provider error text in the default log.** See [Logs](#logs).
